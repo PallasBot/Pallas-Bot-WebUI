@@ -1,0 +1,220 @@
+// 界面中文：优先本机已安装的思源黑体/Noto；用户也可将 woff2 放到 Bot 静态目录 `public/pallas/fonts/` 后在此增加 url(...) 行
+@font-face {
+  font-family: "Pallas UI Han";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Source Han Sans SC"),
+    local("Source Han Sans CN"),
+    local("Noto Sans CJK SC"),
+    local("Microsoft YaHei UI"),
+    local("Microsoft YaHei"),
+    local("PingFang SC"),
+    local("Segoe UI");
+}
+
+// 蓝白主色：顶栏、侧栏选中、Element Plus 主色统一
+:root {
+  --pallas-font-han: "Pallas UI Han", "Segoe UI", system-ui, sans-serif;
+  --pallas-font-mono-em: ui-monospace, "Cascadia Code", "Consolas", "Sarasa Mono SC", monospace;
+  --pallas-accent: #1664c4;
+  --c-main: var(--pallas-accent);
+  --c-main-light: rgba(22, 100, 196, 0.1);
+  --c-header-fg: #fff;
+  --c-nav-bg: #ffffff;
+  --c-body-bg: #f2f6fc;
+  --c-surface-elev: #ffffff;
+  // 更圆润的界面主圆角（侧栏、主内容卡片、表单项等依赖 EP 变量）
+  --pallas-radius-lg: 14px;
+  --pallas-radius-md: 12px;
+  --pallas-radius-sm: 10px;
+  // 与侧栏页眉 .pallas-main-top 同宽
+  --pallas-content-max: 1100px;
+  --pallas-line-prose: 1.75;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
+  --el-border-radius-round: 18px;
+  --el-font-family: var(--pallas-font-han);
+  --pallas-elev-1: 0 10px 24px rgba(15, 35, 65, 0.08);
+  --pallas-elev-2: 0 16px 34px rgba(10, 30, 56, 0.14);
+}
+
+html.dark {
+  --c-nav-bg: var(--el-bg-color);
+  --c-body-bg: var(--el-bg-color-page);
+  --c-surface-elev: var(--el-bg-color);
+  --c-main-light: rgba(84, 163, 255, 0.2);
+  --c-header-fg: #f0f7ff;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--pallas-font-han);
+}
+
+// 驱动 host/port、路径等强调等宽（与正文思源搭配）
+html .pallas-kv code,
+html code.pallas-em {
+  font-family: var(--pallas-font-mono-em);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+// 描述列表与主内容一致左对齐（避免 EP 默认标签列居中）
+html .el-descriptions__label,
+html .el-descriptions__content {
+  text-align: left !important;
+}
+
+html .el-empty__description {
+  text-align: left;
+}
+
+#app {
+  position: relative;
+  z-index: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// 主内容区：与标题栏同宽、左对齐铺满，便于侧栏+表格占满视口
+.pallas-viewport {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  .view-page {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    line-height: var(--pallas-line-prose);
+  }
+  .view-page p,
+  .view-page .muted,
+  .view-page .lead {
+    line-height: var(--pallas-line-prose);
+  }
+}
+
+html .el-table .cell {
+  line-height: 1.55;
+  padding: 8px 12px;
+}
+html .el-card,
+html .el-descriptions,
+html .el-table {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+// 表头与内容列对齐：默认左对齐；尊重列上 align="center"|"right"
+html .el-table th.el-table__cell,
+html .el-table td.el-table__cell {
+  vertical-align: middle;
+}
+html .el-table th.el-table__cell .cell,
+html .el-table td.el-table__cell .cell {
+  text-align: left;
+}
+html .el-table th.el-table__cell .cell {
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+}
+html .el-table .el-table__cell.is-center .cell {
+  text-align: center;
+}
+html .el-table .el-table__cell.is-right .cell {
+  text-align: right;
+}
+html .el-table .el-table__header-wrapper th.el-table__cell {
+  background: var(--el-fill-color-extra-light);
+}
+html .el-table--border .el-table__inner-wrapper::before,
+html .el-table--border::before,
+html .el-table--border::after,
+html .el-table__inner-wrapper::before {
+  background-color: rgba(22, 100, 196, 0.1) !important;
+}
+
+// 卡片略圆（表格用 EP 默认圆角，避免裁切内部滚动区）
+html .el-card {
+  border-radius: var(--pallas-radius-md) !important;
+  box-shadow: var(--pallas-elev-1);
+}
+html .el-card:hover {
+  box-shadow: var(--pallas-elev-2);
+}
+
+html .el-tabs--card > .el-tabs__header .el-tabs__item,
+html .el-tabs__nav-wrap {
+  border-radius: var(--pallas-radius-sm) var(--pallas-radius-sm) 0 0;
+}
+
+// 明亮模式：白底界面 + 蓝色主操作色
+html:not(.dark) {
+  --el-color-primary: #1664c4 !important;
+  --el-color-primary-light-3: #3d82d6;
+  --el-color-primary-light-5: #5f97de;
+  --el-color-primary-light-7: #8fb4ea;
+  --el-color-primary-light-8: #b8d0f2;
+  --el-color-primary-light-9: #e5eefb;
+  --el-color-primary-dark-2: #0f4a8f;
+}
+
+// 暗色时略提亮的蓝，保持可读
+html.dark {
+  --el-color-primary: #4a9eff !important;
+  --el-color-primary-light-3: #6eb2ff;
+  --el-color-primary-light-5: #8ac0ff;
+  --el-color-primary-light-7: #a5d0ff;
+  --el-color-primary-light-8: #c0e0ff;
+  --el-color-primary-light-9: #1a3a5c;
+  --el-color-primary-dark-2: #2d7fd9;
+}
+
+.slide-fade-enter-active {
+  transition: opacity 0.28s ease, transform 0.28s ease, filter 0.28s ease;
+  transition-delay: 0.03s;
+}
+
+.slide-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(10px) scale(0.995);
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-6px) scale(0.998);
+  opacity: 0;
+  filter: blur(4px);
+}
+
+@keyframes pallas-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html .view-page > * {
+  animation: pallas-fade-up 0.32s ease both;
+}
+
+.v-loading.pallas-blur {
+  background-color: transparent !important;
+  backdrop-filter: blur(8px);
+}
