@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "postbuild": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-to-main.ps1",
+    "build:ci": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
