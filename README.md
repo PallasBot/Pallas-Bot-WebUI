@@ -41,6 +41,21 @@ npm run build
 
 `http://<host>:<port>/pallas/`
 
+## 自动下载模式（推荐线上）
+
+当主仓不跟踪 `data/` 时，建议使用 `dist.zip` 发布方式：
+
+1. 在本仓构建后打包 `dist` 为 zip（根目录应直接包含 `index.html` 与 `assets/`）。
+2. 将 zip 上传到本仓 Release（例如 `v0.1.0` 的 `dist.zip`）。
+3. 在主仓 `.env` 配置：
+
+```env
+PALLAS_WEBUI_DIST_ZIP_URL=https://github.com/TogetsuDo/Pallas-Bot-WebUI/releases/download/v0.1.0/dist.zip
+```
+
+主仓启动时若发现 `data/pallas_webui/public/index.html` 不存在，会自动下载并解压。
+如需强制更新到新包，删除 `data/pallas_webui/public` 后重启主仓即可触发重新下载。
+
 ## 自动挂钩主仓（推荐）
 
 目标：WebUI 每次构建后自动同步到主仓 `data/pallas_webui/public`。
