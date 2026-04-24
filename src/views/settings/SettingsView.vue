@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { PALLAS_API_TOKEN_KEY } from "@/api/http";
-import { isDark, setTheme } from "@/utils/theme";
 import { Brush, CircleCheck, Link, List } from "@element-plus/icons-vue";
 import { onMounted, ref, watch } from "vue";
 
@@ -12,7 +11,6 @@ const api = `${base.replace(/\/$/, "")}/api`;
 const devProxy = "Vite 将 /pallas/api 转发到 VITE_PROXY_TARGET，默认 http://127.0.0.1:8088";
 const defaultPort = 8088;
 
-const note = ref("");
 const apiToken = ref("");
 const section = ref<Section>("appearance");
 
@@ -32,14 +30,7 @@ const navItems = [
 
 onMounted(() => {
   if (typeof localStorage !== "undefined") {
-    note.value = localStorage.getItem("pallas-webui-note") || "";
     apiToken.value = localStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
-  }
-});
-
-watch(note, (v) => {
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem("pallas-webui-note", v);
   }
 });
 
@@ -107,28 +98,11 @@ const envTable = [
         class="dense-form"
         @submit.prevent
       >
-        <el-form-item label="主题色">
-          <p class="form-lead">默认蓝白；可开深色（仍使用品牌蓝作为主操作色）。</p>
-        </el-form-item>
-        <el-form-item label="深色模式">
-          <el-switch
-            :model-value="isDark"
-            @update:model-value="(v: string | number | boolean) => setTheme(!!v)"
-          />
-        </el-form-item>
-        <el-form-item label="本地备注（仅本机）">
-          <p class="form-lead">部署 IP、对外域名、Nginx 路径、团队约定端口等；仅存浏览器。</p>
-          <el-input
-            v-model="note"
-            type="textarea"
-            :rows="6"
-            placeholder="多行记录便于日后查阅，不上传"
-            maxlength="2000"
-            show-word-limit
-          />
-        </el-form-item>
         <el-form-item label="Pallas API 写 Token（可选）">
           <p class="form-lead">与 Bot 侧 pallas_webui_api_token 一致时，方可 PUT 改 Bot/群 配置。</p>
+          <div class="form-hint">
+            仅当 Bot 侧已配置 <code>pallas_webui_api_token</code> 时才会校验该值；未配置时留空也可写入。
+          </div>
           <el-input
             v-model="apiToken"
             type="password"

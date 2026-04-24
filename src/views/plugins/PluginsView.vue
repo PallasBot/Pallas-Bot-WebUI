@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { fetchPluginConfigHint, fetchPlugins } from "@/api/consoleApi";
+import { fetchPlugins } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import type { PluginRow } from "@/api/pallasTypes";
 import { View } from "@element-plus/icons-vue";
@@ -9,7 +9,6 @@ import { ElMessage } from "element-plus";
 
 const loading = ref(true);
 const rows = ref<PluginRow[]>([]);
-const hint = ref("");
 const dialog = ref(false);
 const current = ref<PluginRow | null>(null);
 const router = useRouter();
@@ -26,17 +25,8 @@ async function load() {
     loading.value = false;
   }
 }
-async function loadHint() {
-  try {
-    hint.value = await fetchPluginConfigHint();
-  } catch {
-    hint.value = "（说明接口暂时不可用，配置仍多来自 .env 与 data 目录）";
-  }
-}
-
 onMounted(() => {
   void load();
-  void loadHint();
 });
 
 watch(
@@ -44,7 +34,6 @@ watch(
   () => {
     if (conn?.ok.value && !loading.value && rows.value.length === 0) {
       void load();
-      void loadHint();
     }
   },
 );
@@ -56,9 +45,6 @@ watch(
     const run = () => {
       if (rows.value.length === 0) {
         void load();
-      }
-      if (!hint.value) {
-        void loadHint();
       }
     };
     if (loading.value) {
@@ -127,16 +113,6 @@ watch(rows, () => {
     >
       <h1 class="main-title">插件列表</h1>
       <p class="main-sub">按元数据类型分片筛选，卡片栅格浏览；在哪些群/号上关插件，请到「好友与群」。</p>
-      <el-alert
-        v-if="hint"
-        :closable="false"
-        type="info"
-        class="al"
-        show-icon
-      >
-        <template #title>配置提示</template>
-        {{ hint }}
-      </el-alert>
       <el-card
         v-loading="loading"
         shadow="hover"
