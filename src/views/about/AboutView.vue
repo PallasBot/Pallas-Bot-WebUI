@@ -36,6 +36,7 @@ const lines = computed(() => {
   return [
     { k: "NoneBot2", v: last.value.nonebot2 },
     { k: "Pallas-Bot 包", v: last.value.pallas_bot },
+    { k: "Pallas Console", v: last.value.console?.version || "unknown" },
     { k: "HTTP 基址(元数据)", v: last.value.console?.http_base || "—" },
   ];
 });

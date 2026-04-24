@@ -7,6 +7,9 @@ export interface HealthResponse {
   console: {
     static_root?: string;
     http_base?: string;
+    version?: string;
+    commit?: string;
+    build_time?: string;
   };
 }
 
