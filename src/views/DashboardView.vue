@@ -73,6 +73,7 @@ const driverHostPort = computed(() => {
 const nonebot = ref<BotRow[]>([]);
 const dbBots = ref<BotConfigPublic[]>([]);
 const protocolAccounts = ref<NapcatAccountRow[]>([]);
+const botProfiles = ref<Record<string, { nickname?: string }>>({});
 const protocolPath = ref<string | null>(null);
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const botBase = getBotServiceBaseRef();
@@ -81,6 +82,11 @@ const protocolManageUrl = computed(() =>
 );
 
 function botNickname(selfId: string, account: number): string {
+  const sid = String(selfId || "").trim();
+  const aid = account >= 0 ? String(account) : "";
+  const profile = botProfiles.value[sid] ?? (aid ? botProfiles.value[aid] : undefined);
+  const profileName = String(profile?.nickname ?? "").trim();
+  if (profileName) return profileName.toUpperCase();
   const ids = new Set<string>([String(selfId || "").trim()]);
   if (account >= 0) ids.add(String(account));
   for (const row of protocolAccounts.value) {
@@ -194,6 +200,7 @@ async function loadInstances(silent = true) {
     const data = await fetchInstances();
     nonebot.value = data.nonebot_bots;
     dbBots.value = data.db_bot_configs;
+    botProfiles.value = data.bot_profiles ?? {};
     protocolPath.value = data.pallas_protocol?.webui_path ?? data.napcat?.webui_path ?? null;
     protocolAccounts.value = (data.pallas_protocol?.accounts ??
       data.napcat?.accounts ??
@@ -204,6 +211,7 @@ async function loadInstances(silent = true) {
     }
     nonebot.value = [];
     dbBots.value = [];
+    botProfiles.value = {};
     protocolPath.value = null;
     protocolAccounts.value = [];
   }
@@ -260,6 +268,7 @@ watch(ok, (v) => {
       logLines.value = [];
       nonebot.value = [];
       dbBots.value = [];
+      botProfiles.value = {};
     }
   }
 }, { immediate: true });
@@ -318,7 +327,7 @@ onUnmounted(() => {
               <el-tag
                 :type="row.online ? 'success' : 'info'"
                 size="small"
-              >{{ row.online ? "已连" : "未连" }}</el-tag>
+              >{{ row.online ? "已连接" : "未连接" }}</el-tag>
             </div>
             <div class="dash-rail-adp mono">{{ row.adapter }}</div>
           </button>

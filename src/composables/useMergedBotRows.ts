@@ -49,7 +49,7 @@ export function useMergedBotRows(
           account: c.account,
           selfId: String(c.account),
           connectionKey: "—",
-          adapter: "（未在 NoneBot 连接中）",
+          adapter: "未连接",
           online: false,
           config: c,
         });

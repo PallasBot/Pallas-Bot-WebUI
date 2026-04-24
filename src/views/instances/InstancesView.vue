@@ -22,13 +22,9 @@ import type {
 } from "@/api/pallasTypes";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
-import {
-  accountNativeWebUiUrl,
-  protocolAccountUrl,
-  protocolDashboardUrl,
-} from "@/utils/pallasProtocolPaths";
+import { accountNativeWebUiUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
-import { ChatDotRound, Connection, Link, Position, User } from "@element-plus/icons-vue";
+import { ChatDotRound, Connection, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -60,12 +56,9 @@ const sectionTitle: Record<InstSection, string> = {
   group: "群管理",
 };
 const sectionSub = computed<Record<InstSection, string>>(() => ({
-  inst:
-    pageScope.value === "accounts"
-      ? "库内 Bot 账号、当前连接与 NapCat 协议信息；在本页管理配置与入口。"
-      : "库内 Bot 配置与 pallas_protocol（NapCat 等）。",
-  friends: "只读：待处理好友申请（request_handler 落盘）与在线协议可疑申请；在线 OneBot V11 号可拉取好友列表。",
-  group: "按群禁用插件、轮盘模式与封禁；与「本号禁用」是两套。",
+  inst: "",
+  friends: "",
+  group: "",
 }));
 const active = ref<InstSection>("friends");
 const loading = ref(true);
@@ -73,6 +66,7 @@ const groupIdFilter = ref("");
 const nonebot = ref<Awaited<ReturnType<typeof fetchInstances>>["nonebot_bots"]>([]);
 const dbBots = ref<BotConfigPublic[]>([]);
 const protocolSnap = ref<Awaited<ReturnType<typeof fetchInstances>>["pallas_protocol"]>(null);
+const botProfiles = ref<Record<string, { nickname?: string }>>({});
 
 const groupLoading = ref(false);
 const groups = ref<GroupConfigPublic[]>([]);
@@ -93,10 +87,6 @@ const pluginNames = ref<string[]>([]);
 
 const botBase = getBotServiceBaseRef();
 
-const protocolOpenUrl = computed(() =>
-  protocolDashboardUrl(botBase.value || "http://localhost:8088", protocolSnap.value?.webui_path),
-);
-
 function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
   return protocolAccountUrl(
     botBase.value || "http://localhost:8088",
@@ -107,9 +97,25 @@ function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
 
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const socialSelectedBotSelfId = ref<string | null>(null);
+const socialInstancePage = ref(1);
+const SOCIAL_INSTANCE_PAGE_SIZE = 6;
+const socialInstancePageCount = computed(() => {
+  const total = mergedRows.value.length;
+  return Math.max(1, Math.ceil(total / SOCIAL_INSTANCE_PAGE_SIZE));
+});
+const socialPagedRows = computed(() => {
+  const total = mergedRows.value.length;
+  if (total <= SOCIAL_INSTANCE_PAGE_SIZE) return mergedRows.value;
+  const page = Math.min(Math.max(1, socialInstancePage.value), socialInstancePageCount.value);
+  const start = (page - 1) * SOCIAL_INSTANCE_PAGE_SIZE;
+  return mergedRows.value.slice(start, start + SOCIAL_INSTANCE_PAGE_SIZE);
+});
 watch(
   mergedRows,
   (rows) => {
+    if (socialInstancePage.value > socialInstancePageCount.value) {
+      socialInstancePage.value = socialInstancePageCount.value;
+    }
     if (!rows.length) {
       socialSelectedBotSelfId.value = null;
       return;
@@ -406,6 +412,7 @@ async function load() {
     const data = await fetchInstances();
     nonebot.value = data.nonebot_bots;
     dbBots.value = data.db_bot_configs;
+    botProfiles.value = data.bot_profiles ?? {};
     protocolSnap.value = data.pallas_protocol ?? data.napcat ?? null;
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "加载失败");
@@ -436,17 +443,16 @@ async function loadPluginNames() {
   }
 }
 
-function openNapcatUrl(url: string) {
-  if (typeof window !== "undefined") {
-    window.open(url, "_blank", "noopener");
-  }
-}
-
 function rouletteModeLabel(v: number): string {
   return v === 1 ? "禁言" : "踢人";
 }
 
 function botNickname(row: MergedBotRow): string {
+  const sid = String(row.selfId || "").trim();
+  const aid = row.account >= 0 ? String(row.account) : "";
+  const profile = botProfiles.value[sid] ?? (aid ? botProfiles.value[aid] : undefined);
+  const profileName = String(profile?.nickname ?? "").trim();
+  if (profileName) return profileName.toUpperCase();
   const ids = new Set<string>([String(row.selfId || "").trim()]);
   if (row.account >= 0) ids.add(String(row.account));
   for (const r of protocolAccountRows.value) {
@@ -456,11 +462,6 @@ function botNickname(row: MergedBotRow): string {
     if (name) return name.toUpperCase();
   }
   return "BOT";
-}
-
-/** 未加载协议插件快照时仍用默认挂载路径（与主仓 contract 一致） */
-function protocolUrlOnBotPort(): string {
-  return protocolDashboardUrl(botBase.value || "http://localhost:8088", null);
 }
 
 onMounted(() => {
@@ -605,7 +606,7 @@ watch(
       >
         <div class="inst-side-t">连接实例</div>
         <button
-          v-for="row in mergedRows"
+          v-for="row in socialPagedRows"
           :key="row.key"
           type="button"
           class="inst-side-item"
@@ -620,11 +621,28 @@ watch(
             <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
           </div>
         </button>
+        <div
+          v-if="mergedRows.length > SOCIAL_INSTANCE_PAGE_SIZE"
+          class="inst-side-pager"
+        >
+          <el-pagination
+            layout="prev, pager, next"
+            :current-page="socialInstancePage"
+            :page-size="SOCIAL_INSTANCE_PAGE_SIZE"
+            :total="mergedRows.length"
+            small
+            background
+            @current-change="(p: number) => { socialInstancePage = p; }"
+          />
+        </div>
       </div>
     </template>
     <template #header="{ section: s }">
       <h1 class="main-title">{{ sectionTitle[s as InstSection] }}</h1>
-      <p class="main-sub">{{ sectionSub[s as InstSection] }}</p>
+      <p
+        v-if="sectionSub[s as InstSection]"
+        class="main-sub"
+      >{{ sectionSub[s as InstSection] }}</p>
     </template>
 
     <div
@@ -645,8 +663,7 @@ watch(
                   class="hd-info"
                   type="info"
                   size="small"
-                >中间表为 NoneBot 已连上的号 + 数据库 <code>config</code>；右侧为当前选中行的摘要与协议单号入口。下方为
-                  <code>pallas_protocol</code> 全量登记与两种 Web 地址。</el-text>
+                >协议端连接与数据库缓存</el-text>
               </div>
             </template>
             <div class="card-list">
@@ -660,7 +677,7 @@ watch(
               >
                 <div class="mini-card-hd">
                   <span class="mini-card-bot-name">{{ botNickname(row) }}</span>
-                  <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "在线" : "离线" }}</el-tag>
+                  <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
                 </div>
                 <div class="mini-kv">Bot QQ：<span class="mono">{{ row.account >= 0 ? row.account : row.selfId }}</span></div>
                 <div class="mini-kv">协议类型：{{ row.adapter }}</div>
@@ -713,6 +730,9 @@ watch(
               size="small"
               class="insp-desc"
             >
+              <el-descriptions-item label="昵称">
+                {{ botNickname(selectedMergedRow) }}
+              </el-descriptions-item>
               <el-descriptions-item label="Bot QQ">
                 {{ selectedMergedRow.account >= 0 ? selectedMergedRow.account : "?" }}
               </el-descriptions-item>
@@ -812,96 +832,6 @@ watch(
         </aside>
       </div>
 
-        <el-card
-          v-if="protocolSnap"
-          class="c c2"
-          shadow="hover"
-        >
-          <template #header>
-            <span class="h-t">协议端两个入口</span>
-            <el-tag
-              v-if="!protocolSnap.webui_enabled"
-              type="info"
-              size="small"
-            >Pallas 管理页已关</el-tag>
-          </template>
-          <p class="muted">
-            ① <strong>Pallas 协议插件托管页</strong>：与 NoneBot 同端口，路径为
-            <code>{{ protocolSnap.webui_path }}</code>（未返回时前端默认
-            <code>/protocol/napcat</code>），用于起停、看日志、改单号配置。②
-            <strong>NapCat 自带网页</strong>：由 NapCat 进程在另一端口打开（见下表「内嵌网页」列），与 ①
-            不是同一地址。若已配置
-            <code>pallas_protocol_token</code>，打开管理页时需在地址后加
-            <code>?token=…</code> 或请求头 <code>X-Pallas-Protocol-Token</code>。
-          </p>
-          <p
-            v-if="!protocolAccountRows.length"
-            class="muted"
-          >当前尚未登记账号。默认路径仍为 <code>{{ protocolSnap.webui_path }}</code> 。</p>
-          <el-space
-            :wrap="true"
-            :size="12"
-          >
-            <el-button
-              type="primary"
-              :icon="Link"
-              :disabled="!protocolSnap.webui_enabled"
-              @click="openNapcatUrl(protocolOpenUrl)"
-            >打开 ① 管理总览</el-button>
-            <el-link
-              class="lk"
-              :href="protocolOpenUrl"
-              type="primary"
-              :icon="Position"
-            >{{ protocolOpenUrl }}</el-link>
-          </el-space>
-          <div
-            v-if="protocolAccountRows.length"
-            class="card-list card-list--proto"
-            style="margin-top: 12px"
-          >
-            <div
-              v-for="r in protocolAccountRows"
-              :key="String(r.qq ?? r.id ?? '')"
-              class="mini-card"
-            >
-              <div class="mini-card-hd">
-                <span class="mono">QQ {{ r.qq ?? r.id ?? "—" }}</span>
-                <el-tag :type="r.connected ? 'success' : 'info'" size="small">{{ r.connected ? "已连接" : "未连接" }}</el-tag>
-              </div>
-              <div class="mini-kv">Pallas管理：
-                <el-link
-                  v-if="protocolSnap.webui_enabled"
-                  :href="pallasProtocolAccountUrl(r)"
-                  type="primary"
-                >打开</el-link>
-                <span v-else>—</span>
-              </div>
-              <div class="mini-kv">原生Web：
-                <el-link
-                  v-if="accountNativeWebUiUrl(r)"
-                  :href="accountNativeWebUiUrl(r)"
-                  type="primary"
-                >打开</el-link>
-                <span v-else>未生成</span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-        <el-card
-          v-else
-          class="c c2"
-          shadow="hover"
-        >
-          <template #header> 协议端（pallas_protocol）</template>
-          <p class="muted">未加载 <code>pallas_protocol</code> 时此处不显示。可尝试与 Bot 同端口下的默认路径
-            <code>/protocol/napcat</code>。</p>
-          <el-button
-            type="primary"
-            :icon="Link"
-            @click="openNapcatUrl(protocolUrlOnBotPort())"
-          >打开默认管理路径</el-button>
-        </el-card>
     </div>
 
     <div
@@ -971,11 +901,6 @@ watch(
               <div class="hd2">
                 <div class="hd2-txt">
                   <span>好友配置面板</span>
-                  <el-text
-                    class="hd-info"
-                    type="info"
-                    size="small"
-                  >二级侧栏顶部切换好友/群，下面切换连接实例。右侧列表展示当前实例好友；中间用于查看与调整配置。</el-text>
                 </div>
                 <div class="hd2-ctl">
                   <span class="num-lab">拉取数量</span>
@@ -1006,7 +931,7 @@ watch(
               <div class="cfg-row">
                 <span class="k">当前实例</span>
                 <span class="v mono">{{ socialSelectedBot.account >= 0 ? socialSelectedBot.account : socialSelectedBot.selfId }}</span>
-                <el-tag :type="socialSelectedBot.online ? 'success' : 'info'" size="small">{{ socialSelectedBot.online ? "在线" : "离线" }}</el-tag>
+                <el-tag :type="socialSelectedBot.online ? 'success' : 'info'" size="small">{{ socialSelectedBot.online ? "已连接" : "未连接" }}</el-tag>
               </div>
               <div class="cfg-row">
                 <span class="k">当前用户</span>
@@ -1042,12 +967,6 @@ watch(
                 >编辑 Bot 配置</el-button>
               </div>
             </div>
-            <div class="ft">
-              <el-text
-                type="info"
-                size="small"
-              >群与请求相关操作在「群」与「请求管理」中。</el-text>
-            </div>
           </el-card>
         </section>
       </div>
@@ -1068,11 +987,6 @@ watch(
               <div class="hd2">
                 <div class="hd2-txt">
                   <span>群配置</span>
-                  <el-text
-                    class="hd-info"
-                    type="info"
-                    size="small"
-                  >右侧选择群后，在中间直接调整群配置，包括本群禁用插件。</el-text>
                 </div>
                 <div class="hd2-ctl">
                   <span class="num-lab">拉取数量</span>
@@ -1468,6 +1382,11 @@ button.mini-card:hover {
 }
 .inst-side-meta {
   margin-top: 4px;
+}
+.inst-side-pager {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
 }
 .cfg-panel {
   border: 1px solid rgba(22, 100, 196, 0.12);

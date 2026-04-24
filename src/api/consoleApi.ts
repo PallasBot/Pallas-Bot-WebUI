@@ -67,6 +67,31 @@ export async function postMongoAggregate(body: {
   return unwrap(data, "/db/mongodb/aggregate");
 }
 
+export async function fetchDbTableRow(params: {
+  table: "config" | "bot_config" | "group_config" | "user_config";
+  row_id: number;
+}): Promise<Record<string, unknown>> {
+  const { data } = await http.get<ApiOk<Record<string, unknown>>>("/db/table-row", { params });
+  return unwrap(data, "/db/table-row");
+}
+
+export async function putDbTableRow(body: {
+  table: "config" | "bot_config" | "group_config" | "user_config";
+  row_id: number;
+  data: Record<string, unknown>;
+}): Promise<Record<string, unknown>> {
+  const { data } = await http.put<ApiOk<Record<string, unknown>>>("/db/table-row", body);
+  return unwrap(data, "/db/table-row");
+}
+
+export async function deleteDbTableRow(params: {
+  table: "config" | "bot_config" | "group_config" | "user_config";
+  row_id: number;
+}): Promise<{ deleted: boolean }> {
+  const { data } = await http.delete<ApiOk<{ deleted: boolean }>>("/db/table-row", { params });
+  return unwrap(data, "/db/table-row");
+}
+
 export async function fetchInstances(): Promise<InstancesData> {
   const { data } = await http.get<ApiOk<InstancesData>>("/instances");
   return unwrap(data, "/instances");

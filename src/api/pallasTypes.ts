@@ -111,6 +111,15 @@ export interface InstancesData {
   nonebot_bots: BotRow[];
   db_bot_configs: BotConfigPublic[];
   pallas_protocol: NapcatManagerSnapshot | null;
+  bot_profiles?: Record<
+    string,
+    {
+      nickname?: string;
+      user_id?: number | null;
+      connection_key?: string;
+      adapter?: string;
+    }
+  >;
   /** 与 pallas_protocol 相同，兼容旧字段名 */
   napcat?: NapcatManagerSnapshot | null;
 }

@@ -44,7 +44,7 @@ const stack = [
   { name: "Vue 3", note: "组合式 API" },
   { name: "Vite 6", note: "构建与开发服务器" },
   { name: "TypeScript", note: "全量类型" },
-  { name: "Element Plus", note: "组件库，蓝白主题覆盖" },
+  { name: "Element Plus", note: "组件库" },
   { name: "Pallas API", note: "FastAPI/NoneBot 同进程" },
 ];
 
@@ -80,9 +80,9 @@ watch(
         shadow="hover"
       >
         <p class="p">
-          <strong>Pallas 控制台</strong>是独立于 Pallas-Bot 主仓库的前端工程：在机器人 HTTP
+          <strong>Pallas 控制台</strong>是独立于 Pallas-Bot 主仓库的前端工程：在Bot HTTP
           端口上以 <code>/pallas</code> 提供管理界面，以 <code>/pallas/api</code> 与内嵌
-          FastAPI 路由交互（健康检查、系统与实例只读数据、日志等）。生产环境将构建产物置于主仓
+          FastAPI 路由交互，生产环境将构建产物置于主仓
           <code>data/pallas_webui/public</code>，也可配置 zip 直链由插件自动拉取。
         </p>
         <p class="p p2">功能范围随主仓 <code>pallas_webui</code> 暴露的 API 扩展；本页「关于」仅描述控制台自身。</p>
