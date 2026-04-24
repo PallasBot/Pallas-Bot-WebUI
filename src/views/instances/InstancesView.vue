@@ -97,25 +97,9 @@ function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
 
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const socialSelectedBotSelfId = ref<string | null>(null);
-const socialInstancePage = ref(1);
-const SOCIAL_INSTANCE_PAGE_SIZE = 6;
-const socialInstancePageCount = computed(() => {
-  const total = mergedRows.value.length;
-  return Math.max(1, Math.ceil(total / SOCIAL_INSTANCE_PAGE_SIZE));
-});
-const socialPagedRows = computed(() => {
-  const total = mergedRows.value.length;
-  if (total <= SOCIAL_INSTANCE_PAGE_SIZE) return mergedRows.value;
-  const page = Math.min(Math.max(1, socialInstancePage.value), socialInstancePageCount.value);
-  const start = (page - 1) * SOCIAL_INSTANCE_PAGE_SIZE;
-  return mergedRows.value.slice(start, start + SOCIAL_INSTANCE_PAGE_SIZE);
-});
 watch(
   mergedRows,
   (rows) => {
-    if (socialInstancePage.value > socialInstancePageCount.value) {
-      socialInstancePage.value = socialInstancePageCount.value;
-    }
     if (!rows.length) {
       socialSelectedBotSelfId.value = null;
       return;
@@ -607,7 +591,7 @@ watch(
         <div class="inst-side-t">连接实例</div>
         <div class="inst-side-list">
           <button
-            v-for="row in socialPagedRows"
+            v-for="row in mergedRows"
             :key="row.key"
             type="button"
             class="inst-side-item"
@@ -622,20 +606,6 @@ watch(
               <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
             </div>
           </button>
-        </div>
-        <div
-          v-if="mergedRows.length > SOCIAL_INSTANCE_PAGE_SIZE"
-          class="inst-side-pager"
-        >
-          <el-pagination
-            layout="prev, pager, next"
-            :current-page="socialInstancePage"
-            :page-size="SOCIAL_INSTANCE_PAGE_SIZE"
-            :total="mergedRows.length"
-            small
-            background
-            @current-change="(p: number) => { socialInstancePage = p; }"
-          />
         </div>
       </div>
     </template>
@@ -1366,7 +1336,7 @@ button.mini-card:hover {
 }
 .inst-side-list {
   min-height: 0;
-  max-height: min(52vh, 460px);
+  max-height: min(62vh, 620px);
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 2px;
@@ -1392,11 +1362,6 @@ button.mini-card:hover {
 }
 .inst-side-meta {
   margin-top: 4px;
-}
-.inst-side-pager {
-  margin-top: 8px;
-  display: flex;
-  justify-content: center;
 }
 .cfg-panel {
   border: 1px solid rgba(22, 100, 196, 0.12);
