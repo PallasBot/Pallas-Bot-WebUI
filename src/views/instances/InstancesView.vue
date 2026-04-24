@@ -605,22 +605,24 @@ watch(
         class="inst-side"
       >
         <div class="inst-side-t">连接实例</div>
-        <button
-          v-for="row in socialPagedRows"
-          :key="row.key"
-          type="button"
-          class="inst-side-item"
-          :class="{ on: row.online, active: socialSelectedBotSelfId === row.selfId || socialSelectedBotSelfId === String(row.account) }"
-          @click="socialSelectedBotSelfId = row.selfId"
-        >
-          <div class="inst-side-name">
-            <span class="dot" :class="{ on: row.online }" />
-            <span class="nm mono">{{ row.account >= 0 ? row.account : row.selfId }}</span>
-          </div>
-          <div class="inst-side-meta">
-            <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
-          </div>
-        </button>
+        <div class="inst-side-list">
+          <button
+            v-for="row in socialPagedRows"
+            :key="row.key"
+            type="button"
+            class="inst-side-item"
+            :class="{ on: row.online, active: socialSelectedBotSelfId === row.selfId || socialSelectedBotSelfId === String(row.account) }"
+            @click="socialSelectedBotSelfId = row.selfId"
+          >
+            <div class="inst-side-name">
+              <span class="dot" :class="{ on: row.online }" />
+              <span class="nm mono">{{ row.account >= 0 ? row.account : row.selfId }}</span>
+            </div>
+            <div class="inst-side-meta">
+              <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
+            </div>
+          </button>
+        </div>
         <div
           v-if="mergedRows.length > SOCIAL_INSTANCE_PAGE_SIZE"
           class="inst-side-pager"
@@ -1354,12 +1356,20 @@ button.mini-card:hover {
 }
 .inst-side {
   margin-top: 8px;
+  min-height: 0;
 }
 .inst-side-t {
   font-size: 12px;
   color: var(--c-main);
   margin-bottom: 8px;
   font-weight: 600;
+}
+.inst-side-list {
+  min-height: 0;
+  max-height: min(52vh, 460px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
 }
 .inst-side-item {
   width: 100%;
