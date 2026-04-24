@@ -27,50 +27,39 @@ $env:VITE_PROXY_TARGET="http://127.0.0.1:9000"
 npm run dev
 ```
 
-## 构建与发布
+## 构建
 
 ```bash
 npm run build
 ```
 
-将 `dist/` 的全部内容同步到主仓：
-
-`Pallas-Bot/data/pallas_webui/public`
-
-重启 `Pallas-Bot` 后访问：
-
-`http://<host>:<port>/pallas/`
+重启 `Pallas-Bot` 后访问：`http://<host>:<port>/pallas/`
 
 ## 自动下载模式（推荐线上）
 
 当主仓不跟踪 `data/` 时，建议使用 `dist.zip` 发布方式：
 
-1. 在本仓构建后打包 `dist` 为 zip（根目录应直接包含 `index.html` 与 `assets/`）。
-2. 将 zip 上传到本仓 Release（例如 `v0.1.0` 的 `dist.zip`）。
-3. 在主仓 `.env` 配置：
+1. 在主仓 `.env` 配置：
 
 ```env
-PALLAS_WEBUI_DIST_ZIP_URL=https://github.com/TogetsuDo/Pallas-Bot-WebUI/releases/download/v0.1.0/dist.zip
+PALLAS_WEBUI_DIST_ZIP_URL=https://github.com/TogetsuDo/Pallas-Bot-WebUI/releases/latest/download/dist.zip
 ```
 
 主仓启动时若发现 `data/pallas_webui/public/index.html` 不存在，会自动下载并解压。
 如需强制更新到新包，删除 `data/pallas_webui/public` 后重启主仓即可触发重新下载。
 
-## 自动挂钩主仓（推荐）
+## 自动发版（推送 vTag）
 
-目标：WebUI 每次构建后自动同步到主仓 `data/pallas_webui/public`。
+仓库已内置 GitHub Actions 发版流程：推送 `v*` tag 时自动构建并上传 `dist.zip` 到 Release。
 
-可选做法：
+操作示例：
 
-1. 在本仓新增脚本（如 `scripts/sync-to-main.ps1`），将 `dist/*` 复制到主仓目标目录。
-2. 在 `package.json` 增加 `postbuild`，执行该同步脚本。
-3. 保持主仓 `pallas_webui_http_base` 与前端 `vite base` 一致（默认都为 `/pallas/`）。
-
-示例（PowerShell）：
-
-```powershell
-robocopy ".\dist" "..\Pallas-Bot\data\pallas_webui\public" /MIR
+```bash
+git tag v0.1.1
+git push origin v0.1.1
 ```
+
+发布完成后，主仓若使用 `releases/latest/download/dist.zip`，即可在下次拉取时自动获取新版本。
 
 ## 对接约定
 
