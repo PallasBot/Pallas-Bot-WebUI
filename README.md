@@ -13,7 +13,7 @@
 建议把两个仓库一起看：
 
 - Pallas-Bot（主仓）：<https://github.com/PallasBot/Pallas-Bot>
-- Pallas-Bot-WebUI（前端）：<https://github.com/TogetsuDo/Pallas-Bot-WebUI>
+- Pallas-Bot-WebUI（前端）：<https://github.com/PallasBot/Pallas-Bot-WebUI>
 
 ## 目录职责
 
@@ -57,7 +57,7 @@ npm run build
 PALLAS_WEBUI_DIST_ZIP_URL=
 
 # 方式2（推荐）：让主仓自动按 repo/tag/asset 解析
-PALLAS_WEBUI_DIST_ZIP_REPO=TogetsuDo/Pallas-Bot-WebUI
+PALLAS_WEBUI_DIST_ZIP_REPO=PallasBot/Pallas-Bot-WebUI
 PALLAS_WEBUI_DIST_ZIP_TAG=
 PALLAS_WEBUI_DIST_ZIP_ASSET=dist.zip
 ```

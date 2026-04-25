@@ -31,7 +31,7 @@ if (!conn) {
 const { last, refresh, ok } = conn;
 
 const REPO = "https://github.com/PallasBot/Pallas-Bot";
-const WEBUI_REPO = "https://github.com/TogetsuDo/Pallas-Bot-WebUI";
+const WEBUI_REPO = "https://github.com/PallasBot/Pallas-Bot-WebUI";
 const runtimeLoading = ref(false);
 const runtimeRows = ref<{ k: string; v: string }[]>([]);
 
