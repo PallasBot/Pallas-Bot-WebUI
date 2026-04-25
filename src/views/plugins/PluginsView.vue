@@ -531,7 +531,7 @@ async function submitHelpVisibility() {
                         :rows="4"
                         :placeholder="fieldDefaultPlaceholder(f)"
                         class="w"
-                        @update:model-value="(v) => updateFieldJson(f.name, String(v))"
+                        @update:model-value="(v: string | number) => updateFieldJson(f.name, String(v))"
                       />
                       <el-input
                         v-else
@@ -547,7 +547,7 @@ async function submitHelpVisibility() {
                       :model-value="String(pluginCfgForm[f.name] ?? '')"
                       :placeholder="fieldDefaultPlaceholder(f)"
                       class="w"
-                      @update:model-value="(v) => (pluginCfgForm[f.name] = String(v))"
+                      @update:model-value="(v: string | number) => (pluginCfgForm[f.name] = String(v))"
                     />
                   </div>
                   <div class="cfg-field-tip">
