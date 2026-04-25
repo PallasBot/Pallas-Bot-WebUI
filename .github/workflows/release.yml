@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,8 +35,45 @@ jobs:
           cd dist
           zip -r ../dist.zip .
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          if git describe --tags --abbrev=0 HEAD~1 >/dev/null 2>&1; then
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1)
+            CURR_TAG=${GITHUB_REF#refs/tags/}
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+
+            echo "### 🚀 新功能" >> $GITHUB_OUTPUT
+            FEAT=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^feat" 2>/dev/null)
+            [ -n "$FEAT" ] && echo "$FEAT" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "### 🐛 错误修复" >> $GITHUB_OUTPUT
+            FIX=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^fix" 2>/dev/null)
+            [ -n "$FIX" ] && echo "$FIX" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "### ♻️ 重构" >> $GITHUB_OUTPUT
+            REFACTOR=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^refactor" 2>/dev/null)
+            [ -n "$REFACTOR" ] && echo "$REFACTOR" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "### 🔨 其他更改" >> $GITHUB_OUTPUT
+            OTHER=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --invert-grep --grep="^feat\|^fix\|^refactor" 2>/dev/null)
+            [ -n "$OTHER" ] && echo "$OTHER" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "**完整变更**: [\`$PREV_TAG...$CURR_TAG\`](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURR_TAG)" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "changelog=🎉 **首次发布**" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist.zip
-          generate_release_notes: true
+          body: |
+            ## 更新内容
+
+            ${{ steps.changelog.outputs.changelog }}
