@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PallasSidebarShell, { type PallasNavItem } from "@/components/layout/PallasSidebarShell.vue";
+import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import {
   fetchFriendList,
   fetchFriendRequests,
@@ -21,10 +21,11 @@ import type {
   UserConfigPublic,
 } from "@/api/pallasTypes";
 import { pallasConnectionKey } from "@/types/pallas-connection";
+import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import { accountNativeWebUiUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
-import { ChatDotRound, Connection, User } from "@element-plus/icons-vue";
+import { Connection } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -32,23 +33,16 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 const conn = inject(pallasConnectionKey, null);
+const botCtx = inject(pallasBotContextKey, null);
 
 const pallasApiOk = computed(() => conn?.ok.value === true);
 
 type InstSection = "inst" | "friends" | "group";
 
-/** 由路由 meta.pallasScope 区分：accounts=仅实例；social=好友+群（侧栏保留实例连接快捷入口） */
+/** 路由页面范围 */
 const pageScope = computed(() => (route.meta.pallasScope === "accounts" ? "accounts" : "social"));
 
-const navItems = computed<PallasNavItem[]>(() => {
-  if (pageScope.value === "accounts") {
-    return [{ index: "inst", label: "实例", icon: Connection }];
-  }
-  return [
-    { index: "friends", label: "好友", icon: User },
-    { index: "group", label: "群", icon: ChatDotRound },
-  ];
-});
+const navItems = computed(() => [{ index: "inst", label: "实例", icon: Connection }]);
 
 const sectionTitle: Record<InstSection, string> = {
   inst: "实例",
@@ -70,8 +64,7 @@ const botProfiles = ref<Record<string, { nickname?: string }>>({});
 
 const groupLoading = ref(false);
 const groups = ref<GroupConfigPublic[]>([]);
-const groupLimit = ref(1500);
-const friendLimit = ref(300);
+const socialPullLimit = ref(1500);
 
 const filteredGroups = computed(() => {
   const q = groupIdFilter.value.trim();
@@ -107,7 +100,11 @@ watch(
     const cur = socialSelectedBotSelfId.value;
     const has = cur ? rows.some((r) => r.selfId === cur || String(r.account) === cur) : false;
     if (!has) {
-      socialSelectedBotSelfId.value = rows[0]!.selfId;
+      const preferred = botCtx?.selectedBotSelfId.value;
+      const pick = preferred && rows.some((r) => r.selfId === preferred || String(r.account) === preferred)
+        ? preferred
+        : rows[0]!.selfId;
+      socialSelectedBotSelfId.value = pick;
     }
   },
   { immediate: true },
@@ -150,7 +147,28 @@ const napcatForSelection = computed(() => {
 });
 function onInstRowClick(row: MergedBotRow) {
   selectedInstanceKey.value = row.key;
+  if (botCtx) botCtx.setSelectedBotSelfId(row.selfId);
 }
+
+watch(
+  () => botCtx?.selectedBotSelfId.value,
+  (sid) => {
+    if (!sid) return;
+    if (socialSelectedBotSelfId.value === sid) return;
+    if (mergedRows.value.some((r) => r.selfId === sid || String(r.account) === sid)) {
+      socialSelectedBotSelfId.value = sid;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  socialSelectedBotSelfId,
+  (sid) => {
+    if (!sid || !botCtx) return;
+    if (botCtx.selectedBotSelfId.value !== sid) botCtx.setSelectedBotSelfId(sid);
+  },
+);
 
 function parseAdminQqs(s: string): number[] {
   return s
@@ -161,7 +179,6 @@ function parseAdminQqs(s: string): number[] {
     .filter((n) => !Number.isNaN(n));
 }
 
-// Bot 编辑
 const botDialog = ref(false);
 const editAccount = ref(0);
 const formAdminsText = ref("");
@@ -204,7 +221,6 @@ async function saveBot() {
       auto_accept_group: formAutoGroup.value,
       security: formSecurity.value,
     });
-    // 回写本地列表
     const i = dbBots.value.findIndex((b) => b.account === updated.account);
     if (i >= 0) dbBots.value[i] = updated;
     else dbBots.value = [...dbBots.value, updated];
@@ -217,7 +233,6 @@ async function saveBot() {
   }
 }
 
-// 群编辑
 const editGroupId = ref(0);
 const gFormDisabled = ref<string[]>([]);
 const gFormRoulette = ref<0 | 1>(1);
@@ -265,9 +280,8 @@ async function loadFriendOverview() {
 
 const selectedFriendSelfId = ref<string | null>(null);
 watch(
-  () => ({ bots: friendOverview.value, tab: active.value }),
-  ({ bots, tab }) => {
-    if (tab !== "friends") return;
+  () => friendOverview.value,
+  (bots) => {
     if (!bots.length) {
       selectedFriendSelfId.value = null;
       return;
@@ -281,9 +295,8 @@ watch(
 );
 const selectedGroupId = ref<number | null>(null);
 watch(
-  () => ({ groups: filteredGroups.value, tab: active.value }),
-  ({ groups, tab }) => {
-    if (tab !== "group") return;
+  () => filteredGroups.value,
+  (groups) => {
     if (!groups.length) {
       selectedGroupId.value = null;
       return;
@@ -373,7 +386,7 @@ async function loadSocialFriendList(selfId: string | null) {
   }
   socialFriendListLoading.value = true;
   try {
-    socialFriendList.value = await fetchFriendList(parseInt(selfId, 10), friendLimit.value);
+    socialFriendList.value = await fetchFriendList(parseInt(selfId, 10), socialPullLimit.value);
     const first = socialFriendList.value.friends[0]?.user_id ?? null;
     if (
       selectedFriendUserId.value == null ||
@@ -408,7 +421,7 @@ async function load() {
 async function loadGroups() {
   groupLoading.value = true;
   try {
-    groups.value = await fetchGroupConfigs(groupLimit.value);
+    groups.value = await fetchGroupConfigs(socialPullLimit.value);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "群配置加载失败");
     groups.value = [];
@@ -467,10 +480,7 @@ onMounted(() => {
       void router.replace({ name: "accounts", query: q });
     }
   } else {
-    const t = route.query.tab;
-    if (t === "group") active.value = "group";
-    else if (t === "friends") active.value = "friends";
-    else active.value = "friends";
+    active.value = "friends";
   }
   const gid = route.query.gid;
   if (typeof gid === "string" && gid) groupIdFilter.value = gid;
@@ -501,33 +511,14 @@ watch(active, (tab) => {
     }
     return;
   }
-  if (tab === "inst") {
-    void router.push({ name: "accounts" });
-    return;
-  }
-  if (tab !== "friends" && tab !== "group") return;
-  void router.replace({ name: "instances", query: { ...route.query, tab } });
-  if (tab === "friends") void loadFriendOverview();
+  if (tab === "inst") void router.push({ name: "accounts" });
 });
 
 watch(
-  () => route.query.tab,
-  (tab) => {
-    if (pageScope.value !== "social") return;
-    const t = typeof tab === "string" ? tab : Array.isArray(tab) ? tab[0] : "";
-    if (t === "group") active.value = "group";
-    else if (t === "friends") active.value = "friends";
-    else if (!t) active.value = "friends";
-  },
-);
-
-watch(
-  () => [active.value, socialSelectedBotSelfId.value] as const,
-  ([tab, sid]) => {
-    if (tab === "friends") {
-      friendIdFilter.value = "";
-      void loadSocialFriendList(sid);
-    }
+  () => socialSelectedBotSelfId.value,
+  (sid) => {
+    friendIdFilter.value = "";
+    void loadSocialFriendList(sid);
   },
   { immediate: true },
 );
@@ -550,7 +541,7 @@ watch(
     if (!groupLoading.value && groups.value.length === 0) {
       void loadGroups();
     }
-    if (active.value === "friends" && !friendOvLoading.value) {
+    if (!friendOvLoading.value) {
       void loadFriendOverview();
     }
   },
@@ -566,9 +557,7 @@ watch(
     if (!groupLoading.value && groups.value.length === 0) {
       void loadGroups();
     }
-    if (active.value === "friends") {
-      void loadFriendOverview();
-    }
+    void loadFriendOverview();
   },
   { immediate: true },
 );
@@ -581,40 +570,18 @@ watch(
     :aside-title="pageScope === 'accounts' ? '实例' : '好友与群'"
     :menu-aria-label="pageScope === 'accounts' ? '实例' : '好友与群分节'"
     :nav-items="navItems"
-    :hide-aside="pageScope === 'accounts'"
+    :hide-aside="true"
   >
-    <template #aside-extra>
-      <div
-        v-if="pageScope === 'social'"
-        class="inst-side"
-      >
-        <div class="inst-side-t">连接实例</div>
-        <div class="inst-side-list">
-          <button
-            v-for="row in mergedRows"
-            :key="row.key"
-            type="button"
-            class="inst-side-item"
-            :class="{ on: row.online, active: socialSelectedBotSelfId === row.selfId || socialSelectedBotSelfId === String(row.account) }"
-            @click="socialSelectedBotSelfId = row.selfId"
-          >
-            <div class="inst-side-name">
-              <span class="dot" :class="{ on: row.online }" />
-              <span class="nm mono">{{ row.account >= 0 ? row.account : row.selfId }}</span>
-            </div>
-            <div class="inst-side-meta">
-              <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
-            </div>
-          </button>
+    <template #header="{ section: s }">
+      <div class="head-row">
+        <div class="head-left">
+          <h1 class="main-title">{{ pageScope === "social" ? "好友与群管理" : sectionTitle[s as InstSection] }}</h1>
+          <p
+            v-if="sectionSub[s as InstSection]"
+            class="main-sub"
+          >{{ sectionSub[s as InstSection] }}</p>
         </div>
       </div>
-    </template>
-    <template #header="{ section: s }">
-      <h1 class="main-title">{{ sectionTitle[s as InstSection] }}</h1>
-      <p
-        v-if="sectionSub[s as InstSection]"
-        class="main-sub"
-      >{{ sectionSub[s as InstSection] }}</p>
     </template>
 
     <div
@@ -807,276 +774,307 @@ watch(
     </div>
 
     <div
-      v-show="pageScope === 'social' && active === 'friends'"
+      v-show="pageScope === 'social'"
       class="inst-panel inst-panel--wide"
     >
-      <div class="pan3 pan3--list-left">
-        <aside
-          class="pan3-insp pan3-insp-wide"
-          aria-label="好友列表"
-        >
-          <el-card
-            v-if="socialFriendList"
-            class="c c-insp"
-            shadow="hover"
+      <div class="social-stack">
+        <div class="pan3 pan3--list-left pan3--social">
+          <aside
+            class="pan3-insp pan3-insp-wide"
+            aria-label="好友列表"
           >
-            <template #header>
-              <div class="list-head">
-                <span class="insp-h">好友列表</span>
-                <el-input
-                  v-model="friendIdFilter"
-                  class="list-search"
-                  size="small"
-                  clearable
-                  placeholder="按 QQ 或昵称筛选"
-                />
-              </div>
-            </template>
-            <el-scrollbar
-              max-height="56vh"
+            <el-card
+              v-if="socialFriendList"
+              class="c c-insp"
+              shadow="hover"
             >
-              <div class="list-box">
-                <div
-                  v-for="f in filteredSocialFriends"
-                  :key="f.user_id"
-                  class="list-item list-item-btn"
-                  :class="{ active: selectedFriendUserId === f.user_id }"
-                  @click="onFriendRowClick(f.user_id)"
-                >
-                  <div class="li-title">
-                    <strong class="li-name">{{ f.nickname || "未命名" }}</strong>
+              <template #header>
+                <div class="list-head">
+                  <span class="insp-h">好友列表</span>
+                  <el-input
+                    v-model="friendIdFilter"
+                    class="list-search"
+                    size="small"
+                    clearable
+                    placeholder="按 QQ 或昵称筛选"
+                  />
+                </div>
+              </template>
+              <el-scrollbar max-height="44vh">
+                <div class="list-box">
+                  <div
+                    v-for="f in filteredSocialFriends"
+                    :key="f.user_id"
+                    class="list-item list-item-btn"
+                    :class="{ active: selectedFriendUserId === f.user_id }"
+                    @click="onFriendRowClick(f.user_id)"
+                  >
+                    <div class="li-title">
+                      <strong class="li-name">{{ f.nickname || "未命名" }}</strong>
+                    </div>
+                    <div class="li-sub mono">QQ {{ f.user_id }}</div>
+                    <div class="li-sub">备注：{{ f.remark || "—" }}</div>
                   </div>
-                  <div class="li-sub mono">QQ {{ f.user_id }}</div>
-                  <div class="li-sub">备注：{{ f.remark || "—" }}</div>
                 </div>
-              </div>
-            </el-scrollbar>
-          </el-card>
-          <el-card
-            v-else
-            class="c c-insp"
-            shadow="hover"
-          >
-            <el-empty
-              description="该实例暂无可读好友列表"
-              :image-size="64"
-            />
-          </el-card>
-        </aside>
-        <section class="pan3-main">
-          <el-card
-            v-loading="friendOvLoading || socialFriendListLoading"
-            class="c"
-            shadow="hover"
-          >
-            <template #header>
-              <div class="hd2">
-                <div class="hd2-txt">
-                  <span>好友配置面板</span>
-                </div>
-                <div class="hd2-ctl">
-                  <span class="num-lab">拉取数量</span>
-                  <el-input-number
-                    v-model="friendLimit"
-                    :min="50"
-                    :max="8000"
-                    :step="50"
-                    size="small"
-                    class="num"
-                    @change="() => void loadSocialFriendList(socialSelectedBotSelfId)"
-                  />
-                  <el-button
-                    type="primary"
-                    plain
-                    size="small"
-                    :loading="friendOvLoading || socialFriendListLoading"
-                    :disabled="!pallasApiOk"
-                    @click="loadFriendOverview(); loadSocialFriendList(socialSelectedBotSelfId)"
-                  >刷新</el-button>
-                </div>
-              </div>
-            </template>
-            <div
-              v-if="socialSelectedBot"
-              class="cfg-panel"
-            >
-              <div class="cfg-row">
-                <span class="k">当前实例</span>
-                <span class="v mono">{{ socialSelectedBot.account >= 0 ? socialSelectedBot.account : socialSelectedBot.selfId }}</span>
-                <el-tag :type="socialSelectedBot.online ? 'success' : 'info'" size="small">{{ socialSelectedBot.online ? "已连接" : "未连接" }}</el-tag>
-              </div>
-              <div class="cfg-row">
-                <span class="k">当前用户</span>
-                <span class="v mono">{{ selectedFriendUserId ?? "未选择" }}</span>
-                <span class="sm">{{ selectedFriendRow?.nickname || selectedFriendRow?.remark || "" }}</span>
-              </div>
-              <div class="cfg-row">
-                <span class="k">自动同意好友</span>
-                <span class="v">{{ socialSelectedBot.config?.auto_accept_friend ? "开" : "关" }}</span>
-              </div>
-              <el-form v-loading="userCfgLoading" label-width="110px">
-                <el-form-item label="用户封禁">
-                  <el-switch
-                    v-model="uFormBanned"
-                    :disabled="!selectedFriendUserId"
-                    active-text="已封禁"
-                    inactive-text="正常"
-                  />
-                </el-form-item>
-              </el-form>
-              <div class="mini-actions">
-                <el-button
-                  type="primary"
-                  :disabled="!selectedFriendUserId"
-                  :loading="userCfgSaving"
-                  @click="saveUserConfig"
-                >保存用户配置</el-button>
-                <el-button
-                  type="primary"
-                  link
-                  :disabled="socialSelectedBot.account < 0"
-                  @click="openEditBot(socialSelectedBot)"
-                >编辑 Bot 配置</el-button>
-              </div>
-            </div>
-          </el-card>
-        </section>
-      </div>
-    </div>
-
-    <div
-      v-show="pageScope === 'social' && active === 'group'"
-      class="inst-panel inst-panel--wide"
-    >
-      <div class="pan3 pan3--list-left">
-        <section class="pan3-main">
-          <el-card
-            v-loading="groupLoading"
-            class="c"
-            shadow="hover"
-          >
-            <template #header>
-              <div class="hd2">
-                <div class="hd2-txt">
-                  <span>群配置</span>
-                </div>
-                <div class="hd2-ctl">
-                  <span class="num-lab">拉取数量</span>
-                  <el-input-number
-                    v-model="groupLimit"
-                    :min="50"
-                    :max="10000"
-                    :step="100"
-                    size="small"
-                    class="num"
-                    @change="() => void loadGroups()"
-                  />
-                  <el-button
-                    type="primary"
-                    plain
-                    size="small"
-                    :loading="groupLoading"
-                    @click="loadGroups"
-                  >刷新</el-button>
-                </div>
-              </div>
-            </template>
-            <el-empty
-              v-if="!selectedGroup"
-              description="请先在右侧选择群"
-              :image-size="72"
-            />
-            <el-form
+              </el-scrollbar>
+            </el-card>
+            <el-card
               v-else
-              label-width="120px"
+              class="c c-insp"
+              shadow="hover"
             >
-              <el-form-item label="群号">
-                <span class="mono">{{ selectedGroup.group_id }}</span>
-              </el-form-item>
-              <el-form-item label="轮盘模式">
-                <el-switch
-                  v-model="gFormRoulette"
-                  :active-value="1"
-                  :inactive-value="0"
-                  active-text="禁言"
-                  inactive-text="踢人"
-                />
-              </el-form-item>
-              <el-form-item label="封禁">
-                <el-switch v-model="gFormBanned" />
-              </el-form-item>
-              <el-form-item label="本群禁用插件">
-                <el-select
-                  v-model="gFormDisabled"
-                  multiple
-                  filterable
-                  allow-create
-                  default-first-option
-                  class="w"
-                >
-                  <el-option
-                    v-for="n in pluginNames"
-                    :key="n"
-                    :label="n"
-                    :value="n"
+              <el-empty
+                description="该实例暂无可读好友列表"
+                :image-size="64"
+              />
+            </el-card>
+          </aside>
+          <section class="pan3-main">
+            <el-card
+              v-loading="friendOvLoading || socialFriendListLoading"
+              class="c"
+              shadow="hover"
+            >
+              <template #header>
+                <div class="hd2">
+                  <div class="hd2-txt">
+                    <span>好友配置面板</span>
+                  </div>
+                  <div class="hd2-ctl">
+                    <span class="num-lab">拉取数量</span>
+                    <el-input-number
+                      v-model="socialPullLimit"
+                      :min="50"
+                      :max="10000"
+                      :step="50"
+                      size="small"
+                      class="num"
+                      @change="() => void loadSocialFriendList(socialSelectedBotSelfId)"
+                    />
+                    <el-button
+                      type="primary"
+                      plain
+                      size="small"
+                      :loading="friendOvLoading || socialFriendListLoading"
+                      :disabled="!pallasApiOk"
+                      @click="loadFriendOverview(); loadSocialFriendList(socialSelectedBotSelfId)"
+                    >刷新</el-button>
+                  </div>
+                </div>
+              </template>
+              <div
+                v-if="socialSelectedBot"
+                class="cfg-panel cfg-panel--friend"
+              >
+                <div class="cfg-grid">
+                  <div class="cfg-card">
+                    <div class="cfg-card-title">实例概览</div>
+                    <div class="cfg-row">
+                      <span class="k">当前实例</span>
+                      <span class="v mono">{{ socialSelectedBot.account >= 0 ? socialSelectedBot.account : socialSelectedBot.selfId }}</span>
+                      <el-tag :type="socialSelectedBot.online ? 'success' : 'info'" size="small">{{ socialSelectedBot.online ? "已连接" : "未连接" }}</el-tag>
+                    </div>
+                    <div class="cfg-row">
+                      <span class="k">自动同意好友</span>
+                      <span class="v">{{ socialSelectedBot.config?.auto_accept_friend ? "开" : "关" }}</span>
+                    </div>
+                  </div>
+                  <div class="cfg-card">
+                    <div class="cfg-card-title">目标用户</div>
+                    <div class="cfg-row">
+                      <span class="k">当前用户</span>
+                      <span class="v mono">{{ selectedFriendUserId ?? "未选择" }}</span>
+                    </div>
+                    <div class="cfg-row">
+                      <span class="k">好友总数</span>
+                      <span class="v">{{ socialFriendList?.friends.length ?? 0 }}</span>
+                    </div>
+                    <div class="cfg-row cfg-row-note">
+                      <span class="sm">{{ selectedFriendRow?.nickname || selectedFriendRow?.remark || "请选择左侧好友后再编辑配置" }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="cfg-card cfg-card--op">
+                  <div class="cfg-card-title">用户控制</div>
+                  <el-form v-loading="userCfgLoading" label-width="110px">
+                    <el-form-item label="用户封禁">
+                      <el-switch
+                        v-model="uFormBanned"
+                        :disabled="!selectedFriendUserId"
+                        active-text="已封禁"
+                        inactive-text="正常"
+                      />
+                    </el-form-item>
+                  </el-form>
+                  <div class="mini-actions">
+                    <el-button
+                      type="primary"
+                      :disabled="!selectedFriendUserId"
+                      :loading="userCfgSaving"
+                      @click="saveUserConfig"
+                    >保存用户配置</el-button>
+                    <el-button
+                      type="primary"
+                      link
+                      :disabled="socialSelectedBot.account < 0"
+                      @click="openEditBot(socialSelectedBot)"
+                    >编辑 Bot 配置</el-button>
+                  </div>
+                </div>
+              </div>
+              <el-empty
+                v-else
+                description="请先选择可用实例"
+                :image-size="72"
+              />
+            </el-card>
+          </section>
+        </div>
+
+        <div class="pan3 pan3--list-left pan3--social">
+          <aside
+            class="pan3-insp pan3-insp-wide"
+            aria-label="群列表"
+          >
+            <el-card class="c c-insp" shadow="hover">
+              <template #header>
+                <div class="list-head">
+                  <span class="insp-h">群列表</span>
+                  <el-input
+                    v-model="groupIdFilter"
+                    class="list-search"
+                    size="small"
+                    clearable
+                    placeholder="按群号筛选"
                   />
-                </el-select>
-              </el-form-item>
-              <div class="mini-actions">
-                <el-button
-                  type="primary"
-                  :loading="gSaving"
-                  @click="saveGroup"
-                >保存群配置</el-button>
-              </div>
-            </el-form>
-            <div class="ft">
-              <el-text
-                class="sm2"
-                type="info"
-              >已加载 {{ groups.length }} 条，筛选后 {{ filteredGroups.length }} 条</el-text>
-            </div>
-          </el-card>
-        </section>
-        <aside
-          class="pan3-insp pan3-insp-wide"
-          aria-label="群列表"
-        >
-          <el-card class="c c-insp" shadow="hover">
-            <template #header>
-              <div class="list-head">
-                <span class="insp-h">群列表</span>
-                <el-input
-                  v-model="groupIdFilter"
-                  class="list-search"
-                  size="small"
-                  clearable
-                  placeholder="按群号筛选"
-                />
-              </div>
-            </template>
-            <el-scrollbar max-height="56vh">
-              <div class="list-box">
-                <button
-                  v-for="g in filteredGroups"
-                  :key="g.group_id"
-                  type="button"
-                  class="list-item list-item-btn"
-                  :class="{ active: selectedGroupId === g.group_id }"
-                  @click="onGroupRowClick(g)"
-                >
-                  <div class="li-title">
-                    <strong class="li-name">群 {{ g.group_id }}</strong>
+                </div>
+              </template>
+              <el-scrollbar max-height="44vh">
+                <div class="list-box">
+                  <button
+                    v-for="g in filteredGroups"
+                    :key="g.group_id"
+                    type="button"
+                    class="list-item list-item-btn"
+                    :class="{ active: selectedGroupId === g.group_id }"
+                    @click="onGroupRowClick(g)"
+                  >
+                    <div class="li-title">
+                      <strong class="li-name">群 {{ g.group_id }}</strong>
+                    </div>
+                    <div class="li-sub">
+                      <el-tag :type="g.banned ? 'danger' : 'info'" size="small">{{ g.banned ? "封禁" : "正常" }}</el-tag>
+                      <span>轮盘：{{ rouletteModeLabel(g.roulette_mode) }} · 禁用插件 {{ (g.disabled_plugins || []).length }}</span>
+                    </div>
+                  </button>
+                </div>
+              </el-scrollbar>
+            </el-card>
+          </aside>
+          <section class="pan3-main">
+            <el-card
+              v-loading="groupLoading"
+              class="c"
+              shadow="hover"
+            >
+              <template #header>
+                <div class="hd2">
+                  <div class="hd2-txt">
+                    <span>群配置模板</span>
                   </div>
-                  <div class="li-sub">
-                    <el-tag :type="g.banned ? 'danger' : 'info'" size="small">{{ g.banned ? "封禁" : "正常" }}</el-tag>
-                    <span>轮盘：{{ rouletteModeLabel(g.roulette_mode) }} · 禁用插件 {{ (g.disabled_plugins || []).length }}</span>
+                  <div class="hd2-ctl">
+                    <span class="num-lab">拉取数量</span>
+                    <el-input-number
+                      v-model="socialPullLimit"
+                      :min="50"
+                      :max="10000"
+                      :step="50"
+                      size="small"
+                      class="num"
+                      @change="() => void loadGroups()"
+                    />
+                    <el-button
+                      type="primary"
+                      plain
+                      size="small"
+                      :loading="groupLoading"
+                      @click="loadGroups"
+                    >刷新</el-button>
                   </div>
-                </button>
+                </div>
+              </template>
+              <div
+                v-if="selectedGroup"
+                class="cfg-panel cfg-panel--group"
+              >
+                <div class="cfg-grid">
+                  <div class="cfg-card">
+                    <div class="cfg-card-title">群基础信息</div>
+                    <div class="cfg-row">
+                      <span class="k">群号</span>
+                      <span class="v mono">{{ selectedGroup.group_id }}</span>
+                    </div>
+                    <div class="cfg-row">
+                      <span class="k">已加载群数</span>
+                      <span class="v">{{ groups.length }}</span>
+                    </div>
+                  </div>
+                  <div class="cfg-card">
+                    <div class="cfg-card-title">群策略</div>
+                    <div class="cfg-row cfg-row-switch">
+                      <span class="k">轮盘模式</span>
+                      <el-switch
+                        v-model="gFormRoulette"
+                        :active-value="1"
+                        :inactive-value="0"
+                        active-text="禁言"
+                        inactive-text="踢人"
+                      />
+                    </div>
+                    <div class="cfg-row cfg-row-switch">
+                      <span class="k">封禁</span>
+                      <el-switch v-model="gFormBanned" />
+                    </div>
+                  </div>
+                </div>
+                <div class="cfg-card cfg-card--op">
+                  <div class="cfg-card-title">插件控制</div>
+                  <el-form label-width="120px">
+                    <el-form-item label="本群禁用插件">
+                      <el-select
+                        v-model="gFormDisabled"
+                        multiple
+                        filterable
+                        allow-create
+                        default-first-option
+                        class="w"
+                      >
+                        <el-option
+                          v-for="n in pluginNames"
+                          :key="n"
+                          :label="n"
+                          :value="n"
+                        />
+                      </el-select>
+                    </el-form-item>
+                  </el-form>
+                  <div class="mini-actions">
+                    <el-button
+                      type="primary"
+                      :loading="gSaving"
+                      @click="saveGroup"
+                    >保存群配置模板</el-button>
+                  </div>
+                </div>
               </div>
-            </el-scrollbar>
-          </el-card>
-        </aside>
+              <el-empty
+                v-else
+                description="请先在左侧选择群"
+                :image-size="72"
+              />
+            </el-card>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -1153,11 +1151,49 @@ watch(
   line-height: 1.65;
   color: var(--el-text-color-secondary);
 }
+.head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+}
+.head-left {
+  min-width: 0;
+}
+.head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  :deep(.el-radio-button__inner) {
+    min-width: 68px;
+    text-align: center;
+  }
+}
+.head-bot-picker {
+  width: 220px;
+  max-width: 70vw;
+}
+.head-bot-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .inst-panel {
-  max-width: 1100px;
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: auto;
 }
 .inst-panel--wide {
-  max-width: 1320px;
+  max-width: none;
+}
+.social-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .pan3 {
   display: flex;
@@ -1165,6 +1201,26 @@ watch(
   align-items: stretch;
   margin-bottom: 14px;
   min-height: 0;
+}
+.pan3--social {
+  .pan3-insp,
+  .pan3-main {
+    display: flex;
+    min-height: 0;
+  }
+  .c {
+    flex: 1;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .c :deep(.el-card__body) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 }
 .pan3-rail {
   width: 210px;
@@ -1263,7 +1319,7 @@ watch(
 }
 .mini-card {
   border: 1px solid rgba(22, 100, 196, 0.16);
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 12px;
   padding: 12px;
   text-align: left;
@@ -1319,75 +1375,91 @@ button.mini-card:hover {
 .pan3-insp {
   width: 280px;
   flex-shrink: 0;
-  min-width: 220px;
+  min-width: 240px;
 }
 .pan3-insp-wide {
-  width: 360px;
-}
-.inst-side {
-  margin-top: 8px;
-  min-height: 0;
-}
-.inst-side-t {
-  font-size: 12px;
-  color: var(--c-main);
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-.inst-side-list {
-  min-height: 0;
-  max-height: min(62vh, 620px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 2px;
-}
-.inst-side-item {
-  width: 100%;
-  text-align: left;
-  border: 1px solid rgba(22, 100, 196, 0.14);
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px;
-  margin-bottom: 6px;
-  cursor: pointer;
-}
-.inst-side-item.active {
-  border-color: rgba(22, 100, 196, 0.45);
-  background: rgba(22, 100, 196, 0.08);
-}
-.inst-side-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.inst-side-meta {
-  margin-top: 4px;
+  width: 280px;
 }
 .cfg-panel {
   border: 1px solid rgba(22, 100, 196, 0.12);
   border-radius: 10px;
   padding: 12px;
 }
+.cfg-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cfg-card {
+  border: 1px solid rgba(22, 100, 196, 0.16);
+  border-radius: 12px;
+  background: #f7faff;
+  padding: 12px;
+}
+.cfg-card--op {
+  margin-top: 2px;
+  background: #f3f8ff;
+}
+.cfg-panel--group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cfg-panel--group .cfg-grid {
+  display: contents;
+}
+.cfg-panel--group .cfg-card--op {
+  margin-top: 12px;
+  grid-column: 1 / -1;
+}
+.cfg-panel--group .cfg-card {
+  min-height: 0;
+}
+.cfg-panel--group .cfg-card .cfg-row:last-child {
+  margin-bottom: 0;
+}
+.cfg-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2b5ea6;
+  margin-bottom: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .cfg-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+.cfg-row-note {
+  align-items: flex-start;
+}
+.cfg-row-switch {
+  justify-content: space-between;
 }
 .cfg-row .k {
-  width: 100px;
+  width: 92px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--el-text-color-secondary);
+}
+.cfg-row .v {
+  font-size: 14px;
+  font-weight: 600;
 }
 .list-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
 }
 .list-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .list-search {
   width: 180px;
@@ -1395,18 +1467,63 @@ button.mini-card:hover {
 }
 .list-item {
   border: 1px solid rgba(22, 100, 196, 0.14);
-  border-radius: 8px;
-  padding: 10px;
-  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f8fbff;
   text-align: left;
+  min-height: 68px;
 }
 .list-item-btn {
   cursor: pointer;
   text-align: left;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+.list-item-btn:hover {
+  border-color: rgba(22, 100, 196, 0.28);
+  background: #f2f8ff;
 }
 .list-item-btn.active {
-  border-color: rgba(22, 100, 196, 0.45);
-  background: rgba(22, 100, 196, 0.08);
+  border-color: rgba(22, 100, 196, 0.4);
+  background: #eaf3ff;
+  box-shadow: 0 0 0 2px rgba(22, 100, 196, 0.08);
+}
+html.dark .mini-card {
+  border-color: rgba(125, 176, 255, 0.34);
+  background: rgba(18, 25, 37, 0.88);
+}
+html.dark button.mini-card:hover {
+  border-color: rgba(125, 176, 255, 0.52);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+html.dark .mini-card.active {
+  border-color: rgba(125, 176, 255, 0.62);
+  box-shadow: 0 0 0 2px rgba(125, 176, 255, 0.18);
+}
+html.dark .list-item {
+  border-color: rgba(125, 176, 255, 0.3);
+  background: #1a2536;
+}
+html.dark .list-item-btn:hover {
+  border-color: rgba(125, 176, 255, 0.48);
+  background: #1f2d42;
+}
+html.dark .list-item-btn.active {
+  border-color: rgba(125, 176, 255, 0.56);
+  background: #243753;
+  box-shadow: 0 0 0 2px rgba(125, 176, 255, 0.14);
+}
+html.dark .cfg-card {
+  border-color: rgba(125, 176, 255, 0.34);
+  background: #1c2a3f;
+}
+html.dark .cfg-card--op {
+  background: #1f3048;
+}
+html.dark .cfg-card-title {
+  color: #9cc3ff;
 }
 .li-title {
   display: flex;
@@ -1415,8 +1532,9 @@ button.mini-card:hover {
   gap: 8px;
 }
 .li-name {
-  font-size: 15px;
-  line-height: 1.3;
+  font-size: 16px;
+  line-height: 1.28;
+  font-weight: 700;
 }
 .li-id {
   font-size: 12px;
@@ -1424,11 +1542,27 @@ button.mini-card:hover {
 .li-sub {
   margin-top: 4px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--el-text-color-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
   justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.li-sub :deep(.el-tag) {
+  height: 19px;
+  line-height: 17px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 600;
+}
+.li-sub span {
+  line-height: 19px;
 }
 .c-insp {
   margin-bottom: 0;
@@ -1485,6 +1619,16 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
     max-height: 220px;
   }
   .pan3-insp {
+    width: 100%;
+    min-width: 0;
+  }
+  .cfg-grid {
+    grid-template-columns: 1fr;
+  }
+  .cfg-panel--group {
+    grid-template-columns: 1fr;
+  }
+  .pan3-insp-wide {
     width: 100%;
     min-width: 0;
   }
@@ -1584,7 +1728,7 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
     background: #f5f9ff !important;
   }
 }
-/* 浅表头、弱边框、略增行高，便于扫读 */
+/* 表格样式 */
 .tb-clean {
   :deep(.el-table__inner-wrapper) {
     border-radius: 12px;
@@ -1661,5 +1805,9 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+:deep(.main-scroll-inner) {
+  margin-left: 0;
+  margin-right: auto;
 }
 </style>

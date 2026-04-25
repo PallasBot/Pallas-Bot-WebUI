@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { fetchInstances } from "@/api/consoleApi";
+import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { useConnectionStatus } from "@/composables/useConnectionStatus";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import {
+  CaretBottom,
   Connection,
   DataBoard,
   Grid,
@@ -28,17 +31,86 @@ provide(pallasConnectionKey, { ok, last, refresh, healthTick });
 const refreshing = ref(false);
 const pageLoading = ref(false);
 const refreshQueued = ref(false);
+const BOT_PICK_KEY = "pallas.selected_bot_self_id";
+const selectedBotSelfId = ref<string | null>(null);
+type BotOption = {
+  selfId: string;
+  label: string;
+  nickname: string;
+  qq: string;
+  avatar: string;
+};
+const botOptions = ref<BotOption[]>([]);
+
+function setSelectedBotSelfId(selfId: string | null) {
+  selectedBotSelfId.value = selfId;
+  if (typeof localStorage === "undefined") return;
+  const val = (selfId || "").trim();
+  if (val) localStorage.setItem(BOT_PICK_KEY, val);
+  else localStorage.removeItem(BOT_PICK_KEY);
+}
+
+provide(pallasBotContextKey, { selectedBotSelfId, setSelectedBotSelfId });
 
 onMounted(() => {
   void ensureBotServiceBaseUrl();
+  if (typeof localStorage !== "undefined") {
+    const saved = (localStorage.getItem(BOT_PICK_KEY) || "").trim();
+    if (saved) selectedBotSelfId.value = saved;
+  }
+  void loadBotOptions();
 });
 
-const pageTitle = computed(
-  () => (route.meta.title as string) || (route.name as string) || "",
-);
+async function loadBotOptions() {
+  if (ok.value !== true) return;
+  try {
+    const data = await fetchInstances();
+    const out: BotOption[] = [];
+    const seen = new Set<string>();
+    const profileMap = data.bot_profiles ?? {};
+    const accountNameMap = new Map<string, string>();
+    const accounts = data.pallas_protocol?.accounts ?? data.napcat?.accounts ?? [];
+    for (const row of accounts) {
+      const qq = String(row.qq ?? row.id ?? "").trim();
+      const name = String(row.display_name ?? "").trim();
+      if (qq && name && !accountNameMap.has(qq)) accountNameMap.set(qq, name);
+    }
+    for (const row of data.nonebot_bots || []) {
+      const sid = String(row.self_id || "").trim();
+      if (!sid || seen.has(sid)) continue;
+      seen.add(sid);
+      const profileName = String(profileMap[sid]?.nickname ?? "").trim();
+      const accountName = accountNameMap.get(sid) ?? "";
+      const nickname = profileName || accountName || "Bot";
+      out.push({
+        selfId: sid,
+        label: sid,
+        nickname,
+        qq: sid,
+        avatar: /^\d+$/.test(sid) ? `https://q1.qlogo.cn/g?b=qq&nk=${sid}&s=100` : "",
+      });
+    }
+    botOptions.value = out;
+    if (!out.length) {
+      setSelectedBotSelfId(null);
+      return;
+    }
+    if (!selectedBotSelfId.value || !out.some((x) => x.selfId === selectedBotSelfId.value)) {
+      setSelectedBotSelfId(out[0]!.selfId);
+    }
+  } catch {}
+}
 
 const botBase = getBotServiceBaseRef();
 const protocolUrl = computed(() => protocolDashboardUrl(botBase.value || "http://localhost:8088", null));
+const selectedBotOption = computed(
+  () => botOptions.value.find((x) => x.selfId === selectedBotSelfId.value) ?? botOptions.value[0] ?? null,
+);
+const selectedBotAvatar = computed(() => {
+  const qq = String(selectedBotOption.value?.selfId || "").trim();
+  if (!/^\d+$/.test(qq)) return "";
+  return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`;
+});
 
 const nav = [
   { name: "dashboard" as const, to: { name: "dashboard" }, label: "仪表盘", icon: Monitor },
@@ -83,7 +155,7 @@ async function doRefresh() {
     refreshing.value = false;
     if (refreshQueued.value) {
       refreshQueued.value = false;
-      // 连点切页时把被合并掉的刷新补跑一轮，避免数据页错过 tick。
+      // 补跑一次刷新
       void doRefresh();
       return;
     }
@@ -106,6 +178,10 @@ watch(
     }, 280);
   },
 );
+
+watch(healthTick, () => {
+  if (ok.value === true) void loadBotOptions();
+});
 </script>
 
 <template>
@@ -141,6 +217,57 @@ watch(
           target="_blank"
           rel="noopener"
         >GitHub</a>
+        <el-dropdown
+          class="account-switch account-switch-floating"
+          trigger="click"
+          :disabled="!botOptions.length"
+          @command="(v: string) => setSelectedBotSelfId(v)"
+        >
+          <el-button
+            size="small"
+            class="account-switch-btn"
+            :class="{ 'is-empty': !botOptions.length }"
+          >
+            <span class="switch-dot" />
+            <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
+            <el-avatar
+              v-if="selectedBotAvatar && botOptions.length"
+              :size="26"
+              :src="selectedBotAvatar"
+            />
+            <el-avatar
+              v-else
+              :size="26"
+            >B</el-avatar>
+            <el-icon><CaretBottom /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="b in botOptions"
+                :key="b.selfId"
+                :command="b.selfId"
+                :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
+              >
+                <div class="account-option">
+                  <el-avatar
+                    v-if="b.avatar"
+                    :size="20"
+                    :src="b.avatar"
+                  />
+                  <el-avatar
+                    v-else
+                    :size="20"
+                  >B</el-avatar>
+                  <div class="account-option-text">
+                    <strong>{{ b.nickname }}</strong>
+                    <span class="mono">QQ {{ b.qq }}</span>
+                  </div>
+                </div>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <div
           class="pallas-connect"
           title="基于 /pallas/api/health"
@@ -178,53 +305,9 @@ watch(
             <span>{{ item.label }}</span>
           </div>
         </nav>
-        <el-card
-          v-if="last"
-          class="side-meta"
-          shadow="never"
-        >
-          <div class="side-meta-t">版本摘要</div>
-          <div class="side-meta-row">
-            <span>NB</span>
-            <em>{{ last.nonebot2 }}</em>
-          </div>
-          <div class="side-meta-row">
-            <span>Bot</span>
-            <em>{{ last.pallas_bot }}</em>
-          </div>
-        </el-card>
       </aside>
 
       <main class="pallas-main">
-        <div class="pallas-main-top">
-          <div class="page-line">
-            <h2 class="page-title">
-              <el-icon class="page-ico">
-                <component
-                  :is="nav.find((n) => n.name === route.name)?.icon || Monitor"
-                />
-              </el-icon>
-              {{ pageTitle }}
-            </h2>
-            <div
-              v-if="route.name === 'dashboard'"
-              class="page-actions"
-            >
-              <el-button
-                type="primary"
-                size="small"
-                :loading="ok === null || refreshing"
-                @click="doRefresh"
-              >
-                {{ refreshing ? "刷新中..." : "刷新连接" }}
-              </el-button>
-            </div>
-            <div
-              v-else
-              class="page-actions"
-            />
-          </div>
-        </div>
         <div class="pallas-viewport">
           <transition name="fade-fast">
             <div
@@ -269,6 +352,9 @@ watch(
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 22;
 }
 
 .pallas-title {
@@ -292,14 +378,21 @@ watch(
   display: flex;
   align-items: center;
   gap: 4px 16px;
+  padding-right: 254px;
 }
 
 .header-icon-btn {
-  --el-button-bg-color: #ffffff22;
-  --el-button-border-color: transparent;
-  --el-button-hover-bg-color: #fff3;
-  --el-button-hover-border-color: transparent;
+  --el-button-bg-color: #ffffff30;
+  --el-button-border-color: #ffffff4a;
+  --el-button-hover-bg-color: #ffffff3a;
+  --el-button-hover-border-color: #ffffff66;
   --el-color: #fff;
+  width: 34px;
+  height: 34px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  :deep(.el-icon) {
+    color: #fff;
+  }
 }
 
 .header-link {
@@ -315,17 +408,76 @@ watch(
     text-decoration: underline;
   }
 }
+.account-switch-btn {
+  --el-button-bg-color: #ffffff30;
+  --el-button-border-color: #ffffff55;
+  --el-button-hover-bg-color: #ffffff3a;
+  --el-button-hover-border-color: #ffffff6e;
+  --el-color: #fff;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 12px;
+  height: 34px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  &.is-empty {
+    opacity: 0.88;
+    --el-color: #fff;
+  }
+}
+.account-switch-btn.is-empty,
+.account-switch-btn.is-empty span,
+.account-switch-btn.is-empty :deep(.el-icon) {
+  color: #fff !important;
+}
+.switch-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff 0%, #ffd4ef 34%, #a56bff 100%);
+}
+.account-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-option-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  strong {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  span {
+    font-size: 11px;
+    color: var(--el-text-color-secondary);
+  }
+}
+.account-switch {
+  :deep(.el-dropdown-menu__item.is-selected) {
+    color: var(--c-main);
+    font-weight: 600;
+  }
+}
+.account-switch-floating {
+  position: fixed;
+  top: 8px;
+  right: 14px;
+  z-index: 60;
+}
 
 .pallas-connect {
   display: flex;
   align-items: center;
   font-size: 14px;
-  min-height: 28px;
+  min-height: 32px;
   padding-left: 4px;
-  border-left: 1px solid #ffffff40;
   margin-left: 8px;
-  padding-left: 16px;
+  padding: 0 10px 0 16px;
   gap: 6px;
+  border-radius: 999px;
+  background: #ffffff26;
+  border: 1px solid #ffffff4a;
 }
 
 .pallas-dot {
@@ -360,7 +512,7 @@ watch(
   background: var(--c-body-bg);
 }
 .pallas-nav {
-  width: 260px;
+  width: 206px;
   flex-shrink: 0;
   padding: 20px 16px;
   display: flex;
@@ -369,6 +521,7 @@ watch(
   overflow: auto;
 }
 .main-nav {
+  flex: 1;
   background: var(--c-nav-bg);
   border-radius: var(--pallas-radius-lg, 14px);
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
@@ -402,26 +555,6 @@ html.dark .menu-item:hover:not(.selected) {
   background: var(--c-main-light);
   font-weight: 600;
 }
-.side-meta {
-  --el-card-padding: 10px 12px;
-  border-radius: var(--pallas-radius-md, 12px) !important;
-  font-size: 12px;
-  .side-meta-t {
-    color: var(--el-text-color-secondary);
-    margin-bottom: 6px;
-  }
-  .side-meta-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    line-height: 1.5;
-    em {
-      font-style: normal;
-      text-align: right;
-      color: var(--el-text-color-regular);
-    }
-  }
-}
 .pallas-main {
   flex: 1;
   min-width: 0;
@@ -429,35 +562,6 @@ html.dark .menu-item:hover:not(.selected) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.pallas-main-top {
-  flex-shrink: 0;
-  background: var(--c-nav-bg);
-  border-radius: var(--pallas-radius-md, 12px);
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
-  padding: 10px 16px 12px;
-  width: 100%;
-  max-width: none;
-  margin-left: 0;
-  margin-right: 0;
-}
-.page-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
-}
-.page-title {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--el-text-color-primary);
-  .page-ico {
-    color: var(--c-main);
-  }
 }
 .pallas-viewport {
   flex: 1;
@@ -478,14 +582,19 @@ html.dark .menu-item:hover:not(.selected) {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: rgba(242, 246, 252, 0.68);
+  background: transparent !important;
   color: var(--c-main);
   font-weight: 600;
-  backdrop-filter: blur(2px);
+  backdrop-filter: none !important;
   pointer-events: none;
 }
-:deep(html.dark) .page-loading-mask {
-  background: rgba(20, 26, 36, 0.62);
+:global(html.dark) .page-loading-mask,
+:global(body.dark) .page-loading-mask {
+  color: #ffffff !important;
+}
+:global(html.dark) .page-loading-mask :deep(.el-icon),
+:global(body.dark) .page-loading-mask :deep(.el-icon) {
+  color: #ffffff !important;
 }
 .spin {
   animation: pallas-spin 0.9s linear infinite;
@@ -501,6 +610,75 @@ html.dark .menu-item:hover:not(.selected) {
 .fade-fast-enter-from,
 .fade-fast-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .pallas-root {
+    height: auto;
+    min-height: 100vh;
+  }
+  .pallas-header {
+    height: auto;
+    padding: 10px 12px;
+    align-items: flex-start;
+    gap: 8px;
+    flex-direction: column;
+  }
+  .pallas-title {
+    font-size: 17px;
+  }
+  .pallas-header-right {
+    width: 100%;
+    gap: 8px 10px;
+    flex-wrap: wrap;
+    padding-right: 0;
+  }
+  .account-switch-btn {
+    max-width: min(62vw, 220px);
+  }
+  .account-switch-floating {
+    top: 8px;
+    right: 10px;
+  }
+  .pallas-connect {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+    min-height: 22px;
+    font-size: 13px;
+  }
+  .pallas-host-addr {
+    max-width: 52vw;
+  }
+  .pallas-body {
+    flex-direction: column;
+  }
+  .pallas-nav {
+    width: 100%;
+    padding: 10px 10px 0;
+    overflow: visible;
+  }
+  .main-nav {
+    box-shadow: none;
+    background: transparent;
+    border-radius: 0;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .menu-item {
+    min-width: max-content;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--c-nav-bg);
+    border: 1px solid rgba(22, 100, 196, 0.16);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  }
+  .pallas-main {
+    padding: 10px;
+  }
 }
 </style>
 

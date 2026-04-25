@@ -1,4 +1,4 @@
-/** 与主仓 pallas_protocol.contract 默认一致：未配置 webui_path 时为 /protocol/<DEFAULT_BACKEND> */
+/** 默认协议路径 */
 export const DEFAULT_PROTOCOL_WEB_PATH = "/protocol/napcat";
 
 export function resolveProtocolMountPath(webuiPath?: string | null): string {
@@ -23,7 +23,7 @@ export function protocolAccountUrl(botBase: string, webuiPath: string | null | u
   return `${base}/account/${encodeURIComponent(id)}`;
 }
 
-/** 账号行里 NapCat 内嵌 Web 的 URL（新字段 native_webui_url，旧 napcat_native_webui_url） */
+/** 读取账号内嵌 Web 地址 */
 export function accountNativeWebUiUrl(row: { native_webui_url?: string; napcat_native_webui_url?: string }): string {
   const u = row.native_webui_url ?? row.napcat_native_webui_url;
   return typeof u === "string" ? u : "";

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
-// Vite base 为 /pallas/ 时，JSON 与 Bot 侧约定为 /pallas/api
+// API 基础路径
 const base = (import.meta.env.BASE_URL as string) || "/pallas/";
 const apiBase = `${base.replace(/\/$/, "")}/api`;
 
@@ -10,7 +10,7 @@ export const http = axios.create({
   timeout: 20000,
 });
 
-/** 与设置页约定：写操作鉴权，对应 Bot 侧 pallas_webui_api_token */
+/** 写操作鉴权键名 */
 export const PALLAS_API_TOKEN_KEY = "pallas-api-token";
 
 http.interceptors.request.use((config) => {

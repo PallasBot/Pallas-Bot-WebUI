@@ -17,6 +17,9 @@ import type {
   AiExtensionTestData,
   AiExtensionLogsData,
   AiProxyResult,
+  HelpMenuVisibilityData,
+  PluginConfigData,
+  MessageStatsData,
 } from "./pallasTypes";
 
 function unwrap<T>(body: ApiOk<T> | (ApiOk<T> & Record<string, unknown>), path: string): T {
@@ -36,6 +39,33 @@ export async function fetchPlugins(): Promise<PluginRow[]> {
   return unwrap(data, "/plugins");
 }
 
+export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
+  const { data } = await http.get<ApiOk<HelpMenuVisibilityData>>("/plugins/help-menu-visibility");
+  return unwrap(data, "/plugins/help-menu-visibility");
+}
+
+export async function putPluginsHelpMenuVisibility(hiddenPlugins: string[]): Promise<{ hidden_plugins: string[] }> {
+  const { data } = await http.put<ApiOk<{ hidden_plugins: string[] }>>("/plugins/help-menu-visibility", {
+    hidden_plugins: hiddenPlugins,
+  });
+  return unwrap(data, "/plugins/help-menu-visibility");
+}
+
+export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
+  const { data } = await http.get<ApiOk<PluginConfigData>>(`/plugins/${encodeURIComponent(pluginName)}/config`);
+  return unwrap(data, `/plugins/${pluginName}/config`);
+}
+
+export async function putPluginConfig(
+  pluginName: string,
+  values: Record<string, unknown>,
+): Promise<PluginConfigData> {
+  const { data } = await http.put<ApiOk<PluginConfigData>>(`/plugins/${encodeURIComponent(pluginName)}/config`, {
+    values,
+  });
+  return unwrap(data, `/plugins/${pluginName}/config`);
+}
+
 export async function fetchBots(): Promise<BotRow[]> {
   const { data } = await http.get<ApiOk<BotRow[]>>("/bots");
   return unwrap(data, "/bots");
@@ -44,6 +74,13 @@ export async function fetchBots(): Promise<BotRow[]> {
 export async function fetchLogs(n: number): Promise<LogsData> {
   const { data } = await http.get<ApiOk<LogsData>>("/logs", { params: { n } });
   return unwrap(data, "/logs");
+}
+
+export async function fetchMessageStats(selfId?: number): Promise<MessageStatsData> {
+  const { data } = await http.get<ApiOk<MessageStatsData>>("/message-stats", {
+    params: selfId ? { self_id: selfId } : {},
+  });
+  return unwrap(data, "/message-stats");
 }
 
 export async function fetchPluginConfigHint(): Promise<string> {
@@ -97,7 +134,7 @@ export async function fetchInstances(): Promise<InstancesData> {
   return unwrap(data, "/instances");
 }
 
-/** 待处理好友申请（request_handler 落盘）+ 在线 OneBot 可疑申请（可选） */
+/** 获取好友申请列表 */
 export async function fetchFriendRequests(params?: {
   self_id?: number;
   doubt?: boolean;
@@ -106,7 +143,7 @@ export async function fetchFriendRequests(params?: {
   return unwrap(data, "/friend-requests");
 }
 
-/** 在线 Bot 的 get_friend_list（OneBot V11） */
+/** 获取好友列表 */
 export async function fetchFriendList(selfId: number, limit = 800): Promise<FriendListData> {
   const { data } = await http.get<ApiOk<FriendListData>>("/friend-list", {
     params: { self_id: selfId, limit },

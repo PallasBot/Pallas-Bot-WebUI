@@ -1,4 +1,4 @@
-// 界面中文：优先本机已安装的思源黑体/Noto；用户也可将 woff2 放到 Bot 静态目录 `public/pallas/fonts/` 后在此增加 url(...) 行
+// 中文字体配置
 @font-face {
   font-family: "Pallas UI Han";
   font-style: normal;
@@ -14,7 +14,7 @@
     local("Segoe UI");
 }
 
-// 蓝白主色：顶栏、侧栏选中、Element Plus 主色统一
+// 主题变量
 :root {
   --pallas-font-han: "Pallas UI Han", "Segoe UI", system-ui, sans-serif;
   --pallas-font-mono-em: ui-monospace, "Cascadia Code", "Consolas", "Sarasa Mono SC", monospace;
@@ -25,11 +25,11 @@
   --c-nav-bg: #ffffff;
   --c-body-bg: #f2f6fc;
   --c-surface-elev: #ffffff;
-  // 更圆润的界面主圆角（侧栏、主内容卡片、表单项等依赖 EP 变量）
+  // 圆角变量
   --pallas-radius-lg: 14px;
   --pallas-radius-md: 12px;
   --pallas-radius-sm: 10px;
-  // 与侧栏页眉 .pallas-main-top 同宽
+  // 内容宽度
   --pallas-content-max: 1100px;
   --pallas-line-prose: 1.75;
   --el-border-radius-base: 10px;
@@ -57,7 +57,7 @@ body,
   font-family: var(--pallas-font-han);
 }
 
-// 驱动 host/port、路径等强调等宽（与正文思源搭配）
+// 等宽文本样式
 html .pallas-kv code,
 html code.pallas-em {
   font-family: var(--pallas-font-mono-em);
@@ -65,7 +65,7 @@ html code.pallas-em {
   letter-spacing: 0.02em;
 }
 
-// 描述列表与主内容一致左对齐（避免 EP 默认标签列居中）
+// 描述列表左对齐
 html .el-descriptions__label,
 html .el-descriptions__content {
   text-align: left !important;
@@ -84,7 +84,7 @@ html .el-empty__description {
   box-sizing: border-box;
 }
 
-// 主内容区：与标题栏同宽、左对齐铺满，便于侧栏+表格占满视口
+// 主内容区布局
 .pallas-viewport {
   display: flex;
   flex-direction: column;
@@ -113,7 +113,7 @@ html .el-table {
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
-// 表头与内容列对齐：默认左对齐；尊重列上 align="center"|"right"
+// 表格对齐
 html .el-table th.el-table__cell,
 html .el-table td.el-table__cell {
   vertical-align: middle;
@@ -142,7 +142,7 @@ html .el-table__inner-wrapper::before {
   background-color: rgba(22, 100, 196, 0.1) !important;
 }
 
-// 卡片略圆（表格用 EP 默认圆角，避免裁切内部滚动区）
+// 卡片样式
 html .el-card {
   border-radius: var(--pallas-radius-md) !important;
   box-shadow: var(--pallas-elev-1);
@@ -156,7 +156,7 @@ html .el-tabs__nav-wrap {
   border-radius: var(--pallas-radius-sm) var(--pallas-radius-sm) 0 0;
 }
 
-// 明亮模式：白底界面 + 蓝色主操作色
+// 亮色主题
 html:not(.dark) {
   --el-color-primary: #1664c4 !important;
   --el-color-primary-light-3: #3d82d6;
@@ -167,7 +167,7 @@ html:not(.dark) {
   --el-color-primary-dark-2: #0f4a8f;
 }
 
-// 暗色时略提亮的蓝，保持可读
+// 暗色主题
 html.dark {
   --el-color-primary: #4a9eff !important;
   --el-color-primary-light-3: #6eb2ff;

@@ -22,20 +22,19 @@
 - `src/layout/`：控制台整体布局与导航
 - `dist/`：构建输出（不手改）
 
-## 本地开发
+## 启动说明
 
-1. 启动 `Pallas-Bot` 主程序（默认 `http://127.0.0.1:8088`）。
-2. 在本目录安装依赖并启动前端：
+1. 先启动 `Pallas-Bot` 主程序（默认 `http://127.0.0.1:8088`）。
+2. 打开 WebUI：
+   - 生产/集成模式：直接访问 `http://<host>:<port>/pallas/`
+   - 本仓开发模式：在本目录执行 `npm install && npm run dev`，通过 Vite 代理访问后端
+3. 打开 Protocol 管理页：`http://<host>:<port>/protocol/napcat`（若配置了 `PALLAS_PROTOCOL_WEBUI_PATH`，以该值为准）。
 
-```bash
-npm install
-npm run dev
-```
-
-3. 如主程序端口不同，先设置代理目标（PowerShell）：
+本地开发（PowerShell 示例，后端端口非默认时）：
 
 ```powershell
 $env:VITE_PROXY_TARGET="http://127.0.0.1:9000"
+npm install
 npm run dev
 ```
 

@@ -29,15 +29,15 @@ const loading = ref(true);
 const overview = ref<DbOverviewData | null>(null);
 
 const sectionTitle: Record<DbSection, string> = {
-  query: "按条件查询",
-  overview: "存储空间占用概览",
-  pipeline: "MongoDB 聚合管道",
+  query: "生产查询与配置变更",
+  overview: "容量与健康概览",
+  pipeline: "受控聚合审计",
 };
 const sectionSub: Record<DbSection, string> = {
-  query: "只读：从当前 Bot 使用的数据库取一条配置，不执行任意 SQL/管道。",
-  overview: "各表/集合内大约有多少条数据（只读统计）。数据量大时属正常现象。",
+  query: "面向生产值守：支持按账号/群号读取配置，并通过受控字段写回，避免直接执行高风险语句。",
+  overview: "展示当前后端及各表容量，便于判断异常膨胀、清理窗口和扩容节奏。",
   pipeline:
-    "仅 MongoDB；阶段仅限 $match/$project/$sort/$limit/$skip，最多 16 段，结果强制上限 200 条。须配置 pallas_webui_api_token 并在设置页填入。",
+    "仅 MongoDB；阶段限制为 $match/$project/$sort/$limit/$skip，最多 16 段，强制截断 200 行，适用于审计和排障。",
 };
 
 const navItems = computed((): { index: DbSection; label: string; icon: Component }[] => {
@@ -576,6 +576,15 @@ async function runPipeline() {
         class="c"
         shadow="hover"
       >
+        <el-alert
+          :closable="false"
+          type="info"
+          class="db-banner"
+          show-icon
+          title="生产建议"
+        >
+          先读后改：先用“按条件查询”确认目标记录，再使用“面板直接操作”或“表行 JSON”最小化变更。涉及批量动作建议在低峰执行并保留回滚记录。
+        </el-alert>
         <div class="q-layout">
           <aside class="q-left">
             <div class="q-left-hd">数据表 / 集合</div>
@@ -932,6 +941,9 @@ async function runPipeline() {
 .c {
   border: 1px solid rgba(22, 100, 196, 0.1);
 }
+.db-banner {
+  margin-bottom: 12px;
+}
 .q-grid {
   display: flex;
   flex-direction: column;
@@ -976,6 +988,8 @@ async function runPipeline() {
 .q-left-sub {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  line-height: 1.45;
+  word-break: break-word;
 }
 .q-right {
   min-width: 0;
@@ -1098,6 +1112,7 @@ async function runPipeline() {
   font-size: 12px;
   font-weight: 700;
   color: var(--el-text-color-regular);
+  line-height: 1.45;
 }
 .ops-inp {
   width: 100%;
@@ -1150,12 +1165,45 @@ async function runPipeline() {
   white-space: pre-wrap;
   word-break: break-word;
 }
+:deep(.el-descriptions__content),
+:deep(.el-table .cell) {
+  word-break: break-word;
+}
 .tb {
   width: 100%;
   --el-table-border-color: rgba(22, 100, 196, 0.1);
 }
 .tb-dense :deep(.cell) {
   padding: 6px 8px;
+}
+html.dark .q-left-item,
+html.dark .ov-item,
+html.dark .ops-box,
+html.dark .ops-direct,
+html.dark .ops-card {
+  background: rgba(18, 25, 37, 0.88);
+  border-color: rgba(125, 176, 255, 0.34);
+}
+html.dark .q-left {
+  background: rgba(18, 25, 37, 0.7);
+  border-color: rgba(125, 176, 255, 0.28);
+}
+html.dark .db-type-line {
+  background: rgba(18, 25, 37, 0.82);
+  border-color: rgba(125, 176, 255, 0.3);
+}
+html.dark .ops-code {
+  background: rgba(10, 14, 22, 0.86);
+  border-color: rgba(125, 176, 255, 0.24);
+}
+html.dark .tb :deep(.el-table__inner-wrapper),
+html.dark .tb :deep(.el-table__header-wrapper),
+html.dark .tb :deep(.el-table__body-wrapper),
+html.dark .tb :deep(.el-table__cell) {
+  background-color: rgba(18, 25, 37, 0.92) !important;
+}
+html.dark .tb :deep(.el-table__row:hover > td.el-table__cell) {
+  background: rgba(58, 121, 214, 0.22) !important;
 }
 .pipe-al {
   margin-bottom: 14px;

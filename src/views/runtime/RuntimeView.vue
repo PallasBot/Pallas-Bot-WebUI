@@ -297,7 +297,8 @@ function fmtTime(t: number) {
   max-width: 900px;
 }
 .panel {
-  max-width: 1100px;
+  width: 100%;
+  max-width: none;
 }
 .rfb {
   margin-top: 12px;

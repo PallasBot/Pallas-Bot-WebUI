@@ -1,4 +1,4 @@
-/** 与 Pallas 扩展 API 的 { ok, data } 约定一致 */
+/** 标准响应结构 */
 
 export interface ApiOk<T> {
   ok: boolean;
@@ -18,12 +18,40 @@ export interface SystemData {
     cpu_percent?: number | null;
     memory?: { total?: number | null; used?: number | null; percent?: number | null };
     disk?: { total?: number | null; used?: number | null; free?: number | null; percent?: number | null };
+    gpu?: {
+      available?: boolean;
+      reason?: string;
+      devices?: Array<{
+        index: number;
+        name: string;
+        memory_total: number;
+        memory_used: number;
+        memory_free: number;
+        utilization_gpu: number;
+        utilization_memory: number;
+        temperature: number | null;
+      }>;
+    };
   };
+}
+
+export interface MessageStatsData {
+  total_sent: number;
+  total_received: number;
+  bots: Array<{
+    self_id: string;
+    connection_key: string;
+    sent: number;
+    received: number;
+  }>;
 }
 
 export interface PluginRow {
   name: string;
   module: string;
+  help_visible?: boolean;
+  help_ignored?: boolean;
+  help_hidden?: boolean;
   metadata: {
     name?: string;
     description?: string;
@@ -31,6 +59,27 @@ export interface PluginRow {
     type?: string;
     extra?: Record<string, unknown>;
   } | null;
+}
+
+export interface HelpMenuVisibilityData {
+  hidden_plugins: string[];
+  ignored_plugins: string[];
+}
+
+export interface PluginConfigField {
+  name: string;
+  kind: "bool" | "int" | "float" | "json" | "string";
+  required: boolean;
+  description: string;
+  env_key: string;
+  default: unknown;
+  current: unknown;
+}
+
+export interface PluginConfigData {
+  plugin: string;
+  module: string;
+  fields: PluginConfigField[];
 }
 
 export interface BotRow {
@@ -44,7 +93,7 @@ export interface LogsData {
   max: number;
 }
 
-/** GET /db/overview */
+/** 数据库概览 */
 export type DbOverviewData =
   | {
       backend: "mongodb";
@@ -56,7 +105,7 @@ export type DbOverviewData =
     }
   | { backend: string; note?: string };
 
-/** 与 Pallas 当前 DB 中 Bot 配置一致 */
+/** Bot 配置 */
 export interface BotConfigPublic {
   account: number;
   admins: number[];
@@ -81,16 +130,16 @@ export interface UserConfigPublic {
   banned: boolean;
 }
 
-/** 与 pallas_protocol 账号列表 _compose_account_state 一致（字段可能随版本增加） */
+/** 协议账号信息 */
 export interface NapcatAccountRow {
   id?: string;
   qq?: string;
   display_name?: string;
   webui_port?: number | string;
   webui_token?: string;
-  /** NapCat 进程内嵌 Web（主仓字段名） */
+  /** 内嵌 Web 地址 */
   native_webui_url?: string;
-  /** 旧 napcat_manager 字段名，兼容 */
+  /** 兼容字段 */
   napcat_native_webui_url?: string;
   running?: boolean;
   connected?: boolean;
@@ -106,7 +155,7 @@ export interface NapcatManagerSnapshot {
   accounts: NapcatAccountRow[];
 }
 
-/** GET /instances */
+/** 实例数据 */
 export interface InstancesData {
   nonebot_bots: BotRow[];
   db_bot_configs: BotConfigPublic[];
@@ -120,11 +169,11 @@ export interface InstancesData {
       adapter?: string;
     }
   >;
-  /** 与 pallas_protocol 相同，兼容旧字段名 */
+  /** 兼容字段 */
   napcat?: NapcatManagerSnapshot | null;
 }
 
-/** GET /friend-requests */
+/** 好友申请 */
 export interface FriendPendingEntry {
   user_id: number;
   flag: string;
@@ -192,7 +241,7 @@ export interface AiProxyResult {
   error: string | null;
 }
 
-/** GET /friend-list */
+/** 好友列表 */
 export interface FriendListRow {
   user_id: number;
   nickname: string;

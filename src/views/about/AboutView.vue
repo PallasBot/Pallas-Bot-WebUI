@@ -1,26 +1,27 @@
 <script setup lang="ts">
+import { fetchSystem } from "@/api/consoleApi";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { pallasConnectionKey } from "@/types/pallas-connection";
-import { Grid, Link, Monitor, Reading } from "@element-plus/icons-vue";
-import { inject, computed, ref, watch } from "vue";
+import { Cpu, Link, Monitor, Reading } from "@element-plus/icons-vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
 
-type AboutSection = "intro" | "stack" | "conn";
+type AboutSection = "overview" | "release" | "runtime";
 
-const section = ref<AboutSection>("intro");
+const section = ref<AboutSection>("overview");
 const sectionTitle: Record<AboutSection, string> = {
-  intro: "关于本控制台",
-  stack: "技术栈",
-  conn: "与 Bot 连接状态",
+  overview: "产品定位",
+  release: "发布与构建信息",
+  runtime: "运行态信息",
 };
 const sectionSub: Record<AboutSection, string> = {
-  intro: "定位、部署方式与主仓库链接。",
-  stack: "本 WebUI 所依赖的主要技术。",
-  conn: "健康检查与版本元数据。",
+  overview: "控制台与主仓关系、生产路径与职责边界。",
+  release: "当前连接实例返回的版本与构建元数据。",
+  runtime: "当前 Bot 进程暴露的运行态基础指标。",
 };
 const navItems = [
-  { index: "intro", label: "关于", icon: Reading },
-  { index: "stack", label: "技术栈", icon: Grid },
-  { index: "conn", label: "连接状态", icon: Monitor },
+  { index: "overview", label: "产品定位", icon: Reading },
+  { index: "release", label: "构建信息", icon: Monitor },
+  { index: "runtime", label: "运行态信息", icon: Cpu },
 ];
 
 const conn = inject(pallasConnectionKey);
@@ -30,24 +31,39 @@ if (!conn) {
 const { last, refresh, ok } = conn;
 
 const REPO = "https://github.com/PallasBot/Pallas-Bot";
+const WEBUI_REPO = "https://github.com/TogetsuDo/Pallas-Bot-WebUI";
+const runtimeLoading = ref(false);
+const runtimeRows = ref<{ k: string; v: string }[]>([]);
 
-const lines = computed(() => {
+const releaseRows = computed(() => {
   if (!last.value) return [] as { k: string; v: string }[];
   return [
     { k: "NoneBot2", v: last.value.nonebot2 },
-    { k: "Pallas-Bot 包", v: last.value.pallas_bot },
-    { k: "Pallas Console", v: last.value.console?.version || "unknown" },
-    { k: "HTTP 基址(元数据)", v: last.value.console?.http_base || "—" },
+    { k: "Pallas-Bot", v: last.value.pallas_bot },
+    { k: "Console 版本", v: last.value.console?.version || "unknown" },
+    { k: "Console Commit", v: last.value.console?.commit || "local/unknown" },
+    { k: "Build Time", v: last.value.console?.build_time || "unknown" },
+    { k: "HTTP 基址", v: last.value.console?.http_base || "—" },
   ];
 });
 
-const stack = [
-  { name: "Vue 3", note: "组合式 API" },
-  { name: "Vite 6", note: "构建与开发服务器" },
-  { name: "TypeScript", note: "全量类型" },
-  { name: "Element Plus", note: "组件库" },
-  { name: "Pallas API", note: "FastAPI/NoneBot 同进程" },
-];
+async function loadRuntime() {
+  if (ok.value !== true) return;
+  runtimeLoading.value = true;
+  try {
+    const s = await fetchSystem();
+    runtimeRows.value = [
+      { k: "Driver 监听", v: s.nonebot2_driver?.host && s.nonebot2_driver?.port ? `${s.nonebot2_driver.host}:${s.nonebot2_driver.port}` : "-" },
+      { k: "插件数量", v: String(s.plugin_count ?? "-") },
+      { k: "Bot 数量", v: String(s.bot_count ?? "-") },
+      { k: "超管数量", v: String(s.superuser_count ?? "-") },
+      { k: "平台", v: s.runtime?.platform || "-" },
+      { k: "Python", v: s.runtime?.python || "-" },
+    ];
+  } finally {
+    runtimeLoading.value = false;
+  }
+}
 
 watch(
   () => ok.value,
@@ -55,9 +71,16 @@ watch(
     if (v === true && !last.value) {
       void refresh();
     }
+    if (v === true) {
+      void loadRuntime();
+    }
   },
   { immediate: true },
 );
+
+onMounted(() => {
+  if (ok.value === true) void loadRuntime();
+});
 </script>
 
 <template>
@@ -72,114 +95,50 @@ watch(
       <p class="main-sub">{{ sectionSub[s as AboutSection] }}</p>
     </template>
 
-    <div
-      v-show="section === 'intro'"
-      class="panel"
-    >
-      <el-card
-        class="ac"
-        shadow="hover"
-      >
+    <div v-show="section === 'overview'" class="panel">
+      <el-card class="ac" shadow="hover">
         <p class="p">
-          <strong>Pallas 控制台</strong>是独立于 Pallas-Bot 主仓库的前端工程：在Bot HTTP
-          端口上以 <code>/pallas</code> 提供管理界面，以 <code>/pallas/api</code> 与内嵌
-          FastAPI 路由交互，生产环境将构建产物置于主仓
-          <code>data/pallas_webui/public</code>，也可配置 zip 直链由插件自动拉取。
+          <strong>Pallas 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
+          进程在 <code>/pallas</code> 提供静态页面，并通过 <code>/pallas/api</code> 暴露管理接口。
         </p>
-        <p class="p p2">功能范围随主仓 <code>pallas_webui</code> 暴露的 API 扩展；本页「关于」仅描述控制台自身。</p>
-        <el-link
-          :href="REPO"
-          type="primary"
-          target="_blank"
-          rel="noopener"
-          :icon="Link"
-          class="repo-link"
-        >
-          打开 Pallas-Bot 主仓库
-        </el-link>
+        <p class="p p2">
+          控制台职责是“可观测 + 可运维 + 可配置”，不替代业务插件内部逻辑。建议把它放在受控网络与鉴权策略下运行。
+        </p>
+        <div class="repo-row">
+          <el-link :href="REPO" type="primary" target="_blank" rel="noopener" :icon="Link" class="repo-link">Pallas-Bot</el-link>
+          <el-link :href="WEBUI_REPO" type="primary" target="_blank" rel="noopener" :icon="Link" class="repo-link">Pallas-Bot-WebUI</el-link>
+        </div>
       </el-card>
     </div>
 
-    <div
-      v-show="section === 'stack'"
-      class="panel"
-    >
-      <el-card
-        class="ac"
-        shadow="hover"
-      >
-        <el-table
-          :data="stack"
-          size="small"
-          border
-          stripe
-          class="st-table"
-        >
-          <el-table-column
-            label="项"
-            prop="name"
-            min-width="120"
-          />
-          <el-table-column
-            label="说明"
-            prop="note"
-            min-width="200"
-          />
-        </el-table>
-      </el-card>
-    </div>
-
-    <div
-      v-show="section === 'conn'"
-      class="panel"
-    >
-      <el-card
-        class="ac"
-        shadow="hover"
-      >
-        <el-skeleton
-          v-if="ok === null"
-          :rows="3"
-          animated
-        />
+    <div v-show="section === 'release'" class="panel">
+      <el-card class="ac" shadow="hover">
+        <el-skeleton v-if="ok === null" :rows="4" animated />
         <template v-else>
-          <el-descriptions
-            v-if="last"
-            :column="1"
-            border
-            size="small"
-          >
-            <el-descriptions-item
-              v-for="r in lines"
-              :key="r.k"
-              :label="r.k"
-            >
-              {{ r.v }}
+          <el-descriptions v-if="last" :column="1" border size="small">
+            <el-descriptions-item v-for="r in releaseRows" :key="r.k" :label="r.k">
+              <span class="mono">{{ r.v }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="/health">
-              <el-tag
-                v-if="ok"
-                type="success"
-                size="small"
-              >可访问</el-tag>
-              <el-tag
-                v-else
-                type="warning"
-                size="small"
-              >异常，请在控制台点刷新</el-tag>
+              <el-tag v-if="ok" type="success" size="small">可访问</el-tag>
+              <el-tag v-else type="warning" size="small">异常</el-tag>
             </el-descriptions-item>
           </el-descriptions>
-          <p
-            v-else
-            class="muted"
-          >暂无元数据。请确认 pallas_webui 已开启。</p>
-          <el-button
-            class="rbtn"
-            type="primary"
-            plain
-            @click="refresh"
-          >刷新</el-button>
+          <p v-else class="muted">未获取到构建元数据，请确认 pallas_webui 已正确加载。</p>
+          <el-button class="rbtn" type="primary" plain @click="refresh">刷新构建信息</el-button>
         </template>
+      </el-card>
+    </div>
+
+    <div v-show="section === 'runtime'" class="panel">
+      <el-card class="ac" shadow="hover">
+        <el-skeleton v-if="runtimeLoading" :rows="4" animated />
+        <el-descriptions v-else :column="1" border size="small">
+          <el-descriptions-item v-for="r in runtimeRows" :key="r.k" :label="r.k">
+            <span class="mono">{{ r.v }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-button class="rbtn" type="primary" plain @click="loadRuntime">刷新运行态</el-button>
       </el-card>
     </div>
   </PallasSidebarShell>
@@ -200,7 +159,8 @@ watch(
   color: var(--el-text-color-secondary);
 }
 .panel {
-  max-width: 920px;
+  width: 100%;
+  max-width: none;
 }
 .ac {
   border: 1px solid rgba(22, 100, 196, 0.1);
@@ -230,15 +190,21 @@ code {
 }
 .repo-link {
   display: inline-flex;
-  margin: 0 0 0.25rem;
-  font-size: 15px;
+  margin: 0;
+  font-size: 14px;
   font-weight: 500;
 }
-.st-table {
-  --el-table-border-color: rgba(22, 100, 196, 0.1);
-  width: 100%;
+.repo-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 html.dark .ac {
   border-color: rgba(100, 160, 255, 0.2);
+}
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
 }
 </style>

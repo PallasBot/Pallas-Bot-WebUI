@@ -10,14 +10,14 @@ type NcSection = "url" | "flow" | "faq";
 
 const section = ref<NcSection>("url");
 const sectionTitle: Record<NcSection, string> = {
-  url: "协议端管理 URL",
-  flow: "推荐操作顺序",
-  faq: "常见问题",
+  url: "协议运行仪表盘",
+  flow: "上线与巡检流程",
+  faq: "故障排查 FAQ",
 };
 const sectionSub: Record<NcSection, string> = {
-  url: "Pallas 托管页路径、鉴权与 NapCat 自带 Web 的区别（数据来自已加载的 pallas_protocol）。",
-  flow: "从登录到验证连接的推荐步骤。",
-  faq: "404、token、开发端口等高频问题。",
+  url: "集中查看协议端开关、账号在线情况与访问入口（基于已加载的 pallas_protocol 快照）。",
+  flow: "从协议端登录到回连验证的建议执行顺序，减少上线遗漏。",
+  faq: "覆盖 404、token、端口冲突等高频问题，并给出可执行排查路径。",
 };
 const navItems = [
   { index: "url", label: "管理 URL", icon: Link },
@@ -27,6 +27,9 @@ const navItems = [
 
 const botBase = getBotServiceBaseRef();
 const webuiPath = ref<string | null>(null);
+const webuiEnabled = ref(false);
+const accountCount = ref(0);
+const connectedCount = ref(0);
 
 const protocolOpenUrl = computed(() => protocolDashboardUrl(botBase.value || "http://localhost:8088", webuiPath.value));
 
@@ -42,8 +45,15 @@ onMounted(async () => {
     const data = await fetchInstances();
     const snap = data.pallas_protocol ?? data.napcat ?? null;
     webuiPath.value = snap?.webui_path ?? null;
+    webuiEnabled.value = Boolean(snap?.webui_enabled);
+    const accounts = snap?.accounts ?? [];
+    accountCount.value = accounts.length;
+    connectedCount.value = accounts.filter((x) => Boolean(x.connected)).length;
   } catch {
     webuiPath.value = null;
+    webuiEnabled.value = false;
+    accountCount.value = 0;
+    connectedCount.value = 0;
   }
 });
 </script>
@@ -64,6 +74,20 @@ onMounted(async () => {
       v-show="section === 'url'"
       class="panel nc-card"
     >
+      <div class="proto-overview">
+        <div class="ov-card">
+          <span class="k">协议管理状态</span>
+          <strong>{{ webuiEnabled ? "已启用" : "未启用" }}</strong>
+        </div>
+        <div class="ov-card">
+          <span class="k">协议账号总数</span>
+          <strong>{{ accountCount }}</strong>
+        </div>
+        <div class="ov-card">
+          <span class="k">当前在线账号</span>
+          <strong>{{ connectedCount }}</strong>
+        </div>
+      </div>
       <el-tag
         type="info"
         effect="plain"
@@ -209,7 +233,8 @@ onMounted(async () => {
   color: var(--el-text-color-secondary);
 }
 .panel {
-  max-width: 920px;
+  width: 100%;
+  max-width: none;
 }
 .tag-row {
   margin-bottom: 12px;
@@ -231,12 +256,75 @@ onMounted(async () => {
     font-size: 12px;
     color: var(--el-text-color-secondary);
     line-height: 1.5;
+    word-break: break-word;
   }
   code {
     font-size: 0.9em;
+    word-break: break-all;
+  }
+}
+.proto-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ov-card {
+  border: 1px solid rgba(22, 100, 196, 0.14);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  .k {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    line-height: 1.35;
+  }
+  strong {
+    font-size: 18px;
+    color: var(--c-main);
+    line-height: 1.2;
+    word-break: break-word;
   }
 }
 html.dark .nc-card {
   border-color: rgba(100, 160, 255, 0.2);
+}
+
+@media (max-width: 900px) {
+  .main-title {
+    font-size: 1.08rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .panel {
+    max-width: none;
+  }
+  .nc-card {
+    .lead {
+      font-size: 13px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    :deep(code) {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    :deep(.el-button) {
+      width: 100%;
+      margin-right: 0;
+    }
+    :deep(.el-descriptions__label),
+    :deep(.el-descriptions__content) {
+      word-break: break-word;
+    }
+  }
+  .proto-overview {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

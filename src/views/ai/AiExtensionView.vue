@@ -2,6 +2,7 @@
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import {
   fetchAiExtensionConfig,
+  fetchAiExtensionLogs,
   fetchAiNcmStatus,
   postAiExtensionTest,
   postAiNcmLogout,
@@ -9,7 +10,7 @@ import {
   postAiNcmVerifySms,
   putAiExtensionConfig,
 } from "@/api/consoleApi";
-import type { AiExtensionConfig, AiExtensionTestData, AiProxyResult } from "@/api/pallasTypes";
+import type { AiExtensionConfig, AiExtensionLogsData, AiExtensionTestData, AiProxyResult } from "@/api/pallasTypes";
 import { Link, Monitor, User } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { onMounted, ref } from "vue";
@@ -26,6 +27,9 @@ const ncmResult = ref<AiProxyResult | null>(null);
 const ncmPhone = ref("");
 const ncmCaptcha = ref("");
 const ncmCtcode = ref(86);
+const aiLogLoading = ref(false);
+const aiUv = ref<AiExtensionLogsData | null>(null);
+const aiCel = ref<AiExtensionLogsData | null>(null);
 
 const navItems = [
   { index: "connection" as const, label: "连接配置", icon: Link },
@@ -91,6 +95,19 @@ async function loadNcmStatus() {
   }
 }
 
+async function loadAiLogs() {
+  aiLogLoading.value = true;
+  try {
+    const [u, c] = await Promise.all([fetchAiExtensionLogs("uvicorn", 160), fetchAiExtensionLogs("celery", 160)]);
+    aiUv.value = u;
+    aiCel.value = c;
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "AI 日志读取失败");
+  } finally {
+    aiLogLoading.value = false;
+  }
+}
+
 async function sendNcmSms() {
   if (!ncmPhone.value.trim()) {
     ElMessage.warning("请先填写手机号");
@@ -145,6 +162,7 @@ async function logoutNcm() {
 onMounted(() => {
   void load();
   void loadNcmStatus();
+  void loadAiLogs();
 });
 </script>
 
@@ -214,6 +232,24 @@ onMounted(() => {
           <el-descriptions-item label="错误信息">{{ testResult.error || "—" }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
+      <el-card class="c demo-card" shadow="hover">
+        <template #header>
+          <div class="log-hd">
+            <span>AI 日志（Uvicorn / Celery）</span>
+            <el-button type="primary" size="small" :loading="aiLogLoading" @click="loadAiLogs">刷新</el-button>
+          </div>
+        </template>
+        <el-row :gutter="10">
+          <el-col :xs="24" :md="12">
+            <el-text size="small" type="info">Uvicorn：{{ aiUv?.path || "—" }}</el-text>
+            <pre class="json-box">{{ (aiUv?.lines || []).join('\n') || aiUv?.error || "（暂无输出）" }}</pre>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-text size="small" type="info">Celery：{{ aiCel?.path || "—" }}</el-text>
+            <pre class="json-box">{{ (aiCel?.lines || []).join('\n') || aiCel?.error || "（暂无输出）" }}</pre>
+          </el-col>
+        </el-row>
+      </el-card>
     </div>
 
     <div v-show="section === 'ncm'" class="panel">
@@ -271,7 +307,8 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 .panel {
-  max-width: 900px;
+  width: 100%;
+  max-width: none;
 }
 .c {
   border: 1px solid rgba(22, 100, 196, 0.1);
@@ -297,5 +334,11 @@ onMounted(() => {
 }
 .demo-card {
   margin-top: 12px;
+}
+.log-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 </style>

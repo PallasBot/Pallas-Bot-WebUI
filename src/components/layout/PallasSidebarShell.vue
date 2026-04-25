@@ -11,7 +11,7 @@ export interface PallasNavItem {
 defineProps<{
   asideTitle: string;
   navItems: PallasNavItem[];
-  /** 与 el-menu-item index 一致 */
+  /** 当前导航键 */
   modelValue: string;
   menuAriaLabel?: string;
   hideAside?: boolean;
@@ -196,6 +196,9 @@ function pickNav(key: string) {
 }
 .main-scroll-inner {
   text-align: left;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 html.dark {
   .pallas-sidebar-aside,
@@ -218,6 +221,9 @@ html.dark {
   }
   .main-scroll :deep(.el-scrollbar__wrap) {
     max-height: none;
+  }
+  .main-scroll-inner {
+    max-width: none;
   }
 }
 </style>

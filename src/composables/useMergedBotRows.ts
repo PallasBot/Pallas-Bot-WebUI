@@ -2,7 +2,7 @@ import type { BotConfigPublic, BotRow } from "@/api/pallasTypes";
 import type { ComputedRef, Ref } from "vue";
 import { computed } from "vue";
 
-/** 与「好友与群」页实例表一致：NoneBot 已连接行 ∪ 库内 config 账号行 */
+/** 合并实例行 */
 export interface MergedBotRow {
   key: string;
   account: number;

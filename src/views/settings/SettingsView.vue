@@ -1,57 +1,83 @@
 <script setup lang="ts">
-import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
+import { fetchSystem } from "@/api/consoleApi";
+import { fetchHealth } from "@/api/health";
 import { PALLAS_API_TOKEN_KEY } from "@/api/http";
-import { Brush, CircleCheck, Link, List } from "@element-plus/icons-vue";
-import { onMounted, ref, watch } from "vue";
+import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
+import { CircleCheck, Connection, Link, Lock } from "@element-plus/icons-vue";
+import { computed, onMounted, ref, watch } from "vue";
 
-type Section = "appearance" | "deploy" | "env" | "checklist";
+type Section = "access" | "baseline" | "deploy" | "checklist";
+
+const section = ref<Section>("access");
+const apiToken = ref("");
+const loading = ref(false);
+const healthOk = ref<boolean | null>(null);
+const driverHost = ref<string>("-");
+const driverPort = ref<number | null>(null);
 
 const base = (import.meta.env.BASE_URL as string) || "/pallas/";
-const api = `${base.replace(/\/$/, "")}/api`;
-const devProxy = "Vite 将 /pallas/api 转发到 VITE_PROXY_TARGET，默认 http://127.0.0.1:8088";
-const defaultPort = 8088;
-
-const apiToken = ref("");
-const section = ref<Section>("appearance");
+const apiBase = `${base.replace(/\/$/, "")}/api`;
+const healthPath = `${apiBase}/health`;
+const protocolPath = "/protocol/napcat";
+const protocolHint = `${protocolPath}（默认，可由 PALLAS_PROTOCOL_WEBUI_PATH 覆盖）`;
+const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TARGET。";
 
 const sectionTitle: Record<Section, string> = {
-  appearance: "外观与本地",
-  deploy: "与 Bot 进程对接",
-  env: "环境变量速查",
-  checklist: "发布前自测",
+  access: "访问与鉴权",
+  baseline: "连接基线",
+  deploy: "生产部署建议",
+  checklist: "上线前检查",
+};
+
+const sectionSub: Record<Section, string> = {
+  access: "控制本浏览器写操作权限，避免误改线上配置。",
+  baseline: "当前控制台约定路径与后端驱动监听信息。",
+  deploy: "面向生产环境的发布、反代与访问控制建议。",
+  checklist: "发布前做最小闭环自检，降低回滚概率。",
 };
 
 const navItems = [
-  { index: "appearance" as const, label: "外观与本地", icon: Brush },
-  { index: "deploy" as const, label: "对接与路径", icon: Link },
-  { index: "env" as const, label: "环境变量", icon: List },
-  { index: "checklist" as const, label: "自测清单", icon: CircleCheck },
+  { index: "access" as const, label: "访问与鉴权", icon: Lock },
+  { index: "baseline" as const, label: "连接基线", icon: Connection },
+  { index: "deploy" as const, label: "部署建议", icon: Link },
+  { index: "checklist" as const, label: "上线检查", icon: CircleCheck },
 ];
+
+const driverAddr = computed(() => {
+  if (!driverHost.value || driverHost.value === "-" || !driverPort.value) return "-";
+  return `${driverHost.value}:${driverPort.value}`;
+});
+
+async function loadRuntimeMeta() {
+  loading.value = true;
+  try {
+    const [h, s] = await Promise.all([fetchHealth(), fetchSystem()]);
+    healthOk.value = !!h.ok;
+    driverHost.value = s.nonebot2_driver?.host || "-";
+    driverPort.value = s.nonebot2_driver?.port ?? null;
+  } catch {
+    healthOk.value = false;
+    driverHost.value = "-";
+    driverPort.value = null;
+  } finally {
+    loading.value = false;
+  }
+}
 
 onMounted(() => {
   if (typeof localStorage !== "undefined") {
     apiToken.value = localStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
   }
+  void loadRuntimeMeta();
 });
 
 watch(apiToken, (v) => {
   if (typeof localStorage !== "undefined") {
     const t = (v || "").trim();
-    if (t) {
-      localStorage.setItem(PALLAS_API_TOKEN_KEY, t);
-    } else {
-      localStorage.removeItem(PALLAS_API_TOKEN_KEY);
-    }
+    if (t) localStorage.setItem(PALLAS_API_TOKEN_KEY, t);
+    else localStorage.removeItem(PALLAS_API_TOKEN_KEY);
   }
 });
-
-const envTable = [
-  { key: "HOST", tip: "NoneBot 绑定地址，常为 0.0.0.0" },
-  { key: "PORT", tip: "HTTP 端口，需与 Vite 代理目标一致" },
-  { key: "pallas_webui / pallas_webui_api_token", tip: "本控制台与 Bot/群 配置写操作鉴权；非空时浏览器需在设置中填同值" },
-  { key: "pallas_protocol", tip: "协议端（NapCat 等）托管页、pallas_protocol_token 等与 PALLAS_PROTOCOL_* 配置相关" },
-  { key: "VITE_PROXY_TARGET", tip: "仅 WebUI 开发：指向 Bot 进程 http(s) 根地址" },
-];
 </script>
 
 <template>
@@ -63,151 +89,92 @@ const envTable = [
   >
     <template #header="{ section: s }">
       <h1 class="main-title">{{ sectionTitle[s as Section] }}</h1>
-      <p
-        v-if="s === 'appearance'"
-        class="main-sub"
-      >
-        仅影响本机浏览器，不上传。
-      </p>
-      <p
-        v-else-if="s === 'deploy'"
-        class="main-sub"
-      >
-        与 Pallas-Bot 的 HTTP 根路径、健康检查与代理说明。
-      </p>
-      <p
-        v-else-if="s === 'env'"
-        class="main-sub"
-      >
-        以仓库 <code>.env</code> 与实际部署为准；本表为联调时高频项速查。
-      </p>
-      <p
-        v-else
-        class="main-sub"
-      >
-        上线前在目标环境过一遍，避免反代/端口/token 类问题。
-      </p>
+      <p class="main-sub">{{ sectionSub[s as Section] }}</p>
     </template>
 
     <div
-      v-show="section === 'appearance'"
+      v-show="section === 'access'"
       class="panel"
     >
-      <el-form
-        label-position="top"
-        class="dense-form"
-        @submit.prevent
-      >
-        <el-form-item label="Pallas API 写 Token（可选）">
-          <p class="form-lead">与 Bot 侧 pallas_webui_api_token 一致时，方可 PUT 改 Bot/群 配置。</p>
-          <div class="form-hint">
-            仅当 Bot 侧已配置 <code>pallas_webui_api_token</code> 时才会校验该值；未配置时留空也可写入。
-          </div>
-          <el-input
-            v-model="apiToken"
-            type="password"
-            show-password
-            clearable
-            placeholder="不填 = 只读；填错会 401"
-            class="api-tok"
-          />
-          <div class="form-hint">
-            存 <code>localStorage</code>，请求头 <code>X-Pallas-Token</code>；留空会清除已存值。
-          </div>
-        </el-form-item>
-      </el-form>
+      <el-card class="cardx" shadow="hover">
+        <h3 class="card-title">写操作 Token（本机）</h3>
+        <p class="para">
+          该值用于浏览器发起写操作时附带 <code>X-Pallas-Token</code>。只有与后端
+          <code>pallas_webui_api_token</code> 一致时，才允许更新 Bot/群 配置。
+        </p>
+        <el-input
+          v-model="apiToken"
+          type="password"
+          show-password
+          clearable
+          placeholder="留空表示不附带写 Token（推荐只读场景）"
+          class="api-tok"
+        />
+        <p class="hint">仅保存在当前浏览器的 <code>localStorage</code>，不会上报到服务端。</p>
+      </el-card>
+    </div>
+
+    <div
+      v-show="section === 'baseline'"
+      class="panel"
+    >
+      <el-card class="cardx" shadow="hover">
+        <div class="row-line">
+          <h3 class="card-title">连接状态</h3>
+          <el-button size="small" :loading="loading" @click="loadRuntimeMeta">刷新</el-button>
+        </div>
+        <el-descriptions :column="1" border class="desc">
+          <el-descriptions-item label="Health">
+            <el-tag v-if="healthOk === true" type="success" size="small">可访问</el-tag>
+            <el-tag v-else-if="healthOk === false" type="danger" size="small">不可访问</el-tag>
+            <el-tag v-else size="small">检查中</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="WebUI 基址"><code>{{ base }}</code></el-descriptions-item>
+          <el-descriptions-item label="API 基址"><code>{{ apiBase }}</code></el-descriptions-item>
+          <el-descriptions-item label="健康检查"><code>{{ healthPath }}</code></el-descriptions-item>
+          <el-descriptions-item label="协议管理入口"><code>{{ protocolHint }}</code></el-descriptions-item>
+          <el-descriptions-item label="驱动监听"><code>{{ driverAddr }}</code></el-descriptions-item>
+        </el-descriptions>
+      </el-card>
     </div>
 
     <div
       v-show="section === 'deploy'"
       class="panel"
     >
-      <p class="para">生产：将 <code>dist</code> 全量复制到 Pallas
-        <code>data/pallas_webui/public</code>，由 Bot 进程提供 <code>/pallas</code> 静态与
-        <code>/pallas/api</code> JSON。</p>
-      <el-descriptions
-        :column="1"
-        border
-        class="desc"
-      >
-        <el-descriptions-item label="Vite base（构建）">
-          <code>{{ base }}</code>
-        </el-descriptions-item>
-        <el-descriptions-item label="健康检查">
-          <code>{{ api }}/health</code>
-        </el-descriptions-item>
-        <el-descriptions-item label="开发代理">
-          <span class="desc-sm">{{ devProxy }}<br>默认
-            <code>127.0.0.1:{{ defaultPort }}</code> 需与 <code>.env</code> 中
-            <code>PORT</code> 一致。</span>
-        </el-descriptions-item>
-        <el-descriptions-item label="协议端同机路径">
-          <code>/protocol/napcat</code>（默认；可由 pallas_protocol_webui_path 覆盖；不经本 dist）
-        </el-descriptions-item>
-      </el-descriptions>
-    </div>
-
-    <div
-      v-show="section === 'env'"
-      class="panel"
-    >
-      <p class="para">下列为常见联调项；以实际环境为准。</p>
-      <el-table
-        :data="envTable"
-        class="env-table"
-        size="default"
-        border
-        stripe
-      >
-        <el-table-column
-          label="名称"
-          prop="key"
-          min-width="200"
-        >
-          <template #default="{ row }">
-            <code class="k">{{ row.key }}</code>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="作用（简述）"
-          prop="tip"
-          min-width="300"
-        />
-      </el-table>
+      <el-card class="cardx" shadow="hover">
+        <h3 class="card-title">生产部署建议</h3>
+        <ul class="list">
+          <li>静态产物统一由 Bot 提供：将前端 <code>dist</code> 发布到 <code>data/pallas_webui/public</code>。</li>
+          <li>反向代理只暴露业务入口，建议限制来源与速率，避免直接裸露管理面。</li>
+          <li>公网环境必须启用 HTTPS，并结合 Token/网关策略限制写操作能力。</li>
+          <li>开发联调使用 <code>VITE_PROXY_TARGET</code>，避免跨域与错误端口导致误判。</li>
+        </ul>
+        <p class="hint">{{ devProxy }}</p>
+      </el-card>
     </div>
 
     <div
       v-show="section === 'checklist'"
       class="panel"
     >
-      <el-timeline class="timeline-dense">
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
-          <p class="tl-p">Bot 能启动、无 pallas_webui 导入错误。</p>
-        </el-timeline-item>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
-          <p class="tl-p">浏览器能打开 <code>&lt;你的地址&gt;{{ base }}</code>，且
-            <code>…/pallas/api/health</code> 返回 JSON。</p>
-        </el-timeline-item>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
-          <p class="tl-p">使用协议端时：<code>&lt;同 host:port&gt;/protocol/napcat</code>（或实例返回的
-            <code>webui_path</code>）可访问，<code>pallas_protocol_token</code> 能过鉴权。</p>
-        </el-timeline-item>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
-          <p class="tl-p">公网建议再配反代、HTTPS 与访控，勿裸奔 token。</p>
-        </el-timeline-item>
-      </el-timeline>
+      <el-card class="cardx" shadow="hover">
+        <h3 class="card-title">上线前最小闭环</h3>
+        <el-timeline class="timeline-dense">
+          <el-timeline-item type="primary" hollow>
+            <p class="tl-p">`/pallas/` 与 <code>/pallas/api/health</code> 均可访问。</p>
+          </el-timeline-item>
+          <el-timeline-item type="primary" hollow>
+            <p class="tl-p">写 Token 校验符合预期：错误值 401，正确值可写。</p>
+          </el-timeline-item>
+          <el-timeline-item type="primary" hollow>
+            <p class="tl-p">协议管理页可达（默认 <code>/protocol/napcat</code>），且鉴权有效。</p>
+          </el-timeline-item>
+          <el-timeline-item type="primary" hollow>
+            <p class="tl-p">反代与 HTTPS 生效，管理面不直接暴露到公共网络。</p>
+          </el-timeline-item>
+        </el-timeline>
+      </el-card>
     </div>
   </PallasSidebarShell>
 </template>
@@ -225,79 +192,40 @@ const envTable = [
   font-size: 14px;
   line-height: 1.65;
   color: var(--el-text-color-secondary);
-  code {
-    font-size: 0.9em;
-  }
 }
 .panel {
-  line-height: 1.8;
-  font-size: 14px;
-  color: var(--el-text-color-primary);
-  max-width: 920px;
+  width: 100%;
+  max-width: none;
+}
+.cardx {
+  border: 1px solid rgba(22, 100, 196, 0.12);
+}
+.card-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
 }
 .para {
-  margin: 0 0 16px;
-  line-height: 1.8;
-  color: var(--el-text-color-regular);
-  code {
-    font-size: 0.9em;
-  }
-}
-.form-lead {
   margin: 0 0 10px;
+  color: var(--el-text-color-regular);
   line-height: 1.75;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
 }
-.form-hint {
-  margin: 8px 0 0;
+.hint {
+  margin: 10px 0 0;
   font-size: 12px;
-  line-height: 1.6;
   color: var(--el-text-color-secondary);
-  code {
-    font-size: 0.9em;
-  }
-}
-.dense-form {
-  :deep(.el-form-item) {
-    margin-bottom: 22px;
-  }
-  :deep(.el-form-item__label) {
-    font-weight: 600;
-    font-size: 14px;
-  }
 }
 .api-tok {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
 }
 .desc {
   :deep(.el-descriptions__label) {
-    width: 200px;
+    width: 170px;
   }
   :deep(.el-descriptions__cell) {
-    padding: 12px 14px;
-    line-height: 1.7;
+    line-height: 1.65;
   }
-}
-.desc-sm {
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--el-text-color-secondary);
-  code {
-    font-size: 0.9em;
-  }
-}
-.k {
-  font-size: 0.9em;
-  word-break: break-all;
-}
-.env-table {
-  width: 100%;
-  :deep(.cell) {
-    line-height: 1.6;
-  }
-  --el-table-border-color: rgba(22, 100, 196, 0.1);
 }
 .timeline-dense {
   :deep(.el-timeline-item__content) {
@@ -313,5 +241,21 @@ const envTable = [
   :deep(.el-timeline-item__tail) {
     top: 10px;
   }
+}
+.list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.75;
+  color: var(--el-text-color-regular);
+}
+.row-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+code {
+  font-size: 0.9em;
 }
 </style>

@@ -5,7 +5,7 @@ export interface PallasConnection {
   ok: Ref<boolean | null>;
   last: ShallowRef<HealthResponse | null>;
   refresh: () => Promise<void>;
-  /** 每次 health 拉取完成（含顶栏「刷新连接」）后递增，供总览日志等联动 */
+  /** health 刷新计数 */
   healthTick: Ref<number>;
 }
 
