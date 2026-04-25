@@ -419,6 +419,13 @@ watch(healthTick, () => {
   padding: 0 12px;
   height: 34px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  color: #fff !important;
+  span {
+    color: #fff !important;
+  }
+  :deep(.el-icon) {
+    color: #fff !important;
+  }
   &.is-empty {
     opacity: 0.88;
     --el-color: #fff;
