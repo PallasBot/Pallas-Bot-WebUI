@@ -3,7 +3,7 @@ import {
   fetchAiExtensionConfig,
   fetchDbOverview,
   fetchFriendList,
-  fetchGroupConfigs,
+  fetchGroupList,
   fetchInstances,
   fetchLogs,
   fetchMessageStats,
@@ -275,10 +275,10 @@ async function loadBotSocialStats(selfId: string | null) {
   try {
     const [friends, groups] = await Promise.all([
       fetchFriendList(parseInt(selfId, 10), 5000),
-      fetchGroupConfigs(5000),
+      fetchGroupList(parseInt(selfId, 10), 5000),
     ]);
     botFriendCount.value = friends.friends.length;
-    botGroupCount.value = groups.length;
+    botGroupCount.value = groups.groups.length;
   } catch {
     botFriendCount.value = null;
     botGroupCount.value = null;
@@ -949,5 +949,3 @@ onUnmounted(() => {
 .log-scroll { background: var(--el-fill-color-light); border-radius: 8px; border: 1px solid var(--el-border-color-lighter); }
 .log-pre { margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, Consolas, monospace; }
 </style>
-
-

@@ -8,6 +8,7 @@ import type {
   FriendOverviewData,
   RequestOverviewData,
   GroupConfigPublic,
+  GroupListData,
   InstancesData,
   LogsData,
   PluginRow,
@@ -141,6 +142,14 @@ export async function fetchFriendRequests(params?: {
 }): Promise<FriendOverviewData> {
   const { data } = await http.get<ApiOk<FriendOverviewData>>("/friend-requests", { params });
   return unwrap(data, "/friend-requests");
+}
+
+/** 获取群列表（按账号实时拉取） */
+export async function fetchGroupList(selfId: number, limit = 1000): Promise<GroupListData> {
+  const { data } = await http.get<ApiOk<GroupListData>>("/group-list", {
+    params: { self_id: selfId, limit },
+  });
+  return unwrap(data, "/group-list");
 }
 
 /** 获取好友列表 */

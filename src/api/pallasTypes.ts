@@ -241,6 +241,24 @@ export interface AiProxyResult {
   error: string | null;
 }
 
+/** 群列表（按账号实时拉取） */
+export interface GroupListRow {
+  group_id: number;
+  group_name: string;
+  member_count: number;
+  max_member_count: number;
+}
+
+export interface GroupListData {
+  self_id: string;
+  connection_key: string;
+  adapter: string;
+  groups: GroupListRow[];
+  truncated: boolean;
+  limit: number;
+  error: string | null;
+}
+
 /** 好友列表 */
 export interface FriendListRow {
   user_id: number;
@@ -258,5 +276,3 @@ export interface FriendListData {
   limit: number;
   error: string | null;
 }
-
-

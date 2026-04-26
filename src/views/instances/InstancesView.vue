@@ -878,16 +878,16 @@ watch(
                       <span class="k">自动同意好友</span>
                       <span class="v">{{ socialSelectedBot.config?.auto_accept_friend ? "开" : "关" }}</span>
                     </div>
+                    <div class="cfg-row">
+                      <span class="k">好友总数</span>
+                      <span class="v">{{ socialFriendList?.friends.length ?? 0 }}</span>
+                    </div>
                   </div>
                   <div class="cfg-card">
                     <div class="cfg-card-title">目标用户</div>
                     <div class="cfg-row">
                       <span class="k">当前用户</span>
                       <span class="v mono">{{ selectedFriendUserId ?? "未选择" }}</span>
-                    </div>
-                    <div class="cfg-row">
-                      <span class="k">好友总数</span>
-                      <span class="v">{{ socialFriendList?.friends.length ?? 0 }}</span>
                     </div>
                     <div class="cfg-row cfg-row-note">
                       <span class="sm">{{ selectedFriendRow?.nickname || selectedFriendRow?.remark || "请选择左侧好友后再编辑配置" }}</span>
