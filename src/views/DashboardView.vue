@@ -591,7 +591,7 @@ onUnmounted(() => {
               <div v-for="g in (gpu.devices || [])" :key="g.index" class="nb-item">
                 <span class="k">{{ g.name }} (GPU {{ g.index }})</span>
                 <span class="v">显存 {{ formatBytes(g.memory_used) }} / {{ formatBytes(g.memory_total) }}</span>
-                <span class="v">核心 {{ g.utilization_gpu }}% · 显存 {{ g.utilization_memory }}% · 温度 {{ g.temperature ?? "-" }}°C</span>
+                <span class="v">核心 {{ g.utilization_gpu }}% · 显存带宽 {{ g.utilization_memory }}% · 温度 {{ g.temperature ?? "-" }}°C</span>
               </div>
             </div>
           </el-card>
