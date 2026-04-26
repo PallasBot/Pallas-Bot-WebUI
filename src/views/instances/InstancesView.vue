@@ -506,10 +506,12 @@ async function load() {
   }
 }
 
-async function loadGroups() {
+async function loadGroups(selfId?: string | null) {
   groupLoading.value = true;
+  groups.value = [];
   try {
-    groups.value = await fetchGroupConfigs(socialPullLimit.value);
+    const sid = selfId && /^\d+$/.test(selfId) ? parseInt(selfId, 10) : undefined;
+    groups.value = await fetchGroupConfigs(socialPullLimit.value, sid);
   } catch (e) {
     ElMessage.error(e instanceof Error ? e.message : "群配置加载失败");
     groups.value = [];
@@ -574,7 +576,6 @@ onMounted(() => {
   if (typeof gid === "string" && gid) groupIdFilter.value = gid;
   void load();
   void loadPluginNames();
-  void loadGroups();
   if (active.value === "friends") void loadFriendOverview();
 });
 
@@ -612,6 +613,15 @@ watch(
 );
 
 watch(
+  () => socialSelectedBotSelfId.value,
+  (sid) => {
+    groupIdFilter.value = "";
+    void loadGroups(sid);
+  },
+  { immediate: true },
+);
+
+watch(
   () => selectedFriendUserId.value,
   () => {
     void loadSelectedUserConfig();
@@ -627,7 +637,7 @@ watch(
       void load();
     }
     if (!groupLoading.value && groups.value.length === 0) {
-      void loadGroups();
+      void loadGroups(socialSelectedBotSelfId.value);
     }
     if (!friendOvLoading.value) {
       void loadFriendOverview();
@@ -643,7 +653,7 @@ watch(
       void load();
     }
     if (!groupLoading.value && groups.value.length === 0) {
-      void loadGroups();
+      void loadGroups(socialSelectedBotSelfId.value);
     }
     void loadFriendOverview();
   },
@@ -1123,14 +1133,14 @@ watch(
                       :step="50"
                       size="small"
                       class="num"
-                      @change="() => void loadGroups()"
+                      @change="() => void loadGroups(socialSelectedBotSelfId)"
                     />
                     <el-button
                       type="primary"
                       plain
                       size="small"
                       :loading="groupLoading"
-                      @click="loadGroups"
+                      @click="() => void loadGroups(socialSelectedBotSelfId)"
                     >刷新</el-button>
                   </div>
                 </div>

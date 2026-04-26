@@ -204,8 +204,10 @@ export async function deleteBotConfig(account: number): Promise<{ deleted: boole
   return deleteDbTableRow({ table: "bot_config", row_id: account });
 }
 
-export async function fetchGroupConfigs(limit: number): Promise<GroupConfigPublic[]> {
-  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", { params: { limit } });
+export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {
+  const params: Record<string, unknown> = { limit };
+  if (selfId !== undefined) params.self_id = selfId;
+  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", { params });
   return unwrap(data, "/group-configs");
 }
 
