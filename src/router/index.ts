@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import ConsoleLayout from "../layout/ConsoleLayout.vue";
 import AboutView from "../views/about/AboutView.vue";
+import UpdateView from "../views/update/UpdateView.vue";
 import AiExtensionView from "../views/ai/AiExtensionView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import DatabaseView from "../views/database/DatabaseView.vue";
@@ -70,6 +71,12 @@ const router = createRouter({
           name: "about",
           component: AboutView,
           meta: { title: "关于" },
+        },
+        {
+          path: "update",
+          name: "update",
+          component: UpdateView,
+          meta: { title: "更新" },
         },
       ],
     },

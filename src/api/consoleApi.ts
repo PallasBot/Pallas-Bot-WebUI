@@ -1,5 +1,9 @@
 import { http } from "./http";
 import type {
+  UpdateCheckData,
+  UpdateApplyData,
+  BotUpdateCheckData,
+  BotUpdateApplyData,
   ApiOk,
   BotConfigPublic,
   BotRow,
@@ -289,4 +293,24 @@ export async function postAiNcmVerifySms(body: {
 export async function postAiNcmLogout(): Promise<AiProxyResult> {
   const { data } = await http.post<ApiOk<AiProxyResult>>("/ai-extension/ncm/logout");
   return unwrap(data, "/ai-extension/ncm/logout");
+}
+
+export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
+  const { data } = await http.get<ApiOk<UpdateCheckData>>("/update/check");
+  return unwrap(data, "/update/check");
+}
+
+export async function postUpdateApply(): Promise<UpdateApplyData> {
+  const { data } = await http.post<ApiOk<UpdateApplyData>>("/update/apply");
+  return unwrap(data, "/update/apply");
+}
+
+export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
+  const { data } = await http.get<ApiOk<BotUpdateCheckData>>("/update/bot/check");
+  return unwrap(data, "/update/bot/check");
+}
+
+export async function postBotUpdateApply(): Promise<BotUpdateApplyData> {
+  const { data } = await http.post<ApiOk<BotUpdateApplyData>>("/update/bot/apply");
+  return unwrap(data, "/update/bot/apply");
 }

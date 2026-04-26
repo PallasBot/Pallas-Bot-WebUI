@@ -15,6 +15,7 @@ import {
   Moon,
   Monitor,
   Platform,
+  Refresh,
   Setting,
   Sunny,
 } from "@element-plus/icons-vue";
@@ -122,6 +123,7 @@ const nav = [
   { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
   { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
   { name: "about" as const, to: { name: "about" }, label: "关于", icon: InfoFilled },
+  { name: "update" as const, to: { name: "update" }, label: "更新", icon: Refresh },
 ];
 
 function onNavClick(item: (typeof nav)[number]) {
@@ -688,5 +690,3 @@ html.dark .menu-item:hover:not(.selected) {
   }
 }
 </style>
-
-

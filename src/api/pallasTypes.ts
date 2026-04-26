@@ -241,6 +241,38 @@ export interface AiProxyResult {
   error: string | null;
 }
 
+/** WebUI 更新检查 */
+export interface UpdateCheckData {
+  current_tag: string;
+  latest_tag: string | null;
+  has_update: boolean;
+  release_url: string;
+  asset_url: string;
+  error: string | null;
+  checked_at: number;
+}
+
+export interface UpdateApplyData {
+  tag: string;
+  message: string;
+}
+
+/** Bot 本体更新检查 */
+export interface BotUpdateCheckData {
+  current_tag: string;
+  current_commit: string;
+  latest_tag: string | null;
+  has_update: boolean;
+  release_url: string;
+  error: string | null;
+  checked_at: number;
+}
+
+export interface BotUpdateApplyData {
+  tag: string;
+  message: string;
+}
+
 /** 群列表（按账号实时拉取） */
 export interface GroupListRow {
   group_id: number;

@@ -137,6 +137,7 @@ const botGroupCountDisplay = computed(() => {
   if (Number.isFinite(fromProtocol) && fromProtocol >= 0) return fromProtocol;
   return botGroupCount.value;
 });
+const baseUrl = import.meta.env.BASE_URL;
 const introText = "我是来自米诺斯的祭司帕拉斯，会在罗德岛休息一段时间......";
 const introText2 = "虽然这么说，我渴望以美酒和戏剧被招待，更渴望走向战场。";
 const gpu = computed(() => sysData.value?.runtime?.gpu ?? { available: false, reason: "", devices: [] });
@@ -516,10 +517,13 @@ onUnmounted(() => {
           <el-card class="intro-card" shadow="never">
             <div class="intro-main">
               <el-avatar
-                :size="56"
-                src="https://user-images.githubusercontent.com/18511905/195892994-c1a231ec-147a-4f98-ba75-137d89578247.png"
+                  :size="80"
+                  :src="`${baseUrl}pallas-priest.png`"
+                shape="square"
+                style="background: rgba(22, 100, 196, 0.08); flex-shrink: 0;"
               />
               <div class="intro-text">
+                <p class="intro-name">牛牛！</p>
                 <p>{{ introText }}</p>
                 <p>{{ introText2 }}</p>
               </div>
@@ -855,24 +859,26 @@ onUnmounted(() => {
 }
 .intro-main {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
+  gap: 16px;
+  align-items: center;
 }
 .intro-text {
-  margin-left: 15px ;
-  margin-top: 5px ;
-  font-size: 14px;
-  line-height: 1.65;
-}
-.intro-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  .intro-name {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--c-main);
+    line-height: 1.2;
+  }
   p {
     margin: 0;
-    font-size: 13px;
-    line-height: 1.55;
-    color: var(--el-text-color-primary);
-  }
-  p + p {
-    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--el-text-color-secondary);
   }
 }
 .nb-conn-hd {
