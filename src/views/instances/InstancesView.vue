@@ -508,7 +508,6 @@ async function load() {
 
 async function loadGroups(selfId?: string | null) {
   groupLoading.value = true;
-  groups.value = [];
   try {
     const sid = selfId && /^\d+$/.test(selfId) ? parseInt(selfId, 10) : undefined;
     groups.value = await fetchGroupConfigs(socialPullLimit.value, sid);
@@ -1077,7 +1076,7 @@ watch(
             class="pan3-insp pan3-insp-wide"
             aria-label="群列表"
           >
-            <el-card class="c c-insp" shadow="hover">
+            <el-card v-loading="groupLoading" class="c c-insp" shadow="hover">
               <template #header>
                 <div class="list-head">
                   <span class="insp-h">群列表</span>
