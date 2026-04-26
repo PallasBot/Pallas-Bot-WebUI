@@ -196,6 +196,10 @@ export async function putBotConfig(
   return unwrap(data, `/bot-configs/${account}`);
 }
 
+export async function deleteBotConfig(account: number): Promise<{ deleted: boolean }> {
+  return deleteDbTableRow({ table: "bot_config", row_id: account });
+}
+
 export async function fetchGroupConfigs(limit: number): Promise<GroupConfigPublic[]> {
   const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", { params: { limit } });
   return unwrap(data, "/group-configs");

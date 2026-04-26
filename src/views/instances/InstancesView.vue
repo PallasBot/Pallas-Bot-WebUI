@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import {
+  deleteBotConfig,
   fetchFriendList,
   fetchFriendRequests,
   fetchGroupConfigs,
@@ -26,7 +27,7 @@ import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServic
 import { accountNativeWebUiUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
 import { Connection } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -209,6 +210,93 @@ function openEditBot(row: MergedBotRow) {
   }
   editAccount.value = row.account;
   botDialog.value = true;
+}
+
+const deleting = ref(false);
+const selectedKeys = ref<Set<string>>(new Set());
+const batchDeleting = ref(false);
+
+const deletableRows = computed(() => mergedRows.value.filter((r) => r.account >= 0 && r.config));
+
+const allDeletableSelected = computed(
+  () => deletableRows.value.length > 0 && deletableRows.value.every((r) => selectedKeys.value.has(r.key)),
+);
+
+function toggleSelect(key: string) {
+  const s = new Set(selectedKeys.value);
+  if (s.has(key)) s.delete(key);
+  else s.add(key);
+  selectedKeys.value = s;
+}
+
+function toggleSelectAll() {
+  if (allDeletableSelected.value) {
+    selectedKeys.value = new Set();
+  } else {
+    selectedKeys.value = new Set(deletableRows.value.map((r) => r.key));
+  }
+}
+
+async function batchDeleteBots() {
+  const toDelete = mergedRows.value.filter((r) => selectedKeys.value.has(r.key) && r.account >= 0 && r.config);
+  if (!toDelete.length) return;
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选中的 ${toDelete.length} 个实例配置？此操作不可撤销。`,
+      "批量删除",
+      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" },
+    );
+  } catch {
+    return;
+  }
+  batchDeleting.value = true;
+  let successCount = 0;
+  const failedAccounts: number[] = [];
+  for (const row of toDelete) {
+    try {
+      await deleteBotConfig(row.account);
+      dbBots.value = dbBots.value.filter((b) => b.account !== row.account);
+      successCount++;
+    } catch {
+      failedAccounts.push(row.account);
+    }
+  }
+  selectedKeys.value = new Set();
+  if (selectedInstanceKey.value && !mergedRows.value.some((r) => r.key === selectedInstanceKey.value)) {
+    selectedInstanceKey.value = mergedRows.value[0]?.key ?? null;
+  }
+  if (failedAccounts.length) {
+    ElMessage.warning(`已删除 ${successCount} 个，${failedAccounts.length} 个失败：${failedAccounts.join(", ")}`);
+  } else {
+    ElMessage.success(`已删除 ${successCount} 个实例配置`);
+  }
+  batchDeleting.value = false;
+}
+
+async function deleteBot(row: MergedBotRow) {
+  if (row.account < 0 || !row.config) return;
+  try {
+    await ElMessageBox.confirm(
+      `确认删除 Bot QQ ${row.account} 的数据库配置？此操作不可撤销。`,
+      "删除实例配置",
+      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" },
+    );
+  } catch {
+    return;
+  }
+  deleting.value = true;
+  try {
+    await deleteBotConfig(row.account);
+    dbBots.value = dbBots.value.filter((b) => b.account !== row.account);
+    if (selectedInstanceKey.value === row.key) {
+      selectedInstanceKey.value = mergedRows.value.find((r) => r.key !== row.key)?.key ?? null;
+    }
+    ElMessage.success("已删除");
+  } catch (e) {
+    ElMessage.error(e instanceof Error ? e.message : "删除失败");
+  } finally {
+    deleting.value = false;
+  }
 }
 
 async function saveBot() {
@@ -615,6 +703,12 @@ watch(
                 @click="onInstRowClick(row)"
               >
                 <div class="mini-card-hd">
+                  <el-checkbox
+                    v-if="row.account >= 0 && row.config"
+                    :model-value="selectedKeys.has(row.key)"
+                    class="mini-card-check"
+                    @click.stop="toggleSelect(row.key)"
+                  />
                   <span class="mini-card-bot-name">{{ botNickname(row) }}</span>
                   <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
                 </div>
@@ -638,6 +732,13 @@ watch(
                     link
                     @click.stop="openEditBot(row)"
                   >修改</el-button>
+                  <el-button
+                    v-if="row.account >= 0 && row.config"
+                    type="danger"
+                    link
+                    :loading="deleting"
+                    @click.stop="deleteBot(row)"
+                  >删除</el-button>
                 </div>
               </button>
             </div>
@@ -648,6 +749,19 @@ watch(
                 :loading="loading"
                 @click="load"
               >刷新本页</el-button>
+              <template v-if="deletableRows.length">
+                <el-checkbox
+                  :model-value="allDeletableSelected"
+                  :indeterminate="selectedKeys.size > 0 && !allDeletableSelected"
+                  @click="toggleSelectAll"
+                >全选</el-checkbox>
+                <el-button
+                  v-if="selectedKeys.size > 0"
+                  type="danger"
+                  :loading="batchDeleting"
+                  @click="batchDeleteBots"
+                >批量删除 ({{ selectedKeys.size }})</el-button>
+              </template>
             </div>
           </el-card>
         </section>
@@ -712,8 +826,12 @@ watch(
               <el-descriptions-item
                 v-if="selectedMergedRow.config"
                 label="自动同意"
-              >好友 {{ selectedMergedRow.config.auto_accept_friend ? "是" : "否" }} · 入群
-                {{ selectedMergedRow.config.auto_accept_group ? "是" : "否" }}</el-descriptions-item>
+              >
+                <span class="insp-accept-tags">
+                  <el-tag :type="selectedMergedRow.config.auto_accept_friend ? 'success' : 'info'" size="small">好友 {{ selectedMergedRow.config.auto_accept_friend ? "自动通过" : "手动审核" }}</el-tag>
+                  <el-tag :type="selectedMergedRow.config.auto_accept_group ? 'success' : 'info'" size="small">入群 {{ selectedMergedRow.config.auto_accept_group ? "自动通过" : "手动审核" }}</el-tag>
+                </span>
+              </el-descriptions-item>
               <el-descriptions-item
                 v-if="selectedMergedRow.config"
                 label="安全模式"
@@ -726,6 +844,13 @@ watch(
                 :disabled="selectedMergedRow.account < 0"
                 @click="openEditBot(selectedMergedRow)"
               >修改配置</el-button>
+              <el-button
+                v-if="selectedMergedRow.account >= 0 && selectedMergedRow.config"
+                type="danger"
+                size="small"
+                :loading="deleting"
+                @click="deleteBot(selectedMergedRow)"
+              >删除实例</el-button>
             </div>
             <div
               v-if="protocolSnap && napcatForSelection.length"
@@ -811,9 +936,11 @@ watch(
                   >
                     <div class="li-title">
                       <strong class="li-name">{{ f.nickname || "未命名" }}</strong>
+                      <span v-if="f.remark && f.remark !== f.nickname" class="li-remark">{{ f.remark }}</span>
                     </div>
-                    <div class="li-sub mono">QQ {{ f.user_id }}</div>
-                    <div class="li-sub">备注：{{ f.remark || "—" }}</div>
+                    <div class="li-meta">
+                      <span class="li-qq mono">{{ f.user_id }}</span>
+                    </div>
                   </div>
                 </div>
               </el-scrollbar>
@@ -889,8 +1016,12 @@ watch(
                       <span class="k">当前用户</span>
                       <span class="v mono">{{ selectedFriendUserId ?? "未选择" }}</span>
                     </div>
-                    <div class="cfg-row cfg-row-note">
-                      <span class="sm">{{ selectedFriendRow?.nickname || selectedFriendRow?.remark || "请选择左侧好友后再编辑配置" }}</span>
+                    <div class="cfg-row" v-if="selectedFriendRow">
+                      <span class="k">昵称</span>
+                      <span class="v sm">{{ selectedFriendRow.nickname || selectedFriendRow.remark || "—" }}</span>
+                    </div>
+                    <div class="cfg-row cfg-row-note" v-else>
+                      <span class="sm">请选择左侧好友后再编辑配置</span>
                     </div>
                   </div>
                 </div>
@@ -960,11 +1091,12 @@ watch(
                     @click="onGroupRowClick(g)"
                   >
                     <div class="li-title">
-                      <strong class="li-name">群 {{ g.group_id }}</strong>
+                      <strong class="li-name mono">{{ g.group_id }}</strong>
+                      <el-tag :type="g.banned ? 'danger' : 'success'" size="small">{{ g.banned ? "封禁" : "正常" }}</el-tag>
                     </div>
-                    <div class="li-sub">
-                      <el-tag :type="g.banned ? 'danger' : 'info'" size="small">{{ g.banned ? "封禁" : "正常" }}</el-tag>
-                      <span>轮盘：{{ rouletteModeLabel(g.roulette_mode) }} · 禁用插件 {{ (g.disabled_plugins || []).length }}</span>
+                    <div class="li-meta">
+                      <span class="li-badge">轮盘 {{ rouletteModeLabel(g.roulette_mode) }}</span>
+                      <span v-if="(g.disabled_plugins || []).length" class="li-badge li-badge--warn">禁用 {{ (g.disabled_plugins || []).length }} 插件</span>
                     </div>
                   </button>
                 </div>
@@ -1577,10 +1709,57 @@ html.dark .cfg-card-title {
 .insp-actions {
   margin-top: 12px;
 }
+.li-remark {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+  background: rgba(22, 100, 196, 0.07);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.li-meta {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.li-qq {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.li-badge {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  background: rgba(22, 100, 196, 0.07);
+  border-radius: 4px;
+  padding: 1px 7px;
+  line-height: 1.6;
+}
+.li-badge--warn {
+  color: var(--el-color-warning);
+  background: rgba(230, 162, 60, 0.1);
+}
+.li-status-tag {
+  margin-left: auto;
+}
 .insp-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+.insp-accept-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.insp-desc :deep(.el-descriptions__label) {
+  white-space: nowrap;
+}
+.mini-card-check {
+  flex-shrink: 0;
+  margin-right: 2px;
 }
 .insp-nap {
   margin-top: 14px;
