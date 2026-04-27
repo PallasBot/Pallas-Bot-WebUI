@@ -170,6 +170,8 @@ watch(apiToken, (v) => {
             github.com/settings/tokens
           </el-link>
           生成，只需 <code>public_repo</code> 只读权限（或无权限的 Fine-grained token）。
+          若目标组织启用了策略，Fine-grained token 生命周期建议不超过 <code>366</code> 天，否则可能返回
+          <code>403 Forbidden</code>。
           保存后需重启 Bot 生效。
         </p>
         <div class="token-save-row">
