@@ -25,7 +25,7 @@ import { getBotServiceBaseRef } from "@/utils/botServiceBase";
 import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
-import { computed, inject, nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 const LOG_POLL_MS = 3000;
 
@@ -69,6 +69,8 @@ const botFriendCount = ref<number | null>(null);
 const botGroupCount = ref<number | null>(null);
 const msgSent = ref<number | null>(null);
 const msgReceived = ref<number | null>(null);
+const isMobile = ref(false);
+const mobileDashSection = ref<"bot" | "system" | "connect">("bot");
 
 const driverHostPort = computed(() => {
   const drv = sysData.value?.nonebot2_driver;
@@ -286,6 +288,11 @@ async function loadBotSocialStats(selfId: string | null) {
   }
 }
 
+function syncMobileMode() {
+  if (typeof window === "undefined") return;
+  isMobile.value = window.innerWidth <= 768;
+}
+
 async function loadInstances(silent = true) {
   if (ok.value !== true) {
     nonebot.value = [];
@@ -416,8 +423,18 @@ watch(healthTick, () => {
   }
 });
 
+onMounted(() => {
+  syncMobileMode();
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", syncMobileMode, { passive: true });
+  }
+});
+
 onUnmounted(() => {
   stopLogPoll();
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", syncMobileMode);
+  }
 });
 </script>
 
@@ -426,34 +443,54 @@ onUnmounted(() => {
     <div class="dash-shell">
       <div class="dash-main">
     <section class="dash-sec">
+      <div
+        v-if="isMobile"
+        class="mobile-dash-switch"
+      >
+        <el-segmented
+          v-model="mobileDashSection"
+          :options="[
+            { label: 'Bot', value: 'bot' },
+            { label: '系统', value: 'system' },
+            { label: '连接', value: 'connect' },
+          ]"
+          block
+        />
+      </div>
       <div class="dash-top-grid">
-        <div class="dash-left">
-          <el-card class="nb-conn-card bot-meta-card" shadow="never">
-            <div class="bot-hero-online-title">在线的牛牛（{{ onlineBotCount }}）</div>
-          </el-card>
-
+        <div
+          v-show="!isMobile || mobileDashSection === 'bot'"
+          class="dash-left"
+        >
           <el-card
             v-if="selectedDashboardBot"
             class="nb-conn-card bot-hero bot-hero-vertical"
             shadow="never"
           >
+            <div class="bot-hero-top">
+              <div class="bot-hero-online-title">在线的牛牛（{{ onlineBotCount }}）</div>
+            </div>
             <div class="bot-hero-main">
               <div class="bot-hero-head">
                 <el-avatar
                   v-if="selectedDashboardBotAvatar"
-                  :size="76"
+                  :size="isMobile ? 200 : 76"
                   :src="selectedDashboardBotAvatar"
                 />
                 <el-avatar
                   v-else
-                  :size="76"
+                  :size="isMobile ? 100 : 76"
                 >BOT</el-avatar>
                 <div class="bot-hero-title">
                   <strong>{{ botNickname(selectedDashboardBot.selfId, selectedDashboardBot.account) }}</strong>
                   <span class="bot-hero-sub mono">账号 {{ selectedDashboardBotQq }}</span>
                 </div>
               </div>
-              <el-tag :type="selectedDashboardBot.online ? 'success' : 'info'" size="small">
+              <el-tag
+                class="bot-status-badge"
+                :type="selectedDashboardBot.online ? 'success' : 'info'"
+                size="small"
+              >
                 {{ selectedDashboardBot.online ? "在线" : "离线" }}
               </el-tag>
             </div>
@@ -513,7 +550,10 @@ onUnmounted(() => {
           </el-card>
         </div>
 
-        <div class="dash-system">
+        <div
+          v-show="!isMobile || mobileDashSection === 'system'"
+          class="dash-system"
+        >
           <el-card class="intro-card" shadow="never">
             <div class="intro-main">
               <el-avatar
@@ -597,7 +637,10 @@ onUnmounted(() => {
           </el-card>
         </div>
 
-        <div class="dash-right">
+        <div
+          v-show="!isMobile || mobileDashSection === 'connect'"
+          class="dash-right"
+        >
           <el-card class="nb-conn-card side-conn-card" shadow="never">
             <div class="nb-conn-hd">NoneBot 连接</div>
             <div class="nb-conn-grid">
@@ -690,13 +733,166 @@ onUnmounted(() => {
   width: 100%;
   min-height: 0;
 }
+.mobile-dash-switch {
+  display: none;
+}
 @media (max-width: 768px) {
+  .mobile-dash-switch {
+    display: block;
+    margin-bottom: 0;
+  }
   .dash-main {
     max-width: none;
+    gap: 10px;
   }
   .dash-top-grid {
-    grid-template-columns: 1fr;
+    display: block;
     min-height: auto;
+  }
+  .view-page.dashboard {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+  .dash-left,
+  .dash-system,
+  .dash-right {
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .nb-conn-card :deep(.el-card__body),
+  .intro-card :deep(.el-card__body),
+  .side-conn-card :deep(.el-card__body) {
+    padding: 8px;
+  }
+  .nb-conn-card {
+    border-color: rgba(22, 100, 196, 0.2);
+    box-shadow: 0 2px 8px rgba(13, 52, 106, 0.1);
+  }
+  .intro-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .intro-text p {
+    line-height: 1.45;
+  }
+  .bot-hero .bot-hero-main {
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+  .bot-hero .bot-hero-head {
+    width: 100%;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  .bot-hero .bot-hero-title {
+    align-items: center;
+    text-align: center;
+  }
+  .bot-hero .bot-hero-title strong {
+    font-size: 16px;
+    line-height: 1.22;
+    word-break: break-word;
+  }
+  .bot-hero .bot-hero-sub {
+    margin-top: 2px;
+    font-size: 11px;
+  }
+  .bot-status-badge {
+    align-self: center;
+    min-width: 64px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+  }
+  .bot-inline-stats {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .bot-inline-item {
+    padding: 4px 6px;
+  }
+  .bot-inline-item .k {
+    font-size: 11px;
+  }
+  .bot-inline-item .v {
+    font-size: 13px;
+  }
+  .stat-card .stat-inner {
+    min-height: 64px;
+    gap: 8px;
+  }
+  .stat-card .stat-ico {
+    font-size: 1.35rem;
+  }
+  .stat-card .stat-label {
+    font-size: 12px;
+  }
+  .stat-card .stat-value {
+    font-size: 0.92rem;
+  }
+  .stat-card .stat-sub {
+    font-size: 11px;
+  }
+  .log-pre {
+    padding: 7px 8px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .nb-conn-grid {
+    grid-template-columns: 1fr;
+  }
+  .nb-conn-hd {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .nb-item {
+    padding: 6px 7px;
+    gap: 3px;
+  }
+  .nb-item .k {
+    font-size: 11px;
+  }
+  .nb-item .v {
+    font-size: 12px;
+  }
+  .bot-hero-db-title {
+    font-size: 12px;
+  }
+  .bot-db-kv .k {
+    font-size: 11px;
+  }
+  .bot-db-kv .v {
+    font-size: 12px;
+  }
+  .bot-db-sub {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .bot-hero-actions {
+    margin-bottom: 6px;
+  }
+  .bot-hero-actions :deep(.el-link) {
+    font-size: 12px;
+  }
+  .mini-actions :deep(.el-button) {
+    font-size: 12px;
+    padding: 5px 9px;
+  }
+  .msg-stats-card,
+  .gpu-card {
+    min-height: 0;
   }
 }
 @media (max-width: 1200px) {
@@ -708,6 +904,9 @@ onUnmounted(() => {
 .dash-sec { display: flex; flex-direction: column; gap: 10px; }
 .dash-h { margin: 0; font-size: 15px; font-weight: 600; color: var(--c-main); letter-spacing: 0.03em; }
 .dash-h--after { margin-top: 2px; }
+.bot-hero-top {
+  margin-bottom: 8px;
+}
 .stat-row { width: 100%; }
 .stat-row :deep(.el-col) {
   display: flex;
@@ -728,6 +927,8 @@ onUnmounted(() => {
 }
 .nb-conn-card {
   border: 1px solid rgba(22, 100, 196, 0.12);
+  background: var(--el-bg-color);
+  box-shadow: 0 3px 10px rgba(16, 58, 110, 0.08);
 }
 .bot-hero {
   &.bot-hero-vertical {

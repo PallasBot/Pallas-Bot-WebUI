@@ -341,4 +341,32 @@ onMounted(() => {
   justify-content: space-between;
   gap: 10px;
 }
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .log-hd {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ft {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ft :deep(.el-button) {
+    margin-left: 0;
+    width: 100%;
+  }
+  .panel :deep(.el-form-item__label) {
+    width: auto !important;
+  }
+  .panel :deep(.el-input-number) {
+    width: 100%;
+  }
+}
 </style>

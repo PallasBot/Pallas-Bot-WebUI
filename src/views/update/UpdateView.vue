@@ -357,4 +357,31 @@ function formatTime(ts: number | undefined): string {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+@media (max-width: 768px) {
+  .update-view {
+    padding: 12px 10px;
+    max-width: none;
+    gap: 12px;
+  }
+  .update-card {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+  .update-title {
+    font-size: 16px;
+  }
+  .update-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .version-grid {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .update-status {
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+}
 </style>

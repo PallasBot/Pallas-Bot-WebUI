@@ -221,9 +221,33 @@ html.dark {
   }
   .main-scroll :deep(.el-scrollbar__wrap) {
     max-height: none;
+    overflow: visible !important;
+  }
+  .main-scroll {
+    overflow: visible;
   }
   .main-scroll-inner {
     max-width: none;
+  }
+}
+@media (max-width: 768px) {
+  .pallas-sidebar-page {
+    gap: 8px;
+  }
+  .pallas-sidebar-mobile {
+    padding: 2px 0 6px;
+  }
+  .pallas-sidebar-main {
+    padding-bottom: 8px;
+  }
+  .main-hd {
+    padding: 14px 12px 8px;
+  }
+  .main-scroll {
+    padding-right: 0;
+  }
+  .main-scroll :deep(.el-scrollbar__view) {
+    padding: 6px 10px 14px;
   }
 }
 </style>

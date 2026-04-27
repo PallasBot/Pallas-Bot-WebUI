@@ -624,21 +624,21 @@ html.dark .menu-item:hover:not(.selected) {
 @media (max-width: 900px) {
   .pallas-root {
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh;
   }
   .pallas-header {
     height: auto;
-    padding: 10px 12px;
+    padding: 6px 10px;
     align-items: flex-start;
-    gap: 8px;
+    gap: 4px;
     flex-direction: column;
   }
   .pallas-title {
-    font-size: 17px;
+    font-size: 15px;
   }
   .pallas-header-right {
     width: 100%;
-    gap: 8px 10px;
+    gap: 4px 8px;
     flex-wrap: wrap;
     padding-right: 0;
   }
@@ -660,11 +660,11 @@ html.dark .menu-item:hover:not(.selected) {
     max-width: 52vw;
   }
   .pallas-body {
-    flex-direction: column;
+    display: block;
   }
   .pallas-nav {
     width: 100%;
-    padding: 10px 10px 0;
+    padding: 6px 8px 0;
     overflow: visible;
   }
   .main-nav {
@@ -672,21 +672,93 @@ html.dark .menu-item:hover:not(.selected) {
     background: transparent;
     border-radius: 0;
     display: flex;
-    gap: 8px;
+    gap: 6px;
     overflow-x: auto;
-    padding-bottom: 6px;
+    padding-bottom: 4px;
   }
   .menu-item {
     min-width: max-content;
-    height: 34px;
-    padding: 0 12px;
+    height: 30px;
+    padding: 0 10px;
     border-radius: 999px;
     background: var(--c-nav-bg);
     border: 1px solid rgba(22, 100, 196, 0.16);
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+    font-size: 13px;
   }
   .pallas-main {
-    padding: 10px;
+    padding: 8px;
+    overflow: visible;
+  }
+  .pallas-viewport {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: auto;
+    > :deep(*) {
+      height: auto;
+      min-height: 0;
+    }
+  }
+}
+@media (max-width: 640px) {
+  .pallas-header {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .pallas-title {
+    width: 100%;
+    font-size: 14px;
+    justify-content: space-between;
+  }
+  .pallas-header-right {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    max-width: 100%;
+  }
+  .header-icon-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    order: 1;
+  }
+  .header-link {
+    padding: 1px 0;
+    font-size: 12px;
+    line-height: 1;
+    order: 3;
+  }
+  .account-switch-floating {
+    position: static;
+    order: 1;
+  }
+  .account-switch-btn {
+    width: auto;
+    min-width: 150px;
+    height: 30px;
+    justify-content: flex-start;
+    max-width: 100%;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  .pallas-connect {
+    width: auto;
+    justify-content: flex-start;
+    font-size: 11px;
+    min-height: 26px;
+    padding: 0 8px;
+    max-width: 100%;
+    margin-left: 0;
+    order: 2;
+  }
+  .pallas-host-addr {
+    max-width: 38vw;
+  }
+  .pallas-header-right {
+    align-items: center;
   }
 }
 </style>

@@ -207,4 +207,27 @@ html.dark .ac {
 .mono {
   font-family: ui-monospace, Consolas, monospace;
 }
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .p {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .p2 {
+    font-size: 12px;
+  }
+  .repo-row {
+    gap: 10px;
+  }
+  .rbtn {
+    width: 100%;
+  }
+}
 </style>

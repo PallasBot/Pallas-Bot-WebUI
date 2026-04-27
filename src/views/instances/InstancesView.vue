@@ -28,7 +28,7 @@ import { accountNativeWebUiUrl, protocolAccountUrl } from "@/utils/pallasProtoco
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
 import { Connection } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
@@ -56,6 +56,11 @@ const sectionSub = computed<Record<InstSection, string>>(() => ({
   group: "",
 }));
 const active = ref<InstSection>("friends");
+const isMobile = ref(false);
+const mobileAccountsPane = ref<"list" | "detail">("list");
+const mobileSocialSection = ref<"friend" | "group">("friend");
+const mobileFriendPane = ref<"list" | "panel">("list");
+const mobileGroupPane = ref<"list" | "panel">("list");
 const loading = ref(true);
 const groupIdFilter = ref("");
 const nonebot = ref<Awaited<ReturnType<typeof fetchInstances>>["nonebot_bots"]>([]);
@@ -550,7 +555,16 @@ function botNickname(row: MergedBotRow): string {
   return "BOT";
 }
 
+function syncMobileMode() {
+  if (typeof window === "undefined") return;
+  isMobile.value = window.innerWidth <= 768;
+}
+
 onMounted(() => {
+  syncMobileMode();
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", syncMobileMode, { passive: true });
+  }
   void ensureBotServiceBaseUrl();
   if (pageScope.value === "social") {
     const t = route.query.tab;
@@ -576,6 +590,12 @@ onMounted(() => {
   void load();
   void loadPluginNames();
   if (active.value === "friends") void loadFriendOverview();
+});
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", syncMobileMode);
+  }
 });
 
 watch(
@@ -685,8 +705,24 @@ watch(
       v-show="pageScope === 'accounts'"
       class="inst-panel inst-panel--wide"
     >
+      <div
+        v-if="isMobile"
+        class="mobile-pane-switch"
+      >
+        <el-segmented
+          v-model="mobileAccountsPane"
+          :options="[
+            { label: '实例列表', value: 'list' },
+            { label: '实例详情', value: 'detail' },
+          ]"
+          block
+        />
+      </div>
       <div class="pan3 pan3--list-left">
-        <section class="pan3-main">
+        <section
+          v-show="!isMobile || mobileAccountsPane === 'list'"
+          class="pan3-main"
+        >
           <el-card
             v-loading="loading"
             class="c"
@@ -775,6 +811,7 @@ watch(
           </el-card>
         </section>
         <aside
+          v-show="!isMobile || mobileAccountsPane === 'detail'"
           class="pan3-insp"
           aria-label="实例详情"
         >
@@ -912,8 +949,38 @@ watch(
       class="inst-panel inst-panel--wide"
     >
       <div class="social-stack">
-        <div class="pan3 pan3--list-left pan3--social">
+        <div
+          v-if="isMobile"
+          class="mobile-pane-switch"
+        >
+          <el-segmented
+            v-model="mobileSocialSection"
+            :options="[
+              { label: '好友', value: 'friend' },
+              { label: '群', value: 'group' },
+            ]"
+            block
+          />
+        </div>
+        <div
+          v-show="!isMobile || mobileSocialSection === 'friend'"
+          class="pan3 pan3--list-left pan3--social"
+        >
+          <div
+            v-if="isMobile"
+            class="mobile-pane-switch"
+          >
+            <el-segmented
+              v-model="mobileFriendPane"
+              :options="[
+                { label: '好友列表', value: 'list' },
+                { label: '好友配置', value: 'panel' },
+              ]"
+              block
+            />
+          </div>
           <aside
+            v-show="!isMobile || mobileFriendPane === 'list'"
             class="pan3-insp pan3-insp-wide"
             aria-label="好友列表"
           >
@@ -965,7 +1032,10 @@ watch(
               />
             </el-card>
           </aside>
-          <section class="pan3-main">
+          <section
+            v-show="!isMobile || mobileFriendPane === 'panel'"
+            class="pan3-main"
+          >
             <el-card
               v-loading="friendOvLoading || socialFriendListLoading"
               class="c"
@@ -1071,8 +1141,25 @@ watch(
           </section>
         </div>
 
-        <div class="pan3 pan3--list-left pan3--social">
+        <div
+          v-show="!isMobile || mobileSocialSection === 'group'"
+          class="pan3 pan3--list-left pan3--social"
+        >
+          <div
+            v-if="isMobile"
+            class="mobile-pane-switch"
+          >
+            <el-segmented
+              v-model="mobileGroupPane"
+              :options="[
+                { label: '群列表', value: 'list' },
+                { label: '群配置', value: 'panel' },
+              ]"
+              block
+            />
+          </div>
           <aside
+            v-show="!isMobile || mobileGroupPane === 'list'"
             class="pan3-insp pan3-insp-wide"
             aria-label="群列表"
           >
@@ -1112,7 +1199,10 @@ watch(
               </el-scrollbar>
             </el-card>
           </aside>
-          <section class="pan3-main">
+          <section
+            v-show="!isMobile || mobileGroupPane === 'panel'"
+            class="pan3-main"
+          >
             <el-card
               v-loading="groupLoading"
               class="c"
@@ -1330,6 +1420,9 @@ watch(
 }
 .inst-panel--wide {
   max-width: none;
+}
+.mobile-pane-switch {
+  display: none;
 }
 .social-stack {
   display: flex;
@@ -1819,6 +1912,67 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .pan3-insp-wide {
     width: 100%;
     min-width: 0;
+  }
+}
+@media (max-width: 768px) {
+  .mobile-pane-switch {
+    display: block;
+    margin-bottom: 8px;
+  }
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .pan3 {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-list {
+    grid-template-columns: 1fr;
+  }
+  .mini-card {
+    padding: 10px;
+  }
+  .mini-card-bot-name {
+    font-size: 16px;
+  }
+  .cfg-panel {
+    padding: 10px;
+  }
+  .cfg-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+  .cfg-row .k {
+    width: auto;
+    min-width: 72px;
+  }
+  .hd2-txt {
+    min-width: 0;
+    width: 100%;
+  }
+  .hd2-ctl {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .num {
+    max-width: 100%;
+    width: 100%;
+  }
+  .list-search,
+  .g-search,
+  .head-bot-picker {
+    width: 100%;
+    max-width: 100%;
+  }
+  .list-item {
+    min-height: 0;
+    padding: 9px 10px;
+  }
+  .ft {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 .pan3--list-left {

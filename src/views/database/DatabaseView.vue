@@ -1254,4 +1254,61 @@ html.dark .tb :deep(.el-table__row:hover > td.el-table__cell) {
     grid-template-columns: 1fr;
   }
 }
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+  .db-banner {
+    margin-bottom: 8px;
+  }
+  .q-layout {
+    gap: 10px;
+  }
+  .q-left-list {
+    max-height: 220px;
+  }
+  .q-lab {
+    width: 100%;
+    font-size: 13px;
+  }
+  .q-inp {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+  .ops-direct-grid {
+    grid-template-columns: 1fr;
+  }
+  .ops-sel-mini,
+  .ops-id-inp,
+  .ops-sel {
+    min-width: 0;
+    width: 100%;
+  }
+  .ops-hd {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pipe-lab {
+    width: 100%;
+  }
+  .pipe-col,
+  .pipe-json {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+  .db-type-line {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .db-type-name {
+    font-size: 18px;
+  }
+}
 </style>

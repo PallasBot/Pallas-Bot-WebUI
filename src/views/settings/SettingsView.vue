@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { fetchSystem } from "@/api/consoleApi";
+import { fetchPluginConfig, fetchSystem, putPluginConfig } from "@/api/consoleApi";
 import { fetchHealth } from "@/api/health";
 import { PALLAS_API_TOKEN_KEY } from "@/api/http";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { CircleCheck, Connection, Link, Lock } from "@element-plus/icons-vue";
 import { computed, onMounted, ref, watch } from "vue";
 
-type Section = "access" | "baseline" | "deploy" | "checklist";
+type Section = "auth" | "baseline" | "deploy" | "checklist";
 
-const section = ref<Section>("access");
+const section = ref<Section>("auth");
 const apiToken = ref("");
 const loading = ref(false);
 const healthOk = ref<boolean | null>(null);
@@ -23,21 +23,21 @@ const protocolHint = `${protocolPath}（默认，可由 PALLAS_PROTOCOL_WEBUI_PA
 const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TARGET。";
 
 const sectionTitle: Record<Section, string> = {
-  access: "访问与鉴权",
+  auth: "鉴权与 GitHub",
   baseline: "连接基线",
   deploy: "生产部署建议",
   checklist: "上线前检查",
 };
 
 const sectionSub: Record<Section, string> = {
-  access: "控制本浏览器写操作权限，避免误改线上配置。",
+  auth: "统一管理控制台写入 Token 与 GitHub Token，降低配置分散带来的维护成本。",
   baseline: "当前控制台约定路径与后端驱动监听信息。",
   deploy: "面向生产环境的发布、反代与访问控制建议。",
   checklist: "发布前做最小闭环自检，降低回滚概率。",
 };
 
 const navItems = [
-  { index: "access" as const, label: "访问与鉴权", icon: Lock },
+  { index: "auth" as const, label: "鉴权与 GitHub", icon: Lock },
   { index: "baseline" as const, label: "连接基线", icon: Connection },
   { index: "deploy" as const, label: "部署建议", icon: Link },
   { index: "checklist" as const, label: "上线检查", icon: CircleCheck },
@@ -47,6 +47,41 @@ const driverAddr = computed(() => {
   if (!driverHost.value || driverHost.value === "-" || !driverPort.value) return "-";
   return `${driverHost.value}:${driverPort.value}`;
 });
+
+// ── GitHub Token ──────────────────────────────────────────────────────────────
+const githubToken = ref("");
+const githubTokenLoading = ref(false);
+const githubTokenSaving = ref(false);
+const githubTokenSaveMsg = ref<{ type: "success" | "error"; text: string } | null>(null);
+
+async function loadGithubToken() {
+  githubTokenLoading.value = true;
+  githubTokenSaveMsg.value = null;
+  try {
+    const cfg = await fetchPluginConfig("pallas_protocol");
+    const field = cfg.fields.find((f) => f.name === "pallas_protocol_github_token");
+    githubToken.value = field ? String(field.current ?? "") : "";
+  } catch {
+    githubToken.value = "";
+  } finally {
+    githubTokenLoading.value = false;
+  }
+}
+
+async function saveGithubToken() {
+  githubTokenSaving.value = true;
+  githubTokenSaveMsg.value = null;
+  try {
+    await putPluginConfig("pallas_protocol", {
+      pallas_protocol_github_token: githubToken.value.trim(),
+    });
+    githubTokenSaveMsg.value = { type: "success", text: "已保存，重启 Bot 后生效。" };
+  } catch (e) {
+    githubTokenSaveMsg.value = { type: "error", text: String(e) };
+  } finally {
+    githubTokenSaving.value = false;
+  }
+}
 
 async function loadRuntimeMeta() {
   loading.value = true;
@@ -69,6 +104,7 @@ onMounted(() => {
     apiToken.value = localStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
   }
   void loadRuntimeMeta();
+  void loadGithubToken();
 });
 
 watch(apiToken, (v) => {
@@ -92,10 +128,7 @@ watch(apiToken, (v) => {
       <p class="main-sub">{{ sectionSub[s as Section] }}</p>
     </template>
 
-    <div
-      v-show="section === 'access'"
-      class="panel"
-    >
+    <div v-show="section === 'auth'" class="panel auth-stack">
       <el-card class="cardx" shadow="hover">
         <h3 class="card-title">写操作 Token（本机）</h3>
         <p class="para">
@@ -111,6 +144,45 @@ watch(apiToken, (v) => {
           class="api-tok"
         />
         <p class="hint">仅保存在当前浏览器的 <code>localStorage</code>，不会上报到服务端。</p>
+      </el-card>
+
+      <el-card class="cardx" shadow="hover">
+        <div class="row-line">
+          <h3 class="card-title">GitHub Personal Access Token</h3>
+          <el-button size="small" :loading="githubTokenLoading" @click="loadGithubToken">刷新</el-button>
+        </div>
+        <p class="para">
+          设置后，Bot 调用 GitHub API（检查更新、获取 Release 列表等）时将附带此 Token，
+          速率限额从 <strong>60 次/小时</strong> 提升至 <strong>5000 次/小时</strong>。
+        </p>
+        <el-input
+          v-model="githubToken"
+          type="password"
+          show-password
+          clearable
+          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx（留空则不使用 Token）"
+          class="api-tok"
+          :disabled="githubTokenLoading"
+        />
+        <p class="hint">
+          在
+          <el-link href="https://github.com/settings/tokens" target="_blank" type="primary">
+            github.com/settings/tokens
+          </el-link>
+          生成，只需 <code>public_repo</code> 只读权限（或无权限的 Fine-grained token）。
+          保存后需重启 Bot 生效。
+        </p>
+        <div class="token-save-row">
+          <el-button type="primary" :loading="githubTokenSaving" @click="saveGithubToken">保存</el-button>
+          <el-alert
+            v-if="githubTokenSaveMsg"
+            :type="githubTokenSaveMsg.type"
+            :title="githubTokenSaveMsg.text"
+            show-icon
+            :closable="false"
+            class="token-save-alert"
+          />
+        </div>
       </el-card>
     </div>
 
@@ -137,6 +209,7 @@ watch(apiToken, (v) => {
         </el-descriptions>
       </el-card>
     </div>
+
 
     <div
       v-show="section === 'deploy'"
@@ -200,6 +273,11 @@ watch(apiToken, (v) => {
 .cardx {
   border: 1px solid rgba(22, 100, 196, 0.12);
 }
+.auth-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .card-title {
   margin: 0 0 8px;
   font-size: 16px;
@@ -257,5 +335,48 @@ watch(apiToken, (v) => {
 }
 code {
   font-size: 0.9em;
+}
+.token-save-row {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.token-save-alert {
+  flex: 1;
+}
+.token-save-alert :deep(.el-alert__content) {
+  line-height: 1.35;
+}
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+  .row-line {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .api-tok {
+    max-width: none;
+  }
+  .desc {
+    :deep(.el-descriptions__label) {
+      width: 110px;
+    }
+  }
+  .list {
+    padding-left: 16px;
+  }
+  .token-save-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .token-save-alert {
+    width: 100%;
+  }
 }
 </style>

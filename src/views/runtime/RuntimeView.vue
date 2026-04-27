@@ -337,4 +337,27 @@ function fmtTime(t: number) {
   color: var(--el-text-color-secondary);
   font-weight: 400;
 }
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+  .intro {
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+  .log-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .log-bar :deep(.el-input-number) {
+    width: 100%;
+  }
+  .log-bar :deep(.el-input-number .el-input__wrapper) {
+    width: 100%;
+  }
+}
 </style>

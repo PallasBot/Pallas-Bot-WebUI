@@ -344,7 +344,9 @@ async function submitHelpVisibility() {
                   type="info"
                 >{{ pluginTypeLabel(p) }}</el-tag>
               </div>
-              <div class="pc-name mono">{{ p.name }}</div>
+              <div class="pc-meta">
+                <div class="pc-name mono">{{ p.name }}</div>
+              </div>
               <div class="pc-desc">{{ p.metadata?.description || "—" }}</div>
               <div class="pc-ft">
                 <el-button
@@ -374,6 +376,7 @@ async function submitHelpVisibility() {
 
     <el-dialog
       v-model="dialog"
+      class="plugins-dialog"
       :title="current ? `插件配置：${current.metadata?.name || current.name}` : '插件配置'"
       width="min(92vw, 760px)"
       destroy-on-close
@@ -660,6 +663,10 @@ async function submitHelpVisibility() {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  padding: 10px;
+  border: 1px solid rgba(22, 100, 196, 0.12);
+  border-radius: 10px;
+  background: var(--el-fill-color-blank);
 }
 .plug-cat {
   flex: 1;
@@ -677,8 +684,8 @@ async function submitHelpVisibility() {
   flex: 1;
   align-content: start;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
   :deep(.el-col) {
     width: auto !important;
     max-width: none !important;
@@ -690,15 +697,21 @@ async function submitHelpVisibility() {
 }
 .plug-tile {
   height: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   border: 1px solid rgba(22, 100, 196, 0.1);
   border-radius: 10px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: rgba(22, 100, 196, 0.26);
+    box-shadow: 0 4px 12px rgba(20, 62, 116, 0.12);
+  }
   :deep(.el-card__body) {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     padding: 11px 12px;
-    min-height: 154px;
+    min-height: 170px;
   }
 }
 .pc-hd {
@@ -720,13 +733,18 @@ async function submitHelpVisibility() {
   color: var(--el-text-color-secondary);
   word-break: break-all;
 }
+.pc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .pc-desc {
   flex: 1;
   font-size: 12px;
   line-height: 1.45;
   color: var(--el-text-color-secondary);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1010,6 +1028,142 @@ async function submitHelpVisibility() {
   }
   .menu-list {
     max-height: 180px;
+  }
+}
+@media (max-width: 768px) {
+  .main-wrap {
+    padding: 12px 10px;
+  }
+  .main-title {
+    font-size: 1.1rem;
+  }
+  .main-sub {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+  .plug-toolbar {
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px;
+  }
+  .plug-cat {
+    width: 100%;
+  }
+  .plug-q {
+    width: 100%;
+    max-width: none;
+  }
+  .plug-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .plug-tile {
+    margin-bottom: 0;
+    :deep(.el-card__body) {
+      min-height: 0;
+      padding: 10px;
+      gap: 6px;
+    }
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+  .pc-title {
+    font-size: 15px;
+  }
+  .pc-desc {
+    -webkit-line-clamp: 2;
+  }
+  .plugins-dialog {
+    :deep(.el-dialog) {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 88dvh;
+      margin: 12dvh 0 0 !important;
+      border-radius: 16px 16px 0 0;
+      overflow: hidden;
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+    }
+    :deep(.el-dialog__header) {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid rgba(22, 100, 196, 0.14);
+      flex-shrink: 0;
+    }
+    :deep(.el-dialog__title) {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    :deep(.el-dialog__body) {
+      padding: 10px;
+      overflow: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+  .dlg-main {
+    gap: 10px;
+    padding-bottom: 6px;
+  }
+  .dlg-cell {
+    padding: 7px 8px;
+  }
+  .dlg-k {
+    font-size: 11px;
+  }
+  .dlg-v {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .menu-title {
+    font-size: 14px;
+  }
+  .menu-detail {
+    min-height: 0;
+    padding: 8px 10px;
+  }
+  .cfg-item-card {
+    padding: 8px;
+    gap: 6px;
+  }
+  .cfg-field-tip {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .mini-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .mini-actions :deep(.el-button) {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+  .menu-block {
+    padding: 0 8px 10px;
+  }
+  .menu-head {
+    margin: 0 -8px 8px;
+    padding: 8px;
+  }
+  .mrow {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .dlg-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 8px;
+  }
+  .cfg-grid {
+    grid-template-columns: 1fr;
+  }
+  .ft {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 }
 .mono {

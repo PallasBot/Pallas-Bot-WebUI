@@ -57,6 +57,16 @@ body,
   font-family: var(--pallas-font-han);
 }
 
+@media (max-width: 900px) {
+  html,
+  body,
+  #app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+}
+
 // 等宽文本样式
 html .pallas-kv code,
 html code.pallas-em {
