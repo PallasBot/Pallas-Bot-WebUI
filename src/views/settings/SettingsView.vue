@@ -4,12 +4,13 @@ import { fetchHealth } from "@/api/health";
 import { PALLAS_API_TOKEN_KEY } from "@/api/http";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { CircleCheck, Connection, Link, Lock } from "@element-plus/icons-vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 
-type Section = "auth" | "baseline" | "deploy" | "checklist";
+type Section = "accessAuth" | "baseline" | "deploy" | "checklist";
 
-const section = ref<Section>("auth");
+const section = ref<Section>("accessAuth");
 const apiToken = ref("");
+const apiTokenSaveMsg = ref<{ type: "success" | "warning"; text: string } | null>(null);
 const loading = ref(false);
 const healthOk = ref<boolean | null>(null);
 const driverHost = ref<string>("-");
@@ -23,21 +24,21 @@ const protocolHint = `${protocolPath}（默认，可由 PALLAS_PROTOCOL_WEBUI_PA
 const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TARGET。";
 
 const sectionTitle: Record<Section, string> = {
-  auth: "鉴权与 GitHub",
+  accessAuth: "访问与鉴权",
   baseline: "连接基线",
   deploy: "生产部署建议",
   checklist: "上线前检查",
 };
 
 const sectionSub: Record<Section, string> = {
-  auth: "统一管理控制台写入 Token 与 GitHub Token，降低配置分散带来的维护成本。",
+  accessAuth: "统一管理控制台访问/写入 Token 与 GitHub Token，降低配置分散带来的维护成本。",
   baseline: "当前控制台约定路径与后端驱动监听信息。",
   deploy: "面向生产环境的发布、反代与访问控制建议。",
   checklist: "发布前做最小闭环自检，降低回滚概率。",
 };
 
 const navItems = [
-  { index: "auth" as const, label: "鉴权与 GitHub", icon: Lock },
+  { index: "accessAuth" as const, label: "访问与鉴权", icon: Lock },
   { index: "baseline" as const, label: "连接基线", icon: Connection },
   { index: "deploy" as const, label: "部署建议", icon: Link },
   { index: "checklist" as const, label: "上线检查", icon: CircleCheck },
@@ -100,20 +101,36 @@ async function loadRuntimeMeta() {
 }
 
 onMounted(() => {
-  if (typeof localStorage !== "undefined") {
-    apiToken.value = localStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
+  if (typeof sessionStorage !== "undefined") {
+    apiToken.value = sessionStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
   }
   void loadRuntimeMeta();
   void loadGithubToken();
 });
 
-watch(apiToken, (v) => {
-  if (typeof localStorage !== "undefined") {
-    const t = (v || "").trim();
-    if (t) localStorage.setItem(PALLAS_API_TOKEN_KEY, t);
-    else localStorage.removeItem(PALLAS_API_TOKEN_KEY);
+function saveApiToken() {
+  if (typeof sessionStorage === "undefined") return;
+  const t = (apiToken.value || "").trim();
+  if (t) {
+    sessionStorage.setItem(PALLAS_API_TOKEN_KEY, t);
+    apiTokenSaveMsg.value = { type: "success", text: "控制台 Token 已保存（仅当前会话）。" };
+  } else {
+    sessionStorage.removeItem(PALLAS_API_TOKEN_KEY);
+    apiTokenSaveMsg.value = { type: "warning", text: "控制台 Token 已清空。" };
   }
-});
+}
+
+async function logoutConsole() {
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(PALLAS_API_TOKEN_KEY);
+  }
+  const logoutUrl = `${base.replace(/\/$/, "")}/logout`;
+  try {
+    await fetch(logoutUrl, { method: "POST", credentials: "same-origin" });
+  } finally {
+    window.location.href = `${base.replace(/\/$/, "")}/login`;
+  }
+}
 </script>
 
 <template>
@@ -128,22 +145,33 @@ watch(apiToken, (v) => {
       <p class="main-sub">{{ sectionSub[s as Section] }}</p>
     </template>
 
-    <div v-show="section === 'auth'" class="panel auth-stack">
+    <div v-show="section === 'accessAuth'" class="panel auth-stack">
       <el-card class="cardx" shadow="hover">
-        <h3 class="card-title">写操作 Token（本机）</h3>
+        <h3 class="card-title">控制台访问 Token（开发联调）</h3>
         <p class="para">
-          该值用于浏览器发起写操作时附带 <code>X-Pallas-Token</code>。只有与后端
-          <code>pallas_webui_api_token</code> 一致时，才允许更新 Bot/群 配置。
+          当你使用 <code>npm run dev</code> 时，可能不会经过后端登录页，可在此手动填写控制台 Token 以发起受保护请求。
         </p>
         <el-input
           v-model="apiToken"
           type="password"
           show-password
           clearable
-          placeholder="留空表示不附带写 Token（推荐只读场景）"
+          placeholder="填写 PALLAS_WEBUI_API_TOKEN（留空则不附带）"
           class="api-tok"
         />
-        <p class="hint">仅保存在当前浏览器的 <code>localStorage</code>，不会上报到服务端。</p>
+        <div class="token-save-row">
+          <el-button type="primary" @click="saveApiToken">保存</el-button>
+          <el-button plain @click="logoutConsole">退出登录</el-button>
+          <el-alert
+            v-if="apiTokenSaveMsg"
+            :type="apiTokenSaveMsg.type"
+            :title="apiTokenSaveMsg.text"
+            show-icon
+            :closable="false"
+            class="token-save-alert"
+          />
+        </div>
+        <p class="hint">仅保存在当前浏览器 <code>sessionStorage</code>（关闭页面后失效）。</p>
       </el-card>
 
       <el-card class="cardx" shadow="hover">
