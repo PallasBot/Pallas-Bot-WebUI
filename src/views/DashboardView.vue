@@ -22,6 +22,7 @@ import { useMergedBotRows } from "@/composables/useMergedBotRows";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef } from "@/utils/botServiceBase";
+import PallasLogLines from "@/components/PallasLogLines.vue";
 import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
@@ -619,7 +620,7 @@ onUnmounted(() => {
               </div>
             </template>
             <el-scrollbar ref="logScrollRef" v-loading="logLoading" max-height="170px" class="log-scroll" @scroll="onLogScroll">
-              <pre class="log-pre">{{ logLines.length ? logLines.join('\n') : (ok === true ? '（暂无输出）' : '—') }}</pre>
+              <PallasLogLines :lines="logLines" :empty-text="ok === true ? '（暂无输出）' : '—'" />
             </el-scrollbar>
           </el-card>
           <el-card class="nb-conn-card gpu-card" shadow="never">
@@ -845,7 +846,7 @@ onUnmounted(() => {
   .stat-card .stat-sub {
     font-size: 11px;
   }
-  .log-pre {
+  .log-scroll :deep(.pallas-log-lines) {
     padding: 7px 8px;
     font-size: 11px;
     line-height: 1.35;
@@ -1154,5 +1155,4 @@ onUnmounted(() => {
 .log-hd { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; width: 100%; }
 .log-ctl { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .log-scroll { background: var(--el-fill-color-light); border-radius: 8px; border: 1px solid var(--el-border-color-lighter); }
-.log-pre { margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, Consolas, monospace; }
 </style>
