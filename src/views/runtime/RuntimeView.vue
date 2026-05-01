@@ -3,15 +3,16 @@ import PallasLogLines from "@/components/PallasLogLines.vue";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { fetchBots, fetchLogs, fetchSystem } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
-import type { SystemData, BotRow } from "@/api/pallasTypes";
+import type { LogScope, SystemData, BotRow } from "@/api/pallasTypes";
 import { Cpu, Document, Link } from "@element-plus/icons-vue";
-import { inject, nextTick, ref, watch } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 
 type RtSection = "sys" | "bots" | "log";
 
 const section = ref<RtSection>("sys");
 const conn = inject(pallasConnectionKey, null);
+const connOk = computed(() => conn?.ok.value === true);
 const sectionTitle: Record<RtSection, string> = {
   sys: "系统与驱动",
   bots: "OneBot 连接",
@@ -34,6 +35,7 @@ const system = ref<SystemData | null>(null);
 const bots = ref<BotRow[]>([]);
 const logLines = ref<string[]>([]);
 const logN = ref(300);
+const logScope = ref<LogScope>("all");
 const logMax = ref(2000);
 const logFollow = ref(true);
 const logStickToBottom = ref(true);
@@ -50,7 +52,7 @@ async function loadBots() {
 }
 async function loadLog() {
   const shouldFollow = logFollow.value && logStickToBottom.value;
-  const d = await fetchLogs(logN.value);
+  const d = await fetchLogs(logN.value, logScope.value);
   logLines.value = d.lines;
   logMax.value = d.max;
   if (shouldFollow) {
@@ -99,6 +101,12 @@ watch(
     }
   },
 );
+
+watch(logScope, () => {
+  if (section.value === "log" && conn?.ok.value) {
+    void loadLog();
+  }
+});
 
 watch(
   () => conn?.ok.value,
@@ -251,6 +259,11 @@ function fmtTime(t: number) {
           class="lhint"
           size="small"
         >最多 {{ logMax }} 行（受后端 pallas_webui_log_lines_max 限制）</el-text>
+        <el-radio-group v-model="logScope" size="small" :disabled="!connOk">
+          <el-radio-button label="all">全部</el-radio-button>
+          <el-radio-button label="webui">控制台</el-radio-button>
+          <el-radio-button label="protocol">协议</el-radio-button>
+        </el-radio-group>
         <el-switch
           v-model="logFollow"
           size="small"

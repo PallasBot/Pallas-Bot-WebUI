@@ -16,6 +16,7 @@ import type {
   BotConfigPublic,
   BotRow,
   DbOverviewData,
+  LogScope,
   NapcatAccountRow,
 } from "@/api/pallasTypes";
 import { useMergedBotRows } from "@/composables/useMergedBotRows";
@@ -40,6 +41,7 @@ const consoleVersion = computed(() => last.value?.console?.version || last.value
 
 const logLines = ref<string[]>([]);
 const logN = ref(200);
+const logScope = ref<LogScope>("all");
 const logMax = ref(2000);
 const logLoading = ref(false);
 const logFollow = ref(true);
@@ -332,7 +334,7 @@ async function loadLogs(silent = false) {
   }
   try {
     const shouldFollow = logFollow.value && logStickToBottom.value;
-    const d = await fetchLogs(logN.value);
+    const d = await fetchLogs(logN.value, logScope.value);
     logLines.value = d.lines;
     logMax.value = d.max;
     if (shouldFollow) {
@@ -421,6 +423,12 @@ watch(healthTick, () => {
     void loadInstances(true);
     void loadAiStatus(true);
     void loadDbOverview();
+  }
+});
+
+watch(logScope, () => {
+  if (ok.value === true) {
+    void loadLogs(true);
   }
 });
 
@@ -615,6 +623,11 @@ onUnmounted(() => {
               <div class="log-hd">
                 <span>连接日志</span>
                 <div class="log-ctl">
+                  <el-radio-group v-model="logScope" size="small" :disabled="ok !== true">
+                    <el-radio-button label="all">全部</el-radio-button>
+                    <el-radio-button label="webui">控制台</el-radio-button>
+                    <el-radio-button label="protocol">协议</el-radio-button>
+                  </el-radio-group>
                   <el-button type="primary" size="small" :loading="logLoading" :disabled="ok !== true" @click="loadLogs(false)">刷新</el-button>
                 </div>
               </div>

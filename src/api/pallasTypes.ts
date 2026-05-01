@@ -88,9 +88,13 @@ export interface BotRow {
   adapter: string;
 }
 
+/** GET /logs?scope= 与后端一致 */
+export type LogScope = "all" | "webui" | "protocol";
+
 export interface LogsData {
   lines: string[];
   max: number;
+  scope?: LogScope;
 }
 
 /** 数据库概览 */

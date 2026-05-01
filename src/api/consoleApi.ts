@@ -14,6 +14,7 @@ import type {
   GroupConfigPublic,
   GroupListData,
   InstancesData,
+  LogScope,
   LogsData,
   PluginRow,
   SystemData,
@@ -76,8 +77,8 @@ export async function fetchBots(): Promise<BotRow[]> {
   return unwrap(data, "/bots");
 }
 
-export async function fetchLogs(n: number): Promise<LogsData> {
-  const { data } = await http.get<ApiOk<LogsData>>("/logs", { params: { n } });
+export async function fetchLogs(n: number, scope: LogScope = "all"): Promise<LogsData> {
+  const { data } = await http.get<ApiOk<LogsData>>("/logs", { params: { n, scope } });
   return unwrap(data, "/logs");
 }
 
