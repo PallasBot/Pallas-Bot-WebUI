@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PallasLogLines from "@/components/PallasLogLines.vue";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { fetchBots, fetchLogs, fetchSystem } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
@@ -269,7 +270,7 @@ function fmtTime(t: number) {
         class="log-box"
         @scroll="onLogScroll"
       >
-        <pre class="log-pre">{{ logLines.length ? logLines.join("\n") : "（暂无，或日志环尚未有输出）" }}</pre>
+        <PallasLogLines :lines="logLines" empty-text="（暂无，或日志环尚未有输出）" />
       </el-scrollbar>
     </div>
   </PallasSidebarShell>
@@ -323,15 +324,10 @@ function fmtTime(t: number) {
   background: var(--el-fill-color-light);
   border-radius: 4px;
   border: 1px solid var(--el-border-color-lighter);
-  padding: 8px 10px;
 }
-.log-pre {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: pre-wrap;
+.log-box :deep(.pallas-log-lines) {
+  padding: 8px 10px;
   word-break: break-all;
-  font-family: ui-monospace, Consolas, monospace;
 }
 .kv-sep {
   color: var(--el-text-color-secondary);
