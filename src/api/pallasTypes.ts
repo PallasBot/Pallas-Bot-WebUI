@@ -257,7 +257,10 @@ export interface UpdateCheckData {
 }
 
 export interface UpdateApplyData {
+  /** GitHub 发布 tag（与检查接口一致） */
   tag: string;
+  /** dist 内 console-version.json 的展示版本，可能与 tag 不同 */
+  version?: string;
   message: string;
 }
 

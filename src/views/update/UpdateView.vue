@@ -32,7 +32,7 @@ async function doApply() {
   applying.value = true;
   try {
     const result = await postUpdateApply();
-    ElMessage.success(`更新成功：${result.tag}`);
+    ElMessage.success(`更新成功：${result.version ?? result.tag}`);
     await doCheck();
   } catch (e: unknown) {
     ElMessage.error(`更新失败：${e instanceof Error ? e.message : String(e)}`);
