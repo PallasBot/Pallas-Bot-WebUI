@@ -11,7 +11,6 @@ export interface PallasNavItem {
 defineProps<{
   asideTitle: string;
   navItems: PallasNavItem[];
-  /** 当前导航键 */
   modelValue: string;
   menuAriaLabel?: string;
   hideAside?: boolean;
@@ -132,13 +131,13 @@ function pickNav(key: string) {
   flex-shrink: 0;
   background: var(--c-nav-bg);
   border-radius: var(--pallas-radius-md);
-  border: 1px solid rgba(22, 100, 196, 0.12);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
+  box-shadow: var(--pallas-elev-1);
   padding: 12px 0 16px;
   .aside-t {
     padding: 4px 20px 12px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--pallas-text-sm);
+    font-weight: var(--pallas-weight-semibold);
     color: var(--c-main);
     letter-spacing: 0.02em;
   }
@@ -151,10 +150,12 @@ function pickNav(key: string) {
     border-radius: var(--pallas-radius-sm);
     height: 44px;
     line-height: 44px;
+    font-size: var(--pallas-text-base);
+    font-weight: var(--pallas-weight-medium);
   }
   :deep(.el-menu-item.is-active) {
-    color: #fff;
-    background: var(--c-main) !important;
+    color: #fff !important;
+    background: var(--el-color-primary-dark-2) !important;
   }
   .nav-ico {
     margin-right: 8px;
@@ -162,7 +163,7 @@ function pickNav(key: string) {
   .aside-extra {
     margin-top: 10px;
     padding: 0 12px 4px;
-    border-top: 1px dashed rgba(22, 100, 196, 0.18);
+    border-top: 1px dashed color-mix(in srgb, var(--pallas-accent) 22%, var(--el-border-color-lighter));
   }
 }
 .pallas-sidebar-main {
@@ -173,15 +174,16 @@ function pickNav(key: string) {
   flex-direction: column;
   background: var(--c-nav-bg);
   border-radius: var(--pallas-radius-md);
-  border: 1px solid rgba(22, 100, 196, 0.12);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
+  box-shadow: var(--pallas-elev-1);
   padding: 0 0 12px;
   overflow: hidden;
 }
 .main-hd {
   flex-shrink: 0;
-  padding: 20px 24px 10px;
-  border-bottom: 1px solid rgba(22, 100, 196, 0.1);
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
+  background: color-mix(in srgb, var(--c-nav-bg) 92%, var(--pallas-accent));
 }
 .main-scroll {
   flex: 1;

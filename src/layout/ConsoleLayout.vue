@@ -22,8 +22,6 @@ import {
 import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { isDark, toggleTheme } from "@/utils/theme";
-import { getBotServiceBaseRef } from "@/utils/botServiceBase";
-import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 
 const route = useRoute();
 const router = useRouter();
@@ -102,8 +100,6 @@ async function loadBotOptions() {
   } catch {}
 }
 
-const botBase = getBotServiceBaseRef();
-const protocolUrl = computed(() => protocolDashboardUrl(botBase.value || "http://localhost:8088", null));
 const selectedBotOption = computed(
   () => botOptions.value.find((x) => x.selfId === selectedBotSelfId.value) ?? botOptions.value[0] ?? null,
 );
@@ -118,7 +114,7 @@ const nav = [
   { name: "accounts" as const, to: { name: "accounts" }, label: "实例", icon: Platform },
   { name: "instances" as const, to: { name: "instances" }, label: "好友与群", icon: Connection },
   { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI拓展", icon: Connection },
-  { name: "napcat-web" as const, to: { name: "napcat" }, label: "协议管理", icon: Link, external: true },
+  { name: "napcat-web" as const, to: { name: "napcat" }, label: "协议管理", icon: Link },
   { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: Grid },
   { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
   { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
@@ -127,12 +123,6 @@ const nav = [
 ];
 
 function onNavClick(item: (typeof nav)[number]) {
-  if (item.external) {
-    if (typeof window !== "undefined") {
-      window.open(protocolUrl.value, "_blank", "noopener");
-    }
-    return;
-  }
   void router.push(item.to);
 }
 
@@ -157,7 +147,6 @@ async function doRefresh() {
     refreshing.value = false;
     if (refreshQueued.value) {
       refreshQueued.value = false;
-      // 补跑一次刷新
       void doRefresh();
       return;
     }
@@ -349,7 +338,7 @@ watch(healthTick, () => {
   height: 50px;
   padding: 0 20px;
   color: var(--c-header-fg);
-  background: var(--c-main);
+  background: #1d4ed8;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -357,6 +346,11 @@ watch(healthTick, () => {
   position: sticky;
   top: 0;
   z-index: 22;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 2px 12px rgba(15, 23, 42, 0.2);
+}
+html.dark .pallas-header {
+  background: #1e3a8a;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 2px 16px rgba(0, 0, 0, 0.35);
 }
 
 .pallas-title {
