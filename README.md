@@ -28,7 +28,7 @@
 2. 打开 WebUI：
    - 生产/集成模式：直接访问 `http://<host>:<port>/pallas/`
    - 本仓开发模式：在本目录执行 `npm install && npm run dev`，通过 Vite 代理访问后端
-3. 打开 Protocol 管理页：`http://<host>:<port>/protocol/napcat`（若配置了 `PALLAS_PROTOCOL_WEBUI_PATH`，以该值为准）。
+3. 打开 Protocol 管理页：`http://<host>:<port>/protocol/console`（若配置了 `PALLAS_PROTOCOL_WEBUI_PATH`，以该值为准）。
 
 本地开发（PowerShell 示例，后端端口非默认时）：
 
