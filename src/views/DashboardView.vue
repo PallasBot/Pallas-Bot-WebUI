@@ -323,7 +323,6 @@ async function loadInstances(silent = true) {
   }
 }
 
-/** @param silent 是否静默刷新 */
 async function loadLogs(silent = false) {
   if (ok.value !== true) {
     logLines.value = [];
@@ -569,7 +568,7 @@ onUnmounted(() => {
                   :size="80"
                   :src="`${baseUrl}pallas-priest.png`"
                 shape="square"
-                style="background: rgba(22, 100, 196, 0.08); flex-shrink: 0;"
+                style="background: color-mix(in srgb, var(--pallas-accent) 12%, transparent); flex-shrink: 0;"
               />
               <div class="intro-text">
                 <p class="intro-name">牛牛！</p>
@@ -579,12 +578,12 @@ onUnmounted(() => {
             </div>
           </el-card>
           <h4 class="dash-h">系统信息</h4>
-          <el-row :gutter="0" class="stat-row">
-            <el-col :xs="24" :sm="8">
+          <el-row :gutter="[8, 8]" class="stat-row stat-row-dash" justify="space-between">
+            <el-col :xs="8" :sm="8" :md="8">
               <el-card shadow="hover" class="stat-card">
                 <div class="stat-inner">
                   <el-icon class="stat-ico"><Cpu /></el-icon>
-                  <div>
+                  <div class="stat-body">
                     <div class="stat-label">CPU 占用</div>
                     <div class="stat-value" :class="metricClass(cpuPercent)">{{ cpuPercent == null ? "-" : `${cpuPercent.toFixed(1)}%` }}</div>
                     <div class="stat-sub">实时占用率</div>
@@ -592,11 +591,11 @@ onUnmounted(() => {
                 </div>
               </el-card>
             </el-col>
-            <el-col :xs="24" :sm="8">
+            <el-col :xs="8" :sm="8" :md="8">
               <el-card shadow="hover" class="stat-card">
                 <div class="stat-inner">
                   <el-icon class="stat-ico"><DataLine /></el-icon>
-                  <div>
+                  <div class="stat-body">
                     <div class="stat-label">内存占用</div>
                     <div class="stat-value" :class="metricClass(memPercent)">{{ memPercent == null ? "-" : `${memPercent.toFixed(1)}%` }}</div>
                     <div class="stat-sub">{{ formatBytes(memUsed) }} / {{ formatBytes(memTotal) }}</div>
@@ -604,11 +603,11 @@ onUnmounted(() => {
                 </div>
               </el-card>
             </el-col>
-            <el-col :xs="24" :sm="8">
+            <el-col :xs="8" :sm="8" :md="8">
               <el-card shadow="hover" class="stat-card">
                 <div class="stat-inner">
                   <el-icon class="stat-ico"><OfficeBuilding /></el-icon>
-                  <div>
+                  <div class="stat-body">
                     <div class="stat-label">磁盘占用</div>
                     <div class="stat-value" :class="metricClass(diskPercent)">{{ diskPercent == null ? "-" : `${diskPercent.toFixed(1)}%` }}</div>
                     <div class="stat-sub">{{ formatBytes(diskUsed) }} / {{ formatBytes(diskTotal) }}</div>
@@ -843,21 +842,39 @@ onUnmounted(() => {
   .bot-inline-item .v {
     font-size: 13px;
   }
+  .stat-card :deep(.el-card__body) {
+    padding: 10px 8px 12px;
+  }
   .stat-card .stat-inner {
-    min-height: 64px;
-    gap: 8px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 0;
+    gap: 6px;
+    padding: 4px 0;
+  }
+  .stat-card .stat-body {
+    align-items: center;
+    width: 100%;
   }
   .stat-card .stat-ico {
-    font-size: 1.35rem;
+    font-size: 1.45rem;
+    margin-bottom: 0;
   }
   .stat-card .stat-label {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.2;
   }
   .stat-card .stat-value {
-    font-size: 0.92rem;
+    font-size: 0.98rem;
+    line-height: 1.15;
   }
   .stat-card .stat-sub {
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.25;
+    max-width: 100%;
+    hyphens: auto;
   }
   .log-scroll :deep(.pallas-log-lines) {
     padding: 7px 8px;
@@ -909,10 +926,63 @@ onUnmounted(() => {
     min-height: 0;
   }
 }
+/* 过窄屏：三列过挤，改回单列横排信息条 */
+@media (max-width: 360px) {
+  .stat-row :deep(.el-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  .stat-card :deep(.el-card__body) {
+    padding: 10px 12px;
+  }
+  .stat-card .stat-inner {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    min-height: 60px;
+    padding: 0;
+    gap: 10px;
+  }
+  .stat-card .stat-body {
+    align-items: flex-start;
+  }
+  .stat-card .stat-ico {
+    font-size: 1.5rem;
+  }
+  .stat-card .stat-label {
+    font-size: 12px;
+  }
+  .stat-card .stat-value {
+    font-size: 1rem;
+  }
+  .stat-card .stat-sub {
+    font-size: 11px;
+  }
+}
 @media (max-width: 1200px) {
   .dash-top-grid {
     grid-template-columns: 1fr 1fr 0.92fr;
     min-height: auto;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .stat-row-dash :deep(.el-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  .stat-row-dash :deep(.el-col:not(:last-child)) {
+    margin-bottom: 4px;
+  }
+  .stat-card .stat-inner {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    min-height: 76px;
+    padding: 4px 0;
+  }
+  .stat-card .stat-body {
+    align-items: flex-start;
   }
 }
 .dash-sec { display: flex; flex-direction: column; gap: 10px; }
@@ -921,23 +991,50 @@ onUnmounted(() => {
 .bot-hero-top {
   margin-bottom: 8px;
 }
-.stat-row { width: 100%; }
+.stat-row {
+  width: 100%;
+}
 .stat-row :deep(.el-col) {
   display: flex;
 }
 .stat-card {
   width: 100%;
   height: 100%;
+  border-radius: var(--pallas-radius-md);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 16%, var(--el-border-color-lighter));
   border-left: 3px solid var(--c-main);
-  .stat-inner { display: flex; align-items: center; gap: 12px; min-height: 84px; }
-  .stat-ico { font-size: 1.8rem; color: var(--c-main); }
-  .stat-label { color: var(--el-text-color-secondary); font-size: 13px; margin-bottom: 2px; }
-  .stat-value { font-size: 1.05rem; font-weight: 700; }
+  box-shadow: var(--pallas-elev-1);
+  :deep(.el-card__body) {
+    padding: 14px 16px;
+    background: linear-gradient(165deg, color-mix(in srgb, var(--el-bg-color) 94%, var(--pallas-accent)) 0%, var(--el-bg-color) 100%);
+  }
+  .stat-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 84px;
+  }
+  .stat-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .stat-ico { font-size: 1.8rem; color: var(--c-main); flex-shrink: 0; }
+  .stat-label { color: var(--el-text-color-secondary); font-size: 13px; margin-bottom: 0; }
+  .stat-value { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
   .stat-value.is-ok { color: var(--el-color-success); }
   .stat-value.is-warn { color: var(--el-color-warning); }
   .stat-value.is-crit { color: var(--el-color-danger); }
   .stat-value.is-unknown { color: var(--el-text-color-secondary); }
-  .stat-sub { font-size: 12px; color: var(--el-text-color-secondary); }
+  .stat-sub {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    line-height: 1.3;
+    word-break: break-word;
+  }
 }
 .nb-conn-card {
   border: 1px solid rgba(22, 100, 196, 0.12);

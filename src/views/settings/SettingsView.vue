@@ -19,7 +19,7 @@ const driverPort = ref<number | null>(null);
 const base = (import.meta.env.BASE_URL as string) || "/pallas/";
 const apiBase = `${base.replace(/\/$/, "")}/api`;
 const healthPath = `${apiBase}/health`;
-const protocolPath = "/protocol/napcat";
+const protocolPath = "/protocol/console";
 const protocolHint = `${protocolPath}（默认，可由 PALLAS_PROTOCOL_WEBUI_PATH 覆盖）`;
 const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TARGET。";
 
@@ -49,7 +49,6 @@ const driverAddr = computed(() => {
   return `${driverHost.value}:${driverPort.value}`;
 });
 
-// ── GitHub Token ──────────────────────────────────────────────────────────────
 const githubToken = ref("");
 const githubTokenLoading = ref(false);
 const githubTokenSaving = ref(false);
@@ -271,7 +270,7 @@ async function logoutConsole() {
             <p class="tl-p">写 Token 校验符合预期：错误值 401，正确值可写。</p>
           </el-timeline-item>
           <el-timeline-item type="primary" hollow>
-            <p class="tl-p">协议管理页可达（默认 <code>/protocol/napcat</code>），且鉴权有效。</p>
+            <p class="tl-p">协议管理页可达（默认 <code>/protocol/console</code>），且鉴权有效。</p>
           </el-timeline-item>
           <el-timeline-item type="primary" hollow>
             <p class="tl-p">反代与 HTTPS 生效，管理面不直接暴露到公共网络。</p>
