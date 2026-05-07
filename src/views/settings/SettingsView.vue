@@ -3,10 +3,34 @@ import { fetchPluginConfig, fetchSystem, putPluginConfig } from "@/api/consoleAp
 import { fetchHealth } from "@/api/health";
 import { PALLAS_API_TOKEN_KEY } from "@/api/http";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
-import { CircleCheck, Connection, Lock } from "@element-plus/icons-vue";
+import {
+  CircleCheck,
+  Connection,
+  Lock,
+  MagicStick,
+  Monitor,
+  Moon,
+  Sunny,
+  Timer,
+} from "@element-plus/icons-vue";
 import { computed, onMounted, ref } from "vue";
+import {
+  ACCENT_SWATCHES,
+  POLL_OPTIONS,
+  RADIUS_PRESETS,
+  getAccentHex,
+  getDashboardPollMs,
+  getDensity,
+  getRadiusRem,
+  setAccentHex,
+  setDashboardPollMs,
+  setDensity,
+  setRadiusRem,
+  type DensityPref,
+} from "@/utils/pallasUiPrefs";
+import { setThemeDisplayMode, themeDisplayMode, type ThemeDisplayMode } from "@/utils/theme";
 
-type Section = "accessAuth" | "baseline" | "ops";
+type Section = "accessAuth" | "appearance" | "behavior" | "baseline" | "ops";
 
 const section = ref<Section>("accessAuth");
 const apiToken = ref("");
@@ -25,21 +49,56 @@ const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TA
 
 const sectionTitle: Record<Section, string> = {
   accessAuth: "访问与鉴权",
+  appearance: "外观",
+  behavior: "数据刷新",
   baseline: "连接与端点",
   ops: "生产与自检",
 };
 
 const sectionSub: Record<Section, string> = {
   accessAuth: "控制台与 GitHub 凭据集中在此；说明文字保持克制，便于扫读。",
+  appearance: "对齐 SnowLuma：明暗、强调色、圆角与密度；写入本机浏览器即时生效。",
+  behavior: "仪表盘日志等板块的后台轮询间隔（本页保存后立即作用于当前控制台会话）。",
   baseline: "汇总健康检查、控制台与 API 的根路径，以及 NoneBot 驱动监听地址。",
   ops: "发布路径、反代与上线前最小闭环，一次浏览即可对照执行。",
 };
 
 const navItems = [
   { index: "accessAuth" as const, label: "访问与鉴权", icon: Lock },
+  { index: "appearance" as const, label: "外观", icon: MagicStick },
+  { index: "behavior" as const, label: "数据刷新", icon: Timer },
   { index: "baseline" as const, label: "连接与端点", icon: Connection },
   { index: "ops" as const, label: "生产与自检", icon: CircleCheck },
 ];
+
+const accentHex = ref(getAccentHex());
+const radiusRem = ref(getRadiusRem());
+const densityPref = ref<DensityPref>(getDensity());
+const dashPollMs = ref(getDashboardPollMs());
+
+function pickThemeMode(m: ThemeDisplayMode): void {
+  setThemeDisplayMode(m);
+}
+
+function pickAccent(hex: string): void {
+  accentHex.value = hex;
+  setAccentHex(hex);
+}
+
+function pickRadius(r: number): void {
+  radiusRem.value = r;
+  setRadiusRem(r);
+}
+
+function pickDensity(d: DensityPref): void {
+  densityPref.value = d;
+  setDensity(d);
+}
+
+function pickPoll(ms: number): void {
+  dashPollMs.value = ms;
+  setDashboardPollMs(ms);
+}
 
 const driverAddr = computed(() => {
   if (!driverHost.value || driverHost.value === "-" || !driverPort.value) return "-";
@@ -100,6 +159,10 @@ onMounted(() => {
   if (typeof sessionStorage !== "undefined") {
     apiToken.value = sessionStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
   }
+  accentHex.value = getAccentHex();
+  radiusRem.value = getRadiusRem();
+  densityPref.value = getDensity();
+  dashPollMs.value = getDashboardPollMs();
   void loadRuntimeMeta();
   void loadGithubToken();
 });
@@ -209,6 +272,132 @@ async function logoutConsole() {
             class="token-save-alert sl-alert"
           />
         </div>
+      </el-card>
+    </div>
+
+    <div v-show="section === 'appearance'" class="panel auth-stack">
+      <el-card class="cardx sl-card" shadow="never">
+        <header class="sl-hd">
+          <h3 class="sl-title">显示模式</h3>
+          <p class="sl-desc">浅色 / 深色 / 跟随系统；与顶部栏切换和协议端主题桥共享存储键。</p>
+        </header>
+        <div class="sl-chip-row">
+          <button
+            type="button"
+            class="sl-chip"
+            :class="{ active: themeDisplayMode === 'light' }"
+            @click="pickThemeMode('light')"
+          >
+            <el-icon><Sunny /></el-icon>
+            浅色
+          </button>
+          <button
+            type="button"
+            class="sl-chip"
+            :class="{ active: themeDisplayMode === 'dark' }"
+            @click="pickThemeMode('dark')"
+          >
+            <el-icon><Moon /></el-icon>
+            深色
+          </button>
+          <button
+            type="button"
+            class="sl-chip"
+            :class="{ active: themeDisplayMode === 'system' }"
+            @click="pickThemeMode('system')"
+          >
+            <el-icon><Monitor /></el-icon>
+            跟随系统
+          </button>
+        </div>
+      </el-card>
+
+      <el-card class="cardx sl-card" shadow="never">
+        <header class="sl-hd">
+          <h3 class="sl-title">强调色</h3>
+          <p class="sl-desc">作用于 Element Plus 主色与控制台主题变量。</p>
+        </header>
+        <div class="sl-accent-row">
+          <button
+            v-for="a in ACCENT_SWATCHES"
+            :key="a.id"
+            type="button"
+            class="sl-swatch"
+            :class="{ active: accentHex === a.hex }"
+            :title="a.label"
+            :style="{ backgroundColor: a.hex }"
+            @click="pickAccent(a.hex)"
+          />
+        </div>
+        <p class="sl-foot">当前：{{ ACCENT_SWATCHES.find((x) => x.hex === accentHex)?.label ?? "自定义" }}（{{ accentHex }}）</p>
+      </el-card>
+
+      <el-card class="cardx sl-card" shadow="never">
+        <header class="sl-hd">
+          <h3 class="sl-title">圆角</h3>
+        </header>
+        <div class="sl-chip-row">
+          <button
+            v-for="r in RADIUS_PRESETS"
+            :key="r.value"
+            type="button"
+            class="sl-chip"
+            :class="{ active: Math.abs(radiusRem - r.value) < 0.01 }"
+            @click="pickRadius(r.value)"
+          >
+            {{ r.label }}（{{ r.value }}rem）
+          </button>
+        </div>
+      </el-card>
+
+      <el-card class="cardx sl-card" shadow="never">
+        <header class="sl-hd">
+          <h3 class="sl-title">显示密度</h3>
+        </header>
+        <div class="sl-dens-grid">
+          <button
+            type="button"
+            class="sl-dens-card"
+            :class="{ active: densityPref === 'cozy' }"
+            @click="pickDensity('cozy')"
+          >
+            <span class="sl-dens-title">舒适</span>
+            <span class="sl-dens-desc">默认间距，阅读更轻松</span>
+          </button>
+          <button
+            type="button"
+            class="sl-dens-card"
+            :class="{ active: densityPref === 'compact' }"
+            @click="pickDensity('compact')"
+          >
+            <span class="sl-dens-title">紧凑</span>
+            <span class="sl-dens-desc">更小字号与行距，单屏更多信息</span>
+          </button>
+        </div>
+      </el-card>
+    </div>
+
+    <div v-show="section === 'behavior'" class="panel">
+      <el-card class="cardx sl-card" shadow="never">
+        <header class="sl-hd">
+          <h3 class="sl-title">仪表盘轮询</h3>
+          <p class="sl-desc">控制仪表盘「连接日志」等区块拉取后端的间隔；设为暂停则不在后台自动刷新日志。</p>
+        </header>
+        <div class="sl-chip-row sl-chip-row-wrap">
+          <button
+            v-for="p in POLL_OPTIONS"
+            :key="p.value"
+            type="button"
+            class="sl-chip"
+            :class="{ active: dashPollMs === p.value }"
+            @click="pickPoll(p.value)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
+        <p class="sl-foot">
+          当前：{{ dashPollMs === 0 ? "已暂停轮询" : `${dashPollMs} 毫秒` }}
+        </p>
       </el-card>
     </div>
 
@@ -409,5 +598,90 @@ async function logoutConsole() {
     width: 100%;
     min-width: 0;
   }
+}
+.sl-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sl-chip-row-wrap {
+  align-items: flex-start;
+}
+.sl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--el-border-color);
+  padding: 9px 14px;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  background: var(--el-bg-color);
+  color: var(--el-text-color-regular);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.sl-chip.active {
+  border-color: var(--el-color-primary);
+  background: color-mix(in srgb, var(--el-color-primary) 12%, transparent);
+  color: var(--el-color-primary);
+}
+.sl-accent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sl-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--el-border-color);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sl-swatch:hover {
+  transform: scale(1.06);
+}
+.sl-swatch.active {
+  border-color: var(--el-text-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--el-color-primary) 35%, transparent);
+}
+.sl-dens-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.sl-dens-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid var(--el-border-color);
+  padding: 14px 16px;
+  cursor: pointer;
+  background: var(--el-bg-color);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.sl-dens-card.active {
+  border-color: var(--el-color-primary);
+  background: color-mix(in srgb, var(--el-color-primary) 10%, transparent);
+}
+.sl-dens-title {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--el-text-color-primary);
+}
+.sl-dens-desc {
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--el-text-color-secondary);
 }
 </style>

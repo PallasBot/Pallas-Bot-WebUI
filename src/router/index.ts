@@ -9,6 +9,7 @@ import InstancesView from "../views/instances/InstancesView.vue";
 import ProtocolManageView from "../views/protocol/ProtocolManageView.vue";
 import PluginsView from "../views/plugins/PluginsView.vue";
 import SettingsView from "../views/settings/SettingsView.vue";
+import LogsView from "../views/logs/LogsView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -59,6 +60,12 @@ const router = createRouter({
           name: "protocol",
           component: ProtocolManageView,
           meta: { title: "协议管理" },
+        },
+        {
+          path: "logs",
+          name: "logs",
+          component: LogsView,
+          meta: { title: "运行日志" },
         },
         {
           path: "napcat",

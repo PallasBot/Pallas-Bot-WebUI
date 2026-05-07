@@ -24,12 +24,11 @@ import { pallasConnectionKey } from "@/types/pallas-connection";
 import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef } from "@/utils/botServiceBase";
 import PallasLogLines from "@/components/PallasLogLines.vue";
+import { getDashboardPollMs } from "@/utils/pallasUiPrefs";
 import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { CircleCloseFilled, Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-
-const LOG_POLL_MS = 3000;
 
 const conn = inject(pallasConnectionKey);
 const botCtx = inject(pallasBotContextKey, null);
@@ -262,9 +261,15 @@ function stopLogPoll() {
 
 function startLogPoll() {
   stopLogPoll();
+  const ms = getDashboardPollMs();
+  if (ms <= 0) return;
   logPollTimer = setInterval(() => {
     void loadLogs(true);
-  }, LOG_POLL_MS);
+  }, ms);
+}
+
+function onDashboardPollSettingChanged() {
+  if (ok.value === true) startLogPoll();
 }
 
 async function loadSystem(silent = true) {
@@ -502,6 +507,7 @@ onMounted(() => {
   syncMobileMode();
   if (typeof window !== "undefined") {
     window.addEventListener("resize", syncMobileMode, { passive: true });
+    window.addEventListener("pallas-dashboard-poll-changed", onDashboardPollSettingChanged);
   }
 });
 
@@ -509,6 +515,7 @@ onUnmounted(() => {
   stopLogPoll();
   if (typeof window !== "undefined") {
     window.removeEventListener("resize", syncMobileMode);
+    window.removeEventListener("pallas-dashboard-poll-changed", onDashboardPollSettingChanged);
   }
 });
 </script>
@@ -1045,7 +1052,7 @@ onUnmounted(() => {
     padding: 8px;
   }
   .nb-conn-card {
-    border-color: rgba(22, 100, 196, 0.2);
+    border-color: color-mix(in srgb, var(--pallas-accent) 20%, var(--el-border-color-lighter));
     box-shadow: 0 2px 8px rgba(13, 52, 106, 0.1);
   }
   .intro-main {
@@ -1320,9 +1327,9 @@ onUnmounted(() => {
   }
 }
 .nb-conn-card {
-  border: 1px solid rgba(22, 100, 196, 0.12);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
   background: var(--el-bg-color);
-  box-shadow: 0 3px 10px rgba(16, 58, 110, 0.08);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--pallas-accent) 8%, rgba(0, 0, 0, 0.06));
 }
 .bot-hero {
   &.bot-hero-vertical {
@@ -1415,7 +1422,7 @@ onUnmounted(() => {
     justify-content: center;
   }
   background: var(--el-bg-color);
-  border-color: rgba(22, 100, 196, 0.16);
+  border-color: color-mix(in srgb, var(--pallas-accent) 16%, var(--el-border-color-lighter));
 }
 .bot-db-card {
   :deep(.el-card__body) {
@@ -1507,7 +1514,7 @@ onUnmounted(() => {
 }
 .bot-inline-item {
   flex: 1;
-  border: 1px solid rgba(22, 100, 196, 0.14);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
   border-radius: 8px;
   padding: 6px 8px;
   display: flex;
@@ -1524,7 +1531,7 @@ onUnmounted(() => {
   }
 }
 .intro-card {
-  border: 1px solid rgba(22, 100, 196, 0.2);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 20%, var(--el-border-color-lighter));
   background: var(--el-bg-color);
   :deep(.el-card__body) {
     padding: 18px 22px;
@@ -1696,7 +1703,7 @@ html.dark .pallas-dash-banner__icon {
   gap: 8px;
 }
 .nb-item {
-  border: 1px solid rgba(22, 100, 196, 0.14);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
   border-radius: 8px;
   padding: 8px 10px;
   display: flex;
@@ -1739,7 +1746,7 @@ html.dark .pallas-dash-banner__icon {
   gap: 6px;
 }
 .gpu-dash-device {
-  border: 1px solid rgba(22, 100, 196, 0.12);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
   border-radius: 6px;
   padding: 5px 7px;
   background: color-mix(in srgb, var(--el-fill-color-light) 88%, var(--el-bg-color));
@@ -1830,7 +1837,12 @@ html.dark .pallas-dash-banner__icon {
 }
 .mono { font-family: ui-monospace, Consolas, monospace; }
 .v-mid { vertical-align: middle; }
-.log-card { border: 1px solid rgba(22, 100, 196, 0.12); :deep(.el-card__header) { padding: 12px 16px; } }
+.log-card {
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
+  :deep(.el-card__header) {
+    padding: 12px 16px;
+  }
+}
 .log-card-compact {
   max-width: 100%;
 }

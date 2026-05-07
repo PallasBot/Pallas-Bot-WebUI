@@ -6,9 +6,11 @@ import "./assets/styles/pallas-theme.scss";
 
 import App from "./App.vue";
 import router from "./router";
+import { applyPallasUiPrefsFromStorage } from "./utils/pallasUiPrefs";
 import { initThemeFromStorage } from "./utils/theme";
 
 initThemeFromStorage();
+applyPallasUiPrefsFromStorage();
 const app = createApp(App);
 app.use(router);
 app.use(ElementPlus);

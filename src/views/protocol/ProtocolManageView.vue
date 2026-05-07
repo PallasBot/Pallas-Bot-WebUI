@@ -17,7 +17,8 @@ const sectionTitle: Record<ProtocolSection, string> = {
 };
 const sectionSub: Record<ProtocolSection, string> = {
   url: "集中查看协议端开关、账号在线情况与访问入口（基于已加载的 pallas_protocol 快照）。",
-  assets: "在 Bot 托管页打开协议运行时发行包下载目录（与实例数据目录 runtime_dist、runtime_extract 对应）。",
+  assets:
+    "在协议资产页选择 Release 版本、下载/更新 NapCat 与 SnowLuma 托管包，并可清理 runtime_dist 下载缓存；个别实例版本差异通过账号 program_dir 覆盖。",
   flow: "从协议端登录到回连验证的建议执行顺序，减少上线遗漏。",
   faq: "覆盖 404、token、端口冲突等高频问题，并给出可执行排查路径。",
 };
@@ -109,7 +110,7 @@ onMounted(async () => {
         pallas_protocol
       </el-tag>
       <p class="lead lead-spaced pallas-doc-prose">
-        ① 下表为 Pallas 协议插件托管的管理页，与 Bot 使用同一
+        ① 下表为 Pallas-Bot 协议插件托管的管理页，与 Bot 使用同一
         <code>host:port</code>（由 <code>/pallas/api/system</code> 的驱动地址生成，未连上时回退
         <code>http://localhost:8088</code>），默认路径段为
         <code>/protocol/console</code>；可在配置中用 <code>pallas_protocol_webui_path</code> 覆盖整段挂载。
@@ -131,7 +132,7 @@ onMounted(async () => {
           :icon="Link"
           @click="openProtocol"
         >
-          打开 ① Pallas 协议端管理总览
+          打开 ① Pallas-Bot 协议端管理总览
         </el-button>
         <el-descriptions
           :column="1"
@@ -176,7 +177,10 @@ onMounted(async () => {
       />
       <p class="lead lead-spaced pallas-doc-prose">
         压缩包保存在 Bot 数据目录 <code>runtime_dist/napcat</code>、<code>runtime_dist/snowluma</code>；解压结果在
-        <code>runtime_extract/napcat</code>、<code>runtime_extract/snowluma</code>。
+        <code>runtime_extract/napcat</code>、<code>runtime_extract/snowluma</code>。全局版本由 manifest 指向的托管目录决定；全员升级/回退在本页打开协议资产后选 tag 下载即可；个别实例可在账号设置中填写自定义 <code>program_dir</code>。
+      </p>
+      <p class="lead lead-spaced pallas-doc-prose">
+        「清理下载缓存」按钮位于协议资产页顶部（需协议 token），仅删除 <code>runtime_dist</code> 下已下载文件，不动解压目录。
       </p>
       <div class="assets-url-wrap">
         <span class="assets-label">完整 URL</span>
@@ -207,14 +211,14 @@ onMounted(async () => {
           type="primary"
           hollow
         >
-          核对各账号目录下 <code>onebot*.json</code> 中反向 WS 指向 Pallas
+          核对各账号目录下 <code>onebot*.json</code> 中反向 WS 指向 Pallas-Bot
           监听的 OneBot 地址
         </el-timeline-item>
         <el-timeline-item
           type="primary"
           hollow
         >
-          在 Pallas 中验证连接（bot 日志 / 发消息测试）后，再回到本页或控制台总览
+          在 Pallas-Bot 中验证连接（bot 日志 / 发消息测试）后，再回到本页或控制台总览
           查看 <code>/pallas/api/health</code>
         </el-timeline-item>
       </el-timeline>

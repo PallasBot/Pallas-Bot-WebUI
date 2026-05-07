@@ -916,7 +916,7 @@ watch(
                   v-if="protocolSnap.webui_enabled"
                   type="primary"
                   :href="pallasProtocolAccountUrl(r)"
-                >Pallas管理</el-link>
+                >Pallas-Bot 管理</el-link>
                 <el-link
                   v-if="accountNativeWebUiUrl(r)"
                   type="primary"

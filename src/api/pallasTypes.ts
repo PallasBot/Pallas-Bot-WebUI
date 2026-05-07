@@ -93,8 +93,19 @@ export interface BotRow {
 /** GET /logs?scope= 与后端一致 */
 export type LogScope = "all" | "webui" | "protocol";
 
+export type LogEntryLevel = "debug" | "info" | "success" | "warn" | "error";
+
+export interface LogEntry {
+  id: number;
+  time: string;
+  level: LogEntryLevel;
+  scope: string;
+  message: string;
+}
+
 export interface LogsData {
   lines: string[];
+  entries: LogEntry[];
   max: number;
   scope?: LogScope;
 }

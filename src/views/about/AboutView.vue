@@ -98,7 +98,7 @@ onMounted(() => {
     <div v-show="section === 'overview'" class="panel">
       <el-card class="ac" shadow="hover">
         <p class="p">
-          <strong>Pallas 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
+          <strong>Pallas-Bot 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
           进程在 <code>/pallas</code> 提供静态页面，并通过 <code>/pallas/api</code> 暴露管理接口。
         </p>
         <p class="p p2">

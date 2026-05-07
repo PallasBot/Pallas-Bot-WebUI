@@ -8,18 +8,23 @@ import {
   CaretBottom,
   Connection,
   DataBoard,
+  Document,
+  Expand,
+  Fold,
   Grid,
   InfoFilled,
   Link,
   Loading,
+  Menu as MenuIcon,
   Moon,
   Monitor,
   Platform,
   Refresh,
   Setting,
   Sunny,
+  Tickets,
 } from "@element-plus/icons-vue";
-import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { setTabFavicon } from "@/utils/tabFavicon";
 import { isDark, toggleTheme } from "@/utils/theme";
@@ -52,6 +57,31 @@ function setSelectedBotSelfId(selfId: string | null) {
 
 provide(pallasBotContextKey, { selectedBotSelfId, setSelectedBotSelfId });
 
+const NAV_DRAWER_MQ = "(max-width: 900px)";
+const SIDEBAR_COLLAPSED_KEY = "pallas.sidebar.collapsed";
+const isNarrowLayout = ref(false);
+const navDrawerOpen = ref(false);
+const sidebarCollapsed = ref(false);
+
+function loadSidebarCollapsed(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+}
+
+function toggleSidebarCollapsed(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed.value ? "1" : "0");
+  }
+}
+
+function syncNarrowLayout() {
+  if (typeof window === "undefined") return;
+  const next = window.matchMedia(NAV_DRAWER_MQ).matches;
+  isNarrowLayout.value = next;
+  if (!next) navDrawerOpen.value = false;
+}
+
 onMounted(() => {
   void ensureBotServiceBaseUrl();
   setTabFavicon(`${import.meta.env.BASE_URL}pallas-priest.png`, "image/png");
@@ -60,6 +90,9 @@ onMounted(() => {
     if (saved) selectedBotSelfId.value = saved;
   }
   void loadBotOptions();
+  sidebarCollapsed.value = loadSidebarCollapsed();
+  syncNarrowLayout();
+  window.addEventListener("resize", syncNarrowLayout);
 });
 
 async function loadBotOptions() {
@@ -117,6 +150,7 @@ const nav = [
   { name: "instances" as const, to: { name: "instances" }, label: "好友与群", icon: Connection },
   { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI 扩展", icon: Connection },
   { name: "protocol" as const, to: { name: "protocol" }, label: "协议管理", icon: Link },
+  { name: "logs" as const, to: { name: "logs" }, label: "运行日志", icon: Tickets },
   { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: Grid },
   { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
   { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
@@ -161,6 +195,7 @@ async function doRefresh() {
 watch(
   () => route.fullPath,
   async () => {
+    navDrawerOpen.value = false;
     pageLoading.value = true;
     void doRefresh();
     await nextTick();
@@ -177,86 +212,225 @@ watch(healthTick, () => {
 });
 
 const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
+
+onUnmounted(() => {
+  if (typeof window !== "undefined") window.removeEventListener("resize", syncNarrowLayout);
+});
+
+function onMobileNavClick(item: (typeof nav)[number]) {
+  navDrawerOpen.value = false;
+  void router.push(item.to);
+}
+
+const currentNavLabel = computed(() => {
+  const hit = nav.find((x) => x.name === route.name);
+  return hit?.label ?? "控制台";
+});
+
+const footerYear = new Date().getFullYear();
 </script>
 
 <template>
-  <div class="pallas-root">
+  <div
+    class="pallas-root"
+    :class="{ 'is-sidebar-collapsed': sidebarCollapsed && !isNarrowLayout }"
+  >
     <header class="pallas-header">
-      <div class="pallas-title">
-        <span class="pallas-title-mark" aria-hidden="true" />
-        <span class="pallas-title-text">Pallas 控制台</span>
-        <el-tag
-          class="tag-beta"
-          effect="plain"
-          size="small"
-        >
-          Beta
-        </el-tag>
+      <div class="pallas-header-lead">
+        <el-button
+          v-if="!isNarrowLayout"
+          class="pallas-sidebar-toggle"
+          :icon="sidebarCollapsed ? Expand : Fold"
+          circle
+          :title="sidebarCollapsed ? '展开侧栏' : '收起侧栏'"
+          @click="toggleSidebarCollapsed"
+        />
+        <el-button
+          v-if="isNarrowLayout"
+          class="pallas-menu-btn"
+          :icon="MenuIcon"
+          circle
+          aria-label="打开导航菜单"
+          @click="navDrawerOpen = true"
+        />
+        <div class="pallas-title">
+          <span class="pallas-title-mark" aria-hidden="true" />
+          <div class="pallas-title-stack">
+            <span class="pallas-title-text">Pallas-Bot 控制台</span>
+            <span
+              v-if="isNarrowLayout"
+              class="pallas-route-hint"
+            >{{ currentNavLabel }}</span>
+          </div>
+          <el-tag
+            class="tag-beta"
+            effect="plain"
+            size="small"
+          >
+            Beta
+          </el-tag>
+        </div>
       </div>
       <div class="pallas-header-right">
-        <div class="pallas-header-actions">
         <div
-          class="pallas-connect"
-          title="基于 /pallas/api/health"
+          v-if="!isNarrowLayout"
+          class="pallas-header-actions"
         >
-          <span
-            class="pallas-dot"
-            :class="{ off: ok === false, unk: ok === null }"
-          />
-          <span
-            v-if="ok"
-            class="pallas-host"
-          >已连接 <span class="pallas-host-addr">@{{ hostLabel }}</span></span>
-          <span v-else-if="ok === null">检查中</span>
-          <span
-            v-else
-            class="pallas-host pallas-err"
-          >未连接</span>
+          <div
+            class="pallas-connect"
+            title="基于 /pallas/api/health"
+          >
+            <span
+              class="pallas-dot"
+              :class="{ off: ok === false, unk: ok === null }"
+            />
+            <span
+              v-if="ok"
+              class="pallas-host"
+            >已连接 <span class="pallas-host-addr">@{{ hostLabel }}</span></span>
+            <span v-else-if="ok === null">检查中</span>
+            <span
+              v-else
+              class="pallas-host pallas-err"
+            >未连接</span>
+          </div>
+          <span class="pallas-header-actions-gap" aria-hidden="true" />
+          <div class="pallas-header-toolbar">
+            <el-button
+              :icon="isDark ? Sunny : Moon"
+              circle
+              class="header-icon-btn"
+              title="切换浅色 / 深色"
+              @click="toggleTheme"
+            />
+            <a
+              class="header-link"
+              :href="DOCS"
+              target="_blank"
+              rel="noopener"
+            >文档</a>
+            <a
+              class="header-link"
+              :href="REPO"
+              target="_blank"
+              rel="noopener"
+            >GitHub</a>
+            <el-dropdown
+              class="account-switch"
+              trigger="click"
+              :disabled="!botOptions.length"
+              @command="(v: string) => setSelectedBotSelfId(v)"
+            >
+              <el-button
+                size="small"
+                class="account-switch-btn"
+                :class="{ 'is-empty': !botOptions.length }"
+              >
+                <span class="switch-dot" />
+                <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
+                <el-avatar
+                  v-if="selectedBotAvatar && botOptions.length"
+                  :size="26"
+                  :src="selectedBotAvatar"
+                  :img-props="qqAvatarImgProps"
+                />
+                <el-avatar
+                  v-else
+                  :size="26"
+                >B</el-avatar>
+                <el-icon><CaretBottom /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    v-for="b in botOptions"
+                    :key="b.selfId"
+                    :command="b.selfId"
+                    :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
+                  >
+                    <div class="account-option">
+                      <el-avatar
+                        v-if="b.avatar"
+                        :size="20"
+                        :src="b.avatar"
+                        :img-props="qqAvatarImgProps"
+                      />
+                      <el-avatar
+                        v-else
+                        :size="20"
+                      >B</el-avatar>
+                      <div class="account-option-text">
+                        <strong>{{ b.nickname }}</strong>
+                        <span class="mono">QQ {{ b.qq }}</span>
+                      </div>
+                    </div>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
-        <span class="pallas-header-actions-gap" aria-hidden="true" />
-        <div class="pallas-header-toolbar">
+
+        <div
+          v-else
+          class="pallas-header-toolbar pallas-header-toolbar--narrow"
+        >
           <el-button
             :icon="isDark ? Sunny : Moon"
             circle
             class="header-icon-btn"
+            title="切换浅色 / 深色"
             @click="toggleTheme"
           />
-          <a
-            class="header-link"
-            :href="DOCS"
-            target="_blank"
-            rel="noopener"
-          >文档</a>
-          <a
-            class="header-link"
-            :href="REPO"
-            target="_blank"
-            rel="noopener"
-          >GitHub</a>
+          <el-tooltip
+            content="文档"
+            placement="bottom"
+          >
+            <a
+              class="header-icon-link"
+              :href="DOCS"
+              target="_blank"
+              rel="noopener"
+              aria-label="文档"
+            >
+              <el-icon><Document /></el-icon>
+            </a>
+          </el-tooltip>
+          <el-tooltip
+            content="GitHub"
+            placement="bottom"
+          >
+            <a
+              class="header-icon-link"
+              :href="REPO"
+              target="_blank"
+              rel="noopener"
+              aria-label="GitHub"
+            >
+              <el-icon><Link /></el-icon>
+            </a>
+          </el-tooltip>
           <el-dropdown
-            class="account-switch"
+            class="account-switch account-switch--narrow"
             trigger="click"
             :disabled="!botOptions.length"
             @command="(v: string) => setSelectedBotSelfId(v)"
           >
             <el-button
-              size="small"
-              class="account-switch-btn"
-              :class="{ 'is-empty': !botOptions.length }"
+              circle
+              class="header-icon-btn account-icon-btn"
+              :aria-label="botOptions.length ? '切换 Bot 账号' : '暂无账号'"
             >
-              <span class="switch-dot" />
-              <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
               <el-avatar
                 v-if="selectedBotAvatar && botOptions.length"
-                :size="26"
+                :size="28"
                 :src="selectedBotAvatar"
                 :img-props="qqAvatarImgProps"
               />
               <el-avatar
                 v-else
-                :size="26"
+                :size="28"
               >B</el-avatar>
-              <el-icon><CaretBottom /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -287,9 +461,63 @@ const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
             </template>
           </el-dropdown>
         </div>
-        </div>
       </div>
     </header>
+
+    <div
+      v-if="isNarrowLayout"
+      class="pallas-status-strip"
+      title="基于 /pallas/api/health"
+    >
+      <div class="pallas-connect pallas-connect--strip">
+        <span
+          class="pallas-dot"
+          :class="{ off: ok === false, unk: ok === null }"
+        />
+        <span
+          v-if="ok"
+          class="pallas-host"
+        >已连接 <span class="pallas-host-addr">@{{ hostLabel }}</span></span>
+        <span v-else-if="ok === null">检查中</span>
+        <span
+          v-else
+          class="pallas-host pallas-err"
+        >未连接</span>
+      </div>
+    </div>
+
+    <el-drawer
+      v-model="navDrawerOpen"
+      direction="ltr"
+      size="288px"
+      class="pallas-nav-drawer-wrap"
+      append-to-body
+    >
+      <template #header>
+        <div class="pallas-drawer-hd">
+          <span class="pallas-drawer-title">导航</span>
+          <span class="pallas-drawer-sub">{{ currentNavLabel }}</span>
+        </div>
+      </template>
+      <nav
+        class="pallas-drawer-nav"
+        aria-label="主导航"
+      >
+        <button
+          v-for="item in nav"
+          :key="item.name"
+          type="button"
+          class="drawer-nav-item"
+          :class="{ selected: route.name === item.name }"
+          @click="onMobileNavClick(item)"
+        >
+          <el-icon class="drawer-nav-ico">
+            <component :is="item.icon" />
+          </el-icon>
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
+    </el-drawer>
 
     <div class="pallas-body">
       <aside class="pallas-nav">
@@ -299,6 +527,7 @@ const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
             :key="item.name"
             class="menu-item"
             :class="{ selected: route.name === item.name }"
+            :title="sidebarCollapsed && !isNarrowLayout ? item.label : undefined"
             @click="onNavClick(item)"
           >
             <el-icon class="micon">
@@ -334,6 +563,13 @@ const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
         </div>
       </main>
     </div>
+
+    <footer
+      class="pallas-console-footer"
+      role="contentinfo"
+    >
+      © {{ footerYear }} Pallas-Bot
+    </footer>
   </div>
 </template>
 
@@ -366,11 +602,95 @@ html.dark .pallas-header {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
+.pallas-header-lead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
 .pallas-title {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.pallas-title-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pallas-route-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--el-text-color-secondary);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56vw;
+}
+
+.pallas-menu-btn {
+  flex-shrink: 0;
+}
+
+.pallas-sidebar-toggle {
+  flex-shrink: 0;
+}
+
+.pallas-status-strip {
+  flex-shrink: 0;
+  padding: 5px 12px 7px;
+  background: color-mix(in srgb, var(--el-fill-color-light) 88%, transparent);
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.pallas-connect--strip {
+  font-size: 12px;
+  min-height: 22px;
+}
+
+.pallas-header-toolbar--narrow {
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.header-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--el-border-color);
+  background: var(--el-fill-color-blank);
+  color: var(--el-text-color-regular);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.header-icon-link:hover {
+  color: var(--el-color-primary);
+  border-color: var(--el-border-color-hover);
+  background: var(--el-fill-color-light);
+}
+
+.account-icon-btn {
+  padding: 0;
+  overflow: hidden;
+}
+
+.account-switch--narrow.account-switch {
+  flex: 0 0 auto;
 }
 
 .pallas-title-mark {
@@ -409,20 +729,22 @@ html.dark .pallas-header {
   flex: 1;
   min-width: 0;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+  flex-wrap: nowrap;
+  gap: 8px 12px;
 }
 
 .pallas-header-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  padding: 4px 12px 4px 14px;
+  flex-wrap: nowrap;
+  gap: 8px 10px;
+  padding: 4px 10px 4px 12px;
   border-radius: 999px;
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
-  max-width: 100%;
+  max-width: min(100%, 72vw);
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .pallas-header-actions-gap {
@@ -437,8 +759,9 @@ html.dark .pallas-header {
 .pallas-header-toolbar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 16px;
+  flex-wrap: nowrap;
+  gap: 4px 12px;
+  flex-shrink: 0;
 }
 
 .header-icon-btn {
@@ -507,7 +830,12 @@ html.dark .pallas-header {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff 0%, #ffd4ef 34%, #a56bff 100%);
+  background: radial-gradient(
+    circle at 30% 30%,
+    #fff 0%,
+    color-mix(in srgb, var(--pallas-accent) 35%, #ffe8f4) 38%,
+    var(--pallas-accent) 100%
+  );
 }
 .account-option {
   display: flex;
@@ -549,6 +877,8 @@ html.dark .pallas-header {
   background: transparent;
   border: none;
   color: var(--el-text-color-regular);
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .pallas-dot {
@@ -565,7 +895,7 @@ html.dark .pallas-header {
   background: #c0c4cc;
 }
 .pallas-host-addr {
-  max-width: 200px;
+  max-width: min(180px, 28vw);
   display: inline-block;
   white-space: nowrap;
   overflow: hidden;
@@ -576,6 +906,16 @@ html.dark .pallas-header {
 .pallas-err {
   color: var(--el-color-danger);
 }
+.pallas-console-footer {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color-page);
+}
+
 .pallas-body {
   flex: 1;
   min-height: 0;
@@ -626,6 +966,25 @@ html.dark .menu-item:hover:not(.selected) {
   background: var(--c-main-light);
   font-weight: 600;
 }
+
+.pallas-root.is-sidebar-collapsed .pallas-nav {
+  width: 56px;
+  padding: 16px 8px;
+}
+.pallas-root.is-sidebar-collapsed .main-nav {
+  border-radius: var(--pallas-radius-md, 14px);
+}
+.pallas-root.is-sidebar-collapsed .menu-item {
+  justify-content: center;
+  padding: 0 8px;
+}
+.pallas-root.is-sidebar-collapsed .menu-item span {
+  display: none;
+}
+.pallas-root.is-sidebar-collapsed .menu-item .micon {
+  margin-right: 0;
+}
+
 .pallas-main {
   flex: 1;
   min-width: 0;
@@ -683,71 +1042,75 @@ html.dark .menu-item:hover:not(.selected) {
   opacity: 0;
 }
 
+/* 桌面窄宽：避免右侧工具条折行裁切；接近移动端时再走抽屉布局 */
+@media (max-width: 1320px) and (min-width: 901px) {
+  .pallas-header {
+    padding: 0 12px;
+  }
+  .pallas-header-actions {
+    max-width: min(100%, 68vw);
+    gap: 6px 8px;
+    padding: 4px 8px 4px 10px;
+  }
+  .pallas-header-toolbar {
+    gap: 4px 8px;
+  }
+  .pallas-connect {
+    font-size: 0.76rem;
+  }
+  .header-link {
+    font-size: 0.76rem;
+    letter-spacing: 0;
+  }
+  .account-switch-btn {
+    padding: 0 8px;
+    max-width: min(200px, 36vw);
+    overflow: hidden;
+  }
+  .account-switch-btn span:not(.switch-dot) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+  }
+  .pallas-host-addr {
+    max-width: min(120px, 18vw);
+  }
+}
+
 @media (max-width: 900px) {
   .pallas-root {
     height: auto;
     min-height: 100dvh;
   }
   .pallas-header {
-    height: auto;
-    padding: 6px 10px;
-    align-items: flex-start;
-    gap: 4px;
-    flex-direction: column;
+    height: 48px;
+    padding: 0 10px;
+    align-items: center;
+    gap: 8px;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
   .pallas-title {
     font-size: 15px;
+    align-items: flex-start;
+  }
+  .pallas-title-mark {
+    margin-top: 3px;
   }
   .pallas-header-right {
-    width: 100%;
-    gap: 4px 8px;
-    flex-wrap: wrap;
-    padding-right: 0;
-  }
-  .pallas-header-actions {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
+    gap: 4px;
+    flex-wrap: nowrap;
     justify-content: flex-end;
-    box-sizing: border-box;
-  }
-  .account-switch-btn {
-    max-width: min(62vw, 220px);
-  }
-  .pallas-connect {
-    margin-left: 0;
-    border-left: none;
-    padding-left: 0;
-    min-height: 22px;
-    font-size: 13px;
-  }
-  .pallas-host-addr {
-    max-width: 52vw;
+    padding-right: 0;
   }
   .pallas-body {
     display: block;
   }
   .pallas-nav {
-    width: 100%;
-    padding: 6px 8px 0;
-    overflow: visible;
-  }
-  .main-nav {
-    box-shadow: none;
-    background: transparent;
-    border-radius: 0;
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-  .menu-item {
-    min-width: max-content;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: var(--c-nav-bg);
-    border: 1px solid rgba(22, 100, 196, 0.16);
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-    font-size: 13px;
+    display: none;
   }
   .pallas-main {
     padding: 8px;
@@ -764,73 +1127,95 @@ html.dark .menu-item:hover:not(.selected) {
       min-height: 0;
     }
   }
+  .pallas-connect--strip .pallas-host-addr {
+    max-width: min(52vw, 200px);
+  }
 }
+
 @media (max-width: 640px) {
   .pallas-header {
-    padding: 4px 8px;
-    gap: 4px;
+    padding: 0 8px;
+    height: 46px;
   }
-  .pallas-title {
-    width: 100%;
+  .pallas-title-text {
     font-size: 14px;
-    justify-content: space-between;
-  }
-  .pallas-header-right {
-    align-items: center;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 4px 8px;
-    max-width: 100%;
   }
   .header-icon-btn {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
   }
-  .header-link {
-    padding: 1px 0;
-    font-size: 12px;
-    line-height: 1;
-  }
-  .pallas-header-actions {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 8px 10px;
-    border-radius: 12px;
-    gap: 8px;
-  }
-  .pallas-header-actions-gap {
-    display: none;
-  }
-  .pallas-header-toolbar {
-    order: 1;
-    width: 100%;
-    justify-content: flex-end;
-  }
-  .account-switch-btn {
-    width: auto;
-    min-width: 150px;
+  .header-icon-link {
+    width: 30px;
     height: 30px;
-    justify-content: flex-start;
-    max-width: 100%;
-    font-size: 12px;
-    padding: 0 10px;
   }
-  .pallas-connect {
-    order: 2;
-    width: auto;
-    justify-content: flex-start;
-    font-size: 11px;
-    min-height: 26px;
-    padding: 0;
-    max-width: 100%;
-    margin-left: 0;
+  .pallas-route-hint {
+    max-width: 42vw;
+    font-size: 10px;
   }
-  .pallas-host-addr {
-    max-width: 38vw;
-  }
-  .pallas-header-right {
-    align-items: center;
-  }
+}
+</style>
+
+<style lang="scss">
+/* Drawer 挂载到 body，需非 scoped */
+.pallas-nav-drawer-wrap.el-drawer__wrapper .el-drawer__header {
+  margin-bottom: 0;
+  padding: 16px 16px 10px;
+}
+.pallas-nav-drawer-wrap .el-drawer__body {
+  padding: 8px 12px 20px;
+}
+.pallas-drawer-hd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+.pallas-drawer-title {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--el-text-color-primary);
+}
+.pallas-drawer-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.pallas-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 11px 12px;
+  border: none;
+  border-radius: var(--el-border-radius-base);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  color: var(--el-text-color-primary);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.drawer-nav-item:hover {
+  background: var(--el-fill-color-light);
+}
+.drawer-nav-item.selected {
+  color: var(--el-color-primary);
+  background: color-mix(in srgb, var(--el-color-primary) 12%, transparent);
+  font-weight: 600;
+}
+.drawer-nav-ico {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+html.dark .drawer-nav-item.selected {
+  background: color-mix(in srgb, var(--el-color-primary) 22%, transparent);
 }
 </style>
