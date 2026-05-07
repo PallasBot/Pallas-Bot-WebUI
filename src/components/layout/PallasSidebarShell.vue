@@ -181,9 +181,9 @@ function pickNav(key: string) {
 }
 .main-hd {
   flex-shrink: 0;
-  padding: 20px 24px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
-  background: color-mix(in srgb, var(--c-nav-bg) 92%, var(--pallas-accent));
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
 }
 .main-scroll {
   flex: 1;

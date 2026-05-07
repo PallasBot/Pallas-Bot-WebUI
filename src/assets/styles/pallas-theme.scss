@@ -44,6 +44,13 @@
   --el-font-family: var(--pallas-font-sans);
   --pallas-elev-1: 0 10px 24px rgba(15, 35, 65, 0.08);
   --pallas-elev-2: 0 16px 34px rgba(10, 30, 56, 0.14);
+  --pallas-type-page-title-size: 1.05rem;
+  --pallas-type-page-title-weight: 650;
+  --pallas-type-page-sub-size: 0.8125rem;
+  --pallas-type-section-title-size: 0.9375rem;
+  --pallas-type-section-desc-size: 0.8125rem;
+  --pallas-type-foot-size: 0.6875rem;
+  --pallas-type-card-head-size: 1rem;
 }
 
 html:not(.dark) {
@@ -120,6 +127,110 @@ html .el-empty__description {
   box-sizing: border-box;
 }
 
+/* ─── 全站字体层级（页面标题 / 区块标题 / 说明 / 脚注 / 行内 code） ─── */
+html h1.main-title,
+html .main-title {
+  margin: 0;
+  font-size: var(--pallas-type-page-title-size);
+  font-weight: var(--pallas-type-page-title-weight);
+  letter-spacing: -0.02em;
+  color: var(--el-text-color-primary);
+}
+
+html p.main-sub,
+html .main-sub {
+  margin: 8px 0 0;
+  max-width: 42rem;
+  font-size: var(--pallas-type-page-sub-size);
+  line-height: 1.6;
+  font-weight: 450;
+  color: var(--el-text-color-secondary);
+}
+
+html .sl-title,
+html .pallas-section-title {
+  margin: 0 0 6px;
+  font-size: var(--pallas-type-section-title-size);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--el-text-color-primary);
+}
+
+html .sl-desc,
+html .pallas-section-desc {
+  margin: 0;
+  font-size: var(--pallas-type-section-desc-size);
+  line-height: 1.62;
+  font-weight: 450;
+  color: var(--el-text-color-secondary);
+}
+
+html .sl-foot,
+html .pallas-foot {
+  margin: 14px 0 0;
+  font-size: var(--pallas-type-foot-size);
+  line-height: 1.55;
+  color: var(--el-text-color-placeholder);
+}
+
+html .sl-code,
+html code.sl-code,
+html code.pallas-code {
+  font-family: var(--pallas-font-mono-em);
+  font-size: 0.88em;
+  font-weight: 500;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+}
+
+html .pallas-sidebar-aside .aside-t {
+  font-size: var(--pallas-text-sm);
+  font-weight: var(--pallas-weight-semibold);
+  letter-spacing: 0.02em;
+  color: var(--c-main);
+}
+
+html .update-title {
+  font-size: var(--pallas-type-card-head-size);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--el-text-color-primary);
+}
+
+html .update-view .version-label {
+  font-size: var(--pallas-type-section-desc-size);
+  font-weight: 500;
+  color: var(--el-text-color-secondary);
+}
+
+html .view-page .lead,
+html .pallas-sidebar-page .lead {
+  font-size: var(--pallas-type-section-desc-size);
+  font-weight: 450;
+  color: var(--el-text-color-regular);
+}
+
+@media (max-width: 768px) {
+  html h1.main-title,
+  html .main-title {
+    font-size: 1rem;
+  }
+  html p.main-sub,
+  html .main-sub {
+    margin-top: 6px;
+    font-size: 0.78rem;
+  }
+}
+
+html .pallas-header .pallas-title {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--el-text-color-primary);
+}
+
 .pallas-viewport {
   display: flex;
   flex-direction: column;
@@ -183,6 +294,22 @@ html .el-table__inner-wrapper::before {
 html .el-card {
   border-radius: var(--pallas-radius-md) !important;
   box-shadow: var(--pallas-elev-1);
+}
+
+/* 设置页等：更接近 SnowLuma 的扁平输入框（弱阴影、清晰边框） */
+html .pallas-form-quiet.el-input .el-input__wrapper {
+  border-radius: 9px;
+  box-shadow: none;
+  border: 1px solid var(--el-border-color);
+  background: var(--el-bg-color);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+html .pallas-form-quiet.el-input .el-input__wrapper:hover {
+  border-color: var(--el-border-color-hover);
+}
+html .pallas-form-quiet.el-input .el-input__wrapper.is-focus {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--el-color-primary) 28%, transparent);
 }
 html .el-card:hover {
   box-shadow: var(--pallas-elev-2);

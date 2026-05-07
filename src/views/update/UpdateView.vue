@@ -80,10 +80,10 @@ function formatTime(ts: number | undefined): string {
 
 <template>
   <div class="update-view">
-    <!-- WebUI 更新卡片 -->
+    <!-- 控制台前端（静态资源）更新 -->
     <div class="update-card">
       <div class="update-header">
-        <span class="update-title">WebUI 更新</span>
+        <span class="update-title">控制台前端更新</span>
         <el-button :icon="Refresh" :loading="checking" size="small" @click="doCheck">
           检查更新
         </el-button>
@@ -154,10 +154,10 @@ function formatTime(ts: number | undefined): string {
       <div v-else class="update-empty">点击"检查更新"获取版本信息</div>
     </div>
 
-    <!-- Bot 更新卡片 -->
+    <!-- Bot 主程序更新 -->
     <div class="update-card">
       <div class="update-header">
-        <span class="update-title">Bot 更新</span>
+        <span class="update-title">Bot 主程序更新</span>
         <el-button :icon="Refresh" :loading="botChecking" size="small" @click="doBotCheck">
           检查更新
         </el-button>
@@ -257,12 +257,6 @@ function formatTime(ts: number | undefined): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.update-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .update-loading {

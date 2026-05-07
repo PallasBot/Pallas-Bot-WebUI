@@ -6,18 +6,18 @@ import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { Download, Link, List, Position, QuestionFilled } from "@element-plus/icons-vue";
 import { computed, onMounted, ref } from "vue";
 
-type NcSection = "url" | "assets" | "flow" | "faq";
+type ProtocolSection = "url" | "assets" | "flow" | "faq";
 
-const section = ref<NcSection>("url");
-const sectionTitle: Record<NcSection, string> = {
+const section = ref<ProtocolSection>("url");
+const sectionTitle: Record<ProtocolSection, string> = {
   url: "协议运行仪表盘",
   assets: "协议资产",
   flow: "上线与巡检流程",
   faq: "故障排查 FAQ",
 };
-const sectionSub: Record<NcSection, string> = {
+const sectionSub: Record<ProtocolSection, string> = {
   url: "集中查看协议端开关、账号在线情况与访问入口（基于已加载的 pallas_protocol 快照）。",
-  assets: "在 Bot 托管页打开 NapCat / SnowLuma 发行包下载（与实例数据目录下的 runtime_dist、runtime_extract 对应）。",
+  assets: "在 Bot 托管页打开协议运行时发行包下载目录（与实例数据目录 runtime_dist、runtime_extract 对应）。",
   flow: "从协议端登录到回连验证的建议执行顺序，减少上线遗漏。",
   faq: "覆盖 404、token、端口冲突等高频问题，并给出可执行排查路径。",
 };
@@ -78,8 +78,8 @@ onMounted(async () => {
     :nav-items="navItems"
   >
     <template #header="{ section: s }">
-      <h1 class="main-title">{{ sectionTitle[s as NcSection] }}</h1>
-      <p class="main-sub">{{ sectionSub[s as NcSection] }}</p>
+      <h1 class="main-title">{{ sectionTitle[s as ProtocolSection] }}</h1>
+      <p class="main-sub">{{ sectionSub[s as ProtocolSection] }}</p>
     </template>
 
     <div
@@ -116,7 +116,7 @@ onMounted(async () => {
         单号页为 <code>…/protocol/console/account/&lt;账号ID&gt;</code>（账号 ID 与插件内登记一致，多为 QQ 号）。
       </p>
       <p class="lead lead-spaced pallas-doc-prose">
-        ② NapCat 内嵌 Web 在独立 webui 端口，形如
+        ② 各协议实现（如 NapCat）自带的内嵌 Web 在独立 webui 端口，形如
         <code>http://[bind]:[webui_port]/webui/?token=</code>，与 ① 不是同一地址；在「好友与群」中按行展示（字段
         <code>native_webui_url</code>）。进程未起或未取到端口时该列为空。
       </p>
@@ -150,7 +150,7 @@ onMounted(async () => {
             <div class="sub">与当前控制台同主机、同端口，仅路径不同；若 Nginx
               反代需保证该路径透传。</div>
           </el-descriptions-item>
-          <el-descriptions-item label="与 Bot Console 同机">
+          <el-descriptions-item label="与控制台同进程">
             与 <code>/pallas</code> 共走同一 HTTP
             服务（NoneBot / uvicorn），仅路径段不同，无需为协议端管理页单独开端口。
           </el-descriptions-item>
@@ -188,7 +188,7 @@ onMounted(async () => {
         :icon="Download"
         @click="openProtocolAssets"
       >
-        打开协议资产页（NapCat / SnowLuma）
+        打开协议资产页（按当前后端类型）
       </el-button>
     </div>
 
@@ -261,20 +261,6 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: var(--pallas-text-xl);
-  font-weight: var(--pallas-weight-semibold);
-  color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: var(--pallas-text-sm);
-  font-weight: var(--pallas-weight-medium);
-  line-height: 1.62;
-  color: var(--el-text-color-secondary);
-}
 .panel {
   width: 100%;
   max-width: none;
@@ -408,14 +394,6 @@ html.dark .nc-card {
 }
 
 @media (max-width: 900px) {
-  .main-title {
-    font-size: var(--pallas-text-lg);
-  }
-  .main-sub {
-    margin-top: 6px;
-    font-size: var(--pallas-text-sm);
-    line-height: 1.58;
-  }
   .panel {
     max-width: none;
   }

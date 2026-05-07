@@ -21,6 +21,7 @@ import {
 } from "@element-plus/icons-vue";
 import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { setTabFavicon } from "@/utils/tabFavicon";
 import { isDark, toggleTheme } from "@/utils/theme";
 
 const route = useRoute();
@@ -53,6 +54,7 @@ provide(pallasBotContextKey, { selectedBotSelfId, setSelectedBotSelfId });
 
 onMounted(() => {
   void ensureBotServiceBaseUrl();
+  setTabFavicon(`${import.meta.env.BASE_URL}pallas-priest.png`, "image/png");
   if (typeof localStorage !== "undefined") {
     const saved = (localStorage.getItem(BOT_PICK_KEY) || "").trim();
     if (saved) selectedBotSelfId.value = saved;
@@ -113,8 +115,8 @@ const nav = [
   { name: "dashboard" as const, to: { name: "dashboard" }, label: "仪表盘", icon: Monitor },
   { name: "accounts" as const, to: { name: "accounts" }, label: "实例", icon: Platform },
   { name: "instances" as const, to: { name: "instances" }, label: "好友与群", icon: Connection },
-  { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI拓展", icon: Connection },
-  { name: "napcat-web" as const, to: { name: "napcat" }, label: "协议管理", icon: Link },
+  { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI 扩展", icon: Connection },
+  { name: "protocol" as const, to: { name: "protocol" }, label: "协议管理", icon: Link },
   { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: Grid },
   { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
   { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
@@ -173,92 +175,26 @@ watch(
 watch(healthTick, () => {
   if (ok.value === true) void loadBotOptions();
 });
+
+const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
 </script>
 
 <template>
   <div class="pallas-root">
     <header class="pallas-header">
       <div class="pallas-title">
-        Pallas-Bot Console
+        <span class="pallas-title-mark" aria-hidden="true" />
+        <span class="pallas-title-text">Pallas 控制台</span>
         <el-tag
           class="tag-beta"
-          type="info"
-          effect="light"
+          effect="plain"
           size="small"
         >
           Beta
         </el-tag>
       </div>
       <div class="pallas-header-right">
-        <el-button
-          :icon="isDark ? Sunny : Moon"
-          circle
-          class="header-icon-btn"
-          @click="toggleTheme"
-        />
-        <a
-          class="header-link"
-          :href="DOCS"
-          target="_blank"
-          rel="noopener"
-        >文档</a>
-        <a
-          class="header-link"
-          :href="REPO"
-          target="_blank"
-          rel="noopener"
-        >GitHub</a>
-        <el-dropdown
-          class="account-switch account-switch-floating"
-          trigger="click"
-          :disabled="!botOptions.length"
-          @command="(v: string) => setSelectedBotSelfId(v)"
-        >
-          <el-button
-            size="small"
-            class="account-switch-btn"
-            :class="{ 'is-empty': !botOptions.length }"
-          >
-            <span class="switch-dot" />
-            <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
-            <el-avatar
-              v-if="selectedBotAvatar && botOptions.length"
-              :size="26"
-              :src="selectedBotAvatar"
-            />
-            <el-avatar
-              v-else
-              :size="26"
-            >B</el-avatar>
-            <el-icon><CaretBottom /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item
-                v-for="b in botOptions"
-                :key="b.selfId"
-                :command="b.selfId"
-                :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
-              >
-                <div class="account-option">
-                  <el-avatar
-                    v-if="b.avatar"
-                    :size="20"
-                    :src="b.avatar"
-                  />
-                  <el-avatar
-                    v-else
-                    :size="20"
-                  >B</el-avatar>
-                  <div class="account-option-text">
-                    <strong>{{ b.nickname }}</strong>
-                    <span class="mono">QQ {{ b.qq }}</span>
-                  </div>
-                </div>
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <div class="pallas-header-actions">
         <div
           class="pallas-connect"
           title="基于 /pallas/api/health"
@@ -276,6 +212,81 @@ watch(healthTick, () => {
             v-else
             class="pallas-host pallas-err"
           >未连接</span>
+        </div>
+        <span class="pallas-header-actions-gap" aria-hidden="true" />
+        <div class="pallas-header-toolbar">
+          <el-button
+            :icon="isDark ? Sunny : Moon"
+            circle
+            class="header-icon-btn"
+            @click="toggleTheme"
+          />
+          <a
+            class="header-link"
+            :href="DOCS"
+            target="_blank"
+            rel="noopener"
+          >文档</a>
+          <a
+            class="header-link"
+            :href="REPO"
+            target="_blank"
+            rel="noopener"
+          >GitHub</a>
+          <el-dropdown
+            class="account-switch"
+            trigger="click"
+            :disabled="!botOptions.length"
+            @command="(v: string) => setSelectedBotSelfId(v)"
+          >
+            <el-button
+              size="small"
+              class="account-switch-btn"
+              :class="{ 'is-empty': !botOptions.length }"
+            >
+              <span class="switch-dot" />
+              <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
+              <el-avatar
+                v-if="selectedBotAvatar && botOptions.length"
+                :size="26"
+                :src="selectedBotAvatar"
+                :img-props="qqAvatarImgProps"
+              />
+              <el-avatar
+                v-else
+                :size="26"
+              >B</el-avatar>
+              <el-icon><CaretBottom /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-for="b in botOptions"
+                  :key="b.selfId"
+                  :command="b.selfId"
+                  :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
+                >
+                  <div class="account-option">
+                    <el-avatar
+                      v-if="b.avatar"
+                      :size="20"
+                      :src="b.avatar"
+                      :img-props="qqAvatarImgProps"
+                    />
+                    <el-avatar
+                      v-else
+                      :size="20"
+                    >B</el-avatar>
+                    <div class="account-option-text">
+                      <strong>{{ b.nickname }}</strong>
+                      <span class="mono">QQ {{ b.qq }}</span>
+                    </div>
+                  </div>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
         </div>
       </div>
     </header>
@@ -335,10 +346,11 @@ watch(healthTick, () => {
 }
 
 .pallas-header {
-  height: 50px;
+  height: 52px;
   padding: 0 20px;
-  color: var(--c-header-fg);
-  background: #1d4ed8;
+  color: var(--el-text-color-primary);
+  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-lighter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -346,91 +358,150 @@ watch(healthTick, () => {
   position: sticky;
   top: 0;
   z-index: 22;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 2px 12px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 html.dark .pallas-header {
-  background: #1e3a8a;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 2px 16px rgba(0, 0, 0, 0.35);
+  background: var(--el-bg-color);
+  border-bottom-color: var(--el-border-color);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .pallas-title {
-  font-size: 20px;
-  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pallas-title-mark {
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--el-color-primary-light-3), var(--el-color-primary-dark-2));
+  flex-shrink: 0;
+}
+
+.pallas-title-text {
+  font-family: var(--pallas-font-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag-beta {
   height: 22px;
   line-height: 20px;
   margin: 0;
-  --el-tag-bg-color: rgba(255, 255, 255, 0.22);
-  --el-tag-text-color: #fff;
-  --el-tag-border-color: rgba(255, 255, 255, 0.35);
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  flex-shrink: 0;
+  --el-tag-bg-color: transparent;
+  --el-tag-text-color: var(--el-text-color-secondary);
+  --el-tag-border-color: var(--el-border-color);
 }
 
 .pallas-header-right {
   display: flex;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.pallas-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 4px 12px 4px 14px;
+  border-radius: 999px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+  max-width: 100%;
+}
+
+.pallas-header-actions-gap {
+  width: 1px;
+  height: 18px;
+  align-self: center;
+  flex-shrink: 0;
+  background: var(--el-border-color);
+  opacity: 0.65;
+}
+
+.pallas-header-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 4px 16px;
-  padding-right: 254px;
 }
 
 .header-icon-btn {
-  --el-button-bg-color: #ffffff30;
-  --el-button-border-color: #ffffff4a;
-  --el-button-hover-bg-color: #ffffff3a;
-  --el-button-hover-border-color: #ffffff66;
-  --el-color: #fff;
+  --el-button-bg-color: var(--el-fill-color-blank);
+  --el-button-border-color: var(--el-border-color);
+  --el-button-hover-bg-color: var(--el-fill-color-light);
+  --el-button-hover-border-color: var(--el-border-color-hover);
+  --el-color: var(--el-text-color-regular);
   width: 34px;
   height: 34px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  box-shadow: none;
   :deep(.el-icon) {
-    color: #fff;
+    color: var(--el-text-color-regular);
   }
 }
 
 .header-link {
-  color: #fff;
+  color: var(--el-text-color-secondary);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   display: flex;
   align-items: center;
   cursor: pointer;
   padding: 4px 0;
+  transition: color 0.15s ease;
 
   &:hover {
-    text-decoration: underline;
+    color: var(--el-color-primary);
+    text-decoration: none;
   }
 }
 .account-switch-btn {
-  --el-button-bg-color: #ffffff30;
-  --el-button-border-color: #ffffff55;
-  --el-button-hover-bg-color: #ffffff3a;
-  --el-button-hover-border-color: #ffffff6e;
-  --el-color: #fff;
+  --el-button-bg-color: var(--el-bg-color);
+  --el-button-border-color: var(--el-border-color);
+  --el-button-hover-bg-color: var(--el-fill-color-light);
+  --el-button-hover-border-color: var(--el-border-color-hover);
+  --el-color: var(--el-text-color-primary);
   gap: 8px;
   border-radius: 999px;
   padding: 0 12px;
   height: 34px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
-  color: #fff !important;
+  box-shadow: none;
+  font-weight: 550;
+  color: var(--el-text-color-primary) !important;
   span {
-    color: #fff !important;
+    color: inherit !important;
   }
   :deep(.el-icon) {
-    color: #fff !important;
+    color: var(--el-text-color-secondary) !important;
   }
   &.is-empty {
-    opacity: 0.88;
-    --el-color: #fff;
+    opacity: 0.85;
+    --el-color: var(--el-text-color-secondary);
   }
 }
 .account-switch-btn.is-empty,
-.account-switch-btn.is-empty span,
+.account-switch-btn.is-empty span {
+  color: var(--el-text-color-secondary) !important;
+}
 .account-switch-btn.is-empty :deep(.el-icon) {
-  color: #fff !important;
+  color: var(--el-text-color-placeholder) !important;
 }
 .switch-dot {
   width: 12px;
@@ -446,13 +517,15 @@ html.dark .pallas-header {
 .account-option-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: 1.2;
   strong {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 0.8125rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
   span {
     font-size: 11px;
+    font-weight: 450;
     color: var(--el-text-color-secondary);
   }
 }
@@ -462,25 +535,20 @@ html.dark .pallas-header {
     font-weight: 600;
   }
 }
-.account-switch-floating {
-  position: fixed;
-  top: 8px;
-  right: 14px;
-  z-index: 60;
-}
 
 .pallas-connect {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  min-height: 32px;
-  padding-left: 4px;
-  margin-left: 8px;
-  padding: 0 10px 0 16px;
-  gap: 6px;
-  border-radius: 999px;
-  background: #ffffff26;
-  border: 1px solid #ffffff4a;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  min-height: 28px;
+  margin-left: 0;
+  padding: 0 2px 0 0;
+  gap: 8px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  color: var(--el-text-color-regular);
 }
 
 .pallas-dot {
@@ -506,7 +574,7 @@ html.dark .pallas-header {
   margin-left: 2px;
 }
 .pallas-err {
-  color: #b8d9ff;
+  color: var(--el-color-danger);
 }
 .pallas-body {
   flex: 1;
@@ -636,12 +704,13 @@ html.dark .menu-item:hover:not(.selected) {
     flex-wrap: wrap;
     padding-right: 0;
   }
+  .pallas-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    box-sizing: border-box;
+  }
   .account-switch-btn {
     max-width: min(62vw, 220px);
-  }
-  .account-switch-floating {
-    top: 8px;
-    right: 10px;
   }
   .pallas-connect {
     margin-left: 0;
@@ -717,17 +786,26 @@ html.dark .menu-item:hover:not(.selected) {
     width: 28px;
     height: 28px;
     flex-shrink: 0;
-    order: 1;
   }
   .header-link {
     padding: 1px 0;
     font-size: 12px;
     line-height: 1;
-    order: 3;
   }
-  .account-switch-floating {
-    position: static;
+  .pallas-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 10px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+  .pallas-header-actions-gap {
+    display: none;
+  }
+  .pallas-header-toolbar {
     order: 1;
+    width: 100%;
+    justify-content: flex-end;
   }
   .account-switch-btn {
     width: auto;
@@ -739,14 +817,14 @@ html.dark .menu-item:hover:not(.selected) {
     padding: 0 10px;
   }
   .pallas-connect {
+    order: 2;
     width: auto;
     justify-content: flex-start;
     font-size: 11px;
     min-height: 26px;
-    padding: 0 8px;
+    padding: 0;
     max-width: 100%;
     margin-left: 0;
-    order: 2;
   }
   .pallas-host-addr {
     max-width: 38vw;

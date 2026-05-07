@@ -181,7 +181,7 @@ function fmtTime(t: number) {
         </el-descriptions-item>
         <el-descriptions-item
           v-if="system.console?.static_root"
-          label="WebUI 静态 (后端)"
+          label="控制台静态资源（后端挂载）"
         >
           <span class="pallas-kv"><code>{{ system.console.static_root }}</code></span>
         </el-descriptions-item>
@@ -212,18 +212,18 @@ function fmtTime(t: number) {
         size="default"
       >
         <el-table-column
-          label="connection_key"
+          label="连接标识"
           prop="connection_key"
           min-width="160"
           show-overflow-tooltip
         />
         <el-table-column
-          label="self_id"
+          label="Bot 账号"
           prop="self_id"
           width="140"
         />
         <el-table-column
-          label="adapter"
+          label="适配器"
           prop="adapter"
           min-width="100"
         />
@@ -290,19 +290,6 @@ function fmtTime(t: number) {
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--el-text-color-secondary);
-}
 .intro {
   line-height: 1.5;
   font-size: 13px;
@@ -347,13 +334,6 @@ function fmtTime(t: number) {
   font-weight: 400;
 }
 @media (max-width: 768px) {
-  .main-title {
-    font-size: 1.1rem;
-  }
-  .main-sub {
-    margin-top: 6px;
-    font-size: 13px;
-  }
   .intro {
     margin-bottom: 10px;
     font-size: 12px;

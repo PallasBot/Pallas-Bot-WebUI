@@ -13,6 +13,8 @@ export interface SystemData {
   bot_count: number;
   console: { static_root?: string; http_base?: string };
   runtime?: {
+    hostname?: string | null;
+    boot_time?: number | null;
     platform?: string;
     python?: string;
     cpu_percent?: number | null;

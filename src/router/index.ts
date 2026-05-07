@@ -6,7 +6,7 @@ import AiExtensionView from "../views/ai/AiExtensionView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import DatabaseView from "../views/database/DatabaseView.vue";
 import InstancesView from "../views/instances/InstancesView.vue";
-import NapCatView from "../views/napcat/NapCatView.vue";
+import ProtocolManageView from "../views/protocol/ProtocolManageView.vue";
 import PluginsView from "../views/plugins/PluginsView.vue";
 import SettingsView from "../views/settings/SettingsView.vue";
 
@@ -46,7 +46,7 @@ const router = createRouter({
           path: "ai-extension",
           name: "ai-extension",
           component: AiExtensionView,
-          meta: { title: "AI拓展" },
+          meta: { title: "AI 扩展" },
         },
         {
           path: "instances",
@@ -55,10 +55,14 @@ const router = createRouter({
           meta: { title: "好友与群", pallasScope: "social" },
         },
         {
-          path: "napcat",
-          name: "napcat",
-          component: NapCatView,
+          path: "protocol",
+          name: "protocol",
+          component: ProtocolManageView,
           meta: { title: "协议管理" },
+        },
+        {
+          path: "napcat",
+          redirect: { name: "protocol" },
         },
         {
           path: "settings",
