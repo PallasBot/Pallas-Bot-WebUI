@@ -52,7 +52,7 @@ async function load() {
   try {
     form.value = await fetchAiExtensionConfig();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "AI 拓展配置加载失败");
+    ElMessage.error(e instanceof Error ? e.message : "AI 扩展配置加载失败");
   } finally {
     loading.value = false;
   }
@@ -169,12 +169,12 @@ onMounted(() => {
 <template>
   <PallasSidebarShell
     v-model="section"
-    aside-title="AI拓展"
-    menu-aria-label="AI拓展分节"
+    aside-title="AI 扩展"
+    menu-aria-label="AI 扩展分节"
     :nav-items="navItems"
   >
     <template #header>
-      <h1 class="main-title">AI拓展</h1>
+      <h1 class="main-title">AI 扩展</h1>
       <p class="main-sub">参考 Pallas-Bot-AI 的部署方式，管理 AI 服务连接地址并做连通性检测。</p>
     </template>
 
@@ -224,7 +224,7 @@ onMounted(() => {
           <el-descriptions-item label="检测结果">
             <el-tag :type="testResult.ok ? 'success' : 'danger'">{{ testResult.ok ? "可用" : "不可用" }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="健康检查 URL">{{ testResult.health_url }}</el-descriptions-item>
+          <el-descriptions-item label="健康探测地址">{{ testResult.health_url }}</el-descriptions-item>
           <el-descriptions-item label="状态码">{{ testResult.status_code ?? "—" }}</el-descriptions-item>
           <el-descriptions-item label="探测路径">
             <div>{{ (testResult.tried_urls || []).join(" , ") || "—" }}</div>
@@ -296,16 +296,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: 14px;
-  color: var(--el-text-color-secondary);
-}
 .panel {
   width: 100%;
   max-width: none;
@@ -342,14 +332,6 @@ onMounted(() => {
   gap: 10px;
 }
 @media (max-width: 768px) {
-  .main-title {
-    font-size: 1.1rem;
-  }
-  .main-sub {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.55;
-  }
   .log-hd {
     align-items: flex-start;
     flex-direction: column;

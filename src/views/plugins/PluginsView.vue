@@ -613,19 +613,6 @@ async function submitHelpVisibility() {
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--el-text-color-secondary);
-}
 .panel {
   max-width: 1100px;
 }
@@ -1033,13 +1020,6 @@ async function submitHelpVisibility() {
 @media (max-width: 768px) {
   .main-wrap {
     padding: 12px 10px;
-  }
-  .main-title {
-    font-size: 1.1rem;
-  }
-  .main-sub {
-    margin-top: 6px;
-    font-size: 13px;
   }
   .plug-toolbar {
     gap: 8px;

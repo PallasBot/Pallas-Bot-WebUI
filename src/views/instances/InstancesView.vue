@@ -140,7 +140,7 @@ watch(
 const selectedMergedRow = computed(
   () => mergedRows.value.find((r) => r.key === selectedInstanceKey.value) ?? null,
 );
-const napcatForSelection = computed(() => {
+const protocolAccountsForSelection = computed(() => {
   const row = selectedMergedRow.value;
   if (!row) return [];
   const ids = new Set<string>();
@@ -735,7 +735,7 @@ watch(
                   class="hd-info"
                   type="info"
                   size="small"
-                >协议端连接与数据库缓存</el-text>
+                >连接与协议快照</el-text>
               </div>
             </template>
             <div class="card-list">
@@ -899,12 +899,12 @@ watch(
               >删除实例</el-button>
             </div>
             <div
-              v-if="protocolSnap && napcatForSelection.length"
+              v-if="protocolSnap && protocolAccountsForSelection.length"
               class="insp-nap"
             >
               <div class="insp-nap-t">协议管理</div>
               <div
-                v-for="r in napcatForSelection"
+                v-for="r in protocolAccountsForSelection"
                 :key="String(r.qq ?? r.id ?? '')"
                 class="insp-nap-row"
               >
@@ -916,7 +916,7 @@ watch(
                   v-if="protocolSnap.webui_enabled"
                   type="primary"
                   :href="pallasProtocolAccountUrl(r)"
-                >Pallas管理</el-link>
+                >Pallas-Bot 管理</el-link>
                 <el-link
                   v-if="accountNativeWebUiUrl(r)"
                   type="primary"
@@ -927,7 +927,7 @@ watch(
             <p
               v-else-if="protocolSnap"
               class="muted sm insp-tip"
-            >协议账号表中无与本行 QQ 完全一致的登记。</p>
+            >协议端未登记此 QQ。</p>
           </el-card>
           <el-card
             v-else
@@ -1369,19 +1369,6 @@ watch(
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--el-text-color-secondary);
-}
 .head-row {
   display: flex;
   align-items: flex-start;
@@ -1918,9 +1905,6 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .mobile-pane-switch {
     display: block;
     margin-bottom: 8px;
-  }
-  .main-title {
-    font-size: 1.1rem;
   }
   .pan3 {
     gap: 10px;

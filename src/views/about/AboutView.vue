@@ -40,10 +40,10 @@ const releaseRows = computed(() => {
   return [
     { k: "NoneBot2", v: last.value.nonebot2 },
     { k: "Pallas-Bot", v: last.value.pallas_bot },
-    { k: "Console 版本", v: last.value.console?.version || "unknown" },
-    { k: "Console Commit", v: last.value.console?.commit || "local/unknown" },
-    { k: "Build Time", v: last.value.console?.build_time || "unknown" },
-    { k: "HTTP 基址", v: last.value.console?.http_base || "—" },
+    { k: "控制台版本", v: last.value.console?.version || "未知" },
+    { k: "控制台提交", v: last.value.console?.commit || "本地/未知" },
+    { k: "构建时间", v: last.value.console?.build_time || "未知" },
+    { k: "HTTP 服务根路径", v: last.value.console?.http_base || "—" },
   ];
 });
 
@@ -98,7 +98,7 @@ onMounted(() => {
     <div v-show="section === 'overview'" class="panel">
       <el-card class="ac" shadow="hover">
         <p class="p">
-          <strong>Pallas 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
+          <strong>Pallas-Bot 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
           进程在 <code>/pallas</code> 提供静态页面，并通过 <code>/pallas/api</code> 暴露管理接口。
         </p>
         <p class="p p2">
@@ -119,8 +119,8 @@ onMounted(() => {
             <el-descriptions-item v-for="r in releaseRows" :key="r.k" :label="r.k">
               <span class="mono">{{ r.v }}</span>
             </el-descriptions-item>
-            <el-descriptions-item label="/health">
-              <el-tag v-if="ok" type="success" size="small">可访问</el-tag>
+            <el-descriptions-item label="健康检查接口">
+              <el-tag v-if="ok" type="success" size="small">正常</el-tag>
               <el-tag v-else type="warning" size="small">异常</el-tag>
             </el-descriptions-item>
           </el-descriptions>
@@ -145,19 +145,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-.main-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
-}
-.main-sub {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--el-text-color-secondary);
-}
 .panel {
   width: 100%;
   max-width: none;
@@ -208,14 +195,6 @@ html.dark .ac {
   font-family: ui-monospace, Consolas, monospace;
 }
 @media (max-width: 768px) {
-  .main-title {
-    font-size: 1.1rem;
-  }
-  .main-sub {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.55;
-  }
   .p {
     font-size: 13px;
     line-height: 1.55;
