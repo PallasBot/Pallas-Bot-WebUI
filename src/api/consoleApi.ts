@@ -72,6 +72,13 @@ export async function putPluginConfig(
   return unwrap(data, `/plugins/${pluginName}/config`);
 }
 
+export async function changeConsoleLogin(newPassword: string): Promise<{ message: string }> {
+  const { data } = await http.post<ApiOk<{ message: string }>>("/security/console-login", {
+    new_password: newPassword,
+  });
+  return unwrap(data, "/security/console-login");
+}
+
 export async function fetchBots(): Promise<BotRow[]> {
   const { data } = await http.get<ApiOk<BotRow[]>>("/bots");
   return unwrap(data, "/bots");
