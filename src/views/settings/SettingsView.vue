@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { fetchPluginConfig, fetchSystem, putPluginConfig } from "@/api/consoleApi";
+import { changeConsoleLogin, fetchPluginConfig, fetchSystem, putPluginConfig } from "@/api/consoleApi";
 import { fetchHealth } from "@/api/health";
-import { PALLAS_API_TOKEN_KEY } from "@/api/http";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import {
   CircleCheck,
@@ -33,8 +32,7 @@ import { setThemeDisplayMode, themeDisplayMode, type ThemeDisplayMode } from "@/
 type Section = "accessAuth" | "appearance" | "behavior" | "baseline" | "ops";
 
 const section = ref<Section>("accessAuth");
-const apiToken = ref("");
-const apiTokenSaveMsg = ref<{ type: "success" | "warning"; text: string } | null>(null);
+const webuiDevMode = ref(false);
 const loading = ref(false);
 const healthOk = ref<boolean | null>(null);
 const driverHost = ref<string>("-");
@@ -44,8 +42,7 @@ const base = (import.meta.env.BASE_URL as string) || "/pallas/";
 const apiBase = `${base.replace(/\/$/, "")}/api`;
 const healthPath = `${apiBase}/health`;
 const protocolPath = "/protocol/console";
-const protocolHint = `${protocolPath}（默认，可由 PALLAS_PROTOCOL_WEBUI_PATH 覆盖）`;
-const devProxy = "开发模式下，Vite 将 /pallas/api 代理到 VITE_PROXY_TARGET。";
+const protocolHint = protocolPath;
 
 const sectionTitle: Record<Section, string> = {
   accessAuth: "访问与鉴权",
@@ -56,11 +53,11 @@ const sectionTitle: Record<Section, string> = {
 };
 
 const sectionSub: Record<Section, string> = {
-  accessAuth: "控制台与 GitHub 凭据集中在此；说明文字保持克制，便于扫读。",
-  appearance: "对齐 SnowLuma：明暗、强调色、圆角与密度；写入本机浏览器即时生效。",
-  behavior: "仪表盘日志等板块的后台轮询间隔（本页保存后立即作用于当前控制台会话）。",
-  baseline: "汇总健康检查、控制台与 API 的根路径，以及 NoneBot 驱动监听地址。",
-  ops: "发布路径、反代与上线前最小闭环，一次浏览即可对照执行。",
+  accessAuth: "口令与 GitHub Token。",
+  appearance: "主题与布局（浏览器本地）。",
+  behavior: "仪表盘轮询间隔。",
+  baseline: "健康检查与驱动地址。",
+  ops: "部署与自检。",
 };
 
 const navItems = [
@@ -105,6 +102,11 @@ const driverAddr = computed(() => {
   return `${driverHost.value}:${driverPort.value}`;
 });
 
+const consolePw1 = ref("");
+const consolePw2 = ref("");
+const consolePwSaving = ref(false);
+const consolePwMsg = ref<{ type: "success" | "error"; text: string } | null>(null);
+
 const githubToken = ref("");
 const githubTokenLoading = ref(false);
 const githubTokenSaving = ref(false);
@@ -121,6 +123,34 @@ async function loadGithubToken() {
     githubToken.value = "";
   } finally {
     githubTokenLoading.value = false;
+  }
+}
+
+async function saveConsoleLogin() {
+  const p1 = consolePw1.value.trim();
+  const p2 = consolePw2.value.trim();
+  consolePwMsg.value = null;
+  if (!p1) {
+    return;
+  }
+  if (p1 !== p2) {
+    consolePwMsg.value = { type: "error", text: "两次输入不一致。" };
+    return;
+  }
+  consolePwSaving.value = true;
+  try {
+    const r = await changeConsoleLogin(p1);
+    consolePw1.value = "";
+    consolePw2.value = "";
+    consolePwMsg.value = { type: "success", text: r.message || "已保存" };
+    const root = base.replace(/\/$/, "");
+    window.setTimeout(() => {
+      window.location.href = `${root}/login?reason=password_changed`;
+    }, 800);
+  } catch (e) {
+    consolePwMsg.value = { type: "error", text: String(e) };
+  } finally {
+    consolePwSaving.value = false;
   }
 }
 
@@ -146,19 +176,18 @@ async function loadRuntimeMeta() {
     healthOk.value = !!h.ok;
     driverHost.value = s.nonebot2_driver?.host || "-";
     driverPort.value = s.nonebot2_driver?.port ?? null;
+    webuiDevMode.value = Boolean(s.console?.pallas_webui_dev_mode);
   } catch {
     healthOk.value = false;
     driverHost.value = "-";
     driverPort.value = null;
+    webuiDevMode.value = false;
   } finally {
     loading.value = false;
   }
 }
 
 onMounted(() => {
-  if (typeof sessionStorage !== "undefined") {
-    apiToken.value = sessionStorage.getItem(PALLAS_API_TOKEN_KEY) || "";
-  }
   accentHex.value = getAccentHex();
   radiusRem.value = getRadiusRem();
   densityPref.value = getDensity();
@@ -167,22 +196,7 @@ onMounted(() => {
   void loadGithubToken();
 });
 
-function saveApiToken() {
-  if (typeof sessionStorage === "undefined") return;
-  const t = (apiToken.value || "").trim();
-  if (t) {
-    sessionStorage.setItem(PALLAS_API_TOKEN_KEY, t);
-    apiTokenSaveMsg.value = { type: "success", text: "控制台 Token 已保存（仅当前会话）。" };
-  } else {
-    sessionStorage.removeItem(PALLAS_API_TOKEN_KEY);
-    apiTokenSaveMsg.value = { type: "warning", text: "控制台 Token 已清空。" };
-  }
-}
-
 async function logoutConsole() {
-  if (typeof sessionStorage !== "undefined") {
-    sessionStorage.removeItem(PALLAS_API_TOKEN_KEY);
-  }
   const logoutUrl = `${base.replace(/\/$/, "")}/logout`;
   try {
     await fetch(logoutUrl, { method: "POST", credentials: "same-origin" });
@@ -205,43 +219,58 @@ async function logoutConsole() {
     </template>
 
     <div v-show="section === 'accessAuth'" class="panel auth-stack">
+      <el-alert
+        v-if="webuiDevMode"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="sl-alert"
+        style="margin-bottom: 12px"
+        title="开发模式：API 不校验会话，仅本机。"
+      />
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
-          <h3 class="sl-title">控制台访问</h3>
-          <p class="sl-desc">
-            使用 <code class="sl-code">npm run dev</code> 时可能跳过登录页，可在此写入控制台 Token 以调用受保护接口。
-          </p>
+          <h3 class="sl-title">修改统一控制台口令</h3>
+          <p class="sl-desc">与协议端同口令；保存后重新登录。</p>
         </header>
         <el-input
-          v-model="apiToken"
+          v-model="consolePw1"
           type="password"
           show-password
           clearable
-          placeholder="PALLAS_WEBUI_API_TOKEN（留空则不附带）"
+          placeholder="新口令"
           class="api-tok pallas-form-quiet"
         />
-        <div class="token-save-row">
-          <el-button type="primary" class="sl-btn-primary" @click="saveApiToken">保存</el-button>
-          <el-button class="sl-btn-ghost" @click="logoutConsole">退出登录</el-button>
+        <el-input
+          v-model="consolePw2"
+          type="password"
+          show-password
+          clearable
+          placeholder="再次输入"
+          class="api-tok pallas-form-quiet"
+          style="margin-top: 10px"
+        />
+        <div class="token-save-row" style="margin-top: 12px">
+          <el-button type="primary" class="sl-btn-primary" :loading="consolePwSaving" @click="saveConsoleLogin">
+            保存新口令
+          </el-button>
+          <el-button class="sl-btn-ghost" :disabled="consolePwSaving" @click="logoutConsole">退出登录</el-button>
           <el-alert
-            v-if="apiTokenSaveMsg"
-            :type="apiTokenSaveMsg.type"
-            :title="apiTokenSaveMsg.text"
+            v-if="consolePwMsg"
+            :type="consolePwMsg.type"
+            :title="consolePwMsg.text"
             show-icon
             :closable="false"
             class="token-save-alert sl-alert"
           />
         </div>
-        <p class="sl-foot">仅保存在本机浏览器 <code class="sl-code">sessionStorage</code>，关闭标签页或会话后即失效。</p>
       </el-card>
 
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd sl-hd-row">
           <div>
             <h3 class="sl-title">GitHub 访问令牌</h3>
-            <p class="sl-desc">
-              写入 Bot 侧 <code class="sl-code">pallas_protocol</code> 插件配置；保存后需重启 Bot。附带 Token 时 GitHub API 限额更高。
-            </p>
+            <p class="sl-desc">写入 pallas_protocol；保存后重启 Bot。</p>
           </div>
           <el-button class="sl-btn-ghost" size="small" :loading="githubTokenLoading" @click="loadGithubToken">刷新</el-button>
         </header>
@@ -255,11 +284,10 @@ async function logoutConsole() {
           :disabled="githubTokenLoading"
         />
         <p class="sl-foot">
-          在
           <el-link href="https://github.com/settings/tokens" target="_blank" type="primary" class="sl-link">
-            github.com/settings/tokens
+            生成 token
           </el-link>
-          生成；只读场景可用 <code class="sl-code">public_repo</code> 或更窄的 Fine-grained 权限。
+          （只读即可）
         </p>
         <div class="token-save-row">
           <el-button type="primary" class="sl-btn-primary" :loading="githubTokenSaving" @click="saveGithubToken">保存</el-button>
@@ -279,7 +307,7 @@ async function logoutConsole() {
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
           <h3 class="sl-title">显示模式</h3>
-          <p class="sl-desc">浅色 / 深色 / 跟随系统；与顶部栏切换和协议端主题桥共享存储键。</p>
+          <p class="sl-desc">浅色 / 深色 / 跟随系统。</p>
         </header>
         <div class="sl-chip-row">
           <button
@@ -315,7 +343,6 @@ async function logoutConsole() {
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
           <h3 class="sl-title">强调色</h3>
-          <p class="sl-desc">作用于 Element Plus 主色与控制台主题变量。</p>
         </header>
         <div class="sl-accent-row">
           <button
@@ -362,7 +389,7 @@ async function logoutConsole() {
             @click="pickDensity('cozy')"
           >
             <span class="sl-dens-title">舒适</span>
-            <span class="sl-dens-desc">默认间距，阅读更轻松</span>
+            <span class="sl-dens-desc">默认</span>
           </button>
           <button
             type="button"
@@ -371,7 +398,7 @@ async function logoutConsole() {
             @click="pickDensity('compact')"
           >
             <span class="sl-dens-title">紧凑</span>
-            <span class="sl-dens-desc">更小字号与行距，单屏更多信息</span>
+            <span class="sl-dens-desc">更紧凑</span>
           </button>
         </div>
       </el-card>
@@ -381,7 +408,7 @@ async function logoutConsole() {
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
           <h3 class="sl-title">仪表盘轮询</h3>
-          <p class="sl-desc">控制仪表盘「连接日志」等区块拉取后端的间隔；设为暂停则不在后台自动刷新日志。</p>
+          <p class="sl-desc">仪表盘日志等轮询间隔；0 为暂停。</p>
         </header>
         <div class="sl-chip-row sl-chip-row-wrap">
           <button
@@ -409,7 +436,7 @@ async function logoutConsole() {
         <header class="sl-hd sl-hd-row">
           <div>
             <h3 class="sl-title">连接状态</h3>
-            <p class="sl-desc">当前浏览器所访问后端的根路径、健康检查接口地址与连通状态。</p>
+            <p class="sl-desc">本页所连后端的根路径与健康检查。</p>
           </div>
           <el-button class="sl-btn-ghost" size="small" :loading="loading" @click="loadRuntimeMeta">刷新</el-button>
         </header>
@@ -436,34 +463,31 @@ async function logoutConsole() {
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
           <h3 class="sl-title">生产部署</h3>
-          <p class="sl-desc">静态资源位置、反代与 HTTPS、以及开发代理等常见部署要点。</p>
+          <p class="sl-desc">静态、HTTPS 与开发代理。</p>
         </header>
         <ul class="list sl-list">
-          <li>静态产物由 Bot 托管：将构建产物放到 <code class="sl-code">data/pallas_webui/public</code>。</li>
-          <li>反代仅暴露必要入口，限制来源与速率，避免管理面裸奔。</li>
-          <li>公网务必 HTTPS，写操作配合 Token 或网关策略。</li>
-          <li>本地开发用 <code class="sl-code">VITE_PROXY_TARGET</code> 对齐后端端口，减少跨域误判。</li>
+          <li>静态放到 <code class="sl-code">data/pallas_webui/public</code>。</li>
+          <li>公网 HTTPS；生产勿开 <code class="sl-code">pallas_webui_dev_mode</code>。</li>
+          <li>本地开发：<code class="sl-code">VITE_PROXY_TARGET</code> 指向 Bot。</li>
         </ul>
-        <p class="sl-foot">{{ devProxy }}</p>
       </el-card>
 
       <el-card class="cardx sl-card" shadow="never">
         <header class="sl-hd">
           <h3 class="sl-title">上线前自检</h3>
-          <p class="sl-desc">发布前按顺序勾一遍，能覆盖多数联调与反代问题。</p>
         </header>
         <el-timeline class="timeline-dense sl-timeline">
           <el-timeline-item type="primary" hollow>
-            <p class="tl-p"><code class="sl-code">/pallas/</code> 与 <code class="sl-code">/pallas/api/health</code> 可访问。</p>
+            <p class="tl-p"><code class="sl-code">/pallas/</code>、<code class="sl-code">/pallas/api/health</code> 通。</p>
           </el-timeline-item>
           <el-timeline-item type="primary" hollow>
-            <p class="tl-p">写接口鉴权：错误 Token 返回 401，正确 Token 可写。</p>
+            <p class="tl-p">写接口需登录（否则 401）。</p>
           </el-timeline-item>
           <el-timeline-item type="primary" hollow>
-            <p class="tl-p">协议管理页（默认 <code class="sl-code">/protocol/console</code>）可达且鉴权有效。</p>
+            <p class="tl-p"><code class="sl-code">/protocol/console</code> 可达且 token 有效。</p>
           </el-timeline-item>
           <el-timeline-item type="primary" hollow>
-            <p class="tl-p">反代与 HTTPS 生效，管理面不直接暴露在公网。</p>
+            <p class="tl-p">HTTPS / 反代就绪。</p>
           </el-timeline-item>
         </el-timeline>
       </el-card>

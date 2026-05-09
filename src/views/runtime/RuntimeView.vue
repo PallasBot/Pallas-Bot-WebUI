@@ -243,7 +243,7 @@ function fmtTime(t: number) {
 
     <div
       v-show="section === 'log'"
-      class="panel"
+      class="panel panel-log"
     >
       <div class="log-bar">
         <el-input-number
@@ -279,7 +279,6 @@ function fmtTime(t: number) {
       <el-scrollbar
         ref="logScrollRef"
         v-loading="loading"
-        max-height="50vh"
         class="log-box"
         @scroll="onLogScroll"
       >
@@ -300,6 +299,40 @@ function fmtTime(t: number) {
 .panel {
   width: 100%;
   max-width: none;
+}
+.panel-log {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: min(72dvh, calc(100dvh - 200px));
+  max-height: calc(100dvh - 9rem);
+}
+@media (max-width: 900px) {
+  .panel-log {
+    height: auto;
+    max-height: none;
+    min-height: min(52dvh, 380px);
+  }
+  .panel-log .log-box {
+    min-height: min(48dvh, 360px);
+    height: auto;
+  }
+}
+.panel-log .log-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 0;
+}
+.panel-log .log-box :deep(.el-scrollbar) {
+  height: 100%;
+}
+.panel-log .log-box :deep(.el-scrollbar__wrap) {
+  max-height: none !important;
+  height: 100%;
+}
+.panel-log .log-box :deep(.el-scrollbar__view) {
+  min-height: 100%;
 }
 .rfb {
   margin-top: 12px;

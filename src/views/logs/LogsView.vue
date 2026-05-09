@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { fetchLogs } from "@/api/consoleApi";
-import { PALLAS_API_TOKEN_KEY } from "@/api/http";
 import type { LogEntry, LogEntryLevel, LogScope } from "@/api/pallasTypes";
 import { Document } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -23,9 +22,7 @@ let es: EventSource | null = null;
 function streamUrl(): string {
   const base = (import.meta.env.BASE_URL as string) || "/pallas/";
   const root = base.replace(/\/$/, "");
-  const tok =
-    typeof sessionStorage !== "undefined" ? (sessionStorage.getItem(PALLAS_API_TOKEN_KEY) || "").trim() : "";
-  const q = new URLSearchParams({ token: tok, scope: scope.value });
+  const q = new URLSearchParams({ scope: scope.value });
   return `${window.location.origin}${root}/api/logs/stream?${q.toString()}`;
 }
 
@@ -38,12 +35,6 @@ function closeStream(): void {
 
 function startStream(): void {
   closeStream();
-  const tok =
-    typeof sessionStorage !== "undefined" ? (sessionStorage.getItem(PALLAS_API_TOKEN_KEY) || "").trim() : "";
-  if (!tok) {
-    streamStatus.value = "无 Token";
-    return;
-  }
   const url = streamUrl();
   const source = new EventSource(url);
   es = source;
@@ -254,7 +245,11 @@ onUnmounted(() => {
 .logs-page {
   width: 100%;
   max-width: none;
-  min-height: min(100vh - 7rem, 900px);
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 .logs-card {
   border-radius: 12px !important;
@@ -262,7 +257,9 @@ onUnmounted(() => {
   background: var(--el-bg-color);
   display: flex;
   flex-direction: column;
-  min-height: min(calc(100vh - 8rem), 820px);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   :deep(.el-card__header) {
     padding: 18px 20px 12px;
     border-bottom: 1px solid var(--el-border-color-lighter);
@@ -355,10 +352,10 @@ onUnmounted(() => {
   text-decoration: line-through;
 }
 .logs-viewport {
-  flex: 1;
-  min-height: 240px;
-  max-height: min(calc(100vh - 14rem), 640px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   border-radius: 0;
   background: var(--el-fill-color-light);
   font-family: var(--pallas-font-mono-em, ui-monospace, monospace);

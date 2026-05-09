@@ -859,7 +859,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  flex: 1;
+  box-sizing: border-box;
   padding-bottom: 20px;
 }
 .dash-shell {
@@ -913,6 +916,41 @@ onUnmounted(() => {
   display: none;
 }
 @media (min-width: 769px) {
+  /* 填满主视区高度：中间列日志区随视窗伸展，左右列末卡吸收余量 */
+  .view-page.dashboard {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    padding-bottom: 8px;
+    gap: 12px;
+  }
+  .dash-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .dash-main {
+    flex: 1;
+    min-height: 0;
+  }
+  .dash-sec {
+    flex: 1;
+    min-height: 0;
+  }
+  .dash-top-grid {
+    flex: 1;
+    min-height: 0;
+  }
+  .dash-left .bot-hero,
+  .dash-left .bot-db-card {
+    flex-shrink: 0;
+  }
+  .dash-system .intro-card--dash,
+  .dash-system .dash-h--after,
+  .dash-system .stat-row-dash {
+    flex-shrink: 0;
+  }
   /* 列尾占位：真实 DOM + flex-basis 0，比 ::after 在各浏览器里更稳定 */
   /* 列尾占位改为由「末张卡片」伸展填满行高，避免短列底部大块留白 */
   .dash-col-fill {
@@ -1021,6 +1059,8 @@ onUnmounted(() => {
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
+    height: auto;
+    flex: none;
   }
   .dash-left,
   .dash-system,

@@ -54,6 +54,7 @@ function pickNav(key: string) {
       >
         <div class="aside-t">{{ asideTitle }}</div>
         <el-menu
+          :key="`sidebar-nav-${modelValue}`"
           :default-active="modelValue"
           class="side-menu"
           @select="pickNav"

@@ -26,6 +26,7 @@ import {
 } from "@element-plus/icons-vue";
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { buildDocumentTitle, documentTitleExtra } from "@/utils/documentTitle";
 import { setTabFavicon } from "@/utils/tabFavicon";
 import { isDark, toggleTheme } from "@/utils/theme";
 
@@ -82,7 +83,14 @@ function syncNarrowLayout() {
   if (!next) navDrawerOpen.value = false;
 }
 
+let removeBeforeEach: (() => void) | undefined;
+
 onMounted(() => {
+  removeBeforeEach = router.beforeEach((to, from) => {
+    if (to.fullPath !== from.fullPath) {
+      documentTitleExtra.value = "";
+    }
+  });
   void ensureBotServiceBaseUrl();
   setTabFavicon(`${import.meta.env.BASE_URL}pallas-priest.png`, "image/png");
   if (typeof localStorage !== "undefined") {
@@ -211,9 +219,18 @@ watch(healthTick, () => {
   if (ok.value === true) void loadBotOptions();
 });
 
+watch(
+  () => [route.fullPath, route.meta.title, documentTitleExtra.value] as const,
+  () => {
+    document.title = buildDocumentTitle(route.meta.title, documentTitleExtra.value);
+  },
+  { immediate: true },
+);
+
 const qqAvatarImgProps = { referrerPolicy: "no-referrer" as const };
 
 onUnmounted(() => {
+  removeBeforeEach?.();
   if (typeof window !== "undefined") window.removeEventListener("resize", syncNarrowLayout);
 });
 

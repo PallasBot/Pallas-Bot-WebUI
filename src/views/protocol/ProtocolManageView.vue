@@ -4,7 +4,8 @@ import { fetchInstances } from "@/api/consoleApi";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { Download, Link, List, Position, QuestionFilled } from "@element-plus/icons-vue";
-import { computed, onMounted, ref } from "vue";
+import { documentTitleExtra } from "@/utils/documentTitle";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 type ProtocolSection = "url" | "assets" | "flow" | "faq";
 
@@ -16,11 +17,10 @@ const sectionTitle: Record<ProtocolSection, string> = {
   faq: "故障排查 FAQ",
 };
 const sectionSub: Record<ProtocolSection, string> = {
-  url: "集中查看协议端开关、账号在线情况与访问入口（基于已加载的 pallas_protocol 快照）。",
-  assets:
-    "在协议资产页选择 Release 版本、下载/更新 NapCat 与 SnowLuma 托管包，并可清理 runtime_dist 下载缓存；个别实例版本差异通过账号 program_dir 覆盖。",
-  flow: "从协议端登录到回连验证的建议执行顺序，减少上线遗漏。",
-  faq: "覆盖 404、token、端口冲突等高频问题，并给出可执行排查路径。",
+  url: "管理地址与在线概览。",
+  assets: "在插件页下载发行包、Docker 镜像与全局 runtime。",
+  flow: "建议上线顺序。",
+  faq: "404、token、端口等常见问题。",
 };
 const navItems = [
   { index: "url", label: "管理 URL", icon: Link },
@@ -43,6 +43,18 @@ const protocolAssetsUrl = computed(() => {
 });
 
 const activeFaq = ref<string[]>([]);
+
+watch(
+  section,
+  (s) => {
+    documentTitleExtra.value = sectionTitle[s];
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  documentTitleExtra.value = "";
+});
 
 function openProtocol() {
   window.open(protocolOpenUrl.value, "_blank", "noopener");
@@ -110,16 +122,8 @@ onMounted(async () => {
         pallas_protocol
       </el-tag>
       <p class="lead lead-spaced pallas-doc-prose">
-        ① 下表为 Pallas-Bot 协议插件托管的管理页，与 Bot 使用同一
-        <code>host:port</code>（由 <code>/pallas/api/system</code> 的驱动地址生成，未连上时回退
-        <code>http://localhost:8088</code>），默认路径段为
-        <code>/protocol/console</code>；可在配置中用 <code>pallas_protocol_webui_path</code> 覆盖整段挂载。
-        单号页为 <code>…/protocol/console/account/&lt;账号ID&gt;</code>（账号 ID 与插件内登记一致，多为 QQ 号）。
-      </p>
-      <p class="lead lead-spaced pallas-doc-prose">
-        ② 各协议实现（如 NapCat）自带的内嵌 Web 在独立 webui 端口，形如
-        <code>http://[bind]:[webui_port]/webui/?token=</code>，与 ① 不是同一地址；在「好友与群」中按行展示（字段
-        <code>native_webui_url</code>）。进程未起或未取到端口时该列为空。
+        与 Bot 同 <code>host:port</code>，默认 <code>/protocol/console</code>；单号 <code>…/account/&lt;ID&gt;</code>。NapCat
+        等自带 WebUI 为另一端口，见「好友与群」<code>native_webui_url</code>。
       </p>
       <el-space
         direction="vertical"
@@ -132,7 +136,7 @@ onMounted(async () => {
           :icon="Link"
           @click="openProtocol"
         >
-          打开 ① Pallas-Bot 协议端管理总览
+          打开协议管理
         </el-button>
         <el-descriptions
           :column="1"
@@ -140,7 +144,7 @@ onMounted(async () => {
           size="small"
           class="nc-desc-table"
         >
-          <el-descriptions-item label="① 管理总览">
+          <el-descriptions-item label="管理总览">
             <el-link
               :href="protocolOpenUrl"
               type="primary"
@@ -148,17 +152,14 @@ onMounted(async () => {
             >
               {{ protocolOpenUrl }}
             </el-link>
-            <div class="sub">与当前控制台同主机、同端口，仅路径不同；若 Nginx
-              反代需保证该路径透传。</div>
+            <div class="sub">反代需透传该路径。</div>
           </el-descriptions-item>
-          <el-descriptions-item label="与控制台同进程">
-            与 <code>/pallas</code> 共走同一 HTTP
-            服务（NoneBot / uvicorn），仅路径段不同，无需为协议端管理页单独开端口。
+          <el-descriptions-item label="进程">
+            与 <code>/pallas</code> 同一 HTTP 服务，无单独端口。
           </el-descriptions-item>
           <el-descriptions-item label="鉴权">
-            以 <code>pallas_protocol_token</code> 为准：Query
-            <code>token=</code> 或请求头
-            <code>X-Pallas-Protocol-Token</code>。详见主仓 <code>pallas_protocol</code> 配置说明。
+            <code>pallas_protocol_token</code>：Query <code>token=</code> 或头
+            <code>X-Pallas-Protocol-Token</code>。
           </el-descriptions-item>
         </el-descriptions>
       </el-space>
@@ -173,14 +174,11 @@ onMounted(async () => {
         :closable="false"
         show-icon
         class="assets-alert"
-        title="需在浏览器中登录协议插件页面（与协议管理相同的 token）后即可下载。"
+        title="在协议插件页登录后即可下载。"
       />
       <p class="lead lead-spaced pallas-doc-prose">
-        压缩包保存在 Bot 数据目录 <code>runtime_dist/napcat</code>、<code>runtime_dist/snowluma</code>；解压结果在
-        <code>runtime_extract/napcat</code>、<code>runtime_extract/snowluma</code>。全局版本由 manifest 指向的托管目录决定；全员升级/回退在本页打开协议资产后选 tag 下载即可；个别实例可在账号设置中填写自定义 <code>program_dir</code>。
-      </p>
-      <p class="lead lead-spaced pallas-doc-prose">
-        「清理下载缓存」按钮位于协议资产页顶部（需协议 token），仅删除 <code>runtime_dist</code> 下已下载文件，不动解压目录。
+        包在 <code>runtime_dist/*</code>，解压在 <code>runtime_extract/*</code>；清缓存在资产页顶部。个别实例可改账号
+        <code>program_dir</code>。
       </p>
       <div class="assets-url-wrap">
         <span class="assets-label">完整 URL</span>
@@ -192,7 +190,7 @@ onMounted(async () => {
         :icon="Download"
         @click="openProtocolAssets"
       >
-        打开协议资产页（按当前后端类型）
+        打开协议资产页
       </el-button>
     </div>
 
@@ -205,21 +203,19 @@ onMounted(async () => {
           type="primary"
           hollow
         >
-          打开协议端面板，完成登录或确认账号已在线
+          协议端登录并确认账号在线
         </el-timeline-item>
         <el-timeline-item
           type="primary"
           hollow
         >
-          核对各账号目录下 <code>onebot*.json</code> 中反向 WS 指向 Pallas-Bot
-          监听的 OneBot 地址
+          核对 <code>onebot*.json</code> 反向 WS 指向 Bot OneBot
         </el-timeline-item>
         <el-timeline-item
           type="primary"
           hollow
         >
-          在 Pallas-Bot 中验证连接（bot 日志 / 发消息测试）后，再回到本页或控制台总览
-          查看 <code>/pallas/api/health</code>
+          Bot 侧验证连接后看 <code>/pallas/api/health</code>
         </el-timeline-item>
       </el-timeline>
     </div>
@@ -236,28 +232,21 @@ onMounted(async () => {
           name="1"
           title="打开管理路径为 404"
         >
-          请确认 <code>pallas_protocol</code> 已加载且
-          <code>pallas_protocol_webui_enabled</code> 为开启；路径以
-          <code>/pallas/api/instances</code> 返回的 <code>webui_path</code> 为准（默认
-          <code>/protocol/console</code>）。
+          确认插件已启用；路径以 <code>/pallas/api/instances</code> 的 <code>webui_path</code> 为准。
         </el-collapse-item>
         <el-collapse-item
           name="2"
           title="新标签里要求 token"
         >
-          与 <code>pallas_protocol_token</code>
-          一致，可在 <code>.env</code> 与插件配置中核对；请求头
-          <code>X-Pallas-Protocol-Token</code> 亦可。
+          使用 <code>pallas_protocol_token</code>（Query <code>token</code> 或头
+          <code>X-Pallas-Protocol-Token</code>）。
         </el-collapse-item>
         <el-collapse-item
           name="3"
           title="Vite 开发端口与 Bot 不同"
         >
-          本管理 URL 以 Bot 进程
-          监听地址为准。开发时若前端跑在 5173，应通过 Vite 代理
-          <code>/pallas/api</code>；要打开协议端页面请用 Bot 的根地址，例如
-          <code>http://127.0.0.1:8088/protocol/console</code>，与
-          <code>PORT</code> 一致。
+          协议页用 Bot 监听地址打开（如 <code>http://127.0.0.1:8088/protocol/console</code>）；控制台可走 Vite 代理
+          <code>/pallas/api</code>。
         </el-collapse-item>
       </el-collapse>
     </div>

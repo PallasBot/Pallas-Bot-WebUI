@@ -735,7 +735,7 @@ watch(
                   class="hd-info"
                   type="info"
                   size="small"
-                >协议端连接与数据库缓存</el-text>
+                >连接与协议快照</el-text>
               </div>
             </template>
             <div class="card-list">
@@ -927,7 +927,7 @@ watch(
             <p
               v-else-if="protocolSnap"
               class="muted sm insp-tip"
-            >协议账号表中无与本行 QQ 完全一致的登记。</p>
+            >协议端未登记此 QQ。</p>
           </el-card>
           <el-card
             v-else

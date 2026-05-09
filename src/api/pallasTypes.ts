@@ -11,7 +11,7 @@ export interface SystemData {
   server_time: number;
   plugin_count: number;
   bot_count: number;
-  console: { static_root?: string; http_base?: string };
+  console: { static_root?: string; http_base?: string; version?: string; pallas_webui_dev_mode?: boolean };
   runtime?: {
     hostname?: string | null;
     boot_time?: number | null;
@@ -168,7 +168,7 @@ export interface NapcatManagerSnapshot {
   plugin: string;
   webui_enabled: boolean;
   webui_path: string;
-  has_token: boolean;
+  console_auth_configured: boolean;
   accounts: NapcatAccountRow[];
 }
 
