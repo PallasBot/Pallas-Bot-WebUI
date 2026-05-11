@@ -556,12 +556,12 @@ onUnmounted(() => {
               <div class="bot-hero-head">
                 <el-avatar
                   v-if="selectedDashboardBotAvatar"
-                  :size="isMobile ? 200 : 76"
+                  :size="76"
                   :src="selectedDashboardBotAvatar"
                 />
                 <el-avatar
                   v-else
-                  :size="isMobile ? 100 : 76"
+                  :size="76"
                 >BOT</el-avatar>
                 <div class="bot-hero-title">
                   <strong>{{ botNickname(selectedDashboardBot.selfId, selectedDashboardBot.account) }}</strong>
@@ -1059,8 +1059,9 @@ onUnmounted(() => {
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
-    height: auto;
-    flex: none;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
   }
   .dash-left,
   .dash-system,
@@ -1103,23 +1104,6 @@ onUnmounted(() => {
   .intro-text p {
     line-height: 1.45;
   }
-  .bot-hero .bot-hero-main {
-    align-items: center;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
-  }
-  .bot-hero .bot-hero-head {
-    width: 100%;
-    align-items: center;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-  }
-  .bot-hero .bot-hero-title {
-    align-items: center;
-    text-align: center;
-  }
   .bot-hero .bot-hero-title strong {
     font-size: 16px;
     line-height: 1.22;
@@ -1128,18 +1112,6 @@ onUnmounted(() => {
   .bot-hero .bot-hero-sub {
     margin-top: 2px;
     font-size: 11px;
-  }
-  .bot-status-badge {
-    align-self: center;
-    min-width: 64px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: 999px;
   }
   .bot-inline-stats {
     flex-direction: row;

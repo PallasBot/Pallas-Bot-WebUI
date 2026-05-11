@@ -72,6 +72,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 含窄屏：滚动交给控制台 .pallas-viewport，避免 html/body 跟滚 */
 html,
 body,
 #app {
@@ -90,16 +91,6 @@ body,
 .view-page,
 .pallas-sidebar-page {
   font-family: var(--pallas-font-sans);
-}
-
-@media (max-width: 900px) {
-  html,
-  body,
-  #app {
-    height: auto;
-    min-height: 100dvh;
-    overflow: auto;
-  }
 }
 
 html .pallas-kv code,
@@ -247,6 +238,13 @@ html .pallas-header .pallas-title {
   .view-page .lead {
     line-height: var(--pallas-line-prose);
   }
+}
+
+/* 数据库 / 好友与群：外层 view-page 只做高度传递，滚动在 PallasSidebarShell.main-scroll */
+.pallas-route-body > .view-page.database-page,
+.pallas-route-body > .view-page.instances-page {
+  display: flex;
+  flex-direction: column;
 }
 
 html .el-table {

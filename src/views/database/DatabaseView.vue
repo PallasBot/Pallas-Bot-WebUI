@@ -655,11 +655,20 @@ async function runPipeline() {
                     placeholder="Bot QQ"
                     class="ops-inp"
                   />
-                  <el-space wrap>
-                    <el-switch v-model="opBotSecurity" active-text="安全模式" inactive-text="安全模式" />
-                    <el-switch v-model="opBotAutoFriend" active-text="自动同意好友" inactive-text="自动同意好友" />
-                    <el-switch v-model="opBotAutoGroup" active-text="自动同意入群" inactive-text="自动同意入群" />
-                  </el-space>
+                  <div class="ops-switch-list">
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">安全模式</span>
+                      <el-switch v-model="opBotSecurity" />
+                    </div>
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">自动同意好友</span>
+                      <el-switch v-model="opBotAutoFriend" />
+                    </div>
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">自动同意入群</span>
+                      <el-switch v-model="opBotAutoGroup" />
+                    </div>
+                  </div>
                   <el-space>
                     <el-button size="small" :loading="opBusy" @click="loadBotForOps">读取</el-button>
                     <el-button type="primary" size="small" :loading="opBusy" @click="saveBotOps">保存</el-button>
@@ -672,16 +681,23 @@ async function runPipeline() {
                     placeholder="群号"
                     class="ops-inp"
                   />
-                  <el-space wrap>
-                    <el-switch v-model="opGroupBanned" active-text="群封禁" inactive-text="群封禁" />
-                    <el-switch
-                      v-model="opGroupRoulette"
-                      :active-value="1"
-                      :inactive-value="0"
-                      active-text="轮盘:禁言"
-                      inactive-text="轮盘:踢人"
-                    />
-                  </el-space>
+                  <div class="ops-switch-list">
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">群封禁</span>
+                      <el-switch v-model="opGroupBanned" />
+                    </div>
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">轮盘</span>
+                      <el-switch
+                        v-model="opGroupRoulette"
+                        :active-value="1"
+                        :inactive-value="0"
+                        inline-prompt
+                        active-text="禁言"
+                        inactive-text="踢人"
+                      />
+                    </div>
+                  </div>
                   <el-space>
                     <el-button size="small" :loading="opBusy" @click="loadGroupForOps">读取</el-button>
                     <el-button type="primary" size="small" :loading="opBusy" @click="saveGroupOps">保存</el-button>
@@ -694,9 +710,12 @@ async function runPipeline() {
                     placeholder="用户 QQ"
                     class="ops-inp"
                   />
-                  <el-space wrap>
-                    <el-switch v-model="opUserBanned" active-text="用户封禁" inactive-text="用户封禁" />
-                  </el-space>
+                  <div class="ops-switch-list">
+                    <div class="ops-switch-row">
+                      <span class="ops-switch-label">用户封禁</span>
+                      <el-switch v-model="opUserBanned" />
+                    </div>
+                  </div>
                   <el-space>
                     <el-button type="primary" size="small" :loading="opBusy" @click="saveUserOps">保存</el-button>
                   </el-space>
@@ -1103,6 +1122,24 @@ async function runPipeline() {
 }
 .ops-inp {
   width: 100%;
+}
+.ops-switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ops-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+.ops-switch-label {
+  flex: 0 0 auto;
+  min-width: 7.5em;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
 }
 .ops-sel-mini {
   min-width: 200px;
