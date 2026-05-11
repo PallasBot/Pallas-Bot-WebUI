@@ -314,51 +314,53 @@ async function submitHelpVisibility() {
             placeholder="搜索 name / 标题 / 简介"
           />
         </div>
-        <el-empty
-          v-if="!filteredPlugins.length && !loading"
-          description="当前筛选下无插件"
-          :image-size="80"
-        />
-        <el-row
-          v-else
-          :gutter="0"
-          class="plug-grid"
-        >
-          <el-col
-            v-for="p in filteredPlugins"
-            :key="p.name"
-            :xs="24"
-            :sm="12"
-            :md="8"
-            :lg="6"
-            :xl="4"
+        <div class="plug-body-scroll">
+          <el-empty
+            v-if="!filteredPlugins.length && !loading"
+            description="当前筛选下无插件"
+            :image-size="80"
+          />
+          <el-row
+            v-else
+            :gutter="0"
+            class="plug-grid"
           >
-            <el-card
-              class="plug-tile"
-              shadow="hover"
+            <el-col
+              v-for="p in filteredPlugins"
+              :key="p.name"
+              :xs="24"
+              :sm="12"
+              :md="8"
+              :lg="6"
+              :xl="4"
             >
-              <div class="pc-hd">
-                <span class="pc-title">{{ p.metadata?.name || p.name }}</span>
-                <el-tag
-                  size="small"
-                  type="info"
-                >{{ pluginTypeLabel(p) }}</el-tag>
-              </div>
-              <div class="pc-meta">
-                <div class="pc-name mono">{{ p.name }}</div>
-              </div>
-              <div class="pc-desc">{{ p.metadata?.description || "—" }}</div>
-              <div class="pc-ft">
-                <el-button
-                  :icon="View"
-                  link
-                  type="primary"
-                  @click="openMeta(p)"
-                >详情</el-button>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
+              <el-card
+                class="plug-tile"
+                shadow="hover"
+              >
+                <div class="pc-hd">
+                  <span class="pc-title">{{ p.metadata?.name || p.name }}</span>
+                  <el-tag
+                    size="small"
+                    type="info"
+                  >{{ pluginTypeLabel(p) }}</el-tag>
+                </div>
+                <div class="pc-meta">
+                  <div class="pc-name mono">{{ p.name }}</div>
+                </div>
+                <div class="pc-desc">{{ p.metadata?.description || "—" }}</div>
+                <div class="pc-ft">
+                  <el-button
+                    :icon="View"
+                    link
+                    type="primary"
+                    @click="openMeta(p)"
+                  >详情</el-button>
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
+        </div>
         <div class="ft">
           <el-button
             type="primary"
@@ -613,6 +615,16 @@ async function submitHelpVisibility() {
 </template>
 
 <style scoped lang="scss">
+.plugins-page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
 .panel {
   max-width: 1100px;
 }
@@ -624,12 +636,19 @@ async function submitHelpVisibility() {
   padding: 18px;
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+.main-wrap .main-title,
+.main-wrap .main-sub {
+  flex-shrink: 0;
 }
 .panel--wide {
   width: 100%;
   max-width: none;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 .plug-card-wrap {
   border: 1px solid rgba(22, 100, 196, 0.1);
@@ -637,19 +656,22 @@ async function submitHelpVisibility() {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   :deep(.el-card__body) {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
 }
 .plug-toolbar {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding: 10px;
   border: 1px solid rgba(22, 100, 196, 0.12);
   border-radius: 10px;
@@ -666,9 +688,17 @@ async function submitHelpVisibility() {
   width: 280px;
   max-width: 100%;
 }
+.plug-body-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .plug-grid {
   margin-top: 2px;
-  flex: 1;
+  flex: none;
   align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -1153,7 +1183,8 @@ async function submitHelpVisibility() {
   border: 1px solid rgba(22, 100, 196, 0.15);
 }
 .ft {
-  margin-top: auto;
+  flex-shrink: 0;
+  margin-top: 0;
   padding-top: 12px;
   display: flex;
   align-items: center;

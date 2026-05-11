@@ -1038,7 +1038,6 @@ html.dark .menu-item:hover:not(.selected) {
   min-width: 0;
   overflow: hidden;
 }
-.pallas-route-body > :deep(.view-page.plugins-page),
 .pallas-route-body > :deep(.update-view) {
   overflow-x: hidden;
   overflow-y: auto;
@@ -1170,8 +1169,8 @@ html.dark .menu-item:hover:not(.selected) {
     min-width: 0;
     overflow: hidden;
   }
-  /* 窄屏：路由根可纵向滚动（仪表盘 / 实例 / 日志等默认 overflow:hidden 会锁死触摸滚动） */
-  .pallas-route-body > :deep(.view-page),
+  /* 窄屏：路由根可纵向滚动（插件页等大卡片由内层滚动，见 :not） */
+  .pallas-route-body > :deep(.view-page:not(.plugins-page)),
   .pallas-route-body > :deep(.logs-page) {
     overflow-x: hidden;
     overflow-y: auto;
