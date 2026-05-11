@@ -26,7 +26,7 @@ const navItems = [
 
 const conn = inject(pallasConnectionKey);
 if (!conn) {
-  throw new Error("Pallas: missing pallasConnection");
+  throw new Error("Pallas-Bot: missing pallasConnection");
 }
 const { last, refresh, ok } = conn;
 

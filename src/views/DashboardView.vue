@@ -39,7 +39,7 @@ import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "
 const conn = inject(pallasConnectionKey);
 const botCtx = inject(pallasBotContextKey, null);
 if (!conn) {
-  throw new Error("Pallas: missing pallasConnection");
+  throw new Error("Pallas-Bot: missing pallasConnection");
 }
 const { ok, last, healthTick } = conn;
 const consoleVersion = computed(() => last.value?.console?.version || last.value?.pallas_bot || "未知");
@@ -733,7 +733,6 @@ onUnmounted(() => {
               <div class="nb-item"><span class="k">今日接收</span><span class="v">{{ msgTodayReceived ?? "-" }}</span></div>
             </div>
           </el-card>
-          <div class="dash-col-fill" aria-hidden="true" />
         </div>
 
         <div
@@ -857,7 +856,6 @@ onUnmounted(() => {
               <PallasLogLines :lines="logLines" :empty-text="ok === true ? '（暂无输出）' : '—'" />
             </el-scrollbar>
           </el-card>
-          <div class="dash-col-fill" aria-hidden="true" />
         </div>
 
         <div
@@ -890,7 +888,6 @@ onUnmounted(() => {
               <el-button type="primary" size="small" :loading="aiTesting" @click="loadAiStatus(false)">刷新 AI 连接</el-button>
             </div>
           </el-card>
-          <div class="dash-col-fill" aria-hidden="true" />
         </div>
       </div>
     </section>
@@ -928,12 +925,13 @@ onUnmounted(() => {
 .view-page.dashboard {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   height: 100%;
   flex: 1;
   box-sizing: border-box;
-  padding-bottom: 20px;
+  padding-bottom: 12px;
+  overflow: hidden;
 }
 .dash-shell {
   display: block;
@@ -948,13 +946,13 @@ onUnmounted(() => {
   max-width: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
 }
 .dash-top-grid {
   display: grid;
   grid-template-columns: minmax(244px, 0.82fr) minmax(332px, 1.34fr) minmax(232px, 0.76fr);
-  gap: 10px;
+  gap: 8px;
   align-items: stretch;
   justify-items: stretch;
   min-height: 0;
@@ -962,28 +960,25 @@ onUnmounted(() => {
 .dash-left {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
   align-self: stretch;
 }
 .dash-system {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
   align-self: stretch;
 }
 .dash-right {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   width: 100%;
   min-height: 0;
   align-self: stretch;
-}
-.dash-col-fill {
-  display: none;
 }
 @media (min-width: 769px) {
   /* 填满主视区高度：中间列日志区随视窗伸展，左右列末卡吸收余量 */
@@ -991,8 +986,8 @@ onUnmounted(() => {
     flex: 1;
     min-height: 0;
     height: 100%;
-    padding-bottom: 8px;
-    gap: 12px;
+    padding-bottom: 4px;
+    gap: 6px;
   }
   .dash-shell {
     display: flex;
@@ -1003,14 +998,19 @@ onUnmounted(() => {
   .dash-main {
     flex: 1;
     min-height: 0;
+    gap: 6px;
   }
   .dash-sec {
     flex: 1;
     min-height: 0;
+    gap: 6px;
   }
   .dash-top-grid {
     flex: 1;
     min-height: 0;
+    gap: 6px;
+    /* 避免隐式 auto 行按 max-content 撑破 flex 高度，导致整页出现纵向滚动 */
+    grid-template-rows: minmax(0, 1fr);
   }
   .dash-left .bot-db-card {
     flex-shrink: 0;
@@ -1035,16 +1035,6 @@ onUnmounted(() => {
   .dash-system .dash-h--after,
   .dash-system .stat-row-dash {
     flex-shrink: 0;
-  }
-  /* 列尾占位：真实 DOM + flex-basis 0，比 ::after 在各浏览器里更稳定 */
-  /* 列尾占位改为由「末张卡片」伸展填满行高，避免短列底部大块留白 */
-  .dash-col-fill {
-    display: block;
-    flex: 0 0 0;
-    height: 0;
-    min-height: 0;
-    overflow: hidden;
-    width: 100%;
   }
   .dash-system > .intro-card,
   .dash-system > h4.dash-h,
@@ -1088,14 +1078,14 @@ onUnmounted(() => {
     margin-top: auto;
   }
   .dash-system .log-card--dash-fill {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
     min-width: 0;
     overflow: hidden;
     :deep(.el-card) {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-height: 0;
       display: flex;
       flex-direction: column;
@@ -1103,21 +1093,21 @@ onUnmounted(() => {
     }
     :deep(.el-card__header) {
       flex-shrink: 0;
-      padding: 9px 13px;
+      padding: 7px 10px;
     }
     :deep(.el-card__body) {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       display: flex;
       flex-direction: column;
       min-height: 0;
-      padding-top: 9px;
-      padding-bottom: 11px;
+      padding-top: 6px;
+      padding-bottom: 8px;
     }
   }
   /* 覆盖文末 .log-scroll--dash 的 max-height:170px，否则滚动区只剩半块卡片高 */
   .dash-system .log-scroll--dash {
-    flex: 1 1 auto;
-    flex-basis: 120px;
+    flex: 1 1 0;
+    flex-basis: 0;
     min-height: 0;
     max-height: none;
     overflow: hidden;
@@ -1132,6 +1122,13 @@ onUnmounted(() => {
   .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap) {
     max-height: none !important;
     height: 100%;
+  }
+  /* 多 GPU 时避免中间列被撑得过高，余量留给连接日志 */
+  .dash-system .gpu-dash-list {
+    max-height: min(200px, 32vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
   }
 }
 .mobile-dash-switch {
@@ -1164,9 +1161,6 @@ onUnmounted(() => {
     gap: 8px;
     margin-bottom: 10px;
     height: auto;
-  }
-  .dash-col-fill {
-    display: none !important;
   }
   .dash-system .log-card--dash-fill {
     flex: none !important;
@@ -1341,8 +1335,8 @@ onUnmounted(() => {
 @media (max-width: 1200px) {
   .dash-top-grid {
     grid-template-columns: 1fr 1.18fr 0.9fr;
-    gap: 11px;
-    min-height: auto;
+    gap: 8px;
+    min-height: 0;
   }
 }
 
@@ -1354,22 +1348,27 @@ onUnmounted(() => {
   .stat-row-dash :deep(.el-col:not(:last-child)) {
     margin-bottom: 4px;
   }
-  .stat-card .stat-inner {
+  .dash-system .stat-row-dash .stat-card .stat-inner {
     flex-direction: row;
     align-items: center;
     text-align: left;
-    min-height: 76px;
+    min-height: 64px;
     padding: 4px 0;
   }
-  .stat-card .stat-body {
+  .dash-system .stat-row-dash .stat-card .stat-body {
     align-items: flex-start;
   }
 }
-.dash-sec { display: flex; flex-direction: column; gap: 10px; }
+.dash-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
 .dash-h { margin: 0; font-size: 14px; font-weight: 600; color: var(--c-main); letter-spacing: 0.03em; }
 .dash-h--after { margin-top: 0; }
 .bot-hero-top {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .stat-row {
   width: 100%;
@@ -1417,15 +1416,18 @@ onUnmounted(() => {
   }
 }
 @media (min-width: 769px) {
-  .dash-system .stat-row .stat-card :deep(.el-card__body) {
-    padding: 10px 11px;
+  .dash-system .stat-row-dash .stat-card :deep(.el-card__body) {
+    padding: 8px 10px;
   }
-  .dash-system .stat-row .stat-card .stat-inner {
-    min-height: 76px;
-    gap: 10px;
+  .dash-system .stat-row-dash .stat-card .stat-inner {
+    min-height: 56px;
+    gap: 8px;
   }
-  .dash-system .stat-row .stat-card .stat-ico {
-    font-size: 1.55rem;
+  .dash-system .stat-row-dash .stat-card .stat-ico {
+    font-size: 1.45rem;
+  }
+  .dash-system .gpu-card--compact :deep(.el-card__body) {
+    padding: 7px 10px 8px;
   }
   .dash-left .nb-conn-hd,
   .dash-right .nb-conn-hd {
@@ -1479,7 +1481,7 @@ onUnmounted(() => {
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .bot-hero-title {
     display: flex;
@@ -1497,7 +1499,7 @@ onUnmounted(() => {
     margin-top: 2px;
   }
   .bot-hero-actions {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
 }
 .bot-hero-protocol-extra {
@@ -1713,10 +1715,10 @@ onUnmounted(() => {
   box-shadow: none;
   background: color-mix(in srgb, var(--el-bg-color) 96%, var(--pallas-accent));
   :deep(.el-card__body) {
-    padding: 13px 15px;
+    padding: 10px 12px;
   }
   .intro-main {
-    gap: 14px;
+    gap: 10px;
   }
   .intro-text {
     gap: 3px;
@@ -1727,7 +1729,7 @@ onUnmounted(() => {
   }
   .intro-text p {
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.42;
   }
 }
 .intro-avatar {
@@ -1764,10 +1766,11 @@ onUnmounted(() => {
 .pallas-dash-banner {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
-  padding: 16px 18px;
-  border-radius: 12px;
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
   border: 1px solid var(--el-border-color-lighter);
   box-sizing: border-box;
 }
@@ -2011,7 +2014,7 @@ html.dark .pallas-dash-banner__icon {
   width: 100%;
 }
 .mini-actions {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 .mono { font-family: ui-monospace, Consolas, monospace; }
 .v-mid { vertical-align: middle; }
