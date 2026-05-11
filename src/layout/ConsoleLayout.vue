@@ -1038,7 +1038,6 @@ html.dark .menu-item:hover:not(.selected) {
   min-width: 0;
   overflow: hidden;
 }
-.pallas-route-body > :deep(.view-page.plugins-page),
 .pallas-route-body > :deep(.update-view) {
   overflow-x: hidden;
   overflow-y: auto;
@@ -1169,6 +1168,14 @@ html.dark .menu-item:hover:not(.selected) {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+  }
+  /* 窄屏：路由根可纵向滚动（插件页等大卡片由内层滚动，见 :not） */
+  .pallas-route-body > :deep(.view-page:not(.plugins-page)),
+  .pallas-route-body > :deep(.logs-page) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
   .pallas-connect--strip .pallas-host-addr {
     max-width: min(52vw, 200px);

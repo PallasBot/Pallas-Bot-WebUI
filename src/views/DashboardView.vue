@@ -1201,9 +1201,6 @@ onUnmounted(() => {
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
-    flex: 1;
-    min-height: 0;
-    height: 100%;
   }
   .dash-left,
   .dash-system,
@@ -1320,6 +1317,18 @@ onUnmounted(() => {
   .msg-stats-card,
   .gpu-card {
     min-height: 0;
+  }
+}
+/* 与 ConsoleLayout 窄屏一致：本页 scoped 的 overflow:hidden 会盖掉路由根的 overflow-y:auto，须在此显式开启纵向滚动 */
+@media (max-width: 900px) {
+  .view-page.dashboard {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 }
 @media (max-width: 360px) {
