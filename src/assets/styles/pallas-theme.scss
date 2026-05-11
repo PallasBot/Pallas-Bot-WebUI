@@ -517,3 +517,32 @@ html.pallas-density-compact .pallas-sidebar-page,
 html.pallas-density-compact .view-page {
   line-height: 1.45;
 }
+
+/* 控制台内滚动条：默认尽量低调；悬停在该滚动区域上时再显出拇指（仅 hover 设备） */
+@media (hover: hover) {
+  html .pallas-root * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--el-text-color-secondary) 26%, transparent) transparent;
+  }
+  html .pallas-root *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  html .pallas-root *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 6px;
+  }
+  html .pallas-root *:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--el-text-color-secondary) 48%, transparent);
+  }
+  html.dark .pallas-root *:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+  html .pallas-root .el-scrollbar__bar {
+    opacity: 0.15;
+    transition: opacity 0.15s ease;
+  }
+  html .pallas-root .el-scrollbar:hover .el-scrollbar__bar {
+    opacity: 1;
+  }
+}
