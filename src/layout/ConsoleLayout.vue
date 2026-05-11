@@ -600,6 +600,8 @@ const footerYear = new Date().getFullYear();
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   color: var(--el-text-color-primary);
 }
 
@@ -924,7 +926,7 @@ html.dark .pallas-header {
   text-align: center;
   font-size: 12px;
   color: var(--el-text-color-secondary);
-  padding: 10px 16px 14px;
+  padding: 6px 12px 8px;
   border-top: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color-page);
 }
@@ -1002,10 +1004,10 @@ html.dark .menu-item:hover:not(.selected) {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 20px 20px 20px 6px;
+  padding: 12px 16px 12px 6px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
 }
 .pallas-viewport {
@@ -1031,7 +1033,7 @@ html.dark .menu-item:hover:not(.selected) {
 .pallas-route-body > :deep(.logs-page),
 .pallas-route-body > :deep(.update-view),
 .pallas-route-body > :deep(.pallas-sidebar-page) {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
