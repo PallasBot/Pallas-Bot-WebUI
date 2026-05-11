@@ -422,5 +422,32 @@ onUnmounted(() => {
     width: 100%;
     max-width: none;
   }
+  .logs-viewport {
+    font-size: 13px;
+    line-height: 1.42;
+  }
+  .log-row {
+    gap: 4px;
+    padding: 2px 6px;
+  }
+  .log-t {
+    font-size: 10px;
+    opacity: 0.88;
+  }
+  .log-lv {
+    width: 2.35rem;
+    font-size: 8px;
+    letter-spacing: -0.03em;
+  }
+  .log-sc {
+    width: auto;
+    max-width: 30%;
+    min-width: 0;
+    font-size: 9px;
+  }
+  .log-msg {
+    font-size: 13px;
+    line-height: 1.42;
+  }
 }
 </style>

@@ -1170,6 +1170,14 @@ html.dark .menu-item:hover:not(.selected) {
     min-width: 0;
     overflow: hidden;
   }
+  /* 窄屏：路由根可纵向滚动（仪表盘 / 实例 / 日志等默认 overflow:hidden 会锁死触摸滚动） */
+  .pallas-route-body > :deep(.view-page),
+  .pallas-route-body > :deep(.logs-page) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
   .pallas-connect--strip .pallas-host-addr {
     max-width: min(52vw, 200px);
   }
