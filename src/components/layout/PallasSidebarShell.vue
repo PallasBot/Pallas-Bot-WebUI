@@ -88,11 +88,11 @@ function pickNav(key: string) {
             :section="modelValue"
           />
         </div>
-        <el-scrollbar class="main-scroll">
+        <div class="main-scroll">
           <div class="main-scroll-inner">
             <slot />
           </div>
-        </el-scrollbar>
+        </div>
       </main>
     </div>
   </div>
@@ -189,19 +189,18 @@ function pickNav(key: string) {
 .main-scroll {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0 8px 0 0;
-  :deep(.el-scrollbar__wrap) {
-    max-height: calc(100vh - 220px);
-  }
-  :deep(.el-scrollbar__view) {
-    padding: 8px 16px 20px 24px;
-  }
 }
 .main-scroll-inner {
   text-align: left;
   width: 100%;
   max-width: none;
   margin: 0;
+  padding: 8px 16px 20px 24px;
 }
 html.dark {
   .pallas-sidebar-aside,
@@ -221,13 +220,6 @@ html.dark {
   }
   .pallas-sidebar-body {
     flex-direction: column;
-  }
-  .main-scroll :deep(.el-scrollbar__wrap) {
-    max-height: none;
-    overflow: visible !important;
-  }
-  .main-scroll {
-    overflow: visible;
   }
   .main-scroll-inner {
     max-width: none;
@@ -249,7 +241,7 @@ html.dark {
   .main-scroll {
     padding-right: 0;
   }
-  .main-scroll :deep(.el-scrollbar__view) {
+  .main-scroll-inner {
     padding: 6px 10px 14px;
   }
 }

@@ -428,26 +428,29 @@ const footerYear = new Date().getFullYear();
             </a>
           </el-tooltip>
           <el-dropdown
-            class="account-switch account-switch--narrow"
+            class="account-switch account-switch--toolbar-narrow"
             trigger="click"
             :disabled="!botOptions.length"
             @command="(v: string) => setSelectedBotSelfId(v)"
           >
             <el-button
-              circle
-              class="header-icon-btn account-icon-btn"
-              :aria-label="botOptions.length ? '切换 Bot 账号' : '暂无账号'"
+              size="small"
+              class="account-switch-btn account-switch-btn--toolbar-narrow"
+              :class="{ 'is-empty': !botOptions.length }"
             >
+              <span class="switch-dot" />
+              <span class="account-switch-label">{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
               <el-avatar
                 v-if="selectedBotAvatar && botOptions.length"
-                :size="28"
+                :size="26"
                 :src="selectedBotAvatar"
                 :img-props="qqAvatarImgProps"
               />
               <el-avatar
                 v-else
-                :size="28"
+                :size="26"
               >B</el-avatar>
+              <el-icon><CaretBottom /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -566,17 +569,19 @@ const footerYear = new Date().getFullYear();
               <span>加载中...</span>
             </div>
           </transition>
-          <router-view v-slot="{ Component }">
-            <transition
-              name="slide-fade"
-              mode="out-in"
-            >
-              <component
-                :is="Component"
-                :key="String(route.name || route.path)"
-              />
-            </transition>
-          </router-view>
+          <div class="pallas-route-body">
+            <router-view v-slot="{ Component }">
+              <transition
+                name="slide-fade"
+                mode="out-in"
+              >
+                <component
+                  :is="Component"
+                  :key="String(route.name || route.path)"
+                />
+              </transition>
+            </router-view>
+          </div>
         </div>
       </main>
     </div>
@@ -699,15 +704,6 @@ html.dark .pallas-header {
   color: var(--el-color-primary);
   border-color: var(--el-border-color-hover);
   background: var(--el-fill-color-light);
-}
-
-.account-icon-btn {
-  padding: 0;
-  overflow: hidden;
-}
-
-.account-switch--narrow.account-switch {
-  flex: 0 0 auto;
 }
 
 .pallas-title-mark {
@@ -1005,21 +1001,47 @@ html.dark .menu-item:hover:not(.selected) {
 .pallas-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   padding: 20px 20px 20px 6px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
 }
 .pallas-viewport {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   position: relative;
   border-radius: 4px;
-  > :deep(*) {
-    height: 100%;
-    min-height: 0;
-  }
-  overflow: auto;
+  overflow: hidden;
+}
+.pallas-route-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 路由根节点填满 route-body；默认不在此层滚动，由各页最内层承担 */
+.pallas-route-body > :deep(.view-page),
+.pallas-route-body > :deep(.logs-page),
+.pallas-route-body > :deep(.update-view),
+.pallas-route-body > :deep(.pallas-sidebar-page) {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.pallas-route-body > :deep(.view-page.plugins-page),
+.pallas-route-body > :deep(.update-view) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .page-loading-mask {
   position: absolute;
@@ -1097,8 +1119,8 @@ html.dark .menu-item:hover:not(.selected) {
 
 @media (max-width: 900px) {
   .pallas-root {
-    height: auto;
-    min-height: 100dvh;
+    height: 100%;
+    min-height: 0;
   }
   .pallas-header {
     height: 48px;
@@ -1124,28 +1146,47 @@ html.dark .menu-item:hover:not(.selected) {
     padding-right: 0;
   }
   .pallas-body {
-    display: block;
+    display: flex;
+    flex: 1;
+    min-height: 0;
   }
   .pallas-nav {
     display: none;
   }
   .pallas-main {
     padding: 8px;
-    overflow: visible;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   .pallas-viewport {
-    flex: none;
-    min-height: auto;
-    overflow: visible;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: auto;
-    > :deep(*) {
-      height: auto;
-      min-height: 0;
-    }
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
   }
   .pallas-connect--strip .pallas-host-addr {
     max-width: min(52vw, 200px);
+  }
+  .account-switch--toolbar-narrow.account-switch {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: min(200px, 38vw);
+  }
+  .account-switch-btn--toolbar-narrow {
+    max-width: 100%;
+    min-width: 0;
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .account-switch-btn--toolbar-narrow .account-switch-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 }
 
