@@ -18,6 +18,7 @@ import type {
   DbOverviewData,
   LogScope,
   NapcatAccountRow,
+  NapcatManagerSnapshot,
 } from "@/api/pallasTypes";
 import { useMergedBotRows } from "@/composables/useMergedBotRows";
 import { pallasConnectionKey } from "@/types/pallas-connection";
@@ -25,7 +26,12 @@ import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef } from "@/utils/botServiceBase";
 import PallasLogLines from "@/components/PallasLogLines.vue";
 import { getDashboardPollMs } from "@/utils/pallasUiPrefs";
-import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
+import {
+  accountNativeWebUiUrl,
+  protocolAccountUrl,
+  protocolDashboardUrl,
+  resolveProtocolMountPath,
+} from "@/utils/pallasProtocolPaths";
 import { CircleCloseFilled, Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
@@ -71,6 +77,8 @@ const botFriendCount = ref<number | null>(null);
 const botGroupCount = ref<number | null>(null);
 const msgSent = ref<number | null>(null);
 const msgReceived = ref<number | null>(null);
+const msgTodaySent = ref<number | null>(null);
+const msgTodayReceived = ref<number | null>(null);
 const isMobile = ref(false);
 const mobileDashSection = ref<"bot" | "system" | "connect">("bot");
 
@@ -85,6 +93,7 @@ const dbBots = ref<BotConfigPublic[]>([]);
 const protocolAccounts = ref<NapcatAccountRow[]>([]);
 const botProfiles = ref<Record<string, { nickname?: string }>>({});
 const protocolPath = ref<string | null>(null);
+const protocolSnap = ref<NapcatManagerSnapshot | null>(null);
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const dashboardBotSelfId = ref<string | null>(null);
 const botBase = getBotServiceBaseRef();
@@ -130,6 +139,26 @@ const selectedProtocolAccount = computed(() => {
   const qq = selectedDashboardBotQq.value.trim();
   if (!qq) return null;
   return protocolAccounts.value.find((r) => String(r.qq ?? r.id ?? "").trim() === qq) ?? null;
+});
+const protocolMountShort = computed(() => resolveProtocolMountPath(protocolPath.value));
+const protocolAccountConnectedCount = computed(
+  () => protocolAccounts.value.filter((x) => Boolean(x.connected)).length,
+);
+const protocolPluginLabel = computed(() => {
+  const p = String(protocolSnap.value?.plugin ?? "").trim();
+  if (!p) return "—";
+  return p.length > 28 ? `${p.slice(0, 26)}…` : p;
+});
+const protocolConsoleAccountUrl = computed(() => {
+  const base = botBase.value || "http://localhost:8088";
+  const acc = selectedProtocolAccount.value;
+  const id = String(acc?.id ?? acc?.qq ?? selectedDashboardBotQq.value ?? "").trim();
+  if (!id) return "";
+  return protocolAccountUrl(base, protocolPath.value, id);
+});
+const protocolNativeWebUiHref = computed(() => {
+  const u = accountNativeWebUiUrl(selectedProtocolAccount.value ?? {});
+  return u.trim() ? u : "";
 });
 const botFriendCountDisplay = computed(() => {
   const fromProtocol = Number(selectedProtocolAccount.value?.friend_count ?? selectedProtocolAccount.value?.friends_count);
@@ -332,15 +361,21 @@ async function loadMessageStats(selfId: string | null) {
   if (ok.value !== true || !selfId || !/^\d+$/.test(selfId)) {
     msgSent.value = null;
     msgReceived.value = null;
+    msgTodaySent.value = null;
+    msgTodayReceived.value = null;
     return;
   }
   try {
     const data = await fetchMessageStats(parseInt(selfId, 10));
     msgSent.value = data.total_sent ?? 0;
     msgReceived.value = data.total_received ?? 0;
+    msgTodaySent.value = data.today_sent ?? 0;
+    msgTodayReceived.value = data.today_received ?? 0;
   } catch {
     msgSent.value = null;
     msgReceived.value = null;
+    msgTodaySent.value = null;
+    msgTodayReceived.value = null;
   }
 }
 
@@ -379,10 +414,10 @@ async function loadInstances(silent = true) {
     nonebot.value = data.nonebot_bots;
     dbBots.value = data.db_bot_configs;
     botProfiles.value = data.bot_profiles ?? {};
-    protocolPath.value = data.pallas_protocol?.webui_path ?? data.napcat?.webui_path ?? null;
-    protocolAccounts.value = (data.pallas_protocol?.accounts ??
-      data.napcat?.accounts ??
-      []) as NapcatAccountRow[];
+    const snap = data.pallas_protocol ?? data.napcat ?? null;
+    protocolSnap.value = snap;
+    protocolPath.value = snap?.webui_path ?? null;
+    protocolAccounts.value = (snap?.accounts ?? []) as NapcatAccountRow[];
   } catch (e) {
     if (!silent) {
       ElMessage.error(e instanceof Error ? e.message : "拉取实例数据失败");
@@ -390,6 +425,7 @@ async function loadInstances(silent = true) {
     nonebot.value = [];
     dbBots.value = [];
     botProfiles.value = {};
+    protocolSnap.value = null;
     protocolPath.value = null;
     protocolAccounts.value = [];
   }
@@ -597,14 +633,46 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="bot-hero-actions">
+              <div class="bot-hero-protocol-extra" aria-label="协议管理摘要">
+                <div class="bot-hero-protocol-hd">协议管理</div>
+                <div class="bot-hero-protocol-grid">
+                  <span class="pk">插件</span>
+                  <span class="pv mono bot-hero-protocol-clip" :title="protocolPluginLabel">{{ protocolPluginLabel }}</span>
+                  <span class="pk">Web 面板</span>
+                  <span class="pv">{{ protocolSnap?.webui_enabled ? "已启用" : "未启用" }}</span>
+                  <span class="pk">鉴权</span>
+                  <span class="pv">{{ protocolSnap?.console_auth_configured ? "已配置" : "未配置" }}</span>
+                  <span class="pk">挂载路径</span>
+                  <span class="pv mono bot-hero-protocol-clip" :title="protocolMountShort">{{ protocolMountShort }}</span>
+                  <span class="pk">协议账号</span>
+                  <span class="pv">{{ protocolAccounts.length }} 个 · 在线 {{ protocolAccountConnectedCount }}</span>
+                </div>
+                <div class="bot-hero-protocol-sub">
+                  <el-link
+                    v-if="protocolConsoleAccountUrl"
+                    type="primary"
+                    :href="protocolConsoleAccountUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="bot-hero-protocol-sub-link"
+                  >协议端控制台</el-link>
+                  <el-link
+                    v-if="protocolNativeWebUiHref"
+                    type="info"
+                    :href="protocolNativeWebUiHref"
+                    target="_blank"
+                    rel="noopener"
+                    class="bot-hero-protocol-sub-link"
+                  >原生 WebUI</el-link>
+                </div>
+              </div>
               <el-link
                 type="primary"
                 :href="protocolManageUrl"
                 target="_blank"
                 rel="noopener"
-              >
-                前往协议管理
-              </el-link>
+                class="bot-hero-protocol-main-link"
+              >前往协议管理</el-link>
             </div>
           </el-card>
           <el-card
@@ -661,6 +729,8 @@ onUnmounted(() => {
             <div class="nb-conn-grid msg-stats-grid">
               <div class="nb-item"><span class="k">发送消息</span><span class="v">{{ msgSent ?? "-" }}</span></div>
               <div class="nb-item"><span class="k">接收消息</span><span class="v">{{ msgReceived ?? "-" }}</span></div>
+              <div class="nb-item"><span class="k">今日发送</span><span class="v">{{ msgTodaySent ?? "-" }}</span></div>
+              <div class="nb-item"><span class="k">今日接收</span><span class="v">{{ msgTodayReceived ?? "-" }}</span></div>
             </div>
           </el-card>
           <div class="dash-col-fill" aria-hidden="true" />
@@ -942,9 +1012,24 @@ onUnmounted(() => {
     flex: 1;
     min-height: 0;
   }
-  .dash-left .bot-hero,
   .dash-left .bot-db-card {
     flex-shrink: 0;
+  }
+  /* 纵向余量由账号信息卡片吸收，消息统计保持内容高度 */
+  .dash-left .bot-hero {
+    flex: 1 0 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .dash-left .bot-hero :deep(.el-card__body) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .dash-left .bot-hero:not(.bot-hero--empty) .bot-hero-actions {
+    margin-top: auto;
   }
   .dash-system .intro-card--dash,
   .dash-system .dash-h--after,
@@ -966,7 +1051,12 @@ onUnmounted(() => {
   .dash-system > .stat-row {
     flex-shrink: 0;
   }
-  .dash-left .msg-stats-card,
+  .dash-left .msg-stats-card {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+  }
   .dash-right .side-conn-card--ai {
     flex: 1 1 auto;
     min-height: 0;
@@ -978,7 +1068,11 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
   }
-  .dash-left .msg-stats-card :deep(.el-card__body),
+  .dash-left .msg-stats-card :deep(.el-card__body) {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
   .dash-right .side-conn-card--ai :deep(.el-card__body) {
     flex: 1;
     display: flex;
@@ -1337,6 +1431,17 @@ onUnmounted(() => {
   .dash-right .nb-conn-hd {
     margin-bottom: 6px;
   }
+  .dash-left .bot-hero.bot-hero-vertical {
+    container-type: size;
+    container-name: bot-hero;
+  }
+  .dash-left .bot-hero-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
 }
 .nb-conn-card {
   border: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
@@ -1393,6 +1498,60 @@ onUnmounted(() => {
   }
   .bot-hero-actions {
     margin-bottom: 10px;
+  }
+}
+.bot-hero-protocol-extra {
+  display: none;
+}
+.bot-hero-protocol-hd {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-main);
+  margin-bottom: 6px;
+}
+.bot-hero-protocol-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 4px;
+  font-size: 11px;
+  align-items: baseline;
+}
+.bot-hero-protocol-grid .pk {
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
+}
+.bot-hero-protocol-grid .pv {
+  color: var(--el-text-color-primary);
+  min-width: 0;
+}
+.bot-hero-protocol-clip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bot-hero-protocol-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.bot-hero-protocol-sub-link {
+  font-size: 12px;
+}
+.bot-hero-protocol-main-link {
+  font-size: 13px;
+}
+@container bot-hero (min-width: 420px) and (min-height: 400px) {
+  .bot-hero-protocol-extra {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
+    background: color-mix(in srgb, var(--el-fill-color-light) 92%, var(--el-bg-color));
   }
 }
 .bot-hero--empty {
@@ -1731,14 +1890,21 @@ html.dark .pallas-dash-banner__icon {
   color: var(--el-text-color-primary);
 }
 .msg-stats-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 .msg-stats-grid .nb-item {
-  padding: 6px 9px;
+  padding: 5px 8px;
   gap: 1px;
 }
+.msg-stats-grid .nb-item .k {
+  font-size: 11px;
+}
+.msg-stats-grid .nb-item .v {
+  font-size: 12px;
+}
 .msg-stats-card {
-  min-height: 72px;
+  min-height: 0;
 }
 .gpu-card {
   min-height: 0;
