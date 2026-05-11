@@ -716,6 +716,7 @@ watch(
             { label: '实例列表', value: 'list' },
             { label: '实例详情', value: 'detail' },
           ]"
+          size="small"
           block
         />
       </div>
@@ -962,6 +963,7 @@ watch(
               { label: '好友', value: 'friend' },
               { label: '群', value: 'group' },
             ]"
+            size="small"
             block
           />
         </div>
@@ -979,6 +981,7 @@ watch(
                 { label: '好友列表', value: 'list' },
                 { label: '好友配置', value: 'panel' },
               ]"
+              size="small"
               block
             />
           </div>
@@ -1158,6 +1161,7 @@ watch(
                 { label: '群列表', value: 'list' },
                 { label: '群配置', value: 'panel' },
               ]"
+              size="small"
               block
             />
           </div>
@@ -2023,6 +2027,22 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .mobile-pane-switch {
     display: block;
     margin-bottom: 8px;
+  }
+  /* 好友与群：收窄分段器与区块间距，让列表区域更高 */
+  .social-stack {
+    gap: 4px;
+  }
+  .social-stack .mobile-pane-switch {
+    margin-bottom: 4px;
+  }
+  .pan3--social > .mobile-pane-switch {
+    margin-bottom: 3px;
+  }
+  .pan3--social .c-insp :deep(.el-card__header) {
+    padding: 8px 12px;
+  }
+  .pan3--social .list-head {
+    gap: 6px;
   }
   .pan3 {
     gap: 10px;
