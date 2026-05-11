@@ -692,58 +692,48 @@ onUnmounted(() => {
             </div>
           </el-card>
 
-          <el-card class="nb-conn-card bot-meta-card bot-db-card" shadow="never">
+          <el-card class="nb-conn-card bot-db-card" shadow="never">
             <div class="nb-conn-hd">数据库连接</div>
-            <div class="bot-db-stack">
-              <div class="nb-conn-grid msg-stats-grid">
-                <div class="nb-item nb-item--full">
-                  <span class="k">当前连接</span>
-                  <span class="v mono" :title="dbBackend">{{ dbBackend }}</span>
-                </div>
-                <div class="nb-item">
-                  <span class="k">{{ dbItemsLabel }}</span>
-                  <span class="v">{{ dbItems.length || "-" }}</span>
-                </div>
-                <div class="nb-item">
-                  <span class="k">记录总量</span>
-                  <span class="v">{{ dbItems.length ? dbItemsTotal : "-" }}</span>
-                </div>
-                <div
-                  v-if="dbItems.length"
-                  class="nb-item nb-item--full"
+            <div class="nb-conn-grid bot-db-grid-main">
+              <div class="nb-item nb-item--full">
+                <span class="k">当前连接</span>
+                <span class="v mono" :title="dbBackend">{{ dbBackend }}</span>
+              </div>
+              <div class="nb-item">
+                <span class="k">{{ dbItemsLabel }}</span>
+                <span class="v">{{ dbItems.length || "—" }}</span>
+              </div>
+              <div class="nb-item">
+                <span class="k">记录总量</span>
+                <span class="v">{{ dbItems.length ? dbItemsTotal : "—" }}</span>
+              </div>
+              <div
+                v-if="dbItems.length"
+                class="nb-item nb-item--full"
+              >
+                <span class="k">{{ dbAvgPerBucketLabel }}</span>
+                <span class="v">{{ dbAvgPerBucket }}</span>
+              </div>
+            </div>
+            <div v-if="dbTopThree.length" class="bot-db-top-cq">
+              <div class="bot-db-top-hd">记录量前三</div>
+              <ul class="bot-db-top-ul">
+                <li
+                  v-for="row in dbTopThree"
+                  :key="`${row.name}:${row.module ?? ''}`"
+                  class="bot-db-top-li"
                 >
-                  <span class="k">{{ dbAvgPerBucketLabel }}</span>
-                  <span class="v">{{ dbAvgPerBucket }}</span>
-                </div>
-              </div>
-            </div>
-            <div
-              v-if="dbTopThree.length"
-              class="bot-db-top-cq"
-            >
-              <div class="bot-db-top-wrap bot-db-stack">
-                <div class="nb-conn-hd nb-conn-hd--sub">记录量前三</div>
-                <div class="nb-conn-grid bot-db-grid--top">
-                  <div
-                    v-for="row in dbTopThree"
-                    :key="row.name"
-                    class="nb-item nb-item--full"
+                  <span
+                    class="bot-db-top-name mono"
+                    :title="row.module ? `${row.name} · ${row.module}` : row.name"
                   >
-                    <span
-                      class="k bot-db-top-k mono"
-                      :title="row.module ? `${row.name} · ${row.module}` : row.name"
-                    >
-                      {{ row.name }}<template v-if="row.module"><span class="bot-db-mod-inline"> · {{ row.module }}</span></template>
-                    </span>
-                    <span class="v">{{ row.count }}</span>
-                  </div>
-                </div>
-              </div>
+                    {{ row.name }}<template v-if="row.module"><span class="bot-db-mod-inline"> · {{ row.module }}</span></template>
+                  </span>
+                  <span class="bot-db-top-n">{{ row.count }}</span>
+                </li>
+              </ul>
             </div>
-            <div
-              v-if="dbOverviewNote"
-              class="bot-db-sub bot-db-stack bot-db-stack--note"
-            >{{ dbOverviewNote }}</div>
+            <p v-if="dbOverviewNote" class="bot-db-note">{{ dbOverviewNote }}</p>
           </el-card>
           <el-card class="nb-conn-card msg-stats-card" shadow="never">
             <div class="nb-conn-hd">消息统计</div>
@@ -893,10 +883,22 @@ onUnmounted(() => {
           <el-card class="nb-conn-card side-conn-card side-conn-card--ai" shadow="never">
             <div class="nb-conn-hd">AI 连接</div>
             <div class="nb-conn-grid nb-conn-grid--ai-dash">
-              <div class="nb-item"><span class="k">服务地址</span><span class="v ai-dash-url" :title="aiCfg?.base_url || ''">{{ aiCfg?.base_url || "—" }}</span></div>
-              <div class="nb-item nb-item--dash-optional"><span class="k">健康探测</span><span class="v ai-dash-url" :title="aiTest?.health_url || ''">{{ aiTest?.health_url || "—" }}</span></div>
-              <div class="nb-item"><span class="k">状态</span><span class="v"><el-tag :type="aiTest?.ok ? 'success' : 'danger'" size="small">{{ aiTest?.ok ? "已连接" : "未连接" }}</el-tag></span></div>
-              <div class="nb-item"><span class="k">状态码</span><span class="v">{{ aiTest?.status_code ?? "—" }}</span></div>
+              <div class="nb-item nb-item--full">
+                <span class="k">服务地址</span>
+                <span class="v mono ai-dash-url" :title="aiCfg?.base_url || ''">{{ aiCfg?.base_url || "—" }}</span>
+              </div>
+              <div class="nb-item nb-item--full nb-item--dash-optional">
+                <span class="k">健康探测</span>
+                <span class="v mono ai-dash-url" :title="aiTest?.health_url || ''">{{ aiTest?.health_url || "—" }}</span>
+              </div>
+              <div class="nb-item">
+                <span class="k">状态</span>
+                <span class="v"><el-tag :type="aiTest?.ok ? 'success' : 'danger'" size="small">{{ aiTest?.ok ? "已连接" : "未连接" }}</el-tag></span>
+              </div>
+              <div class="nb-item">
+                <span class="k">状态码</span>
+                <span class="v">{{ aiTest?.status_code ?? "—" }}</span>
+              </div>
             </div>
             <div class="mini-actions">
               <el-button type="primary" size="small" :loading="aiTesting" @click="loadAiStatus(false)">刷新 AI 连接</el-button>
@@ -1045,6 +1047,18 @@ onUnmounted(() => {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--el-text-color-placeholder) 55%, transparent) transparent;
+  }
+  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar {
+    width: 5px;
+  }
+  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar-thumb {
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--el-text-color-secondary) 40%, transparent);
+  }
+  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar-track {
+    background: transparent;
   }
   .dash-left .bot-hero {
     flex: 0 0 auto;
@@ -1100,6 +1114,8 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    padding: 6px 8px 8px;
+    gap: 4px;
   }
   .dash-system .gpu-card :deep(.el-card__body) {
     flex: 0 0 auto;
@@ -1108,6 +1124,7 @@ onUnmounted(() => {
   }
   .dash-right .side-conn-card--ai .mini-actions {
     margin-top: auto;
+    flex-shrink: 0;
   }
   .dash-system .log-card--dash-fill {
     flex: 1 1 0;
@@ -1155,12 +1172,14 @@ onUnmounted(() => {
     max-height: none !important;
     height: 100%;
   }
-  /* 多 GPU 时避免中间列被撑得过高，余量留给连接日志 */
-  .dash-system .gpu-dash-list {
-    max-height: min(236px, 38vh);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: 2px;
+  /* 细轨道 + 降低默认不透明度，减轻「大块滚动条」观感 */
+  .dash-system .log-scroll--dash :deep(.el-scrollbar) {
+    --el-scrollbar-opacity: 0.22;
+    --el-scrollbar-hover-opacity: 0.52;
+  }
+  .dash-system .log-scroll--dash :deep(.el-scrollbar__bar.is-vertical) {
+    width: 5px;
+    right: 1px;
   }
 }
 .mobile-dash-switch {
@@ -1202,10 +1221,10 @@ onUnmounted(() => {
     }
   }
   .dash-system .log-scroll--dash {
-    max-height: 170px;
+    max-height: min(228px, 42vh);
   }
   .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap) {
-    max-height: 170px !important;
+    max-height: min(228px, 42vh) !important;
   }
   .nb-conn-card :deep(.el-card__body),
   .intro-card :deep(.el-card__body),
@@ -1284,7 +1303,7 @@ onUnmounted(() => {
   .nb-item .v {
     font-size: 12px;
   }
-  .bot-db-sub {
+  .bot-db-note {
     font-size: 11px;
     line-height: 1.35;
   }
@@ -1294,7 +1313,7 @@ onUnmounted(() => {
   .bot-hero-actions :deep(.el-link) {
     font-size: 12px;
   }
-  .mini-actions :deep(.el-button) {
+  .dash-right .side-conn-card--ai .mini-actions :deep(.el-button) {
     font-size: 12px;
     padding: 5px 9px;
   }
@@ -1608,97 +1627,97 @@ onUnmounted(() => {
 }
 .bot-db-card {
   :deep(.el-card__body) {
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: flex-start;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px 12px;
+    gap: 6px;
+    padding: 6px 8px 8px;
   }
   .nb-conn-hd {
-    margin: 0;
-    font-size: 13px;
-  }
-  .nb-conn-hd--sub {
     margin: 0 0 4px;
-    font-size: 11px;
-    font-weight: 650;
-    color: var(--el-text-color-secondary);
-    letter-spacing: 0.02em;
+    font-size: 12px;
   }
-  .bot-db-stack {
+  .bot-db-grid-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 6px;
     width: 100%;
-    box-sizing: border-box;
-    padding: 8px 10px;
-    border-radius: var(--pallas-radius-md, 10px);
-    background: color-mix(in srgb, var(--el-fill-color-light) 58%, var(--el-bg-color));
-    border: 1px solid color-mix(in srgb, var(--pallas-accent) 10%, var(--el-border-color-lighter));
-    display: flex;
-    flex-direction: column;
-    gap: 0;
   }
-  .bot-db-top-wrap.bot-db-stack {
-    gap: 6px;
+  .bot-db-grid-main .nb-item--full {
+    grid-column: 1 / -1;
   }
-  .bot-db-stack--note {
-    line-height: 1.5;
+  .bot-db-grid-main .nb-item {
+    padding: 4px 6px;
+    gap: 1px;
+  }
+  .bot-db-grid-main .nb-item .k {
+    font-size: 10px;
+  }
+  .bot-db-grid-main .nb-item .v {
     font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-  .msg-stats-grid {
-    gap: 8px;
-  }
-  .msg-stats-grid .nb-item {
-    padding: 5px 8px;
-    gap: 2px;
-  }
-  .msg-stats-grid .nb-item .k {
-    font-size: 11px;
-  }
-  .msg-stats-grid .nb-item .v {
-    font-size: 12px;
-  }
-  .bot-db-grid--top {
-    gap: 6px;
-  }
-  .bot-db-grid--top .nb-item {
-    padding: 5px 8px;
-    gap: 2px;
-  }
-  .bot-db-grid--top .nb-item .k {
-    font-size: 11px;
-  }
-  .bot-db-grid--top .nb-item .v {
-    font-size: 12px;
+    line-height: 1.28;
   }
 }
 .msg-stats-grid .nb-item--full {
   grid-column: 1 / -1;
 }
-.bot-db-grid--top {
-  width: 100%;
-  grid-template-columns: 1fr;
-}
-.bot-db-top-k {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-  white-space: normal;
-}
 .bot-db-mod-inline {
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
-.bot-db-sub {
-  width: 100%;
-  margin: 0;
-  word-break: break-word;
-}
 .bot-db-top-cq {
   width: 100%;
   min-width: 0;
+}
+.bot-db-top-hd {
+  margin: 0 0 5px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--el-text-color-secondary);
+  letter-spacing: 0.02em;
+}
+.bot-db-top-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.bot-db-top-li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  border-bottom: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
+}
+.bot-db-top-li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.bot-db-top-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bot-db-top-n {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-main);
+}
+.bot-db-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--el-text-color-secondary);
+  word-break: break-word;
 }
 /* 桌面：左列偏窄或视口偏矮时隐藏「记录量前三」。
  * 注意：左列 grid min 约 244px，；阈值需在「过窄」与常见列宽之间取舍 */
@@ -1707,14 +1726,6 @@ onUnmounted(() => {
     .bot-db-card .bot-db-top-cq {
       display: none !important;
     }
-  }
-}
-@media (min-width: 769px) and (max-height: 659px) {
-  .view-page.dashboard .bot-db-card .bot-db-top-cq {
-    display: none !important;
-  }
-  .view-page.dashboard .dash-left .bot-hero .bot-hero-protocol-extra {
-    display: none !important;
   }
 }
 .bot-inline-stats {
@@ -1929,28 +1940,33 @@ html.dark .pallas-dash-banner__icon {
 .nb-conn-grid--bot-kv .nb-item .v {
   font-size: 12px;
 }
-/* 默认单列多行；窄侧栏时由 @container dash-conn 改为双列紧凑 */
 .nb-conn-grid--ai-dash {
-  grid-template-columns: 1fr;
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 6px;
+}
+.nb-conn-grid--ai-dash .nb-item--full {
+  grid-column: 1 / -1;
 }
 .nb-conn-grid--ai-dash .nb-item {
-  padding: 6px 9px;
-  gap: 3px;
+  padding: 4px 6px;
+  gap: 2px;
 }
 .nb-conn-grid--ai-dash .nb-item .k {
-  font-size: 12px;
+  font-size: 11px;
 }
 .nb-conn-grid--ai-dash .nb-item .v {
-  font-size: 13px;
-  line-height: 1.38;
+  font-size: 12px;
+  line-height: 1.32;
+}
+.side-conn-card--ai .nb-conn-hd {
+  margin-bottom: 4px;
 }
 .ai-dash-url {
   min-width: 0;
-  overflow: visible;
-  text-overflow: unset;
-  white-space: normal;
-  word-break: break-word;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .nb-item {
   border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
@@ -2073,25 +2089,14 @@ html.dark .pallas-dash-banner__icon {
 }
 @container dash-conn (max-width: 287px) {
   .side-conn-card--ai .nb-conn-grid--ai-dash {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 6px;
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
-  .side-conn-card--ai .nb-conn-grid--ai-dash .nb-item {
-    padding: 5px 6px;
-    gap: 2px;
+  .side-conn-card--ai .nb-conn-grid--ai-dash .nb-item--full {
+    grid-column: 1;
   }
-  .side-conn-card--ai .nb-conn-grid--ai-dash .nb-item .k {
-    font-size: 11px;
-  }
-  .side-conn-card--ai .nb-conn-grid--ai-dash .nb-item .v {
-    font-size: 12px;
-    line-height: 1.3;
-  }
-  .side-conn-card--ai .ai-dash-url {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    word-break: normal;
+  .side-conn-card--ai .mini-actions :deep(.el-button) {
+    width: 100%;
   }
   .side-conn-card .nb-item:not(.nb-item--full) {
     flex-direction: row;
@@ -2127,12 +2132,6 @@ html.dark .pallas-dash-banner__icon {
   .side-conn-card--nb .platform-line {
     -webkit-line-clamp: 1;
     line-clamp: 1;
-  }
-  .side-conn-card--ai .mini-actions {
-    margin-top: 4px;
-  }
-  .side-conn-card--ai .mini-actions .el-button {
-    width: 100%;
   }
 }
 @container dash-conn (max-width: 198px) {
@@ -2193,6 +2192,12 @@ html.dark .pallas-dash-banner__icon {
   }
 }
 @media (min-width: 769px) and (max-height: 720px) {
+  .view-page.dashboard .bot-db-card .bot-db-top-cq {
+    display: none !important;
+  }
+  .view-page.dashboard .dash-left .bot-hero .bot-hero-protocol-extra {
+    display: none !important;
+  }
   .view-page.dashboard .dash-left .bot-hero.bot-hero-vertical .bot-hero-head :deep(.el-avatar) {
     width: 62px !important;
     height: 62px !important;
@@ -2232,6 +2237,6 @@ html.dark .pallas-dash-banner__icon {
 .log-ctl { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .log-scroll { background: var(--el-fill-color-light); border-radius: 8px; border: 1px solid var(--el-border-color-lighter); }
 .log-scroll--dash {
-  max-height: 170px;
+  max-height: min(200px, 40vh);
 }
 </style>
