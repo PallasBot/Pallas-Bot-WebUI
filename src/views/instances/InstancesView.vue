@@ -688,6 +688,7 @@ watch(
     :menu-aria-label="pageScope === 'accounts' ? '实例' : '好友与群分节'"
     :nav-items="navItems"
     :hide-aside="true"
+    :lock-body="true"
   >
     <template #header="{ section: s }">
       <div class="head-row">
@@ -725,7 +726,7 @@ watch(
         >
           <el-card
             v-loading="loading"
-            class="c"
+            class="c c-account-list"
             shadow="hover"
           >
             <template #header>
@@ -738,7 +739,8 @@ watch(
                 >连接与协议快照</el-text>
               </div>
             </template>
-            <div class="card-list">
+            <div class="card-list-scroll">
+              <div class="card-list">
               <button
                 v-for="row in mergedRows"
                 :key="row.key"
@@ -786,6 +788,7 @@ watch(
                   >删除</el-button>
                 </div>
               </button>
+              </div>
             </div>
             <div class="ft">
               <el-button
@@ -1001,7 +1004,7 @@ watch(
                   />
                 </div>
               </template>
-              <el-scrollbar max-height="44vh">
+              <div class="list-scroll">
                 <div class="list-box">
                   <div
                     v-for="f in filteredSocialFriends"
@@ -1019,7 +1022,7 @@ watch(
                     </div>
                   </div>
                 </div>
-              </el-scrollbar>
+              </div>
             </el-card>
             <el-card
               v-else
@@ -1176,7 +1179,7 @@ watch(
                   />
                 </div>
               </template>
-              <el-scrollbar max-height="44vh">
+              <div class="list-scroll">
                 <div class="list-box">
                   <button
                     v-for="g in filteredGroups"
@@ -1196,7 +1199,7 @@ watch(
                     </div>
                   </button>
                 </div>
-              </el-scrollbar>
+              </div>
             </el-card>
           </aside>
           <section
@@ -1399,14 +1402,40 @@ watch(
   justify-content: space-between;
   gap: 8px;
 }
+.instances-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.instances-page :deep(.pallas-sidebar-page) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 .inst-panel {
   width: 100%;
   max-width: none;
   margin-left: 0;
   margin-right: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .inst-panel--wide {
   max-width: none;
+}
+.inst-panel > .mobile-pane-switch {
+  flex-shrink: 0;
+}
+.inst-panel > .pan3 {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-bottom: 0;
 }
 .mobile-pane-switch {
   display: none;
@@ -1414,7 +1443,19 @@ watch(
 .social-stack {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.social-stack > .mobile-pane-switch {
+  flex-shrink: 0;
+}
+.social-stack > .pan3.pan3--social {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-bottom: 0;
 }
 .pan3 {
   display: flex;
@@ -1427,7 +1468,9 @@ watch(
   .pan3-insp,
   .pan3-main {
     display: flex;
+    flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
   .c {
     flex: 1;
@@ -1435,13 +1478,77 @@ watch(
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
   .c :deep(.el-card__body) {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
   }
+  .pan3-main > .c :deep(.el-card__body) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+.list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.card-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.c-account-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.c-account-list :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.c-account-list .ft {
+  flex-shrink: 0;
+  margin-top: 10px;
+}
+.inst-panel > .pan3 > .pan3-main,
+.inst-panel > .pan3 > .pan3-insp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.inst-panel > .pan3 > .pan3-insp > .c {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.inst-panel > .pan3 > .pan3-insp > .c :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .pan3-rail {
   width: 210px;

@@ -8,13 +8,18 @@ export interface PallasNavItem {
   icon?: Component;
 }
 
-defineProps<{
-  asideTitle: string;
-  navItems: PallasNavItem[];
-  modelValue: string;
-  menuAriaLabel?: string;
-  hideAside?: boolean;
-}>();
+withDefaults(
+  defineProps<{
+    asideTitle: string;
+    navItems: PallasNavItem[];
+    modelValue: string;
+    menuAriaLabel?: string;
+    hideAside?: boolean;
+    /** true：标题区固定，插槽区域占满剩余高度且不滚动（由页面内层自行滚动，如好友/群列表） */
+    lockBody?: boolean;
+  }>(),
+  { lockBody: false },
+);
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: string): void;
@@ -26,7 +31,10 @@ function pickNav(key: string) {
 </script>
 
 <template>
-  <div class="pallas-sidebar-page view-page">
+  <div
+    class="pallas-sidebar-page view-page"
+    :class="{ 'is-body-locked': lockBody }"
+  >
     <div class="pallas-sidebar-mobile">
       <el-icon class="m-ico">
         <SelectIcon />
@@ -189,10 +197,9 @@ function pickNav(key: string) {
 .main-scroll {
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 0 8px 0 0;
 }
 .main-scroll-inner {
@@ -201,6 +208,17 @@ function pickNav(key: string) {
   max-width: none;
   margin: 0;
   padding: 8px 16px 20px 24px;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+.pallas-sidebar-page.is-body-locked .main-scroll-inner {
+  overflow: hidden;
 }
 html.dark {
   .pallas-sidebar-aside,
