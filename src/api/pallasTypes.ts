@@ -40,11 +40,15 @@ export interface SystemData {
 export interface MessageStatsData {
   total_sent: number;
   total_received: number;
+  today_sent?: number;
+  today_received?: number;
   bots: Array<{
     self_id: string;
     connection_key: string;
     sent: number;
     received: number;
+    today_sent?: number;
+    today_received?: number;
   }>;
 }
 
