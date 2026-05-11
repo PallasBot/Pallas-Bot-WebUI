@@ -2007,6 +2007,17 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
     width: 100%;
     min-width: 0;
   }
+  /* 侧栏默认 flex-shrink:0，纵向后会按内容顶满高度，内层 .list-scroll 无溢出，手机无法滚列表 */
+  .pan3--social .pan3-insp {
+    flex: 1 1 0;
+    min-height: 0;
+    flex-shrink: 1;
+  }
+  .pan3--social .pan3-main {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+  }
 }
 @media (max-width: 768px) {
   .mobile-pane-switch {
