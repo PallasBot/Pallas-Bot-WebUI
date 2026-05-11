@@ -484,28 +484,6 @@ const footerYear = new Date().getFullYear();
       </div>
     </header>
 
-    <div
-      v-if="isNarrowLayout"
-      class="pallas-status-strip"
-      title="基于 /pallas/api/health"
-    >
-      <div class="pallas-connect pallas-connect--strip">
-        <span
-          class="pallas-dot"
-          :class="{ off: ok === false, unk: ok === null }"
-        />
-        <span
-          v-if="ok"
-          class="pallas-host"
-        >已连接 <span class="pallas-host-addr">@{{ hostLabel }}</span></span>
-        <span v-else-if="ok === null">检查中</span>
-        <span
-          v-else
-          class="pallas-host pallas-err"
-        >未连接</span>
-      </div>
-    </div>
-
     <el-drawer
       v-model="navDrawerOpen"
       direction="ltr"
@@ -519,24 +497,46 @@ const footerYear = new Date().getFullYear();
           <span class="pallas-drawer-sub">{{ currentNavLabel }}</span>
         </div>
       </template>
-      <nav
-        class="pallas-drawer-nav"
-        aria-label="主导航"
-      >
-        <button
-          v-for="item in nav"
-          :key="item.name"
-          type="button"
-          class="drawer-nav-item"
-          :class="{ selected: route.name === item.name }"
-          @click="onMobileNavClick(item)"
+      <div class="pallas-drawer-body-inner">
+        <nav
+          class="pallas-drawer-nav"
+          aria-label="主导航"
         >
-          <el-icon class="drawer-nav-ico">
-            <component :is="item.icon" />
-          </el-icon>
-          <span>{{ item.label }}</span>
-        </button>
-      </nav>
+          <button
+            v-for="item in nav"
+            :key="item.name"
+            type="button"
+            class="drawer-nav-item"
+            :class="{ selected: route.name === item.name }"
+            @click="onMobileNavClick(item)"
+          >
+            <el-icon class="drawer-nav-ico">
+              <component :is="item.icon" />
+            </el-icon>
+            <span>{{ item.label }}</span>
+          </button>
+        </nav>
+        <div
+          class="pallas-drawer-connect"
+          title="基于 /pallas/api/health"
+        >
+          <div class="pallas-connect pallas-connect--drawer">
+            <span
+              class="pallas-dot"
+              :class="{ off: ok === false, unk: ok === null }"
+            />
+            <span
+              v-if="ok"
+              class="pallas-host"
+            >已连接 <span class="pallas-host-addr">@{{ hostLabel }}</span></span>
+            <span v-else-if="ok === null">检查中</span>
+            <span
+              v-else
+              class="pallas-host pallas-err"
+            >未连接</span>
+          </div>
+        </div>
+      </div>
     </el-drawer>
 
     <div class="pallas-body">
@@ -668,14 +668,7 @@ html.dark .pallas-header {
   flex-shrink: 0;
 }
 
-.pallas-status-strip {
-  flex-shrink: 0;
-  padding: 5px 12px 7px;
-  background: color-mix(in srgb, var(--el-fill-color-light) 88%, transparent);
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.pallas-connect--strip {
+.pallas-connect--drawer {
   font-size: 12px;
   min-height: 22px;
 }
@@ -1177,8 +1170,8 @@ html.dark .menu-item:hover:not(.selected) {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
-  .pallas-connect--strip .pallas-host-addr {
-    max-width: min(52vw, 200px);
+  .pallas-drawer-connect .pallas-host-addr {
+    max-width: min(220px, 72vw);
   }
   .account-switch--toolbar-narrow.account-switch {
     flex: 1 1 auto;
@@ -1231,6 +1224,28 @@ html.dark .menu-item:hover:not(.selected) {
 }
 .pallas-nav-drawer-wrap .el-drawer__body {
   padding: 8px 12px 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.pallas-drawer-body-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+.pallas-drawer-body-inner .pallas-drawer-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.pallas-drawer-connect {
+  flex-shrink: 0;
+  margin-top: auto;
 }
 .pallas-drawer-hd {
   display: flex;
