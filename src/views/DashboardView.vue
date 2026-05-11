@@ -1201,9 +1201,11 @@ onUnmounted(() => {
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
-    flex: 1;
+    flex: 0 0 auto;
     min-height: 0;
-    height: 100%;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
   .dash-left,
   .dash-system,

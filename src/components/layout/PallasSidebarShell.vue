@@ -242,6 +242,13 @@ html.dark {
   .main-scroll-inner {
     max-width: none;
   }
+  /* lockBody 在桌面用于内层分区滚动；窄屏改为整区可滚，避免内容被 overflow:hidden 裁死 */
+  .pallas-sidebar-page.is-body-locked .main-scroll-inner {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 @media (max-width: 768px) {
   .pallas-sidebar-page {
