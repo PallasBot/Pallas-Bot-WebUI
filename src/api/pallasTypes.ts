@@ -88,6 +88,12 @@ export interface PluginConfigData {
   fields: PluginConfigField[];
 }
 
+/** GET /common-config/sections */
+export interface CommonConfigSectionMeta {
+  id: string;
+  title: string;
+}
+
 export interface BotRow {
   connection_key: string;
   self_id: string;
