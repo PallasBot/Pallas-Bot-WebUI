@@ -1208,19 +1208,13 @@ onUnmounted(() => {
 .mobile-dash-switch {
   display: none;
 }
-@media (max-width: 768px) {
-  .mobile-dash-switch {
-    display: block;
-    margin-bottom: 0;
-  }
-  .dash-main {
-    max-width: none;
-    gap: 10px;
-  }
+@media (max-width: 900px) {
   .dash-top-grid {
     display: block;
     min-height: auto;
   }
+}
+@media (max-width: 768px) {
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
@@ -1309,6 +1303,33 @@ onUnmounted(() => {
   }
   .nb-conn-grid {
     grid-template-columns: 1fr;
+  }
+  /* 数据库卡保持 2×2 指标栅格，避免被上条 nb-conn-grid 压成单列显得「挤扁」 */
+  .bot-db-card .bot-db-grid-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-left .bot-db-card {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+  .dash-left .bot-db-card :deep(.el-card__body) {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+  .bot-db-card .bot-db-stack {
+    flex: none;
+    min-height: auto;
+  }
+  .bot-db-card .bot-db-top-cq {
+    flex: none;
+    min-height: auto;
+  }
+  .bot-db-card .bot-db-top-ul {
+    flex: none;
+    min-height: auto;
+    overflow-y: visible;
   }
   .nb-conn-hd {
     font-size: 12px;
