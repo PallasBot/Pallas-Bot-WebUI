@@ -68,10 +68,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           npm version "${BUMP}" --no-git-tag-version
           VERSION="v$(node -p "require('./package.json').version")"
-          if git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; then
-            echo "::error::Tag ${VERSION} 已存在；请改 bump 档位、删远端 tag，或先合并会抬版本的变更"
-            exit 1
-          fi
+          i=0
+          while git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; do
+            i=$((i + 1))
+            if [ "$i" -gt 256 ]; then
+              echo "::error::连续 patch 后仍无法得到未占用 tag（上限 256）。请删除冲突远端 tag，或先把 package.json 的 version 对齐当前发版线后再合并 PR / 发版。最后尝试: ${VERSION}"
+              exit 1
+            fi
+            echo "::notice::Tag ${VERSION} 在已 fetch 的 refs/tags 中已存在，自动再执行一次 patch 以对齐全局发版线"
+            npm version patch --no-git-tag-version
+            VERSION="v$(node -p "require('./package.json').version")"
+          done
           git add package.json package-lock.json
           git commit -m "chore(release): ${VERSION}"
           git tag -a "${VERSION}" -m "Release ${VERSION}"
