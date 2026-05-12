@@ -1,12 +1,12 @@
 name: Release
 
 on:
+  pull_request:
+    types: [closed]
+    branches: [main, master]
   push:
-    branches:
-      - main
-      - master
-    tags:
-      - "v*"
+    branches: [main, master]
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       bump:
@@ -23,7 +23,6 @@ on:
         type: boolean
         default: false
 
-# 避免并发打两个版本
 concurrency:
   group: release-${{ github.repository }}
   cancel-in-progress: false
@@ -34,13 +33,15 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # 分支 push：main/master 且非机器人发版提交 → 自动发版
-    # tag push：人工/语义 v*；跳过 v*-auto-*（分支发版创建 tag 触发的二次事件）
-    # workflow_dispatch：手动 semver 发版
+    # 正式版：合并进 main/master 的同仓库 PR（workflow 在 closed 时触发，merged 由 if 约束）
+    # 测试版：直推 main/master，且排除合并类提交 / 机器人发版提交 / GitHub squash 常见标题里的 (#nn)
+    # 手动：workflow_dispatch；或推送不含 -dev. 的 v* tag
+    # 跳过：由本工作流创建的 v*-dev.* tag 触发的二次 push（若 token 会级联触发）
     if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master') && github.event.pull_request.head.repo.full_name == github.repository) ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-auto.')) ||
-      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && (github.event.head_commit == null || !startsWith(github.event.head_commit.message, 'chore(release):')))
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.')) ||
+      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && github.event.head_commit != null && !startsWith(github.event.head_commit.message, 'chore(release):') && !startsWith(github.event.head_commit.message, 'Merge pull request') && !startsWith(github.event.head_commit.message, 'Merge branch') && !contains(github.event.head_commit.message, '(#'))
 
     steps:
       - name: Checkout
@@ -48,6 +49,8 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          ref: >-
+            ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -55,10 +58,10 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Bump version and push tag（发版机器人 / workflow_dispatch）
-        if: github.event_name == 'workflow_dispatch'
+      - name: Bump version and push tag（合并 PR / Actions 手动发版）
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
         env:
-          BUMP: ${{ github.event.inputs.bump }}
+          BUMP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump || 'patch' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -66,13 +69,17 @@ jobs:
           npm version "${BUMP}" --no-git-tag-version
           VERSION="v$(node -p "require('./package.json').version")"
           if git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; then
-            echo "::error::Tag ${VERSION} 已存在，请换递增档位或删除远端 tag 后重试"
+            echo "::error::Tag ${VERSION} 已存在；请改 bump 档位、删远端 tag，或先合并会抬版本的变更"
             exit 1
           fi
           git add package.json package-lock.json
           git commit -m "chore(release): ${VERSION}"
           git tag -a "${VERSION}" -m "Release ${VERSION}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git push origin "HEAD:${{ github.event.pull_request.base.ref }}"
+          else
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
           git push origin "${VERSION}"
 
       - name: Resolve release tag
@@ -84,17 +91,17 @@ jobs:
           SHA_FULL: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "pull_request" ]; then
             T="v$(node -p "require('./package.json').version")"
           elif [[ "$REF" == refs/tags/* ]]; then
             T="${REF#refs/tags/}"
           else
             PKG_VER=$(node -p "require('./package.json').version")
             SHORT=$(echo "$SHA_FULL" | cut -c1-7)
-            T="v${PKG_VER}-auto.${RUN_NUMBER}-${SHORT}"
+            T="v${PKG_VER}-dev.${RUN_NUMBER}-${SHORT}"
           fi
           echo "tag=${T}" >> "$GITHUB_OUTPUT"
-          
+
       - name: Resolve HEAD SHA
         id: gitmeta
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -172,5 +179,7 @@ jobs:
 
             ${{ steps.changelog.outputs.changelog }}
 
-            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && '> **来源**：`main` / `master` 分支 push 触发的自动构建（唯一 tag：`v<package>-auto.<run>-<sha>`，Release 标为预发布）。' || '' }}
-            ${{ github.event_name == 'workflow_dispatch' && '> **来源**：Actions 手动发版（已提交 `package.json` 并推送语义化 `v*` tag）。' || '' }}
+            ${{ github.event_name == 'pull_request' && '> **类型**：合并到 `main` / `master` 的 PR 触发的正式发版（默认 `patch` 递增 + 语义化 `v*` tag）。' || '' }}
+            ${{ github.event_name == 'workflow_dispatch' && '> **类型**：Actions 手动发版。' || '' }}
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && '> **类型**：直推分支触发的测试发版（`v*`-`dev.*`，预发布）。' || '' }}
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.') && '> **类型**：推送语义化 tag 触发的发版。' || '' }}
