@@ -1160,6 +1160,8 @@ onUnmounted(() => {
       min-height: 0;
       padding-top: 6px;
       padding-bottom: 8px;
+      /* 仅由内层 el-scrollbar 承担滚动，避免卡片体与 wrap 各出一条纵向条 */
+      overflow: hidden;
     }
   }
   /* 覆盖文末 .log-scroll--dash 的 max-height:170px，否则滚动区只剩半块卡片高 */
@@ -1180,6 +1182,15 @@ onUnmounted(() => {
   .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap) {
     max-height: none !important;
     height: 100%;
+    overflow-x: hidden;
+    /* 隐藏 wrap 原生滚动条，只保留组件绘制的纵向轨道（否则常见「双滚动条」） */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap::-webkit-scrollbar) {
+    width: 0;
+    height: 0;
+    display: none;
   }
   /* 细轨道 + 降低默认不透明度，减轻「大块滚动条」观感 */
   .dash-system .log-scroll--dash :deep(.el-scrollbar) {
@@ -1224,6 +1235,7 @@ onUnmounted(() => {
     min-height: 0 !important;
     :deep(.el-card__body) {
       display: block !important;
+      overflow: hidden;
     }
   }
   .dash-system .log-scroll--dash {
