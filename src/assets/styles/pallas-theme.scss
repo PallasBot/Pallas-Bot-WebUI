@@ -54,6 +54,8 @@
   /* 各页左侧「第二级」分节菜单（PallasSidebarShell）宽度与与正文区间距 */
   --pallas-subnav-width: 168px;
   --pallas-subnav-gap: 12px;
+  --pallas-primnav-width: 156px;
+  --pallas-primnav-collapsed-width: 52px;
 }
 
 html:not(.dark) {

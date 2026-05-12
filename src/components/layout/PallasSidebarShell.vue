@@ -55,39 +55,49 @@ function pickNav(key: string) {
     </div>
 
     <div class="pallas-sidebar-body">
-      <aside
+      <div
         v-if="!hideAside"
-        class="pallas-sidebar-aside"
-        :aria-label="menuAriaLabel || '页面分节'"
+        class="pallas-subnav-dock"
+        tabindex="0"
+        title="悬停展开分节菜单；键盘可 Tab 至此聚焦"
       >
-        <div class="aside-t">{{ asideTitle }}</div>
-        <el-menu
-          :key="`sidebar-nav-${modelValue}`"
-          :default-active="modelValue"
-          class="side-menu"
-          @select="pickNav"
-        >
-          <el-menu-item
-            v-for="n in navItems"
-            :key="n.index"
-            :index="n.index"
-          >
-            <el-icon
-              v-if="n.icon"
-              class="nav-ico"
-            >
-              <component :is="n.icon" />
-            </el-icon>
-            <span>{{ n.label }}</span>
-          </el-menu-item>
-        </el-menu>
         <div
-          v-if="$slots['aside-extra']"
-          class="aside-extra"
+          class="pallas-subnav-rail"
+          aria-hidden="true"
+        />
+        <aside
+          class="pallas-sidebar-aside"
+          :aria-label="menuAriaLabel || '页面分节'"
         >
-          <slot name="aside-extra" />
-        </div>
-      </aside>
+          <div class="aside-t">{{ asideTitle }}</div>
+          <el-menu
+            :key="`sidebar-nav-${modelValue}`"
+            :default-active="modelValue"
+            class="side-menu"
+            @select="pickNav"
+          >
+            <el-menu-item
+              v-for="n in navItems"
+              :key="n.index"
+              :index="n.index"
+            >
+              <el-icon
+                v-if="n.icon"
+                class="nav-ico"
+              >
+                <component :is="n.icon" />
+              </el-icon>
+              <span>{{ n.label }}</span>
+            </el-menu-item>
+          </el-menu>
+          <div
+            v-if="$slots['aside-extra']"
+            class="aside-extra"
+          >
+            <slot name="aside-extra" />
+          </div>
+        </aside>
+      </div>
 
       <main class="pallas-sidebar-main">
         <div class="main-hd">
@@ -134,6 +144,16 @@ function pickNav(key: string) {
   min-height: 0;
   gap: var(--pallas-subnav-gap, 12px);
   align-items: stretch;
+  position: relative;
+}
+.pallas-subnav-dock {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+.pallas-subnav-rail {
+  display: none;
 }
 .pallas-sidebar-aside {
   width: var(--pallas-subnav-width, 168px);
@@ -178,6 +198,90 @@ function pickNav(key: string) {
     margin-top: 8px;
     padding: 0 8px 2px;
     border-top: 1px dashed color-mix(in srgb, var(--pallas-accent) 22%, var(--el-border-color-lighter));
+  }
+}
+
+/* 桌面 + 可悬停精细指针：二级菜单为左侧抽屉，常关悬停/聚焦开 */
+@media (min-width: 901px) and (hover: hover) and (pointer: fine) {
+  .pallas-sidebar-body:has(.pallas-subnav-dock) {
+    gap: 0;
+  }
+  .pallas-sidebar-body:has(.pallas-subnav-dock) .pallas-sidebar-main {
+    padding-left: 12px;
+  }
+  .pallas-subnav-dock {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    z-index: 8;
+    overflow: visible;
+    transition: width 0.16s ease;
+    outline: none;
+  }
+  .pallas-subnav-dock:hover,
+  .pallas-subnav-dock:focus-within {
+    width: calc(var(--pallas-subnav-width, 168px) + 14px);
+  }
+  .pallas-subnav-rail {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    pointer-events: none;
+    border-right: 1px solid color-mix(in srgb, var(--pallas-accent) 22%, var(--el-border-color-lighter));
+    background: color-mix(in srgb, var(--pallas-accent) 7%, var(--el-bg-color));
+    border-radius: 10px 0 0 10px;
+  }
+  .pallas-sidebar-aside {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--pallas-subnav-width, 168px);
+    transform: translateX(-100%);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+    pointer-events: none;
+  }
+  .pallas-subnav-dock:hover .pallas-sidebar-aside,
+  .pallas-subnav-dock:focus-within .pallas-sidebar-aside {
+    transform: translateX(0);
+    pointer-events: auto;
+    box-shadow: 8px 0 26px rgba(15, 35, 65, 0.14);
+  }
+}
+
+/* 触控屏等粗指针：二级菜单保持常显，覆盖抽屉规则 */
+@media (min-width: 901px) and (pointer: coarse) {
+  .pallas-sidebar-body:has(.pallas-subnav-dock) {
+    gap: var(--pallas-subnav-gap, 12px);
+  }
+  .pallas-sidebar-body:has(.pallas-subnav-dock) .pallas-sidebar-main {
+    padding-left: 0;
+  }
+  .pallas-subnav-dock {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    align-self: stretch;
+    overflow: visible;
+    z-index: auto;
+  }
+  .pallas-subnav-rail {
+    display: none;
+  }
+  .pallas-sidebar-aside {
+    position: relative;
+    transform: none;
+    pointer-events: auto;
+    box-shadow: var(--pallas-elev-1);
   }
 }
 .pallas-sidebar-main {
@@ -233,12 +337,18 @@ html.dark {
   .main-hd {
     border-color: rgba(100, 160, 255, 0.15);
   }
+  @media (min-width: 901px) and (hover: hover) and (pointer: fine) {
+    .pallas-subnav-rail {
+      border-right-color: rgba(100, 160, 255, 0.28);
+      background: color-mix(in srgb, var(--pallas-accent) 10%, rgba(18, 25, 37, 0.5));
+    }
+  }
 }
 @media (max-width: 900px) {
   .pallas-sidebar-mobile {
     display: flex;
   }
-  .pallas-sidebar-aside {
+  .pallas-subnav-dock {
     display: none;
   }
   .pallas-sidebar-body {
