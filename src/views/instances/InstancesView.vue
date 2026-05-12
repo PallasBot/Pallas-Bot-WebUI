@@ -87,7 +87,8 @@ const pluginNames = ref<string[]>([]);
 const botBase = getBotServiceBaseRef();
 
 const protocolPublicBase = computed(
-  () => consoleBrowserBaseUrl() || botBase.value || "http://localhost:8088",
+  () =>
+    consoleBrowserBaseUrl(conn?.last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
 );
 
 function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
@@ -99,6 +100,35 @@ function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
 }
 
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
+
+/** 实例列表：全部 / 仅 NoneBot 当前连接 / 仅库内有配置 */
+type InstanceListMode = "all" | "adapter" | "database";
+const instanceListMode = ref<InstanceListMode>("all");
+
+const instanceCountAll = computed(() => mergedRows.value.length);
+const instanceCountAdapter = computed(() => mergedRows.value.filter((r) => r.key.startsWith("nb:")).length);
+const instanceCountDatabase = computed(() => dbBots.value.length);
+
+const instanceListSegmentOptions = computed(() => [
+  { label: `全部 ${instanceCountAll.value}`, value: "all" as const },
+  { label: `当前连接 ${instanceCountAdapter.value}`, value: "adapter" as const },
+  { label: `库内 ${instanceCountDatabase.value}`, value: "database" as const },
+]);
+
+const displayedInstanceRows = computed(() => {
+  if (instanceListMode.value === "adapter") {
+    return mergedRows.value.filter((r) => r.key.startsWith("nb:"));
+  }
+  if (instanceListMode.value === "database") {
+    return mergedRows.value.filter((r) => r.config != null);
+  }
+  return mergedRows.value;
+});
+
+const protocolAccountConnectedCount = computed(
+  () => protocolAccountRows.value.filter((x) => Boolean(x.connected)).length,
+);
+
 const socialSelectedBotSelfId = ref<string | null>(null);
 watch(
   mergedRows,
@@ -128,15 +158,18 @@ const socialSelectedBot = computed(
 
 const selectedInstanceKey = ref<string | null>(null);
 watch(
-  mergedRows,
-  (rows) => {
+  [mergedRows, displayedInstanceRows, instanceListMode],
+  () => {
+    const rows = displayedInstanceRows.value;
     if (!rows.length) {
       selectedInstanceKey.value = null;
       return;
     }
     const cur = selectedInstanceKey.value;
     if (!cur || !rows.some((r) => r.key === cur)) {
-      selectedInstanceKey.value = rows[0]!.key;
+      const pick = rows[0]!;
+      selectedInstanceKey.value = pick.key;
+      if (botCtx) botCtx.setSelectedBotSelfId(pick.selfId);
     }
   },
   { immediate: true },
@@ -735,19 +768,35 @@ watch(
             shadow="hover"
           >
             <template #header>
-              <div class="hd">
-                <span>当前连接与库内配置</span>
-                <el-text
-                  class="hd-info"
-                  type="info"
+              <div class="hd hd-inst-card">
+                <div class="hd-inst-top">
+                  <span class="hd-inst-heading">实例</span>
+                  <div class="hd-inst-stats">
+                    <span
+                      v-if="protocolSnap"
+                      class="hd-inst-stat"
+                    >协议 {{ protocolAccountRows.length }} · 在线 {{ protocolAccountConnectedCount }}</span>
+                    <span
+                      v-else
+                      class="hd-inst-stat hd-inst-stat--muted"
+                    >无协议快照</span>
+                  </div>
+                </div>
+                <el-segmented
+                  v-model="instanceListMode"
+                  class="inst-list-segmented"
+                  :options="instanceListSegmentOptions"
                   size="small"
-                >连接与协议快照</el-text>
+                />
               </div>
             </template>
             <div class="card-list-scroll">
-              <div class="card-list">
+              <div
+                v-if="displayedInstanceRows.length"
+                class="card-list"
+              >
               <button
-                v-for="row in mergedRows"
+                v-for="row in displayedInstanceRows"
                 :key="row.key"
                 type="button"
                 class="mini-card"
@@ -794,6 +843,18 @@ watch(
                 </div>
               </button>
               </div>
+              <el-empty
+                v-else
+                class="inst-list-empty"
+                :description="
+                  instanceListMode === 'adapter'
+                    ? '暂无 NoneBot 当前连接'
+                    : instanceListMode === 'database'
+                      ? '库中暂无 Bot 配置'
+                      : '暂无实例数据'
+                "
+                :image-size="72"
+              />
             </div>
             <div class="ft">
               <el-button
@@ -2131,6 +2192,55 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   text-align: left;
   line-height: 1.6;
   font-weight: 400;
+}
+.hd-inst-card {
+  gap: 10px;
+  width: 100%;
+}
+.hd-inst-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+}
+.hd-inst-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-main);
+  letter-spacing: 0.02em;
+}
+.hd-inst-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hd-inst-stat {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--el-text-color-regular);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(22, 100, 196, 0.08);
+  white-space: nowrap;
+}
+.hd-inst-stat--muted {
+  opacity: 0.72;
+  font-weight: 400;
+}
+.inst-list-segmented {
+  width: 100%;
+}
+.inst-list-segmented :deep(.el-segmented__item) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.inst-list-empty {
+  padding: 20px 8px 12px;
+}
+html.dark .hd-inst-stat {
+  background: rgba(125, 176, 255, 0.12);
 }
 .hd2 {
   flex-direction: row;
