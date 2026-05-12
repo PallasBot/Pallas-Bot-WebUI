@@ -24,7 +24,7 @@ import type {
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
-import { accountNativeWebUiUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
+import { accountNativeWebUiUrl, consoleBrowserBaseUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
 import { Connection } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -86,9 +86,13 @@ const pluginNames = ref<string[]>([]);
 
 const botBase = getBotServiceBaseRef();
 
+const protocolPublicBase = computed(
+  () => consoleBrowserBaseUrl() || botBase.value || "http://localhost:8088",
+);
+
 function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
   return protocolAccountUrl(
-    botBase.value || "http://localhost:8088",
+    protocolPublicBase.value,
     protocolSnap.value?.webui_path,
     String(row.id ?? row.qq ?? "").trim(),
   );
