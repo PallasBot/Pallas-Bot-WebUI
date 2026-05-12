@@ -1106,14 +1106,15 @@ watch(
                     <span>好友配置面板</span>
                   </div>
                   <div class="hd2-ctl">
-                    <span class="num-lab">拉取数量</span>
+                    <span class="num-lab" title="拉取数量">条数</span>
                     <el-input-number
                       v-model="socialPullLimit"
                       :min="50"
                       :max="10000"
                       :step="50"
                       size="small"
-                      class="num"
+                      controls-position="right"
+                      class="num num--pull"
                       @change="() => void loadSocialFriendList(socialSelectedBotSelfId)"
                     />
                     <el-button
@@ -1165,7 +1166,7 @@ watch(
                 </div>
                 <div class="cfg-card cfg-card--op">
                   <div class="cfg-card-title">用户控制</div>
-                  <el-form v-loading="userCfgLoading" label-width="110px">
+                  <el-form v-loading="userCfgLoading" size="small" label-width="88px">
                     <el-form-item label="用户封禁">
                       <el-switch
                         v-model="uFormBanned"
@@ -1274,14 +1275,15 @@ watch(
                     <span>群配置模板</span>
                   </div>
                   <div class="hd2-ctl">
-                    <span class="num-lab">拉取数量</span>
+                    <span class="num-lab" title="拉取数量">条数</span>
                     <el-input-number
                       v-model="socialPullLimit"
                       :min="50"
                       :max="10000"
                       :step="50"
                       size="small"
-                      class="num"
+                      controls-position="right"
+                      class="num num--pull"
                       @change="() => void loadGroups(socialSelectedBotSelfId)"
                     />
                     <el-button
@@ -1330,7 +1332,7 @@ watch(
                 </div>
                 <div class="cfg-card cfg-card--op">
                   <div class="cfg-card-title">插件控制</div>
-                  <el-form label-width="120px">
+                  <el-form size="small" label-width="92px">
                     <el-form-item label="本群禁用插件">
                       <el-select
                         v-model="gFormDisabled"
@@ -1338,6 +1340,9 @@ watch(
                         filterable
                         allow-create
                         default-first-option
+                        collapse-tags
+                        collapse-tags-tooltip
+                        :max-collapse-tags="2"
                         class="w"
                       >
                         <el-option
@@ -1536,6 +1541,28 @@ watch(
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+  }
+  .c :deep(.el-card__header) {
+    padding: 8px 12px;
+  }
+  .hd2 {
+    gap: 8px;
+    align-items: center;
+  }
+  .hd2-txt {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .hd2-ctl {
+    gap: 6px;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+  .num--pull {
+    width: 128px;
+    max-width: min(36vw, 160px);
   }
   .c :deep(.el-card__body) {
     flex: 1;
@@ -1768,19 +1795,19 @@ button.mini-card:hover {
 .cfg-panel {
   border: 1px solid rgba(22, 100, 196, 0.12);
   border-radius: 10px;
-  padding: 12px;
+  padding: 10px;
 }
 .cfg-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
 }
 .cfg-card {
   border: 1px solid rgba(22, 100, 196, 0.16);
   border-radius: 12px;
   background: #f7faff;
-  padding: 12px;
+  padding: 10px;
 }
 .cfg-card--op {
   margin-top: 2px;
@@ -1798,6 +1825,12 @@ button.mini-card:hover {
   margin-top: 12px;
   grid-column: 1 / -1;
 }
+.cfg-panel--group .cfg-card--op :deep(.el-form-item) {
+  margin-bottom: 8px;
+}
+.cfg-panel--group .cfg-card--op :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
 .cfg-panel--group .cfg-card {
   min-height: 0;
 }
@@ -1808,15 +1841,15 @@ button.mini-card:hover {
   font-size: 12px;
   font-weight: 700;
   color: #2b5ea6;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .cfg-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 .cfg-row-note {
   align-items: flex-start;
@@ -2042,6 +2075,26 @@ html.dark .cfg-card-title {
 html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   background: rgba(22, 100, 196, 0.18) !important;
 }
+@media (min-width: 1060px) {
+  .cfg-panel--friend {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  .cfg-panel--friend > .cfg-grid {
+    display: contents;
+  }
+  .cfg-panel--friend .cfg-card--op {
+    margin-top: 0;
+  }
+  .cfg-panel--friend .cfg-card--op :deep(.el-form-item) {
+    margin-bottom: 8px;
+  }
+  .cfg-panel--friend .cfg-card--op :deep(.el-form-item:last-child) {
+    margin-bottom: 0;
+  }
+}
 @media (max-width: 1024px) {
   .pan3 {
     flex-direction: column;
@@ -2056,6 +2109,12 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   }
   .cfg-grid {
     grid-template-columns: 1fr;
+  }
+  .cfg-panel--friend > .cfg-grid {
+    display: grid;
+  }
+  .cfg-panel--friend .cfg-card--op {
+    margin-top: 8px;
   }
   .cfg-panel--group {
     grid-template-columns: 1fr;
@@ -2074,6 +2133,13 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
     flex: 1 1 0;
     min-height: 0;
     min-width: 0;
+  }
+  .pan3--social .hd2 {
+    align-items: flex-start;
+  }
+  .pan3--social .hd2-ctl {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }
 @media (max-width: 768px) {
@@ -2129,6 +2195,10 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .hd2-ctl {
     width: 100%;
     justify-content: flex-start;
+  }
+  .pan3--social .num--pull {
+    width: 100%;
+    max-width: 100%;
   }
   .num {
     max-width: 100%;
