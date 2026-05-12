@@ -28,9 +28,9 @@ import PallasLogLines from "@/components/PallasLogLines.vue";
 import { getDashboardPollMs } from "@/utils/pallasUiPrefs";
 import {
   accountNativeWebUiUrl,
-  consoleBrowserBaseUrl,
   protocolAccountUrl,
   protocolDashboardUrl,
+  protocolServiceHttpBase,
   resolveProtocolMountPath,
 } from "@/utils/pallasProtocolPaths";
 import { CircleCloseFilled, Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
@@ -98,9 +98,8 @@ const protocolSnap = ref<NapcatManagerSnapshot | null>(null);
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const dashboardBotSelfId = ref<string | null>(null);
 const botBase = getBotServiceBaseRef();
-const protocolPublicBase = computed(
-  () =>
-    consoleBrowserBaseUrl(last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
+const protocolPublicBase = computed(() =>
+  protocolServiceHttpBase(botBase.value, last.value?.console?.http_base),
 );
 const protocolManageUrl = computed(() =>
   protocolDashboardUrl(protocolPublicBase.value, protocolPath.value),
@@ -207,10 +206,21 @@ const dbItems = computed(() => {
   }
   return [];
 });
-const dbTopThree = computed(() => {
+const dbTopFive = computed(() => {
   const rows = dbItems.value.slice();
   rows.sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
-  return rows.slice(0, 3);
+  return rows.slice(0, 5);
+});
+const dbMaxSingleLabel = computed(() => {
+  if (dbBackend.value === "mongodb") return "最大集合记录";
+  if (dbBackend.value === "postgres") return "单表最大记录";
+  return "单桶最大记录";
+});
+const dbMaxSingleCount = computed(() => {
+  if (!dbItems.value.length) return null;
+  let m = 0;
+  for (const x of dbItems.value) m = Math.max(m, Number(x.count) || 0);
+  return m;
 });
 const dbAvgPerBucketLabel = computed(() => {
   if (dbBackend.value === "mongodb") return "平均每集合记录";
@@ -702,47 +712,52 @@ onUnmounted(() => {
           </el-card>
 
           <el-card class="nb-conn-card bot-db-card" shadow="never">
-            <div class="nb-conn-hd">数据库连接</div>
-            <div class="nb-conn-grid bot-db-grid-main">
-              <div class="nb-item nb-item--full">
-                <span class="k">当前连接</span>
-                <span class="v mono" :title="dbBackend">{{ dbBackend }}</span>
+            <div class="bot-db-stack">
+              <div class="nb-conn-hd">数据库连接</div>
+              <div class="nb-conn-grid bot-db-grid-main">
+                <div class="nb-item nb-item--full">
+                  <span class="k">当前连接</span>
+                  <span class="v mono" :title="dbBackend">{{ dbBackend }}</span>
+                </div>
+                <div class="nb-item">
+                  <span class="k">{{ dbItemsLabel }}</span>
+                  <span class="v">{{ dbItems.length || "—" }}</span>
+                </div>
+                <div class="nb-item">
+                  <span class="k">记录总量</span>
+                  <span class="v">{{ dbItems.length ? dbItemsTotal : "—" }}</span>
+                </div>
+                <template v-if="dbItems.length">
+                  <div class="nb-item">
+                    <span class="k">{{ dbAvgPerBucketLabel }}</span>
+                    <span class="v">{{ dbAvgPerBucket }}</span>
+                  </div>
+                  <div class="nb-item">
+                    <span class="k">{{ dbMaxSingleLabel }}</span>
+                    <span class="v">{{ dbMaxSingleCount ?? "—" }}</span>
+                  </div>
+                </template>
               </div>
-              <div class="nb-item">
-                <span class="k">{{ dbItemsLabel }}</span>
-                <span class="v">{{ dbItems.length || "—" }}</span>
-              </div>
-              <div class="nb-item">
-                <span class="k">记录总量</span>
-                <span class="v">{{ dbItems.length ? dbItemsTotal : "—" }}</span>
-              </div>
-              <div
-                v-if="dbItems.length"
-                class="nb-item nb-item--full"
-              >
-                <span class="k">{{ dbAvgPerBucketLabel }}</span>
-                <span class="v">{{ dbAvgPerBucket }}</span>
-              </div>
-            </div>
-            <div v-if="dbTopThree.length" class="bot-db-top-cq">
-              <div class="bot-db-top-hd">记录量前三</div>
-              <ul class="bot-db-top-ul">
-                <li
-                  v-for="row in dbTopThree"
-                  :key="`${row.name}:${row.module ?? ''}`"
-                  class="bot-db-top-li"
-                >
-                  <span
-                    class="bot-db-top-name mono"
-                    :title="row.module ? `${row.name} · ${row.module}` : row.name"
+              <div v-if="dbTopFive.length" class="bot-db-top-cq">
+                <div class="bot-db-top-hd">记录量前五</div>
+                <ul class="bot-db-top-ul">
+                  <li
+                    v-for="row in dbTopFive"
+                    :key="`${row.name}:${row.module ?? ''}`"
+                    class="bot-db-top-li"
                   >
-                    {{ row.name }}<template v-if="row.module"><span class="bot-db-mod-inline"> · {{ row.module }}</span></template>
-                  </span>
-                  <span class="bot-db-top-n">{{ row.count }}</span>
-                </li>
-              </ul>
+                    <span
+                      class="bot-db-top-name mono"
+                      :title="row.module ? `${row.name} · ${row.module}` : row.name"
+                    >
+                      {{ row.name }}<template v-if="row.module"><span class="bot-db-mod-inline"> · {{ row.module }}</span></template>
+                    </span>
+                    <span class="bot-db-top-n">{{ row.count }}</span>
+                  </li>
+                </ul>
+              </div>
+              <p v-if="dbOverviewNote" class="bot-db-note">{{ dbOverviewNote }}</p>
             </div>
-            <p v-if="dbOverviewNote" class="bot-db-note">{{ dbOverviewNote }}</p>
           </el-card>
           <el-card class="nb-conn-card msg-stats-card" shadow="never">
             <div class="nb-conn-hd">消息统计</div>
@@ -1657,11 +1672,19 @@ onUnmounted(() => {
 }
 .bot-db-card {
   :deep(.el-card__body) {
+    display: flex;
     align-items: stretch;
     justify-content: flex-start;
     flex-direction: column;
-    gap: 6px;
+    gap: 0;
     padding: 6px 8px 8px;
+  }
+  .bot-db-stack {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
   .nb-conn-hd {
     margin: 0 0 4px;
@@ -1672,6 +1695,7 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px 6px;
     width: 100%;
+    flex-shrink: 0;
   }
   .bot-db-grid-main .nb-item--full {
     grid-column: 1 / -1;
@@ -1698,8 +1722,18 @@ onUnmounted(() => {
 .bot-db-top-cq {
   width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  padding: 6px 8px 8px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 10%, var(--el-border-color-lighter));
+  background: color-mix(in srgb, var(--pallas-accent) 5%, var(--el-fill-color-blank));
 }
 .bot-db-top-hd {
+  flex-shrink: 0;
   margin: 0 0 5px;
   font-size: 12px;
   font-weight: 650;
@@ -1713,6 +1747,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .bot-db-top-li {
   display: flex;
@@ -1749,12 +1787,22 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
   word-break: break-word;
 }
-/* 桌面：左列偏窄或视口偏矮时隐藏「记录量前三」。
- * 注意：左列 grid min 约 244px，；阈值需在「过窄」与常见列宽之间取舍 */
+/* 左列偏窄时压缩「记录量前五」区，避免整块隐藏导致卡片显得空 */
 @media (min-width: 769px) {
   @container dash-bot (max-width: 400px) {
     .bot-db-card .bot-db-top-cq {
-      display: none !important;
+      padding: 5px 6px 6px;
+    }
+    .bot-db-card .bot-db-top-hd {
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .bot-db-card .bot-db-top-li {
+      padding: 3px 0;
+      font-size: 11px;
+    }
+    .bot-db-card .bot-db-top-n {
+      font-size: 12px;
     }
   }
 }
@@ -2223,7 +2271,10 @@ html.dark .pallas-dash-banner__icon {
 }
 @media (min-width: 769px) and (max-height: 720px) {
   .view-page.dashboard .bot-db-card .bot-db-top-cq {
-    display: none !important;
+    padding: 5px 6px 6px;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-top-li {
+    padding: 3px 0;
   }
   .view-page.dashboard .dash-left .bot-hero .bot-hero-protocol-extra {
     display: none !important;
