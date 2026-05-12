@@ -414,7 +414,7 @@ async function loadBotSocialStats(selfId: string | null) {
 
 function syncMobileMode() {
   if (typeof window === "undefined") return;
-  isMobile.value = window.innerWidth <= 768;
+  isMobile.value = window.innerWidth <= 900;
 }
 
 async function loadInstances(silent = true) {
@@ -1020,7 +1020,7 @@ onUnmounted(() => {
   min-height: 0;
   align-self: stretch;
 }
-@media (min-width: 769px) {
+@media (min-width: 901px) {
   /* 填满主视区高度：中间列日志区随视窗伸展，左右列末卡吸收余量 */
   .view-page.dashboard {
     flex: 1;
@@ -1213,8 +1213,14 @@ onUnmounted(() => {
     display: block;
     min-height: auto;
   }
-}
-@media (max-width: 768px) {
+  .mobile-dash-switch {
+    display: block;
+    margin-bottom: 0;
+  }
+  .dash-main {
+    max-width: none;
+    gap: 10px;
+  }
   .view-page.dashboard {
     gap: 8px;
     padding-bottom: 8px;
@@ -1363,17 +1369,34 @@ onUnmounted(() => {
   .gpu-card {
     min-height: 0;
   }
-}
-/* 与 ConsoleLayout 窄屏一致：本页 scoped 的 overflow:hidden 会盖掉路由根的 overflow-y:auto，须在此显式开启纵向滚动 */
-@media (max-width: 900px) {
+  /* 与 ConsoleLayout 窄屏一致：本页 scoped 的 overflow:hidden 会盖掉路由根的 overflow-y:auto，须在此显式开启纵向滚动 */
   .view-page.dashboard {
     flex: 1 1 0;
     min-height: 0;
     height: 100%;
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+  }
+  /* 盖过文末 .bot-db-card .bot-db-grid-main，避免 minmax(0,1fr) 在窄屏把两列压得过扁 */
+  .view-page.dashboard .bot-db-card :deep(.el-card__body) {
+    padding: 8px 10px 10px;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-grid-main {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    gap: 6px 8px;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-grid-main .nb-item {
+    padding: 6px 8px;
+    gap: 2px;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-grid-main .nb-item .k {
+    font-size: 11px;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-grid-main .nb-item .v {
+    font-size: 13px;
+    line-height: 1.35;
   }
 }
 @media (max-width: 360px) {
@@ -1494,7 +1517,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-@media (min-width: 769px) {
+@media (min-width: 901px) {
   .dash-system .stat-strip-card :deep(.el-card__body) {
     padding: 8px 10px;
   }
@@ -1721,6 +1744,19 @@ onUnmounted(() => {
     line-height: 1.28;
   }
 }
+/* 须放在 .bot-db-card 块之后：窄屏下盖过 .bot-db-stack 的 flex:1 1 0 + min-height:0，否则在 auto 高度 flex 父级内会被压成一条缝 */
+@media (max-width: 900px) {
+  .view-page.dashboard .bot-db-card .bot-db-stack {
+    flex: 0 0 auto;
+    min-height: auto;
+    height: auto;
+    overflow: visible;
+  }
+  .view-page.dashboard .bot-db-card .bot-db-top-cq {
+    flex: 0 1 auto;
+    min-height: auto;
+  }
+}
 .msg-stats-grid .nb-item--full {
   grid-column: 1 / -1;
 }
@@ -1796,7 +1832,7 @@ onUnmounted(() => {
   word-break: break-word;
 }
 /* 左列偏窄时压缩「记录量前五」区，避免整块隐藏导致卡片显得空 */
-@media (min-width: 769px) {
+@media (min-width: 901px) {
   @container dash-bot (max-width: 400px) {
     .bot-db-card .bot-db-top-cq {
       padding: 5px 6px 6px;
@@ -2277,7 +2313,7 @@ html.dark .pallas-dash-banner__icon {
     min-height: 128px;
   }
 }
-@media (min-width: 769px) and (max-height: 720px) {
+@media (min-width: 901px) and (max-height: 720px) {
   .view-page.dashboard .bot-db-card .bot-db-top-cq {
     padding: 5px 6px 6px;
   }
