@@ -58,13 +58,17 @@ async function loadLog() {
   if (shouldFollow) {
     await nextTick();
     logScrollRef.value?.setScrollTop?.(Number.MAX_SAFE_INTEGER);
+    await nextTick();
+    logStickToBottom.value = true;
   }
 }
 
 function onLogScroll({ scrollTop }: { scrollTop: number }) {
   const wrap = logScrollRef.value?.wrapRef;
   if (!wrap) return;
-  const distToBottom = wrap.scrollHeight - (scrollTop + wrap.clientHeight);
+  const { scrollHeight, clientHeight } = wrap;
+  if (scrollHeight <= 0 || clientHeight <= 0) return;
+  const distToBottom = scrollHeight - (scrollTop + clientHeight);
   logStickToBottom.value = distToBottom <= 24;
 }
 

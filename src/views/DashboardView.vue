@@ -447,6 +447,9 @@ async function loadLogs(silent = false) {
     if (shouldFollow) {
       await nextTick();
       logScrollRef.value?.setScrollTop?.(Number.MAX_SAFE_INTEGER);
+      await nextTick();
+      // 跟随后同步「在底部」状态，避免 DOM 变高与滚到底之间的 scroll 事件误判
+      logStickToBottom.value = true;
     }
   } catch (e) {
     if (!silent) {
@@ -463,7 +466,9 @@ async function loadLogs(silent = false) {
 function onLogScroll({ scrollTop }: { scrollTop: number }) {
   const wrap = logScrollRef.value?.wrapRef;
   if (!wrap) return;
-  const distToBottom = wrap.scrollHeight - (scrollTop + wrap.clientHeight);
+  const { scrollHeight, clientHeight } = wrap;
+  if (scrollHeight <= 0 || clientHeight <= 0) return;
+  const distToBottom = scrollHeight - (scrollTop + clientHeight);
   logStickToBottom.value = distToBottom <= 24;
 }
 
