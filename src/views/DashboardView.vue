@@ -99,7 +99,8 @@ const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const dashboardBotSelfId = ref<string | null>(null);
 const botBase = getBotServiceBaseRef();
 const protocolPublicBase = computed(
-  () => consoleBrowserBaseUrl() || botBase.value || "http://localhost:8088",
+  () =>
+    consoleBrowserBaseUrl(last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
 );
 const protocolManageUrl = computed(() =>
   protocolDashboardUrl(protocolPublicBase.value, protocolPath.value),

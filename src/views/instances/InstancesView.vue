@@ -87,7 +87,8 @@ const pluginNames = ref<string[]>([]);
 const botBase = getBotServiceBaseRef();
 
 const protocolPublicBase = computed(
-  () => consoleBrowserBaseUrl() || botBase.value || "http://localhost:8088",
+  () =>
+    consoleBrowserBaseUrl(conn?.last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
 );
 
 function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
