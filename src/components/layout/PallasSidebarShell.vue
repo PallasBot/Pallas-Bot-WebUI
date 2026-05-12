@@ -132,46 +132,51 @@ function pickNav(key: string) {
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: 20px;
+  gap: var(--pallas-subnav-gap, 12px);
   align-items: stretch;
 }
 .pallas-sidebar-aside {
-  width: 220px;
+  width: var(--pallas-subnav-width, 168px);
   flex-shrink: 0;
   background: var(--c-nav-bg);
   border-radius: var(--pallas-radius-md);
   border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
   box-shadow: var(--pallas-elev-1);
-  padding: 12px 0 16px;
+  padding: 8px 0 12px;
   .aside-t {
-    padding: 4px 20px 12px;
-    font-size: var(--pallas-text-sm);
+    padding: 2px 12px 8px;
+    font-size: var(--pallas-text-xs);
     font-weight: var(--pallas-weight-semibold);
     color: var(--c-main);
     letter-spacing: 0.02em;
+    line-height: 1.35;
   }
   :deep(.side-menu) {
     border-right: none;
     background: transparent;
   }
   :deep(.el-menu-item) {
-    margin: 2px 8px;
+    margin: 1px 6px;
     border-radius: var(--pallas-radius-sm);
-    height: 44px;
-    line-height: 44px;
-    font-size: var(--pallas-text-base);
+    height: 36px;
+    line-height: 36px;
+    padding: 0 8px !important;
+    font-size: var(--pallas-text-sm);
     font-weight: var(--pallas-weight-medium);
+  }
+  :deep(.el-menu-item .el-icon) {
+    font-size: 15px;
   }
   :deep(.el-menu-item.is-active) {
     color: #fff !important;
     background: var(--el-color-primary-dark-2) !important;
   }
   .nav-ico {
-    margin-right: 8px;
+    margin-right: 6px;
   }
   .aside-extra {
-    margin-top: 10px;
-    padding: 0 12px 4px;
+    margin-top: 8px;
+    padding: 0 8px 2px;
     border-top: 1px dashed color-mix(in srgb, var(--pallas-accent) 22%, var(--el-border-color-lighter));
   }
 }
@@ -190,7 +195,7 @@ function pickNav(key: string) {
 }
 .main-hd {
   flex-shrink: 0;
-  padding: 20px 24px 14px;
+  padding: 16px 20px 12px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
 }
@@ -207,7 +212,7 @@ function pickNav(key: string) {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 8px 16px 20px 24px;
+  padding: 8px 12px 16px 18px;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
