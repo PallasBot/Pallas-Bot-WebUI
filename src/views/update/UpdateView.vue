@@ -575,11 +575,13 @@ function formatTime(ts: number | undefined): string {
   }
 
   .page-title {
-    font-size: 19px;
+    margin: 0 0 6px;
+    font-size: 1rem;
   }
 
   .page-desc {
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.55;
   }
 
   .update-card {
@@ -588,7 +590,7 @@ function formatTime(ts: number | undefined): string {
   }
 
   .update-title {
-    font-size: 16px;
+    font-size: 0.9375rem;
   }
 
   .update-header {

@@ -209,14 +209,42 @@ html .pallas-sidebar-page .lead {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --pallas-type-page-title-size: 0.9rem;
+    --pallas-type-page-sub-size: 0.75rem;
+    --pallas-type-section-title-size: 0.8125rem;
+    --pallas-type-section-desc-size: 0.75rem;
+    --pallas-type-card-head-size: 0.875rem;
+  }
   html h1.main-title,
   html .main-title {
-    font-size: 1rem;
+    font-size: var(--pallas-type-page-title-size);
+    line-height: 1.28;
   }
   html p.main-sub,
   html .main-sub {
-    margin-top: 6px;
-    font-size: 0.78rem;
+    margin-top: 4px;
+    font-size: var(--pallas-type-page-sub-size);
+    line-height: 1.5;
+  }
+  html .sl-title,
+  html .pallas-section-title {
+    margin: 0 0 4px;
+    font-size: var(--pallas-type-section-title-size);
+  }
+  html .sl-desc,
+  html .pallas-section-desc {
+    font-size: var(--pallas-type-section-desc-size);
+  }
+  html .update-title {
+    font-size: var(--pallas-type-card-head-size);
+  }
+  html .view-page .lead,
+  html .pallas-sidebar-page .lead {
+    font-size: var(--pallas-type-section-desc-size);
+  }
+  html .pallas-header .pallas-title {
+    font-size: 0.875rem;
   }
 }
 
