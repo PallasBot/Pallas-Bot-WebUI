@@ -3,7 +3,7 @@ import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { fetchInstances } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
-import { consoleBrowserBaseUrl, protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
+import { protocolDashboardUrl, protocolServiceHttpBase } from "@/utils/pallasProtocolPaths";
 import { Download, Link, List, Position, QuestionFilled } from "@element-plus/icons-vue";
 import { documentTitleExtra } from "@/utils/documentTitle";
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
@@ -40,7 +40,7 @@ const botBase = getBotServiceBaseRef();
 
 const protocolOpenUrl = computed(() =>
   protocolDashboardUrl(
-    consoleBrowserBaseUrl(conn?.last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
+    protocolServiceHttpBase(botBase.value, conn?.last.value?.console?.http_base),
     webuiPath.value,
   ),
 );

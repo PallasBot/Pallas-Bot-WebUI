@@ -89,14 +89,15 @@ function formatTime(ts: number | undefined): string {
 
 <template>
   <div class="update-view">
-    <header class="page-head">
-      <h1 class="page-title">版本与更新</h1>
-      <p class="page-desc">
-        分别检查<strong>控制台静态资源</strong>与<strong>Bot 主仓</strong>的发布版本；有更新时可一键拉取，建议在低峰时段操作并留意进程重启策略。
-      </p>
-    </header>
+    <el-card class="update-shell-card" shadow="never">
+      <header class="page-head">
+        <h1 class="page-title">版本与更新</h1>
+        <p class="page-desc">
+          分别检查<strong>控制台静态资源</strong>与<strong>Bot 主仓</strong>的发布版本；有更新时可一键拉取，建议在低峰时段操作并留意进程重启策略。
+        </p>
+      </header>
 
-    <div class="cards-grid">
+      <div class="cards-grid">
       <!-- 控制台前端（静态资源）更新 -->
       <div class="update-card">
         <div class="card-top">
@@ -271,7 +272,8 @@ function formatTime(ts: number | undefined): string {
           <el-button type="primary" plain :icon="Refresh" @click="doBotCheck">立即检查</el-button>
         </div>
       </div>
-    </div>
+      </div>
+    </el-card>
 
     <el-alert class="page-foot-tip" type="info" :closable="false" show-icon>
       <template #title>操作建议</template>
@@ -283,11 +285,25 @@ function formatTime(ts: number | undefined): string {
 <style scoped lang="scss">
 .update-view {
   padding: 20px 24px 32px;
-  max-width: 1120px;
+  max-width: 1160px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.update-shell-card {
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
+  border-radius: 14px;
+  background: var(--el-bg-color);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--pallas-accent) 8%, rgba(0, 0, 0, 0.06));
+
+  :deep(.el-card__body) {
+    padding: 22px 26px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
 }
 
 .page-head {
@@ -551,6 +567,11 @@ function formatTime(ts: number | undefined): string {
   .update-view {
     padding: 12px 12px 24px;
     gap: 16px;
+  }
+
+  .update-shell-card :deep(.el-card__body) {
+    padding: 16px 14px 20px;
+    gap: 18px;
   }
 
   .page-title {
