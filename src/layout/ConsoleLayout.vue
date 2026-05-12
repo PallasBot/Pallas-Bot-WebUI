@@ -21,6 +21,7 @@ import {
   Platform,
   Refresh,
   Setting,
+  SetUp,
   Sunny,
   Tickets,
 } from "@element-plus/icons-vue";
@@ -160,6 +161,7 @@ const nav = [
   { name: "protocol" as const, to: { name: "protocol" }, label: "协议管理", icon: Link },
   { name: "logs" as const, to: { name: "logs" }, label: "运行日志", icon: Tickets },
   { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: Grid },
+  { name: "common-config" as const, to: { name: "common-config" }, label: "通用配置", icon: SetUp },
   { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
   { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
   { name: "about" as const, to: { name: "about" }, label: "关于", icon: InfoFilled },
@@ -1167,7 +1169,7 @@ html.dark .menu-item:hover:not(.selected) {
     overflow: hidden;
   }
   /* 窄屏：路由根可纵向滚动（插件页等大卡片由内层滚动，见 :not） */
-  .pallas-route-body > :deep(.view-page:not(.plugins-page)),
+  .pallas-route-body > :deep(.view-page:not(.plugins-page):not(.common-config-page)),
   .pallas-route-body > :deep(.logs-page) {
     overflow-x: hidden;
     overflow-y: auto;

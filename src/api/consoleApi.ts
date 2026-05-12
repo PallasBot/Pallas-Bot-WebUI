@@ -25,6 +25,7 @@ import type {
   AiProxyResult,
   HelpMenuVisibilityData,
   PluginConfigData,
+  CommonConfigSectionMeta,
   MessageStatsData,
 } from "./pallasTypes";
 
@@ -70,6 +71,28 @@ export async function putPluginConfig(
     values,
   });
   return unwrap(data, `/plugins/${pluginName}/config`);
+}
+
+export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
+  const { data } = await http.get<ApiOk<CommonConfigSectionMeta[]>>("/common-config/sections");
+  return unwrap(data, "/common-config/sections");
+}
+
+export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {
+  const { data } = await http.get<ApiOk<PluginConfigData>>(
+    `/common-config/${encodeURIComponent(sectionId)}`,
+  );
+  return unwrap(data, `/common-config/${sectionId}`);
+}
+
+export async function putCommonConfig(
+  sectionId: string,
+  values: Record<string, unknown>,
+): Promise<PluginConfigData> {
+  const { data } = await http.put<ApiOk<PluginConfigData>>(`/common-config/${encodeURIComponent(sectionId)}`, {
+    values,
+  });
+  return unwrap(data, `/common-config/${sectionId}`);
 }
 
 export async function changeConsoleLogin(newPassword: string): Promise<{ message: string }> {

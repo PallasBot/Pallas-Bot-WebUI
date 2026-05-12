@@ -8,6 +8,7 @@ import DatabaseView from "../views/database/DatabaseView.vue";
 import InstancesView from "../views/instances/InstancesView.vue";
 import ProtocolManageView from "../views/protocol/ProtocolManageView.vue";
 import PluginsView from "../views/plugins/PluginsView.vue";
+import CommonConfigView from "../views/common-config/CommonConfigView.vue";
 import SettingsView from "../views/settings/SettingsView.vue";
 import LogsView from "../views/logs/LogsView.vue";
 
@@ -36,6 +37,12 @@ const router = createRouter({
           name: "plugins",
           component: PluginsView,
           meta: { title: "插件列表" },
+        },
+        {
+          path: "common-config",
+          name: "common-config",
+          component: CommonConfigView,
+          meta: { title: "通用配置" },
         },
         {
           path: "database",
