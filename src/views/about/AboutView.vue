@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { fetchSystem } from "@/api/consoleApi";
+import { fetchBotUpdateCheck, fetchSystem } from "@/api/consoleApi";
+import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { Cpu, Link, Monitor, Reading } from "@element-plus/icons-vue";
@@ -15,7 +16,7 @@ const sectionTitle: Record<AboutSection, string> = {
 };
 const sectionSub: Record<AboutSection, string> = {
   overview: "控制台与主仓关系、生产路径与职责边界。",
-  release: "当前连接实例返回的版本与构建元数据。",
+  release: "健康检查与控制台的构建元数据；Pallas-Bot 与「更新」页同源（主仓 git tag / commit）。",
   runtime: "当前 Bot 进程暴露的运行态基础指标。",
 };
 const navItems = [
@@ -35,11 +36,29 @@ const WEBUI_REPO = "https://github.com/PallasBot/Pallas-Bot-WebUI";
 const runtimeLoading = ref(false);
 const runtimeRows = ref<{ k: string; v: string }[]>([]);
 
+/** 与「更新」页 Bot 区块一致：来自 /update/bot/check 的 git tag / commit */
+const botBuildCheck = ref<BotUpdateCheckData | null>(null);
+const botBuildLoading = ref(false);
+
+function formatBotVersionFromCheck(d: BotUpdateCheckData | null): string {
+  if (!d) return "";
+  const tag = (d.current_tag || "").trim();
+  const commit = (d.current_commit || "").trim();
+  return tag || commit || "未知";
+}
+
+const pallasBotBuildLabel = computed(() => {
+  if (botBuildLoading.value && !botBuildCheck.value) return "加载中…";
+  const fromCheck = formatBotVersionFromCheck(botBuildCheck.value);
+  if (fromCheck) return fromCheck;
+  return last.value?.pallas_bot || "—";
+});
+
 const releaseRows = computed(() => {
   if (!last.value) return [] as { k: string; v: string }[];
   return [
     { k: "NoneBot2", v: last.value.nonebot2 },
-    { k: "Pallas-Bot", v: last.value.pallas_bot },
+    { k: "Pallas-Bot", v: pallasBotBuildLabel.value },
     { k: "控制台版本", v: last.value.console?.version || "未知" },
     { k: "控制台提交", v: last.value.console?.commit || "本地/未知" },
     { k: "构建时间", v: last.value.console?.build_time || "未知" },
@@ -65,6 +84,23 @@ async function loadRuntime() {
   }
 }
 
+async function loadBotBuildCheck() {
+  if (ok.value !== true) return;
+  botBuildLoading.value = true;
+  try {
+    botBuildCheck.value = await fetchBotUpdateCheck();
+  } catch {
+    botBuildCheck.value = null;
+  } finally {
+    botBuildLoading.value = false;
+  }
+}
+
+async function refreshBuildInfo() {
+  await refresh();
+  if (ok.value === true) await loadBotBuildCheck();
+}
+
 watch(
   () => ok.value,
   (v) => {
@@ -73,6 +109,7 @@ watch(
     }
     if (v === true) {
       void loadRuntime();
+      void loadBotBuildCheck();
     }
   },
   { immediate: true },
@@ -125,7 +162,7 @@ onMounted(() => {
             </el-descriptions-item>
           </el-descriptions>
           <p v-else class="muted">未获取到构建元数据，请确认 pallas_webui 已正确加载。</p>
-          <el-button class="rbtn" type="primary" plain @click="refresh">刷新构建信息</el-button>
+          <el-button class="rbtn" type="primary" plain @click="refreshBuildInfo">刷新构建信息</el-button>
         </template>
       </el-card>
     </div>
