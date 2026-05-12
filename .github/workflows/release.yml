@@ -2,8 +2,31 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Semver 递增（更新 package.json / package-lock 并打 v* tag）"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: "GitHub Release 标记为预发布"
+        type: boolean
+        default: false
+
+# 避免并发打两个版本
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -11,12 +34,20 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # 分支 push：main/master 且非机器人发版提交 → 自动发版
+    # tag push：人工/语义 v*；跳过 v*-auto-*（分支发版创建 tag 触发的二次事件）
+    # workflow_dispatch：手动 semver 发版
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-auto.')) ||
+      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && (github.event.head_commit == null || !startsWith(github.event.head_commit.message, 'chore(release):')))
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,30 +55,69 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - name: Bump version and push tag（发版机器人 / workflow_dispatch）
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BUMP: ${{ github.event.inputs.bump }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "${BUMP}" --no-git-tag-version
+          VERSION="v$(node -p "require('./package.json').version")"
+          if git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag ${VERSION} 已存在，请换递增档位或删除远端 tag 后重试"
+            exit 1
+          fi
+          git add package.json package-lock.json
+          git commit -m "chore(release): ${VERSION}"
+          git tag -a "${VERSION}" -m "Release ${VERSION}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "${VERSION}"
+
+      - name: Resolve release tag
+        id: ver
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RUN_NUMBER: ${{ github.run_number }}
+          SHA_FULL: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            T="v$(node -p "require('./package.json').version")"
+          elif [[ "$REF" == refs/tags/* ]]; then
+            T="${REF#refs/tags/}"
+          else
+            PKG_VER=$(node -p "require('./package.json').version")
+            SHORT=$(echo "$SHA_FULL" | cut -c1-7)
+            T="v${PKG_VER}-auto.${RUN_NUMBER}-${SHORT}"
+          fi
+          echo "tag=${T}" >> "$GITHUB_OUTPUT"
+          
+      - name: Resolve HEAD SHA
+        id: gitmeta
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build
-        run: npm run build:ci
+        env:
+          CONSOLE_VERSION: ${{ steps.ver.outputs.tag }}
+          GIT_COMMIT: ${{ steps.gitmeta.outputs.sha }}
+        run: |
+          export BUILD_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          npm run build:ci
 
-      - name: Write console version metadata
+      - name: Sync console-version.json to release tag
+        env:
+          CONSOLE_VERSION: ${{ steps.ver.outputs.tag }}
+          GIT_COMMIT: ${{ steps.gitmeta.outputs.sha }}
         run: |
           BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          CURR_TAG=${GITHUB_REF#refs/tags/}
-          if [ -f scripts/write-console-version.mjs ]; then
-            CONSOLE_VERSION="${CURR_TAG}" \
-            GIT_COMMIT="${{ github.sha }}" \
-            BUILD_TIME="${BUILD_TIME}" \
-            node ./scripts/write-console-version.mjs
-          else
-            cat > dist/console-version.json <<EOF
-          {
-            "version": "${CURR_TAG}",
-            "commit": "${{ github.sha }}",
-            "build_time": "${BUILD_TIME}"
-          }
-          EOF
-          fi
+          export CONSOLE_VERSION GIT_COMMIT BUILD_TIME
+          node ./scripts/write-console-version.mjs
 
       - name: Pack dist.zip
         run: |
@@ -57,42 +127,50 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
+          set -euo pipefail
           if git describe --tags --abbrev=0 HEAD~1 >/dev/null 2>&1; then
             PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1)
-            CURR_TAG=${GITHUB_REF#refs/tags/}
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-
-            echo "### 🚀 新功能" >> $GITHUB_OUTPUT
-            FEAT=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^feat" 2>/dev/null)
-            [ -n "$FEAT" ] && echo "$FEAT" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### 🐛 错误修复" >> $GITHUB_OUTPUT
-            FIX=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^fix" 2>/dev/null)
-            [ -n "$FIX" ] && echo "$FIX" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### ♻️ 重构" >> $GITHUB_OUTPUT
-            REFACTOR=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^refactor" 2>/dev/null)
-            [ -n "$REFACTOR" ] && echo "$REFACTOR" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "### 🔨 其他更改" >> $GITHUB_OUTPUT
-            OTHER=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --invert-grep --grep="^feat\|^fix\|^refactor" 2>/dev/null)
-            [ -n "$OTHER" ] && echo "$OTHER" >> $GITHUB_OUTPUT || echo "* 无" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-
-            echo "**完整变更**: [\`$PREV_TAG...$CURR_TAG\`](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURR_TAG)" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            CURR_TAG="${{ steps.ver.outputs.tag }}"
+            {
+              echo "changelog<<EOF"
+              echo "### 🚀 新功能"
+              FEAT=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^feat" 2>/dev/null || true)
+              [ -n "$FEAT" ] && echo "$FEAT" || echo "* 无"
+              echo ""
+              echo "### 🐛 错误修复"
+              FIX=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^fix" 2>/dev/null || true)
+              [ -n "$FIX" ] && echo "$FIX" || echo "* 无"
+              echo ""
+              echo "### ♻️ 重构"
+              REFACTOR=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^refactor" 2>/dev/null || true)
+              [ -n "$REFACTOR" ] && echo "$REFACTOR" || echo "* 无"
+              echo ""
+              echo "### 🔨 其他更改"
+              OTHER=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --invert-grep --grep="^feat\|^fix\|^refactor" 2>/dev/null || true)
+              [ -n "$OTHER" ] && echo "$OTHER" || echo "* 无"
+              echo ""
+              echo "**完整变更**: [\`$PREV_TAG...$CURR_TAG\`](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURR_TAG)"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "changelog=🎉 **首次发布**" >> $GITHUB_OUTPUT
+            echo "changelog=🎉 **首次发布**" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Release ${{ steps.ver.outputs.tag }}
+          prerelease: >-
+            ${{
+              (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease) ||
+              (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/'))
+            }}
           files: dist.zip
           body: |
             ## 更新内容
 
             ${{ steps.changelog.outputs.changelog }}
+
+            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && '> **来源**：`main` / `master` 分支 push 触发的自动构建（唯一 tag：`v<package>-auto.<run>-<sha>`，Release 标为预发布）。' || '' }}
+            ${{ github.event_name == 'workflow_dispatch' && '> **来源**：Actions 手动发版（已提交 `package.json` 并推送语义化 `v*` tag）。' || '' }}
