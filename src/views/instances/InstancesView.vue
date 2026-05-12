@@ -24,7 +24,7 @@ import type {
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
-import { accountNativeWebUiUrl, consoleBrowserBaseUrl, protocolAccountUrl } from "@/utils/pallasProtocolPaths";
+import { accountNativeWebUiUrl, protocolAccountUrl, protocolServiceHttpBase } from "@/utils/pallasProtocolPaths";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
 import { Connection } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -86,9 +86,8 @@ const pluginNames = ref<string[]>([]);
 
 const botBase = getBotServiceBaseRef();
 
-const protocolPublicBase = computed(
-  () =>
-    consoleBrowserBaseUrl(conn?.last.value?.console?.http_base) || botBase.value || "http://localhost:8088",
+const protocolPublicBase = computed(() =>
+  protocolServiceHttpBase(botBase.value, conn?.last.value?.console?.http_base),
 );
 
 function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
@@ -101,26 +100,21 @@ function pallasProtocolAccountUrl(row: NapcatAccountRow): string {
 
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 
-/** 实例列表：全部 / 仅 NoneBot 当前连接 / 仅库内有配置 */
-type InstanceListMode = "all" | "adapter" | "database";
+/** 实例列表：全部 / 仅 NoneBot 当前连接 */
+type InstanceListMode = "all" | "adapter";
 const instanceListMode = ref<InstanceListMode>("all");
 
 const instanceCountAll = computed(() => mergedRows.value.length);
 const instanceCountAdapter = computed(() => mergedRows.value.filter((r) => r.key.startsWith("nb:")).length);
-const instanceCountDatabase = computed(() => dbBots.value.length);
 
 const instanceListSegmentOptions = computed(() => [
   { label: `全部 ${instanceCountAll.value}`, value: "all" as const },
   { label: `当前连接 ${instanceCountAdapter.value}`, value: "adapter" as const },
-  { label: `库内 ${instanceCountDatabase.value}`, value: "database" as const },
 ]);
 
 const displayedInstanceRows = computed(() => {
   if (instanceListMode.value === "adapter") {
     return mergedRows.value.filter((r) => r.key.startsWith("nb:"));
-  }
-  if (instanceListMode.value === "database") {
-    return mergedRows.value.filter((r) => r.config != null);
   }
   return mergedRows.value;
 });
@@ -846,13 +840,7 @@ watch(
               <el-empty
                 v-else
                 class="inst-list-empty"
-                :description="
-                  instanceListMode === 'adapter'
-                    ? '暂无 NoneBot 当前连接'
-                    : instanceListMode === 'database'
-                      ? '库中暂无 Bot 配置'
-                      : '暂无实例数据'
-                "
+                :description="instanceListMode === 'adapter' ? '暂无 NoneBot 当前连接' : '暂无实例数据'"
                 :image-size="72"
               />
             </div>
