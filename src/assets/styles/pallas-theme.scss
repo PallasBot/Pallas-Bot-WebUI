@@ -51,6 +51,9 @@
   --pallas-type-section-desc-size: 0.8125rem;
   --pallas-type-foot-size: 0.6875rem;
   --pallas-type-card-head-size: 1rem;
+  /* 各页左侧「第二级」分节菜单（PallasSidebarShell）宽度与与正文区间距 */
+  --pallas-subnav-width: 168px;
+  --pallas-subnav-gap: 12px;
 }
 
 html:not(.dark) {
@@ -518,31 +521,22 @@ html.pallas-density-compact .view-page {
   line-height: 1.45;
 }
 
-/* 控制台内滚动条：默认尽量低调；悬停在该滚动区域上时再显出拇指（仅 hover 设备） */
-@media (hover: hover) {
-  html .pallas-root * {
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--el-text-color-secondary) 26%, transparent) transparent;
-  }
-  html .pallas-root *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  html .pallas-root *::-webkit-scrollbar-thumb {
-    background-color: transparent;
-    border-radius: 6px;
-  }
-  html .pallas-root *:hover::-webkit-scrollbar-thumb {
-    background-color: color-mix(in srgb, var(--el-text-color-secondary) 48%, transparent);
-  }
-  html.dark .pallas-root *:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.18);
-  }
-  html .pallas-root .el-scrollbar__bar {
-    opacity: 0.15;
-    transition: opacity 0.15s ease;
-  }
-  html .pallas-root .el-scrollbar:hover .el-scrollbar__bar {
-    opacity: 1;
-  }
+/* 控制台内：默认隐藏原生滚动条（仍可滚轮/触控）；el-scrollbar 轨道悬停组件时再显示 */
+html .pallas-root * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html .pallas-root *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+html .pallas-root *::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+html .pallas-root .el-scrollbar__bar {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+html .pallas-root .el-scrollbar:hover .el-scrollbar__bar {
+  opacity: 1;
 }

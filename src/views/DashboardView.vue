@@ -1071,18 +1071,6 @@ onUnmounted(() => {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--el-text-color-placeholder) 55%, transparent) transparent;
-  }
-  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar {
-    width: 5px;
-  }
-  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar-thumb {
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--el-text-color-secondary) 40%, transparent);
-  }
-  .dash-left .bot-db-card :deep(.el-card__body)::-webkit-scrollbar-track {
-    background: transparent;
   }
   .dash-left .bot-hero {
     flex: 0 0 auto;
@@ -1750,7 +1738,6 @@ onUnmounted(() => {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-width: thin;
 }
 .bot-db-top-li {
   display: flex;
