@@ -1325,7 +1325,7 @@ html.dark .tb :deep(.el-table__row:hover > td.el-table__cell) {
     gap: 6px;
   }
   .db-type-name {
-    font-size: 18px;
+    font-size: 15px;
   }
 }
 </style>
