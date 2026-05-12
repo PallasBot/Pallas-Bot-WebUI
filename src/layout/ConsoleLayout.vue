@@ -1131,7 +1131,7 @@ html.dark .menu-item:hover:not(.selected) {
     flex-wrap: nowrap;
   }
   .pallas-title {
-    font-size: 15px;
+    font-size: 14px;
     align-items: flex-start;
   }
   .pallas-title-mark {
@@ -1204,7 +1204,7 @@ html.dark .menu-item:hover:not(.selected) {
     height: 46px;
   }
   .pallas-title-text {
-    font-size: 14px;
+    font-size: 13px;
   }
   .header-icon-btn {
     width: 30px;

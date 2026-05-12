@@ -1080,7 +1080,7 @@ async function submitHelpVisibility() {
     }
   }
   .pc-title {
-    font-size: 15px;
+    font-size: 14px;
   }
   .pc-desc {
     -webkit-line-clamp: 2;

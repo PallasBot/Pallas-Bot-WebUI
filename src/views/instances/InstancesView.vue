@@ -2174,7 +2174,7 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
     padding: 10px;
   }
   .mini-card-bot-name {
-    font-size: 16px;
+    font-size: 15px;
   }
   .cfg-panel {
     padding: 10px;
