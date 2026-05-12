@@ -931,32 +931,36 @@ html.dark .pallas-header {
   background: var(--c-body-bg);
 }
 .pallas-nav {
-  width: 206px;
+  width: var(--pallas-primnav-width, 156px);
   flex-shrink: 0;
-  padding: 20px 16px;
+  padding: 12px 10px 12px 8px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   overflow: auto;
 }
 .main-nav {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--c-nav-bg);
   border-radius: var(--pallas-radius-lg, 14px);
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 .menu-item {
-  height: 40px;
-  padding: 0 20px;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
   transition: all 0.2s ease-in-out;
   display: flex;
   align-items: center;
   cursor: pointer;
   user-select: none;
   .micon {
-    margin-right: 8px;
-    font-size: 16px;
+    margin-right: 6px;
+    font-size: 15px;
   }
 }
 .menu-item:hover:not(.selected) {
@@ -976,8 +980,8 @@ html.dark .menu-item:hover:not(.selected) {
 }
 
 .pallas-root.is-sidebar-collapsed .pallas-nav {
-  width: 56px;
-  padding: 16px 8px;
+  width: var(--pallas-primnav-collapsed-width, 52px);
+  padding: 12px 8px;
 }
 .pallas-root.is-sidebar-collapsed .main-nav {
   border-radius: var(--pallas-radius-md, 14px);
@@ -997,7 +1001,7 @@ html.dark .menu-item:hover:not(.selected) {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 12px 16px 12px 6px;
+  padding: 12px 14px 12px 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1010,7 +1014,7 @@ html.dark .menu-item:hover:not(.selected) {
   display: flex;
   flex-direction: column;
   position: relative;
-  border-radius: 4px;
+  border-radius: var(--pallas-radius-lg, 14px);
   overflow: hidden;
 }
 .pallas-route-body {
