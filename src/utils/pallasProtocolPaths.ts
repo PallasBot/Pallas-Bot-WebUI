@@ -1,5 +1,13 @@
 export const DEFAULT_PROTOCOL_WEB_PATH = "/protocol/console";
 
+/** 当前页面对应的控制台根 URL（与 API 同源路径），用于打开嵌入的协议 WebUI（穿透 FRP/反代）。 */
+export function consoleBrowserBaseUrl(): string {
+  if (typeof window === "undefined") return "";
+  const base = (import.meta.env.BASE_URL as string) || "/pallas/";
+  const root = base.replace(/\/$/, "");
+  return `${window.location.origin}${root}`;
+}
+
 export function resolveProtocolMountPath(webuiPath?: string | null): string {
   const raw = (webuiPath ?? "").trim();
   if (raw) {

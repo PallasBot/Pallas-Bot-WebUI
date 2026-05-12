@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { fetchInstances } from "@/api/consoleApi";
-import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
-import { protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
+import { consoleBrowserBaseUrl, protocolDashboardUrl } from "@/utils/pallasProtocolPaths";
 import { Download, Link, List, Position, QuestionFilled } from "@element-plus/icons-vue";
 import { documentTitleExtra } from "@/utils/documentTitle";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
@@ -29,13 +28,14 @@ const navItems = [
   { index: "faq", label: "常见问题", icon: QuestionFilled },
 ];
 
-const botBase = getBotServiceBaseRef();
 const webuiPath = ref<string | null>(null);
 const webuiEnabled = ref(false);
 const accountCount = ref(0);
 const connectedCount = ref(0);
 
-const protocolOpenUrl = computed(() => protocolDashboardUrl(botBase.value || "http://localhost:8088", webuiPath.value));
+const protocolOpenUrl = computed(() =>
+  protocolDashboardUrl(consoleBrowserBaseUrl() || "http://localhost:8088", webuiPath.value),
+);
 
 const protocolAssetsUrl = computed(() => {
   const base = protocolOpenUrl.value.replace(/\/$/, "");
@@ -65,7 +65,6 @@ function openProtocolAssets() {
 }
 
 onMounted(async () => {
-  void ensureBotServiceBaseUrl();
   try {
     const data = await fetchInstances();
     const snap = data.pallas_protocol ?? data.napcat ?? null;

@@ -28,6 +28,7 @@ import PallasLogLines from "@/components/PallasLogLines.vue";
 import { getDashboardPollMs } from "@/utils/pallasUiPrefs";
 import {
   accountNativeWebUiUrl,
+  consoleBrowserBaseUrl,
   protocolAccountUrl,
   protocolDashboardUrl,
   resolveProtocolMountPath,
@@ -97,8 +98,11 @@ const protocolSnap = ref<NapcatManagerSnapshot | null>(null);
 const { mergedRows } = useMergedBotRows(nonebot, dbBots);
 const dashboardBotSelfId = ref<string | null>(null);
 const botBase = getBotServiceBaseRef();
+const protocolPublicBase = computed(
+  () => consoleBrowserBaseUrl() || botBase.value || "http://localhost:8088",
+);
 const protocolManageUrl = computed(() =>
-  protocolDashboardUrl(botBase.value || "http://localhost:8088", protocolPath.value),
+  protocolDashboardUrl(protocolPublicBase.value, protocolPath.value),
 );
 
 function botNickname(selfId: string, account: number): string {
@@ -150,11 +154,10 @@ const protocolPluginLabel = computed(() => {
   return p.length > 28 ? `${p.slice(0, 26)}…` : p;
 });
 const protocolConsoleAccountUrl = computed(() => {
-  const base = botBase.value || "http://localhost:8088";
   const acc = selectedProtocolAccount.value;
   const id = String(acc?.id ?? acc?.qq ?? selectedDashboardBotQq.value ?? "").trim();
   if (!id) return "";
-  return protocolAccountUrl(base, protocolPath.value, id);
+  return protocolAccountUrl(protocolPublicBase.value, protocolPath.value, id);
 });
 const protocolNativeWebUiHref = computed(() => {
   const u = accountNativeWebUiUrl(selectedProtocolAccount.value ?? {});
