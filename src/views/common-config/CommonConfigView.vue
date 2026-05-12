@@ -538,4 +538,25 @@ async function saveCfg() {
     width: 100%;
   }
 }
+@media (max-width: 768px) {
+  .main-wrap {
+    padding: 12px 10px;
+  }
+  .main-title {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 650;
+  }
+  .main-sub {
+    margin: 0 0 10px;
+    font-size: 12px;
+  }
+  .cc-main-title {
+    font-size: 0.9375rem;
+  }
+  .cc-main-hd {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+  }
+}
 </style>

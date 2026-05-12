@@ -1399,6 +1399,14 @@ onUnmounted(() => {
     line-height: 1.35;
   }
 }
+@media (max-width: 768px) {
+  .bot-hero .bot-hero-title strong {
+    font-size: 15px;
+  }
+  .bot-hero.bot-hero-vertical .bot-hero-title strong {
+    font-size: 16px;
+  }
+}
 @media (max-width: 360px) {
   .stat-strip {
     flex-direction: column;
