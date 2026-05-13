@@ -54,8 +54,10 @@ const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
 const requestOverviewSnap = ref<RequestOverviewData | null>(null);
 const socialBusy = ref(false);
-/** 首屏主内容区：与全站骨架一致，数据就绪后再渲染 */
+/** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
 const pageReady = ref(false);
+/** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
+const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
 
@@ -629,6 +631,7 @@ watch(sortedDbBots, () => {
 
 async function load() {
   err.value = "";
+  overviewBusy.value = true;
   try {
     const [h, s, m, pr, botList, inst, pl, botCh] = await Promise.all([
       fetchHealth(),
@@ -649,12 +652,18 @@ async function load() {
     instances.value = inst;
     pluginsList.value = pl;
     botCount.value = botList.length;
+    const accBefore = selectedAccount.value;
     ensureSelectedAccount();
-    await refreshSelectedBotDetails();
+    const accAfter = selectedAccount.value;
+    pageReady.value = true;
+    if (accBefore === accAfter) {
+      void refreshSelectedBotDetails();
+    }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
-  } finally {
     pageReady.value = true;
+  } finally {
+    overviewBusy.value = false;
   }
 }
 
@@ -662,7 +671,10 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="home-page">
+  <div
+    class="home-page"
+    :aria-busy="overviewBusy || undefined"
+  >
     <div
       v-if="err"
       class="alert alert--err"
@@ -674,10 +686,17 @@ onMounted(load);
       v-if="!pageReady"
       :panels="4"
     />
-    <div
-      v-else
-      class="home-page__body"
-    >
+    <Transition name="home-shell-fade">
+      <div
+        v-if="pageReady"
+        class="home-page__body"
+        :class="{ 'home-page__body--syncing': overviewBusy }"
+      >
+        <p
+          v-if="overviewBusy"
+          class="home-page__sync-line muted"
+          role="status"
+        >正在同步概况…</p>
     <div class="home-dashboard">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
@@ -693,9 +712,10 @@ onMounted(load);
               <button
                 type="button"
                 class="home-instances-capsule home-instances-capsule--action"
+                :disabled="overviewBusy"
                 @click="load"
               >
-                刷新
+                {{ overviewBusy ? "加载中…" : "刷新" }}
               </button>
             </div>
             <div
@@ -1194,5 +1214,6 @@ onMounted(load);
       </div>
     </div>
     </div>
+    </Transition>
   </div>
 </template>
