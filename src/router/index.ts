@@ -14,6 +14,7 @@ import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import SecurityPage from "@/pages/SecurityPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
+import { installRouteLoading } from "@/utils/routeLoading";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -119,5 +120,7 @@ router.afterEach((to) => {
   const piece = to.meta.title as string | undefined;
   document.title = piece ? `${piece} · ${baseTitle}` : baseTitle;
 });
+
+installRouteLoading(router);
 
 export default router;

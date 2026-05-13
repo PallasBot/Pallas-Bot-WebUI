@@ -21,10 +21,13 @@ import type {
   SystemData,
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
+import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint } from "@/utils/protocolLinks";
+import type { PluginRunSample } from "@/utils/pluginRunHistory";
+import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
@@ -205,6 +208,44 @@ const apiTodayTopStr = computed(() => {
   return `${name}（${c} 次）`;
 });
 
+function downsampleApiHist(pts: { at: number; total: number }[], maxBars: number): { at: number; total: number }[] {
+  if (pts.length <= maxBars) return pts;
+  const g = Math.ceil(pts.length / maxBars);
+  const out: { at: number; total: number }[] = [];
+  for (let i = 0; i < pts.length; i += g) {
+    const chunk = pts.slice(i, i + g);
+    const total = chunk.reduce((s, p) => s + p.total, 0);
+    const at = chunk[0]!.at;
+    out.push({ at, total });
+  }
+  return out;
+}
+
+const scopedApiHistBars = computed(() => {
+  const raw = scopedBotStatsRow.value?.api_calls_history ?? [];
+  const pts = downsampleApiHist(raw, 96);
+  if (!pts.length) return [] as { pct: number; tooltip: string }[];
+  const max = Math.max(...pts.map((p) => p.total), 1);
+  return pts.map((p) => ({
+    pct: p.total <= 0 ? 4 : Math.max(10, Math.round((p.total / max) * 100)),
+    tooltip: `${new Date(p.at * 1000).toLocaleString()} · ${p.total} 次`,
+  }));
+});
+
+const apiHistBucketLabel = computed(() => {
+  const sec = msgMainStats.value?.api_calls_history_bucket_sec ?? 300;
+  if (sec >= 3600 && sec % 3600 === 0) return `${sec / 3600} 小时`;
+  if (sec >= 60 && sec % 60 === 0) return `${sec / 60} 分钟`;
+  return `${sec} 秒`;
+});
+
+const apiHistAria = computed(() => {
+  const raw = scopedBotStatsRow.value?.api_calls_history ?? [];
+  if (!raw.length) return "";
+  const max = Math.max(...raw.map((p) => p.total), 0);
+  return `近 24 小时协议 API 成功调用，桶宽 ${apiHistBucketLabel.value}，峰值 ${max} 次`;
+});
+
 const pluginRunMain = computed(() => pluginRunStatsScoped.value ?? pluginRunStats.value);
 
 const scopedPluginRunRow = computed(() => {
@@ -215,19 +256,14 @@ const scopedPluginRunRow = computed(() => {
   return pr.bots.find((b) => b.self_id === sid) ?? null;
 });
 
-const pluginRunSummaryStr = computed(() => {
-  const r = scopedPluginRunRow.value;
-  if (!r) return "—";
-  const head = [`今日 ${r.runs_today} 次`];
-  if (r.errors_today > 0) {
-    head.push(`异常 ${r.errors_today}`);
-  }
-  const top = (r.plugins ?? []).slice(0, 4).map((p) => `${p.name} ${p.runs_today}`);
-  if (top.length) {
-    head.push(top.join(" · "));
-  }
-  return head.join("；");
-});
+const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
+
+const pluginRunTimeSamples = ref<PluginRunSample[]>([]);
+
+function syncPluginRunSeriesFromStorage() {
+  const acc = selectedAccount.value;
+  pluginRunTimeSamples.value = acc != null ? readPluginRunSeries(String(acc)) : [];
+}
 
 const msgCapacityHint = computed(() => {
   const s = msgMainStats.value;
@@ -270,7 +306,14 @@ async function refreshSelectedBotDetails() {
 }
 
 watch(selectedAccount, () => {
+  syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
+});
+
+watch([scopedPluginRunRow, selectedAccount, socialBusy], ([row, acc, busy]) => {
+  if (busy || acc == null || !row) return;
+  pushPluginRunSample(String(acc), row.runs_today, row.plugins ?? []);
+  syncPluginRunSeriesFromStorage();
 });
 
 watch(sortedDbBots, () => {
@@ -360,15 +403,13 @@ onMounted(load);
                 v-model.number="selectedAccount"
                 class="sel home-account-bot-pick__sel"
               >
-                <option
-                  v-for="c in sortedDbBots"
-                  :key="c.account"
-                  :value="c.account"
-                >
-                  {{ dbNick(c.account) || "BOT" }} · {{ c.account }} · {{
-                    accountHasNonebotBot(instances?.nonebot_bots, c.account) ? "已连接" : "未连接"
-                  }}
-                </option>
+                  <option
+                    v-for="c in sortedDbBots"
+                    :key="c.account"
+                    :value="c.account"
+                  >
+                    {{ dbNick(c.account) || "BOT" }} · {{ c.account }}
+                  </option>
               </select>
             </div>
           </div>
@@ -383,41 +424,49 @@ onMounted(load);
             <template v-else>
               <div
                 v-if="selectedAccount != null"
-                class="home-account-hero"
+                class="home-account-split-bd"
               >
-                <div class="home-account-hero__avatar">
-                  <img
-                    :src="qqAvatarUrl(selectedAccount)"
-                    alt=""
-                    width="72"
-                    height="72"
-                    decoding="async"
-                    referrerpolicy="no-referrer"
-                    @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-                  >
-                </div>
-                <div class="home-account-hero__main">
-                  <div class="home-account-hero__title">
-                    {{ dbNick(selectedAccount) || "BOT" }}
-                    <span
-                      :class="
-                        selectedConnected
-                          ? 'data-conn-capsule data-conn-capsule--on'
-                          : 'data-conn-capsule data-conn-capsule--off'
-                      "
-                      style="margin-left: 8px; vertical-align: middle"
-                    >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                <div class="home-account-split-col">
+                  <div class="home-account-hero">
+                    <div class="home-account-hero__avatar">
+                      <img
+                        :src="qqAvatarUrl(selectedAccount)"
+                        alt=""
+                        width="72"
+                        height="72"
+                        decoding="async"
+                        referrerpolicy="no-referrer"
+                        @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                      >
+                    </div>
+                    <div class="home-account-hero__main">
+                      <div class="home-account-hero__title">
+                        {{ dbNick(selectedAccount) || "BOT" }}
+                        <span
+                          :class="
+                            selectedConnected
+                              ? 'data-conn-capsule data-conn-capsule--on'
+                              : 'data-conn-capsule data-conn-capsule--off'
+                          "
+                          style="margin-left: 8px; vertical-align: middle"
+                        >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                      </div>
+                      <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
+                      <dl class="home-account-dl home-account-dl--tight">
+                        <div>
+                          <dt>好友数量</dt>
+                          <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
+                        </div>
+                        <div>
+                          <dt>群数量</dt>
+                          <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
+                        </div>
+                      </dl>
+                    </div>
                   </div>
-                  <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                  <dl class="home-account-dl">
-                    <div>
-                      <dt>好友数量</dt>
-                      <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
-                    </div>
-                    <div>
-                      <dt>群数量</dt>
-                      <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
-                    </div>
+                </div>
+                <div class="home-account-split-col home-account-split-col--calls">
+                  <dl class="home-account-dl home-account-dl--calls">
                     <div>
                       <dt>消息 收/发</dt>
                       <dd>{{ msgTotalStr }}</dd>
@@ -430,11 +479,41 @@ onMounted(load);
                       <dt>今日调用最多</dt>
                       <dd>{{ socialBusy ? "…" : apiTodayTopStr }}</dd>
                     </div>
-                    <div>
-                      <dt>插件 Matcher</dt>
-                      <dd>{{ socialBusy ? "…" : pluginRunSummaryStr }}</dd>
+                    <div v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0">
+                      <dt>Matcher 异常（今日）</dt>
+                      <dd>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</dd>
                     </div>
                   </dl>
+                  <div
+                    v-if="scopedApiHistBars.length && !socialBusy"
+                    class="home-api-hist"
+                  >
+                    <p class="muted home-api-hist__caption">
+                      协议 API 成功调用（近 24h，{{ apiHistBucketLabel }} 桶）
+                    </p>
+                    <div
+                      class="home-api-hist__bars"
+                      role="img"
+                      :aria-label="apiHistAria"
+                    >
+                      <div
+                        v-for="(b, idx) in scopedApiHistBars"
+                        :key="idx"
+                        class="home-api-hist__barwrap"
+                        :title="b.tooltip"
+                      >
+                        <div
+                          class="home-api-hist__bar"
+                          :style="{ height: `${b.pct}%` }"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <HomePluginRunCharts
+                    :plugins="scopedPluginPlugins"
+                    :series="pluginRunTimeSamples"
+                    :busy="socialBusy"
+                  />
                 </div>
               </div>
             </template>
@@ -648,3 +727,37 @@ onMounted(load);
     </div>
   </div>
 </template>
+
+<style scoped>
+.home-api-hist {
+  margin-top: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border, rgba(148, 163, 184, 0.25));
+}
+.home-api-hist__caption {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.home-api-hist__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 40px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+}
+.home-api-hist__barwrap {
+  flex: 1 0 2px;
+  min-width: 2px;
+  max-width: 5px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.home-api-hist__bar {
+  width: 100%;
+  min-height: 2px;
+  background: color-mix(in srgb, var(--accent) 75%, transparent);
+  border-radius: 2px 2px 0 0;
+}
+</style>
