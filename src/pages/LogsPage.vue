@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
 
@@ -10,6 +10,34 @@ const n = ref(200);
 const payload = ref<LogsData | null>(null);
 const view = ref<"feed" | "raw">("feed");
 const q = ref("");
+
+const feedScrollEl = ref<HTMLElement | null>(null);
+const rawScrollEl = ref<HTMLElement | null>(null);
+/** 为 true 时在日志更新后滚到底部；用户离开底部后暂停，回到底部则恢复 */
+const followLogTail = ref(true);
+
+function logScrollThreshold(el: HTMLElement): number {
+  const h = el.clientHeight;
+  return Math.min(80, Math.max(24, Math.floor(h * 0.08)));
+}
+
+function isNearBottom(el: HTMLElement): boolean {
+  const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return gap <= logScrollThreshold(el);
+}
+
+function onLogContainerScroll(ev: Event) {
+  const el = ev.target as HTMLElement | null;
+  if (!el) return;
+  followLogTail.value = isNearBottom(el);
+}
+
+async function scrollActiveLogToBottom() {
+  await nextTick();
+  const el = view.value === "feed" ? feedScrollEl.value : rawScrollEl.value;
+  if (!el || !followLogTail.value) return;
+  el.scrollTop = el.scrollHeight;
+}
 
 async function load() {
   loading.value = true;
@@ -28,8 +56,6 @@ watch([scope, n], () => {
   void load();
 });
 
-onMounted(load);
-
 const entries = computed(() => payload.value?.entries ?? []);
 const lines = computed(() => payload.value?.lines ?? []);
 
@@ -44,6 +70,16 @@ const filtered = computed(() => {
       e.time.toLowerCase().includes(needle),
   );
 });
+
+watch(
+  [view, () => payload.value, () => filtered.value, () => lines.value],
+  async () => {
+    await scrollActiveLogToBottom();
+  },
+  { flush: "post" },
+);
+
+onMounted(load);
 
 function lineClass(lv: LogEntry["level"]): string {
   if (lv === "debug") return "log-line log-line--debug";
@@ -143,7 +179,9 @@ function lineClass(lv: LogEntry["level"]): string {
           </div>
           <div
             v-else
+            ref="feedScrollEl"
             class="log-feed"
+            @scroll.passive="onLogContainerScroll"
           >
             <div
               v-for="row in filtered"
@@ -177,8 +215,9 @@ function lineClass(lv: LogEntry["level"]): string {
           </div>
           <pre
             v-else
-            class="pre-block"
-            style="max-height: min(72vh, 760px)"
+            ref="rawScrollEl"
+            class="pre-block pre-block--logs-tall"
+            @scroll.passive="onLogContainerScroll"
           >{{ lines.join("\n") }}</pre>
         </div>
       </div>

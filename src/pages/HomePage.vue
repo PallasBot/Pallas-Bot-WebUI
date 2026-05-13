@@ -135,12 +135,23 @@ onMounted(load);
 
 <template>
   <div class="home-page">
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Dashboard</p>
-      <h1 class="page-hero__title">运行态势</h1>
-      <p class="page-hero__desc">
-        面向生产运维的一屏摘要：编排器与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。
-      </p>
+    <header class="page-hero page-hero--with-actions">
+      <div class="page-hero__main">
+        <p class="page-hero__eyebrow">Dashboard</p>
+        <h1 class="page-hero__title">运行态势</h1>
+        <p class="page-hero__desc">
+          面向生产运维的一屏摘要：编排器与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。
+        </p>
+      </div>
+      <div class="page-hero__actions">
+        <button
+          type="button"
+          class="btn btn--primary"
+          @click="load"
+        >
+          刷新
+        </button>
+      </div>
     </header>
 
     <div
@@ -408,16 +419,6 @@ onMounted(load);
           </template>
         </dl>
       </div>
-    </div>
-
-    <div class="row-actions">
-      <button
-        type="button"
-        class="btn btn--primary"
-        @click="load"
-      >
-        刷新
-      </button>
     </div>
   </div>
 </template>
