@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
   fetchAiExtensionConfig,
   fetchAiExtensionLogs,
+  fetchAiNcmStatus,
   postAiExtensionTest,
+  postAiNcmLogout,
+  postAiNcmSendSms,
+  postAiNcmVerifySms,
   putAiExtensionConfig,
 } from "@/api/consoleApi";
-import type { AiExtensionConfig } from "@/api/pallasTypes";
+import type { AiExtensionConfig, AiProxyResult } from "@/api/pallasTypes";
 
 const err = ref("");
 const ok = ref("");
@@ -14,6 +18,30 @@ const jsonText = ref("");
 const testOut = ref("");
 const logKind = ref<"uvicorn" | "celery">("uvicorn");
 const logOut = ref("");
+
+const ncmPhone = ref("");
+const ncmCtcode = ref(86);
+const ncmCaptcha = ref("");
+const ncmStatus = ref<AiProxyResult | null>(null);
+const ncmBusy = ref(false);
+const ncmLastNote = ref("");
+
+const ncmPayload = computed<Record<string, unknown>>(() => {
+  const d = ncmStatus.value?.data;
+  if (d && typeof d === "object" && !Array.isArray(d)) return d as Record<string, unknown>;
+  return {};
+});
+
+const ncmLoggedIn = computed(() => {
+  const p = ncmPayload.value;
+  return Boolean(p.success) && (typeof p.session === "string" ? p.session.length > 0 : Boolean(p.session));
+});
+
+const ncmStatusMessage = computed(() => {
+  const p = ncmPayload.value;
+  const m = p.message;
+  return typeof m === "string" ? m : "";
+});
 
 async function load() {
   err.value = "";
@@ -60,7 +88,113 @@ async function loadLogs() {
   }
 }
 
-onMounted(load);
+async function refreshNcmStatus() {
+  ncmBusy.value = true;
+  ncmLastNote.value = "";
+  err.value = "";
+  try {
+    ncmStatus.value = await fetchAiNcmStatus();
+    if (!ncmStatus.value.ok) {
+      ok.value = "";
+      err.value = ncmStatus.value.error || `扩展服务返回异常（HTTP ${ncmStatus.value.status_code ?? "?"})`;
+    }
+  } catch (e) {
+    ok.value = "";
+    err.value = e instanceof Error ? e.message : String(e);
+    ncmStatus.value = null;
+  } finally {
+    ncmBusy.value = false;
+  }
+}
+
+async function sendNcmSms() {
+  const phone = ncmPhone.value.trim();
+  if (phone.length < 5) {
+    err.value = "请输入有效手机号。";
+    return;
+  }
+  ncmBusy.value = true;
+  ncmLastNote.value = "";
+  err.value = "";
+  try {
+    const r = await postAiNcmSendSms({ phone, ctcode: Number(ncmCtcode.value) || 86 });
+    ncmStatus.value = r;
+    const d = r.data as Record<string, unknown>;
+    const msg = typeof d.message === "string" ? d.message : "";
+    const code = d.code;
+    if (r.ok && (code === 200 || code === "200")) {
+      ncmLastNote.value = msg || "验证码已发送，请查收短信。";
+    } else {
+      ok.value = "";
+      err.value = msg || r.error || "发送验证码失败。";
+    }
+  } catch (e) {
+    ok.value = "";
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ncmBusy.value = false;
+  }
+}
+
+async function verifyNcmSms() {
+  const phone = ncmPhone.value.trim();
+  const captcha = ncmCaptcha.value.trim();
+  if (phone.length < 5 || captcha.length < 2) {
+    err.value = "请填写手机号与短信验证码。";
+    return;
+  }
+  ncmBusy.value = true;
+  ncmLastNote.value = "";
+  err.value = "";
+  try {
+    const r = await postAiNcmVerifySms({ phone, captcha, ctcode: Number(ncmCtcode.value) || 86 });
+    ncmStatus.value = r;
+    const d = r.data as Record<string, unknown>;
+    if (r.ok && d.success === true) {
+      err.value = "";
+      ok.value = typeof d.message === "string" ? d.message : "登录成功。";
+      ncmCaptcha.value = "";
+      await refreshNcmStatus();
+    } else {
+      ok.value = "";
+      err.value = typeof d.message === "string" ? d.message : r.error || "登录失败。";
+    }
+  } catch (e) {
+    ok.value = "";
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ncmBusy.value = false;
+  }
+}
+
+async function logoutNcm() {
+  ncmBusy.value = true;
+  ncmLastNote.value = "";
+  err.value = "";
+  try {
+    const r = await postAiNcmLogout();
+    ncmStatus.value = r;
+    const d = r.data as Record<string, unknown>;
+    if (r.ok && d.success === true) {
+      err.value = "";
+      ok.value = typeof d.message === "string" ? d.message : "已登出。";
+      await refreshNcmStatus();
+    } else {
+      ok.value = "";
+      err.value = typeof d.message === "string" ? d.message : r.error || "登出失败。";
+    }
+  } catch (e) {
+    ok.value = "";
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ncmBusy.value = false;
+  }
+}
+
+onMounted(async () => {
+  await load();
+  await refreshNcmStatus();
+});
 </script>
 
 <template>
@@ -68,7 +202,7 @@ onMounted(load);
     <header class="page-hero">
       <p class="page-hero__eyebrow">AI Stack</p>
       <h1 class="page-hero__title">AI 扩展</h1>
-      <p class="page-hero__desc">查看扩展服务配置与健康状态；运行记录由后端代理读取。</p>
+      <p class="page-hero__desc">查看扩展服务配置与健康状态；网易云可通过扩展服务完成短信登录。运行记录由后端代理读取。</p>
     </header>
 
     <div
@@ -82,6 +216,141 @@ onMounted(load);
       class="alert alert--ok"
     >
       {{ ok }}
+    </div>
+
+    <div class="panel">
+      <div class="panel__hd">
+        <h2 class="panel__title">网易云音乐登录</h2>
+        <div class="row-actions">
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="ncmBusy"
+            @click="refreshNcmStatus"
+          >
+            {{ ncmBusy ? "请求中…" : "刷新状态" }}
+          </button>
+        </div>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="ncmLastNote"
+          class="muted"
+          style="margin: 0 0 12px"
+        >
+          {{ ncmLastNote }}
+        </p>
+        <div
+          v-if="ncmStatus"
+          style="margin-bottom: 16px"
+        >
+          <div class="row-actions" style="align-items: center; flex-wrap: wrap; gap: 10px">
+            <span
+              class="badge"
+              :class="ncmLoggedIn ? 'badge--ok' : 'badge--warn'"
+            >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
+            <span
+              v-if="ncmStatusMessage"
+              class="muted"
+              style="font-size: 13px"
+            >{{ ncmStatusMessage }}</span>
+          </div>
+          <p
+            v-if="ncmStatus && !ncmStatus.ok"
+            class="muted"
+            style="margin: 8px 0 0; font-size: 12px"
+          >
+            代理：{{ ncmStatus.url }}<template v-if="ncmStatus.error"> · {{ ncmStatus.error }}</template>
+          </p>
+        </div>
+        <p
+          v-else
+          class="muted"
+          style="margin: 0 0 12px"
+        >
+          尚未拉取状态。请先配置下方「扩展基址」并保存，再点「刷新状态」。
+        </p>
+
+        <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+          <div class="bot-config-edit__grid">
+            <div class="bot-config-edit__field">
+              <label>手机号</label>
+              <input
+                v-model="ncmPhone"
+                class="inp"
+                type="text"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="11 位手机号"
+                style="width: 100%"
+              >
+            </div>
+            <div class="bot-config-edit__field">
+              <label>国家区号 ctcode</label>
+              <input
+                v-model.number="ncmCtcode"
+                class="inp"
+                type="number"
+                min="1"
+                max="999"
+                style="width: 100%"
+              >
+            </div>
+          </div>
+          <div class="row-actions" style="margin-top: 12px; flex-wrap: wrap">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="ncmBusy"
+              @click="sendNcmSms"
+            >
+              发送验证码
+            </button>
+          </div>
+          <div class="bot-config-edit__field" style="margin-top: 16px">
+            <label>短信验证码</label>
+            <input
+              v-model="ncmCaptcha"
+              class="inp"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              placeholder="收到的验证码"
+              style="max-width: 280px; width: 100%"
+              @keydown.enter.prevent="verifyNcmSms"
+            >
+          </div>
+          <div class="row-actions" style="margin-top: 12px; flex-wrap: wrap; gap: 8px">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="ncmBusy"
+              @click="verifyNcmSms"
+            >
+              验证并登录
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="ncmBusy"
+              @click="logoutNcm"
+            >
+              登出网易云
+            </button>
+          </div>
+        </div>
+
+        <details
+          v-if="ncmStatus"
+          class="muted"
+          style="margin-top: 16px; font-size: 12px"
+        >
+          <summary style="cursor: pointer">原始响应（调试用）</summary>
+          <pre class="pre-block" style="margin-top: 8px; max-height: 200px; overflow: auto">{{
+            JSON.stringify(ncmStatus, null, 2)
+          }}</pre>
+        </details>
+      </div>
     </div>
 
     <div class="panel">

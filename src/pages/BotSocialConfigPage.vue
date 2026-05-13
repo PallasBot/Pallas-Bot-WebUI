@@ -429,7 +429,7 @@ onMounted(async () => {
             </button>
           </div>
           <div class="console-modal__bd">
-            <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+            <div class="bot-config-edit bot-config-edit--modal">
               <p
                 v-if="groupSaveErr"
                 class="alert alert--err"
@@ -460,7 +460,7 @@ onMounted(async () => {
                   </select>
                 </div>
               </div>
-              <div class="bot-config-edit__field" style="margin-bottom: 12px">
+              <div class="bot-config-edit__field">
                 <label>禁用插件（勾选表示禁用）</label>
                 <p
                   v-if="!pluginPickList.length"
@@ -558,7 +558,7 @@ onMounted(async () => {
             </button>
           </div>
           <div class="console-modal__bd">
-            <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+            <div class="bot-config-edit bot-config-edit--modal">
               <p
                 v-if="userSaveErr"
                 class="alert alert--err"
@@ -570,7 +570,7 @@ onMounted(async () => {
                 <label>封禁（banned）</label>
                 <select
                   class="sel"
-                  style="width: 100%; max-width: 280px"
+                  style="width: 100%"
                   :value="boolSelectVal(userDraft.banned)"
                   @change="onUserBannedSelect(($event.target as HTMLSelectElement).value)"
                 >

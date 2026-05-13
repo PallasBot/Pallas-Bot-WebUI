@@ -175,9 +175,7 @@ onUnmounted(() => {
           </div>
         </div>
         <footer class="shell__foot">
-          控制台与牛牛通过
-          <code style="font-size: 10px; color: var(--text-muted)">/pallas/api</code>
-          通信
+          © PallasBot
         </footer>
       </div>
     </aside>

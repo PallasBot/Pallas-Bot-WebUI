@@ -552,7 +552,7 @@ onMounted(async () => {
             </button>
           </div>
           <div class="console-modal__bd">
-            <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+            <div class="bot-config-edit bot-config-edit--modal">
               <p
                 v-if="saveErr"
                 class="alert alert--err"
@@ -602,7 +602,7 @@ onMounted(async () => {
                   </select>
                 </div>
               </div>
-              <div class="bot-config-edit__field" style="margin-bottom: 12px">
+              <div class="bot-config-edit__field">
                 <label>管理员 QQ（多选）</label>
                 <div class="row-actions" style="margin-bottom: 8px; flex-wrap: wrap; gap: 8px">
                   <input
