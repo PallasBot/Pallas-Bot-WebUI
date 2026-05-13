@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { fetchPluginConfig, putPluginConfig } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
+import JsonTextareaField from "@/components/JsonTextareaField.vue";
 
 const route = useRoute();
 const err = ref("");
@@ -179,11 +180,11 @@ async function save() {
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
-          <textarea
+          <JsonTextareaField
             v-else-if="f.kind === 'json'"
             v-model="fieldValues[f.name]"
-            class="textarea"
-            rows="6"
+            :title="`${data.plugin} · ${f.name}（JSON）`"
+            :rows="6"
           />
           <input
             v-else
