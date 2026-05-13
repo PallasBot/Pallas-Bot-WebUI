@@ -85,7 +85,7 @@ async function refreshHealth() {
 }
 
 function updateNarrow() {
-  isNarrow.value = window.matchMedia("(max-width: 960px)").matches;
+  isNarrow.value = window.matchMedia("(max-width: 860px)").matches;
 }
 
 function closeMobileNav() {
@@ -267,7 +267,13 @@ onUnmounted(() => {
             aria-label="深色"
             @click="setTheme('dark')"
           >
-            <span class="shell__theme-ico" aria-hidden="true">🌙</span>
+            <span class="shell__theme-ico" aria-hidden="true">
+              <svg
+                class="shell__ico"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              ><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+            </span>
           </button>
           <button
             type="button"
@@ -276,7 +282,24 @@ onUnmounted(() => {
             aria-label="浅色"
             @click="setTheme('light')"
           >
-            <span class="shell__theme-ico" aria-hidden="true">☀</span>
+            <span class="shell__theme-ico" aria-hidden="true">
+              <svg
+                class="shell__ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="4"
+                />
+                <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.31 11.31l1.41 1.41M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41" />
+              </svg>
+            </span>
           </button>
           <button
             type="button"
@@ -285,7 +308,26 @@ onUnmounted(() => {
             aria-label="跟随系统"
             @click="setTheme('system')"
           >
-            <span class="shell__theme-ico" aria-hidden="true">🖥️</span>
+            <span class="shell__theme-ico" aria-hidden="true">
+              <svg
+                class="shell__ico"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect
+                  x="2"
+                  y="3"
+                  width="20"
+                  height="14"
+                  rx="2"
+                />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+            </span>
           </button>
         </div>
         <button
@@ -295,7 +337,25 @@ onUnmounted(() => {
           aria-label="退出控制台"
           @click="exitConsole"
         >
-          退出
+          <svg
+            class="shell__ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line
+              x1="21"
+              y1="12"
+              x2="9"
+              y2="12"
+            />
+          </svg>
         </button>
       </div>
     </header>
