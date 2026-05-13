@@ -386,6 +386,8 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   color: var(--text-dim);
   line-height: 1.5;
   padding-left: 8px;
+  padding-right: 8px;
+  text-align: center;
 }
 
 .shell__main {
@@ -630,7 +632,7 @@ html[data-theme="light"] .shell__narrow-open:hover {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -649,7 +651,7 @@ html[data-theme="light"] .shell__narrow-open:hover {
 }
 
 .console-modal__subtitle {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
@@ -687,10 +689,11 @@ html[data-theme="light"] .console-modal__close:hover {
 }
 
 .console-modal__bd {
-  padding: 18px;
+  padding: 16px 20px 22px;
   overflow-y: auto;
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: min(75vh, calc(100dvh - 140px));
 }
 
 .shell-page-enter-active,
@@ -1191,6 +1194,32 @@ html[data-theme="light"] .bot-config-edit {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   margin-bottom: 6px;
+}
+
+.bot-config-edit--modal {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.bot-config-edit--modal > .alert {
+  margin-bottom: 14px;
+}
+
+.bot-config-edit--modal .bot-config-edit__grid {
+  margin-bottom: 16px;
+}
+
+.bot-config-edit--modal .bot-config-edit__field {
+  margin-bottom: 12px;
+}
+
+.bot-config-edit--modal > .row-actions {
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
 }
 
 .plugin-check-grid {
