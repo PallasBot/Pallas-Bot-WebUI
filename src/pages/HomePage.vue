@@ -31,7 +31,7 @@ import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
-import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint, protocolSnapshot, accountWebUiHref, protocolDashboardUrl } from "@/utils/protocolLinks";
+import { protocolSnapshot, accountWebUiHref, protocolDashboardUrl } from "@/utils/protocolLinks";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 
@@ -53,9 +53,6 @@ const socialBusy = ref(false);
 /** 首屏主内容区：与全站骨架一致，数据就绪后再渲染 */
 const pageReady = ref(false);
 
-const consoleRoot = consolePublicRoot();
-const botBase = ref<string | null>(null);
-const driverHint = ref<string | null>(null);
 const pluginsList = ref<PluginRow[]>([]);
 
 const runtime = computed(() => system.value?.runtime ?? null);
@@ -280,6 +277,29 @@ const apiTodayTopStr = computed(() => {
   return `${name}（${c} 次）`;
 });
 
+function pluginModuleDisplayName(moduleName: string): string {
+  const row = pluginsList.value.find((p) => p.name === moduleName);
+  const t = row?.metadata?.name?.trim();
+  return t || moduleName;
+}
+
+const pluginTodayTopStr = computed(() => {
+  const row = scopedPluginRunRow.value;
+  const plugins = row?.plugins ?? [];
+  if (!plugins.length) return "—";
+  const byToday = [...plugins].sort((a, b) => (b.runs_today ?? 0) - (a.runs_today ?? 0));
+  const topT = byToday[0]!;
+  const nt = topT.runs_today ?? 0;
+  if (nt > 0) {
+    return `${pluginModuleDisplayName(topT.name)}（${nt} 次）`;
+  }
+  const byRuns = [...plugins].sort((a, b) => (b.runs ?? 0) - (a.runs ?? 0));
+  const topR = byRuns[0]!;
+  const nr = topR.runs ?? 0;
+  if (nr > 0) return `${pluginModuleDisplayName(topR.name)}（累计 ${nr}）`;
+  return "—";
+});
+
 const scopedApiCallsByApi = computed(() => scopedBotStatsRow.value?.api_calls_history_by_api ?? []);
 
 const pluginRunMain = computed(() => pluginRunStatsScoped.value ?? pluginRunStats.value);
@@ -382,8 +402,6 @@ async function load() {
     instances.value = inst;
     pluginsList.value = pl;
     botCount.value = botList.length;
-    botBase.value = botHttpBaseFromSystem(s);
-    driverHint.value = nonebotDriverHint(s);
     ensureSelectedAccount();
     await refreshSelectedBotDetails();
   } catch (e) {
@@ -407,7 +425,7 @@ onMounted(load);
 
     <ConsolePageSkeleton
       v-if="!pageReady"
-      :panels="5"
+      :panels="4"
     />
     <div
       v-else
@@ -427,7 +445,7 @@ onMounted(load);
               >实例与连接</RouterLink>
               <button
                 type="button"
-                class="btn"
+                class="home-instances-capsule home-instances-capsule--action"
                 @click="load"
               >
                 刷新
@@ -531,13 +549,26 @@ onMounted(load);
                       <span class="home-account-metrics__sep muted">/</span>
                       <span class="home-account-metrics__sent">{{ socialBusy ? "…" : msgRecvSentPair.sent }}</span>
                     </div>
-                    <div class="home-account-metrics__grid">
-                      <div class="home-account-metrics__cell">
+                    <div class="home-account-metrics__stats">
+                      <div class="home-account-metrics__today-row">
                         <span class="muted home-account-metrics__k">今日 API</span>
                         <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
                       </div>
-                      <div class="home-account-metrics__cell home-account-metrics__cell--wide">
-                        <span class="muted home-account-metrics__k">调用最多</span>
+                      <div class="home-account-metrics__stat-block">
+                        <div class="home-account-metrics__krow">
+                          <span class="muted home-account-metrics__k">调用最多</span>
+                          <span class="home-account-metrics__kind">插件</span>
+                        </div>
+                        <span
+                          class="home-account-metrics__v home-account-metrics__v--clip"
+                          :title="pluginTodayTopStr"
+                        >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
+                      </div>
+                      <div class="home-account-metrics__stat-block">
+                        <div class="home-account-metrics__krow">
+                          <span class="muted home-account-metrics__k">调用最多</span>
+                          <span class="home-account-metrics__kind">API</span>
+                        </div>
                         <span
                           class="home-account-metrics__v home-account-metrics__v--clip"
                           :title="apiTodayTopStr"
@@ -705,69 +736,6 @@ onMounted(load);
       </section>
     </div>
 
-    <div class="panel home-page__panel home-access-panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">⎈</span>接入
-        </h2>
-      </div>
-      <div class="panel__bd home-access-panel__bd">
-        <div class="home-access-panel__body">
-        <div class="link-grid home-page__link-grid">
-          <a
-            class="link-card"
-            :href="`${consoleRoot}/`"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span class="link-card__label">Console</span>
-            <span class="link-card__title">本控制台</span>
-            <span class="link-card__meta">{{ consoleRoot }}/</span>
-          </a>
-          <a
-            v-if="botBase"
-            class="link-card"
-            :href="botBase"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span class="link-card__label">HTTP</span>
-            <span class="link-card__title">牛牛对外基址</span>
-            <span class="link-card__meta">{{ botBase }}</span>
-          </a>
-          <div
-            v-else
-            class="link-card"
-          >
-            <span class="link-card__label">HTTP</span>
-            <span class="link-card__title">牛牛对外基址</span>
-            <span class="link-card__meta muted">未下发 console.http_base，请检查后端配置</span>
-          </div>
-          <div class="link-card">
-            <span class="link-card__label">Driver</span>
-            <span class="link-card__title">监听地址（参考）</span>
-            <span class="link-card__meta">{{ driverHint ?? "—" }}</span>
-          </div>
-        </div>
-
-        <div class="row-actions home-access-panel__actions">
-          <RouterLink
-            class="btn btn--primary"
-            to="/protocol"
-          >协议端管理</RouterLink>
-          <RouterLink
-            class="btn"
-            to="/bot-social-config"
-          >好友/群颗粒配置</RouterLink>
-          <RouterLink
-            class="btn"
-            to="/friends-groups"
-          >好友与群</RouterLink>
-        </div>
-        </div>
-      </div>
-    </div>
-
     <div class="panel home-page__panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
@@ -782,31 +750,31 @@ onMounted(load);
         <dl class="home-dl home-dl--version-rows home-version-dl">
           <dt>NoneBot2</dt>
           <dd>
-            <span class="home-version-val">{{ health?.nonebot2 ?? "—" }}</span>
-            <span class="home-version-sub muted">框架</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ health?.nonebot2 ?? "—" }}</span>
+            <span class="home-dl__sub muted">框架</span>
           </dd>
           <dt>Pallas-Bot</dt>
           <dd>
-            <span class="home-version-val">{{ pallasBotVersionDisplay }}</span>
-            <span class="home-version-sub muted">业务</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+            <span class="home-dl__sub muted">业务</span>
           </dd>
           <dt>控制台资源</dt>
           <dd class="home-version-dd-stack">
-            <span class="home-version-val">{{ health?.console?.version ?? "—" }}</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ health?.console?.version ?? "—" }}</span>
             <span
               v-if="(health?.console?.commit || '').trim()"
-              class="home-version-commit"
+              class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
               :title="health?.console?.commit || undefined"
             >{{ (health?.console?.commit || "").trim() }}</span>
           </dd>
           <dt>服务时间</dt>
           <dd>
-            <span class="home-version-val home-version-val--mono">{{ versionServerTimeStr }}</span>
+            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
           </dd>
           <dt>主机 / Python</dt>
           <dd class="home-version-dd-stack">
-            <span class="home-version-val">{{ system?.runtime?.hostname ?? "—" }}</span>
-            <span class="home-version-val home-version-val--mono">{{ system?.runtime?.python ?? "—" }}</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
+            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
           </dd>
         </dl>
       </div>
