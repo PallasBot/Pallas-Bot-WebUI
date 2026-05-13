@@ -23,6 +23,11 @@ const route = useRoute();
 const mobileNavOpen = ref(false);
 const isNarrow = ref(false);
 
+const mainInnerClass = computed(() => ({
+  "shell__main-inner": true,
+  "shell__main-inner--logs": route.name === "logs",
+}));
+
 function updateNarrow() {
   isNarrow.value = window.matchMedia("(max-width: 960px)").matches;
 }
@@ -309,7 +314,7 @@ onUnmounted(() => {
     </Teleport>
 
     <div class="shell__main">
-      <div class="shell__main-inner">
+      <div :class="mainInnerClass">
         <router-view v-slot="{ Component, route: r }">
           <transition
             name="shell-page"

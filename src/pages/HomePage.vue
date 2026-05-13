@@ -8,6 +8,7 @@ import {
   fetchGroupList,
   fetchInstances,
   fetchMessageStats,
+  fetchPluginRunStats,
   fetchSystem,
 } from "@/api/consoleApi";
 import type {
@@ -16,10 +17,12 @@ import type {
   GroupListData,
   InstancesData,
   MessageStatsData,
+  PluginRunStatsData,
   SystemData,
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
+import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint } from "@/utils/protocolLinks";
 
@@ -28,6 +31,8 @@ const health = ref<HealthResponse | null>(null);
 const system = ref<SystemData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
+const pluginRunStats = ref<PluginRunStatsData | null>(null);
+const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
 const instances = ref<InstancesData | null>(null);
@@ -138,6 +143,9 @@ function dbNick(account: number): string {
 const sortedDbBots = computed(() => {
   const rows = [...(instances.value?.db_bot_configs ?? [])];
   rows.sort((a, b) => {
+    const fa = botFavoriteAccounts.value.has(a.account) ? 1 : 0;
+    const fb = botFavoriteAccounts.value.has(b.account) ? 1 : 0;
+    if (fa !== fb) return fb - fa;
     const ca = accountHasNonebotBot(instances.value?.nonebot_bots, a.account) ? 1 : 0;
     const cb = accountHasNonebotBot(instances.value?.nonebot_bots, b.account) ? 1 : 0;
     if (ca !== cb) return cb - ca;
@@ -174,10 +182,57 @@ const msgTotalStr = computed(() => {
   return `${s.total_received} / ${s.total_sent}`;
 });
 
-const msgTodayStr = computed(() => {
+const scopedBotStatsRow = computed(() => {
+  const acc = selectedAccount.value;
+  const st = msgMainStats.value;
+  if (acc == null || !st?.bots?.length) return null;
+  const sid = String(acc);
+  return st.bots.find((b) => b.self_id === sid) ?? null;
+});
+
+const apiTodayTotalStr = computed(() => {
+  const r = scopedBotStatsRow.value;
+  if (!r || r.today_api_calls == null) return "—";
+  return String(r.today_api_calls);
+});
+
+const apiTodayTopStr = computed(() => {
+  const r = scopedBotStatsRow.value;
+  if (!r) return "—";
+  const name = r.today_top_api?.trim();
+  if (!name) return "—";
+  const c = r.today_top_api_count ?? 0;
+  return `${name}（${c} 次）`;
+});
+
+const pluginRunMain = computed(() => pluginRunStatsScoped.value ?? pluginRunStats.value);
+
+const scopedPluginRunRow = computed(() => {
+  const acc = selectedAccount.value;
+  const pr = pluginRunMain.value;
+  if (acc == null || !pr?.bots?.length) return null;
+  const sid = String(acc);
+  return pr.bots.find((b) => b.self_id === sid) ?? null;
+});
+
+const pluginRunSummaryStr = computed(() => {
+  const r = scopedPluginRunRow.value;
+  if (!r) return "—";
+  const head = [`今日 ${r.runs_today} 次`];
+  if (r.errors_today > 0) {
+    head.push(`异常 ${r.errors_today}`);
+  }
+  const top = (r.plugins ?? []).slice(0, 4).map((p) => `${p.name} ${p.runs_today}`);
+  if (top.length) {
+    head.push(top.join(" · "));
+  }
+  return head.join("；");
+});
+
+const msgCapacityHint = computed(() => {
   const s = msgMainStats.value;
-  if (!s || (s.today_received == null && s.today_sent == null)) return undefined;
-  return `本日 ${s.today_received ?? "—"} / ${s.today_sent ?? "—"}`;
+  if (!s || (s.today_received == null && s.today_sent == null)) return "全部账号合计";
+  return `本日收 ${s.today_received ?? "—"} / 发 ${s.today_sent ?? "—"}（合计）`;
 });
 
 const friendCount = computed(() => friendSnap.value?.friends?.length ?? null);
@@ -187,18 +242,26 @@ async function refreshSelectedBotDetails() {
   const acc = selectedAccount.value;
   if (acc == null) {
     statsScoped.value = null;
+    pluginRunStatsScoped.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
     return;
   }
   socialBusy.value = true;
   try {
-    const [ms, fl, gl] = await Promise.all([fetchMessageStats(acc), fetchFriendList(acc), fetchGroupList(acc)]);
+    const [ms, prs, fl, gl] = await Promise.all([
+      fetchMessageStats(acc),
+      fetchPluginRunStats(acc),
+      fetchFriendList(acc),
+      fetchGroupList(acc),
+    ]);
     statsScoped.value = ms;
+    pluginRunStatsScoped.value = prs;
     friendSnap.value = fl;
     groupSnap.value = gl;
   } catch {
     statsScoped.value = null;
+    pluginRunStatsScoped.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
   } finally {
@@ -217,16 +280,18 @@ watch(sortedDbBots, () => {
 async function load() {
   err.value = "";
   try {
-    const [h, s, m, botList, inst] = await Promise.all([
+    const [h, s, m, pr, botList, inst] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
+      fetchPluginRunStats(),
       fetchBots(),
       fetchInstances(),
     ]);
     health.value = h;
     system.value = s;
     stats.value = m;
+    pluginRunStats.value = pr;
     bots.value = botList;
     instances.value = inst;
     botCount.value = botList.length;
@@ -273,13 +338,39 @@ onMounted(load);
     <div class="home-dashboard">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
-          <div class="panel__hd">
-            <h2 class="panel__title">账户信息</h2>
-            <RouterLink
-              class="link-quiet"
-              to="/instances"
-              style="font-size: 13px"
-            >连接详情 →</RouterLink>
+          <div class="panel__hd home-account-panel__hd">
+            <div class="home-account-panel__hd-main">
+              <h2 class="panel__title">账户信息</h2>
+              <RouterLink
+                class="link-quiet"
+                to="/instances"
+                style="font-size: 13px"
+              >连接详情 →</RouterLink>
+            </div>
+            <div
+              v-if="sortedDbBots.length"
+              class="home-account-bot-pick"
+            >
+              <label
+                class="visually-hidden"
+                for="home-db-bot-sel"
+              >选择数据库 Bot</label>
+              <select
+                id="home-db-bot-sel"
+                v-model.number="selectedAccount"
+                class="sel home-account-bot-pick__sel"
+              >
+                <option
+                  v-for="c in sortedDbBots"
+                  :key="c.account"
+                  :value="c.account"
+                >
+                  {{ dbNick(c.account) || "BOT" }} · {{ c.account }} · {{
+                    accountHasNonebotBot(instances?.nonebot_bots, c.account) ? "已连接" : "未连接"
+                  }}
+                </option>
+              </select>
+            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -290,24 +381,6 @@ onMounted(load);
               数据库中暂无 Bot 配置记录。请在后端创建 <code>bot_config</code> 后刷新。
             </p>
             <template v-else>
-              <div class="home-account-picker">
-                <label for="home-db-bot-sel">选择数据库 Bot</label>
-                <select
-                  id="home-db-bot-sel"
-                  v-model.number="selectedAccount"
-                  class="sel home-account-picker__sel"
-                >
-                  <option
-                    v-for="c in sortedDbBots"
-                    :key="c.account"
-                    :value="c.account"
-                  >
-                    {{ dbNick(c.account) || "BOT" }} · {{ c.account }} · {{
-                      accountHasNonebotBot(instances?.nonebot_bots, c.account) ? "已连接" : "未连接"
-                    }}
-                  </option>
-                </select>
-              </div>
               <div
                 v-if="selectedAccount != null"
                 class="home-account-hero"
@@ -350,8 +423,16 @@ onMounted(load);
                       <dd>{{ msgTotalStr }}</dd>
                     </div>
                     <div>
-                      <dt>今日 收/发</dt>
-                      <dd>{{ msgTodayStr ?? "—" }}</dd>
+                      <dt>今日 API 调用</dt>
+                      <dd>{{ socialBusy ? "…" : apiTodayTotalStr }}</dd>
+                    </div>
+                    <div>
+                      <dt>今日调用最多</dt>
+                      <dd>{{ socialBusy ? "…" : apiTodayTopStr }}</dd>
+                    </div>
+                    <div>
+                      <dt>插件 Matcher</dt>
+                      <dd>{{ socialBusy ? "…" : pluginRunSummaryStr }}</dd>
                     </div>
                   </dl>
                 </div>
@@ -464,7 +545,7 @@ onMounted(load);
             dense
             label="消息 收/发"
             :value="msgTotalStr"
-            :hint="msgTodayStr"
+            :hint="msgCapacityHint"
           />
         </div>
       </section>

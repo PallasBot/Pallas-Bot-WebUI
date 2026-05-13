@@ -47,6 +47,26 @@ export function accountNativeWebUiUrl(account: NapcatAccountRow): string | null 
   return u.trim();
 }
 
+/** 协议账号 WebUI：优先 native_url，否则用 console.http_base 替换端口 */
+export function accountWebUiHref(account: NapcatAccountRow, system: SystemData | null): string | null {
+  const direct = accountNativeWebUiUrl(account);
+  if (direct) return direct;
+  const port = account.webui_port;
+  if (port == null || port === "") return null;
+  const base = botHttpBaseFromSystem(system);
+  if (!base) return null;
+  const portStr = String(port).trim();
+  if (!portStr) return null;
+  try {
+    const raw = base.includes("://") ? base : `http://${base}`;
+    const u = new URL(raw);
+    u.port = portStr;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function protocolSnapshot(data: InstancesData | null) {
   return data?.pallas_protocol ?? data?.napcat ?? null;
 }

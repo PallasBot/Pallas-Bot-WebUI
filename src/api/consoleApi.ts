@@ -27,6 +27,7 @@ import type {
   PluginConfigData,
   CommonConfigSectionMeta,
   MessageStatsData,
+  PluginRunStatsData,
 } from "./pallasTypes";
 
 function unwrap<T>(body: ApiOk<T> | (ApiOk<T> & Record<string, unknown>), path: string): T {
@@ -117,6 +118,13 @@ export async function fetchMessageStats(selfId?: number): Promise<MessageStatsDa
     params: selfId ? { self_id: selfId } : {},
   });
   return unwrap(data, "/message-stats");
+}
+
+export async function fetchPluginRunStats(selfId?: number): Promise<PluginRunStatsData> {
+  const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", {
+    params: selfId ? { self_id: selfId } : {},
+  });
+  return unwrap(data, "/plugin-run-stats");
 }
 
 export async function fetchPluginConfigHint(): Promise<string> {

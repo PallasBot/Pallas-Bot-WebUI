@@ -92,7 +92,7 @@ function lineClass(lv: LogEntry["level"]): string {
 </script>
 
 <template>
-  <div>
+  <div class="logs-page">
     <header class="page-hero">
       <p class="page-hero__eyebrow">Observability</p>
       <h1 class="page-hero__title">运行日志</h1>
@@ -168,57 +168,56 @@ function lineClass(lv: LogEntry["level"]): string {
           单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目 · 原始行 {{ lines.length }} 行
         </p>
 
-        <div
-          v-if="view === 'feed'"
-        >
-          <div
-            v-if="!filtered.length && !loading"
-            class="muted"
-          >
-            暂无条目（或筛选无结果）。
-          </div>
-          <div
-            v-else
-            ref="feedScrollEl"
-            class="log-feed"
-            @scroll.passive="onLogContainerScroll"
-          >
+        <div class="logs-page__scroll">
+          <template v-if="view === 'feed'">
             <div
-              v-for="row in filtered"
-              :key="row.id"
-              :class="lineClass(row.level)"
+              v-if="!filtered.length && !loading"
+              class="muted"
             >
-              <div class="log-line__meta">
-                <span class="log-line__time">{{ row.time }}</span>
-                <span
-                  class="badge log-line__badge"
-                  :class="{
-                    'badge--ok':
-                      row.level === 'info' || row.level === 'success' || row.level === 'debug',
-                    'badge--warn': row.level === 'warn',
-                    'badge--err': row.level === 'error',
-                  }"
-                >{{ row.level }}</span>
-                <span class="log-line__scope">{{ row.scope }}</span>
-              </div>
-              <div class="log-line__msg">{{ row.message }}</div>
+              暂无条目（或筛选无结果）。
             </div>
-          </div>
-        </div>
-
-        <div v-else>
-          <div
-            v-if="!lines.length && !loading"
-            class="muted"
-          >
-            无原始行数据（后端可能仅返回结构化 entries）。
-          </div>
-          <pre
-            v-else
-            ref="rawScrollEl"
-            class="pre-block pre-block--logs-tall"
-            @scroll.passive="onLogContainerScroll"
-          >{{ lines.join("\n") }}</pre>
+            <div
+              v-else
+              ref="feedScrollEl"
+              class="log-feed"
+              @scroll.passive="onLogContainerScroll"
+            >
+              <div
+                v-for="row in filtered"
+                :key="row.id"
+                :class="lineClass(row.level)"
+              >
+                <div class="log-line__meta">
+                  <span class="log-line__time">{{ row.time }}</span>
+                  <span
+                    class="badge log-line__badge"
+                    :class="{
+                      'badge--ok':
+                        row.level === 'info' || row.level === 'success' || row.level === 'debug',
+                      'badge--warn': row.level === 'warn',
+                      'badge--err': row.level === 'error',
+                    }"
+                  >{{ row.level }}</span>
+                  <span class="log-line__scope">{{ row.scope }}</span>
+                </div>
+                <div class="log-line__msg">{{ row.message }}</div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-if="!lines.length && !loading"
+              class="muted"
+            >
+              无原始行数据（后端可能仅返回结构化 entries）。
+            </div>
+            <pre
+              v-else
+              ref="rawScrollEl"
+              class="pre-block pre-block--logs-tall"
+              @scroll.passive="onLogContainerScroll"
+            >{{ lines.join("\n") }}</pre>
+          </template>
         </div>
       </div>
     </div>
