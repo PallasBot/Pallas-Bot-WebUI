@@ -310,7 +310,7 @@ onMounted(async () => {
               :key="b.self_id"
               :value="b.self_id"
             >
-              {{ botFilterLabel(b) }} · {{ b.adapter }}
+              {{ botFilterLabel(b) }}
             </option>
           </select>
           <button

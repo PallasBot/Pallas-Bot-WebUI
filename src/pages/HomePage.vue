@@ -208,43 +208,7 @@ const apiTodayTopStr = computed(() => {
   return `${name}（${c} 次）`;
 });
 
-function downsampleApiHist(pts: { at: number; total: number }[], maxBars: number): { at: number; total: number }[] {
-  if (pts.length <= maxBars) return pts;
-  const g = Math.ceil(pts.length / maxBars);
-  const out: { at: number; total: number }[] = [];
-  for (let i = 0; i < pts.length; i += g) {
-    const chunk = pts.slice(i, i + g);
-    const total = chunk.reduce((s, p) => s + p.total, 0);
-    const at = chunk[0]!.at;
-    out.push({ at, total });
-  }
-  return out;
-}
-
-const scopedApiHistBars = computed(() => {
-  const raw = scopedBotStatsRow.value?.api_calls_history ?? [];
-  const pts = downsampleApiHist(raw, 96);
-  if (!pts.length) return [] as { pct: number; tooltip: string }[];
-  const max = Math.max(...pts.map((p) => p.total), 1);
-  return pts.map((p) => ({
-    pct: p.total <= 0 ? 4 : Math.max(10, Math.round((p.total / max) * 100)),
-    tooltip: `${new Date(p.at * 1000).toLocaleString()} · ${p.total} 次`,
-  }));
-});
-
-const apiHistBucketLabel = computed(() => {
-  const sec = msgMainStats.value?.api_calls_history_bucket_sec ?? 300;
-  if (sec >= 3600 && sec % 3600 === 0) return `${sec / 3600} 小时`;
-  if (sec >= 60 && sec % 60 === 0) return `${sec / 60} 分钟`;
-  return `${sec} 秒`;
-});
-
-const apiHistAria = computed(() => {
-  const raw = scopedBotStatsRow.value?.api_calls_history ?? [];
-  if (!raw.length) return "";
-  const max = Math.max(...raw.map((p) => p.total), 0);
-  return `近 24 小时协议 API 成功调用，桶宽 ${apiHistBucketLabel.value}，峰值 ${max} 次`;
-});
+const scopedApiCallsByApi = computed(() => scopedBotStatsRow.value?.api_calls_history_by_api ?? []);
 
 const pluginRunMain = computed(() => pluginRunStatsScoped.value ?? pluginRunStats.value);
 
@@ -257,6 +221,10 @@ const scopedPluginRunRow = computed(() => {
 });
 
 const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
+
+const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
+
+const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
 
 const pluginRunTimeSamples = ref<PluginRunSample[]>([]);
 
@@ -484,35 +452,15 @@ onMounted(load);
                       <dd>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</dd>
                     </div>
                   </dl>
-                  <div
-                    v-if="scopedApiHistBars.length && !socialBusy"
-                    class="home-api-hist"
-                  >
-                    <p class="muted home-api-hist__caption">
-                      协议 API 成功调用（近 24h，{{ apiHistBucketLabel }} 桶）
-                    </p>
-                    <div
-                      class="home-api-hist__bars"
-                      role="img"
-                      :aria-label="apiHistAria"
-                    >
-                      <div
-                        v-for="(b, idx) in scopedApiHistBars"
-                        :key="idx"
-                        class="home-api-hist__barwrap"
-                        :title="b.tooltip"
-                      >
-                        <div
-                          class="home-api-hist__bar"
-                          :style="{ height: `${b.pct}%` }"
-                        />
-                      </div>
-                    </div>
-                  </div>
                   <HomePluginRunCharts
                     :plugins="scopedPluginPlugins"
                     :series="pluginRunTimeSamples"
                     :busy="socialBusy"
+                    :api-history-by-api="scopedApiCallsByApi"
+                    :api-history-bucket-sec="msgMainStats?.api_calls_history_bucket_sec"
+                    :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
+                    :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
+                    :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                   />
                 </div>
               </div>
@@ -727,37 +675,3 @@ onMounted(load);
     </div>
   </div>
 </template>
-
-<style scoped>
-.home-api-hist {
-  margin-top: 10px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border, rgba(148, 163, 184, 0.25));
-}
-.home-api-hist__caption {
-  margin: 0 0 6px;
-  font-size: 12px;
-}
-.home-api-hist__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  height: 40px;
-  overflow-x: auto;
-  padding: 2px 0 4px;
-}
-.home-api-hist__barwrap {
-  flex: 1 0 2px;
-  min-width: 2px;
-  max-width: 5px;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-}
-.home-api-hist__bar {
-  width: 100%;
-  min-height: 2px;
-  background: color-mix(in srgb, var(--accent) 75%, transparent);
-  border-radius: 2px 2px 0 0;
-}
-</style>

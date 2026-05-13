@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { PluginRunStatsRow } from "@/api/pallasTypes";
+import type { ApiCallNamedSeries, PluginMatcherNamedSeries, PluginRunStatsRow } from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
+
+const COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#4ade80", "#fbbf24", "#94a3b8", "#fb7185", "#2dd4bf"];
 
 const props = defineProps<{
   plugins: PluginRunStatsRow[];
   series: PluginRunSample[];
   busy: boolean;
+  apiHistoryByApi?: ApiCallNamedSeries[];
+  apiHistoryBucketSec?: number;
+  matcherRunsByPlugin?: PluginMatcherNamedSeries[];
+  matcherErrorsByPlugin?: PluginMatcherNamedSeries[];
+  matcherHistoryBucketSec?: number;
 }>();
 
 const topPlugins = computed(() =>
@@ -14,6 +21,69 @@ const topPlugins = computed(() =>
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
+
+function fmtBucketSec(sec: number | undefined): string {
+  const s = sec ?? 300;
+  if (s >= 3600 && s % 3600 === 0) return `${s / 3600} 小时`;
+  if (s >= 60 && s % 60 === 0) return `${s / 60} 分钟`;
+  return `${s} 秒`;
+}
+
+type Layer = { label: string; color: string; poly: string };
+
+function buildLayers(
+  rows: { label: string; points: { at: number; total: number }[] }[],
+): Layer[] | null {
+  if (!rows.length) return null;
+  let minT = Infinity;
+  let maxT = -Infinity;
+  let maxV = 0;
+  for (const row of rows) {
+    for (const p of row.points) {
+      const t = p.at * 1000;
+      minT = Math.min(minT, t);
+      maxT = Math.max(maxT, t);
+      maxV = Math.max(maxV, p.total);
+    }
+  }
+  if (!Number.isFinite(minT) || maxT <= minT) return null;
+  maxV = Math.max(maxV, 1);
+  const dr = maxT - minT;
+  const w = 100;
+  const h = 44;
+  return rows.map((row, i) => ({
+    label: row.label,
+    color: COLORS[i % COLORS.length]!,
+    poly: row.points
+      .map((p) => {
+        const x = ((p.at * 1000 - minT) / dr) * w;
+        const y = h - (p.total / maxV) * (h - 8) - 4;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" "),
+  }));
+}
+
+const apiLayers = computed(() => {
+  const rows = (props.apiHistoryByApi ?? [])
+    .filter((s) => (s.points?.length ?? 0) > 0)
+    .map((s) => ({ label: s.api, points: s.points }));
+  return buildLayers(rows);
+});
+
+const matcherRunLayers = computed(() => {
+  const rows = (props.matcherRunsByPlugin ?? [])
+    .filter((s) => (s.points?.length ?? 0) > 0)
+    .map((s) => ({ label: s.plugin, points: s.points }));
+  return buildLayers(rows);
+});
+
+const matcherErrLayers = computed(() => {
+  const rows = (props.matcherErrorsByPlugin ?? [])
+    .filter((s) => (s.points?.length ?? 0) > 0)
+    .map((s) => ({ label: s.plugin, points: s.points }));
+  return buildLayers(rows);
+});
 
 const sparkPoly = computed(() => {
   const s = props.series;
@@ -46,6 +116,10 @@ const lastLabel = computed(() => {
   if (!s.length) return "";
   return fmtTime(s[s.length - 1]!.t);
 });
+
+const showLocalSpark = computed(
+  () => !matcherRunLayers.value?.length && !!sparkPoly.value,
+);
 </script>
 
 <template>
@@ -90,46 +164,167 @@ const lastLabel = computed(() => {
       </div>
     </div>
 
-    <div class="home-plugin-charts__block">
+    <div
+      v-if="apiLayers?.length"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__caption">
+        协议 API（服务端 · 按接口）
+      </div>
+      <p class="muted home-plugin-charts__hint">
+        桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}；各曲线为单接口每桶成功次数，纵轴为全局峰值归一。
+      </p>
+      <div class="home-plugin-multi">
+        <svg
+          class="home-plugin-spark"
+          viewBox="0 0 100 48"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline
+            v-for="(ly, idx) in apiLayers"
+            :key="idx"
+            fill="none"
+            :stroke="ly.color"
+            stroke-width="1.35"
+            stroke-opacity="0.92"
+            vector-effect="non-scaling-stroke"
+            :points="ly.poly"
+          />
+        </svg>
+        <div class="home-plugin-legend">
+          <span
+            v-for="(ly, idx) in apiLayers"
+            :key="idx"
+            class="home-plugin-legend__item"
+          >
+            <i
+              class="home-plugin-legend__sw"
+              :style="{ background: ly.color }"
+            />
+            <span :title="ly.label">{{ ly.label }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="matcherRunLayers?.length"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__caption">
+        Matcher 执行（服务端 · 按插件）
+      </div>
+      <p class="muted home-plugin-charts__hint">
+        桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；每曲线为该插件 Matcher 每桶执行次数（与 runs 累计口径一致）。
+      </p>
+      <div class="home-plugin-multi">
+        <svg
+          class="home-plugin-spark"
+          viewBox="0 0 100 48"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline
+            v-for="(ly, idx) in matcherRunLayers"
+            :key="idx"
+            fill="none"
+            :stroke="ly.color"
+            stroke-width="1.35"
+            stroke-opacity="0.92"
+            vector-effect="non-scaling-stroke"
+            :points="ly.poly"
+          />
+        </svg>
+        <div class="home-plugin-legend">
+          <span
+            v-for="(ly, idx) in matcherRunLayers"
+            :key="idx"
+            class="home-plugin-legend__item"
+          >
+            <i
+              class="home-plugin-legend__sw"
+              :style="{ background: ly.color }"
+            />
+            <span :title="ly.label">{{ ly.label }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="matcherErrLayers?.length"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__caption">
+        Matcher 异常（服务端 · 按插件）
+      </div>
+      <p class="muted home-plugin-charts__hint">
+        与上同桶；仅统计 run 结束时带 exception 的次数。
+      </p>
+      <div class="home-plugin-multi">
+        <svg
+          class="home-plugin-spark"
+          viewBox="0 0 100 48"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline
+            v-for="(ly, idx) in matcherErrLayers"
+            :key="idx"
+            fill="none"
+            :stroke="ly.color"
+            stroke-width="1.35"
+            stroke-opacity="0.92"
+            vector-effect="non-scaling-stroke"
+            :points="ly.poly"
+          />
+        </svg>
+        <div class="home-plugin-legend">
+          <span
+            v-for="(ly, idx) in matcherErrLayers"
+            :key="idx"
+            class="home-plugin-legend__item"
+          >
+            <i
+              class="home-plugin-legend__sw"
+              :style="{ background: ly.color }"
+            />
+            <span :title="ly.label">{{ ly.label }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showLocalSpark"
+      class="home-plugin-charts__block"
+    >
       <div class="home-plugin-charts__caption">
         Matcher 今日累计（本机刷新采样）
       </div>
       <p class="muted home-plugin-charts__hint">
-        在总览点击「刷新」或切换 Bot 时会记录快照；用于观察趋势，非服务端持久化。
+        无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
       </p>
-      <p
-        v-if="busy"
-        class="muted home-plugin-charts__empty"
-      >
-        加载中…
-      </p>
-      <template v-else-if="sparkPoly">
-        <div class="home-plugin-spark-wrap">
-          <svg
-            class="home-plugin-spark"
-            viewBox="0 0 100 48"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <polyline
-              fill="none"
-              stroke="var(--accent)"
-              stroke-width="1.4"
-              vector-effect="non-scaling-stroke"
-              :points="sparkPoly"
-            />
-          </svg>
-          <div class="home-plugin-spark-meta muted">
-            <span v-if="series.length">末次 {{ lastLabel }}</span>
-          </div>
+      <div class="home-plugin-spark-wrap">
+        <svg
+          class="home-plugin-spark"
+          viewBox="0 0 100 48"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <polyline
+            fill="none"
+            stroke="var(--accent)"
+            stroke-width="1.4"
+            vector-effect="non-scaling-stroke"
+            :points="sparkPoly"
+          />
+        </svg>
+        <div class="home-plugin-spark-meta muted">
+          <span v-if="series.length">末次 {{ lastLabel }}</span>
         </div>
-      </template>
-      <p
-        v-else
-        class="muted home-plugin-charts__empty"
-      >
-        至少成功刷新 2 次后可显示累计折线。
-      </p>
+      </div>
     </div>
   </div>
 </template>
@@ -200,7 +395,7 @@ const lastLabel = computed(() => {
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.home-plugin-spark-wrap {
+.home-plugin-multi {
   border: 1px solid var(--border);
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
@@ -210,6 +405,37 @@ const lastLabel = computed(() => {
   width: 100%;
   height: 72px;
   display: block;
+}
+.home-plugin-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.home-plugin-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 140px;
+}
+.home-plugin-legend__item span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-plugin-legend__sw {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.home-plugin-spark-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  background: var(--bg-elev);
+  padding: 8px 10px 6px;
 }
 .home-plugin-spark-meta {
   font-size: 11px;

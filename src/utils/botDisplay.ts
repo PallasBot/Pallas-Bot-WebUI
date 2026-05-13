@@ -21,10 +21,12 @@ export function visibleBots<T extends { adapter: string }>(rows: T[] | undefined
  * 不过滤 OneBot V11（NapCat 等仍使用该适配器名）；未在线的账号用占位行展示。
  */
 export function botPickerRowsFromInstances(inst: InstancesData | null | undefined): BotRow[] {
+  const onlineSelfIds = new Set<string>();
   const bySelf = new Map<string, BotRow>();
   for (const b of inst?.nonebot_bots ?? []) {
     const sid = String(b.self_id ?? "").trim();
     if (!sid || sid === "?") continue;
+    onlineSelfIds.add(sid);
     bySelf.set(sid, { ...b, self_id: sid });
   }
   for (const c of inst?.db_bot_configs ?? []) {
@@ -39,6 +41,9 @@ export function botPickerRowsFromInstances(inst: InstancesData | null | undefine
   const profiles = inst?.bot_profiles ?? {};
   const rows = [...bySelf.values()];
   rows.sort((a, b) => {
+    const oa = onlineSelfIds.has(a.self_id) ? 1 : 0;
+    const ob = onlineSelfIds.has(b.self_id) ? 1 : 0;
+    if (oa !== ob) return ob - oa;
     const na = (profiles[a.self_id]?.nickname?.trim() || "").toLowerCase();
     const nb = (profiles[b.self_id]?.nickname?.trim() || "").toLowerCase();
     const cmp = na.localeCompare(nb, "zh-CN");

@@ -1695,12 +1695,14 @@ html[data-theme="light"] .bot-config-edit {
   border-color: rgba(125, 211, 252, 0.5);
 }
 .btn--danger {
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.35);
-  color: #fecaca;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: rgba(252, 165, 165, 0.55);
+  color: #fff;
+  box-shadow: 0 1px 6px rgba(220, 38, 38, 0.35);
 }
 .btn--danger:hover:not(:disabled) {
-  background: rgba(248, 113, 113, 0.2);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-color: rgba(254, 202, 202, 0.75);
 }
 
 .inp,
