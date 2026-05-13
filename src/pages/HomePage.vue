@@ -43,6 +43,8 @@ const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
 const socialBusy = ref(false);
+/** 首屏请求完成前展示骨架，避免与「暂无 Bot」混淆 */
+const homeReady = ref(false);
 
 const consoleRoot = consolePublicRoot();
 const botBase = ref<string | null>(null);
@@ -312,6 +314,8 @@ async function load() {
     await refreshSelectedBotDetails();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    homeReady.value = true;
   }
 }
 
@@ -352,14 +356,19 @@ onMounted(load);
           <div class="panel__hd home-account-panel__hd">
             <div class="home-account-panel__hd-main">
               <h2 class="panel__title">账户信息</h2>
+              <span
+                v-if="!homeReady"
+                class="home-account-panel__loading-hint muted"
+              >加载中…</span>
               <RouterLink
+                v-else
                 class="link-quiet"
                 to="/instances"
                 style="font-size: 13px"
               >连接详情 →</RouterLink>
             </div>
             <div
-              v-if="sortedDbBots.length"
+              v-if="homeReady && sortedDbBots.length"
               class="home-account-bot-pick"
             >
               <label
@@ -382,8 +391,37 @@ onMounted(load);
             </div>
           </div>
           <div class="panel__bd">
+            <div
+              v-if="!homeReady"
+              class="home-account-skeleton"
+              aria-busy="true"
+              aria-label="加载账户信息"
+            >
+              <div class="home-account-skeleton__split">
+                <div class="home-account-skeleton__hero">
+                  <div class="home-account-skeleton__avatar skel-pulse" />
+                  <div class="home-account-skeleton__lines">
+                    <div class="home-account-skeleton__bar skel-pulse home-account-skeleton__bar--lg" />
+                    <div class="home-account-skeleton__bar skel-pulse home-account-skeleton__bar--md" />
+                    <div class="home-account-skeleton__pair">
+                      <div class="home-account-skeleton__bar skel-pulse" />
+                      <div class="home-account-skeleton__bar skel-pulse" />
+                    </div>
+                  </div>
+                </div>
+                <div class="home-account-skeleton__right">
+                  <div class="home-account-skeleton__stats">
+                    <div class="home-account-skeleton__bar skel-pulse" />
+                    <div class="home-account-skeleton__bar skel-pulse" />
+                    <div class="home-account-skeleton__bar skel-pulse" />
+                    <div class="home-account-skeleton__bar skel-pulse" />
+                  </div>
+                  <div class="home-account-skeleton__chart skel-pulse" />
+                </div>
+              </div>
+            </div>
             <p
-              v-if="!sortedDbBots.length"
+              v-else-if="!sortedDbBots.length"
               class="muted"
               style="margin: 0"
             >

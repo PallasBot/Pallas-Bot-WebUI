@@ -31,7 +31,7 @@ export function installRouteLoading(router: Router): void {
       initialHideTimer = setTimeout(() => {
         initialShellLoading.value = false;
         initialHideTimer = undefined;
-      }, 260);
+      }, 380);
     }
 
     if (routeNavLoading.value) {
