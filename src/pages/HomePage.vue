@@ -351,11 +351,17 @@ const scopedBotStatsRow = computed(() => {
 
 type ThroughputBarRect = { x: number; y: number; w: number; h: number };
 
-type ThroughputBarBucket =
-  | { recv: ThroughputBarRect; sent: ThroughputBarRect }
-  | { api: ThroughputBarRect };
+type ThroughputBarBucket = { recv: ThroughputBarRect; sent: ThroughputBarRect };
 
 const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.message_traffic_history ?? []);
+
+/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾） */
+const THROUGHPUT_BAR_VISIBLE_BUCKETS = 15;
+
+function sliceThroughputBarPoints<T extends { at: number }>(arr: T[]): T[] {
+  if (arr.length <= THROUGHPUT_BAR_VISIBLE_BUCKETS) return arr;
+  return arr.slice(-THROUGHPUT_BAR_VISIBLE_BUCKETS);
+}
 
 const throughputSparklineMode = computed<"message" | "api" | null>(() => {
   if (socialBusy.value) return null;
@@ -364,53 +370,61 @@ const throughputSparklineMode = computed<"message" | "api" | null>(() => {
   return pts?.length ? "api" : null;
 });
 
-const throughputBarBuckets = computed((): ThroughputBarBucket[] => {
-  if (socialBusy.value) return [];
-  const mode = throughputSparklineMode.value;
+const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
+  if (socialBusy.value || throughputSparklineMode.value !== "message") return [];
   const W = 100;
   const H = 30;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
 
-  if (mode === "message") {
-    const pts = scopedMessageTrafficHistory.value;
-    if (!pts.length) return [];
-    const recvVals = pts.map((p) => Number(p.received ?? 0));
-    const sentVals = pts.map((p) => Number(p.sent ?? 0));
-    const max = Math.max(...recvVals, ...sentVals, 1);
-    const n = pts.length;
-    const slot = (W - 2 * pad) / n;
-    return pts.map((_, i) => {
-      const r = recvVals[i]! / max;
-      const s = sentVals[i]! / max;
-      const bw = slot * 0.34;
-      const gap = slot * 0.08;
-      const left = pad + i * slot + (slot - 2 * bw - gap) / 2;
-      const hr = Math.max(chartH * r, 0.4);
-      const hs = Math.max(chartH * s, 0.4);
-      return {
-        recv: { x: left, y: bottom - hr, w: bw, h: hr },
-        sent: { x: left + bw + gap, y: bottom - hs, w: bw, h: hs },
-      };
-    });
+  const pts = sliceThroughputBarPoints(scopedMessageTrafficHistory.value);
+  if (!pts.length) return [];
+  const recvVals = pts.map((p) => Number(p.received ?? 0));
+  const sentVals = pts.map((p) => Number(p.sent ?? 0));
+  const max = Math.max(...recvVals, ...sentVals, 1);
+  const n = pts.length;
+  const slot = (W - 2 * pad) / n;
+  return pts.map((_, i) => {
+    const r = recvVals[i]! / max;
+    const s = sentVals[i]! / max;
+    const bw = slot * 0.34;
+    const gap = slot * 0.08;
+    const left = pad + i * slot + (slot - 2 * bw - gap) / 2;
+    const hr = Math.max(chartH * r, 0.4);
+    const hs = Math.max(chartH * s, 0.4);
+    return {
+      recv: { x: left, y: bottom - hr, w: bw, h: hr },
+      sent: { x: left + bw + gap, y: bottom - hs, w: bw, h: hs },
+    };
+  });
+});
+
+/** API 吞吐迷你图：折线（与消息柱图同 viewBox） */
+const throughputApiLineModel = computed((): { polyline: string; dot: { x: number; y: number } | null } => {
+  const empty = { polyline: "", dot: null as { x: number; y: number } | null };
+  if (socialBusy.value || throughputSparklineMode.value !== "api") return empty;
+  const pts = sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
+  if (!pts.length) return empty;
+  const W = 100;
+  const H = 30;
+  const pad = 1.5;
+  const bottom = H - pad;
+  const chartH = H - 2 * pad;
+  const vals = pts.map((p) => Number(p.total ?? 0));
+  const max = Math.max(...vals, 1);
+  const n = vals.length;
+  const slot = (W - 2 * pad) / n;
+  const xy: { x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = pad + i * slot + slot / 2;
+    const y = bottom - (vals[i]! / max) * chartH;
+    xy.push({ x, y });
   }
-  if (mode === "api") {
-    const pts = scopedBotStatsRow.value?.api_calls_history ?? [];
-    if (!pts.length) return [];
-    const vals = pts.map((p) => Number(p.total ?? 0));
-    const max = Math.max(...vals, 1);
-    const n = vals.length;
-    const slot = (W - 2 * pad) / n;
-    return vals.map((_, i) => {
-      const v = vals[i]!;
-      const barH = Math.max((v / max) * chartH, 0.4);
-      const bw = slot * 0.52;
-      const x = pad + i * slot + (slot - bw) / 2;
-      return { api: { x, y: bottom - barH, w: bw, h: barH } };
-    });
+  if (xy.length === 1) {
+    return { polyline: "", dot: xy[0]! };
   }
-  return [];
+  return { polyline: xy.map((p) => `${p.x},${p.y}`).join(" "), dot: null };
 });
 
 type ThroughputBarTick = { leftPct: number; label: string };
@@ -448,8 +462,8 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   if (mode !== "message" && mode !== "api") return [];
   const pts =
     mode === "message"
-      ? scopedMessageTrafficHistory.value
-      : scopedBotStatsRow.value?.api_calls_history ?? [];
+      ? sliceThroughputBarPoints(scopedMessageTrafficHistory.value)
+      : sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
   if (!pts.length) return [];
   const n = pts.length;
   const pad = 1.5;
@@ -497,7 +511,11 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   return ticks;
 });
 
-const showThroughputBars = computed(() => throughputBarBuckets.value.length > 0);
+const showThroughputMiniChart = computed(
+  () =>
+    throughputMessageBarBuckets.value.length > 0 ||
+    Boolean(throughputApiLineModel.value.polyline || throughputApiLineModel.value.dot),
+);
 
 const apiTodayTotalStr = computed(() => {
   const r = scopedBotStatsRow.value;
@@ -801,23 +819,23 @@ onMounted(load);
                             <div class="home-account-hero__pending-title home-account-hero__pending-title--friend">好友申请</div>
                             <div class="home-account-hero__pending-val">
                               <template v-if="socialBusy">…</template>
-                              <template v-else>{{ friendPendingApplyDisplay }} 条<span class="home-account-hero__pending-tail">待同意</span></template>
+                              <RouterLink
+                                v-else
+                                class="home-account-hero__pending-count-link"
+                                to="/friends-groups#friends-groups-friend-requests"
+                              >{{ friendPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
-                            <RouterLink
-                              class="home-account-hero__pending-cta home-account-hero__pending-cta--friend-mobile btn btn--primary"
-                              to="/friends-groups#friends-groups-friend-requests"
-                            >处理审批</RouterLink>
                           </div>
                           <div class="home-account-hero__pending-card">
                             <div class="home-account-hero__pending-title home-account-hero__pending-title--group">入群邀请</div>
                             <div class="home-account-hero__pending-val">
                               <template v-if="socialBusy">…</template>
-                              <template v-else>{{ groupPendingApplyDisplay }} 条<span class="home-account-hero__pending-tail">待同意</span></template>
+                              <RouterLink
+                                v-else
+                                class="home-account-hero__pending-count-link"
+                                to="/friends-groups#friends-groups-group-requests"
+                              >{{ groupPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
-                            <RouterLink
-                              class="home-account-hero__pending-cta btn btn--primary"
-                              to="/friends-groups#friends-groups-group-requests"
-                            >处理审批</RouterLink>
                           </div>
                         </aside>
                         <div class="home-account-hero__detail-main">
@@ -891,7 +909,7 @@ onMounted(load);
                         {{ throughputHeadNote }}
                       </p>
                       <div
-                        v-if="showThroughputBars"
+                        v-if="showThroughputMiniChart"
                         class="home-account-metrics__bars-wrap"
                       >
                         <svg
@@ -901,11 +919,11 @@ onMounted(load);
                           overflow="hidden"
                           aria-hidden="true"
                         >
-                          <g
-                            v-for="(b, i) in throughputBarBuckets"
-                            :key="i"
-                          >
-                            <template v-if="'recv' in b && 'sent' in b">
+                          <template v-if="throughputSparklineMode === 'message'">
+                            <g
+                              v-for="(b, i) in throughputMessageBarBuckets"
+                              :key="i"
+                            >
                               <rect
                                 class="home-account-metrics__bar home-account-metrics__bar--recv"
                                 :x="b.recv.x"
@@ -922,17 +940,26 @@ onMounted(load);
                                 :height="b.sent.h"
                                 rx="0.5"
                               />
-                            </template>
-                            <rect
-                              v-else-if="'api' in b"
-                              class="home-account-metrics__bar home-account-metrics__bar--api"
-                              :x="b.api.x"
-                              :y="b.api.y"
-                              :width="b.api.w"
-                              :height="b.api.h"
-                              rx="0.5"
+                            </g>
+                          </template>
+                          <template v-else-if="throughputSparklineMode === 'api'">
+                            <polyline
+                              v-if="throughputApiLineModel.polyline"
+                              class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
+                              fill="none"
+                              stroke-width="1.35"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              :points="throughputApiLineModel.polyline"
                             />
-                          </g>
+                            <circle
+                              v-else-if="throughputApiLineModel.dot"
+                              class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
+                              :cx="throughputApiLineModel.dot.x"
+                              :cy="throughputApiLineModel.dot.y"
+                              r="2"
+                            />
+                          </template>
                         </svg>
                         <div class="home-account-metrics__bars-ticks muted">
                           <span
