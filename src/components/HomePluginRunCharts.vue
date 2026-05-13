@@ -52,6 +52,27 @@ function saveChartPanel(id: ChartPanelId) {
   }
 }
 
+const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
+
+function loadChartsDrawExpanded(): boolean {
+  try {
+    const v = localStorage.getItem(CHART_DRAW_EXPANDED_KEY);
+    if (v === "0") return false;
+    if (v === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+function saveChartsDrawExpanded(open: boolean) {
+  try {
+    localStorage.setItem(CHART_DRAW_EXPANDED_KEY, open ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 type SelState = { api: string[]; matcher: string[]; matcherErr: string[] };
 
 function loadSel(): SelState {
@@ -398,6 +419,12 @@ const matcherErrCandidates = computed(() =>
 
 const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
+const chartsDrawExpanded = ref(loadChartsDrawExpanded());
+
+function toggleChartsDraw() {
+  chartsDrawExpanded.value = !chartsDrawExpanded.value;
+  saveChartsDrawExpanded(chartsDrawExpanded.value);
+}
 
 const panelAvailability = computed(() => ({
   plugins_top: true,
@@ -494,26 +521,46 @@ function pluginBarLabel(name: string): string {
 <template>
   <div class="home-plugin-charts">
     <div class="home-plugin-charts__toolbar">
-      <label
-        class="home-plugin-charts__toolbar-label muted"
-        for="home-chart-panel-sel"
-      ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表视图</label>
-      <select
-        id="home-chart-panel-sel"
-        v-model="chartPanel"
-        class="sel home-plugin-charts__pick"
-      >
-        <option
-          v-for="o in panelOptions"
-          :key="o.id"
-          :value="o.id"
-          :disabled="!o.available"
+      <div class="home-plugin-charts__toolbar-main">
+        <label
+          class="home-plugin-charts__toolbar-label muted"
+          for="home-chart-panel-sel"
+        ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表视图</label>
+        <select
+          id="home-chart-panel-sel"
+          v-model="chartPanel"
+          class="sel home-plugin-charts__pick"
         >
-          {{ o.label }}
-        </option>
-      </select>
+          <option
+            v-for="o in panelOptions"
+            :key="o.id"
+            :value="o.id"
+            :disabled="!o.available"
+          >
+            {{ o.label }}
+          </option>
+        </select>
+      </div>
+      <button
+        type="button"
+        class="home-plugin-charts__draw-toggle"
+        :aria-expanded="chartsDrawExpanded"
+        aria-controls="home-plugin-charts-draw"
+        @click="toggleChartsDraw"
+      >
+        <span
+          class="home-plugin-charts__draw-toggle-ico"
+          aria-hidden="true"
+        >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
+        <span>{{ chartsDrawExpanded ? "收起绘图" : "展开绘图" }}</span>
+      </button>
     </div>
 
+    <div
+      id="home-plugin-charts-draw"
+      v-show="chartsDrawExpanded"
+      class="home-plugin-charts__draw"
+    >
     <div
       v-if="chartPanel === 'plugins_top'"
       class="home-plugin-charts__block"
@@ -1160,6 +1207,7 @@ function pluginBarLabel(name: string): string {
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -1173,8 +1221,55 @@ function pluginBarLabel(name: string): string {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 10px 14px;
   padding: 2px 0 4px;
+}
+.home-plugin-charts__toolbar-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  flex: 1;
+  min-width: 0;
+}
+.home-plugin-charts__draw-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--control-bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition:
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+.home-plugin-charts__draw-toggle:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--bg-card-hover);
+}
+.home-plugin-charts__draw-toggle-ico {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.home-plugin-charts__draw {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 .home-plugin-charts__toolbar-label {
   display: inline-flex;
