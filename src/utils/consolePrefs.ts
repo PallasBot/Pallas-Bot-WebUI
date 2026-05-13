@@ -6,12 +6,18 @@ export type ThemeMode = "dark" | "light" | "system";
 export type RadiusMode = "tight" | "default" | "round";
 export type DensityMode = "comfortable" | "compact";
 
+export type DataViewMode = "table" | "cards";
+
 export interface ConsolePrefsState {
   theme: ThemeMode;
   radius: RadiusMode;
   density: DensityMode;
   /** 桌面宽度下是否收起左侧主导航（仅图标条） */
   sidebarCollapsed: boolean;
+  /** 实例页：数据库 Bot 配置表格/卡片默认视图 */
+  instancesBotView: DataViewMode;
+  /** 实例页：协议管理表格/卡片默认视图 */
+  instancesProtoView: DataViewMode;
 }
 
 const defaults: ConsolePrefsState = {
@@ -19,6 +25,8 @@ const defaults: ConsolePrefsState = {
   radius: "default",
   density: "comfortable",
   sidebarCollapsed: false,
+  instancesBotView: "table",
+  instancesProtoView: "table",
 };
 
 function load(): ConsolePrefsState {
@@ -26,7 +34,14 @@ function load(): ConsolePrefsState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...defaults };
     const parsed = JSON.parse(raw) as Partial<ConsolePrefsState>;
-    return { ...defaults, ...parsed };
+    const merged = { ...defaults, ...parsed };
+    if (merged.instancesBotView !== "table" && merged.instancesBotView !== "cards") {
+      merged.instancesBotView = defaults.instancesBotView;
+    }
+    if (merged.instancesProtoView !== "table" && merged.instancesProtoView !== "cards") {
+      merged.instancesProtoView = defaults.instancesProtoView;
+    }
+    return merged;
   } catch {
     return { ...defaults };
   }

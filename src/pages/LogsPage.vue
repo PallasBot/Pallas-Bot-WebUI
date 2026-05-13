@@ -188,10 +188,10 @@ function lineClass(lv: LogEntry["level"]): string {
               :key="row.id"
               :class="lineClass(row.level)"
             >
-              <span class="log-line__time">{{ row.time }}</span>
-              <span>
+              <div class="log-line__meta">
+                <span class="log-line__time">{{ row.time }}</span>
                 <span
-                  class="badge"
+                  class="badge log-line__badge"
                   :class="{
                     'badge--ok':
                       row.level === 'info' || row.level === 'success' || row.level === 'debug',
@@ -199,9 +199,9 @@ function lineClass(lv: LogEntry["level"]): string {
                     'badge--err': row.level === 'error',
                   }"
                 >{{ row.level }}</span>
-              </span>
-              <span class="muted">{{ row.scope }}</span>
-              <span class="log-line__msg">{{ row.message }}</span>
+                <span class="log-line__scope">{{ row.scope }}</span>
+              </div>
+              <div class="log-line__msg">{{ row.message }}</div>
             </div>
           </div>
         </div>

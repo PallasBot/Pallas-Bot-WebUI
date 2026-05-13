@@ -379,12 +379,8 @@ onMounted(load);
           >好友/群颗粒配置</RouterLink>
           <RouterLink
             class="btn"
-            to="/friends"
-          >好友管理</RouterLink>
-          <RouterLink
-            class="btn"
-            to="/groups"
-          >群管理</RouterLink>
+            to="/friends-groups"
+          >好友与群</RouterLink>
         </div>
       </div>
     </div>

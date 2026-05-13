@@ -12,8 +12,7 @@ import DatabasePage from "@/pages/DatabasePage.vue";
 import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import SecurityPage from "@/pages/SecurityPage.vue";
-import FriendsPage from "@/pages/FriendsPage.vue";
-import GroupsPage from "@/pages/GroupsPage.vue";
+import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
 
 const router = createRouter({
@@ -66,12 +65,13 @@ const router = createRouter({
           meta: { title: "协议端管理", description: "协议控制台入口与策略" },
         },
         {
-          path: "friends",
-          name: "friends",
-          component: FriendsPage,
-          meta: { title: "好友", description: "关系链与审批" },
+          path: "friends-groups",
+          name: "friends-groups",
+          component: FriendsGroupsPage,
+          meta: { title: "好友与群", description: "列表与好友/入群审批" },
         },
-        { path: "groups", name: "groups", component: GroupsPage, meta: { title: "群", description: "群资料与入群审批" } },
+        { path: "friends", redirect: "/friends-groups" },
+        { path: "groups", redirect: "/friends-groups" },
         {
           path: "bot-social-config",
           name: "bot-social-config",
