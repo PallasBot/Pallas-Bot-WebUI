@@ -45,9 +45,6 @@ const shellClass = computed(() => ({
   "shell--sidebar-collapsed": consolePrefs.sidebarCollapsed,
 }));
 
-const pageTitle = computed(() => (route.meta.title as string | undefined) || "");
-const pageDesc = computed(() => (route.meta.description as string | undefined) || "");
-
 function navCollapsedLabel(collapsed: boolean, label: string) {
   return collapsed ? label : undefined;
 }
@@ -148,11 +145,42 @@ onUnmounted(() => {
           </button>
         </RouterLink>
       </nav>
-      <footer class="shell__foot">
-        控制台与牛牛通过
-        <code style="font-size: 10px; color: var(--text-muted)">/pallas/api</code>
-        通信
-      </footer>
+      <div class="shell__sidebar-bottom">
+        <div
+          class="shell__sidebar-theme"
+          role="group"
+          aria-label="颜色模式"
+        >
+          <div class="shell-toolbar__seg shell-toolbar__seg--compact shell-toolbar__seg--sidebar">
+            <button
+              type="button"
+              :class="{ 'is-on': consolePrefs.theme === 'dark' }"
+              @click="setTheme('dark')"
+            >
+              深色
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-on': consolePrefs.theme === 'light' }"
+              @click="setTheme('light')"
+            >
+              浅色
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-on': consolePrefs.theme === 'system' }"
+              @click="setTheme('system')"
+            >
+              系统
+            </button>
+          </div>
+        </div>
+        <footer class="shell__foot">
+          控制台与牛牛通过
+          <code style="font-size: 10px; color: var(--text-muted)">/pallas/api</code>
+          通信
+        </footer>
+      </div>
     </aside>
 
     <Teleport to="body">
@@ -231,44 +259,10 @@ onUnmounted(() => {
               </button>
             </RouterLink>
           </nav>
-        </aside>
-        <div
-          class="shell-mobile-nav__backdrop"
-          aria-hidden="true"
-          @click="closeMobileNav"
-        />
-      </div>
-    </Teleport>
-
-    <div class="shell__main">
-      <div class="shell__main-inner">
-        <header class="shell-pagebar">
-          <button
-            v-if="isNarrow"
-            type="button"
-            class="shell-pagebar__menu"
-            aria-label="打开导航菜单"
-            aria-controls="shell-mobile-nav-panel"
-            @click="mobileNavOpen = true"
-          >
-            ☰
-          </button>
-          <div class="shell-pagebar__titles">
-            <h1 class="shell-pagebar__h">{{ pageTitle }}</h1>
-            <p
-              v-if="pageDesc"
-              class="shell-pagebar__sub"
-            >
-              {{ pageDesc }}
-            </p>
-          </div>
-          <div
-            class="shell-pagebar__tools"
-            role="toolbar"
-            aria-label="主题与偏好"
-          >
+          <div class="shell-mobile-nav__theme">
+            <span class="shell-mobile-nav__theme-label">颜色模式</span>
             <div
-              class="shell-toolbar__seg"
+              class="shell-toolbar__seg shell-toolbar__seg--compact"
               role="group"
               aria-label="颜色模式"
             >
@@ -291,18 +285,34 @@ onUnmounted(() => {
                 :class="{ 'is-on': consolePrefs.theme === 'system' }"
                 @click="setTheme('system')"
               >
-                跟随系统
+                系统
               </button>
             </div>
-            <RouterLink
-              class="shell-toolbar__link"
-              to="/preferences"
-            >
-              外观偏好 →
-            </RouterLink>
           </div>
-        </header>
+        </aside>
+        <div
+          class="shell-mobile-nav__backdrop"
+          aria-hidden="true"
+          @click="closeMobileNav"
+        />
+      </div>
+    </Teleport>
 
+    <Teleport to="body">
+      <button
+        v-if="isNarrow"
+        type="button"
+        class="shell__narrow-open"
+        aria-label="打开导航菜单"
+        aria-controls="shell-mobile-nav-panel"
+        @click="mobileNavOpen = true"
+      >
+        ☰
+      </button>
+    </Teleport>
+
+    <div class="shell__main">
+      <div class="shell__main-inner">
         <router-view v-slot="{ Component, route: r }">
           <transition
             name="shell-page"
