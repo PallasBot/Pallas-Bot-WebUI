@@ -168,14 +168,12 @@ const matchedNapcatRow = computed((): NapcatAccountRow | null => {
   return rows.find((r) => napcatAccountMatchesBot(r, acc)) ?? null;
 });
 
-const accountProtocolSummary = computed(() => {
-  const plug = (napcatSnap.value?.plugin ?? "").trim() || "—";
+const accountAdapterDisplay = computed(() => {
   const acc = selectedAccount.value;
-  const ad =
-    acc != null
-      ? (instances.value?.bot_profiles?.[String(acc)]?.adapter ?? "").toString().trim() || "—"
-      : "—";
-  return `${plug} · ${ad}`;
+  if (acc == null) return "—";
+  const raw = instances.value?.bot_profiles?.[String(acc)]?.adapter;
+  const ad = raw != null ? String(raw).trim() : "";
+  return ad || "—";
 });
 
 const nativeProtocolWebUiHref = computed(() => {
@@ -477,8 +475,8 @@ onMounted(load);
                       <img
                         :src="qqAvatarUrl(selectedAccount)"
                         alt=""
-                        width="72"
-                        height="72"
+                        width="64"
+                        height="64"
                         decoding="async"
                         referrerpolicy="no-referrer"
                         @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
@@ -494,7 +492,7 @@ onMounted(load);
                       </div>
                       <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
                       <p class="home-account-hero__proto muted">
-                        协议 · {{ accountProtocolSummary }}
+                        协议 · {{ accountAdapterDisplay }}
                       </p>
                       <div class="home-account-hero__links">
                         <a
@@ -511,10 +509,6 @@ onMounted(load);
                           target="_blank"
                           rel="noopener noreferrer"
                         >协议管理页</a>
-                        <RouterLink
-                          class="home-account-hero__link"
-                          to="/protocol"
-                        >协议端（控制台）</RouterLink>
                       </div>
                       <dl class="home-account-dl home-account-dl--tight">
                         <div>

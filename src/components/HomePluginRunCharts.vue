@@ -497,7 +497,7 @@ function pluginBarLabel(name: string): string {
       <label
         class="home-plugin-charts__toolbar-label muted"
         for="home-chart-panel-sel"
-      >图表视图</label>
+      ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表视图</label>
       <select
         id="home-chart-panel-sel"
         v-model="chartPanel"
@@ -1177,6 +1177,9 @@ function pluginBarLabel(name: string): string {
   padding: 2px 0 4px;
 }
 .home-plugin-charts__toolbar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
