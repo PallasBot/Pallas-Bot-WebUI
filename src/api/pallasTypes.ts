@@ -37,11 +37,23 @@ export interface SystemData {
   };
 }
 
+/** GET /message-stats 中各 Bot 的协议 API 调用时间序列（与 today_api_calls 同一排除口径） */
+export interface ApiCallHistoryPoint {
+  /** 时间桶起点（Unix 秒，本地时区展示由前端决定） */
+  at: number;
+  /** 该桶内成功调用次数 */
+  total: number;
+}
+
 export interface MessageStatsData {
   total_sent: number;
   total_received: number;
   today_sent?: number;
   today_received?: number;
+  /** 与 bots[].api_calls_history 对齐的桶宽（秒） */
+  api_calls_history_bucket_sec?: number;
+  /** 最多保留桶数（≈ 覆盖时长 / bucket_sec） */
+  api_calls_history_max_buckets?: number;
   bots: Array<{
     self_id: string;
     connection_key: string;
@@ -54,6 +66,8 @@ export interface MessageStatsData {
     /** 今日调用次数最多的接口名 */
     today_top_api?: string;
     today_top_api_count?: number;
+    /** 近期成功协议 API 调用序列（进程内，重启清空） */
+    api_calls_history?: ApiCallHistoryPoint[];
   }>;
 }
 

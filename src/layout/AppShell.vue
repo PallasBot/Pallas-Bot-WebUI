@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { initialShellLoading, routeNavLoading } from "@/utils/routeLoading";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const nav = [
@@ -27,6 +28,13 @@ const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
   "shell__main-inner--logs": route.name === "logs",
 }));
+
+const pageLoadingVisible = computed(() => routeNavLoading.value || initialShellLoading.value);
+
+const pageLoadingTitle = computed(() => {
+  const t = route.meta?.title;
+  return typeof t === "string" && t.trim() ? t.trim() : "页面";
+});
 
 function updateNarrow() {
   isNarrow.value = window.matchMedia("(max-width: 960px)").matches;
@@ -314,6 +322,25 @@ onUnmounted(() => {
     </Teleport>
 
     <div class="shell__main">
+      <div
+        v-if="pageLoadingVisible"
+        class="shell-page-loading"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div class="shell-page-loading__card">
+          <div
+            class="shell-page-loading__spinner"
+            aria-hidden="true"
+          />
+          <p class="shell-page-loading__title">
+            加载中
+          </p>
+          <p class="shell-page-loading__route muted">
+            {{ pageLoadingTitle }}
+          </p>
+        </div>
+      </div>
       <div :class="mainInnerClass">
         <router-view v-slot="{ Component, route: r }">
           <transition
