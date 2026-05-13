@@ -266,17 +266,9 @@ const throughputTodayCaption = computed(() => {
   return `本日收 ${tr ?? "—"} · 发 ${ts ?? "—"}`;
 });
 
-const showApiSparkline = computed(() => {
-  if (socialBusy.value) return false;
-  const pts = scopedBotStatsRow.value?.api_calls_history;
-  return !!pts?.length;
-});
-
-const apiSparklinePolylinePoints = computed(() => {
-  const pts = scopedBotStatsRow.value?.api_calls_history;
-  if (!pts?.length) return "";
-  const vals = pts.map((p) => p.total);
-  const max = Math.max(...vals, 1);
+function buildThroughputSparkPolyline(vals: number[], maxVal: number): string {
+  if (!vals.length) return "";
+  const max = Math.max(maxVal, 1);
   const n = vals.length;
   const w = 100;
   const pad = 1;
@@ -293,6 +285,50 @@ const apiSparklinePolylinePoints = computed(() => {
       return `${x},${y}`;
     })
     .join(" ");
+}
+
+const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.message_traffic_history ?? []);
+
+const throughputSparklineMode = computed<"message" | "api" | null>(() => {
+  if (socialBusy.value) return null;
+  if (scopedMessageTrafficHistory.value.length) return "message";
+  const pts = scopedBotStatsRow.value?.api_calls_history;
+  return pts?.length ? "api" : null;
+});
+
+const showThroughputSparkline = computed(() => throughputSparklineMode.value != null);
+
+const messageTrafficSparkBundle = computed(() => {
+  const pts = scopedMessageTrafficHistory.value;
+  if (!pts.length) return null;
+  const recvVals = pts.map((p) => Number(p.received ?? 0));
+  const sentVals = pts.map((p) => Number(p.sent ?? 0));
+  const max = Math.max(...recvVals, ...sentVals, 1);
+  return {
+    recvPoly: buildThroughputSparkPolyline(recvVals, max),
+    sentPoly: buildThroughputSparkPolyline(sentVals, max),
+  };
+});
+
+const apiSparklinePolylinePoints = computed(() => {
+  const pts = scopedBotStatsRow.value?.api_calls_history;
+  if (!pts?.length) return "";
+  const vals = pts.map((p) => p.total);
+  const max = Math.max(...vals, 1);
+  return buildThroughputSparkPolyline(vals, max);
+});
+
+const throughputSparklineNote = computed(() => {
+  const mode = throughputSparklineMode.value;
+  if (mode === "message") {
+    const sec = msgMainStats.value?.message_traffic_history_bucket_sec;
+    const label = sec != null ? `${sec}` : "时间桶";
+    return `青/紫折线为本 Bot 消息收/发（每 ${label} 秒一桶；进程内、重启清空）。`;
+  }
+  if (mode === "api") {
+    return "折线为「协议 API」按时间桶的成功调用次数（非消息条数；进程内、重启清空）。";
+  }
+  return "";
 });
 
 function metricIsEmpty(v: string): boolean {
@@ -657,7 +693,7 @@ onMounted(load);
                         {{ throughputTodayCaption }}
                       </p>
                       <div
-                        v-if="showApiSparkline"
+                        v-if="showThroughputSparkline"
                         class="home-account-metrics__spark"
                         aria-hidden="true"
                       >
@@ -666,7 +702,26 @@ onMounted(load);
                           viewBox="0 0 100 24"
                           preserveAspectRatio="none"
                         >
+                          <template v-if="throughputSparklineMode === 'message' && messageTrafficSparkBundle">
+                            <polyline
+                              class="home-account-metrics__spark-line home-account-metrics__spark-line--recv"
+                              fill="none"
+                              stroke-width="1.25"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              :points="messageTrafficSparkBundle.recvPoly"
+                            />
+                            <polyline
+                              class="home-account-metrics__spark-line home-account-metrics__spark-line--sent"
+                              fill="none"
+                              stroke-width="1.25"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              :points="messageTrafficSparkBundle.sentPoly"
+                            />
+                          </template>
                           <polyline
+                            v-else
                             fill="none"
                             stroke="currentColor"
                             stroke-width="1.25"
@@ -677,10 +732,10 @@ onMounted(load);
                         </svg>
                       </div>
                       <p
-                        v-if="showApiSparkline"
+                        v-if="showThroughputSparkline"
                         class="home-account-metrics__spark-note muted"
                       >
-                        折线为「协议 API」按时间桶的成功调用次数（非消息条数；进程内、重启清空）。
+                        {{ throughputSparklineNote }}
                       </p>
                       <div
                         v-else-if="!socialBusy"

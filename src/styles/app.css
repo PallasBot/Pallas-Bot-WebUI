@@ -2249,6 +2249,31 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   height: 26px;
 }
 
+.home-account-metrics__spark-line {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-account-metrics__spark-line--recv {
+  stroke: #38bdf8;
+  opacity: 0.92;
+}
+
+.home-account-metrics__spark-line--sent {
+  stroke: #c084fc;
+  opacity: 0.92;
+}
+
+html[data-theme="light"] .home-account-metrics__spark-line--recv {
+  stroke: #0369a1;
+}
+
+html[data-theme="light"] .home-account-metrics__spark-line--sent {
+  stroke: #6d28d9;
+}
+
 .home-account-metrics__spark-note {
   margin: 2px 0 0;
   font-size: 10px;
