@@ -500,33 +500,38 @@ onMounted(load);
                 class="home-account-split-bd"
               >
                 <div class="home-account-unified">
-                  <div class="home-account-unified__col">
+                  <div class="home-account-unified__col home-account-unified__col--hero">
                     <div class="home-account-hero home-account-hero--unified">
-                      <div class="home-account-hero__avatar">
-                        <img
-                          :src="qqAvatarUrl(selectedAccount)"
-                          alt=""
-                          width="64"
-                          height="64"
-                          decoding="async"
-                          referrerpolicy="no-referrer"
-                          @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-                        >
-                      </div>
-                      <div class="home-account-hero__main">
-                        <div class="home-account-hero__title">
-                          {{ dbNick(selectedAccount) || "BOT" }}
-                          <span
-                            class="home-account-conn"
-                            :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                          >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                      <div class="home-account-hero__lead">
+                        <div class="home-account-hero__avatar">
+                          <img
+                            :src="qqAvatarUrl(selectedAccount)"
+                            alt=""
+                            width="64"
+                            height="64"
+                            decoding="async"
+                            referrerpolicy="no-referrer"
+                            @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                          >
                         </div>
-                        <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                        <p class="home-account-hero__proto muted">
-                          协议 · {{ accountAdapterDisplay }}
-                        </p>
-                        <p class="home-account-hero__sub muted home-account-hero__admin">
-                          管理员 {{ selectedAdminsDisplay }}
+                        <div class="home-account-hero__main">
+                          <div class="home-account-hero__title">
+                            {{ dbNick(selectedAccount) || "BOT" }}
+                            <span
+                              class="home-account-conn"
+                              :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
+                            >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                          </div>
+                          <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
+                          <p class="home-account-hero__proto muted">
+                            协议 · {{ accountAdapterDisplay }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="home-account-hero__detail home-account-hero__detail--color">
+                        <p class="home-account-hero__admin">
+                          <span class="home-account-hero__admin-label">管理员</span>
+                          <span class="home-account-hero__admin-values">{{ selectedAdminsDisplay }}</span>
                         </p>
                         <div class="home-account-hero__links">
                           <a
@@ -544,7 +549,7 @@ onMounted(load);
                             rel="noopener noreferrer"
                           >协议管理页</a>
                         </div>
-                        <dl class="home-account-dl home-account-dl--tight">
+                        <dl class="home-account-dl home-account-dl--tight home-account-dl--hero-foot">
                           <div>
                             <dt>好友</dt>
                             <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
