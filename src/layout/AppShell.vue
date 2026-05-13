@@ -8,6 +8,7 @@ const nav = [
   { to: "/plugins", label: "插件", icon: "▣" },
   { to: "/common-config", label: "通用配置", icon: "⚙" },
   { to: "/instances", label: "实例与连接", icon: "◎" },
+  { to: "/protocol", label: "协议端", icon: "⎈" },
   { to: "/friends", label: "好友", icon: "☺" },
   { to: "/groups", label: "群", icon: "☷" },
   { to: "/bot-social-config", label: "颗粒配置", icon: "✧" },

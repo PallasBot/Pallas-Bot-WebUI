@@ -5,7 +5,7 @@ import type { HealthResponse } from "@/api/health";
 import { fetchBots, fetchInstances, fetchMessageStats, fetchSystem } from "@/api/consoleApi";
 import type { InstancesData, MessageStatsData, SystemData } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
-import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint, protocolSnapshot } from "@/utils/protocolLinks";
+import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint, protocolSnapshot, yn } from "@/utils/protocolLinks";
 
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
@@ -17,12 +17,6 @@ const instances = ref<InstancesData | null>(null);
 const consoleRoot = consolePublicRoot();
 const botBase = ref<string | null>(null);
 const driverHint = ref<string | null>(null);
-
-function yn(v: unknown): string {
-  if (v === true) return "是";
-  if (v === false) return "否";
-  return "—";
-}
 
 async function load() {
   err.value = "";
@@ -177,6 +171,10 @@ onMounted(load);
         >
           <RouterLink
             class="btn btn--primary"
+            to="/protocol"
+          >协议端管理</RouterLink>
+          <RouterLink
+            class="btn"
             to="/bot-social-config"
           >好友/群颗粒配置</RouterLink>
           <RouterLink

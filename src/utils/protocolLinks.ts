@@ -1,4 +1,22 @@
-import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
+import type { InstancesData, NapcatAccountRow, NapcatManagerSnapshot, SystemData } from "@/api/pallasTypes";
+
+/** 拼接 HTTP 基址与路径 */
+export function joinHttpPath(base: string, path: string): string {
+  const b = base.replace(/\/$/, "");
+  const p = path.trim();
+  if (!p) return b;
+  const p2 = p.startsWith("/") ? p : `/${p}`;
+  return `${b}${p2}`;
+}
+
+/** pallas_protocol 内置管理页（挂在机器人 HTTP 基址下的 webui_path） */
+export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
+  if (!snap?.webui_enabled) return null;
+  const base = botHttpBaseFromSystem(system);
+  const path = snap.webui_path?.trim();
+  if (!base || !path) return null;
+  return joinHttpPath(base, path);
+}
 
 /** 当前浏览器下的控制台根路径（含 base），末尾无斜杠 */
 export function consolePublicRoot(): string {
@@ -31,4 +49,10 @@ export function accountNativeWebUiUrl(account: NapcatAccountRow): string | null 
 
 export function protocolSnapshot(data: InstancesData | null) {
   return data?.pallas_protocol ?? data?.napcat ?? null;
+}
+
+export function yn(v: unknown): string {
+  if (v === true) return "是";
+  if (v === false) return "否";
+  return "—";
 }
