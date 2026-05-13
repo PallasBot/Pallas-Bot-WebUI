@@ -26,6 +26,10 @@ import { slicePage } from "@/utils/paginate";
 const err = ref("");
 const pageReady = ref(false);
 const busy = ref(false);
+const listsBusy = ref(false);
+const reqsBusy = ref(false);
+/** 避免首屏 loadBots 写入 selfId 时与 onMounted 内的列表加载竞态 */
+const skipSelfIdWatch = ref(true);
 const selfIdStr = ref("");
 const friends = ref<FriendListData | null>(null);
 const requests = ref<FriendOverviewData | null>(null);
@@ -114,16 +118,13 @@ async function loadBots() {
   }
 }
 
-async function loadData() {
+async function loadListsOnly() {
   const sid = selfIdNum();
   if (sid == null) return;
-  busy.value = true;
+  listsBusy.value = true;
   err.value = "";
   try {
     const connected = accountHasNonebotBot(instances.value?.nonebot_bots, sid);
-    const [fr, ov] = await Promise.all([fetchFriendRequests(), fetchRequestOverview()]);
-    requests.value = fr;
-    overview.value = ov;
     if (connected) {
       const [fl, gl] = await Promise.all([fetchFriendList(sid), fetchGroupList(sid)]);
       friends.value = fl;
@@ -136,7 +137,21 @@ async function loadData() {
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    busy.value = false;
+    listsBusy.value = false;
+  }
+}
+
+async function loadRequestsOnly() {
+  reqsBusy.value = true;
+  err.value = "";
+  try {
+    const [fr, ov] = await Promise.all([fetchFriendRequests(), fetchRequestOverview()]);
+    requests.value = fr;
+    overview.value = ov;
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    reqsBusy.value = false;
   }
 }
 
@@ -149,19 +164,28 @@ watch(botsVisible, (list) => {
 
 async function refreshPage() {
   await loadBots();
-  await loadData();
+  await loadListsOnly();
+  void loadRequestsOnly();
 }
 
 watch(selfIdStr, () => {
-  void loadData();
+  if (skipSelfIdWatch.value) return;
+  reqsBusy.value = true;
+  requests.value = null;
+  overview.value = null;
+  void loadListsOnly().finally(() => {
+    void loadRequestsOnly();
+  });
 });
 
 onMounted(async () => {
   try {
     await loadBots();
-    await loadData();
+    await loadListsOnly();
+    void loadRequestsOnly();
   } finally {
     pageReady.value = true;
+    skipSelfIdWatch.value = false;
   }
 });
 
@@ -259,7 +283,7 @@ async function actFriend(
       source,
       user_id: userId,
     });
-    await loadData();
+    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -281,7 +305,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
       user_id: userId,
       group_id: groupId,
     });
-    await loadData();
+    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -292,14 +316,6 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Social</p>
-      <h1 class="page-hero__title">好友与群</h1>
-      <p class="page-hero__desc">
-        在同一页切换账号，查看好友与群列表，并处理好友申请与入群请求；操作经后端统一鉴权与审计。
-      </p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"
@@ -332,26 +348,167 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           <button
             type="button"
             class="btn btn--primary"
-            :disabled="busy || !selfIdStr"
+            :disabled="busy || listsBusy || reqsBusy || !selfIdStr"
             @click="refreshPage"
           >
-            {{ busy ? "加载中…" : "刷新" }}
+            {{ busy || listsBusy || reqsBusy ? "加载中…" : "刷新" }}
           </button>
         </div>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">好友申请</h2>
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">好友列表</h2>
         <span
-          v-if="requestRows.length"
+          v-if="listsBusy"
+          class="muted"
+          style="font-size: 12px"
+        >列表加载中…</span>
+        <span
+          v-else-if="friends?.truncated"
           class="badge badge--warn"
-        >{{ requestRows.length }} 条</span>
+        >已截断</span>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="friends?.error"
+          class="alert alert--err"
+        >
+          {{ friends.error }}
+        </p>
+        <div
+          v-else-if="!friends?.friends?.length"
+          class="muted"
+        >
+          暂无数据。
+        </div>
+        <div
+          v-else
+          class="table-wrap"
+        >
+          <table class="data">
+            <thead>
+              <tr>
+                <th>QQ</th>
+                <th>昵称</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="f in pagedFriends"
+                :key="f.user_id"
+              >
+                <td>{{ f.user_id }}</td>
+                <td>{{ f.nickname }}</td>
+                <td class="muted">{{ f.remark }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ConsolePagerBar
+          v-if="(friends?.friends?.length ?? 0) > 0"
+          v-model:page="pageFriends"
+          v-model:page-size="tablePageSize"
+          :total="friends?.friends?.length ?? 0"
+        />
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">群列表</h2>
+        <span
+          v-if="listsBusy"
+          class="muted"
+          style="font-size: 12px"
+        >列表加载中…</span>
+        <span
+          v-else-if="groups?.truncated"
+          class="badge badge--warn"
+        >已截断 · limit {{ groups?.limit }}</span>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="groups?.error"
+          class="alert alert--err"
+        >
+          {{ groups.error }}
+        </p>
+        <div
+          v-else-if="!groups?.groups?.length"
+          class="muted"
+        >
+          暂无数据。
+        </div>
+        <div
+          v-else
+          class="table-wrap"
+        >
+          <table class="data">
+            <thead>
+              <tr>
+                <th>群号</th>
+                <th>群名</th>
+                <th>成员</th>
+                <th>上限</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="g in pagedGroups"
+                :key="g.group_id"
+              >
+                <td>{{ g.group_id }}</td>
+                <td>{{ g.group_name }}</td>
+                <td>{{ g.member_count }}</td>
+                <td class="muted">{{ g.max_member_count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ConsolePagerBar
+          v-if="(groups?.groups?.length ?? 0) > 0"
+          v-model:page="pageGroups"
+          v-model:page-size="tablePageSize"
+          :total="groups?.groups?.length ?? 0"
+        />
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">好友申请</h2>
+        <div class="row-actions">
+          <span
+            v-if="reqsBusy"
+            class="muted"
+            style="font-size: 12px"
+          >审批数据加载中…</span>
+          <span
+            v-if="requestRows.length"
+            class="badge badge--warn"
+          >{{ requestRows.length }} 条</span>
+          <button
+            type="button"
+            class="btn"
+            :disabled="reqsBusy || busy || !selfIdStr"
+            @click="loadRequestsOnly"
+          >
+            刷新审批
+          </button>
+        </div>
       </div>
       <div class="panel__bd">
         <div
-          v-if="!requestRows.length"
+          v-if="reqsBusy"
+          class="muted"
+        >
+          正在拉取好友申请与可疑请求，请稍候；也可稍后点击「刷新审批」。
+        </div>
+        <div
+          v-else-if="!requestRows.length"
           class="muted"
         >
           暂无待处理申请（或当前账号无数据）。
@@ -413,70 +570,37 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">好友列表</h2>
-        <span
-          v-if="friends?.truncated"
-          class="badge badge--warn"
-        >已截断</span>
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">入群请求</h2>
+        <div class="row-actions">
+          <span
+            v-if="reqsBusy"
+            class="muted"
+            style="font-size: 12px"
+          >审批数据加载中…</span>
+          <span
+            v-if="groupRequestRows.length"
+            class="badge badge--warn"
+          >{{ groupRequestRows.length }} 条</span>
+          <button
+            type="button"
+            class="btn"
+            :disabled="reqsBusy || busy || !selfIdStr"
+            @click="loadRequestsOnly"
+          >
+            刷新审批
+          </button>
+        </div>
       </div>
       <div class="panel__bd">
-        <p
-          v-if="friends?.error"
-          class="alert alert--err"
-        >
-          {{ friends.error }}
-        </p>
         <div
-          v-else-if="!friends?.friends?.length"
+          v-if="reqsBusy"
           class="muted"
         >
-          暂无数据。
+          正在拉取入群审批与概览，请稍候。
         </div>
         <div
-          v-else
-          class="table-wrap"
-        >
-          <table class="data">
-            <thead>
-              <tr>
-                <th>QQ</th>
-                <th>昵称</th>
-                <th>备注</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="f in pagedFriends"
-                :key="f.user_id"
-              >
-                <td>{{ f.user_id }}</td>
-                <td>{{ f.nickname }}</td>
-                <td class="muted">{{ f.remark }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <ConsolePagerBar
-          v-if="(friends?.friends?.length ?? 0) > 0"
-          v-model:page="pageFriends"
-          v-model:page-size="tablePageSize"
-          :total="friends?.friends?.length ?? 0"
-        />
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">入群请求</h2>
-        <span
-          v-if="groupRequestRows.length"
-          class="badge badge--warn"
-        >{{ groupRequestRows.length }} 条</span>
-      </div>
-      <div class="panel__bd">
-        <div
-          v-if="!groupRequestRows.length"
+          v-else-if="!groupRequestRows.length"
           class="muted"
         >
           暂无待处理入群请求。
@@ -535,62 +659,6 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           v-model:page="pageGroupReq"
           v-model:page-size="tablePageSize"
           :total="groupRequestRows.length"
-        />
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">群列表</h2>
-        <span
-          v-if="groups?.truncated"
-          class="badge badge--warn"
-        >已截断 · limit {{ groups?.limit }}</span>
-      </div>
-      <div class="panel__bd">
-        <p
-          v-if="groups?.error"
-          class="alert alert--err"
-        >
-          {{ groups.error }}
-        </p>
-        <div
-          v-else-if="!groups?.groups?.length"
-          class="muted"
-        >
-          暂无数据。
-        </div>
-        <div
-          v-else
-          class="table-wrap"
-        >
-          <table class="data">
-            <thead>
-              <tr>
-                <th>群号</th>
-                <th>群名</th>
-                <th>成员</th>
-                <th>上限</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="g in pagedGroups"
-                :key="g.group_id"
-              >
-                <td>{{ g.group_id }}</td>
-                <td>{{ g.group_name }}</td>
-                <td>{{ g.member_count }}</td>
-                <td class="muted">{{ g.max_member_count }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <ConsolePagerBar
-          v-if="(groups?.groups?.length ?? 0) > 0"
-          v-model:page="pageGroups"
-          v-model:page-size="tablePageSize"
-          :total="groups?.groups?.length ?? 0"
         />
       </div>
     </div>

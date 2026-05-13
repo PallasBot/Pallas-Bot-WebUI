@@ -96,12 +96,6 @@ function lineClass(lv: LogEntry["level"]): string {
 
 <template>
   <div class="logs-page">
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Observability</p>
-      <h1 class="page-hero__title">运行日志</h1>
-      <p class="page-hero__desc">按时间线查看运行期输出；支持结构化条目与原始行两种视图，并可在前端按关键字过滤。</p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

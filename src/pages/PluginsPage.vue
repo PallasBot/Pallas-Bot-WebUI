@@ -40,14 +40,6 @@ async function togglePreview(name: string) {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Plugins</p>
-      <h1 class="page-hero__title">插件目录</h1>
-      <p class="page-hero__desc">
-        在此查看已启用模块；进入单项可调整受控参数。支持在列表中展开预览配置项，无需进入详情页。
-      </p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

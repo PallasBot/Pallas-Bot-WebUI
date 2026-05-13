@@ -429,21 +429,40 @@ const panelOptions = computed(() => {
 });
 
 watch(
-  [panelAvailability, () => selHydrated.value],
+  [panelAvailability, () => selHydrated.value, () => props.busy],
   () => {
     if (!selHydrated.value) return;
     const a = panelAvailability.value;
+
     if (!panelPickReady.value) {
+      if (props.busy) return;
       const saved = loadChartPanel();
-      if (saved && a[saved]) chartPanel.value = saved;
-      else {
-        const first = PANEL_ORDER.find((id) => a[id]);
-        if (first) chartPanel.value = first;
+      if (saved && a[saved]) {
+        chartPanel.value = saved;
+        panelPickReady.value = true;
+        return;
       }
+      if (saved && !a[saved]) {
+        void Promise.resolve().then(() => {
+          if (panelPickReady.value) return;
+          if (props.busy) return;
+          const a2 = panelAvailability.value;
+          if (saved && a2[saved]) chartPanel.value = saved;
+          else {
+            const first = PANEL_ORDER.find((id) => a2[id]);
+            if (first) chartPanel.value = first;
+          }
+          panelPickReady.value = true;
+        });
+        return;
+      }
+      const first = PANEL_ORDER.find((id) => a[id]);
+      if (first) chartPanel.value = first;
       panelPickReady.value = true;
       return;
     }
-    if (!a[chartPanel.value]) {
+
+    if (!props.busy && !a[chartPanel.value]) {
       const next = PANEL_ORDER.find((id) => a[id]);
       if (next) chartPanel.value = next;
     }

@@ -144,6 +144,18 @@ const pallasBotVersionDisplay = computed(() => {
   return health.value?.pallas_bot ?? "—";
 });
 
+const versionServerTimeStr = computed(() => {
+  const t = system.value?.server_time;
+  if (t == null) return "—";
+  return new Date(t * 1000).toLocaleString();
+});
+
+const consoleCommitPill = computed(() => {
+  const c = health.value?.console?.commit?.trim();
+  if (!c) return "";
+  return c.length > 14 ? `${c.slice(0, 12)}…` : c;
+});
+
 function barPct(
   direct: number | null | undefined,
   used: number | null | undefined,
@@ -206,6 +218,15 @@ const msgTotalStr = computed(() => {
   const s = msgMainStats.value;
   if (!s) return "—";
   return `${s.total_received} / ${s.total_sent}`;
+});
+
+const msgRecvSentPair = computed(() => {
+  const s = msgMainStats.value;
+  if (!s) return { recv: "—", sent: "—" };
+  return {
+    recv: s.total_received != null ? String(s.total_received) : "—",
+    sent: s.total_sent != null ? String(s.total_sent) : "—",
+  };
 });
 
 const scopedBotStatsRow = computed(() => {
@@ -349,24 +370,15 @@ onMounted(load);
 
 <template>
   <div class="home-page">
-    <header class="page-hero page-hero--with-actions">
-      <div class="page-hero__main">
-        <p class="page-hero__eyebrow">Dashboard</p>
-        <h1 class="page-hero__title">运行态势</h1>
-        <p class="page-hero__desc">
-          面向生产运维的一屏摘要：框架与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。
-        </p>
-      </div>
-      <div class="page-hero__actions">
-        <button
-          type="button"
-          class="btn btn--primary"
-          @click="load"
-        >
-          刷新
-        </button>
-      </div>
-    </header>
+    <div class="page-actions-bar">
+      <button
+        type="button"
+        class="btn btn--primary"
+        @click="load"
+      >
+        刷新
+      </button>
+    </div>
 
     <div
       v-if="err"
@@ -390,10 +402,9 @@ onMounted(load);
             <div class="home-account-panel__hd-main">
               <h2 class="panel__title">账户信息</h2>
               <RouterLink
-                class="link-quiet"
+                class="home-instances-capsule"
                 to="/instances"
-                style="font-size: 13px"
-              >连接详情 →</RouterLink>
+              >实例与连接</RouterLink>
             </div>
             <div
               v-if="sortedDbBots.length"
@@ -471,24 +482,41 @@ onMounted(load);
                   </div>
                 </div>
                 <div class="home-account-split-col home-account-split-col--calls">
-                  <dl class="home-account-dl home-account-dl--calls">
-                    <div>
-                      <dt>消息 收/发</dt>
-                      <dd>{{ msgTotalStr }}</dd>
+                  <div class="home-account-stat-cards">
+                    <div class="home-account-stat-cards__msg">
+                      <div class="home-account-stat-cards__label muted">消息吞吐（累计）</div>
+                      <div class="home-account-stat-cards__pair">
+                        <div class="home-account-stat-cards__pill home-account-stat-cards__pill--in">
+                          <span class="home-account-stat-cards__pill-k">收</span>
+                          <span class="home-account-stat-cards__pill-v">{{ socialBusy ? "…" : msgRecvSentPair.recv }}</span>
+                        </div>
+                        <div class="home-account-stat-cards__pill home-account-stat-cards__pill--out">
+                          <span class="home-account-stat-cards__pill-k">发</span>
+                          <span class="home-account-stat-cards__pill-v">{{ socialBusy ? "…" : msgRecvSentPair.sent }}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <dt>今日 API 调用</dt>
-                      <dd>{{ socialBusy ? "…" : apiTodayTotalStr }}</dd>
+                    <div class="home-account-stat-cards__row">
+                      <div class="home-account-stat-cards__mini">
+                        <span class="muted">今日 API</span>
+                        <strong>{{ socialBusy ? "…" : apiTodayTotalStr }}</strong>
+                      </div>
+                      <div class="home-account-stat-cards__mini home-account-stat-cards__mini--wide">
+                        <span class="muted">调用最多</span>
+                        <strong
+                          class="home-account-stat-cards__top-api"
+                          :title="apiTodayTopStr"
+                        >{{ socialBusy ? "…" : apiTodayTopStr }}</strong>
+                      </div>
                     </div>
-                    <div>
-                      <dt>今日调用最多</dt>
-                      <dd>{{ socialBusy ? "…" : apiTodayTopStr }}</dd>
+                    <div
+                      v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
+                      class="home-account-stat-cards__warn"
+                    >
+                      <span class="muted">Matcher 异常（今日）</span>
+                      <strong>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</strong>
                     </div>
-                    <div v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0">
-                      <dt>Matcher 异常（今日）</dt>
-                      <dd>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</dd>
-                    </div>
-                  </dl>
+                  </div>
                 </div>
                 <div class="home-account-charts-span">
                   <HomePluginRunCharts
@@ -502,6 +530,26 @@ onMounted(load);
                     :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
                     :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                   />
+                </div>
+                <div class="home-account-msg-tools-span">
+                  <div class="home-account-msg-tools">
+                    <div class="home-account-msg-tools__hd">
+                      <h3 class="home-account-msg-tools__title">消息与过滤</h3>
+                      <p class="home-account-msg-tools__desc muted">
+                        在运行日志中按关键字过滤输出；好友/群颗粒与黑白名单在配置页维护。
+                      </p>
+                    </div>
+                    <div class="home-account-msg-tools__links">
+                      <RouterLink
+                        class="btn btn--primary"
+                        to="/logs"
+                      >运行日志</RouterLink>
+                      <RouterLink
+                        class="btn"
+                        to="/bot-social-config"
+                      >好友/群颗粒配置</RouterLink>
+                    </div>
+                  </div>
                 </div>
               </div>
             </template>
@@ -619,12 +667,8 @@ onMounted(load);
     </div>
 
     <div class="panel home-page__panel home-access-panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd">
         <h2 class="panel__title">接入</h2>
-        <RouterLink
-          class="home-instances-capsule"
-          to="/instances"
-        >实例与连接</RouterLink>
       </div>
       <div class="panel__bd home-access-panel__bd">
         <div class="home-access-panel__body">
@@ -692,34 +736,53 @@ onMounted(load);
         >API 可用</span>
       </div>
       <div class="panel__bd muted home-page__version home-page__version--grid">
-        <dl class="home-dl">
+        <dl class="home-dl home-dl--version-rows">
           <dt>NoneBot2</dt>
-          <dd>{{ health?.nonebot2 ?? "—" }} <span class="home-dl__sub">框架</span></dd>
+          <dd class="home-page__version-dd">
+            <span class="home-dl__pill home-dl__pill--version">{{ health?.nonebot2 ?? "—" }}</span>
+            <span class="home-dl__sub">框架</span>
+          </dd>
           <dt>Pallas-Bot</dt>
-          <dd>
-            <span style="color: var(--text); font-weight: 600">{{ pallasBotVersionDisplay }}</span>
+          <dd class="home-page__version-dd">
+            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
             <span class="home-dl__sub">业务进程</span>
           </dd>
           <dt>控制台资源</dt>
-          <dd>
-            <strong style="color: var(--text)">{{ health?.console?.version ?? "—" }}</strong>
-            <span v-if="health?.console?.commit" class="home-dl__sub">{{ health.console.commit }}</span>
+          <dd class="home-page__version-dd home-page__version-dd--wrap">
+            <span class="home-dl__pill home-dl__pill--version">{{ health?.console?.version ?? "—" }}</span>
+            <span
+              v-if="consoleCommitPill"
+              class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
+              :title="health?.console?.commit || undefined"
+            >{{ consoleCommitPill }}</span>
+            <span
+              v-else
+              class="home-dl__pill home-dl__pill--version home-dl__pill--muted home-dl__pill--mono"
+            >—</span>
           </dd>
           <dt>服务时间</dt>
-          <dd>{{ system?.server_time ? new Date(system.server_time * 1000).toLocaleString() : "—" }}</dd>
-          <template v-if="system?.runtime?.hostname || system?.runtime?.python">
-            <dt>主机 / Python</dt>
-            <dd class="home-dl__capsules">
-              <span
-                v-if="system.runtime.hostname"
-                class="home-dl__pill"
-              >{{ system.runtime.hostname }}</span>
-              <span
-                v-if="system.runtime.python"
-                class="home-dl__pill home-dl__pill--mono"
-              >{{ system.runtime.python }}</span>
-            </dd>
-          </template>
+          <dd class="home-page__version-dd">
+            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
+          </dd>
+          <dt>主机 / Python</dt>
+          <dd class="home-dl__capsules home-page__version-dd">
+            <span
+              v-if="system?.runtime?.hostname"
+              class="home-dl__pill home-dl__pill--version"
+            >{{ system.runtime.hostname }}</span>
+            <span
+              v-else
+              class="home-dl__pill home-dl__pill--version home-dl__pill--muted"
+            >—</span>
+            <span
+              v-if="system?.runtime?.python"
+              class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
+            >{{ system.runtime.python }}</span>
+            <span
+              v-else
+              class="home-dl__pill home-dl__pill--version home-dl__pill--muted home-dl__pill--mono"
+            >—</span>
+          </dd>
         </dl>
       </div>
     </div>

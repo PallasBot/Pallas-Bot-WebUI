@@ -76,22 +76,15 @@ async function runAggregate() {
 
 <template>
   <div>
-    <header class="page-hero page-hero--with-actions">
-      <div class="page-hero__main">
-        <p class="page-hero__eyebrow">Data</p>
-        <h1 class="page-hero__title">数据库</h1>
-        <p class="page-hero__desc">查看存储后端类型、集合/表体量与体量明细；Bot 与协议状态请在「实例与连接」查看。</p>
-      </div>
-      <div class="page-hero__actions">
-        <button
-          type="button"
-          class="btn"
-          @click="loadAll"
-        >
-          刷新
-        </button>
-      </div>
-    </header>
+    <div class="page-actions-bar">
+      <button
+        type="button"
+        class="btn"
+        @click="loadAll"
+      >
+        刷新
+      </button>
+    </div>
 
     <div
       v-if="err"
