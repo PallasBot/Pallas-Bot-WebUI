@@ -13,7 +13,7 @@ const props = withDefaults(
     /** 量词，如「条」「行」 */
     unit?: string;
   }>(),
-  { pageSizes: () => [8, 12, 16, 24, 36, 48], embedded: false, unit: "条" },
+  { pageSizes: () => [4, 8, 12, 16, 24, 36, 48], embedded: false, unit: "条" },
 );
 
 const emit = defineEmits<{

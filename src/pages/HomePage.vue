@@ -506,6 +506,29 @@ onMounted(load);
         </div>
       </section>
 
+      <section class="home-dashboard__capacity">
+        <div class="grid-stats home-page__capacity-grid">
+          <StatCard
+            dense
+            label="已加载插件"
+            :value="system?.plugin_count ?? '—'"
+            hint="进程内模块"
+          />
+          <StatCard
+            dense
+            label="在线 Bot"
+            :value="botCount"
+            :hint="`登记账号 ${system?.bot_count ?? '—'}`"
+          />
+          <StatCard
+            dense
+            label="消息 收/发"
+            :value="msgTotalStr"
+            :hint="msgCapacityHint"
+          />
+        </div>
+      </section>
+
       <section class="home-dashboard__perf">
         <div class="panel home-page__panel">
           <div class="panel__hd">
@@ -590,41 +613,17 @@ onMounted(load);
           </div>
         </div>
       </section>
-
-      <section class="home-dashboard__capacity">
-        <div class="grid-stats home-page__capacity-grid">
-          <StatCard
-            dense
-            label="已加载插件"
-            :value="system?.plugin_count ?? '—'"
-            hint="进程内模块"
-          />
-          <StatCard
-            dense
-            label="在线 Bot"
-            :value="botCount"
-            :hint="`登记账号 ${system?.bot_count ?? '—'}`"
-          />
-          <StatCard
-            dense
-            label="消息 收/发"
-            :value="msgTotalStr"
-            :hint="msgCapacityHint"
-          />
-        </div>
-      </section>
     </div>
 
-    <div class="panel home-page__panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">接入与基址</h2>
+    <div class="panel home-page__panel home-access-panel">
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">接入</h2>
         <RouterLink
-          class="link-quiet"
+          class="home-instances-capsule"
           to="/instances"
-          style="font-size: 13px"
-        >实例与连接 →</RouterLink>
+        >实例与连接</RouterLink>
       </div>
-      <div class="panel__bd">
+      <div class="panel__bd home-access-panel__bd">
         <div class="link-grid home-page__link-grid">
           <a
             class="link-card"
