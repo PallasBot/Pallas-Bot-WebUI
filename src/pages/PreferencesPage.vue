@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { changeConsoleLogin } from "@/api/consoleApi";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
 
 function setTheme(v: ThemeMode) {
@@ -13,6 +17,54 @@ function setRadius(v: RadiusMode) {
 }
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
+}
+
+const pwdErr = ref("");
+const pwdOk = ref("");
+const p1 = ref("");
+const p2 = ref("");
+const pwdBusy = ref(false);
+
+async function submitPassword() {
+  pwdErr.value = "";
+  pwdOk.value = "";
+  if (p1.value.length < 8) {
+    pwdErr.value = "新口令至少 8 位。";
+    return;
+  }
+  if (p1.value !== p2.value) {
+    pwdErr.value = "两次输入不一致。";
+    return;
+  }
+  pwdBusy.value = true;
+  try {
+    const r = await changeConsoleLogin(p1.value);
+    pwdOk.value = r.message || "已更新。";
+    p1.value = "";
+    p2.value = "";
+  } catch (e) {
+    pwdErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pwdBusy.value = false;
+  }
+}
+
+onMounted(() => {
+  scrollToPasswordIfNeeded();
+});
+
+watch(
+  () => route.hash,
+  () => {
+    scrollToPasswordIfNeeded();
+  },
+);
+
+function scrollToPasswordIfNeeded() {
+  if (route.hash !== "#console-password") return;
+  requestAnimationFrame(() => {
+    document.getElementById("console-password")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 </script>
 
@@ -117,6 +169,59 @@ function setDensity(v: DensityMode) {
             紧凑
           </button>
         </div>
+      </div>
+    </div>
+
+    <div
+      id="console-password"
+      class="panel"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>控制台口令
+        </h2>
+      </div>
+      <div class="panel__bd">
+        <div
+          v-if="pwdErr"
+          class="alert alert--err"
+        >
+          {{ pwdErr }}
+        </div>
+        <div
+          v-if="pwdOk"
+          class="alert alert--ok"
+        >
+          {{ pwdOk }}
+        </div>
+        <div style="margin-bottom: 14px">
+          <label class="muted" style="display: block; margin-bottom: 6px">新口令</label>
+          <input
+            v-model="p1"
+            class="inp"
+            type="password"
+            autocomplete="new-password"
+            style="max-width: 400px; width: 100%"
+          >
+        </div>
+        <div style="margin-bottom: 18px">
+          <label class="muted" style="display: block; margin-bottom: 6px">确认</label>
+          <input
+            v-model="p2"
+            class="inp"
+            type="password"
+            autocomplete="new-password"
+            style="max-width: 400px; width: 100%"
+          >
+        </div>
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="pwdBusy"
+          @click="submitPassword"
+        >
+          {{ pwdBusy ? "提交中…" : "保存" }}
+        </button>
       </div>
     </div>
   </div>

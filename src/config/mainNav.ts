@@ -5,7 +5,7 @@ export interface MainNavItem {
   description: string;
 }
 
-/** 侧栏主导航默认项与顺序（含外观偏好） */
+/** 侧栏主导航默认项与顺序 */
 export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/", label: "仪表盘", icon: "◆", description: "容量与账号摘要" },
   { to: "/logs", label: "运行日志", icon: "≡", description: "检索与导出" },
@@ -18,8 +18,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/database", label: "数据库", icon: "▤", description: "存储体量" },
   { to: "/update", label: "更新", icon: "↑", description: "发行说明" },
   { to: "/ai", label: "AI 扩展", icon: "◇", description: "扩展服务" },
-  { to: "/security", label: "控制台口令", icon: "◈", description: "访问凭据" },
-  { to: "/preferences", label: "外观偏好", icon: "✦", description: "本机界面" },
+  { to: "/preferences", label: "偏好与口令", icon: "✦", description: "外观与本机口令" },
 ];
 
 /** 顶栏/路由与侧栏图标对齐 */
@@ -35,13 +34,21 @@ export function mainNavIconForPath(routePath: string): string {
 
 const DEFAULT_ORDER = MAIN_NAV_ITEMS.map((i) => i.to);
 
+/** 旧侧栏顺序中的路径归并（移除独立「控制台口令」入口后兼容本地存储） */
+function canonicalNavPath(path: string): string {
+  const p = path.trim();
+  if (p === "/security") return "/preferences";
+  return p;
+}
+
 export function normalizeMainNavOrder(saved: string[] | undefined | null): string[] {
   const allowed = new Set(DEFAULT_ORDER);
   const out: string[] = [];
   const seen = new Set<string>();
   if (Array.isArray(saved)) {
-    for (const p of saved) {
-      if (typeof p !== "string") continue;
+    for (const raw of saved) {
+      if (typeof raw !== "string") continue;
+      const p = canonicalNavPath(raw);
       if (!allowed.has(p) || seen.has(p)) continue;
       out.push(p);
       seen.add(p);

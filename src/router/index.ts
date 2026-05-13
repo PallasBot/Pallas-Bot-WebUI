@@ -11,7 +11,6 @@ import ProtocolManagePage from "@/pages/ProtocolManagePage.vue";
 import DatabasePage from "@/pages/DatabasePage.vue";
 import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
-import SecurityPage from "@/pages/SecurityPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
 import { installRouteLoading } from "@/utils/routeLoading";
@@ -132,20 +131,15 @@ const router = createRouter({
         },
         {
           path: "security",
-          name: "security",
-          component: SecurityPage,
-          meta: {
-            title: "控制台口令",
-            description: "更新控制台登录口令。",
-          },
+          redirect: { name: "preferences", hash: "#console-password" },
         },
         {
           path: "preferences",
           name: "preferences",
           component: PreferencesPage,
           meta: {
-            title: "外观偏好",
-            description: "主题、圆角与密度（仅本机浏览器）。",
+            title: "偏好与口令",
+            description: "主题、圆角、密度与控制台登录口令。",
           },
         },
       ],
