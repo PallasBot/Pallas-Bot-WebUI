@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import {
   fetchFriendList,
   fetchFriendRequests,
@@ -25,6 +26,7 @@ import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
+const route = useRoute();
 const err = ref("");
 const pageReady = ref(false);
 const busy = ref(false);
@@ -176,18 +178,35 @@ watch(selfIdStr, () => {
   requests.value = null;
   overview.value = null;
   void loadListsOnly().finally(() => {
-    void loadRequestsOnly();
+    void loadRequestsOnly().finally(() => {
+      scrollFriendsGroupsHashIntoView();
+    });
   });
 });
+
+function scrollFriendsGroupsHashIntoView() {
+  const raw = (route.hash || "").replace(/^#/, "").trim();
+  if (!raw) return;
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+watch(() => route.hash, () => scrollFriendsGroupsHashIntoView());
 
 onMounted(async () => {
   try {
     await loadBots();
     await loadListsOnly();
-    void loadRequestsOnly();
+    void loadRequestsOnly().finally(() => {
+      scrollFriendsGroupsHashIntoView();
+    });
   } finally {
     pageReady.value = true;
     skipSelfIdWatch.value = false;
+    scrollFriendsGroupsHashIntoView();
   }
 });
 
@@ -485,7 +504,10 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
       </div>
     </div>
 
-    <div class="panel">
+    <div
+      id="friends-groups-friend-requests"
+      class="panel"
+    >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友申请
@@ -579,7 +601,10 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
       </div>
     </div>
 
-    <div class="panel">
+    <div
+      id="friends-groups-group-requests"
+      class="panel"
+    >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入群请求
