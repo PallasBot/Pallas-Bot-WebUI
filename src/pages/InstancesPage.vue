@@ -70,8 +70,8 @@ const sortedNonebotBots = computed(() => {
   rows.sort((a, b) => {
     const ia = parseSelfId(a.self_id);
     const ib = parseSelfId(b.self_id);
-    const na = (ia != null ? botNickname(ia) : "").toLowerCase();
-    const nb = (ib != null ? botNickname(ib) : "").toLowerCase();
+    const na = (ia != null ? botNickname(ia) ?? "" : "").toLowerCase();
+    const nb = (ib != null ? botNickname(ib) ?? "" : "").toLowerCase();
     const cmp = na.localeCompare(nb, "zh-CN");
     if (cmp !== 0) return cmp;
     return a.self_id.localeCompare(b.self_id, "zh-CN", { numeric: true });
