@@ -19,5 +19,16 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+  "include": [
+    "src/main.ts",
+    "src/App.vue",
+    "src/vite-env.d.ts",
+    "src/api/**/*.ts",
+    "src/router/**/*.ts",
+    "src/layout/AppShell.vue",
+    "src/pages/**/*.vue",
+    "src/components/StatCard.vue",
+    "src/styles/**/*.css",
+    "src/utils/**/*.ts"
+  ]
 }

@@ -1,7 +1,10 @@
 /// <reference types="vite/client" />
+import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
 
 // 与 Pallas-Bot 插件 pallas_webui 的 pallas_webui_http_base 一致
 const BASE = "/pallas/";
@@ -10,6 +13,9 @@ const DEFAULT_TARGET = "http://127.0.0.1:8088";
 
 export default defineConfig({
   base: BASE,
+  define: {
+    __WEBUI_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [vue()],
   resolve: {
     alias: {
