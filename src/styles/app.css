@@ -1957,6 +1957,87 @@ html[data-theme="light"] .home-account-unified__col--standee {
   min-width: 0;
 }
 
+/* 账户信息栏顶部：昵称 / 连接徽标 / 账号与协议（与吞吐区同系配色） */
+.home-account-hero--color .home-account-hero__title {
+  background-image: linear-gradient(100deg, #f8fafc 0%, #7dd3fc 32%, #a5b4fc 62%, #f9a8d4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.home-account-hero--color .home-account-conn--on {
+  color: #86efac;
+  text-shadow: 0 0 14px rgba(52, 211, 153, 0.35);
+}
+
+.home-account-hero--color .home-account-conn--off {
+  color: #fcd34d;
+}
+
+.home-account-hero--color .home-account-hero__sub {
+  color: color-mix(in srgb, #94a3b8 42%, #38bdf8 58%);
+}
+
+.home-account-hero--color .home-account-hero__proto {
+  color: color-mix(in srgb, #cbd5e1 55%, #a5b4fc 45%);
+}
+
+.home-account-hero--color .home-account-hero__proto-hint {
+  color: #fdba74;
+  font-weight: 650;
+}
+
+.home-account-hero--color .home-account-hero__proto-sub {
+  color: color-mix(in srgb, var(--text-muted) 78%, #94a3b8 22%);
+}
+
+.home-account-hero--color .home-account-hero__avatar {
+  border-color: color-mix(in srgb, #38bdf8 52%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #818cf8 22%, transparent),
+    0 10px 28px color-mix(in srgb, #0f172a 45%, transparent);
+}
+
+.home-account-hero--color .home-account-hero__social-hint {
+  color: color-mix(in srgb, var(--text-muted) 70%, #38bdf8 30%);
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__title {
+  background-image: linear-gradient(100deg, #0f172a 0%, #0369a1 30%, #4f46e5 62%, #a21caf 100%);
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-conn--on {
+  color: #15803d;
+  text-shadow: none;
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-conn--off {
+  color: #b45309;
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__sub {
+  color: color-mix(in srgb, #64748b 45%, #0284c7 55%);
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__proto {
+  color: color-mix(in srgb, #475569 55%, #4f46e5 45%);
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__proto-hint {
+  color: #c2410c;
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
+  border-color: color-mix(in srgb, #0284c7 45%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4f46e5 18%, transparent),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hint {
+  color: color-mix(in srgb, var(--text-muted) 72%, #0284c7 28%);
+}
+
 .home-account-hero__detail {
   display: flex;
   flex-direction: column;
@@ -1983,16 +2064,21 @@ html[data-theme="light"] .home-account-unified__col--standee {
 .home-account-hero__pending-rail {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 12px;
   min-width: 0;
   padding-top: 2px;
+  text-align: center;
 }
 
 .home-account-hero__pending-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
   min-width: 0;
+  width: 100%;
+  text-align: center;
 }
 
 .home-account-hero__pending-title {
@@ -2005,7 +2091,7 @@ html[data-theme="light"] .home-account-unified__col--standee {
   color: var(--text-dim);
 }
 
-.home-account-hero__detail--color .home-account-hero__pending-title--friend {
+.home-account-hero--color .home-account-hero__pending-title--friend {
   font-size: 12px;
   letter-spacing: 0.07em;
   background-image: linear-gradient(100deg, #38bdf8 0%, #22d3ee 50%, #a5f3fc 100%);
@@ -2014,7 +2100,7 @@ html[data-theme="light"] .home-account-unified__col--standee {
   color: transparent;
 }
 
-.home-account-hero__detail--color .home-account-hero__pending-title--group {
+.home-account-hero--color .home-account-hero__pending-title--group {
   font-size: 12px;
   letter-spacing: 0.07em;
   background-image: linear-gradient(100deg, #a78bfa 0%, #c084fc 48%, #f9a8d4 100%);
@@ -2023,14 +2109,14 @@ html[data-theme="light"] .home-account-unified__col--standee {
   color: transparent;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__pending-title--friend {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-title--friend {
   background-image: linear-gradient(100deg, #0369a1 0%, #0d9488 52%, #0891b2 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__pending-title--group {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-title--group {
   background-image: linear-gradient(100deg, #6d28d9 0%, #7c3aed 48%, #be185d 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2039,14 +2125,19 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__p
 
 .home-account-hero__pending-val {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
-.home-account-hero__detail--color .home-account-hero__pending-val {
+.home-account-hero__pending-tail {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.home-account-hero--color .home-account-hero__pending-val {
   color: #e2e8f0;
 }
 
@@ -2058,23 +2149,24 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__p
 }
 
 .home-account-hero__pending-cta {
-  align-self: flex-start;
+  align-self: center;
   width: auto;
+  max-width: 100%;
   margin-top: 4px;
   padding: 4px 9px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.25;
-  text-align: left;
+  text-align: center;
   text-decoration: none;
   border-radius: var(--radius-sm, 6px);
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__pending-val {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-val {
   color: #334155;
 }
 
-.home-account-hero__detail--color .home-account-hero__admin {
+.home-account-hero--color .home-account-hero__admin {
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
@@ -2114,40 +2206,40 @@ html[data-theme="light"] .home-account-hero__admin-values {
   color: #a16207;
 }
 
-.home-account-hero__detail--color .home-account-hero__links {
+.home-account-hero--color .home-account-hero__links {
   gap: 10px 16px;
 }
 
-.home-account-hero__detail--color .home-account-hero__link {
+.home-account-hero--color .home-account-hero__link {
   font-weight: 650;
 }
 
-.home-account-hero__detail--color .home-account-hero__link:nth-child(1) {
+.home-account-hero--color .home-account-hero__link:nth-child(1) {
   color: #2dd4bf;
 }
 
-.home-account-hero__detail--color .home-account-hero__link:nth-child(2) {
+.home-account-hero--color .home-account-hero__link:nth-child(2) {
   color: #c4b5fd;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__link:nth-child(1) {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__link:nth-child(1) {
   color: #0f766e;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__link:nth-child(2) {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__link:nth-child(2) {
   color: #5b21b6;
 }
 
-.home-account-hero__detail--color .home-account-dl--hero-foot {
+.home-account-hero--color .home-account-dl--hero-foot {
   margin-top: 2px;
 }
 
-.home-account-hero__detail--color .home-account-dl--hero-foot dt {
+.home-account-hero--color .home-account-dl--hero-foot dt {
   color: #93c5fd;
   font-weight: 700;
 }
 
-.home-account-hero__detail--color .home-account-dl--hero-foot dd.home-account-dl__stack {
+.home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2162,7 +2254,7 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__l
   color: var(--text);
 }
 
-.home-account-hero__detail--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
+.home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
   display: inline-block;
   font-weight: 700;
   font-size: 15px;
@@ -2173,11 +2265,11 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-hero__l
   color: transparent;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--hero-foot dt {
+html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot dt {
   color: #2563eb;
 }
 
-html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
+html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
   background: linear-gradient(95deg, #0284c7 0%, #4f46e5 48%, #a21caf 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2234,6 +2326,17 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+.home-account-hero--color .home-account-hero__section-label {
+  color: transparent;
+  background-image: linear-gradient(95deg, #94a3b8 0%, #7dd3fc 40%, #a78bfa 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html[data-theme="light"] .home-account-hero--color .home-account-hero__section-label {
+  background-image: linear-gradient(95deg, #64748b 0%, #0284c7 45%, #6d28d9 90%);
 }
 
 .home-account-hero__admin-values--placeholder {
@@ -2349,7 +2452,35 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 .home-account-metrics__bars-wrap {
   margin: 6px 0 2px;
   width: 100%;
-  min-height: 32px;
+  min-height: 48px;
+}
+
+.home-account-metrics__bars-ticks {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin-top: 3px;
+  font-size: 9px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.home-account-metrics__bars-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  max-width: 24%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-account-metrics--color .home-account-metrics__bars-ticks {
+  color: color-mix(in srgb, var(--text-muted) 55%, #94a3b8 45%);
+}
+
+html[data-theme="light"] .home-account-metrics--color .home-account-metrics__bars-ticks {
+  color: color-mix(in srgb, var(--text-muted) 62%, #64748b 38%);
 }
 
 .home-account-metrics__bars-svg {
@@ -2734,6 +2865,20 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .home-account-hero--unified .home-account-hero__detail--with-pending-rail {
     grid-template-columns: 1fr;
+  }
+
+  .home-account-hero__pending-rail {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px 12px;
+    width: 100%;
+  }
+
+  .home-account-hero__pending-card {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 

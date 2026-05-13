@@ -37,7 +37,7 @@ export interface SystemData {
   };
 }
 
-/** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐） */
+/** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */
 export interface MessageTrafficHistoryPoint {
   at: number;
   received: number;
@@ -46,7 +46,7 @@ export interface MessageTrafficHistoryPoint {
 
 /** GET /message-stats 中各 Bot 的协议 API 调用时间序列（与 today_api_calls 同一排除口径） */
 export interface ApiCallHistoryPoint {
-  /** 时间桶起点（Unix 秒，本地时区展示由前端决定） */
+  /** 时间桶起点（Unix 秒）；与 Bot 主机本地 wall-clock 对齐，浏览器用本地时区格式化 */
   at: number;
   /** 该桶内成功调用次数 */
   total: number;
