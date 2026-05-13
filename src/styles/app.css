@@ -2057,7 +2057,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
   display: grid;
   grid-template-columns: minmax(0, 5.75rem) minmax(0, 1fr);
   gap: 8px 14px;
-  align-items: start;
+  align-items: stretch;
   padding-left: 0;
 }
 
@@ -2065,10 +2065,21 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
   padding-top: 2px;
   text-align: center;
+}
+
+.home-account-hero__pending-card:last-child {
+  margin-top: auto;
+}
+
+.home-account-hero__detail--with-pending-rail:has(.home-account-hero__social-hint) .home-account-hero__pending-card:last-child {
+  margin-top: 0;
 }
 
 .home-account-hero__pending-card {
@@ -2155,6 +2166,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
 
 .home-account-hero--color .home-account-hero__pending-val {
   color: #e2e8f0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .home-account-hero__detail-main {
@@ -2166,6 +2181,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
 
 html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-val {
   color: #334155;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .home-account-hero--color .home-account-hero__admin {
@@ -2870,6 +2889,11 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: center;
     gap: 8px 12px;
     width: 100%;
+    height: auto;
+  }
+
+  .home-account-hero__pending-card:last-child {
+    margin-top: 0;
   }
 
   .home-account-hero__pending-card {
