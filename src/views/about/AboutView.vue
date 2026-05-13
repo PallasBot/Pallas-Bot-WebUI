@@ -3,7 +3,7 @@ import { fetchBotUpdateCheck, fetchSystem } from "@/api/consoleApi";
 import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { pallasConnectionKey } from "@/types/pallas-connection";
-import { Cpu, Link, Monitor, Reading } from "@element-plus/icons-vue";
+import { BookOpenIcon, CpuIcon, DesktopIcon } from "tdesign-icons-vue-next";
 import { computed, inject, onMounted, ref, watch } from "vue";
 
 type AboutSection = "overview" | "release" | "runtime";
@@ -20,9 +20,9 @@ const sectionSub: Record<AboutSection, string> = {
   runtime: "当前 Bot 进程暴露的运行态基础指标。",
 };
 const navItems = [
-  { index: "overview", label: "产品定位", icon: Reading },
-  { index: "release", label: "构建信息", icon: Monitor },
-  { index: "runtime", label: "运行态信息", icon: Cpu },
+  { index: "overview", label: "产品定位", icon: BookOpenIcon },
+  { index: "release", label: "构建信息", icon: DesktopIcon },
+  { index: "runtime", label: "运行态信息", icon: CpuIcon },
 ];
 
 const conn = inject(pallasConnectionKey);
@@ -133,7 +133,7 @@ onMounted(() => {
     </template>
 
     <div v-show="section === 'overview'" class="panel">
-      <el-card class="ac" shadow="hover">
+      <t-card class="ac" bordered hover-shadow>
         <p class="p">
           <strong>Pallas-Bot 控制台</strong>是主仓的 Web 管理面，生产环境通常由同一 Bot HTTP
           进程在 <code>/pallas</code> 提供静态页面，并通过 <code>/pallas/api</code> 暴露管理接口。
@@ -142,41 +142,41 @@ onMounted(() => {
           控制台职责是“可观测 + 可运维 + 可配置”，不替代业务插件内部逻辑。建议把它放在受控网络与鉴权策略下运行。
         </p>
         <div class="repo-row">
-          <el-link :href="REPO" type="primary" target="_blank" rel="noopener" :icon="Link" class="repo-link">Pallas-Bot</el-link>
-          <el-link :href="WEBUI_REPO" type="primary" target="_blank" rel="noopener" :icon="Link" class="repo-link">Pallas-Bot-WebUI</el-link>
+          <t-link class="repo-link" theme="primary" :href="REPO" target="_blank" rel="noopener">Pallas-Bot</t-link>
+          <t-link class="repo-link" theme="primary" :href="WEBUI_REPO" target="_blank" rel="noopener">Pallas-Bot-WebUI</t-link>
         </div>
-      </el-card>
+      </t-card>
     </div>
 
     <div v-show="section === 'release'" class="panel">
-      <el-card class="ac" shadow="hover">
-        <el-skeleton v-if="ok === null" :rows="4" animated />
+      <t-card class="ac" bordered hover-shadow>
+        <t-skeleton v-if="ok === null" animation="gradient" theme="paragraph" />
         <template v-else>
-          <el-descriptions v-if="last" :column="1" border size="small">
-            <el-descriptions-item v-for="r in releaseRows" :key="r.k" :label="r.k">
+          <t-descriptions v-if="last" :column="1" bordered size="small">
+            <t-descriptions-item v-for="r in releaseRows" :key="r.k" :label="r.k">
               <span class="mono">{{ r.v }}</span>
-            </el-descriptions-item>
-            <el-descriptions-item label="健康检查接口">
-              <el-tag v-if="ok" type="success" size="small">正常</el-tag>
-              <el-tag v-else type="warning" size="small">异常</el-tag>
-            </el-descriptions-item>
-          </el-descriptions>
+            </t-descriptions-item>
+            <t-descriptions-item label="健康检查接口">
+              <t-tag v-if="ok" theme="success" size="small">正常</t-tag>
+              <t-tag v-else theme="warning" size="small">异常</t-tag>
+            </t-descriptions-item>
+          </t-descriptions>
           <p v-else class="muted">未获取到构建元数据，请确认 pallas_webui 已正确加载。</p>
-          <el-button class="rbtn" type="primary" plain @click="refreshBuildInfo">刷新构建信息</el-button>
+          <t-button class="rbtn" theme="primary" variant="outline" @click="refreshBuildInfo">刷新构建信息</t-button>
         </template>
-      </el-card>
+      </t-card>
     </div>
 
     <div v-show="section === 'runtime'" class="panel">
-      <el-card class="ac" shadow="hover">
-        <el-skeleton v-if="runtimeLoading" :rows="4" animated />
-        <el-descriptions v-else :column="1" border size="small">
-          <el-descriptions-item v-for="r in runtimeRows" :key="r.k" :label="r.k">
+      <t-card class="ac" bordered hover-shadow>
+        <t-skeleton v-if="runtimeLoading" animation="gradient" theme="paragraph" />
+        <t-descriptions v-else :column="1" bordered size="small">
+          <t-descriptions-item v-for="r in runtimeRows" :key="r.k" :label="r.k">
             <span class="mono">{{ r.v }}</span>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-button class="rbtn" type="primary" plain @click="loadRuntime">刷新运行态</el-button>
-      </el-card>
+          </t-descriptions-item>
+        </t-descriptions>
+        <t-button class="rbtn" theme="primary" variant="outline" @click="loadRuntime">刷新运行态</t-button>
+      </t-card>
     </div>
   </PallasSidebarShell>
 </template>

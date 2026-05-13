@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
-import { Select as SelectIcon } from "@element-plus/icons-vue";
+import { computed } from "vue";
+import { ViewListIcon } from "tdesign-icons-vue-next";
 
 export interface PallasNavItem {
   index: string;
@@ -8,7 +9,7 @@ export interface PallasNavItem {
   icon?: Component;
 }
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     asideTitle: string;
     navItems: PallasNavItem[];
@@ -20,6 +21,8 @@ withDefaults(
   }>(),
   { lockBody: false },
 );
+
+const mobileSelectOptions = computed(() => props.navItems.map((n) => ({ label: n.label, value: n.index })));
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: string): void;
@@ -36,22 +39,14 @@ function pickNav(key: string) {
     :class="{ 'is-body-locked': lockBody }"
   >
     <div class="pallas-sidebar-mobile">
-      <el-icon class="m-ico">
-        <SelectIcon />
-      </el-icon>
-      <el-select
+      <ViewListIcon class="m-ico" />
+      <t-select
         :model-value="modelValue"
         class="pallas-sidebar-mobile-select"
         size="large"
+        :options="mobileSelectOptions"
         @update:model-value="(v: string) => emit('update:modelValue', v)"
-      >
-        <el-option
-          v-for="n in navItems"
-          :key="n.index"
-          :label="n.label"
-          :value="n.index"
-        />
-      </el-select>
+      />
     </div>
 
     <div class="pallas-sidebar-body">
@@ -70,26 +65,23 @@ function pickNav(key: string) {
           :aria-label="menuAriaLabel || '页面分节'"
         >
           <div class="aside-t">{{ asideTitle }}</div>
-          <el-menu
+          <t-menu
             :key="`sidebar-nav-${modelValue}`"
-            :default-active="modelValue"
+            :value="modelValue"
             class="side-menu"
-            @select="pickNav"
+            @change="(v: string | number) => pickNav(String(v))"
           >
-            <el-menu-item
+            <t-menu-item
               v-for="n in navItems"
               :key="n.index"
-              :index="n.index"
+              :value="n.index"
             >
-              <el-icon
-                v-if="n.icon"
-                class="nav-ico"
-              >
-                <component :is="n.icon" />
-              </el-icon>
-              <span>{{ n.label }}</span>
-            </el-menu-item>
-          </el-menu>
+              <template v-if="n.icon" #icon>
+                <component :is="n.icon" class="nav-ico" />
+              </template>
+              {{ n.label }}
+            </t-menu-item>
+          </t-menu>
           <div
             v-if="$slots['aside-extra']"
             class="aside-extra"
@@ -175,7 +167,7 @@ function pickNav(key: string) {
     border-right: none;
     background: transparent;
   }
-  :deep(.el-menu-item) {
+  :deep(.t-menu__item) {
     margin: 1px 6px;
     border-radius: var(--pallas-radius-sm);
     height: 36px;
@@ -184,12 +176,12 @@ function pickNav(key: string) {
     font-size: var(--pallas-text-sm);
     font-weight: var(--pallas-weight-medium);
   }
-  :deep(.el-menu-item .el-icon) {
+  :deep(.t-menu__item .t-icon) {
     font-size: 15px;
   }
-  :deep(.el-menu-item.is-active) {
+  :deep(.t-menu__item.t-is-active) {
     color: #fff !important;
-    background: var(--el-color-primary-dark-2) !important;
+    background: var(--td-brand-color-8) !important;
   }
   .nav-ico {
     margin-right: 6px;

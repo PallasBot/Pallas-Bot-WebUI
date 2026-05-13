@@ -1,7 +1,7 @@
 import { createApp } from "vue";
-import ElementPlus from "element-plus";
-import "element-plus/dist/index.css";
-import "element-plus/theme-chalk/dark/css-vars.css";
+import TDesign from "tdesign-vue-next";
+import { LoadingDirective } from "tdesign-vue-next";
+import "tdesign-vue-next/es/style/index.css";
 import "./assets/styles/pallas-theme.scss";
 
 import App from "./App.vue";
@@ -13,5 +13,6 @@ initThemeFromStorage();
 applyPallasUiPrefsFromStorage();
 const app = createApp(App);
 app.use(router);
-app.use(ElementPlus);
+app.use(TDesign);
+app.directive("loading", LoadingDirective);
 app.mount("#app");
