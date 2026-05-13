@@ -190,7 +190,6 @@ onUnmounted(() => {
     >
       <div class="shell__sidebar-top">
         <div class="shell__brand">
-          <div class="shell__logo">Operations</div>
           <div class="shell__title">Pallas-Bot</div>
         </div>
         <button

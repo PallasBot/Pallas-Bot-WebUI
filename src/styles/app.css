@@ -262,21 +262,6 @@ html[data-theme="light"] .shell__sidebar-toggle:hover {
   padding: 0 0 0 2px;
   border: none;
   margin: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-
-.shell__logo {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin: 0;
-  line-height: 1;
 }
 
 .shell__title {
