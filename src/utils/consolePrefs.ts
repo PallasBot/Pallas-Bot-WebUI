@@ -16,8 +16,8 @@ export interface ConsolePrefsState {
   sidebarCollapsed: boolean;
   /** 实例页：数据库 Bot 配置表格/卡片默认视图 */
   instancesBotView: DataViewMode;
-  /** 实例页：协议管理表格/卡片默认视图 */
-  instancesProtoView: DataViewMode;
+  /** 控制台各列表默认每页条数（4–80） */
+  tablePageSize: number;
 }
 
 const defaults: ConsolePrefsState = {
@@ -26,7 +26,7 @@ const defaults: ConsolePrefsState = {
   density: "comfortable",
   sidebarCollapsed: false,
   instancesBotView: "table",
-  instancesProtoView: "table",
+  tablePageSize: 12,
 };
 
 function load(): ConsolePrefsState {
@@ -38,9 +38,9 @@ function load(): ConsolePrefsState {
     if (merged.instancesBotView !== "table" && merged.instancesBotView !== "cards") {
       merged.instancesBotView = defaults.instancesBotView;
     }
-    if (merged.instancesProtoView !== "table" && merged.instancesProtoView !== "cards") {
-      merged.instancesProtoView = defaults.instancesProtoView;
-    }
+    const ps = Number(merged.tablePageSize);
+    if (!Number.isFinite(ps)) merged.tablePageSize = defaults.tablePageSize;
+    else merged.tablePageSize = Math.min(80, Math.max(4, Math.floor(ps)));
     return merged;
   } catch {
     return { ...defaults };

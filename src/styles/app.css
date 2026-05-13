@@ -411,6 +411,81 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   padding: 16px 40px 48px;
 }
 
+.shell__main-inner--logs {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 20px;
+}
+
+.logs-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.logs-page > .page-hero {
+  flex-shrink: 0;
+}
+
+.logs-page > .alert {
+  flex-shrink: 0;
+}
+
+.logs-page > .panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.logs-page .panel__hd {
+  flex-shrink: 0;
+}
+
+.logs-page .panel__bd {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-page .panel__bd > p.muted {
+  flex-shrink: 0;
+}
+
+.logs-page__scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-page__scroll .log-feed,
+.logs-page__scroll .pre-block.pre-block--logs-tall {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}
+
+.panel__hd--split {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-ncm-hd-title {
+  margin: 0;
+}
+
 .shell__narrow-open {
   position: fixed;
   top: 12px;
@@ -1249,6 +1324,18 @@ html[data-theme="light"] .bot-config-edit {
   gap: 8px 14px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* 总览：账户 → 系统性能（整行）→ 容量卡片（整行） */
 .home-dashboard {
   display: grid;
@@ -1259,19 +1346,28 @@ html[data-theme="light"] .bot-config-edit {
   grid-column: 1 / -1;
 }
 
-.home-account-picker {
-  margin-bottom: 16px;
+.home-account-panel__hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
-.home-account-picker label {
-  display: block;
+.home-account-panel__hd-main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.home-account-bot-pick {
+  flex-shrink: 0;
+}
+.home-account-bot-pick__sel {
+  max-width: min(240px, 46vw);
+  min-width: 0;
+  padding: 6px 10px;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.home-account-picker__sel {
-  width: 100%;
-  max-width: 420px;
 }
 
 .home-account-hero {

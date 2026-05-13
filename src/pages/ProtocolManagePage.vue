@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { fetchInstances, fetchSystem } from "@/api/consoleApi";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
-import { botHttpBaseFromSystem, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
+import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
 const system = ref<SystemData | null>(null);
@@ -10,7 +13,27 @@ const instances = ref<InstancesData | null>(null);
 
 const snap = computed(() => protocolSnapshot(instances.value));
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
-const botBase = computed(() => botHttpBaseFromSystem(system.value));
+
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
+
+const protoAccPage = ref(1);
+
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    protoAccPage.value = 1;
+  },
+);
+
+watch([snap, () => snap.value?.accounts?.length], () => {
+  protoAccPage.value = 1;
+});
 
 function profileNick(a: NapcatAccountRow): string {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -33,6 +56,14 @@ const protocolAccountsSorted = computed(() => {
   });
   return list;
 });
+
+const pagedProtocolAccounts = computed(() =>
+  slicePage(protocolAccountsSorted.value, protoAccPage.value, tablePageSize.value),
+);
+
+function webUiHref(a: NapcatAccountRow): string | null {
+  return accountWebUiHref(a, system.value);
+}
 
 function primaryTitle(a: NapcatAccountRow): string {
   const nick = profileNick(a);
@@ -60,7 +91,7 @@ onMounted(load);
       <p class="page-hero__eyebrow">Protocol</p>
       <h1 class="page-hero__title">协议端管理</h1>
       <p class="page-hero__desc">
-        打开挂载在牛牛 HTTP 服务上的协议内置管理页（路径取自实例快照）；用于日常运维与排障。
+        打开协议内置管理页（路径取自实例快照）；用于日常运维与排障。
       </p>
     </header>
 
@@ -76,9 +107,6 @@ onMounted(load);
         <h2 class="panel__title">入口</h2>
       </div>
       <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 10px">
-          牛牛基址：<strong style="color: var(--text)">{{ botBase ?? "（未配置 console.http_base）" }}</strong>
-        </p>
         <p class="muted" style="margin: 0 0 10px">
           内置 WebUI：<strong style="color: var(--text)">{{ snap?.webui_enabled ? "已启用" : "未启用" }}</strong>
           <span v-if="snap?.webui_path"> · 路径 <code>{{ snap.webui_path }}</code></span>
@@ -131,18 +159,35 @@ onMounted(load);
             </thead>
             <tbody>
               <tr
-                v-for="(a, i) in protocolAccountsSorted"
+                v-for="(a, i) in pagedProtocolAccounts"
                 :key="i"
               >
                 <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
                 <td class="muted">{{ a.qq ?? a.id ?? "—" }}</td>
                 <td>{{ yn(a.process_running ?? a.running) }}</td>
                 <td>{{ yn(a.connected) }}</td>
-                <td class="muted">{{ a.webui_port ?? "—" }}</td>
+                <td>
+                  <a
+                    v-if="webUiHref(a)"
+                    class="link-quiet"
+                    :href="webUiHref(a)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ a.webui_port ?? "打开" }}</a>
+                  <span
+                    v-else
+                    class="muted"
+                  >{{ a.webui_port ?? "—" }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <ConsolePagerBar
+          v-model:page="protoAccPage"
+          v-model:page-size="tablePageSize"
+          :total="protocolAccountsSorted.length"
+        />
       </div>
     </div>
 

@@ -49,6 +49,36 @@ export interface MessageStatsData {
     received: number;
     today_sent?: number;
     today_received?: number;
+    /** 今日协议/API 调用总次数（不含发消息与高频状态类接口） */
+    today_api_calls?: number;
+    /** 今日调用次数最多的接口名 */
+    today_top_api?: string;
+    today_top_api_count?: number;
+  }>;
+}
+
+/** 各插件 Matcher 执行次数（进程内累计，重启清零） */
+export interface PluginRunStatsRow {
+  name: string;
+  runs: number;
+  runs_today: number;
+  errors: number;
+  errors_today: number;
+}
+
+export interface PluginRunStatsData {
+  total_runs: number;
+  total_errors: number;
+  total_runs_today: number;
+  total_errors_today: number;
+  bots: Array<{
+    self_id: string;
+    connection_key: string;
+    runs: number;
+    errors: number;
+    runs_today: number;
+    errors_today: number;
+    plugins: PluginRunStatsRow[];
   }>;
 }
 

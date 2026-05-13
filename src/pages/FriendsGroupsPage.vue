@@ -17,8 +17,10 @@ import type {
   InstancesData,
   RequestOverviewData,
 } from "@/api/pallasTypes";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { visibleBots } from "@/utils/botDisplay";
-import { slicePage, totalPages } from "@/utils/paginate";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
 const busy = ref(false);
@@ -30,7 +32,14 @@ const groups = ref<GroupListData | null>(null);
 const overview = ref<RequestOverviewData | null>(null);
 const instances = ref<InstancesData | null>(null);
 
-const PAGE = 12;
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
+
 const pageFriendReq = ref(1);
 const pageGroupReq = ref(1);
 const pageFriends = ref(1);
@@ -153,17 +162,23 @@ const groupRequestRows = computed(() => {
   return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
 });
 
-const pagedRequestRows = computed(() => slicePage(requestRows.value, pageFriendReq.value, PAGE));
-const reqRowsMaxPage = computed(() => totalPages(requestRows.value.length, PAGE));
+const pagedRequestRows = computed(() => slicePage(requestRows.value, pageFriendReq.value, tablePageSize.value));
 
-const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, pageGroupReq.value, PAGE));
-const groupReqMaxPage = computed(() => totalPages(groupRequestRows.value.length, PAGE));
+const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, pageGroupReq.value, tablePageSize.value));
 
-const pagedFriends = computed(() => slicePage(friends.value?.friends ?? [], pageFriends.value, PAGE));
-const friendsMaxPage = computed(() => totalPages(friends.value?.friends?.length ?? 0, PAGE));
+const pagedFriends = computed(() => slicePage(friends.value?.friends ?? [], pageFriends.value, tablePageSize.value));
 
-const pagedGroups = computed(() => slicePage(groups.value?.groups ?? [], pageGroups.value, PAGE));
-const groupsMaxPage = computed(() => totalPages(groups.value?.groups?.length ?? 0, PAGE));
+const pagedGroups = computed(() => slicePage(groups.value?.groups ?? [], pageGroups.value, tablePageSize.value));
+
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    pageFriendReq.value = 1;
+    pageGroupReq.value = 1;
+    pageFriends.value = 1;
+    pageGroups.value = 1;
+  },
+);
 
 watch([requestRows, groupRequestRows, () => friends.value?.friends?.length, () => groups.value?.groups?.length, selfIdStr], () => {
   pageFriendReq.value = 1;
@@ -329,30 +344,12 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </tbody>
           </table>
         </div>
-        <div
-          v-if="requestRows.length > PAGE"
-          class="console-pager"
-        >
-          <span class="muted">共 {{ requestRows.length }} 条 · 第 {{ pageFriendReq }} / {{ reqRowsMaxPage }} 页</span>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageFriendReq <= 1"
-              @click="pageFriendReq = Math.max(1, pageFriendReq - 1)"
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageFriendReq >= reqRowsMaxPage"
-              @click="pageFriendReq = Math.min(reqRowsMaxPage, pageFriendReq + 1)"
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+        <ConsolePagerBar
+          v-if="requestRows.length > 0"
+          v-model:page="pageFriendReq"
+          v-model:page-size="tablePageSize"
+          :total="requestRows.length"
+        />
       </div>
     </div>
 
@@ -401,30 +398,12 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </tbody>
           </table>
         </div>
-        <div
-          v-if="(friends?.friends?.length ?? 0) > PAGE"
-          class="console-pager"
-        >
-          <span class="muted">共 {{ friends?.friends?.length ?? 0 }} 条 · 第 {{ pageFriends }} / {{ friendsMaxPage }} 页</span>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageFriends <= 1"
-              @click="pageFriends = Math.max(1, pageFriends - 1)"
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageFriends >= friendsMaxPage"
-              @click="pageFriends = Math.min(friendsMaxPage, pageFriends + 1)"
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+        <ConsolePagerBar
+          v-if="(friends?.friends?.length ?? 0) > 0"
+          v-model:page="pageFriends"
+          v-model:page-size="tablePageSize"
+          :total="friends?.friends?.length ?? 0"
+        />
       </div>
     </div>
 
@@ -492,30 +471,12 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </tbody>
           </table>
         </div>
-        <div
-          v-if="groupRequestRows.length > PAGE"
-          class="console-pager"
-        >
-          <span class="muted">共 {{ groupRequestRows.length }} 条 · 第 {{ pageGroupReq }} / {{ groupReqMaxPage }} 页</span>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageGroupReq <= 1"
-              @click="pageGroupReq = Math.max(1, pageGroupReq - 1)"
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageGroupReq >= groupReqMaxPage"
-              @click="pageGroupReq = Math.min(groupReqMaxPage, pageGroupReq + 1)"
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+        <ConsolePagerBar
+          v-if="groupRequestRows.length > 0"
+          v-model:page="pageGroupReq"
+          v-model:page-size="tablePageSize"
+          :total="groupRequestRows.length"
+        />
       </div>
     </div>
 
@@ -566,30 +527,12 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </tbody>
           </table>
         </div>
-        <div
-          v-if="(groups?.groups?.length ?? 0) > PAGE"
-          class="console-pager"
-        >
-          <span class="muted">共 {{ groups?.groups?.length ?? 0 }} 条 · 第 {{ pageGroups }} / {{ groupsMaxPage }} 页</span>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageGroups <= 1"
-              @click="pageGroups = Math.max(1, pageGroups - 1)"
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="pageGroups >= groupsMaxPage"
-              @click="pageGroups = Math.min(groupsMaxPage, pageGroups + 1)"
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+        <ConsolePagerBar
+          v-if="(groups?.groups?.length ?? 0) > 0"
+          v-model:page="pageGroups"
+          v-model:page-size="tablePageSize"
+          :total="groups?.groups?.length ?? 0"
+        />
       </div>
     </div>
   </div>

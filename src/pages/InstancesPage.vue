@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
-import type { BotConfigPublic, InstancesData, NapcatManagerSnapshot, PluginRow } from "@/api/pallasTypes";
+import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
+import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { visibleBots } from "@/utils/botDisplay";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
-import { slicePage, totalPages } from "@/utils/paginate";
-import { protocolDisp } from "@/utils/protocolUi";
+import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
 const data = ref<InstancesData | null>(null);
@@ -15,7 +16,14 @@ const plugins = ref<PluginRow[]>([]);
 const pluginLoadErr = ref("");
 
 const botView = ref<"table" | "cards">(consolePrefs.instancesBotView);
-const protoView = ref<"table" | "cards">(consolePrefs.instancesProtoView);
+
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
 
 const editModalAccount = ref<number | null>(null);
 const draft = ref<{
@@ -43,27 +51,10 @@ onUnmounted(() => {
   }
 });
 
-const protocolSnap = computed<NapcatManagerSnapshot | null>(
-  () => data.value?.pallas_protocol ?? data.value?.napcat ?? null,
-);
-
-const protocolAccountRows = computed(() =>
-  (protocolSnap.value?.accounts ?? []).map((a, i) => ({
-    key: `pa-${i}-${String(a.qq ?? a.id ?? i)}`,
-    raw: a,
-    run: protocolDisp(a.process_running ?? a.running, "运行", "停止"),
-    conn: protocolDisp(a.connected, "已连接", "未连接"),
-  })),
-);
-
-const PAGE_SIZE = 12;
-
 const instNbPage = ref(1);
 const instDbPage = ref(1);
-const instProtoPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
-const expProtocol = ref(true);
 
 const sortedNonebotBots = computed(() => {
   const rows = visibleBots([...(data.value?.nonebot_bots ?? [])]);
@@ -79,9 +70,16 @@ const sortedNonebotBots = computed(() => {
   return rows;
 });
 
+function isBotConnected(account: number): boolean {
+  return accountHasNonebotBot(data.value?.nonebot_bots, account);
+}
+
 const sortedDbBotConfigs = computed(() => {
   const rows = [...(data.value?.db_bot_configs ?? [])];
   rows.sort((a, b) => {
+    const fa = botFavoriteAccounts.value.has(a.account) ? 1 : 0;
+    const fb = botFavoriteAccounts.value.has(b.account) ? 1 : 0;
+    if (fa !== fb) return fb - fa;
     const ca = isBotConnected(a.account) ? 1 : 0;
     const cb = isBotConnected(b.account) ? 1 : 0;
     if (ca !== cb) return cb - ca;
@@ -94,62 +92,25 @@ const sortedDbBotConfigs = computed(() => {
   return rows;
 });
 
-const sortedProtocolAccountRows = computed(() => {
-  const rows = [...protocolAccountRows.value];
-  rows.sort((a, b) => {
-    const ca = a.raw.connected === true ? 1 : 0;
-    const cb = b.raw.connected === true ? 1 : 0;
-    if (ca !== cb) return cb - ca;
-    const qa = parseSelfId(String(a.raw.qq ?? a.raw.id ?? ""));
-    const qb = parseSelfId(String(b.raw.qq ?? b.raw.id ?? ""));
-    const na = (qa != null ? botNickname(qa) : "") || String(a.raw.display_name ?? "").trim();
-    const nb = (qb != null ? botNickname(qb) : "") || String(b.raw.display_name ?? "").trim();
-    const cmp = na.toLowerCase().localeCompare(nb.toLowerCase(), "zh-CN");
-    if (cmp !== 0) return cmp;
-    return String(a.raw.qq ?? a.raw.id ?? "").localeCompare(String(b.raw.qq ?? b.raw.id ?? ""), "zh-CN", {
-      numeric: true,
-    });
-  });
-  return rows;
-});
-
-const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, PAGE_SIZE));
-const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, PAGE_SIZE));
-const pagedProtocolRows = computed(() => slicePage(sortedProtocolAccountRows.value, instProtoPage.value, PAGE_SIZE));
-
-const instNbMaxPage = computed(() => totalPages(sortedNonebotBots.value.length, PAGE_SIZE));
-const instDbMaxPage = computed(() => totalPages(sortedDbBotConfigs.value.length, PAGE_SIZE));
-const instProtoMaxPage = computed(() => totalPages(sortedProtocolAccountRows.value.length, PAGE_SIZE));
+const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, tablePageSize.value));
+const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, tablePageSize.value));
 
 watch(data, () => {
   instNbPage.value = 1;
   instDbPage.value = 1;
-  instProtoPage.value = 1;
 });
 
-function protocolPrimaryTitle(row: (typeof sortedProtocolAccountRows.value)[0]): string {
-  const q = parseSelfId(String(row.raw.qq ?? row.raw.id ?? ""));
-  if (q != null) {
-    const nick = botNickname(q);
-    if (nick) return nick;
-  }
-  const d = String(row.raw.display_name ?? "").trim();
-  if (d) return d;
-  return String(row.raw.qq ?? row.raw.id ?? "—");
-}
-
-function isBotConnected(account: number): boolean {
-  return accountHasNonebotBot(data.value?.nonebot_bots, account);
-}
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    instNbPage.value = 1;
+    instDbPage.value = 1;
+  },
+);
 
 function setBotView(v: "table" | "cards") {
   botView.value = v;
   setConsolePrefs({ instancesBotView: v });
-}
-
-function setProtoView(v: "table" | "cards") {
-  protoView.value = v;
-  setConsolePrefs({ instancesProtoView: v });
 }
 
 function botProfileEntry(account: number) {
@@ -295,7 +256,7 @@ onMounted(async () => {
         <p class="page-hero__eyebrow">Topology</p>
         <h1 class="page-hero__title">实例与连接</h1>
         <p class="page-hero__desc">
-          汇总编排器在线情况、数据面账号及协议管理器快照。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。
+          汇总编排器在线情况与数据面账号。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。协议进程级状态见「协议端」。
         </p>
       </div>
       <div class="page-hero__actions">
@@ -356,30 +317,12 @@ onMounted(async () => {
               </tbody>
             </table>
           </div>
-          <div
-            v-if="sortedNonebotBots.length > PAGE_SIZE"
-            class="console-pager"
-          >
-            <span class="muted">共 {{ sortedNonebotBots.length }} 条 · 第 {{ instNbPage }} / {{ instNbMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="instNbPage <= 1"
-                @click="instNbPage = Math.max(1, instNbPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="instNbPage >= instNbMaxPage"
-                @click="instNbPage = Math.min(instNbMaxPage, instNbPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
-          </div>
+          <ConsolePagerBar
+            v-if="sortedNonebotBots.length > 0"
+            v-model:page="instNbPage"
+            v-model:page-size="tablePageSize"
+            :total="sortedNonebotBots.length"
+          />
         </div>
       </div>
 
@@ -466,43 +409,36 @@ onMounted(async () => {
                   <td>{{ c.auto_accept_group }}</td>
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
-                    <button
-                      type="button"
-                      class="btn"
-                      style="padding: 6px 10px; font-size: 12px"
-                      @click="startEdit(c)"
-                    >
-                      编辑
-                    </button>
+                    <div class="inst-actions">
+                      <button
+                        type="button"
+                        class="btn"
+                        style="padding: 6px 10px; font-size: 12px"
+                        @click="startEdit(c)"
+                      >
+                        编辑
+                      </button>
+                      <button
+                        type="button"
+                        class="btn inst-fav-star"
+                        :aria-pressed="botFavoriteAccounts.has(c.account)"
+                        :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                        @click="toggleFavoriteBot(c.account)"
+                      >
+                        ★
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div
-            v-if="botView === 'table' && sortedDbBotConfigs.length > PAGE_SIZE"
-            class="console-pager"
-          >
-            <span class="muted">共 {{ sortedDbBotConfigs.length }} 条 · 第 {{ instDbPage }} / {{ instDbMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="instDbPage <= 1"
-                @click="instDbPage = Math.max(1, instDbPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="instDbPage >= instDbMaxPage"
-                @click="instDbPage = Math.min(instDbMaxPage, instDbPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
-          </div>
+          <ConsolePagerBar
+            v-if="botView === 'table' && sortedDbBotConfigs.length > 0"
+            v-model:page="instDbPage"
+            v-model:page-size="tablePageSize"
+            :total="sortedDbBotConfigs.length"
+          />
 
           <div
             v-else-if="botView === 'cards'"
@@ -546,7 +482,7 @@ onMounted(async () => {
                     : "无"
                 }}
               </div>
-              <div class="data-summary-card__tags">
+              <div class="data-summary-card__tags inst-card-actions">
                 <button
                   type="button"
                   class="btn btn--primary"
@@ -555,210 +491,24 @@ onMounted(async () => {
                 >
                   编辑
                 </button>
-              </div>
-            </div>
-          </div>
-          <div
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > PAGE_SIZE"
-            class="console-pager"
-          >
-            <span class="muted">共 {{ sortedDbBotConfigs.length }} 条 · 第 {{ instDbPage }} / {{ instDbMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="instDbPage <= 1"
-                @click="instDbPage = Math.max(1, instDbPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="instDbPage >= instDbMaxPage"
-                @click="instDbPage = Math.min(instDbMaxPage, instDbPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-if="protocolSnap"
-        class="panel"
-      >
-        <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">协议管理（{{ protocolSnap.plugin }}）</h2>
-          <div
-            class="row-actions"
-            style="flex-wrap: wrap; gap: 8px; align-items: center"
-          >
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
-              @click="expProtocol = !expProtocol"
-            >
-              {{ expProtocol ? "收起" : "展开" }}
-            </button>
-            <div
-              class="console-view-toggle"
-              role="group"
-              aria-label="协议视图"
-            >
-              <button
-                type="button"
-                :class="{ 'is-on': protoView === 'table' }"
-                @click="setProtoView('table')"
-              >
-                表格
-              </button>
-              <button
-                type="button"
-                :class="{ 'is-on': protoView === 'cards' }"
-                @click="setProtoView('cards')"
-              >
-                卡片
-              </button>
-            </div>
-          </div>
-        </div>
-        <div
-          v-show="expProtocol"
-          class="panel__bd"
-        >
-          <p class="muted" style="margin: 0 0 12px">
-            WebUI：{{ protocolSnap.webui_enabled ? "启用" : "关闭" }} · 路径 {{ protocolSnap.webui_path }}
-          </p>
-          <div
-            v-if="protoView === 'table'"
-            class="table-wrap"
-          >
-            <table class="data">
-              <thead>
-                <tr>
-                  <th>昵称</th>
-                  <th>账号</th>
-                  <th>运行</th>
-                  <th>已连接</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in pagedProtocolRows"
-                  :key="row.key"
+                <button
+                  type="button"
+                  class="btn inst-fav-star"
+                  :aria-pressed="botFavoriteAccounts.has(c.account)"
+                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                  @click="toggleFavoriteBot(c.account)"
                 >
-                  <td style="font-weight: 600">{{ protocolPrimaryTitle(row) }}</td>
-                  <td class="muted">{{ row.raw.qq || row.raw.id }}</td>
-                  <td>
-                    <template v-if="row.run.kind === 'pill'">
-                      <span :class="boolPillClass(row.run.on)">{{ row.run.on ? row.run.onLabel : row.run.offLabel }}</span>
-                    </template>
-                    <span
-                      v-else
-                      class="muted"
-                    >{{ row.run.text }}</span>
-                  </td>
-                  <td>
-                    <template v-if="row.conn.kind === 'pill'">
-                      <span :class="boolPillClass(row.conn.on)">{{ row.conn.on ? row.conn.onLabel : row.conn.offLabel }}</span>
-                    </template>
-                    <span
-                      v-else
-                      class="muted"
-                    >{{ row.conn.text }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div
-            v-if="protoView === 'table' && sortedProtocolAccountRows.length > PAGE_SIZE"
-            class="console-pager"
-          >
-            <span class="muted">共 {{ sortedProtocolAccountRows.length }} 条 · 第 {{ instProtoPage }} / {{ instProtoMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="instProtoPage <= 1"
-                @click="instProtoPage = Math.max(1, instProtoPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="instProtoPage >= instProtoMaxPage"
-                @click="instProtoPage = Math.min(instProtoMaxPage, instProtoPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
-          </div>
-          <div
-            v-else-if="protoView === 'cards'"
-            class="data-card-grid"
-          >
-            <div
-              v-for="row in pagedProtocolRows"
-              :key="row.key"
-              class="data-summary-card data-summary-card--kv"
-            >
-              <div class="data-summary-card__title">{{ protocolPrimaryTitle(row) }}</div>
-              <div class="data-summary-card__secondary muted" style="margin-top: 2px">
-                账号 {{ row.raw.qq || row.raw.id || "—" }}
-              </div>
-              <div class="data-summary-card__row">
-                <span class="data-summary-card__label">进程</span>
-                <template v-if="row.run.kind === 'pill'">
-                  <span :class="boolPillClass(row.run.on)">{{ row.run.on ? row.run.onLabel : row.run.offLabel }}</span>
-                </template>
-                <span
-                  v-else
-                  class="muted"
-                  style="font-size: 12px"
-                >{{ row.run.text }}</span>
-              </div>
-              <div class="data-summary-card__row">
-                <span class="data-summary-card__label">连接</span>
-                <template v-if="row.conn.kind === 'pill'">
-                  <span :class="boolPillClass(row.conn.on)">{{ row.conn.on ? row.conn.onLabel : row.conn.offLabel }}</span>
-                </template>
-                <span
-                  v-else
-                  class="muted"
-                  style="font-size: 12px"
-                >{{ row.conn.text }}</span>
+                  ★
+                </button>
               </div>
             </div>
           </div>
-          <div
-            v-if="protoView === 'cards' && sortedProtocolAccountRows.length > PAGE_SIZE"
-            class="console-pager"
-          >
-            <span class="muted">共 {{ sortedProtocolAccountRows.length }} 条 · 第 {{ instProtoPage }} / {{ instProtoMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="instProtoPage <= 1"
-                @click="instProtoPage = Math.max(1, instProtoPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="instProtoPage >= instProtoMaxPage"
-                @click="instProtoPage = Math.min(instProtoMaxPage, instProtoPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
-          </div>
+          <ConsolePagerBar
+            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
+            v-model:page="instDbPage"
+            v-model:page-size="tablePageSize"
+            :total="sortedDbBotConfigs.length"
+          />
         </div>
       </div>
     </template>
@@ -973,3 +723,30 @@ onMounted(async () => {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.inst-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inst-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inst-fav-star {
+  padding: 6px 10px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.38;
+}
+.inst-fav-star[aria-pressed="true"] {
+  opacity: 1;
+  color: #fbbf24;
+}
+</style>

@@ -11,8 +11,10 @@ import {
   putUserConfig,
 } from "@/api/consoleApi";
 import type { BotRow, GroupConfigPublic, InstancesData, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { visibleBots } from "@/utils/botDisplay";
-import { slicePage, totalPages } from "@/utils/paginate";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 
 const err = ref("");
@@ -23,7 +25,14 @@ const bots = ref<BotRow[]>([]);
 const instances = ref<InstancesData | null>(null);
 const filterSelfId = ref("");
 
-const GROUP_PAGE = 15;
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
+
 const groupPage = ref(1);
 
 const plugins = ref<PluginRow[]>([]);
@@ -62,12 +71,18 @@ function botFilterLabel(b: BotRow): string {
   return b.self_id;
 }
 
-const pagedGroupList = computed(() => slicePage(groupList.value, groupPage.value, GROUP_PAGE));
-const groupListMaxPage = computed(() => totalPages(groupList.value.length, GROUP_PAGE));
+const pagedGroupList = computed(() => slicePage(groupList.value, groupPage.value, tablePageSize.value));
 
 watch(groupList, () => {
   groupPage.value = 1;
 });
+
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    groupPage.value = 1;
+  },
+);
 
 watch(
   () => groupModalOpen.value || userModalOpen.value,
@@ -381,30 +396,12 @@ onMounted(async () => {
             </tbody>
           </table>
         </div>
-        <div
-          v-if="groupList.length > GROUP_PAGE"
-          class="console-pager"
-        >
-          <span class="muted">共 {{ groupList.length }} 条 · 第 {{ groupPage }} / {{ groupListMaxPage }} 页</span>
-          <div class="row-actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="groupPage <= 1"
-              @click="groupPage = Math.max(1, groupPage - 1)"
-            >
-              上一页
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="groupPage >= groupListMaxPage"
-              @click="groupPage = Math.min(groupListMaxPage, groupPage + 1)"
-            >
-              下一页
-            </button>
-          </div>
-        </div>
+        <ConsolePagerBar
+          v-if="groupList.length > 0"
+          v-model:page="groupPage"
+          v-model:page-size="tablePageSize"
+          :total="groupList.length"
+        />
       </div>
     </div>
 

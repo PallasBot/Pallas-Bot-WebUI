@@ -11,8 +11,10 @@ import {
   putAiExtensionConfig,
 } from "@/api/consoleApi";
 import type { AiExtensionConfig, AiProxyResult } from "@/api/pallasTypes";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
-import { slicePage, totalPages } from "@/utils/paginate";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
 const ok = ref("");
@@ -27,6 +29,14 @@ const ncmCaptcha = ref("");
 const ncmStatus = ref<AiProxyResult | null>(null);
 const ncmBusy = ref(false);
 const ncmLastNote = ref("");
+
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
 
 const ncmPayload = computed<Record<string, unknown>>(() => {
   const d = ncmStatus.value?.data;
@@ -52,18 +62,23 @@ const ncmExtraLine = computed(() => {
   return m;
 });
 
-const NCM_RAW_LINES = 14;
 const ncmRawPage = ref(1);
 const ncmRawLines = computed(() => {
   if (!ncmStatus.value) return [] as string[];
   return JSON.stringify(ncmStatus.value, null, 2).split("\n");
 });
-const ncmRawSlice = computed(() => slicePage(ncmRawLines.value, ncmRawPage.value, NCM_RAW_LINES).join("\n"));
-const ncmRawMaxPage = computed(() => totalPages(ncmRawLines.value.length, NCM_RAW_LINES));
+const ncmRawSlice = computed(() => slicePage(ncmRawLines.value, ncmRawPage.value, tablePageSize.value).join("\n"));
 
 watch(ncmStatus, () => {
   ncmRawPage.value = 1;
 });
+
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    ncmRawPage.value = 1;
+  },
+);
 
 async function load() {
   err.value = "";
@@ -241,8 +256,24 @@ onMounted(async () => {
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">网易云音乐登录</h2>
+      <div class="panel__hd panel__hd--split">
+        <div
+          class="row-actions ai-ncm-hd-left"
+          style="flex: 1; min-width: 0; flex-wrap: wrap; gap: 10px"
+        >
+          <h2 class="panel__title ai-ncm-hd-title">网易云音乐登录</h2>
+          <template v-if="ncmStatus">
+            <span
+              class="badge"
+              :class="ncmLoggedIn ? 'badge--ok' : 'badge--warn'"
+            >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
+            <span
+              v-if="ncmExtraLine"
+              class="muted"
+              style="font-size: 13px"
+            >{{ ncmExtraLine }}</span>
+          </template>
+        </div>
         <div class="row-actions">
           <button
             type="button"
@@ -262,31 +293,15 @@ onMounted(async () => {
         >
           {{ ncmLastNote }}
         </p>
-        <div
-          v-if="ncmStatus"
-          style="margin-bottom: 16px"
-        >
-          <div class="row-actions" style="align-items: center; flex-wrap: wrap; gap: 10px">
-            <span
-              class="badge"
-              :class="ncmLoggedIn ? 'badge--ok' : 'badge--warn'"
-            >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
-            <span
-              v-if="ncmExtraLine"
-              class="muted"
-              style="font-size: 13px"
-            >{{ ncmExtraLine }}</span>
-          </div>
-          <p
-            v-if="ncmStatus && !ncmStatus.ok"
-            class="muted"
-            style="margin: 8px 0 0; font-size: 12px"
-          >
-            代理：{{ ncmStatus.url }}<template v-if="ncmStatus.error"> · {{ ncmStatus.error }}</template>
-          </p>
-        </div>
         <p
-          v-else
+          v-if="ncmStatus && !ncmStatus.ok"
+          class="muted"
+          style="margin: 0 0 12px; font-size: 12px"
+        >
+          代理：{{ ncmStatus.url }}<template v-if="ncmStatus.error"> · {{ ncmStatus.error }}</template>
+        </p>
+        <p
+          v-else-if="!ncmStatus"
           class="muted"
           style="margin: 0 0 12px"
         >
@@ -369,30 +384,16 @@ onMounted(async () => {
         >
           <summary style="cursor: pointer">原始响应（分页查看）</summary>
           <pre class="pre-block" style="margin-top: 8px; max-height: 220px; overflow: auto">{{ ncmRawSlice }}</pre>
-          <div
-            v-if="ncmRawLines.length > NCM_RAW_LINES"
-            class="console-pager"
-            style="border-top: none; margin-top: 8px; padding-top: 0"
-          >
-            <span class="muted">共 {{ ncmRawLines.length }} 行 · 第 {{ ncmRawPage }} / {{ ncmRawMaxPage }} 页</span>
-            <div class="row-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="ncmRawPage <= 1"
-                @click="ncmRawPage = Math.max(1, ncmRawPage - 1)"
-              >
-                上一页
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="ncmRawPage >= ncmRawMaxPage"
-                @click="ncmRawPage = Math.min(ncmRawMaxPage, ncmRawPage + 1)"
-              >
-                下一页
-              </button>
-            </div>
+          <div style="border-top: none; margin-top: 8px; padding-top: 0">
+            <ConsolePagerBar
+              v-if="ncmRawLines.length > 0"
+              v-model:page="ncmRawPage"
+              v-model:page-size="tablePageSize"
+              :total="ncmRawLines.length"
+              unit="行"
+              embedded
+              :page-sizes="[8, 10, 12, 14, 16, 20, 24, 32]"
+            />
           </div>
         </details>
       </div>
