@@ -3,8 +3,10 @@ import { computed, onMounted, ref } from "vue";
 import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const overview = ref<DbOverviewData | null>(null);
 
 const collection = ref("");
@@ -49,6 +51,8 @@ async function loadAll() {
     overview.value = await fetchDbOverview();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pageReady.value = true;
   }
 }
 
@@ -96,6 +100,11 @@ async function runAggregate() {
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="3"
+    />
+    <div v-else>
     <div
       v-if="overview"
       class="grid-stats"
@@ -271,6 +280,7 @@ async function runAggregate() {
           <pre class="pre-block">{{ aggResult }}</pre>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

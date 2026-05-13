@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
@@ -10,6 +11,7 @@ import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginD
 import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
+const pageReady = ref(false);
 const data = ref<InstancesData | null>(null);
 const plugins = ref<PluginRow[]>([]);
 const pluginLoadErr = ref("");
@@ -238,12 +240,16 @@ async function saveBotConfig() {
 }
 
 onMounted(async () => {
-  await reload();
   try {
-    plugins.value = await fetchPlugins();
-  } catch (e) {
-    pluginLoadErr.value = e instanceof Error ? e.message : String(e);
-    plugins.value = [];
+    await reload();
+    try {
+      plugins.value = await fetchPlugins();
+    } catch (e) {
+      pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+      plugins.value = [];
+    }
+  } finally {
+    pageReady.value = true;
   }
 });
 </script>
@@ -255,7 +261,7 @@ onMounted(async () => {
         <p class="page-hero__eyebrow">Topology</p>
         <h1 class="page-hero__title">实例与连接</h1>
         <p class="page-hero__desc">
-          汇总编排器在线情况与数据面账号。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。协议进程级状态见「协议端」。
+          汇总框架在线情况与数据面账号。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。协议进程级状态见「协议端」。
         </p>
       </div>
       <div class="page-hero__actions">
@@ -276,10 +282,14 @@ onMounted(async () => {
       {{ err }}
     </div>
 
-    <template v-if="data">
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="4"
+    />
+    <template v-else-if="data">
       <div class="panel">
         <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">NoneBot 连接</h2>
+          <h2 class="panel__title">NoneBot 框架</h2>
           <button
             type="button"
             class="btn"

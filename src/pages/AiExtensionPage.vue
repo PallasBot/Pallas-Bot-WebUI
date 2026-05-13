@@ -15,8 +15,10 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const ok = ref("");
 const jsonText = ref("");
 const testOut = ref("");
@@ -229,8 +231,12 @@ async function logoutNcm() {
 }
 
 onMounted(async () => {
-  await load();
-  await refreshNcmStatus();
+  try {
+    await load();
+    await refreshNcmStatus();
+  } finally {
+    pageReady.value = true;
+  }
 });
 </script>
 
@@ -255,6 +261,11 @@ onMounted(async () => {
       {{ ok }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="4"
+    />
+    <div v-else>
     <div class="panel">
       <div class="panel__hd panel__hd--split">
         <div
@@ -469,6 +480,7 @@ onMounted(async () => {
       >
         <pre class="pre-block">{{ logOut }}</pre>
       </div>
+    </div>
     </div>
   </div>
 </template>

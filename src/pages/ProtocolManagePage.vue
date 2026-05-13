@@ -6,8 +6,10 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 import { slicePage } from "@/utils/paginate";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const system = ref<SystemData | null>(null);
 const instances = ref<InstancesData | null>(null);
 
@@ -82,7 +84,13 @@ async function load() {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  try {
+    await load();
+  } finally {
+    pageReady.value = true;
+  }
+});
 </script>
 
 <template>
@@ -102,6 +110,11 @@ onMounted(load);
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="3"
+    />
+    <div v-else>
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">入口</h2>
@@ -199,6 +212,7 @@ onMounted(load);
       >
         刷新
       </button>
+    </div>
     </div>
   </div>
 </template>

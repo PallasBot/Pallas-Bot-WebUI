@@ -4,23 +4,28 @@ import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
   fetchBots,
+  fetchBotUpdateCheck,
   fetchFriendList,
   fetchGroupList,
   fetchInstances,
   fetchMessageStats,
   fetchPluginRunStats,
+  fetchPlugins,
   fetchSystem,
 } from "@/api/consoleApi";
 import type {
   BotRow,
+  BotUpdateCheckData,
   FriendListData,
   GroupListData,
   InstancesData,
   MessageStatsData,
+  PluginRow,
   PluginRunStatsData,
   SystemData,
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
@@ -31,6 +36,7 @@ import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHisto
 
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
+const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
@@ -43,12 +49,13 @@ const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
 const socialBusy = ref(false);
-/** 首屏请求完成前展示骨架，避免与「暂无 Bot」混淆 */
-const homeReady = ref(false);
+/** 首屏主内容区：与全站骨架一致，数据就绪后再渲染 */
+const pageReady = ref(false);
 
 const consoleRoot = consolePublicRoot();
 const botBase = ref<string | null>(null);
 const driverHint = ref<string | null>(null);
+const pluginsList = ref<PluginRow[]>([]);
 
 const runtime = computed(() => system.value?.runtime ?? null);
 
@@ -122,6 +129,19 @@ const diskHint = computed(() => {
 });
 const uptimeDisplay = computed(() => uptimeFromBoot(runtime.value?.boot_time ?? null));
 const uptimeHint = computed(() => runtime.value?.platform || undefined);
+
+const pallasBotVersionDisplay = computed(() => {
+  const b = botUpdateCheck.value;
+  if (b != null && !b.error) {
+    const tag = (b.current_tag || "").trim();
+    if (tag) {
+      const c = (b.current_commit || "").trim();
+      const short = c.length >= 7 ? c.slice(0, 7) : c;
+      return short && short !== tag ? `${tag} · ${short}` : tag;
+    }
+  }
+  return health.value?.pallas_bot ?? "—";
+});
 
 function barPct(
   direct: number | null | undefined,
@@ -293,20 +313,24 @@ watch(sortedDbBots, () => {
 async function load() {
   err.value = "";
   try {
-    const [h, s, m, pr, botList, inst] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
       fetchPluginRunStats(),
       fetchBots(),
       fetchInstances(),
+      fetchPlugins(),
+      fetchBotUpdateCheck().catch(() => null),
     ]);
     health.value = h;
+    botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
     system.value = s;
     stats.value = m;
     pluginRunStats.value = pr;
     bots.value = botList;
     instances.value = inst;
+    pluginsList.value = pl;
     botCount.value = botList.length;
     botBase.value = botHttpBaseFromSystem(s);
     driverHint.value = nonebotDriverHint(s);
@@ -315,7 +339,7 @@ async function load() {
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    homeReady.value = true;
+    pageReady.value = true;
   }
 }
 
@@ -329,7 +353,7 @@ onMounted(load);
         <p class="page-hero__eyebrow">Dashboard</p>
         <h1 class="page-hero__title">运行态势</h1>
         <p class="page-hero__desc">
-          面向生产运维的一屏摘要：编排器与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。
+          面向生产运维的一屏摘要：框架与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。
         </p>
       </div>
       <div class="page-hero__actions">
@@ -350,25 +374,28 @@ onMounted(load);
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="5"
+    />
+    <div
+      v-else
+      class="home-page__body"
+    >
     <div class="home-dashboard">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
           <div class="panel__hd home-account-panel__hd">
             <div class="home-account-panel__hd-main">
               <h2 class="panel__title">账户信息</h2>
-              <span
-                v-if="!homeReady"
-                class="home-account-panel__loading-hint muted"
-              >加载中…</span>
               <RouterLink
-                v-else
                 class="link-quiet"
                 to="/instances"
                 style="font-size: 13px"
               >连接详情 →</RouterLink>
             </div>
             <div
-              v-if="homeReady && sortedDbBots.length"
+              v-if="sortedDbBots.length"
               class="home-account-bot-pick"
             >
               <label
@@ -391,37 +418,8 @@ onMounted(load);
             </div>
           </div>
           <div class="panel__bd">
-            <div
-              v-if="!homeReady"
-              class="home-account-skeleton"
-              aria-busy="true"
-              aria-label="加载账户信息"
-            >
-              <div class="home-account-skeleton__split">
-                <div class="home-account-skeleton__hero">
-                  <div class="home-account-skeleton__avatar skel-pulse" />
-                  <div class="home-account-skeleton__lines">
-                    <div class="home-account-skeleton__bar skel-pulse home-account-skeleton__bar--lg" />
-                    <div class="home-account-skeleton__bar skel-pulse home-account-skeleton__bar--md" />
-                    <div class="home-account-skeleton__pair">
-                      <div class="home-account-skeleton__bar skel-pulse" />
-                      <div class="home-account-skeleton__bar skel-pulse" />
-                    </div>
-                  </div>
-                </div>
-                <div class="home-account-skeleton__right">
-                  <div class="home-account-skeleton__stats">
-                    <div class="home-account-skeleton__bar skel-pulse" />
-                    <div class="home-account-skeleton__bar skel-pulse" />
-                    <div class="home-account-skeleton__bar skel-pulse" />
-                    <div class="home-account-skeleton__bar skel-pulse" />
-                  </div>
-                  <div class="home-account-skeleton__chart skel-pulse" />
-                </div>
-              </div>
-            </div>
             <p
-              v-else-if="!sortedDbBots.length"
+              v-if="!sortedDbBots.length"
               class="muted"
               style="margin: 0"
             >
@@ -492,6 +490,7 @@ onMounted(load);
                   </dl>
                   <HomePluginRunCharts
                     :plugins="scopedPluginPlugins"
+                    :plugins-meta="pluginsList"
                     :series="pluginRunTimeSamples"
                     :busy="socialBusy"
                     :api-history-by-api="scopedApiCallsByApi"
@@ -691,9 +690,12 @@ onMounted(load);
       <div class="panel__bd muted home-page__version">
         <dl class="home-dl">
           <dt>NoneBot2</dt>
-          <dd>{{ health?.nonebot2 ?? "—" }} <span class="home-dl__sub">编排器</span></dd>
+          <dd>{{ health?.nonebot2 ?? "—" }} <span class="home-dl__sub">框架</span></dd>
           <dt>Pallas-Bot</dt>
-          <dd>{{ health?.pallas_bot ?? "—" }} <span class="home-dl__sub">业务进程</span></dd>
+          <dd>
+            <span style="color: var(--text); font-weight: 600">{{ pallasBotVersionDisplay }}</span>
+            <span class="home-dl__sub">业务进程</span>
+          </dd>
           <dt>控制台资源</dt>
           <dd>
             <strong style="color: var(--text)">{{ health?.console?.version ?? "—" }}</strong>
@@ -701,15 +703,22 @@ onMounted(load);
           </dd>
           <dt>服务时间</dt>
           <dd>{{ system?.server_time ? new Date(system.server_time * 1000).toLocaleString() : "—" }}</dd>
-          <template v-if="system?.runtime?.hostname">
+          <template v-if="system?.runtime?.hostname || system?.runtime?.python">
             <dt>主机 / Python</dt>
-            <dd>
-              <code class="home-dl__code">{{ system.runtime.hostname }}</code>
-              <span class="home-dl__sub">{{ system.runtime.python ?? "—" }}</span>
+            <dd class="home-dl__capsules">
+              <span
+                v-if="system.runtime.hostname"
+                class="home-dl__pill"
+              >{{ system.runtime.hostname }}</span>
+              <span
+                v-if="system.runtime.python"
+                class="home-dl__pill home-dl__pill--mono"
+              >{{ system.runtime.python }}</span>
             </dd>
           </template>
         </dl>
       </div>
+    </div>
     </div>
   </div>
 </template>

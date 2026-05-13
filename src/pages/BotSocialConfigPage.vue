@@ -15,8 +15,10 @@ import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const ok = ref("");
 const busy = ref(false);
 
@@ -261,13 +263,17 @@ async function saveUserModal() {
 }
 
 onMounted(async () => {
-  await loadBots();
-  await loadGroupList();
   try {
-    plugins.value = await fetchPlugins();
-  } catch (e) {
-    pluginLoadErr.value = e instanceof Error ? e.message : String(e);
-    plugins.value = [];
+    await loadBots();
+    await loadGroupList();
+    try {
+      plugins.value = await fetchPlugins();
+    } catch (e) {
+      pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+      plugins.value = [];
+    }
+  } finally {
+    pageReady.value = true;
   }
 });
 </script>
@@ -295,6 +301,11 @@ onMounted(async () => {
       {{ ok }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="4"
+    />
+    <div v-else>
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">群配置</h2>
@@ -433,6 +444,8 @@ onMounted(async () => {
           </button>
         </div>
       </div>
+    </div>
+
     </div>
 
     <Teleport to="body">

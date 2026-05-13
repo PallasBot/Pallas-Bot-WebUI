@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { fetchPluginConfig, putPluginConfig } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const route = useRoute();
 const err = ref("");
@@ -118,8 +119,13 @@ async function save() {
       {{ ok }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="loading"
+      :panels="2"
+    />
+    <template v-else>
     <div
-      v-if="data && !loading && data.plugin === pluginName"
+      v-if="data && data.plugin === pluginName"
       class="panel"
       style="margin-bottom: 16px"
     >
@@ -134,14 +140,7 @@ async function save() {
     </div>
 
     <div
-      v-if="loading"
-      class="muted"
-    >
-      加载中…
-    </div>
-
-    <div
-      v-else-if="data"
+      v-if="data"
       class="panel"
     >
       <div class="panel__hd">
@@ -196,5 +195,6 @@ async function save() {
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
