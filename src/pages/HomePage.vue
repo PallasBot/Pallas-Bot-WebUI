@@ -758,7 +758,7 @@ onMounted(load);
       </section>
     </div>
 
-    <div class="panel home-page__panel">
+    <div class="panel home-page__panel home-page__version-panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
@@ -785,7 +785,7 @@ onMounted(load);
             <span class="home-dl__pill home-dl__pill--version">{{ health?.console?.version ?? "—" }}</span>
             <span
               v-if="(health?.console?.commit || '').trim()"
-              class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
+              class="home-version-commit"
               :title="health?.console?.commit || undefined"
             >{{ (health?.console?.commit || "").trim() }}</span>
           </dd>
