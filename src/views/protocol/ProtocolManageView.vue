@@ -4,7 +4,7 @@ import { fetchInstances } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import { protocolDashboardUrl, protocolServiceHttpBase } from "@/utils/pallasProtocolPaths";
-import { Download, Link, List, Position, QuestionFilled } from "@element-plus/icons-vue";
+import { DownloadIcon, HelpCircleIcon, LinkIcon, ViewListIcon } from "tdesign-icons-vue-next";
 import { documentTitleExtra } from "@/utils/documentTitle";
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 
@@ -24,10 +24,10 @@ const sectionSub: Record<ProtocolSection, string> = {
   faq: "404、token、端口等常见问题。",
 };
 const navItems = [
-  { index: "url", label: "管理 URL", icon: Link },
-  { index: "assets", label: "协议资产", icon: Download },
-  { index: "flow", label: "推荐顺序", icon: List },
-  { index: "faq", label: "常见问题", icon: QuestionFilled },
+  { index: "url", label: "管理 URL", icon: LinkIcon },
+  { index: "assets", label: "协议资产", icon: DownloadIcon },
+  { index: "flow", label: "推荐顺序", icon: ViewListIcon },
+  { index: "faq", label: "常见问题", icon: HelpCircleIcon },
 ];
 
 const webuiPath = ref<string | null>(null);
@@ -121,68 +121,73 @@ onMounted(async () => {
           <strong>{{ connectedCount }}</strong>
         </div>
       </div>
-      <el-tag
-        type="info"
-        effect="plain"
+      <t-tag
+        theme="primary"
+        variant="outline"
         size="small"
         class="tag-row"
       >
         pallas_protocol
-      </el-tag>
+      </t-tag>
       <p class="lead lead-spaced pallas-doc-prose">
         与 Bot 同 <code>host:port</code>，默认 <code>/protocol/console</code>；单号 <code>…/account/&lt;ID&gt;</code>。NapCat
         等自带 WebUI 为另一端口，见「好友与群」<code>native_webui_url</code>。
       </p>
-      <el-space
+      <t-space
         direction="vertical"
         :size="16"
-        style="width: 100%; align-items: flex-start"
+        align="start"
+        class="url-stack"
       >
-        <el-button
-          type="primary"
+        <t-button
+          theme="primary"
           size="large"
-          :icon="Link"
           @click="openProtocol"
         >
+          <template #icon>
+            <LinkIcon />
+          </template>
           打开协议管理
-        </el-button>
-        <el-descriptions
+        </t-button>
+        <t-descriptions
           :column="1"
-          border
+          bordered
           size="small"
           class="nc-desc-table"
         >
-          <el-descriptions-item label="管理总览">
-            <el-link
+          <t-descriptions-item label="管理总览">
+            <t-link
+              theme="primary"
               :href="protocolOpenUrl"
-              type="primary"
-              :icon="Position"
+              target="_blank"
+              hover="color"
             >
               {{ protocolOpenUrl }}
-            </el-link>
-            <div class="sub">反代需透传该路径。</div>
-          </el-descriptions-item>
-          <el-descriptions-item label="进程">
+            </t-link>
+            <div class="sub">
+              反代需透传该路径。
+            </div>
+          </t-descriptions-item>
+          <t-descriptions-item label="进程">
             与 <code>/pallas</code> 同一 HTTP 服务，无单独端口。
-          </el-descriptions-item>
-          <el-descriptions-item label="鉴权">
+          </t-descriptions-item>
+          <t-descriptions-item label="鉴权">
             <code>pallas_protocol_token</code>：Query <code>token=</code> 或头
             <code>X-Pallas-Protocol-Token</code>。
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-space>
+          </t-descriptions-item>
+        </t-descriptions>
+      </t-space>
     </div>
 
     <div
       v-show="section === 'assets'"
       class="panel nc-card assets-panel"
     >
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        class="assets-alert"
+      <t-alert
+        theme="info"
         title="在协议插件页登录后即可下载。"
+        :close-btn="false"
+        class="assets-alert"
       />
       <p class="lead lead-spaced pallas-doc-prose">
         包在 <code>runtime_dist/*</code>，解压在 <code>runtime_extract/*</code>；清缓存在资产页顶部。个别实例可改账号
@@ -192,71 +197,65 @@ onMounted(async () => {
         <span class="assets-label">完整 URL</span>
         <code class="assets-url">{{ protocolAssetsUrl }}</code>
       </div>
-      <el-button
-        type="primary"
+      <t-button
+        theme="primary"
         size="large"
-        :icon="Download"
         @click="openProtocolAssets"
       >
+        <template #icon>
+          <DownloadIcon />
+        </template>
         打开协议资产页
-      </el-button>
+      </t-button>
     </div>
 
     <div
       v-show="section === 'flow'"
       class="panel nc-card"
     >
-      <el-timeline>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
+      <t-timeline layout="vertical">
+        <t-timeline-item label="1">
           协议端登录并确认账号在线
-        </el-timeline-item>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
+        </t-timeline-item>
+        <t-timeline-item label="2">
           核对 <code>onebot*.json</code> 反向 WS 指向 Bot OneBot
-        </el-timeline-item>
-        <el-timeline-item
-          type="primary"
-          hollow
-        >
+        </t-timeline-item>
+        <t-timeline-item label="3">
           Bot 侧验证连接后看 <code>/pallas/api/health</code>
-        </el-timeline-item>
-      </el-timeline>
+        </t-timeline-item>
+      </t-timeline>
     </div>
 
     <div
       v-show="section === 'faq'"
       class="panel nc-card"
     >
-      <el-collapse
+      <t-collapse
         v-model="activeFaq"
-        accordion
+        expand-mutex
+        class="faq-collapse"
       >
-        <el-collapse-item
-          name="1"
-          title="打开管理路径为 404"
+        <t-collapse-panel
+          value="1"
+          header="打开管理路径为 404"
         >
           确认插件已启用；路径以 <code>/pallas/api/instances</code> 的 <code>webui_path</code> 为准。
-        </el-collapse-item>
-        <el-collapse-item
-          name="2"
-          title="新标签里要求 token"
+        </t-collapse-panel>
+        <t-collapse-panel
+          value="2"
+          header="新标签里要求 token"
         >
           使用 <code>pallas_protocol_token</code>（Query <code>token</code> 或头
           <code>X-Pallas-Protocol-Token</code>）。
-        </el-collapse-item>
-        <el-collapse-item
-          name="3"
-          title="Vite 开发端口与 Bot 不同"
+        </t-collapse-panel>
+        <t-collapse-panel
+          value="3"
+          header="Vite 开发端口与 Bot 不同"
         >
           协议页用 Bot 监听地址打开（如 <code>http://127.0.0.1:8088/protocol/console</code>）；控制台可走 Vite 代理
           <code>/pallas/api</code>。
-        </el-collapse-item>
-      </el-collapse>
+        </t-collapse-panel>
+      </t-collapse>
     </div>
   </PallasSidebarShell>
 </template>
@@ -270,7 +269,10 @@ onMounted(async () => {
 .nc-url-panel {
   padding-bottom: 4px;
 }
-.nc-url-panel :deep(.el-descriptions.nc-desc-table) {
+.url-stack {
+  width: 100%;
+}
+.nc-url-panel :deep(.t-descriptions.nc-desc-table) {
   border-radius: var(--pallas-radius-md);
   overflow: hidden;
 }
@@ -298,14 +300,13 @@ onMounted(async () => {
     font-family: var(--pallas-font-sans);
   }
 }
-.nc-card :deep(.el-descriptions__cell) {
+.nc-card :deep(.t-descriptions__label),
+.nc-card :deep(.t-descriptions__content) {
   font-size: var(--pallas-text-base);
   line-height: 1.65;
-}
-.nc-card :deep(.el-descriptions__content) {
   font-family: var(--pallas-font-sans);
 }
-.nc-card :deep(.el-descriptions__content code) {
+.nc-card :deep(.t-descriptions__content code) {
   font-family: var(--pallas-font-sans);
   font-size: 0.9em;
   font-weight: 500;
@@ -313,16 +314,16 @@ onMounted(async () => {
   border-radius: 6px;
   background: var(--el-fill-color-light);
 }
-.nc-card :deep(.el-timeline-item__content),
-.nc-card :deep(.el-collapse-item__content) {
+.nc-card :deep(.t-timeline-item__content),
+.nc-card :deep(.t-collapse-panel__content) {
   font-size: var(--pallas-text-base);
   font-weight: var(--pallas-weight-body);
   line-height: 1.72;
   color: var(--el-text-color-regular);
   font-family: var(--pallas-font-sans);
 }
-.nc-card :deep(.el-timeline-item__content code),
-.nc-card :deep(.el-collapse-item__content code) {
+.nc-card :deep(.t-timeline-item__content code),
+.nc-card :deep(.t-collapse-panel__content code) {
   font-family: var(--pallas-font-sans);
   font-size: 0.9em;
   font-weight: 500;
@@ -408,12 +409,12 @@ html.dark .nc-card {
       white-space: pre-wrap;
       word-break: break-all;
     }
-    :deep(.el-button) {
+    :deep(.t-button) {
       width: 100%;
       margin-right: 0;
     }
-    :deep(.el-descriptions__label),
-    :deep(.el-descriptions__content) {
+    :deep(.t-descriptions__label),
+    :deep(.t-descriptions__content) {
       word-break: break-word;
     }
   }

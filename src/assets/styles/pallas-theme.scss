@@ -30,9 +30,11 @@
   --c-main: var(--pallas-accent);
   --c-main-light: color-mix(in srgb, var(--pallas-accent) 14%, transparent);
   --c-header-fg: #fff;
-  --c-nav-bg: #f1f4fa;
-  --c-body-bg: #e4e9f2;
-  --c-surface-elev: #f1f4fa;
+  --c-nav-bg: color-mix(in srgb, var(--td-bg-color-container) 92%, var(--pallas-accent));
+  --c-body-bg: color-mix(in srgb, var(--td-bg-color-page) 88%, var(--pallas-accent) 6%);
+  --c-surface-elev: var(--td-bg-color-container);
+  --pallas-chrome-blur: 14px;
+  --pallas-shell-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
   --pallas-radius-lg: 18px;
   --pallas-radius-md: 14px;
   --pallas-radius-sm: 12px;
@@ -97,19 +99,20 @@
 }
 
 html:not(.dark) {
-  --td-bg-color-container: #f1f4fa;
-  --td-bg-color-page: #e4e9f2;
-  --el-bg-color: #f1f4fa;
-  --el-bg-color-page: #e4e9f2;
-  --el-fill-color-blank: #f1f4fa;
+  --td-bg-color-container: #f4f6fc;
+  --td-bg-color-page: #e8ecf6;
+  --el-bg-color: #f4f6fc;
+  --el-bg-color-page: #e8ecf6;
+  --el-fill-color-blank: #f4f6fc;
 }
 
 html.dark {
-  --c-nav-bg: var(--td-bg-color-container);
+  --c-nav-bg: color-mix(in srgb, var(--td-bg-color-container) 94%, var(--pallas-accent) 8%);
   --c-body-bg: var(--td-bg-color-page);
   --c-surface-elev: var(--td-bg-color-container);
   --c-main-light: color-mix(in srgb, var(--pallas-accent) 22%, transparent);
   --c-header-fg: #f0f7ff;
+  --pallas-shell-shadow: 0 4px 28px rgba(0, 0, 0, 0.35);
 }
 
 html {

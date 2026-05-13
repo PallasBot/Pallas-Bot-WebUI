@@ -2,7 +2,7 @@
 import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@/api/consoleApi";
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import { pallasConnectionKey } from "@/types/pallas-connection";
-import { ElMessage } from "element-plus";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, inject, onMounted, ref, watch } from "vue";
 
 const conn = inject(pallasConnectionKey, null);
@@ -26,7 +26,7 @@ async function loadSections() {
     }
     if (currentId.value) void loadCfg(currentId.value);
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载配置段失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "加载配置段失败");
     sections.value = [];
   } finally {
     loading.value = false;
@@ -75,7 +75,7 @@ async function loadCfg(sectionId: string) {
   } catch (e) {
     cfg.value = null;
     cfgForm.value = {};
-    ElMessage.error(e instanceof Error ? e.message : "配置加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "配置加载失败");
   } finally {
     cfgLoading.value = false;
   }
@@ -167,9 +167,9 @@ async function saveCfg() {
     const form: Record<string, unknown> = {};
     for (const f of data.fields) form[f.name] = f.current;
     cfgForm.value = form;
-    ElMessage.success("已写入 .env；部分项需重启 Bot 后进程内才完全生效。");
+    MessagePlugin.success("已写入 .env；部分项需重启 Bot 后进程内才完全生效。");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "保存失败");
   } finally {
     cfgSaving.value = false;
   }
@@ -190,12 +190,11 @@ async function saveCfg() {
       >
         <aside class="cc-aside">
           <div class="cc-aside-hd">配置段</div>
-          <el-empty
+          <t-empty
             v-if="!sections.length && !loading"
             description="暂无已注册段"
-            :image-size="72"
           />
-          <el-scrollbar
+          <div
             v-else
             class="cc-scroll"
           >
@@ -210,7 +209,7 @@ async function saveCfg() {
               <span class="cc-item-title">{{ s.title }}</span>
               <span class="cc-item-id mono">{{ s.id }}</span>
             </button>
-          </el-scrollbar>
+          </div>
         </aside>
         <main class="cc-main">
           <div class="cc-main-hd">
@@ -220,26 +219,25 @@ async function saveCfg() {
               class="cc-mod mono"
             >{{ cfg.module }}</span>
           </div>
-          <el-skeleton
+          <div
             v-if="cfgLoading"
-            :rows="5"
-            animated
-          />
-          <el-empty
+            class="cfg-skel"
+          >
+            <t-skeleton animation />
+          </div>
+          <t-empty
             v-else-if="!cfg?.fields.length"
             description="当前段无可编辑字段"
-            :image-size="68"
           />
-          <el-form
+          <div
             v-else
             class="cfg-edit-form"
           >
             <div class="cfg-form-tools">
-              <el-switch
+              <t-switch
                 v-model="showChangedOnly"
-                inline-prompt
-                active-text="仅显示已改项"
-                inactive-text="显示全部"
+                size="medium"
+                :label="['仅显示已改项', '显示全部']"
               />
             </div>
             <div class="cfg-grid">
@@ -252,51 +250,49 @@ async function saveCfg() {
                   <span class="cfg-item-name">{{ f.env_key }}</span>
                 </div>
                 <div class="cfg-item-input">
-                  <el-switch
+                  <t-switch
                     v-if="fieldInputType(f) === 'bool'"
                     v-model="cfgForm[f.name]"
                   />
-                  <el-input-number
+                  <t-input-number
                     v-else-if="fieldInputType(f) === 'number'"
                     v-model="cfgForm[f.name]"
-                    :controls="true"
+                    theme="column"
                     class="num-input"
                   />
                   <template v-else-if="fieldInputType(f) === 'json'">
                     <div class="json-tools">
-                      <el-button
+                      <t-button
                         size="small"
-                        text
-                        type="primary"
+                        variant="text"
+                        theme="primary"
                         @click="toggleJsonField(f.name)"
                       >
                         {{ jsonExpanded[f.name] ? "收起编辑" : "展开编辑" }}
-                      </el-button>
+                      </t-button>
                     </div>
-                    <el-input
+                    <t-textarea
                       v-if="jsonExpanded[f.name]"
                       :model-value="fieldJsonText(f.name)"
-                      type="textarea"
-                      :rows="4"
+                      :autosize="{ minRows: 4, maxRows: 18 }"
                       :placeholder="fieldDefaultPlaceholder(f)"
                       class="w"
-                      @update:model-value="(v: string | number) => updateFieldJson(f.name, String(v))"
+                      @update:model-value="(v: string) => updateFieldJson(f.name, v)"
                     />
-                    <el-input
+                    <t-textarea
                       v-else
                       :model-value="jsonPreview(f.name)"
-                      type="textarea"
-                      :rows="2"
+                      :autosize="{ minRows: 2, maxRows: 8 }"
                       readonly
                       class="w"
                     />
                   </template>
-                  <el-input
+                  <t-input
                     v-else
                     :model-value="String(cfgForm[f.name] ?? '')"
                     :placeholder="fieldDefaultPlaceholder(f)"
                     class="w"
-                    @update:model-value="(v: string | number) => (cfgForm[f.name] = String(v))"
+                    @update:model-value="(v: string) => (cfgForm[f.name] = v)"
                   />
                 </div>
                 <div class="cfg-field-tip">
@@ -307,30 +303,29 @@ async function saveCfg() {
                 </div>
               </div>
             </div>
-            <el-empty
+            <t-empty
               v-if="showChangedOnly && !visibleFields.length"
               description="没有与默认值不同的项"
-              :image-size="66"
             />
             <div class="mini-actions">
-              <el-button
-                type="primary"
+              <t-button
+                theme="primary"
                 :loading="cfgSaving"
                 :disabled="!currentId"
                 @click="saveCfg"
               >
                 保存到 .env
-              </el-button>
-              <el-button
-                plain
+              </t-button>
+              <t-button
+                variant="outline"
                 :loading="cfgLoading"
                 :disabled="!currentId"
                 @click="loadCfg(currentId)"
               >
                 重新加载
-              </el-button>
+              </t-button>
             </div>
-          </el-form>
+          </div>
         </main>
       </div>
     </div>
@@ -403,6 +398,10 @@ async function saveCfg() {
   flex: 1;
   min-height: 0;
   padding: 8px;
+  overflow: auto;
+}
+.cfg-skel {
+  padding: 10px 0 14px;
 }
 .cc-item {
   width: 100%;
