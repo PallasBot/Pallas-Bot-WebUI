@@ -1808,9 +1808,9 @@ html[data-theme="light"] .bot-config-edit {
 }
 .home-account-hero__avatar {
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--bg-muted);
@@ -2049,7 +2049,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
 }
 
 .home-account-hero--unified .home-account-hero__detail {
-  padding-left: calc(64px + 14px);
+  padding-left: calc(76px + 14px);
   box-sizing: border-box;
 }
 
@@ -2160,6 +2160,16 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
   text-align: center;
   text-decoration: none;
   border-radius: var(--radius-sm, 6px);
+}
+
+.home-account-hero__pending-cta--friend-mobile {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .home-account-hero__pending-cta--friend-mobile {
+    display: inline-flex;
+  }
 }
 
 html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-val {
@@ -2433,6 +2443,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot d
   margin: 6px 0 2px;
   width: 100%;
   min-height: 48px;
+  overflow-x: hidden;
 }
 
 .home-account-metrics__bars-ticks {
@@ -2440,19 +2451,22 @@ html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot d
   width: 100%;
   height: 14px;
   margin-top: 3px;
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1.15;
   letter-spacing: -0.02em;
+  overflow: hidden;
 }
 
 .home-account-metrics__bars-tick {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  max-width: 24%;
+  max-width: 11%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-account-metrics--color .home-account-metrics__bars-ticks {
@@ -2900,9 +2914,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 .home-account-skeleton__avatar {
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
   background: var(--border-strong);
 }
 .home-account-skeleton__lines {

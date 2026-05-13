@@ -431,7 +431,7 @@ function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: numbe
   const sameCal = (x: Date, y: Date) =>
     x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
   if (sameCal(lo, hi) && sameCal(a, lo)) {
-    return a.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+    return `${a.getHours()}`;
   }
   return a.toLocaleString(undefined, {
     month: "numeric",
@@ -465,7 +465,8 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
     const xNorm = (h - rangeLo) / span;
     if (xNorm < -0.02 || xNorm > 1.02) continue;
     const clamped = Math.max(0, Math.min(1, xNorm));
-    const leftPct = ((pad + clamped * inner) / W) * 100;
+    const rawPct = ((pad + clamped * inner) / W) * 100;
+    const leftPct = Math.min(96, Math.max(4, rawPct));
     raw.push({
       leftPct,
       label: formatThroughputHistTick(h, rangeLo, rangeHi),
@@ -484,11 +485,11 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   if (!ticks.length) {
     return [
       {
-        leftPct: (pad / W) * 100,
+        leftPct: Math.min(96, Math.max(4, (pad / W) * 100)),
         label: formatThroughputHistTick(rangeLo, rangeLo, rangeHi),
       },
       {
-        leftPct: ((pad + inner) / W) * 100,
+        leftPct: Math.min(96, Math.max(4, ((pad + inner) / W) * 100)),
         label: formatThroughputHistTick(rangeHi, rangeLo, rangeHi),
       },
     ];
@@ -762,8 +763,8 @@ onMounted(load);
                           <img
                             :src="qqAvatarUrl(selectedAccount)"
                             alt=""
-                            width="64"
-                            height="64"
+                            width="76"
+                            height="76"
                             decoding="async"
                             referrerpolicy="no-referrer"
                             @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
@@ -802,6 +803,10 @@ onMounted(load);
                               <template v-if="socialBusy">…</template>
                               <template v-else>{{ friendPendingApplyDisplay }} 条<span class="home-account-hero__pending-tail">待同意</span></template>
                             </div>
+                            <RouterLink
+                              class="home-account-hero__pending-cta home-account-hero__pending-cta--friend-mobile btn btn--primary"
+                              to="/friends-groups#friends-groups-friend-requests"
+                            >处理审批</RouterLink>
                           </div>
                           <div class="home-account-hero__pending-card">
                             <div class="home-account-hero__pending-title home-account-hero__pending-title--group">入群邀请</div>
@@ -893,6 +898,7 @@ onMounted(load);
                           class="home-account-metrics__bars-svg"
                           viewBox="0 0 100 30"
                           preserveAspectRatio="none"
+                          overflow="hidden"
                           aria-hidden="true"
                         >
                           <g
