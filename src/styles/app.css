@@ -31,6 +31,17 @@
   /* 表单控件：相对面板背景略提亮，便于辨认边界与内容 */
   --control-bg: #1a1a26;
   --control-border: rgba(255, 255, 255, 0.16);
+  /* 按钮 / 下拉 / 勾选统一基准 */
+  --ui-btn-pad-y: 8px;
+  --ui-btn-pad-x: 14px;
+  --ui-btn-font: 13px;
+  --ui-btn-weight: 600;
+  --ui-ctrl-font: 13px;
+  --ui-ctrl-pad-y: 7px;
+  --ui-ctrl-pad-x: 11px;
+  --ui-sel-min-h: 34px;
+  --ui-sel-arrow-pad: 28px;
+  --ui-check-size: 14px;
 }
 
 html[data-radius="tight"] {
@@ -1166,9 +1177,9 @@ html[data-theme="light"] .console-modal__close:hover {
 
 .shell-toolbar__seg button {
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 12px;
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
+  padding: var(--ui-btn-pad-y) 12px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -1779,8 +1790,9 @@ html[data-theme="light"] .bot-config-edit {
 .home-account-bot-pick__sel {
   max-width: min(240px, 46vw);
   min-width: 0;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: var(--ui-ctrl-pad-y) var(--ui-sel-arrow-pad) var(--ui-ctrl-pad-y) var(--ui-ctrl-pad-x);
+  font-size: var(--ui-ctrl-font);
+  min-height: var(--ui-sel-min-h);
 }
 
 .home-account-hero {
@@ -2235,6 +2247,13 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   display: block;
   width: 100%;
   height: 26px;
+}
+
+.home-account-metrics__spark-note {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
 }
 
 .home-account-metrics__spark--empty {
@@ -2798,11 +2817,11 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 6px;
+  padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
   font-family: var(--font-sans);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
   border-radius: var(--radius-shell);
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.04);
@@ -2847,12 +2866,12 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 .sel,
 .textarea {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--ui-ctrl-font);
   color: var(--text);
   background-color: var(--control-bg);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
-  padding: 10px 12px;
+  padding: var(--ui-ctrl-pad-y) var(--ui-ctrl-pad-x);
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
@@ -2866,15 +2885,15 @@ html[data-theme="light"] .textarea {
 
 .sel {
   border-radius: var(--radius-control);
-  min-height: 42px;
-  padding: 10px 36px 10px 14px;
+  min-height: var(--ui-sel-min-h);
+  padding: var(--ui-ctrl-pad-y) var(--ui-sel-arrow-pad) var(--ui-ctrl-pad-y) var(--ui-ctrl-pad-x);
   appearance: none;
   -webkit-appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
     linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
   background-position:
-    calc(100% - 18px) calc(50% - 3px),
-    calc(100% - 13px) calc(50% - 3px);
+    calc(100% - 14px) calc(50% - 2px),
+    calc(100% - 9px) calc(50% - 2px);
   background-size:
     5px 5px,
     5px 5px;
@@ -2894,11 +2913,21 @@ html[data-theme="light"] .sel {
 }
 .textarea {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--ui-ctrl-font);
   line-height: 1.5;
   width: 100%;
   min-height: 120px;
   resize: vertical;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: var(--ui-check-size);
+  height: var(--ui-check-size);
+  margin: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .table-wrap {
@@ -3223,9 +3252,9 @@ html[data-theme="light"] .home-page__panel-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: var(--ui-btn-pad-y) calc(var(--ui-btn-pad-x) + 2px);
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
   letter-spacing: -0.01em;
   color: var(--text);
   text-decoration: none;
@@ -3249,8 +3278,8 @@ button.home-instances-capsule:focus-visible {
   outline-offset: 2px;
 }
 .home-instances-capsule--action {
-  padding: 7px 18px;
-  font-size: 13px;
+  padding: var(--ui-btn-pad-y) calc(var(--ui-btn-pad-x) + 4px);
+  font-size: var(--ui-btn-font);
 }
 .home-instances-capsule:hover {
   border-color: var(--accent);
