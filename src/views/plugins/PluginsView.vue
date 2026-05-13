@@ -8,8 +8,8 @@ import {
 } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
 import { pallasConnectionKey } from "@/types/pallas-connection";
-import { View } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { BrowseIcon } from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, inject, onMounted, ref, watch } from "vue";
 
 const loading = ref(true);
@@ -30,6 +30,7 @@ const pluginCfg = ref<PluginConfigData | null>(null);
 const pluginCfgForm = ref<Record<string, unknown>>({});
 const jsonExpanded = ref<Record<string, boolean>>({});
 const showChangedOnly = ref(false);
+const rawMetaPanels = ref<string[]>([]);
 
 function pluginTypeLabel(p: PluginRow): string {
   const t = (p.metadata?.type || "").trim();
@@ -50,7 +51,7 @@ async function load() {
     ignoredSet.value = new Set(vis.ignored_plugins || []);
     syncVisibilityForCurrent();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载插件失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "加载插件失败");
     rows.value = [];
   } finally {
     loading.value = false;
@@ -129,7 +130,7 @@ async function loadPluginConfig(pluginName: string) {
   } catch (e) {
     pluginCfg.value = null;
     pluginCfgForm.value = {};
-    ElMessage.error(e instanceof Error ? e.message : "插件配置加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "插件配置加载失败");
   } finally {
     pluginCfgLoading.value = false;
   }
@@ -219,9 +220,9 @@ async function savePluginConfig() {
     const form: Record<string, unknown> = {};
     for (const f of data.fields) form[f.name] = f.current;
     pluginCfgForm.value = form;
-    ElMessage.success("插件配置已写入 .env");
+    MessagePlugin.success("插件配置已写入 .env");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "插件配置保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "插件配置保存失败");
   } finally {
     pluginCfgSaving.value = false;
   }
@@ -273,10 +274,10 @@ async function submitHelpVisibility() {
   try {
     const data = await putPluginsHelpMenuVisibility([...nextHidden]);
     hiddenSet.value = new Set(data.hidden_plugins || []);
-    ElMessage.success("已更新帮助菜单可见性");
+    MessagePlugin.success("已更新帮助菜单可见性");
     await load();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "更新失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "更新失败");
     syncVisibilityForCurrent();
   } finally {
     saving.value = false;
@@ -289,25 +290,29 @@ async function submitHelpVisibility() {
     <div class="main-wrap panel--wide">
       <h1 class="main-title">插件列表</h1>
       <p class="main-sub">统一展示插件元信息，并可配置是否在「牛牛帮助」菜单展示。</p>
-      <el-card
+      <t-card
         v-loading="loading"
-        shadow="hover"
+        :bordered="true"
         class="plug-card-wrap"
       >
         <div class="plug-toolbar">
-          <el-radio-group
+          <t-radio-group
             v-model="plugCategory"
             class="plug-cat"
-            size="default"
+            variant="default-filled"
           >
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button
+            <t-radio-button value="all">
+              全部
+            </t-radio-button>
+            <t-radio-button
               v-for="c in plugCategories"
               :key="c"
-              :label="c"
-            >{{ c }}</el-radio-button>
-          </el-radio-group>
-          <el-input
+              :value="c"
+            >
+              {{ c }}
+            </t-radio-button>
+          </t-radio-group>
+          <t-input
             v-model="plugSearch"
             class="plug-q"
             clearable
@@ -315,73 +320,72 @@ async function submitHelpVisibility() {
           />
         </div>
         <div class="plug-body-scroll">
-          <el-empty
+          <t-empty
             v-if="!filteredPlugins.length && !loading"
             description="当前筛选下无插件"
-            :image-size="80"
           />
-          <el-row
+          <div
             v-else
-            :gutter="0"
             class="plug-grid"
           >
-            <el-col
+            <div
               v-for="p in filteredPlugins"
               :key="p.name"
-              :xs="24"
-              :sm="12"
-              :md="8"
-              :lg="6"
-              :xl="4"
+              class="plug-tile-wrap"
             >
-              <el-card
+              <t-card
                 class="plug-tile"
-                shadow="hover"
+                :bordered="true"
               >
                 <div class="pc-hd">
                   <span class="pc-title">{{ p.metadata?.name || p.name }}</span>
-                  <el-tag
+                  <t-tag
                     size="small"
-                    type="info"
-                  >{{ pluginTypeLabel(p) }}</el-tag>
+                    theme="primary"
+                    variant="light"
+                  >{{ pluginTypeLabel(p) }}</t-tag>
                 </div>
                 <div class="pc-meta">
                   <div class="pc-name mono">{{ p.name }}</div>
                 </div>
                 <div class="pc-desc">{{ p.metadata?.description || "—" }}</div>
                 <div class="pc-ft">
-                  <el-button
-                    :icon="View"
-                    link
-                    type="primary"
+                  <t-button
+                    theme="primary"
+                    variant="text"
                     @click="openMeta(p)"
-                  >详情</el-button>
+                  >
+                    <template #icon>
+                      <BrowseIcon />
+                    </template>
+                    详情
+                  </t-button>
                 </div>
-              </el-card>
-            </el-col>
-          </el-row>
+              </t-card>
+            </div>
+          </div>
         </div>
         <div class="ft">
-          <el-button
-            type="primary"
-            plain
+          <t-button
+            theme="primary"
+            variant="outline"
             :loading="loading"
             @click="load"
-          >刷新</el-button>
-          <el-text
-            class="c"
-            type="info"
-          >共 {{ rows.length }} 个，当前筛选 {{ filteredPlugins.length }} 个，帮助菜单展示 {{ helpVisibleCount }} 个</el-text>
+          >
+            刷新
+          </t-button>
+          <span class="ft-stat c">共 {{ rows.length }} 个，当前筛选 {{ filteredPlugins.length }} 个，帮助菜单展示 {{ helpVisibleCount }} 个</span>
         </div>
-      </el-card>
+      </t-card>
     </div>
 
-    <el-dialog
-      v-model="dialog"
+    <t-dialog
+      v-model:visible="dialog"
       class="plugins-dialog"
-      :title="current ? `插件配置：${current.metadata?.name || current.name}` : '插件配置'"
+      :header="current ? `插件配置：${current.metadata?.name || current.name}` : '插件配置'"
       width="min(92vw, 760px)"
       destroy-on-close
+      attach="body"
     >
       <template v-if="current">
         <div class="dlg-main">
@@ -407,10 +411,9 @@ async function submitHelpVisibility() {
             <div class="menu-head">
               <h4 class="menu-title">功能菜单</h4>
             </div>
-            <el-empty
+            <t-empty
               v-if="!currentMenuData.length"
               description="该插件未声明 menu_data"
-              :image-size="70"
             />
             <div
               v-else
@@ -432,23 +435,23 @@ async function submitHelpVisibility() {
               <div class="menu-detail">
                 <template v-if="currentMenuItem">
                   <div class="detail-nav">
-                    <el-button
+                    <t-button
                       size="small"
-                      plain
+                      variant="outline"
                       :disabled="activeFuncIndex <= 0"
                       @click="goPrevMenuItem"
                     >
                       上一项
-                    </el-button>
+                    </t-button>
                     <span class="detail-nav-idx">{{ currentMenuIndexLabel }}</span>
-                    <el-button
+                    <t-button
                       size="small"
-                      plain
+                      variant="outline"
                       :disabled="activeFuncIndex >= currentMenuData.length - 1"
                       @click="goNextMenuItem"
                     >
                       下一项
-                    </el-button>
+                    </t-button>
                   </div>
                   <div class="mrow">
                     <span class="mk">功能名</span>
@@ -478,26 +481,24 @@ async function submitHelpVisibility() {
             <div class="menu-head">
               <h4 class="menu-title">插件配置</h4>
             </div>
-            <el-skeleton
+            <div
               v-if="pluginCfgLoading"
-              :rows="4"
-              animated
-            />
-            <el-empty
+              class="cfg-skel"
+            >
+              <t-skeleton animation="gradient" theme="paragraph" />
+            </div>
+            <t-empty
               v-else-if="!pluginCfg || !pluginCfg.fields.length"
               description="该插件未提供可编辑配置项"
-              :image-size="68"
             />
-            <el-form
+            <div
               v-else
               class="cfg-edit-form"
             >
               <div class="cfg-form-tools">
-                <el-switch
+                <t-switch
                   v-model="showChangedOnly"
-                  inline-prompt
-                  active-text="仅显示已改项"
-                  inactive-text="显示全部"
+                  :label="['显示全部', '仅显示已改项']"
                 />
               </div>
               <div class="cfg-grid">
@@ -510,49 +511,49 @@ async function submitHelpVisibility() {
                     <span class="cfg-item-name">{{ f.env_key }}</span>
                   </div>
                   <div class="cfg-item-input">
-                    <el-switch
+                    <t-switch
                       v-if="fieldInputType(f) === 'bool'"
-                      v-model="pluginCfgForm[f.name]"
+                      :model-value="Boolean(pluginCfgForm[f.name])"
+                      @update:model-value="(v: boolean) => (pluginCfgForm[f.name] = v)"
                     />
-                    <el-input-number
+                    <t-input-number
                       v-else-if="fieldInputType(f) === 'number'"
-                      v-model="pluginCfgForm[f.name]"
-                      :controls="true"
+                      :model-value="Number(pluginCfgForm[f.name])"
+                      theme="column"
                       class="num-input"
+                      @update:model-value="(v: number | string) => (pluginCfgForm[f.name] = v)"
                     />
                     <template v-else-if="fieldInputType(f) === 'json'">
                       <div class="json-tools">
-                        <el-button
+                        <t-button
                           size="small"
-                          text
-                          type="primary"
+                          variant="text"
+                          theme="primary"
                           @click="toggleJsonField(f.name)"
-                        >{{ jsonExpanded[f.name] ? "收起编辑" : "展开编辑" }}</el-button>
+                        >{{ jsonExpanded[f.name] ? "收起编辑" : "展开编辑" }}</t-button>
                       </div>
-                      <el-input
+                      <t-textarea
                         v-if="jsonExpanded[f.name]"
                         :model-value="fieldJsonText(f.name)"
-                        type="textarea"
-                        :rows="4"
+                        :autosize="{ minRows: 4, maxRows: 18 }"
                         :placeholder="fieldDefaultPlaceholder(f)"
                         class="w"
-                        @update:model-value="(v: string | number) => updateFieldJson(f.name, String(v))"
+                        @update:model-value="(v: string) => updateFieldJson(f.name, v)"
                       />
-                      <el-input
+                      <t-textarea
                         v-else
                         :model-value="jsonPreview(f.name)"
-                        type="textarea"
-                        :rows="2"
+                        :autosize="{ minRows: 2, maxRows: 6 }"
                         readonly
                         class="w"
                       />
                     </template>
-                    <el-input
+                    <t-input
                       v-else
                       :model-value="String(pluginCfgForm[f.name] ?? '')"
                       :placeholder="fieldDefaultPlaceholder(f)"
                       class="w"
-                      @update:model-value="(v: string | number) => (pluginCfgForm[f.name] = String(v))"
+                      @update:model-value="(v: string) => (pluginCfgForm[f.name] = v)"
                     />
                   </div>
                   <div class="cfg-field-tip">
@@ -561,34 +562,31 @@ async function submitHelpVisibility() {
                   </div>
                 </div>
               </div>
-              <el-empty
+              <t-empty
                 v-if="showChangedOnly && !visiblePluginFields.length"
                 description="当前插件没有已改项"
-                :image-size="66"
               />
               <div class="mini-actions">
-                <el-button
-                  type="primary"
+                <t-button
+                  theme="primary"
                   :loading="pluginCfgSaving"
                   @click="savePluginConfig"
-                >保存插件配置</el-button>
-                <el-button
-                  plain
+                >保存插件配置</t-button>
+                <t-button
+                  variant="outline"
                   :loading="pluginCfgLoading"
                   @click="current && loadPluginConfig(current.name)"
-                >重新加载</el-button>
+                >重新加载</t-button>
               </div>
-            </el-form>
+            </div>
           </div>
           <div class="dlg-row dlg-row-ctrl">
             <span class="dlg-k">帮助菜单展示</span>
             <span class="dlg-v dlg-v-inline">
-              <el-switch
+              <t-switch
                 v-model="helpVisible"
                 :disabled="ignoredSet.has(current.name) || saving"
-                inline-prompt
-                active-text="显示"
-                inactive-text="隐藏"
+                :label="['隐藏', '显示']"
                 @change="submitHelpVisibility"
               />
               <span
@@ -601,16 +599,16 @@ async function submitHelpVisibility() {
               >切换后立即生效。</span>
             </span>
           </div>
-          <el-collapse class="dlg-collapse">
-            <el-collapse-item name="raw" title="查看原始元数据">
-              <el-scrollbar max-height="34vh">
+          <t-collapse v-model="rawMetaPanels" class="dlg-collapse">
+            <t-collapse-panel value="raw" header="查看原始元数据">
+              <div class="json-scroll-wrap">
                 <pre class="json">{{ JSON.stringify(current, null, 2) }}</pre>
-              </el-scrollbar>
-            </el-collapse-item>
-          </el-collapse>
+              </div>
+            </t-collapse-panel>
+          </t-collapse>
         </div>
       </template>
-    </el-dialog>
+    </t-dialog>
   </div>
 </template>
 
@@ -657,7 +655,7 @@ async function submitHelpVisibility() {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -680,7 +678,7 @@ async function submitHelpVisibility() {
 .plug-cat {
   flex: 1;
   min-width: 0;
-  :deep(.el-radio-button__inner) {
+  :deep(.t-radio-button) {
     border-radius: var(--pallas-radius-sm, 8px);
   }
 }
@@ -703,14 +701,9 @@ async function submitHelpVisibility() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 12px;
-  :deep(.el-col) {
-    width: auto !important;
-    max-width: none !important;
-    flex: none !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    min-width: 0;
-  }
+}
+.plug-tile-wrap {
+  min-width: 0;
 }
 .plug-tile {
   height: 100%;
@@ -723,7 +716,7 @@ async function submitHelpVisibility() {
     border-color: rgba(22, 100, 196, 0.26);
     box-shadow: 0 4px 12px rgba(20, 62, 116, 0.12);
   }
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -851,15 +844,25 @@ async function submitHelpVisibility() {
   background: rgba(144, 147, 153, 0.1);
   border-color: rgba(144, 147, 153, 0.28);
 }
-:deep(.dlg-v-inline .el-switch__core) {
-  min-width: 40px;
-  height: 20px;
-}
-:deep(.dlg-v-inline .el-switch__label) {
-  font-size: 11px;
+:deep(.dlg-v-inline .t-switch) {
+  vertical-align: middle;
 }
 .dlg-collapse {
   margin-top: 2px;
+}
+.json-scroll-wrap {
+  max-height: 34vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cfg-skel {
+  padding: 12px 0;
+  min-height: 120px;
+}
+.ft-stat {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 .menu-block {
   margin-top: 8px;
@@ -1069,7 +1072,7 @@ async function submitHelpVisibility() {
   }
   .plug-tile {
     margin-bottom: 0;
-    :deep(.el-card__body) {
+    :deep(.t-card__body) {
       min-height: 0;
       padding: 10px;
       gap: 6px;
@@ -1086,7 +1089,7 @@ async function submitHelpVisibility() {
     -webkit-line-clamp: 2;
   }
   .plugins-dialog {
-    :deep(.el-dialog) {
+    :deep(.t-dialog) {
       width: 100vw !important;
       max-width: none !important;
       height: 88dvh;
@@ -1097,16 +1100,16 @@ async function submitHelpVisibility() {
       display: flex;
       flex-direction: column;
     }
-    :deep(.el-dialog__header) {
+    :deep(.t-dialog__header) {
       padding: 10px 12px 8px;
       border-bottom: 1px solid rgba(22, 100, 196, 0.14);
       flex-shrink: 0;
     }
-    :deep(.el-dialog__title) {
+    :deep(.t-dialog__header-content) {
       font-size: 14px;
       font-weight: 700;
     }
-    :deep(.el-dialog__body) {
+    :deep(.t-dialog__body) {
       padding: 10px;
       overflow: auto;
       flex: 1;
@@ -1147,7 +1150,7 @@ async function submitHelpVisibility() {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  .mini-actions :deep(.el-button) {
+  .mini-actions :deep(.t-button) {
     width: 100%;
     margin-left: 0 !important;
   }

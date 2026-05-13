@@ -14,8 +14,8 @@ import {
 } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import type { BotConfigPublic, DbOverviewData, GroupConfigPublic } from "@/api/pallasTypes";
-import { Histogram, Operation, Search } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { ChartBarIcon, SearchIcon, TransformIcon } from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import type { Component } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -42,11 +42,11 @@ const sectionSub: Record<DbSection, string> = {
 
 const navItems = computed((): { index: DbSection; label: string; icon: Component }[] => {
   const base: { index: DbSection; label: string; icon: Component }[] = [
-    { index: "query", label: "按条件查询", icon: Search },
-    { index: "overview", label: "存储概览", icon: Histogram },
+    { index: "query", label: "按条件查询", icon: SearchIcon },
+    { index: "overview", label: "存储概览", icon: ChartBarIcon },
   ];
   if (overview.value?.backend === "mongodb") {
-    base.push({ index: "pipeline", label: "Mongo 管道", icon: Operation });
+    base.push({ index: "pipeline", label: "Mongo 管道", icon: TransformIcon });
   }
   return base;
 });
@@ -146,6 +146,14 @@ const currentOpSnippets = computed(() =>
 const selectedSnippet = computed(
   () => currentOpSnippets.value.find((x) => x.name === selectedSnippetName.value) ?? currentOpSnippets.value[0],
 );
+const snippetNameOptions = computed(() =>
+  currentOpSnippets.value.map((s) => ({ label: s.name, value: s.name })),
+);
+const tableEditOptions = [
+  { label: "config (bot_config)", value: "config" as const },
+  { label: "group_config", value: "group_config" as const },
+  { label: "user_config", value: "user_config" as const },
+];
 
 const unknownBackendNote = computed(() => {
   const o = overview.value;
@@ -167,6 +175,12 @@ const opBotAutoGroup = ref(false);
 const opGroupId = ref("");
 const opGroupBanned = ref(false);
 const opGroupRoulette = ref<0 | 1>(1);
+const opGroupRouletteSwitch = computed({
+  get: () => opGroupRoulette.value === 1,
+  set: (v: boolean) => {
+    opGroupRoulette.value = v ? 1 : 0;
+  },
+});
 const opUserId = ref("");
 const opUserBanned = ref(false);
 const tableEditName = ref<"config" | "group_config" | "user_config">("config");
@@ -212,22 +226,22 @@ async function copySelectedSnippet() {
       throw new Error("clipboard unavailable");
     }
     await navigator.clipboard.writeText(txt);
-    ElMessage.success("已复制到剪贴板");
+    MessagePlugin.success("已复制到剪贴板");
   } catch {
-    ElMessage.warning("复制失败，请手动复制下方内容");
+    MessagePlugin.warning("复制失败，请手动复制下方内容");
   }
 }
 
 function useSnippetAsPipeline() {
   const sn = selectedSnippet.value;
   if (!sn || !("isPipeline" in sn) || !sn.isPipeline) {
-    ElMessage.warning("当前模板不是聚合管道");
+    MessagePlugin.warning("当前模板不是聚合管道");
     return;
   }
   pipelineJson.value = sn.code;
   mongoCollection.value = "group_config";
   section.value = "pipeline";
-  ElMessage.success("已填入管道编辑器");
+  MessagePlugin.success("已填入管道编辑器");
 }
 
 async function load() {
@@ -235,7 +249,7 @@ async function load() {
   try {
     overview.value = await fetchDbOverview();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "加载失败");
     overview.value = null;
   } finally {
     loading.value = false;
@@ -245,7 +259,7 @@ async function load() {
 async function queryGroup() {
   const raw = qGroup.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字群号");
+    MessagePlugin.warning("请输入纯数字群号");
     return;
   }
   qLoading.value = true;
@@ -256,7 +270,7 @@ async function queryGroup() {
     pushHistory(`group:${gid}`);
     qDialog.value = true;
   } catch {
-    ElMessage.error("未找到该群的配置（可能尚未产生过群级记录）");
+    MessagePlugin.error("未找到该群的配置（可能尚未产生过群级记录）");
     qResult.value = null;
   } finally {
     qLoading.value = false;
@@ -266,7 +280,7 @@ async function queryGroup() {
 async function queryBot() {
   const raw = qBot.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字 QQ 号");
+    MessagePlugin.warning("请输入纯数字 QQ 号");
     return;
   }
   qLoading.value = true;
@@ -277,7 +291,7 @@ async function queryBot() {
     pushHistory(`bot:${acc}`);
     qDialog.value = true;
   } catch {
-    ElMessage.error("未找到该 Bot 的配置记录");
+    MessagePlugin.error("未找到该 Bot 的配置记录");
     qResult.value = null;
   } finally {
     qLoading.value = false;
@@ -287,7 +301,7 @@ async function queryBot() {
 async function loadBotForOps() {
   const raw = opBotQq.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字 Bot QQ");
+    MessagePlugin.warning("请输入纯数字 Bot QQ");
     return;
   }
   opBusy.value = true;
@@ -296,9 +310,9 @@ async function loadBotForOps() {
     opBotSecurity.value = data.security;
     opBotAutoFriend.value = data.auto_accept_friend;
     opBotAutoGroup.value = data.auto_accept_group;
-    ElMessage.success("已加载 Bot 当前配置");
+    MessagePlugin.success("已加载 Bot 当前配置");
   } catch {
-    ElMessage.error("未找到该 Bot 配置记录");
+    MessagePlugin.error("未找到该 Bot 配置记录");
   } finally {
     opBusy.value = false;
   }
@@ -307,7 +321,7 @@ async function loadBotForOps() {
 async function saveBotOps() {
   const raw = opBotQq.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字 Bot QQ");
+    MessagePlugin.warning("请输入纯数字 Bot QQ");
     return;
   }
   opBusy.value = true;
@@ -317,9 +331,9 @@ async function saveBotOps() {
       auto_accept_friend: opBotAutoFriend.value,
       auto_accept_group: opBotAutoGroup.value,
     });
-    ElMessage.success("Bot 配置已保存");
+    MessagePlugin.success("Bot 配置已保存");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "Bot 配置保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "Bot 配置保存失败");
   } finally {
     opBusy.value = false;
   }
@@ -328,7 +342,7 @@ async function saveBotOps() {
 async function loadGroupForOps() {
   const raw = opGroupId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字群号");
+    MessagePlugin.warning("请输入纯数字群号");
     return;
   }
   opBusy.value = true;
@@ -336,9 +350,9 @@ async function loadGroupForOps() {
     const data = await fetchGroupConfigById(parseInt(raw, 10));
     opGroupBanned.value = data.banned;
     opGroupRoulette.value = data.roulette_mode === 1 ? 1 : 0;
-    ElMessage.success("已加载群当前配置");
+    MessagePlugin.success("已加载群当前配置");
   } catch {
-    ElMessage.error("未找到该群配置记录");
+    MessagePlugin.error("未找到该群配置记录");
   } finally {
     opBusy.value = false;
   }
@@ -347,7 +361,7 @@ async function loadGroupForOps() {
 async function saveGroupOps() {
   const raw = opGroupId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字群号");
+    MessagePlugin.warning("请输入纯数字群号");
     return;
   }
   opBusy.value = true;
@@ -356,9 +370,9 @@ async function saveGroupOps() {
       banned: opGroupBanned.value,
       roulette_mode: opGroupRoulette.value,
     });
-    ElMessage.success("群配置已保存");
+    MessagePlugin.success("群配置已保存");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "群配置保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "群配置保存失败");
   } finally {
     opBusy.value = false;
   }
@@ -367,7 +381,7 @@ async function saveGroupOps() {
 async function saveUserOps() {
   const raw = opUserId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字用户 QQ");
+    MessagePlugin.warning("请输入纯数字用户 QQ");
     return;
   }
   opBusy.value = true;
@@ -375,9 +389,9 @@ async function saveUserOps() {
     await putUserConfig(parseInt(raw, 10), {
       banned: opUserBanned.value,
     });
-    ElMessage.success("用户配置已保存");
+    MessagePlugin.success("用户配置已保存");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "用户配置保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "用户配置保存失败");
   } finally {
     opBusy.value = false;
   }
@@ -386,7 +400,7 @@ async function saveUserOps() {
 async function loadTableRowForOps() {
   const raw = tableEditRowId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字主键");
+    MessagePlugin.warning("请输入纯数字主键");
     return;
   }
   opBusy.value = true;
@@ -396,9 +410,9 @@ async function loadTableRowForOps() {
       row_id: parseInt(raw, 10),
     });
     tableEditJson.value = JSON.stringify(row, null, 2);
-    ElMessage.success("已读取表行");
+    MessagePlugin.success("已读取表行");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "读取失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "读取失败");
   } finally {
     opBusy.value = false;
   }
@@ -407,7 +421,7 @@ async function loadTableRowForOps() {
 async function saveTableRowForOps() {
   const raw = tableEditRowId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字主键");
+    MessagePlugin.warning("请输入纯数字主键");
     return;
   }
   let parsed: Record<string, unknown>;
@@ -418,7 +432,7 @@ async function saveTableRowForOps() {
     }
     parsed = obj as Record<string, unknown>;
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "JSON 格式错误");
+    MessagePlugin.error(e instanceof Error ? e.message : "JSON 格式错误");
     return;
   }
   opBusy.value = true;
@@ -429,9 +443,9 @@ async function saveTableRowForOps() {
       data: parsed,
     });
     tableEditJson.value = JSON.stringify(row, null, 2);
-    ElMessage.success("表行已保存");
+    MessagePlugin.success("表行已保存");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "保存失败");
   } finally {
     opBusy.value = false;
   }
@@ -440,7 +454,7 @@ async function saveTableRowForOps() {
 async function deleteTableRowForOps() {
   const raw = tableEditRowId.value.trim();
   if (!/^\d+$/.test(raw)) {
-    ElMessage.warning("请输入纯数字主键");
+    MessagePlugin.warning("请输入纯数字主键");
     return;
   }
   opBusy.value = true;
@@ -449,9 +463,9 @@ async function deleteTableRowForOps() {
       table: tableEditName.value,
       row_id: parseInt(raw, 10),
     });
-    ElMessage.success("表行已删除");
+    MessagePlugin.success("表行已删除");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "删除失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "删除失败");
   } finally {
     opBusy.value = false;
   }
@@ -528,7 +542,7 @@ async function runPipeline() {
       throw new Error("pipeline 须为 JSON 数组");
     }
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "JSON 解析失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "JSON 解析失败");
     return;
   }
   pipelineBusy.value = true;
@@ -546,12 +560,25 @@ async function runPipeline() {
       Object.keys(r).forEach((k) => keys.add(k));
     }
     pipelineCols.value = [...keys].sort();
-    ElMessage.success(`已返回 ${rows.length} 行`);
+    MessagePlugin.success(`已返回 ${rows.length} 行`);
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "执行失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "执行失败");
   } finally {
     pipelineBusy.value = false;
   }
+}
+
+function formatPipelineCell(row: Record<string, unknown>, key: string): string {
+  const v = row[key];
+  if (v == null) return "";
+  if (typeof v === "object") {
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return String(v);
+    }
+  }
+  return String(v);
 }
 </script>
 
@@ -572,19 +599,14 @@ async function runPipeline() {
       v-show="section === 'query'"
       class="panel"
     >
-      <el-card
-        class="c"
-        shadow="hover"
-      >
-        <el-alert
-          :closable="false"
-          type="info"
+      <t-card :bordered="true" class="c">
+        <t-alert
+          theme="info"
           class="db-banner"
-          show-icon
           title="生产建议"
         >
           先读后改：先用“按条件查询”确认目标记录，再使用“面板直接操作”或“表行 JSON”最小化变更。涉及批量动作建议在低峰执行并保留回滚记录。
-        </el-alert>
+        </t-alert>
         <div class="q-layout">
           <aside class="q-left">
             <div class="q-left-hd">数据表 / 集合</div>
@@ -605,52 +627,53 @@ async function runPipeline() {
             <div class="q-grid">
               <div class="q-item">
                 <div class="q-lab">按群号查「群配置」</div>
-                <el-input
+                <t-input
                   v-model="qGroup"
                   class="q-inp"
                   clearable
                   placeholder="输入群号，例如 123456789"
-                  @keyup.enter="queryGroup"
+                  @enter="queryGroup"
                 />
-                <el-button
-                  type="primary"
+                <t-button
+                  theme="primary"
                   :loading="qLoading"
                   @click="queryGroup"
-                >查询</el-button>
+                >查询</t-button>
               </div>
               <div class="q-item">
                 <div class="q-lab">按 QQ 查「Bot 账号配置」</div>
-                <el-input
+                <t-input
                   v-model="qBot"
                   class="q-inp"
                   clearable
                   placeholder="输入 Bot QQ 号"
-                  @keyup.enter="queryBot"
+                  @enter="queryBot"
                 />
-                <el-button
-                  type="primary"
+                <t-button
+                  theme="primary"
                   :loading="qLoading"
                   @click="queryBot"
-                >查询</el-button>
+                >查询</t-button>
               </div>
             </div>
             <div class="q-his">
               <span class="q-his-lab">历史记录</span>
-              <el-tag
+              <t-tag
                 v-for="h in queryHistory"
                 :key="h"
                 size="small"
+                variant="light"
                 class="q-his-tag"
-              >{{ h }}</el-tag>
+              >{{ h }}</t-tag>
               <span v-if="!queryHistory.length" class="q-his-empty">暂无</span>
             </div>
-            <el-divider />
+            <t-divider />
             <div class="ops-direct">
               <div class="ops-direct-hd">面板直接操作</div>
               <div class="ops-direct-grid">
                 <div class="ops-card">
                   <div class="ops-card-t">Bot 配置</div>
-                  <el-input
+                  <t-input
                     v-model="opBotQq"
                     placeholder="Bot QQ"
                     class="ops-inp"
@@ -658,25 +681,25 @@ async function runPipeline() {
                   <div class="ops-switch-list">
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">安全模式</span>
-                      <el-switch v-model="opBotSecurity" />
+                      <t-switch v-model="opBotSecurity" />
                     </div>
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">自动同意好友</span>
-                      <el-switch v-model="opBotAutoFriend" />
+                      <t-switch v-model="opBotAutoFriend" />
                     </div>
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">自动同意入群</span>
-                      <el-switch v-model="opBotAutoGroup" />
+                      <t-switch v-model="opBotAutoGroup" />
                     </div>
                   </div>
-                  <el-space>
-                    <el-button size="small" :loading="opBusy" @click="loadBotForOps">读取</el-button>
-                    <el-button type="primary" size="small" :loading="opBusy" @click="saveBotOps">保存</el-button>
-                  </el-space>
+                  <div class="ops-btn-row">
+                    <t-button size="small" :loading="opBusy" @click="loadBotForOps">读取</t-button>
+                    <t-button theme="primary" size="small" :loading="opBusy" @click="saveBotOps">保存</t-button>
+                  </div>
                 </div>
                 <div class="ops-card">
                   <div class="ops-card-t">群配置</div>
-                  <el-input
+                  <t-input
                     v-model="opGroupId"
                     placeholder="群号"
                     class="ops-inp"
@@ -684,28 +707,24 @@ async function runPipeline() {
                   <div class="ops-switch-list">
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">群封禁</span>
-                      <el-switch v-model="opGroupBanned" />
+                      <t-switch v-model="opGroupBanned" />
                     </div>
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">轮盘</span>
-                      <el-switch
-                        v-model="opGroupRoulette"
-                        :active-value="1"
-                        :inactive-value="0"
-                        inline-prompt
-                        active-text="禁言"
-                        inactive-text="踢人"
+                      <t-switch
+                        v-model="opGroupRouletteSwitch"
+                        :label="['踢人', '禁言']"
                       />
                     </div>
                   </div>
-                  <el-space>
-                    <el-button size="small" :loading="opBusy" @click="loadGroupForOps">读取</el-button>
-                    <el-button type="primary" size="small" :loading="opBusy" @click="saveGroupOps">保存</el-button>
-                  </el-space>
+                  <div class="ops-btn-row">
+                    <t-button size="small" :loading="opBusy" @click="loadGroupForOps">读取</t-button>
+                    <t-button theme="primary" size="small" :loading="opBusy" @click="saveGroupOps">保存</t-button>
+                  </div>
                 </div>
                 <div class="ops-card">
                   <div class="ops-card-t">用户配置</div>
-                  <el-input
+                  <t-input
                     v-model="opUserId"
                     placeholder="用户 QQ"
                     class="ops-inp"
@@ -713,84 +732,73 @@ async function runPipeline() {
                   <div class="ops-switch-list">
                     <div class="ops-switch-row">
                       <span class="ops-switch-label">用户封禁</span>
-                      <el-switch v-model="opUserBanned" />
+                      <t-switch v-model="opUserBanned" />
                     </div>
                   </div>
-                  <el-space>
-                    <el-button type="primary" size="small" :loading="opBusy" @click="saveUserOps">保存</el-button>
-                  </el-space>
+                  <div class="ops-btn-row">
+                    <t-button theme="primary" size="small" :loading="opBusy" @click="saveUserOps">保存</t-button>
+                  </div>
                 </div>
                 <div class="ops-card ops-card-wide">
                   <div class="ops-card-t">直接操作表行（JSON）</div>
-                  <el-space wrap>
-                    <el-select v-model="tableEditName" class="ops-sel-mini">
-                      <el-option label="config (bot_config)" value="config" />
-                      <el-option label="group_config" value="group_config" />
-                      <el-option label="user_config" value="user_config" />
-                    </el-select>
-                    <el-input v-model="tableEditRowId" class="ops-id-inp" placeholder="主键 ID（账号/群号/用户号）" />
-                  </el-space>
-                  <el-input
+                  <div class="ops-row-wrap">
+                    <t-select
+                      v-model="tableEditName"
+                      class="ops-sel-mini"
+                      :options="tableEditOptions"
+                    />
+                    <t-input v-model="tableEditRowId" class="ops-id-inp" placeholder="主键 ID（账号/群号/用户号）" />
+                  </div>
+                  <t-textarea
                     v-model="tableEditJson"
-                    type="textarea"
-                    :rows="8"
-                    spellcheck="false"
+                    :autosize="{ minRows: 8, maxRows: 24 }"
                     class="ops-json-inp"
                     placeholder='{"banned": true}'
                   />
-                  <el-space>
-                    <el-button size="small" :loading="opBusy" @click="loadTableRowForOps">读取</el-button>
-                    <el-button type="primary" size="small" :loading="opBusy" @click="saveTableRowForOps">保存</el-button>
-                    <el-button type="danger" size="small" :loading="opBusy" @click="deleteTableRowForOps">删除该行</el-button>
-                  </el-space>
+                  <div class="ops-btn-row">
+                    <t-button size="small" :loading="opBusy" @click="loadTableRowForOps">读取</t-button>
+                    <t-button theme="primary" size="small" :loading="opBusy" @click="saveTableRowForOps">保存</t-button>
+                    <t-button theme="danger" size="small" :loading="opBusy" @click="deleteTableRowForOps">删除该行</t-button>
+                  </div>
                 </div>
               </div>
             </div>
-            <el-divider />
+            <t-divider />
             <div class="ops-box">
               <div class="ops-hd">
                 <span>数据库常用函数</span>
-                <el-radio-group v-model="opSnippetKind" size="small">
-                  <el-radio-button label="mongodb">MongoDB</el-radio-button>
-                  <el-radio-button label="postgres">PostgreSQL</el-radio-button>
-                </el-radio-group>
+                <t-radio-group v-model="opSnippetKind" variant="default-filled" size="small">
+                  <t-radio-button value="mongodb">MongoDB</t-radio-button>
+                  <t-radio-button value="postgres">PostgreSQL</t-radio-button>
+                </t-radio-group>
               </div>
               <div class="ops-row">
-                <el-select
+                <t-select
                   v-model="selectedSnippetName"
                   class="ops-sel"
                   filterable
-                >
-                  <el-option
-                    v-for="s in currentOpSnippets"
-                    :key="s.name"
-                    :label="s.name"
-                    :value="s.name"
-                  />
-                </el-select>
-                <el-button @click="copySelectedSnippet">复制</el-button>
-                <el-button
+                  :options="snippetNameOptions"
+                />
+                <t-button @click="copySelectedSnippet">复制</t-button>
+                <t-button
                   v-if="opSnippetKind === 'mongodb'"
-                  type="primary"
-                  plain
+                  theme="primary"
+                  variant="outline"
                   @click="useSnippetAsPipeline"
-                >填入管道</el-button>
+                >填入管道</t-button>
               </div>
               <pre class="ops-code">{{ selectedSnippet?.code || "" }}</pre>
             </div>
           </div>
         </div>
-      </el-card>
+      </t-card>
     </div>
 
     <div
       v-show="section === 'overview'"
       class="panel"
     >
-      <el-card
-        class="c"
-        shadow="hover"
-      >
+      <t-card :bordered="true" class="c">
         <div
           v-loading="loading"
           class="box"
@@ -806,7 +814,7 @@ async function runPipeline() {
                   <strong>{{ row.name }}</strong>
                   <span class="ov-sub">{{ row.detail }}</span>
                 </div>
-                <el-tag type="info" size="small">{{ row.count }}</el-tag>
+                <t-tag theme="primary" variant="light" size="small">{{ row.count }}</t-tag>
               </div>
             </div>
           </template>
@@ -823,56 +831,50 @@ async function runPipeline() {
                   <strong>{{ row.name }}</strong>
                   <span class="ov-sub">{{ row.detail }}</span>
                 </div>
-                <el-tag type="info" size="small">{{ row.count }}</el-tag>
+                <t-tag theme="primary" variant="light" size="small">{{ row.count }}</t-tag>
               </div>
             </div>
           </template>
-          <el-alert
+          <t-alert
             v-else-if="overview"
-            :closable="false"
-            type="warning"
+            theme="warning"
             :title="`当前后端: ${overview.backend}`"
           >
             {{ unknownBackendNote }}
-          </el-alert>
-          <el-empty
+          </t-alert>
+          <t-empty
             v-else-if="!loading"
             description="暂无数据"
           />
           <div class="ft">
-            <el-button
-              type="primary"
-              plain
+            <t-button
+              theme="primary"
+              variant="outline"
               :loading="loading"
               @click="load"
             >
               刷新概览
-            </el-button>
+            </t-button>
           </div>
         </div>
-      </el-card>
+      </t-card>
     </div>
 
     <div
       v-show="section === 'pipeline'"
       class="panel"
     >
-      <el-card
-        class="c"
-        shadow="hover"
-      >
-        <el-alert
-          :closable="false"
-          type="warning"
+      <t-card :bordered="true" class="c">
+        <t-alert
+          theme="warning"
           class="pipe-al"
-          show-icon
           title="安全说明"
         >
           后端拒绝 $lookup/$out 等阶段；未配置或未携带写 Token 时接口返回 403/401。请勿在生产对公网裸奔开启。
-        </el-alert>
+        </t-alert>
         <div class="pipe-row">
           <span class="pipe-lab">集合名</span>
-          <el-input
+          <t-input
             v-model="mongoCollection"
             class="pipe-col"
             clearable
@@ -881,62 +883,68 @@ async function runPipeline() {
         </div>
         <div class="pipe-row pipe-stack">
           <span class="pipe-lab">pipeline（JSON 数组）</span>
-          <el-input
+          <t-textarea
             v-model="pipelineJson"
             class="pipe-json"
-            type="textarea"
-            :rows="10"
-            spellcheck="false"
+            :autosize="{ minRows: 10, maxRows: 28 }"
             placeholder='例如 [{"$match": {"account": 123}}, {"$limit": 5}]'
           />
         </div>
-        <el-button
-          type="primary"
+        <t-button
+          theme="primary"
           :loading="pipelineBusy"
           @click="runPipeline"
-        >执行（只读）</el-button>
-        <el-table
+        >执行（只读）</t-button>
+        <div
           v-if="pipelineCols.length"
           class="tb tb-dense pipe-out"
-          size="small"
-          border
-          stripe
-          :data="pipelineRows"
-          max-height="45vh"
         >
-          <el-table-column
-            v-for="c in pipelineCols"
-            :key="c"
-            :label="c"
-            :prop="c"
-            min-width="100"
-            show-overflow-tooltip
-          />
-        </el-table>
-      </el-card>
+          <div class="pipe-table-scroll">
+            <table class="pipe-table">
+              <thead>
+                <tr>
+                  <th v-for="c in pipelineCols" :key="c">{{ c }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, ri) in pipelineRows" :key="ri">
+                  <td
+                    v-for="c in pipelineCols"
+                    :key="c"
+                    :title="formatPipelineCell(row, c)"
+                  >
+                    {{ formatPipelineCell(row, c) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </t-card>
     </div>
     </PallasSidebarShell>
 
-    <el-dialog
-    v-model="qDialog"
-    :title="qResult?.type === 'group' ? '群配置（只读预览）' : 'Bot 配置（只读预览）'"
-    width="min(92vw, 520px)"
-    destroy-on-close
-  >
-    <el-scrollbar max-height="55vh">
-      <pre
-        v-if="qResult"
-        class="json"
-      >{{ JSON.stringify(qResult.data, null, 2) }}</pre>
-    </el-scrollbar>
-    <template #footer>
-      <el-button @click="qDialog = false">关闭</el-button>
-      <el-button
-        type="primary"
-        @click="goEditInInstances"
-      >去「好友与群」里改</el-button>
-    </template>
-    </el-dialog>
+    <t-dialog
+      v-model:visible="qDialog"
+      :header="qResult?.type === 'group' ? '群配置（只读预览）' : 'Bot 配置（只读预览）'"
+      width="min(92vw, 520px)"
+      destroy-on-close
+      attach="body"
+    >
+      <div class="q-dialog-body">
+        <pre
+          v-if="qResult"
+          class="json"
+        >{{ JSON.stringify(qResult.data, null, 2) }}</pre>
+      </div>
+      <template #footer>
+        <t-button variant="outline" @click="qDialog = false">关闭</t-button>
+        <t-button
+          theme="primary"
+          @click="goEditInInstances"
+        >去「好友与群」里改</t-button>
+      </template>
+    </t-dialog>
   </div>
 </template>
 
@@ -1147,9 +1155,25 @@ async function runPipeline() {
 .ops-id-inp {
   min-width: 260px;
 }
+.ops-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.ops-row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.q-dialog-body {
+  max-height: 55vh;
+  overflow: auto;
+}
 .ops-json-inp {
   width: 100%;
-  :deep(textarea) {
+  :deep(.t-textarea__inner) {
     font-family: ui-monospace, Consolas, monospace;
     font-size: 12px;
   }
@@ -1189,16 +1213,35 @@ async function runPipeline() {
   white-space: pre-wrap;
   word-break: break-word;
 }
-:deep(.el-descriptions__content),
-:deep(.el-table .cell) {
+.pipe-table-scroll {
+  max-height: 45vh;
+  overflow: auto;
+  border: 1px solid rgba(22, 100, 196, 0.1);
+  border-radius: 8px;
+}
+.pipe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.pipe-table th,
+.pipe-table td {
+  border: 1px solid rgba(22, 100, 196, 0.1);
+  padding: 6px 8px;
   word-break: break-word;
+  vertical-align: top;
+}
+.pipe-table thead th {
+  background: var(--td-bg-color-secondarycontainer);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.pipe-table tbody tr:nth-child(even) {
+  background: rgba(22, 100, 196, 0.04);
 }
 .tb {
   width: 100%;
-  --el-table-border-color: rgba(22, 100, 196, 0.1);
-}
-.tb-dense :deep(.cell) {
-  padding: 6px 8px;
 }
 html.dark .q-left-item,
 html.dark .ov-item,
@@ -1220,14 +1263,18 @@ html.dark .ops-code {
   background: rgba(10, 14, 22, 0.86);
   border-color: rgba(125, 176, 255, 0.24);
 }
-html.dark .tb :deep(.el-table__inner-wrapper),
-html.dark .tb :deep(.el-table__header-wrapper),
-html.dark .tb :deep(.el-table__body-wrapper),
-html.dark .tb :deep(.el-table__cell) {
-  background-color: rgba(18, 25, 37, 0.92) !important;
+html.dark .pipe-table th,
+html.dark .pipe-table td {
+  border-color: rgba(125, 176, 255, 0.24);
 }
-html.dark .tb :deep(.el-table__row:hover > td.el-table__cell) {
-  background: rgba(58, 121, 214, 0.22) !important;
+html.dark .pipe-table thead th {
+  background: rgba(18, 25, 37, 0.95);
+}
+html.dark .pipe-table tbody tr:nth-child(even) {
+  background: rgba(58, 121, 214, 0.08);
+}
+html.dark .pipe-table-scroll {
+  border-color: rgba(125, 176, 255, 0.24);
 }
 .pipe-al {
   margin-bottom: 14px;
@@ -1256,8 +1303,10 @@ html.dark .tb :deep(.el-table__row:hover > td.el-table__cell) {
 .pipe-json {
   flex: 1;
   min-width: 200px;
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 12px;
+  :deep(.t-textarea__inner) {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+  }
 }
 .pipe-out {
   margin-top: 14px;

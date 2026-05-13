@@ -3,15 +3,15 @@ import { changeConsoleLogin, fetchPluginConfig, fetchSystem, putPluginConfig } f
 import { fetchHealth } from "@/api/health";
 import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import {
-  CircleCheck,
-  Connection,
-  Lock,
-  MagicStick,
-  Monitor,
-  Moon,
-  Sunny,
-  Timer,
-} from "@element-plus/icons-vue";
+  AdjustmentIcon,
+  CheckCircleFilledIcon,
+  DesktopIcon,
+  LinkIcon,
+  LockOnIcon,
+  MoonIcon,
+  SunnyIcon,
+  TimeIcon,
+} from "tdesign-icons-vue-next";
 import { computed, onMounted, ref } from "vue";
 import {
   ACCENT_SWATCHES,
@@ -61,11 +61,11 @@ const sectionSub: Record<Section, string> = {
 };
 
 const navItems = [
-  { index: "accessAuth" as const, label: "访问与鉴权", icon: Lock },
-  { index: "appearance" as const, label: "外观", icon: MagicStick },
-  { index: "behavior" as const, label: "数据刷新", icon: Timer },
-  { index: "baseline" as const, label: "连接与端点", icon: Connection },
-  { index: "ops" as const, label: "生产与自检", icon: CircleCheck },
+  { index: "accessAuth" as const, label: "访问与鉴权", icon: LockOnIcon },
+  { index: "appearance" as const, label: "外观", icon: AdjustmentIcon },
+  { index: "behavior" as const, label: "数据刷新", icon: TimeIcon },
+  { index: "baseline" as const, label: "连接与端点", icon: LinkIcon },
+  { index: "ops" as const, label: "生产与自检", icon: CheckCircleFilledIcon },
 ];
 
 const accentHex = ref(getAccentHex());
@@ -219,92 +219,89 @@ async function logoutConsole() {
     </template>
 
     <div v-show="section === 'accessAuth'" class="panel auth-stack">
-      <el-alert
+      <t-alert
         v-if="webuiDevMode"
-        type="warning"
-        show-icon
-        :closable="false"
+        theme="warning"
         class="sl-alert"
         style="margin-bottom: 12px"
         title="开发模式：API 不校验会话，仅本机。"
       />
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">修改统一控制台口令</h3>
           <p class="sl-desc">与协议端同口令；保存后重新登录。</p>
         </header>
-        <el-input
+        <t-input
           v-model="consolePw1"
           type="password"
-          show-password
           clearable
           placeholder="新口令"
           class="api-tok pallas-form-quiet"
         />
-        <el-input
+        <t-input
           v-model="consolePw2"
           type="password"
-          show-password
           clearable
           placeholder="再次输入"
           class="api-tok pallas-form-quiet"
           style="margin-top: 10px"
         />
         <div class="token-save-row" style="margin-top: 12px">
-          <el-button type="primary" class="sl-btn-primary" :loading="consolePwSaving" @click="saveConsoleLogin">
+          <t-button theme="primary" class="sl-btn-primary" :loading="consolePwSaving" @click="saveConsoleLogin">
             保存新口令
-          </el-button>
-          <el-button class="sl-btn-ghost" :disabled="consolePwSaving" @click="logoutConsole">退出登录</el-button>
-          <el-alert
+          </t-button>
+          <t-button variant="outline" class="sl-btn-ghost" :disabled="consolePwSaving" @click="logoutConsole">
+            退出登录
+          </t-button>
+          <t-alert
             v-if="consolePwMsg"
-            :type="consolePwMsg.type"
+            :theme="consolePwMsg.type === 'success' ? 'success' : 'error'"
             :title="consolePwMsg.text"
-            show-icon
-            :closable="false"
             class="token-save-alert sl-alert"
           />
         </div>
-      </el-card>
+      </t-card>
 
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd sl-hd-row">
           <div>
             <h3 class="sl-title">GitHub 访问令牌</h3>
             <p class="sl-desc">写入 pallas_protocol；保存后重启 Bot。</p>
           </div>
-          <el-button class="sl-btn-ghost" size="small" :loading="githubTokenLoading" @click="loadGithubToken">刷新</el-button>
+          <t-button class="sl-btn-ghost" size="small" variant="outline" :loading="githubTokenLoading" @click="loadGithubToken">
+            刷新
+          </t-button>
         </header>
-        <el-input
+        <t-input
           v-model="githubToken"
           type="password"
-          show-password
           clearable
           placeholder="ghp_… 或 Fine-grained token（留空则不使用）"
           class="api-tok pallas-form-quiet"
           :disabled="githubTokenLoading"
         />
         <p class="sl-foot">
-          <el-link href="https://github.com/settings/tokens" target="_blank" type="primary" class="sl-link">
+          <t-link href="https://github.com/settings/tokens" target="_blank" theme="primary" class="sl-link">
             生成 token
-          </el-link>
+          </t-link>
           （只读即可）
         </p>
         <div class="token-save-row">
-          <el-button type="primary" class="sl-btn-primary" :loading="githubTokenSaving" @click="saveGithubToken">保存</el-button>
-          <el-alert
+          <t-button theme="primary" class="sl-btn-primary" :loading="githubTokenSaving" @click="saveGithubToken">
+            保存
+          </t-button>
+          <t-alert
             v-if="githubTokenSaveMsg"
-            :type="githubTokenSaveMsg.type"
+            :theme="githubTokenSaveMsg.type === 'success' ? 'success' : 'error'"
             :title="githubTokenSaveMsg.text"
-            show-icon
-            :closable="false"
             class="token-save-alert sl-alert"
           />
         </div>
-      </el-card>
+      </t-card>
     </div>
 
     <div v-show="section === 'appearance'" class="panel auth-stack">
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">显示模式</h3>
           <p class="sl-desc">浅色 / 深色 / 跟随系统。</p>
@@ -316,7 +313,7 @@ async function logoutConsole() {
             :class="{ active: themeDisplayMode === 'light' }"
             @click="pickThemeMode('light')"
           >
-            <el-icon><Sunny /></el-icon>
+            <SunnyIcon class="sl-chip-ico" />
             浅色
           </button>
           <button
@@ -325,7 +322,7 @@ async function logoutConsole() {
             :class="{ active: themeDisplayMode === 'dark' }"
             @click="pickThemeMode('dark')"
           >
-            <el-icon><Moon /></el-icon>
+            <MoonIcon class="sl-chip-ico" />
             深色
           </button>
           <button
@@ -334,13 +331,13 @@ async function logoutConsole() {
             :class="{ active: themeDisplayMode === 'system' }"
             @click="pickThemeMode('system')"
           >
-            <el-icon><Monitor /></el-icon>
+            <DesktopIcon class="sl-chip-ico" />
             跟随系统
           </button>
         </div>
-      </el-card>
+      </t-card>
 
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">强调色</h3>
         </header>
@@ -357,9 +354,9 @@ async function logoutConsole() {
           />
         </div>
         <p class="sl-foot">当前：{{ ACCENT_SWATCHES.find((x) => x.hex === accentHex)?.label ?? "自定义" }}（{{ accentHex }}）</p>
-      </el-card>
+      </t-card>
 
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">圆角</h3>
         </header>
@@ -375,9 +372,9 @@ async function logoutConsole() {
             {{ r.label }}（{{ r.value }}rem）
           </button>
         </div>
-      </el-card>
+      </t-card>
 
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">显示密度</h3>
         </header>
@@ -401,11 +398,11 @@ async function logoutConsole() {
             <span class="sl-dens-desc">更紧凑</span>
           </button>
         </div>
-      </el-card>
+      </t-card>
     </div>
 
     <div v-show="section === 'behavior'" class="panel">
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">仪表盘轮询</h3>
           <p class="sl-desc">仪表盘日志等轮询间隔；0 为暂停。</p>
@@ -425,42 +422,43 @@ async function logoutConsole() {
         <p class="sl-foot">
           当前：{{ dashPollMs === 0 ? "已暂停轮询" : `${dashPollMs} 毫秒` }}
         </p>
-      </el-card>
+      </t-card>
     </div>
 
     <div
       v-show="section === 'baseline'"
       class="panel"
     >
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd sl-hd-row">
           <div>
             <h3 class="sl-title">连接状态</h3>
             <p class="sl-desc">本页所连后端的根路径与健康检查。</p>
           </div>
-          <el-button class="sl-btn-ghost" size="small" :loading="loading" @click="loadRuntimeMeta">刷新</el-button>
+          <t-button class="sl-btn-ghost" size="small" variant="outline" :loading="loading" @click="loadRuntimeMeta">
+            刷新
+          </t-button>
         </header>
-        <el-descriptions :column="1" border class="desc">
-          <el-descriptions-item label="连通状态">
-            <el-tag v-if="healthOk === true" type="success" size="small">正常</el-tag>
-            <el-tag v-else-if="healthOk === false" type="danger" size="small">不可用</el-tag>
-            <el-tag v-else size="small">检查中</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="控制台根路径"><code>{{ base }}</code></el-descriptions-item>
-          <el-descriptions-item label="API 根路径"><code>{{ apiBase }}</code></el-descriptions-item>
-          <el-descriptions-item label="健康检查路径"><code>{{ healthPath }}</code></el-descriptions-item>
-          <el-descriptions-item label="协议管理入口"><code>{{ protocolHint }}</code></el-descriptions-item>
-          <el-descriptions-item label="驱动监听"><code>{{ driverAddr }}</code></el-descriptions-item>
-        </el-descriptions>
-      </el-card>
+        <t-descriptions :column="1" bordered class="desc">
+          <t-descriptions-item label="连通状态">
+            <t-tag v-if="healthOk === true" theme="success" variant="light" size="small">正常</t-tag>
+            <t-tag v-else-if="healthOk === false" theme="danger" variant="light" size="small">不可用</t-tag>
+            <t-tag v-else variant="light" size="small">检查中</t-tag>
+          </t-descriptions-item>
+          <t-descriptions-item label="控制台根路径"><code>{{ base }}</code></t-descriptions-item>
+          <t-descriptions-item label="API 根路径"><code>{{ apiBase }}</code></t-descriptions-item>
+          <t-descriptions-item label="健康检查路径"><code>{{ healthPath }}</code></t-descriptions-item>
+          <t-descriptions-item label="协议管理入口"><code>{{ protocolHint }}</code></t-descriptions-item>
+          <t-descriptions-item label="驱动监听"><code>{{ driverAddr }}</code></t-descriptions-item>
+        </t-descriptions>
+      </t-card>
     </div>
-
 
     <div
       v-show="section === 'ops'"
       class="panel auth-stack"
     >
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">生产部署</h3>
           <p class="sl-desc">静态、HTTPS 与开发代理。</p>
@@ -470,27 +468,27 @@ async function logoutConsole() {
           <li>公网 HTTPS；生产勿开 <code class="sl-code">pallas_webui_dev_mode</code>。</li>
           <li>本地开发：<code class="sl-code">VITE_PROXY_TARGET</code> 指向 Bot。</li>
         </ul>
-      </el-card>
+      </t-card>
 
-      <el-card class="cardx sl-card" shadow="never">
+      <t-card :bordered="true" class="cardx sl-card">
         <header class="sl-hd">
           <h3 class="sl-title">上线前自检</h3>
         </header>
-        <el-timeline class="timeline-dense sl-timeline">
-          <el-timeline-item type="primary" hollow>
+        <ol class="sl-timeline">
+          <li class="sl-timeline-item">
             <p class="tl-p"><code class="sl-code">/pallas/</code>、<code class="sl-code">/pallas/api/health</code> 通。</p>
-          </el-timeline-item>
-          <el-timeline-item type="primary" hollow>
+          </li>
+          <li class="sl-timeline-item">
             <p class="tl-p">写接口需登录（否则 401）。</p>
-          </el-timeline-item>
-          <el-timeline-item type="primary" hollow>
+          </li>
+          <li class="sl-timeline-item">
             <p class="tl-p"><code class="sl-code">/protocol/console</code> 可达且 token 有效。</p>
-          </el-timeline-item>
-          <el-timeline-item type="primary" hollow>
+          </li>
+          <li class="sl-timeline-item">
             <p class="tl-p">HTTPS / 反代就绪。</p>
-          </el-timeline-item>
-        </el-timeline>
-      </el-card>
+          </li>
+        </ol>
+      </t-card>
     </div>
   </PallasSidebarShell>
 </template>
@@ -507,7 +505,7 @@ async function logoutConsole() {
   background: var(--el-bg-color);
   box-shadow: none !important;
   border-radius: 12px !important;
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 22px 24px 20px;
   }
 }
@@ -549,32 +547,46 @@ async function logoutConsole() {
   border-radius: 8px !important;
 }
 .desc {
-  :deep(.el-descriptions__label) {
+  :deep(.t-descriptions__label) {
     width: 170px;
     font-weight: 500;
     color: var(--el-text-color-secondary);
   }
-  :deep(.el-descriptions__cell) {
+  :deep(.t-descriptions__content) {
     line-height: 1.6;
   }
 }
-.timeline-dense.sl-timeline {
-  margin-top: 4px;
-  :deep(.el-timeline-item__content) {
-    line-height: 1.5;
-  }
-  .tl-p {
-    margin: 0 0 4px;
-    line-height: 1.65;
-    font-size: 0.875rem;
-    color: var(--el-text-color-regular);
-  }
-  :deep(.el-timeline-item__node) {
-    top: 6px;
-  }
-  :deep(.el-timeline-item__tail) {
-    top: 10px;
-  }
+.sl-timeline {
+  margin: 4px 0 0;
+  padding: 0 0 0 1.35rem;
+  list-style: none;
+}
+.sl-timeline-item {
+  position: relative;
+  padding: 0 0 14px 0.35rem;
+  border-left: 2px solid color-mix(in srgb, var(--td-brand-color-7) 28%, var(--el-border-color-lighter));
+}
+.sl-timeline-item:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+.sl-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--td-bg-color-container);
+  border: 2px solid var(--td-brand-color-7);
+  box-sizing: border-box;
+}
+.tl-p {
+  margin: 0 0 4px;
+  line-height: 1.65;
+  font-size: 0.875rem;
+  color: var(--el-text-color-regular);
 }
 .list.sl-list {
   margin: 0;
@@ -597,9 +609,15 @@ async function logoutConsole() {
   flex: 1;
   min-width: 200px;
 }
-.token-save-alert :deep(.el-alert__content) {
+.token-save-alert :deep(.t-alert__description),
+.token-save-alert :deep(.t-alert__message) {
   line-height: 1.35;
   font-size: 0.8125rem;
+}
+.sl-chip-ico {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
 }
 @media (max-width: 768px) {
   .sl-hd-row {
@@ -610,7 +628,7 @@ async function logoutConsole() {
     max-width: none;
   }
   .desc {
-    :deep(.el-descriptions__label) {
+    :deep(.t-descriptions__label) {
       width: 110px;
     }
   }
