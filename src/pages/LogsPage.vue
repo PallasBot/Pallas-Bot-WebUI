@@ -3,7 +3,9 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const loading = ref(false);
@@ -113,7 +115,9 @@ function lineClass(lv: LogEntry["level"]): string {
     >
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">筛选与视图</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
+        </h2>
         <div class="row-actions">
           <select
             v-model="scope"

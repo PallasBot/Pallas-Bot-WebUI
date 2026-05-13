@@ -4,7 +4,9 @@ import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const overview = ref<DbOverviewData | null>(null);
@@ -141,7 +143,9 @@ async function runAggregate() {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">集合与文档数</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>集合与文档数
+        </h2>
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
@@ -173,7 +177,9 @@ async function runAggregate() {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">表与行数</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>表与行数
+        </h2>
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
@@ -203,7 +209,9 @@ async function runAggregate() {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">概览</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>概览
+        </h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">后端类型：<strong style="color: var(--text)">{{ overview.backend }}</strong></p>
@@ -222,7 +230,9 @@ async function runAggregate() {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">MongoDB 聚合</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>MongoDB 聚合
+        </h2>
         <button
           type="button"
           class="btn btn--primary"

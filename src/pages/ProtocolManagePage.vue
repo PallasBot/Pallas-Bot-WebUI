@@ -7,7 +7,9 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const system = ref<SystemData | null>(null);
@@ -109,7 +111,9 @@ onMounted(async () => {
     <div v-else>
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">入口</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入口
+        </h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 10px">
@@ -148,7 +152,9 @@ onMounted(async () => {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">协议账号</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>协议账号
+        </h2>
       </div>
       <div class="panel__bd">
         <div class="table-wrap">

@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
-import { mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
+import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading, routeNavLoading } from "@/utils/routeLoading";
 import type { ThemeMode } from "@/utils/consolePrefs";
@@ -41,6 +41,8 @@ const topBarTitle = computed(() => {
   const t = route.meta?.title;
   return typeof t === "string" && t.trim() ? t.trim() : "控制台";
 });
+
+const topBarIcon = computed(() => mainNavIconForPath(route.path));
 
 const topBarDesc = computed(() => {
   const d = route.meta?.description;
@@ -320,19 +322,6 @@ onUnmounted(() => {
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <button
-        v-if="isNarrow"
-        type="button"
-        class="shell__narrow-open"
-        aria-label="打开导航菜单"
-        aria-controls="shell-mobile-nav-panel"
-        @click="mobileNavOpen = true"
-      >
-        ☰
-      </button>
-    </Teleport>
-
     <div class="shell__main">
       <div
         v-if="pageLoadingVisible"
@@ -357,9 +346,20 @@ onUnmounted(() => {
         class="shell__topbar"
         aria-label="当前页与连接"
       >
+        <button
+          v-if="isNarrow"
+          type="button"
+          class="shell__topbar-menu"
+          aria-label="打开导航菜单"
+          aria-controls="shell-mobile-nav-panel"
+          @click="mobileNavOpen = true"
+        >
+          ☰
+        </button>
         <div class="shell__topbar-lead">
           <h1 class="shell__topbar-title">
-            {{ topBarTitle }}
+            <span class="shell__topbar-ico" aria-hidden="true">{{ topBarIcon }}</span>
+            <span class="shell__topbar-title-text">{{ topBarTitle }}</span>
           </h1>
           <p
             v-if="topBarDesc"

@@ -8,7 +8,9 @@ import {
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
@@ -95,7 +97,9 @@ onMounted(load);
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">WebUI</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
+        </h2>
         <span
           v-if="web?.has_update"
           class="badge badge--warn"
@@ -123,7 +127,9 @@ onMounted(load);
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">Bot 本体</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
+        </h2>
         <span
           v-if="bot?.has_update"
           class="badge badge--warn"

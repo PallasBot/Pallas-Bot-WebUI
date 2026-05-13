@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+
+const panelNavIcon = usePanelNavIcon();
 
 function setTheme(v: ThemeMode) {
   setConsolePrefs({ theme: v });
@@ -17,7 +20,9 @@ function setDensity(v: DensityMode) {
   <div>
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">颜色模式</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>颜色模式
+        </h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">「跟随系统」会监听系统深色 / 浅色切换。</p>
@@ -52,7 +57,9 @@ function setDensity(v: DensityMode) {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">圆角风格</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>圆角风格
+        </h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">影响卡片、面板、按钮与下拉框等控件的圆角。</p>
@@ -87,7 +94,9 @@ function setDensity(v: DensityMode) {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">内容密度</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>内容密度
+        </h2>
       </div>
       <div class="panel__bd">
         <div class="row-actions">
