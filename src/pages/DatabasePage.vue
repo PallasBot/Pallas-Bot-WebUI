@@ -70,7 +70,7 @@ async function runAggregate() {
     <header class="page-hero">
       <p class="page-hero__eyebrow">Data</p>
       <h1 class="page-hero__title">数据库</h1>
-      <p class="page-hero__desc">结构化展示后端库类型与对象规模；MongoDB 下可提交聚合管道（权限与截断由后端控制）。</p>
+      <p class="page-hero__desc">查看存储后端类型与对象体量；高级查询与写操作受后端权限与配额约束。</p>
     </header>
 
     <div

@@ -60,7 +60,7 @@ function lineClass(lv: LogEntry["level"]): string {
     <header class="page-hero">
       <p class="page-hero__eyebrow">Observability</p>
       <h1 class="page-hero__title">运行日志</h1>
-      <p class="page-hero__desc">从 NoneBot 日志环拉取；支持按条目结构化浏览或查看原始行文本，并可在前端筛选消息内容。</p>
+      <p class="page-hero__desc">按时间线查看运行期输出；支持结构化条目与原始行两种视图，并可在前端按关键字过滤。</p>
     </header>
 
     <div

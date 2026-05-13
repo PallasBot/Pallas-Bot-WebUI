@@ -40,8 +40,7 @@ async function togglePreview(name: string) {
       <p class="page-hero__eyebrow">Plugins</p>
       <h1 class="page-hero__title">插件目录</h1>
       <p class="page-hero__desc">
-        进入配置页会请求 <code>GET /plugins/&lt;name&gt;/config</code>，响应体中的
-        <code>fields</code> 数组描述每个可配置项（名称、类型、env 键、默认值与当前值）。下方可展开预览字段列表，无需进入详情页。
+        在此查看已启用模块；进入单项可调整受控参数。支持在列表中展开预览配置项，无需进入详情页。
       </p>
     </header>
 
@@ -79,7 +78,7 @@ async function togglePreview(name: string) {
             class="btn"
             @click.stop="togglePreview(p.name)"
           >
-            {{ open === p.name ? "收起字段" : "预览 fields" }}
+            {{ open === p.name ? "收起预览" : "预览配置项" }}
           </button>
         </div>
         <div

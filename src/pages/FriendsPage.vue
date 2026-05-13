@@ -102,7 +102,7 @@ async function act(
     <header class="page-hero">
       <p class="page-hero__eyebrow">Social</p>
       <h1 class="page-hero__title">好友</h1>
-      <p class="page-hero__desc">按账号拉取好友列表与好友申请，处理操作走后端 <code>/request-actions</code>。</p>
+      <p class="page-hero__desc">按账号查看好友与申请，审批与处置走后端统一接口。</p>
     </header>
 
     <div

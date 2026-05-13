@@ -101,7 +101,7 @@ async function act(targetSelf: string, userId: number, groupId: number, action: 
     <header class="page-hero">
       <p class="page-hero__eyebrow">Social</p>
       <h1 class="page-hero__title">群</h1>
-      <p class="page-hero__desc">实时拉取群列表，并在下方处理入群请求（与好友页共用同一套后端动作接口）。</p>
+      <p class="page-hero__desc">拉取群列表并处理入群请求；操作经后端统一鉴权与审计。</p>
     </header>
 
     <div

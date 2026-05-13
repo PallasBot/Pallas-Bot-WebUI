@@ -169,7 +169,7 @@ onMounted(async () => {
       <p class="page-hero__eyebrow">Bot policy</p>
       <h1 class="page-hero__title">好友与群颗粒配置</h1>
       <p class="page-hero__desc">
-        按群号或用户 QQ 读写数据库中的独立配置（<code>group_config</code> / <code>user_config</code>），与账号级 Bot 配置不同。
+        按 QQ 或群号维护独立策略表，与账号级 Bot 配置分层；变更写入前请确认影响范围。
       </p>
     </header>
 

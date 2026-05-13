@@ -10,12 +10,15 @@ export interface ConsolePrefsState {
   theme: ThemeMode;
   radius: RadiusMode;
   density: DensityMode;
+  /** 桌面宽度下是否收起左侧主导航（仅图标条） */
+  sidebarCollapsed: boolean;
 }
 
 const defaults: ConsolePrefsState = {
   theme: "dark",
   radius: "default",
   density: "comfortable",
+  sidebarCollapsed: false,
 };
 
 function load(): ConsolePrefsState {

@@ -18,7 +18,7 @@ function setDensity(v: DensityMode) {
     <header class="page-hero">
       <p class="page-hero__eyebrow">Preferences</p>
       <h1 class="page-hero__title">外观偏好</h1>
-      <p class="page-hero__desc">主题、圆角与内容密度保存在本机浏览器，立即作用于整个控制台。</p>
+      <p class="page-hero__desc">主题、圆角与密度仅保存在本机浏览器，用于控制台呈现，不参与服务端配置。</p>
     </header>
 
     <div class="panel">

@@ -32,8 +32,7 @@ onMounted(load);
       <p class="page-hero__eyebrow">Protocol</p>
       <h1 class="page-hero__title">协议端管理</h1>
       <p class="page-hero__desc">
-        打开由 <code>pallas_protocol</code> 挂载在<strong>机器人 HTTP 服务</strong>上的内置管理界面（路径来自实例快照中的
-        <code>webui_path</code>）。
+        打开挂载在机器人 HTTP 服务上的协议内置管理页（路径取自实例快照）；用于日常运维与排障。
       </p>
     </header>
 

@@ -63,7 +63,7 @@ onMounted(load);
     <header class="page-hero">
       <p class="page-hero__eyebrow">Release</p>
       <h1 class="page-hero__title">更新</h1>
-      <p class="page-hero__desc">检查 GitHub 发布并应用更新；实际操作以后端实现为准。</p>
+      <p class="page-hero__desc">检查上游发行说明并在维护窗口内执行升级；具体步骤与回滚策略由运行手册规定。</p>
     </header>
 
     <div
