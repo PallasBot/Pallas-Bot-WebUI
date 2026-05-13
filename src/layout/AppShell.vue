@@ -184,6 +184,70 @@ onUnmounted(() => {
 <template>
   <div :class="shellClass">
     <div class="shell__bg" aria-hidden="true" />
+    <header
+      class="shell__topbar"
+      aria-label="当前页与连接"
+    >
+      <button
+        v-if="isNarrow"
+        type="button"
+        class="shell__topbar-menu"
+        aria-label="打开导航菜单"
+        aria-controls="shell-mobile-nav-panel"
+        @click="mobileNavOpen = true"
+      >
+        ☰
+      </button>
+      <div class="shell__topbar-lead">
+        <h1 class="shell__topbar-title">
+          <span class="shell__topbar-ico" aria-hidden="true">{{ topBarIcon }}</span>
+          <span class="shell__topbar-title-text">{{ topBarTitle }}</span>
+        </h1>
+        <p
+          v-if="topBarDesc"
+          class="shell__topbar-desc muted"
+          :title="topBarDesc"
+        >
+          {{ topBarDesc }}
+        </p>
+      </div>
+      <div class="shell__topbar-end">
+        <span
+          :class="connectionBadge.cls"
+          :title="healthErr || (healthLoading ? '正在探测 API' : undefined)"
+        >{{ connectionBadge.text }}</span>
+        <div
+          class="shell-toolbar__seg shell-toolbar__seg--compact shell__topbar-theme"
+          role="group"
+          aria-label="颜色模式"
+        >
+          <button
+            type="button"
+            :class="{ 'is-on': consolePrefs.theme === 'dark' }"
+            title="深色"
+            @click="setTheme('dark')"
+          >
+            深
+          </button>
+          <button
+            type="button"
+            :class="{ 'is-on': consolePrefs.theme === 'light' }"
+            title="浅色"
+            @click="setTheme('light')"
+          >
+            浅
+          </button>
+          <button
+            type="button"
+            :class="{ 'is-on': consolePrefs.theme === 'system' }"
+            title="跟随系统"
+            @click="setTheme('system')"
+          >
+            自
+          </button>
+        </div>
+      </div>
+    </header>
     <aside
       class="shell__sidebar"
       :aria-hidden="isNarrow"
@@ -341,70 +405,6 @@ onUnmounted(() => {
           </p>
         </div>
       </div>
-      <header
-        class="shell__topbar"
-        aria-label="当前页与连接"
-      >
-        <button
-          v-if="isNarrow"
-          type="button"
-          class="shell__topbar-menu"
-          aria-label="打开导航菜单"
-          aria-controls="shell-mobile-nav-panel"
-          @click="mobileNavOpen = true"
-        >
-          ☰
-        </button>
-        <div class="shell__topbar-lead">
-          <h1 class="shell__topbar-title">
-            <span class="shell__topbar-ico" aria-hidden="true">{{ topBarIcon }}</span>
-            <span class="shell__topbar-title-text">{{ topBarTitle }}</span>
-          </h1>
-          <p
-            v-if="topBarDesc"
-            class="shell__topbar-desc muted"
-            :title="topBarDesc"
-          >
-            {{ topBarDesc }}
-          </p>
-        </div>
-        <div class="shell__topbar-end">
-          <span
-            :class="connectionBadge.cls"
-            :title="healthErr || (healthLoading ? '正在探测 API' : undefined)"
-          >{{ connectionBadge.text }}</span>
-          <div
-            class="shell-toolbar__seg shell-toolbar__seg--compact shell__topbar-theme"
-            role="group"
-            aria-label="颜色模式"
-          >
-            <button
-              type="button"
-              :class="{ 'is-on': consolePrefs.theme === 'dark' }"
-              title="深色"
-              @click="setTheme('dark')"
-            >
-              深
-            </button>
-            <button
-              type="button"
-              :class="{ 'is-on': consolePrefs.theme === 'light' }"
-              title="浅色"
-              @click="setTheme('light')"
-            >
-              浅
-            </button>
-            <button
-              type="button"
-              :class="{ 'is-on': consolePrefs.theme === 'system' }"
-              title="跟随系统"
-              @click="setTheme('system')"
-            >
-              自
-            </button>
-          </div>
-        </div>
-      </header>
       <div :class="mainInnerClass">
         <router-view v-slot="{ Component, route: r }">
           <transition
