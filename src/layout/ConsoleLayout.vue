@@ -5,26 +5,26 @@ import { useConnectionStatus } from "@/composables/useConnectionStatus";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import { ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import {
-  CaretBottom,
-  Connection,
-  DataBoard,
-  Document,
-  Expand,
-  Fold,
-  Grid,
-  InfoFilled,
-  Link,
-  Loading,
-  Menu as MenuIcon,
-  Moon,
-  Monitor,
-  Platform,
-  Refresh,
-  Setting,
-  SetUp,
-  Sunny,
-  Tickets,
-} from "@element-plus/icons-vue";
+  AdjustmentIcon,
+  ApplicationIcon,
+  ChevronDownIcon,
+  DataBaseIcon,
+  GridViewIcon,
+  InfoCircleFilledIcon,
+  LinkIcon,
+  LoadingIcon,
+  MapConnectionIcon,
+  MenuFoldIcon,
+  MenuUnfoldIcon,
+  MoonIcon,
+  RefreshIcon,
+  SettingIcon,
+  SunnyIcon,
+  TicketIcon,
+  ViewListIcon,
+  ViewModuleIcon,
+  BookIcon,
+} from "tdesign-icons-vue-next";
 import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { buildDocumentTitle, documentTitleExtra } from "@/utils/documentTitle";
@@ -154,19 +154,31 @@ const selectedBotAvatar = computed(() => {
 });
 
 const nav = [
-  { name: "dashboard" as const, to: { name: "dashboard" }, label: "仪表盘", icon: Monitor },
-  { name: "accounts" as const, to: { name: "accounts" }, label: "实例", icon: Platform },
-  { name: "instances" as const, to: { name: "instances" }, label: "好友与群", icon: Connection },
-  { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI 扩展", icon: Connection },
-  { name: "protocol" as const, to: { name: "protocol" }, label: "协议管理", icon: Link },
-  { name: "logs" as const, to: { name: "logs" }, label: "运行日志", icon: Tickets },
-  { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: Grid },
-  { name: "common-config" as const, to: { name: "common-config" }, label: "通用配置", icon: SetUp },
-  { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBoard },
-  { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: Setting },
-  { name: "about" as const, to: { name: "about" }, label: "关于", icon: InfoFilled },
-  { name: "update" as const, to: { name: "update" }, label: "更新", icon: Refresh },
+  { name: "dashboard" as const, to: { name: "dashboard" }, label: "仪表盘", icon: ViewModuleIcon },
+  { name: "accounts" as const, to: { name: "accounts" }, label: "实例", icon: ApplicationIcon },
+  { name: "instances" as const, to: { name: "instances" }, label: "好友与群", icon: MapConnectionIcon },
+  { name: "ai-extension" as const, to: { name: "ai-extension" }, label: "AI 扩展", icon: MapConnectionIcon },
+  { name: "protocol" as const, to: { name: "protocol" }, label: "协议管理", icon: LinkIcon },
+  { name: "logs" as const, to: { name: "logs" }, label: "运行日志", icon: TicketIcon },
+  { name: "plugins" as const, to: { name: "plugins" }, label: "插件列表", icon: GridViewIcon },
+  { name: "common-config" as const, to: { name: "common-config" }, label: "通用配置", icon: AdjustmentIcon },
+  { name: "database" as const, to: { name: "database" }, label: "数据库管理", icon: DataBaseIcon },
+  { name: "settings" as const, to: { name: "settings" }, label: "偏好与连接", icon: SettingIcon },
+  { name: "about" as const, to: { name: "about" }, label: "关于", icon: InfoCircleFilledIcon },
+  { name: "update" as const, to: { name: "update" }, label: "更新", icon: RefreshIcon },
 ];
+
+const accountDropdownOptions = computed(() =>
+  botOptions.value.map((b) => ({
+    value: b.selfId,
+    content: `${b.nickname}  ·  QQ ${b.qq}`,
+    active: b.selfId === selectedBotSelfId.value,
+  })),
+);
+
+function onAccountDropdownClick(data: { value?: string | number }) {
+  if (data.value != null) setSelectedBotSelfId(String(data.value));
+}
 
 function onNavClick(item: (typeof nav)[number]) {
   void router.push(item.to);
@@ -256,22 +268,30 @@ const footerYear = new Date().getFullYear();
   >
     <header class="pallas-header">
       <div class="pallas-header-lead">
-        <el-button
+        <t-button
           v-if="!isNarrowLayout"
           class="pallas-sidebar-toggle"
-          :icon="sidebarCollapsed ? Expand : Fold"
-          circle
+          shape="circle"
+          variant="outline"
           :title="sidebarCollapsed ? '展开侧栏' : '收起侧栏'"
           @click="toggleSidebarCollapsed"
-        />
-        <el-button
+        >
+          <template #icon>
+            <component :is="sidebarCollapsed ? MenuUnfoldIcon : MenuFoldIcon" />
+          </template>
+        </t-button>
+        <t-button
           v-if="isNarrowLayout"
           class="pallas-menu-btn"
-          :icon="MenuIcon"
-          circle
+          shape="circle"
+          variant="outline"
           aria-label="打开导航菜单"
           @click="navDrawerOpen = true"
-        />
+        >
+          <template #icon>
+            <ViewListIcon />
+          </template>
+        </t-button>
         <div class="pallas-title">
           <span class="pallas-title-mark" aria-hidden="true" />
           <div class="pallas-title-stack">
@@ -281,13 +301,9 @@ const footerYear = new Date().getFullYear();
               class="pallas-route-hint"
             >{{ currentNavLabel }}</span>
           </div>
-          <el-tag
-            class="tag-beta"
-            effect="plain"
-            size="small"
-          >
+          <t-tag class="tag-beta" variant="light-outline" size="small">
             Beta
-          </el-tag>
+          </t-tag>
         </div>
       </div>
       <div class="pallas-header-right">
@@ -315,13 +331,17 @@ const footerYear = new Date().getFullYear();
           </div>
           <span class="pallas-header-actions-gap" aria-hidden="true" />
           <div class="pallas-header-toolbar">
-            <el-button
-              :icon="isDark ? Sunny : Moon"
-              circle
+            <t-button
+              shape="circle"
+              variant="outline"
               class="header-icon-btn"
               title="切换浅色 / 深色"
               @click="toggleTheme"
-            />
+            >
+              <template #icon>
+                <component :is="isDark ? SunnyIcon : MoonIcon" />
+              </template>
+            </t-button>
             <a
               class="header-link"
               :href="DOCS"
@@ -334,59 +354,21 @@ const footerYear = new Date().getFullYear();
               target="_blank"
               rel="noopener"
             >GitHub</a>
-            <el-dropdown
+            <t-dropdown
               class="account-switch"
               trigger="click"
               :disabled="!botOptions.length"
-              @command="(v: string) => setSelectedBotSelfId(v)"
+              :options="accountDropdownOptions"
+              @click="onAccountDropdownClick"
             >
-              <el-button
-                size="small"
-                class="account-switch-btn"
-                :class="{ 'is-empty': !botOptions.length }"
-              >
+              <t-button size="small" variant="outline" class="account-switch-btn" :class="{ 'is-empty': !botOptions.length }">
                 <span class="switch-dot" />
                 <span>{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
-                <el-avatar
-                  v-if="selectedBotAvatar && botOptions.length"
-                  :size="26"
-                  :src="selectedBotAvatar"
-                  :img-props="qqAvatarImgProps"
-                />
-                <el-avatar
-                  v-else
-                  :size="26"
-                >B</el-avatar>
-                <el-icon><CaretBottom /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
-                    v-for="b in botOptions"
-                    :key="b.selfId"
-                    :command="b.selfId"
-                    :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
-                  >
-                    <div class="account-option">
-                      <el-avatar
-                        v-if="b.avatar"
-                        :size="20"
-                        :src="b.avatar"
-                        :img-props="qqAvatarImgProps"
-                      />
-                      <el-avatar
-                        v-else
-                        :size="20"
-                      >B</el-avatar>
-                      <div class="account-option-text">
-                        <strong>{{ b.nickname }}</strong>
-                        <span class="mono">QQ {{ b.qq }}</span>
-                      </div>
-                    </div>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+                <t-avatar v-if="selectedBotAvatar && botOptions.length" shape="circle" :image="selectedBotAvatar" :image-props="qqAvatarImgProps" size="small" />
+                <t-avatar v-else shape="circle" size="small">B</t-avatar>
+                <ChevronDownIcon />
+              </t-button>
+            </t-dropdown>
           </div>
         </div>
 
@@ -394,17 +376,18 @@ const footerYear = new Date().getFullYear();
           v-else
           class="pallas-header-toolbar pallas-header-toolbar--narrow"
         >
-          <el-button
-            :icon="isDark ? Sunny : Moon"
-            circle
+          <t-button
+            shape="circle"
+            variant="outline"
             class="header-icon-btn"
             title="切换浅色 / 深色"
             @click="toggleTheme"
-          />
-          <el-tooltip
-            content="文档"
-            placement="bottom"
           >
+            <template #icon>
+              <component :is="isDark ? SunnyIcon : MoonIcon" />
+            </template>
+          </t-button>
+          <t-tooltip content="文档" placement="bottom">
             <a
               class="header-icon-link"
               :href="DOCS"
@@ -412,13 +395,10 @@ const footerYear = new Date().getFullYear();
               rel="noopener"
               aria-label="文档"
             >
-              <el-icon><Document /></el-icon>
+              <BookIcon />
             </a>
-          </el-tooltip>
-          <el-tooltip
-            content="GitHub"
-            placement="bottom"
-          >
+          </t-tooltip>
+          <t-tooltip content="GitHub" placement="bottom">
             <a
               class="header-icon-link"
               :href="REPO"
@@ -426,72 +406,36 @@ const footerYear = new Date().getFullYear();
               rel="noopener"
               aria-label="GitHub"
             >
-              <el-icon><Link /></el-icon>
+              <LinkIcon />
             </a>
-          </el-tooltip>
-          <el-dropdown
+          </t-tooltip>
+          <t-dropdown
             class="account-switch account-switch--toolbar-narrow"
             trigger="click"
             :disabled="!botOptions.length"
-            @command="(v: string) => setSelectedBotSelfId(v)"
+            :options="accountDropdownOptions"
+            @click="onAccountDropdownClick"
           >
-            <el-button
-              size="small"
-              class="account-switch-btn account-switch-btn--toolbar-narrow"
-              :class="{ 'is-empty': !botOptions.length }"
-            >
+            <t-button size="small" variant="outline" class="account-switch-btn account-switch-btn--toolbar-narrow" :class="{ 'is-empty': !botOptions.length }">
               <span class="switch-dot" />
               <span class="account-switch-label">{{ botOptions.length ? "切换账号" : "暂无账号" }}</span>
-              <el-avatar
-                v-if="selectedBotAvatar && botOptions.length"
-                :size="26"
-                :src="selectedBotAvatar"
-                :img-props="qqAvatarImgProps"
-              />
-              <el-avatar
-                v-else
-                :size="26"
-              >B</el-avatar>
-              <el-icon><CaretBottom /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item
-                  v-for="b in botOptions"
-                  :key="b.selfId"
-                  :command="b.selfId"
-                  :class="{ 'is-selected': b.selfId === selectedBotSelfId }"
-                >
-                  <div class="account-option">
-                    <el-avatar
-                      v-if="b.avatar"
-                      :size="20"
-                      :src="b.avatar"
-                      :img-props="qqAvatarImgProps"
-                    />
-                    <el-avatar
-                      v-else
-                      :size="20"
-                    >B</el-avatar>
-                    <div class="account-option-text">
-                      <strong>{{ b.nickname }}</strong>
-                      <span class="mono">QQ {{ b.qq }}</span>
-                    </div>
-                  </div>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+              <t-avatar v-if="selectedBotAvatar && botOptions.length" shape="circle" :image="selectedBotAvatar" :image-props="qqAvatarImgProps" size="small" />
+              <t-avatar v-else shape="circle" size="small">B</t-avatar>
+              <ChevronDownIcon />
+            </t-button>
+          </t-dropdown>
         </div>
       </div>
     </header>
 
-    <el-drawer
-      v-model="navDrawerOpen"
-      direction="ltr"
+    <t-drawer
+      v-model:visible="navDrawerOpen"
+      placement="left"
       size="288px"
       class="pallas-nav-drawer-wrap"
-      append-to-body
+      :footer="false"
+      attach="body"
+      destroy-on-close
     >
       <template #header>
         <div class="pallas-drawer-hd">
@@ -512,9 +456,7 @@ const footerYear = new Date().getFullYear();
             :class="{ selected: route.name === item.name }"
             @click="onMobileNavClick(item)"
           >
-            <el-icon class="drawer-nav-ico">
-              <component :is="item.icon" />
-            </el-icon>
+            <component :is="item.icon" class="drawer-nav-ico" />
             <span>{{ item.label }}</span>
           </button>
         </nav>
@@ -539,7 +481,7 @@ const footerYear = new Date().getFullYear();
           </div>
         </div>
       </div>
-    </el-drawer>
+    </t-drawer>
 
     <div class="pallas-body">
       <aside class="pallas-nav">
@@ -552,9 +494,7 @@ const footerYear = new Date().getFullYear();
             :title="sidebarCollapsed && !isNarrowLayout ? item.label : undefined"
             @click="onNavClick(item)"
           >
-            <el-icon class="micon">
-              <component :is="item.icon" />
-            </el-icon>
+            <component :is="item.icon" class="micon" />
             <span>{{ item.label }}</span>
           </div>
         </nav>
@@ -567,7 +507,7 @@ const footerYear = new Date().getFullYear();
               v-if="pageLoading"
               class="page-loading-mask"
             >
-              <el-icon class="spin"><Loading /></el-icon>
+              <LoadingIcon class="spin" />
               <span>加载中...</span>
             </div>
           </transition>
@@ -728,9 +668,6 @@ html.dark .pallas-header {
   letter-spacing: 0.06em;
   border-radius: 6px;
   flex-shrink: 0;
-  --el-tag-bg-color: transparent;
-  --el-tag-text-color: var(--el-text-color-secondary);
-  --el-tag-border-color: var(--el-border-color);
 }
 
 .pallas-header-right {
@@ -775,15 +712,10 @@ html.dark .pallas-header {
 }
 
 .header-icon-btn {
-  --el-button-bg-color: var(--el-fill-color-blank);
-  --el-button-border-color: var(--el-border-color);
-  --el-button-hover-bg-color: var(--el-fill-color-light);
-  --el-button-hover-border-color: var(--el-border-color-hover);
-  --el-color: var(--el-text-color-regular);
   width: 34px;
   height: 34px;
   box-shadow: none;
-  :deep(.el-icon) {
+  :deep(svg) {
     color: var(--el-text-color-regular);
   }
 }
@@ -806,11 +738,6 @@ html.dark .pallas-header {
   }
 }
 .account-switch-btn {
-  --el-button-bg-color: var(--el-bg-color);
-  --el-button-border-color: var(--el-border-color);
-  --el-button-hover-bg-color: var(--el-fill-color-light);
-  --el-button-hover-border-color: var(--el-border-color-hover);
-  --el-color: var(--el-text-color-primary);
   gap: 8px;
   border-radius: 999px;
   padding: 0 12px;
@@ -821,19 +748,18 @@ html.dark .pallas-header {
   span {
     color: inherit !important;
   }
-  :deep(.el-icon) {
+  :deep(svg) {
     color: var(--el-text-color-secondary) !important;
   }
   &.is-empty {
     opacity: 0.85;
-    --el-color: var(--el-text-color-secondary);
   }
 }
 .account-switch-btn.is-empty,
 .account-switch-btn.is-empty span {
   color: var(--el-text-color-secondary) !important;
 }
-.account-switch-btn.is-empty :deep(.el-icon) {
+.account-switch-btn.is-empty :deep(svg) {
   color: var(--el-text-color-placeholder) !important;
 }
 .switch-dot {
@@ -868,7 +794,7 @@ html.dark .pallas-header {
   }
 }
 .account-switch {
-  :deep(.el-dropdown-menu__item.is-selected) {
+  :deep(.t-dropdown__item--active) {
     color: var(--c-main);
     font-weight: 600;
   }
@@ -963,6 +889,9 @@ html.dark .pallas-header {
   .micon {
     margin-right: 6px;
     font-size: 15px;
+    width: 1.05em;
+    height: 1.05em;
+    flex-shrink: 0;
   }
 }
 .menu-item:hover:not(.selected) {
@@ -1061,8 +990,8 @@ html.dark .menu-item:hover:not(.selected) {
 :global(body.dark) .page-loading-mask {
   color: #ffffff !important;
 }
-:global(html.dark) .page-loading-mask :deep(.el-icon),
-:global(body.dark) .page-loading-mask :deep(.el-icon) {
+:global(html.dark) .page-loading-mask :deep(svg),
+:global(body.dark) .page-loading-mask :deep(svg) {
   color: #ffffff !important;
 }
 .spin {
@@ -1224,11 +1153,11 @@ html.dark .menu-item:hover:not(.selected) {
 
 <style lang="scss">
 /* Drawer 挂载到 body，需非 scoped */
-.pallas-nav-drawer-wrap.el-drawer__wrapper .el-drawer__header {
+.pallas-nav-drawer-wrap .t-drawer__header {
   margin-bottom: 0;
   padding: 16px 16px 10px;
 }
-.pallas-nav-drawer-wrap .el-drawer__body {
+.pallas-nav-drawer-wrap .t-drawer__body {
   padding: 8px 12px 20px;
   display: flex;
   flex-direction: column;
@@ -1281,29 +1210,31 @@ html.dark .menu-item:hover:not(.selected) {
   margin: 0;
   padding: 11px 12px;
   border: none;
-  border-radius: var(--el-border-radius-base);
+  border-radius: var(--td-radius-default);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  color: var(--el-text-color-primary);
+  color: var(--td-text-color-primary);
   background: transparent;
   transition: background 0.15s ease;
 }
 .drawer-nav-item:hover {
-  background: var(--el-fill-color-light);
+  background: var(--td-bg-color-secondarycontainer);
 }
 .drawer-nav-item.selected {
-  color: var(--el-color-primary);
-  background: color-mix(in srgb, var(--el-color-primary) 12%, transparent);
+  color: var(--td-brand-color-7);
+  background: color-mix(in srgb, var(--td-brand-color-7) 12%, transparent);
   font-weight: 600;
 }
 .drawer-nav-ico {
   font-size: 18px;
   flex-shrink: 0;
+  width: 1.15em;
+  height: 1.15em;
 }
 html.dark .drawer-nav-item.selected {
-  background: color-mix(in srgb, var(--el-color-primary) 22%, transparent);
+  background: color-mix(in srgb, var(--td-brand-color-7) 22%, transparent);
 }
 </style>

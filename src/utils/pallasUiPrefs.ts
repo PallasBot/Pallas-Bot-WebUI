@@ -1,4 +1,4 @@
-import { buildElPrimaryCssVars, resolveEffectivePrimary } from "./accentPalette";
+import { buildTdBrandCssVars, resolveEffectivePrimary } from "./accentPalette";
 
 export const DASH_POLL_KEY = "pallas-dashboard-poll-ms";
 
@@ -56,7 +56,7 @@ function applyAccentFromStorage(): void {
   root.style.setProperty("--c-main", hex);
   const dark = root.classList.contains("dark");
   const primaryEff = resolveEffectivePrimary(hex, dark);
-  const vars = buildElPrimaryCssVars(primaryEff);
+  const vars = buildTdBrandCssVars(primaryEff);
   for (const [k, v] of Object.entries(vars)) {
     root.style.setProperty(k, v);
   }
@@ -79,8 +79,10 @@ function applyRadiusFromStorage(): void {
   const root = document.documentElement;
   const pxBase = `${Math.round(rem * 16)}px`;
   const pxLg = `${Math.round(rem * 18)}px`;
-  root.style.setProperty("--el-border-radius-base", pxBase);
-  root.style.setProperty("--el-border-radius-small", `${Math.round(rem * 14)}px`);
+  root.style.setProperty("--td-radius-default", pxBase);
+  root.style.setProperty("--td-radius-medium", `${Math.round(rem * 10)}px`);
+  root.style.setProperty("--td-radius-large", `${Math.round(rem * 12)}px`);
+  root.style.setProperty("--td-radius-extraLarge", `${Math.round(rem * 14)}px`);
   root.style.setProperty("--pallas-radius-lg", pxLg);
   root.style.setProperty("--pallas-radius-md", `${Math.round(rem * 15)}px`);
   root.style.setProperty("--pallas-radius-sm", `${Math.round(rem * 13)}px`);

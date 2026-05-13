@@ -22,10 +22,10 @@
   --pallas-weight-medium: 500;
   --pallas-weight-semibold: 600;
   --pallas-weight-bold: 700;
-  --el-font-size-base: 15px;
-  --el-font-size-small: 13px;
-  --el-font-size-large: 16px;
-  --el-font-size-extra-small: 12px;
+  --td-font-size-body-medium: 15px;
+  --td-font-size-body-small: 13px;
+  --td-font-size-body-large: 16px;
+  --td-font-size-link-small: 12px;
   --pallas-accent: #2563eb;
   --c-main: var(--pallas-accent);
   --c-main-light: color-mix(in srgb, var(--pallas-accent) 14%, transparent);
@@ -38,9 +38,47 @@
   --pallas-radius-sm: 12px;
   --pallas-content-max: 1100px;
   --pallas-line-prose: 1.75;
-  --el-border-radius-base: 12px;
-  --el-border-radius-small: 10px;
-  --el-border-radius-round: 22px;
+  --td-radius-default: 12px;
+  --td-radius-medium: 10px;
+  --td-radius-large: 12px;
+  --td-radius-extraLarge: 14px;
+  --td-radius-round: 22px;
+  --td-font-family: var(--pallas-font-sans);
+  --td-font-family-medium: var(--pallas-font-sans);
+  /* 兼容存量 scoped 样式中的 var(--el-*) */
+  --el-text-color-primary: var(--td-text-color-primary);
+  --el-text-color-regular: var(--td-text-color-secondary);
+  --el-text-color-secondary: var(--td-text-color-placeholder);
+  --el-text-color-placeholder: var(--td-text-color-disabled);
+  --el-border-color: var(--td-component-border);
+  --el-border-color-light: var(--td-border-level-1-color);
+  --el-border-color-lighter: var(--td-border-level-1-color);
+  --el-border-color-extra-light: var(--td-border-level-2-color);
+  --el-border-color-hover: var(--td-component-border);
+  --el-fill-color-blank: var(--td-bg-color-container);
+  --el-fill-color: var(--td-bg-color-secondarycontainer);
+  --el-fill-color-light: var(--td-bg-color-secondarycontainer);
+  --el-fill-color-lighter: var(--td-bg-color-page);
+  --el-fill-color-extra-light: var(--td-bg-color-secondarycontainer);
+  --el-fill-color-dark: var(--td-bg-color-component);
+  --el-color-primary: var(--td-brand-color-7);
+  --el-color-success: var(--td-success-color);
+  --el-color-warning: var(--td-warning-color);
+  --el-color-danger: var(--td-error-color);
+  --el-color-info: var(--td-gray-color-8);
+  --el-color-primary-dark-2: var(--td-brand-color-8);
+  --el-color-primary-light-3: var(--td-brand-color-5);
+  --el-color-primary-light-5: var(--td-brand-color-4);
+  --el-color-primary-light-7: var(--td-brand-color-3);
+  --el-color-primary-light-8: var(--td-brand-color-2);
+  --el-color-primary-light-9: var(--td-brand-color-1);
+  --el-border-radius-base: var(--td-radius-default);
+  --el-border-radius-small: var(--td-radius-medium);
+  --el-border-radius-round: var(--td-radius-round);
+  --el-font-size-base: var(--td-font-size-body-medium);
+  --el-font-size-small: var(--td-font-size-body-small);
+  --el-font-size-large: var(--td-font-size-body-large);
+  --el-font-size-extra-small: var(--td-font-size-link-small);
   --el-font-family: var(--pallas-font-sans);
   --pallas-elev-1: 0 10px 24px rgba(15, 35, 65, 0.08);
   --pallas-elev-2: 0 16px 34px rgba(10, 30, 56, 0.14);
@@ -59,15 +97,17 @@
 }
 
 html:not(.dark) {
+  --td-bg-color-container: #f1f4fa;
+  --td-bg-color-page: #e4e9f2;
   --el-bg-color: #f1f4fa;
   --el-bg-color-page: #e4e9f2;
   --el-fill-color-blank: #f1f4fa;
 }
 
 html.dark {
-  --c-nav-bg: var(--el-bg-color);
-  --c-body-bg: var(--el-bg-color-page);
-  --c-surface-elev: var(--el-bg-color);
+  --c-nav-bg: var(--td-bg-color-container);
+  --c-body-bg: var(--td-bg-color-page);
+  --c-surface-elev: var(--td-bg-color-container);
   --c-main-light: color-mix(in srgb, var(--pallas-accent) 22%, transparent);
   --c-header-fg: #f0f7ff;
 }
@@ -105,12 +145,11 @@ html code.pallas-em {
   letter-spacing: 0.02em;
 }
 
-html .el-descriptions__label,
-html .el-descriptions__content {
+html .t-descriptions__body > tbody > tr > td {
   text-align: left !important;
 }
 
-html .el-empty__description {
+html .t-empty__description {
   text-align: left;
 }
 
@@ -280,99 +319,46 @@ html .pallas-header .pallas-title {
   flex-direction: column;
 }
 
-html .el-table {
+html .t-table {
   font-size: var(--pallas-text-base);
 }
 
-html .el-table .cell {
-  line-height: 1.55;
-  padding: 8px 12px;
-}
-html .el-card,
-html .el-descriptions,
-html .el-table {
+html .t-card,
+html .t-descriptions,
+html .t-table {
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
-html .el-table th.el-table__cell,
-html .el-table td.el-table__cell {
-  vertical-align: middle;
-}
-html .el-table th.el-table__cell .cell,
-html .el-table td.el-table__cell .cell {
-  text-align: left;
-}
-html .el-table th.el-table__cell .cell {
-  font-weight: 600;
-  color: var(--el-text-color-regular);
-}
-html .el-table .el-table__cell.is-center .cell {
-  text-align: center;
-}
-html .el-table .el-table__cell.is-right .cell {
-  text-align: right;
-}
-html .el-table .el-table__header-wrapper th.el-table__cell {
-  background: var(--el-fill-color-extra-light);
-}
-html .el-table--border .el-table__inner-wrapper::before,
-html .el-table--border::before,
-html .el-table--border::after,
-html .el-table__inner-wrapper::before {
-  background-color: color-mix(in srgb, var(--pallas-accent) 14%, transparent) !important;
+html .t-table--bordered .t-table__content {
+  border-color: color-mix(in srgb, var(--pallas-accent) 14%, var(--td-component-border));
 }
 
-html .el-card {
+html .t-card {
   border-radius: var(--pallas-radius-md) !important;
   box-shadow: var(--pallas-elev-1);
 }
 
 /* 设置页等：更接近 SnowLuma 的扁平输入框（弱阴影、清晰边框） */
-html .pallas-form-quiet.el-input .el-input__wrapper {
+html .pallas-form-quiet.t-input {
   border-radius: 9px;
   box-shadow: none;
-  border: 1px solid var(--el-border-color);
-  background: var(--el-bg-color);
+  border-color: var(--td-component-border);
+  background-color: var(--td-bg-color-container);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-html .pallas-form-quiet.el-input .el-input__wrapper:hover {
-  border-color: var(--el-border-color-hover);
+html .pallas-form-quiet.t-input:hover {
+  border-color: var(--td-component-border);
 }
-html .pallas-form-quiet.el-input .el-input__wrapper.is-focus {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--el-color-primary) 28%, transparent);
+html .pallas-form-quiet.t-input.t-input--focused {
+  border-color: var(--td-brand-color-7);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--td-brand-color-7) 28%, transparent);
 }
-html .el-card:hover {
+html .t-card:hover {
   box-shadow: var(--pallas-elev-2);
 }
 
-html .el-tabs--card > .el-tabs__header .el-tabs__item,
-html .el-tabs__nav-wrap {
+html .t-tabs__nav--card.t-tabs__nav {
   border-radius: var(--pallas-radius-sm) var(--pallas-radius-sm) 0 0;
-}
-
-/*
- * Element Plus primary 色阶由 JS（applyAccentFromStorage）按用户强调色写入；
- * 此处仅作首帧兜底，不使用 !important，以便运行时覆盖。
- */
-html:not(.dark) {
-  --el-color-primary: #2563eb;
-  --el-color-primary-light-3: #3b82f6;
-  --el-color-primary-light-5: #60a5fa;
-  --el-color-primary-light-7: #93c5fd;
-  --el-color-primary-light-8: #bfdbfe;
-  --el-color-primary-light-9: #eff6ff;
-  --el-color-primary-dark-2: #1d4ed8;
-}
-
-html.dark {
-  --el-color-primary: #60a5fa;
-  --el-color-primary-light-3: #7dd3fc;
-  --el-color-primary-light-5: #93c5fd;
-  --el-color-primary-light-7: #a5b4fc;
-  --el-color-primary-light-8: #c4b5fd;
-  --el-color-primary-light-9: #1e3a5c;
-  --el-color-primary-dark-2: #3b82f6;
 }
 
 .slide-fade-enter-active {
@@ -417,72 +403,12 @@ html .view-page > * {
 }
 
 
-html .el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
-  --el-button-text-color: #ffffff;
-  border: 1px solid var(--el-color-primary-dark-2) !important;
-  background: var(--el-color-primary-dark-2) !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--el-color-primary-dark-2) 38%, transparent);
+html .t-button--theme-primary.t-button--variant-base {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--td-brand-color-8) 38%, transparent);
 }
-
-html .el-button--primary:not(.is-plain):not(.is-link):not(.is-text) span {
-  color: inherit !important;
-  font-weight: 600;
-}
-
-html.dark .el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
-  background: var(--el-color-primary-dark-2) !important;
-  border-color: var(--el-color-primary) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
-}
-
-html .el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover {
+html .t-button--theme-primary.t-button--variant-base:hover {
   filter: brightness(1.05);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--el-color-primary-dark-2) 45%, transparent);
-}
-
-html .el-button--primary.is-disabled,
-html .el-button--primary.is-disabled span {
-  color: rgba(255, 255, 255, 0.72) !important;
-  filter: none;
-  opacity: 0.85;
-}
-
-html .el-button--success:not(.is-plain):not(.is-link),
-html .el-button--warning:not(.is-plain):not(.is-link),
-html .el-button--danger:not(.is-plain):not(.is-link) {
-  color: #ffffff !important;
-}
-
-html .el-button--success:not(.is-plain):not(.is-link) span,
-html .el-button--warning:not(.is-plain):not(.is-link) span,
-html .el-button--danger:not(.is-plain):not(.is-link) span {
-  color: inherit !important;
-  font-weight: 600;
-}
-
-html .el-button.is-plain,
-html .el-button--default:not(.is-link) {
-  color: var(--el-text-color-primary) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 2px 10px rgba(15, 23, 42, 0.06);
-}
-
-html .el-button.is-plain span,
-html .el-button--default:not(.is-link) span {
-  color: inherit !important;
-  font-weight: 600;
-}
-
-html.dark .el-button.is-plain,
-html.dark .el-button--default:not(.is-link) {
-  color: var(--el-text-color-primary) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 2px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--td-brand-color-8) 45%, transparent);
 }
 
 html .pallas-doc-prose {
@@ -509,40 +435,16 @@ html .pallas-doc-prose code {
   word-break: break-word;
 }
 
-html .el-select__popper.el-popper,
-html .el-select-v2__popper.el-popper,
-html .el-tree-select__popper.el-popper,
-html .el-input-tag__popper.el-popper,
-html .el-cascader__popper.el-popper,
-html .el-autocomplete__popper.el-popper,
-html .el-dropdown__popper.el-popper,
-html .el-picker__popper.el-popper,
-html .el-color-picker__popper.el-popper,
-html .el-popover.el-popper,
-html .el-mention-dropdown.el-popper {
+html .t-popup__content,
+html .t-select__dropdown .t-popup__content {
   border-radius: var(--pallas-radius-md) !important;
-}
-
-html .el-select-dropdown,
-html .el-cascader__dropdown,
-html .el-autocomplete-suggestion,
-html .el-dropdown-menu,
-html .el-picker-panel,
-html .el-color-dropdown,
-html .el-time-panel,
-html .el-time-range-picker,
-html .el-time-range-picker__body,
-html .el-mention-dropdown__list,
-html .el-input-tag__dropdown {
-  border-radius: var(--pallas-radius-md) !important;
-  overflow: hidden;
 }
 
 /* 设置页「紧凑」密度：略收紧字号与行距（与 SnowLuma cozy/compact 对齐思路） */
 html.pallas-density-compact {
-  --el-font-size-base: 14px;
-  --el-font-size-small: 12px;
-  --el-font-size-large: 15px;
+  --td-font-size-body-medium: 14px;
+  --td-font-size-body-small: 12px;
+  --td-font-size-body-large: 15px;
   --pallas-text-base: 0.875rem;
   --pallas-line-prose: 1.45;
 }
@@ -551,7 +453,7 @@ html.pallas-density-compact .view-page {
   line-height: 1.45;
 }
 
-/* 控制台内：默认隐藏原生滚动条（仍可滚轮/触控）；el-scrollbar 轨道悬停组件时再显示 */
+/* 控制台内：默认隐藏原生滚动条；带 .narrow-scrollbar 的区域保留细滚动条 */
 html .pallas-root * {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -563,10 +465,11 @@ html .pallas-root *::-webkit-scrollbar {
 html .pallas-root *::-webkit-scrollbar-thumb {
   background: transparent;
 }
-html .pallas-root .el-scrollbar__bar {
-  opacity: 0;
-  transition: opacity 0.18s ease;
+html .pallas-root .narrow-scrollbar {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
 }
-html .pallas-root .el-scrollbar:hover .el-scrollbar__bar {
-  opacity: 1;
+html .pallas-root .narrow-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
