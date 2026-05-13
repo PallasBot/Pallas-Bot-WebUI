@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
-  fetchBots,
   fetchGroupConfigById,
   fetchGroupConfigs,
   fetchInstances,
@@ -12,7 +11,7 @@ import {
 } from "@/api/consoleApi";
 import type { BotRow, GroupConfigPublic, InstancesData, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
-import { visibleBots } from "@/utils/botDisplay";
+import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
@@ -21,7 +20,6 @@ const err = ref("");
 const ok = ref("");
 const busy = ref(false);
 
-const bots = ref<BotRow[]>([]);
 const instances = ref<InstancesData | null>(null);
 const filterSelfId = ref("");
 
@@ -59,7 +57,7 @@ const userSaveErr = ref("");
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
 
-const botsVisible = computed(() => visibleBots(bots.value));
+const botsVisible = computed(() => botPickerRowsFromInstances(instances.value));
 
 function profileNick(selfId: string): string {
   return instances.value?.bot_profiles?.[selfId]?.nickname?.trim() || "";
@@ -100,8 +98,7 @@ onUnmounted(() => {
 
 async function loadBots() {
   try {
-    const [b, inst] = await Promise.all([fetchBots(), fetchInstances()]);
-    bots.value = b;
+    const inst = await fetchInstances();
     instances.value = inst;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);

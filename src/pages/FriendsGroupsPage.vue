@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import {
-  fetchBots,
   fetchFriendList,
   fetchFriendRequests,
   fetchGroupList,
@@ -18,13 +17,12 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
-import { visibleBots } from "@/utils/botDisplay";
+import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
 const busy = ref(false);
-const bots = ref<BotRow[]>([]);
 const selfIdStr = ref("");
 const friends = ref<FriendListData | null>(null);
 const requests = ref<FriendOverviewData | null>(null);
@@ -56,7 +54,7 @@ function botOptionLabel(b: BotRow): string {
   return `${b.self_id} · ${b.adapter}`;
 }
 
-const botsVisible = computed(() => visibleBots(bots.value));
+const botsVisible = computed(() => botPickerRowsFromInstances(instances.value));
 
 function friendRequestNickname(userId: number): string {
   const sid = selfIdStr.value;
@@ -72,8 +70,7 @@ function selfIdNum(): number | null {
 
 async function loadBots() {
   try {
-    const [b, inst] = await Promise.all([fetchBots(), fetchInstances()]);
-    bots.value = b;
+    const inst = await fetchInstances();
     instances.value = inst;
     if (!selfIdStr.value && botsVisible.value.length) {
       selfIdStr.value = botsVisible.value[0]!.self_id;
