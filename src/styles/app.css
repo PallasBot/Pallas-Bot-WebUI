@@ -26,6 +26,8 @@
   --shadow-card: 0 0 0 1px var(--border), 0 18px 48px rgba(0, 0, 0, 0.45);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
+  /* 顶栏与侧栏共用 */
+  --shell-chrome-bg: linear-gradient(180deg, rgba(14, 14, 18, 0.92) 0%, rgba(10, 10, 12, 0.98) 100%);
   /* 表单控件：相对面板背景略提亮，便于辨认边界与内容 */
   --control-bg: #1a1a26;
   --control-border: rgba(255, 255, 255, 0.16);
@@ -89,6 +91,7 @@ html[data-theme="light"] {
   --danger: #b91c1c;
   --shadow-card: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 23, 42, 0.08);
   --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
+  --shell-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
   --control-bg: #ffffff;
   --control-border: rgba(15, 23, 42, 0.2);
 }
@@ -99,10 +102,6 @@ html[data-theme="light"] .shell__bg {
     radial-gradient(ellipse 90% 60% at 100% 0%, rgba(99, 102, 241, 0.08), transparent 45%),
     radial-gradient(ellipse 70% 50% at 50% 100%, rgba(2, 132, 199, 0.05), transparent 50%),
     var(--bg-deep);
-}
-
-html[data-theme="light"] .shell__sidebar {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link:hover {
@@ -177,7 +176,12 @@ a:hover {
 }
 
 .shell {
-  display: flex;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: var(--shell-chrome-h) minmax(0, 1fr);
+  grid-template-areas:
+    "shell-top shell-top"
+    "shell-side shell-main";
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -198,19 +202,19 @@ a:hover {
 }
 
 .shell__sidebar {
-  width: 200px;
-  flex-shrink: 0;
-  align-self: stretch;
+  grid-area: shell-side;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 5px 10px 12px;
   border-right: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(14, 14, 18, 0.92) 0%, rgba(10, 10, 12, 0.98) 100%);
+  background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
   z-index: 2;
-  transition: width 0.22s var(--ease), padding 0.22s var(--ease);
+  transition: padding 0.22s var(--ease);
 }
 
 .shell__sidebar-top {
@@ -463,18 +467,18 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
 }
 
 .shell__main {
+  grid-area: shell-main;
   position: relative;
-  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   z-index: 1;
   overflow: hidden;
-  padding-top: 5px;
 }
 
 .shell__topbar {
+  grid-area: shell-top;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -484,11 +488,9 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   height: var(--shell-chrome-h);
   padding: 0 40px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-deep) 90%, transparent);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 25;
+  background: var(--shell-chrome-bg);
+  backdrop-filter: blur(20px);
+  z-index: 3;
 }
 .shell__topbar-menu {
   flex-shrink: 0;
@@ -803,6 +805,8 @@ html[data-theme="light"] .shell-page-loading {
   height: var(--shell-chrome-h);
   padding: 0 12px;
   border-bottom: 1px solid var(--border);
+  background: var(--shell-chrome-bg);
+  backdrop-filter: blur(20px);
 }
 
 .shell-mobile-nav__brand {
@@ -1084,8 +1088,15 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
 }
 
 @media (min-width: 961px) {
+  .shell {
+    transition: grid-template-columns 0.22s var(--ease);
+  }
+
+  .shell--sidebar-collapsed {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
   .shell--sidebar-collapsed .shell__sidebar {
-    width: 52px;
     padding: 5px 6px 12px;
   }
 
@@ -1186,9 +1197,18 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
 }
 
 @media (max-width: 960px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--shell-chrome-h) minmax(0, 1fr);
+    grid-template-areas:
+      "shell-top"
+      "shell-main";
+  }
+
   .shell__sidebar {
     display: none;
   }
+
   .shell__main-inner {
     padding: 10px 14px 32px;
   }
