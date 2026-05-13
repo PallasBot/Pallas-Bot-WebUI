@@ -17,12 +17,14 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 
 const err = ref("");
+const pageReady = ref(false);
 const busy = ref(false);
 const selfIdStr = ref("");
 const friends = ref<FriendListData | null>(null);
@@ -83,7 +85,7 @@ function offlineFriendPayload(selfId: string): FriendListData {
     truncated: false,
     limit: 800,
     error:
-      "当前账号未在 NoneBot 上线，无法拉取好友列表。请在「实例与连接」确认协议端已接入编排器后再试。",
+      "当前账号未在 NoneBot 上线，无法拉取好友列表。请在「实例与连接」确认协议端已接入框架后再试。",
   };
 }
 
@@ -96,7 +98,7 @@ function offlineGroupPayload(selfId: string): GroupListData {
     truncated: false,
     limit: 1000,
     error:
-      "当前账号未在 NoneBot 上线，无法拉取群列表。请在「实例与连接」确认协议端已接入编排器后再试。",
+      "当前账号未在 NoneBot 上线，无法拉取群列表。请在「实例与连接」确认协议端已接入框架后再试。",
   };
 }
 
@@ -155,8 +157,12 @@ watch(selfIdStr, () => {
 });
 
 onMounted(async () => {
-  await loadBots();
-  await loadData();
+  try {
+    await loadBots();
+    await loadData();
+  } finally {
+    pageReady.value = true;
+  }
 });
 
 const requestRows = computed(() => {
@@ -301,6 +307,11 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="5"
+    />
+    <div v-else>
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">当前账号</h2>
@@ -582,6 +593,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           :total="groups?.groups?.length ?? 0"
         />
       </div>
+    </div>
     </div>
   </div>
 </template>

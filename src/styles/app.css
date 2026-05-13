@@ -1005,30 +1005,31 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 }
 
-/* 页面标题区 */
+/* 页面标题区（全站略紧凑，为正文让出纵向空间） */
 .page-hero {
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 .page-hero__eyebrow {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .page-hero__title {
-  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  font-size: clamp(1.28rem, 2.6vw, 1.65rem);
   font-weight: 800;
-  letter-spacing: -0.04em;
-  margin: 0 0 10px;
-  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+  line-height: 1.18;
 }
 .page-hero__desc {
   margin: 0;
-  max-width: 52ch;
+  max-width: 58ch;
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .page-hero--with-actions {
@@ -1712,7 +1713,7 @@ html[data-theme="light"] .bot-config-edit {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   overflow: hidden;
 }
 .panel__hd {
@@ -1720,19 +1721,19 @@ html[data-theme="light"] .bot-config-edit {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px 22px;
+  gap: 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
 }
 .panel__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 .panel__bd {
-  padding: 20px 22px;
+  padding: 14px 16px;
 }
 
 /* 表单控件 */
@@ -2267,4 +2268,30 @@ html[data-theme="light"] .home-metric__bar {
   background: var(--bg-elev);
   border: 1px solid var(--border);
   color: var(--text);
+}
+.home-dl__capsules {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.home-dl__pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  line-height: 1.35;
+  color: var(--text);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  word-break: break-word;
+}
+.home-dl__pill--mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10px;
 }

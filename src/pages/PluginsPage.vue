@@ -2,8 +2,10 @@
 import { onMounted, ref } from "vue";
 import { fetchPluginConfig, fetchPlugins } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const list = ref<PluginRow[]>([]);
 const open = ref<string | null>(null);
 const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
@@ -13,6 +15,8 @@ onMounted(async () => {
     list.value = await fetchPlugins();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pageReady.value = true;
   }
 });
 
@@ -51,6 +55,14 @@ async function togglePreview(name: string) {
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="3"
+    />
+    <div
+      v-else
+      class="plugins-page__body"
+    >
     <div
       class="grid-stats"
       style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))"
@@ -127,6 +139,7 @@ async function togglePreview(name: string) {
           </template>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

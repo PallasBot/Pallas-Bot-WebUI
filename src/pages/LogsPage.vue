@@ -2,8 +2,10 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const loading = ref(false);
 const scope = ref<LogScope>("all");
 const n = ref(200);
@@ -49,6 +51,7 @@ async function load() {
     payload.value = null;
   } finally {
     loading.value = false;
+    pageReady.value = true;
   }
 }
 
@@ -106,6 +109,14 @@ function lineClass(lv: LogEntry["level"]): string {
       {{ err }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="2"
+    />
+    <div
+      v-else
+      class="logs-page__body"
+    >
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">筛选与视图</h2>
@@ -220,6 +231,7 @@ function lineClass(lv: LogEntry["level"]): string {
           </template>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>

@@ -7,8 +7,10 @@ import {
   postUpdateApply,
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
 const bot = ref<BotUpdateCheckData | null>(null);
 const busy = ref(false);
@@ -22,6 +24,8 @@ async function load() {
     bot.value = await fetchBotUpdateCheck();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pageReady.value = true;
   }
 }
 
@@ -79,6 +83,11 @@ onMounted(load);
       {{ msg }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="2"
+    />
+    <template v-else>
     <div class="row-actions" style="margin-bottom: 24px">
       <button
         type="button"
@@ -145,5 +154,6 @@ onMounted(load);
         </button>
       </div>
     </div>
+    </template>
   </div>
 </template>

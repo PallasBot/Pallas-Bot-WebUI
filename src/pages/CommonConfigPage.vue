@@ -3,8 +3,10 @@ import { onMounted, ref, watch } from "vue";
 import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@/api/consoleApi";
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 
 const err = ref("");
+const pageReady = ref(false);
 const ok = ref("");
 const sections = ref<CommonConfigSectionMeta[]>([]);
 const currentId = ref("");
@@ -58,8 +60,12 @@ watch(currentId, () => {
 });
 
 onMounted(async () => {
-  await loadSections();
-  await loadSection();
+  try {
+    await loadSections();
+    await loadSection();
+  } finally {
+    pageReady.value = true;
+  }
 });
 
 function parseField(f: PluginConfigField, raw: string): unknown {
@@ -116,6 +122,11 @@ async function save() {
       {{ ok }}
     </div>
 
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="2"
+    />
+    <div v-else>
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">分区</h2>
@@ -181,6 +192,7 @@ async function save() {
           >
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
