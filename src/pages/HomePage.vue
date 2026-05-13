@@ -411,6 +411,58 @@ const throughputBarBuckets = computed((): ThroughputBarBucket[] => {
   return [];
 });
 
+type ThroughputBarTick = { leftPct: number; label: string };
+
+function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number): string {
+  const a = new Date(atSec * 1000);
+  const lo = new Date(rangeLo * 1000);
+  const hi = new Date(rangeHi * 1000);
+  const sameCal = (x: Date, y: Date) =>
+    x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+  if (sameCal(lo, hi) && sameCal(a, lo)) {
+    return a.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  return a.toLocaleString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
+  if (socialBusy.value) return [];
+  const mode = throughputSparklineMode.value;
+  if (mode !== "message" && mode !== "api") return [];
+  const pts =
+    mode === "message"
+      ? scopedMessageTrafficHistory.value
+      : scopedBotStatsRow.value?.api_calls_history ?? [];
+  if (!pts.length) return [];
+  const n = pts.length;
+  const pad = 1.5;
+  const W = 100;
+  const slot = (W - 2 * pad) / n;
+  const atOf = (p: { at: number }) => Number(p.at);
+  const rangeLo = atOf(pts[0]!);
+  const rangeHi = atOf(pts[n - 1]!);
+  const idxs: number[] = [];
+  if (n <= 5) {
+    for (let i = 0; i < n; i++) idxs.push(i);
+  } else {
+    const segs = 4;
+    for (let k = 0; k <= segs; k++) {
+      idxs.push(Math.round((k / segs) * (n - 1)));
+    }
+  }
+  const uniq = [...new Set(idxs)].sort((a, b) => a - b);
+  return uniq.map((i) => ({
+    leftPct: ((pad + (i + 0.5) * slot) / W) * 100,
+    label: formatThroughputHistTick(atOf(pts[i]!), rangeLo, rangeHi),
+  }));
+});
+
 const showThroughputBars = computed(() => throughputBarBuckets.value.length > 0);
 
 const apiTodayTotalStr = computed(() => {
@@ -653,7 +705,7 @@ onMounted(load);
               >
                 <div class="home-account-unified">
                   <div class="home-account-unified__col home-account-unified__col--hero">
-                    <div class="home-account-hero home-account-hero--unified">
+                    <div class="home-account-hero home-account-hero--unified home-account-hero--color">
                       <div class="home-account-hero__lead">
                         <div class="home-account-hero__avatar">
                           <img
@@ -687,7 +739,7 @@ onMounted(load);
                         </div>
                       </div>
                       <div
-                        class="home-account-hero__detail home-account-hero__detail--color home-account-hero__detail--with-pending-rail"
+                        class="home-account-hero__detail home-account-hero__detail--with-pending-rail"
                       >
                         <aside
                           class="home-account-hero__pending-rail"
@@ -695,11 +747,17 @@ onMounted(load);
                         >
                           <div class="home-account-hero__pending-card">
                             <div class="home-account-hero__pending-title home-account-hero__pending-title--friend">好友申请</div>
-                            <div class="home-account-hero__pending-val">{{ socialBusy ? "…" : `${friendPendingApplyDisplay} 条待同意` }}</div>
+                            <div class="home-account-hero__pending-val">
+                              <template v-if="socialBusy">…</template>
+                              <template v-else>{{ friendPendingApplyDisplay }} 条<span class="home-account-hero__pending-tail">待同意</span></template>
+                            </div>
                           </div>
                           <div class="home-account-hero__pending-card">
                             <div class="home-account-hero__pending-title home-account-hero__pending-title--group">入群邀请</div>
-                            <div class="home-account-hero__pending-val">{{ socialBusy ? "…" : `${groupPendingApplyDisplay} 条待同意` }}</div>
+                            <div class="home-account-hero__pending-val">
+                              <template v-if="socialBusy">…</template>
+                              <template v-else>{{ groupPendingApplyDisplay }} 条<span class="home-account-hero__pending-tail">待同意</span></template>
+                            </div>
                             <RouterLink
                               class="home-account-hero__pending-cta btn btn--primary"
                               to="/friends-groups#friends-groups-group-requests"
@@ -780,12 +838,12 @@ onMounted(load);
                       <div
                         v-if="showThroughputBars"
                         class="home-account-metrics__bars-wrap"
-                        aria-hidden="true"
                       >
                         <svg
                           class="home-account-metrics__bars-svg"
                           viewBox="0 0 100 30"
                           preserveAspectRatio="none"
+                          aria-hidden="true"
                         >
                           <g
                             v-for="(b, i) in throughputBarBuckets"
@@ -820,6 +878,14 @@ onMounted(load);
                             />
                           </g>
                         </svg>
+                        <div class="home-account-metrics__bars-ticks muted">
+                          <span
+                            v-for="(tk, ti) in throughputBarTimeTicks"
+                            :key="ti"
+                            class="home-account-metrics__bars-tick"
+                            :style="{ left: `${tk.leftPct}%` }"
+                          >{{ tk.label }}</span>
+                        </div>
                       </div>
                       <div
                         v-else-if="!socialBusy"
