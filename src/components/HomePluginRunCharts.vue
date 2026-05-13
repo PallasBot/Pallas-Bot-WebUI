@@ -6,6 +6,9 @@ import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 
 const COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#4ade80", "#fbbf24", "#94a3b8", "#fb7185", "#2dd4bf"];
 
+/** 今日各小时图横轴刻度 0–23（本地自然日） */
+const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
+
 const CHART_SEL_KEY = "pallas_home_chart_sel_v1";
 const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
@@ -299,13 +302,15 @@ function buildHourlyLayers(rows: { label: string; hours: number[] }[]): Layer[] 
   if (!rows.length) return null;
   const maxV = Math.max(1, ...rows.flatMap((r) => r.hours));
   const w = 100;
+  const xInset = 1.5;
+  const xSpan = w - 2 * xInset;
   const hb = 48;
   return rows.map((row, i) => ({
     label: row.label,
     color: COLORS[i % COLORS.length]!,
     poly: row.hours
       .map((v, h) => {
-        const x = (h / 23) * w;
+        const x = xInset + (h / 23) * xSpan;
         const y = hb - (v / maxV) * (hb - 8) - 4;
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       })
@@ -612,7 +617,7 @@ function pluginBarLabel(name: string): string {
         协议 API · 今日各小时（本地日）
       </div>
       <p class="muted home-plugin-charts__hint">
-        横轴 0–23 点为本地自然日；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
+        横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
       </p>
       <div
         v-if="apiCandidates.length"
@@ -657,6 +662,7 @@ function pluginBarLabel(name: string): string {
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
           preserveAspectRatio="none"
+          overflow="hidden"
           aria-hidden="true"
         >
           <polyline
@@ -671,7 +677,10 @@ function pluginBarLabel(name: string): string {
           />
         </svg>
         <div class="home-plugin-hour-ticks muted">
-          <span>0</span><span>6</span><span>12</span><span>18</span><span>23</span>
+          <span
+            v-for="hx in HOURLY_AXIS_HOURS"
+            :key="hx"
+          >{{ hx }}</span>
         </div>
         <div class="home-plugin-legend">
           <span
@@ -803,7 +812,7 @@ function pluginBarLabel(name: string): string {
         Matcher · 今日各小时（本地日）
       </div>
       <p class="muted home-plugin-charts__hint">
-        插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。
+        插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
       </p>
       <div
         v-if="matcherRunCandidates.length"
@@ -848,6 +857,7 @@ function pluginBarLabel(name: string): string {
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
           preserveAspectRatio="none"
+          overflow="hidden"
           aria-hidden="true"
         >
           <polyline
@@ -862,7 +872,10 @@ function pluginBarLabel(name: string): string {
           />
         </svg>
         <div class="home-plugin-hour-ticks muted">
-          <span>0</span><span>6</span><span>12</span><span>18</span><span>23</span>
+          <span
+            v-for="hx in HOURLY_AXIS_HOURS"
+            :key="hx"
+          >{{ hx }}</span>
         </div>
         <div class="home-plugin-legend">
           <span
@@ -994,7 +1007,7 @@ function pluginBarLabel(name: string): string {
         Matcher 异常 · 今日各小时（本地日）
       </div>
       <p class="muted home-plugin-charts__hint">
-        与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。
+        与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
       </p>
       <div
         v-if="matcherErrCandidates.length"
@@ -1039,6 +1052,7 @@ function pluginBarLabel(name: string): string {
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
           preserveAspectRatio="none"
+          overflow="hidden"
           aria-hidden="true"
         >
           <polyline
@@ -1053,7 +1067,10 @@ function pluginBarLabel(name: string): string {
           />
         </svg>
         <div class="home-plugin-hour-ticks muted">
-          <span>0</span><span>6</span><span>12</span><span>18</span><span>23</span>
+          <span
+            v-for="hx in HOURLY_AXIS_HOURS"
+            :key="hx"
+          >{{ hx }}</span>
         </div>
         <div class="home-plugin-legend">
           <span
@@ -1419,12 +1436,21 @@ function pluginBarLabel(name: string): string {
   height: 80px;
 }
 .home-plugin-hour-ticks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 0 1px;
+  font-size: 8px;
   margin: 2px 0 0;
-  padding: 0 1px;
-  letter-spacing: -0.02em;
+  padding: 0 2px;
+  letter-spacing: -0.03em;
+  min-width: 0;
+}
+
+.home-plugin-hour-ticks span {
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .home-plugin-legend {
   display: flex;
