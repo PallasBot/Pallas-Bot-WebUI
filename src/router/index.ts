@@ -7,6 +7,7 @@ import PluginConfigPage from "@/pages/PluginConfigPage.vue";
 import CommonConfigPage from "@/pages/CommonConfigPage.vue";
 import InstancesPage from "@/pages/InstancesPage.vue";
 import BotSocialConfigPage from "@/pages/BotSocialConfigPage.vue";
+import ProtocolManagePage from "@/pages/ProtocolManagePage.vue";
 import DatabasePage from "@/pages/DatabasePage.vue";
 import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
@@ -33,6 +34,7 @@ const router = createRouter({
         },
         { path: "common-config", name: "common-config", component: CommonConfigPage, meta: { title: "通用配置" } },
         { path: "instances", name: "instances", component: InstancesPage, meta: { title: "实例" } },
+        { path: "protocol", name: "protocol", component: ProtocolManagePage, meta: { title: "协议端管理" } },
         { path: "friends", name: "friends", component: FriendsPage, meta: { title: "好友" } },
         { path: "groups", name: "groups", component: GroupsPage, meta: { title: "群" } },
         {

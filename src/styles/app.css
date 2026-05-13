@@ -709,3 +709,90 @@ table.data tbody tr:hover td {
 .link-quiet:hover {
   color: var(--accent);
 }
+
+/* 运行日志：结构化栅格 */
+.log-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  max-height: min(72vh, 760px);
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--bg-elev);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.log-line {
+  display: grid;
+  grid-template-columns: auto auto minmax(72px, 0.12fr) 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+.log-line:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.02);
+}
+.log-line__time {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.log-line__msg {
+  color: var(--text);
+  word-break: break-word;
+}
+.log-line--debug {
+  border-left: 2px solid rgba(161, 161, 170, 0.5);
+}
+.log-line--okline {
+  border-left: 2px solid transparent;
+}
+.log-line--info {
+  border-left: 2px solid rgba(56, 189, 248, 0.45);
+}
+.log-line--success {
+  border-left: 2px solid rgba(74, 222, 128, 0.45);
+}
+.log-line--warn {
+  border-left: 2px solid rgba(251, 191, 36, 0.55);
+}
+.log-line--err {
+  border-left: 2px solid rgba(248, 113, 113, 0.55);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+/* 插件目录卡片 + fields 预览 */
+.plugin-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.plugin-card__link {
+  display: block;
+  padding: 18px 18px 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--ease);
+}
+.plugin-card__link:hover {
+  background: var(--bg-card-hover);
+}
+.plugin-card__actions {
+  padding: 0 18px 14px;
+}
+.plugin-preview {
+  border-top: 1px solid var(--border);
+  padding: 12px 18px 16px;
+  background: rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .plugin-preview {
+  background: rgba(15, 23, 42, 0.03);
+}
