@@ -87,7 +87,7 @@ onUnmounted(() => {
       <div class="shell__sidebar-top">
         <div class="shell__brand">
           <div class="shell__logo">Operations</div>
-          <div class="shell__title">Pallas</div>
+          <div class="shell__title">Pallas-Bot</div>
         </div>
         <button
           type="button"
@@ -149,7 +149,7 @@ onUnmounted(() => {
         </RouterLink>
       </nav>
       <footer class="shell__foot">
-        控制台与机器人通过
+        控制台与牛牛通过
         <code style="font-size: 10px; color: var(--text-muted)">/pallas/api</code>
         通信
       </footer>
@@ -160,11 +160,6 @@ onUnmounted(() => {
         v-if="isNarrow && mobileNavOpen"
         class="shell-mobile-nav"
       >
-        <div
-          class="shell-mobile-nav__backdrop"
-          aria-hidden="true"
-          @click="closeMobileNav"
-        />
         <aside
           id="shell-mobile-nav-panel"
           class="shell-mobile-nav__panel"
@@ -173,7 +168,7 @@ onUnmounted(() => {
           aria-label="主导航"
         >
           <div class="shell-mobile-nav__head">
-            <span class="shell-mobile-nav__brand">Pallas</span>
+            <span class="shell-mobile-nav__brand">Pallas-Bot</span>
             <button
               type="button"
               class="shell-mobile-nav__close"
@@ -237,6 +232,11 @@ onUnmounted(() => {
             </RouterLink>
           </nav>
         </aside>
+        <div
+          class="shell-mobile-nav__backdrop"
+          aria-hidden="true"
+          @click="closeMobileNav"
+        />
       </div>
     </Teleport>
 

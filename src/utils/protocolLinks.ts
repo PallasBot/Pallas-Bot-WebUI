@@ -9,7 +9,7 @@ export function joinHttpPath(base: string, path: string): string {
   return `${b}${p2}`;
 }
 
-/** pallas_protocol 内置管理页（挂在机器人 HTTP 基址下的 webui_path） */
+/** pallas_protocol 内置管理页（挂在牛牛 HTTP 基址下的 webui_path） */
 export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
   if (!snap?.webui_enabled) return null;
   const base = botHttpBaseFromSystem(system);
