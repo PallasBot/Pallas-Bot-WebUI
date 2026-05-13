@@ -676,6 +676,12 @@ onMounted(load);
                           />
                         </svg>
                       </div>
+                      <p
+                        v-if="showApiSparkline"
+                        class="home-account-metrics__spark-note muted"
+                      >
+                        折线为「协议 API」按时间桶的成功调用次数（非消息条数；进程内、重启清空）。
+                      </p>
                       <div
                         v-else-if="!socialBusy"
                         class="home-account-metrics__spark home-account-metrics__spark--empty"

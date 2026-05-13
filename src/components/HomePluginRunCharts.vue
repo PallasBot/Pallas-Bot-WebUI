@@ -1237,14 +1237,14 @@ function pluginBarLabel(name: string): string {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
+  gap: 5px;
+  padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
   border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--control-bg);
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
   cursor: pointer;
   font-family: var(--font-sans);
   transition:
@@ -1283,8 +1283,9 @@ function pluginBarLabel(name: string): string {
   min-width: min(100%, 320px);
   max-width: 100%;
   flex: 1;
-  padding: 7px 12px;
-  font-size: 13px;
+  min-height: var(--ui-sel-min-h);
+  padding: var(--ui-ctrl-pad-y) var(--ui-sel-arrow-pad) var(--ui-ctrl-pad-y) var(--ui-ctrl-pad-x);
+  font-size: var(--ui-ctrl-font);
 }
 .home-plugin-charts__block {
   min-width: 0;
@@ -1310,21 +1311,21 @@ function pluginBarLabel(name: string): string {
   font-size: 13px;
 }
 .home-plugin-sel {
-  margin-bottom: 10px;
-  padding: 8px 10px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-shell);
   background: var(--bg-muted);
 }
 .home-plugin-sel__actions {
   display: inline-flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 .home-plugin-sel__btn {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
+  padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
   border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--control-bg);
@@ -1338,21 +1339,24 @@ function pluginBarLabel(name: string): string {
 .home-plugin-sel__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
-  max-height: 140px;
+  gap: 5px 10px;
+  max-height: 128px;
   overflow-y: auto;
 }
 .home-plugin-sel__item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.25;
   color: var(--text-muted);
   cursor: pointer;
   max-width: 100%;
 }
 .home-plugin-sel__item input {
   flex-shrink: 0;
+  width: var(--ui-check-size);
+  height: var(--ui-check-size);
 }
 .home-plugin-sel__item span {
   overflow: hidden;
