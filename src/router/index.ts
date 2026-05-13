@@ -113,7 +113,7 @@ const router = createRouter({
   ],
 });
 
-const baseTitle = "Pallas 控制台";
+const baseTitle = "Pallas-Bot 控制台";
 
 router.afterEach((to) => {
   const piece = to.meta.title as string | undefined;

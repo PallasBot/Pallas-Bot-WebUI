@@ -243,7 +243,7 @@ html[data-theme="light"] .shell__sidebar-toggle:hover {
 }
 
 .shell__title {
-  font-size: 1.35rem;
+  font-size: 1.12rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.2;
@@ -480,9 +480,9 @@ html[data-theme="light"] .shell-pagebar__menu:hover {
   flex-direction: column;
   background: var(--bg-elev);
   border-right: 1px solid var(--border);
-  border-radius: 0 var(--radius-shell) var(--radius-shell) 0;
-  box-shadow: 12px 0 40px rgba(0, 0, 0, 0.35);
-  animation: shell-mobile-panel-in 0.22s var(--ease) both;
+  border-radius: var(--radius-shell) 0 0 var(--radius-shell);
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+  animation: shell-mobile-panel-in 0.24s var(--ease) both;
 }
 
 @keyframes shell-mobile-backdrop-in {
@@ -494,7 +494,7 @@ html[data-theme="light"] .shell-pagebar__menu:hover {
 @keyframes shell-mobile-panel-in {
   from {
     opacity: 0;
-    transform: translateX(-12px);
+    transform: translateX(-100%);
   }
 }
 
@@ -507,7 +507,7 @@ html[data-theme="light"] .shell-pagebar__menu:hover {
 }
 
 .shell-mobile-nav__brand {
-  font-size: 1.1rem;
+  font-size: 0.98rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   background: var(--shell-title-gradient);
@@ -789,6 +789,45 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   font-size: 15px;
 }
 
+/* 总览：账户置顶 + 性能与容量分栏 */
+.home-dashboard {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.home-dashboard__accounts {
+  grid-column: 1 / -1;
+}
+
+.home-dashboard__capacity .grid-stats {
+  margin-bottom: 0;
+}
+
+@media (min-width: 900px) {
+  .home-dashboard {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    align-items: stretch;
+  }
+  .home-dashboard__accounts {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .home-dashboard__perf {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .home-dashboard__capacity {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .home-dashboard__capacity .grid-stats {
+    height: 100%;
+    margin-bottom: 0;
+    align-content: start;
+  }
+}
+
 /* 栅格与卡片 */
 .grid-stats {
   display: grid;
@@ -833,6 +872,25 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.stat-card--dense .card__body {
+  padding: 12px 14px;
+}
+.stat-card--dense .stat-card__label {
+  font-size: 10px;
+  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+}
+.stat-card--dense .stat-card__value {
+  font-size: 1.2rem;
+}
+.stat-card--dense .stat-card__hint {
+  margin-top: 4px;
+  font-size: 11px;
+}
+.stat-card--dense.card:hover {
+  transform: none;
 }
 
 .panel {
@@ -1158,4 +1216,195 @@ table.data tbody tr:hover td {
 }
 html[data-theme="light"] .plugin-preview {
   background: rgba(15, 23, 42, 0.03);
+}
+
+/* —— 总览页：紧凑仪表盘（不引入第三方组件库，避免双主题与包体膨胀） */
+.home-page {
+  max-width: 1040px;
+  margin-inline: auto;
+}
+.home-page .page-hero {
+  margin-bottom: 16px;
+}
+.home-page .page-hero__title {
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+}
+.home-page .page-hero__desc {
+  font-size: 14px;
+  max-width: 56ch;
+}
+.home-page__panel {
+  margin-bottom: 0;
+  box-shadow: 0 0 0 1px var(--border), 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+.home-page .panel__hd {
+  padding: 11px 16px;
+  gap: 8px;
+}
+.home-page .panel__title {
+  font-size: 0.9rem;
+}
+.home-page__panel-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+}
+html[data-theme="light"] .home-page__panel-tag {
+  background: rgba(15, 23, 42, 0.04);
+}
+.home-page .panel__bd {
+  padding: 14px 16px;
+}
+.home-page .card:hover {
+  transform: none;
+}
+.home-page__empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.home-page .table-wrap {
+  max-height: min(220px, 38vh);
+}
+.home-page table.data th,
+.home-page table.data td {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.home-page__link-grid {
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 10px;
+}
+.home-page .link-card {
+  padding: 11px 12px;
+  gap: 4px;
+}
+.home-page .link-card__title {
+  font-size: 14px;
+}
+.home-page > .panel + .panel {
+  margin-top: 14px;
+}
+.home-page__capacity-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 0;
+}
+@media (max-width: 720px) {
+  .home-page__capacity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+@media (min-width: 640px) {
+  .home-metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.home-metric {
+  padding: 10px 11px;
+  border-radius: var(--radius-shell);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+html[data-theme="light"] .home-metric {
+  background: rgba(15, 23, 42, 0.02);
+}
+.home-metric--plain {
+  background: transparent;
+}
+.home-metric__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.home-metric__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.home-metric__val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.home-metric__val--sm {
+  font-size: 0.95rem;
+}
+.home-metric__bar {
+  margin-top: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+html[data-theme="light"] .home-metric__bar {
+  background: rgba(15, 23, 42, 0.08);
+}
+.home-metric__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.5), var(--accent));
+  min-width: 2px;
+  transition: width 0.35s var(--ease);
+}
+.home-metric__hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.home-dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 13px;
+  align-items: baseline;
+}
+.home-dl dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.home-dl dd {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.home-dl__sub {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.home-dl__code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text);
 }

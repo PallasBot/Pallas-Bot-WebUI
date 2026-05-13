@@ -32,7 +32,7 @@ onMounted(load);
       <p class="page-hero__eyebrow">Protocol</p>
       <h1 class="page-hero__title">协议端管理</h1>
       <p class="page-hero__desc">
-        打开挂载在机器人 HTTP 服务上的协议内置管理页（路径取自实例快照）；用于日常运维与排障。
+        打开挂载在牛牛 HTTP 服务上的协议内置管理页（路径取自实例快照）；用于日常运维与排障。
       </p>
     </header>
 
@@ -49,7 +49,7 @@ onMounted(load);
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 10px">
-          机器人基址：<strong style="color: var(--text)">{{ botBase ?? "（未配置 console.http_base）" }}</strong>
+          牛牛基址：<strong style="color: var(--text)">{{ botBase ?? "（未配置 console.http_base）" }}</strong>
         </p>
         <p class="muted" style="margin: 0 0 10px">
           内置 WebUI：<strong style="color: var(--text)">{{ snap?.webui_enabled ? "已启用" : "未启用" }}</strong>
