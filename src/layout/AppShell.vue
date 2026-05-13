@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
@@ -20,6 +21,8 @@ const orderedNav = computed((): MainNavItem[] =>
 const route = useRoute();
 const mobileNavOpen = ref(false);
 const isNarrow = ref(false);
+
+const webuiVersion = __WEBUI_VERSION__;
 
 const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
@@ -95,6 +98,27 @@ function setTheme(mode: ThemeMode) {
 
 function toggleSidebar() {
   setConsolePrefs({ sidebarCollapsed: !consolePrefs.sidebarCollapsed });
+}
+
+function exitConsole() {
+  if (typeof window === "undefined") return;
+  if (window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  try {
+    const ref = document.referrer;
+    if (ref) {
+      const u = new URL(ref);
+      if (u.origin === window.location.origin) {
+        window.location.assign(ref);
+        return;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  window.close();
 }
 
 function reorderNavPaths(fromPath: string, toPath: string) {
@@ -188,26 +212,31 @@ onUnmounted(() => {
       class="shell__topbar"
       aria-label="当前页与连接"
     >
-      <button
-        v-if="!isNarrow"
-        type="button"
-        class="shell__topbar-collapse"
-        :aria-expanded="!consolePrefs.sidebarCollapsed"
-        :aria-label="consolePrefs.sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'"
-        @click="toggleSidebar"
-      >
-        {{ consolePrefs.sidebarCollapsed ? "»" : "«" }}
-      </button>
-      <button
-        v-if="isNarrow"
-        type="button"
-        class="shell__topbar-menu"
-        aria-label="打开导航菜单"
-        aria-controls="shell-mobile-nav-panel"
-        @click="mobileNavOpen = true"
-      >
-        ☰
-      </button>
+      <div class="shell__topbar-start">
+        <div class="shell__topbar-rail">
+          <button
+            v-if="!isNarrow"
+            type="button"
+            class="shell__topbar-collapse"
+            :aria-expanded="!consolePrefs.sidebarCollapsed"
+            :aria-label="consolePrefs.sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'"
+            @click="toggleSidebar"
+          >
+            {{ consolePrefs.sidebarCollapsed ? "»" : "«" }}
+          </button>
+          <button
+            v-else
+            type="button"
+            class="shell__topbar-menu"
+            aria-label="打开导航菜单"
+            aria-controls="shell-mobile-nav-panel"
+            @click="mobileNavOpen = true"
+          >
+            ☰
+          </button>
+          <span class="shell__topbar-vrule" aria-hidden="true" />
+        </div>
+      </div>
       <div class="shell__topbar-lead">
         <h1 class="shell__topbar-title">
           <span class="shell__topbar-ico" aria-hidden="true">{{ topBarIcon }}</span>
@@ -235,27 +264,39 @@ onUnmounted(() => {
             type="button"
             :class="{ 'is-on': consolePrefs.theme === 'dark' }"
             title="深色"
+            aria-label="深色"
             @click="setTheme('dark')"
           >
-            深
+            <span class="shell__theme-ico" aria-hidden="true">🌙</span>
           </button>
           <button
             type="button"
             :class="{ 'is-on': consolePrefs.theme === 'light' }"
             title="浅色"
+            aria-label="浅色"
             @click="setTheme('light')"
           >
-            浅
+            <span class="shell__theme-ico" aria-hidden="true">☀</span>
           </button>
           <button
             type="button"
             :class="{ 'is-on': consolePrefs.theme === 'system' }"
             title="跟随系统"
+            aria-label="跟随系统"
             @click="setTheme('system')"
           >
-            自
+            <span class="shell__theme-ico" aria-hidden="true">🖥️</span>
           </button>
         </div>
+        <button
+          type="button"
+          class="shell__topbar-exit"
+          title="退出控制台"
+          aria-label="退出控制台"
+          @click="exitConsole"
+        >
+          退出
+        </button>
       </div>
     </header>
     <aside
@@ -264,7 +305,18 @@ onUnmounted(() => {
     >
       <div class="shell__sidebar-top">
         <div class="shell__brand">
-          <div class="shell__title">Pallas-Bot</div>
+          <img
+            class="shell__brand-mark"
+            :src="brandMarkUrl"
+            alt=""
+            width="28"
+            height="28"
+            decoding="async"
+          >
+          <div class="shell__brand-main">
+            <div class="shell__title">Pallas-Bot</div>
+            <div class="shell__version">v{{ webuiVersion }}</div>
+          </div>
         </div>
       </div>
       <nav class="shell__nav" aria-label="主导航">
@@ -336,7 +388,20 @@ onUnmounted(() => {
           aria-label="主导航"
         >
           <div class="shell-mobile-nav__head">
-            <span class="shell-mobile-nav__brand">Pallas-Bot</span>
+            <div class="shell-mobile-nav__brand-block">
+              <img
+                class="shell-mobile-nav__mark"
+                :src="brandMarkUrl"
+                alt=""
+                width="28"
+                height="28"
+                decoding="async"
+              >
+              <div class="shell-mobile-nav__brand-text">
+                <span class="shell-mobile-nav__brand">Pallas-Bot</span>
+                <span class="shell-mobile-nav__ver">v{{ webuiVersion }}</span>
+              </div>
+            </div>
             <button
               type="button"
               class="shell-mobile-nav__close"
