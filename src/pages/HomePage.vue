@@ -777,38 +777,40 @@ onMounted(load);
                             />
                           </div>
                         </div>
-                        <div
-                          class="home-account-metrics__stat-block"
-                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginTodayTopStr) }"
-                        >
-                          <span class="muted home-account-metrics__k">调用最多插件</span>
-                          <span
-                            class="home-account-metrics__v home-account-metrics__v--clip"
-                            :title="pluginTodayTopStr"
-                          >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
-                          <div class="home-account-metrics__skel-track">
+                        <div class="home-account-metrics__tops-grid">
+                          <div
+                            class="home-account-metrics__stat-block home-account-metrics__stat-block--plugin"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginTodayTopStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">调用次数最多插件</span>
                             <span
-                              v-for="n in 8"
-                              :key="n"
-                              class="home-account-metrics__skel-seg"
-                            />
+                              class="home-account-metrics__v home-account-metrics__v--clip"
+                              :title="pluginTodayTopStr"
+                            >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
                           </div>
-                        </div>
-                        <div
-                          class="home-account-metrics__stat-block"
-                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTopStr) }"
-                        >
-                          <span class="muted home-account-metrics__k">调用最多 API</span>
-                          <span
-                            class="home-account-metrics__v home-account-metrics__v--clip"
-                            :title="apiTodayTopStr"
-                          >{{ socialBusy ? "…" : apiTodayTopStr }}</span>
-                          <div class="home-account-metrics__skel-track">
+                          <div
+                            class="home-account-metrics__stat-block home-account-metrics__stat-block--api"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTopStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">调用次数最多 API</span>
                             <span
-                              v-for="n in 8"
-                              :key="n"
-                              class="home-account-metrics__skel-seg"
-                            />
+                              class="home-account-metrics__v home-account-metrics__v--clip"
+                              :title="apiTodayTopStr"
+                            >{{ socialBusy ? "…" : apiTodayTopStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div
