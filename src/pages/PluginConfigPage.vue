@@ -123,13 +123,11 @@ async function save() {
       style="margin-bottom: 16px"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">配置 schema</h2>
+        <h2 class="panel__title">配置项定义</h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0; line-height: 1.55">
-          当前插件的 <code>GET /plugins/{{ pluginName }}/config</code> 已返回
-          <strong style="color: var(--text)">{{ data.fields.length }}</strong> 个
-          <code>fields</code> 项；下方表单即据此渲染。若某插件未声明字段，列表可能为空（需在后端为该插件补充 schema）。
+          本页展示该插件已发布的 <strong style="color: var(--text)">{{ data.fields.length }}</strong> 个可配置项；表单与保存行为由服务端校验与落库。若列表为空，表示该模块未暴露可调参数或未注册 schema。
         </p>
       </div>
     </div>

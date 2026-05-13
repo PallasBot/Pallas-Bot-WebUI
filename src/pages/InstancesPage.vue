@@ -20,7 +20,7 @@ onMounted(async () => {
     <header class="page-hero">
       <p class="page-hero__eyebrow">Topology</p>
       <h1 class="page-hero__title">实例与连接</h1>
-      <p class="page-hero__desc">聚合 NoneBot 在线、数据库账号配置与协议管理器快照。</p>
+      <p class="page-hero__desc">汇总编排器在线情况、数据面账号及协议管理器快照，便于排障与变更前核对。</p>
     </header>
 
     <div class="panel">

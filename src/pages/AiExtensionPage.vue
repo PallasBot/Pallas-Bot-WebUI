@@ -68,7 +68,7 @@ onMounted(load);
     <header class="page-hero">
       <p class="page-hero__eyebrow">AI Stack</p>
       <h1 class="page-hero__title">AI 扩展</h1>
-      <p class="page-hero__desc">直连扩展配置与健康探测；日志为后端代理读取。</p>
+      <p class="page-hero__desc">查看扩展服务配置与健康状态；运行记录由后端代理读取。</p>
     </header>
 
     <div
