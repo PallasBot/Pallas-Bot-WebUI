@@ -37,11 +37,39 @@ export interface SystemData {
   };
 }
 
+/** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */
+export interface MessageTrafficHistoryPoint {
+  at: number;
+  received: number;
+  sent: number;
+}
+
+/** GET /message-stats 中各 Bot 的协议 API 调用时间序列（与 today_api_calls 同一排除口径） */
+export interface ApiCallHistoryPoint {
+  /** 时间桶起点（Unix 秒）；与 Bot 主机本地 wall-clock 对齐，浏览器用本地时区格式化 */
+  at: number;
+  /** 该桶内成功调用次数 */
+  total: number;
+}
+
+/** 单条接口的时间序列（与 api_calls_history_bucket_sec 对齐） */
+export interface ApiCallNamedSeries {
+  api: string;
+  points: ApiCallHistoryPoint[];
+}
+
 export interface MessageStatsData {
   total_sent: number;
   total_received: number;
   today_sent?: number;
   today_received?: number;
+  /** 与 bots[].api_calls_history 对齐的桶宽（秒） */
+  api_calls_history_bucket_sec?: number;
+  /** 最多保留桶数（≈ 覆盖时长 / bucket_sec） */
+  api_calls_history_max_buckets?: number;
+  /** 与 bots[].message_traffic_history 对齐的桶宽（秒） */
+  message_traffic_history_bucket_sec?: number;
+  message_traffic_history_max_buckets?: number;
   bots: Array<{
     self_id: string;
     connection_key: string;
@@ -49,6 +77,54 @@ export interface MessageStatsData {
     received: number;
     today_sent?: number;
     today_received?: number;
+    /** 今日协议/API 调用总次数（不含发消息与高频状态类接口） */
+    today_api_calls?: number;
+    /** 今日调用次数最多的接口名 */
+    today_top_api?: string;
+    today_top_api_count?: number;
+    /** 近期消息收/发序列（进程内，重启清空） */
+    message_traffic_history?: MessageTrafficHistoryPoint[];
+    /** 近期成功协议 API 调用序列（进程内，重启清空） */
+    api_calls_history?: ApiCallHistoryPoint[];
+    /** 按接口名拆分的时间序列（条数有上限，优先今日计数高的接口） */
+    api_calls_history_by_api?: ApiCallNamedSeries[];
+  }>;
+}
+
+/** 各插件 Matcher 执行次数（进程内累计，重启清零） */
+export interface PluginRunStatsRow {
+  name: string;
+  runs: number;
+  runs_today: number;
+  errors: number;
+  errors_today: number;
+}
+
+/** Matcher 按插件名拆分的时间序列（与 matcher_calls_history_bucket_sec 对齐） */
+export interface PluginMatcherNamedSeries {
+  plugin: string;
+  points: ApiCallHistoryPoint[];
+}
+
+export interface PluginRunStatsData {
+  total_runs: number;
+  total_errors: number;
+  total_runs_today: number;
+  total_errors_today: number;
+  matcher_calls_history_bucket_sec?: number;
+  matcher_calls_history_max_buckets?: number;
+  bots: Array<{
+    self_id: string;
+    connection_key: string;
+    runs: number;
+    errors: number;
+    runs_today: number;
+    errors_today: number;
+    plugins: PluginRunStatsRow[];
+    /** 各插件 Matcher 成功执行次数按桶 */
+    matcher_runs_by_plugin?: PluginMatcherNamedSeries[];
+    /** 各插件 Matcher 执行异常次数按桶 */
+    matcher_errors_by_plugin?: PluginMatcherNamedSeries[];
   }>;
 }
 
@@ -204,6 +280,8 @@ export interface InstancesData {
 export interface FriendPendingEntry {
   user_id: number;
   flag: string;
+  /** 控制台拉取：协议可疑列表透传或 get_stranger_info 补全 */
+  nickname?: string | null;
 }
 
 export interface FriendOverviewBotRow {
