@@ -781,7 +781,7 @@ onMounted(load);
             <span class="home-dl__sub muted">业务</span>
           </dd>
           <dt>控制台资源</dt>
-          <dd class="home-version-dd-stack">
+          <dd>
             <span class="home-dl__pill home-dl__pill--version">{{ health?.console?.version ?? "—" }}</span>
             <span
               v-if="(health?.console?.commit || '').trim()"
@@ -794,7 +794,7 @@ onMounted(load);
             <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
           </dd>
           <dt>主机 / Python</dt>
-          <dd class="home-version-dd-stack">
+          <dd>
             <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
             <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
           </dd>
