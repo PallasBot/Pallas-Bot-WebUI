@@ -548,11 +548,13 @@ const footerYear = new Date().getFullYear();
 }
 
 .pallas-header {
-  height: 52px;
+  height: 54px;
   padding: 0 20px;
   color: var(--el-text-color-primary);
-  background: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: color-mix(in srgb, var(--td-bg-color-container) 78%, transparent);
+  backdrop-filter: blur(var(--pallas-chrome-blur, 14px));
+  -webkit-backdrop-filter: blur(var(--pallas-chrome-blur, 14px));
+  border-bottom: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -560,12 +562,12 @@ const footerYear = new Date().getFullYear();
   position: sticky;
   top: 0;
   z-index: 22;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--pallas-shell-shadow, 0 4px 24px rgba(15, 23, 42, 0.06));
 }
 html.dark .pallas-header {
-  background: var(--el-bg-color);
-  border-bottom-color: var(--el-border-color);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--td-bg-color-container) 82%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--pallas-accent) 18%, var(--el-border-color));
+  box-shadow: var(--pallas-shell-shadow, 0 4px 28px rgba(0, 0, 0, 0.35));
 }
 
 .pallas-header-lead {
@@ -845,18 +847,23 @@ html.dark .pallas-header {
 .pallas-console-footer {
   flex-shrink: 0;
   text-align: center;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  padding: 6px 12px 8px;
-  border-top: 1px solid var(--el-border-color-lighter);
-  background: var(--el-bg-color-page);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--el-text-color-placeholder);
+  padding: 8px 12px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--pallas-accent) 8%, var(--el-border-color-lighter));
+  background: color-mix(in srgb, var(--td-bg-color-page) 92%, transparent);
 }
 
 .pallas-body {
   flex: 1;
   min-height: 0;
   display: flex;
-  background: var(--c-body-bg);
+  background:
+    radial-gradient(900px 480px at 8% -8%, color-mix(in srgb, var(--pallas-accent) 14%, transparent), transparent 52%),
+    radial-gradient(700px 420px at 96% 4%, color-mix(in srgb, var(--pallas-accent) 10%, transparent), transparent 48%),
+    var(--c-body-bg);
 }
 .pallas-nav {
   width: var(--pallas-primnav-width, 156px);
@@ -872,9 +879,12 @@ html.dark .pallas-header {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--c-nav-bg);
+  background: color-mix(in srgb, var(--td-bg-color-container) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--pallas-radius-lg, 14px);
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 14%, var(--el-border-color-lighter));
+  box-shadow: 0 8px 28px rgba(15, 35, 65, 0.08);
   overflow: hidden;
 }
 .menu-item {
@@ -906,8 +916,9 @@ html.dark .menu-item:hover:not(.selected) {
 }
 .menu-item.selected {
   color: var(--c-main);
-  background: var(--c-main-light);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--pallas-accent) 22%, transparent), transparent);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--pallas-accent);
 }
 
 .pallas-root.is-sidebar-collapsed .pallas-nav {
@@ -947,6 +958,9 @@ html.dark .menu-item:hover:not(.selected) {
   position: relative;
   border-radius: var(--pallas-radius-lg, 14px);
   overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--pallas-accent) 10%, var(--el-border-color-lighter));
+  background: color-mix(in srgb, var(--td-bg-color-container) 94%, transparent);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
 }
 .pallas-route-body {
   flex: 1;

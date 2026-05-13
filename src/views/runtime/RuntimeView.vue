@@ -4,9 +4,9 @@ import PallasSidebarShell from "@/components/layout/PallasSidebarShell.vue";
 import { fetchBots, fetchLogs, fetchSystem } from "@/api/consoleApi";
 import { pallasConnectionKey } from "@/types/pallas-connection";
 import type { LogScope, SystemData, BotRow } from "@/api/pallasTypes";
-import { Cpu, Document, Link } from "@element-plus/icons-vue";
+import { ArticleIcon, CpuIcon, LinkIcon } from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, inject, nextTick, ref, watch } from "vue";
-import { ElMessage } from "element-plus";
 
 type RtSection = "sys" | "bots" | "log";
 
@@ -24,9 +24,9 @@ const sectionSub: Record<RtSection, string> = {
   log: "最近日志只读预览；不提供写配置。",
 };
 const navItems = [
-  { index: "sys", label: "系统与驱动", icon: Cpu },
-  { index: "bots", label: "OneBot 连接", icon: Link },
-  { index: "log", label: "运行日志", icon: Document },
+  { index: "sys", label: "系统与驱动", icon: CpuIcon },
+  { index: "bots", label: "OneBot 连接", icon: LinkIcon },
+  { index: "log", label: "运行日志", icon: ArticleIcon },
 ];
 
 const loading = ref(false);
@@ -39,10 +39,7 @@ const logScope = ref<LogScope>("all");
 const logMax = ref(2000);
 const logFollow = ref(true);
 const logStickToBottom = ref(true);
-const logScrollRef = ref<{
-  setScrollTop?: (v: number) => void;
-  wrapRef?: HTMLElement;
-} | null>(null);
+const logScrollRef = ref<HTMLElement | null>(null);
 
 async function loadSystem() {
   system.value = await fetchSystem();
@@ -57,16 +54,17 @@ async function loadLog() {
   logMax.value = d.max;
   if (shouldFollow) {
     await nextTick();
-    logScrollRef.value?.setScrollTop?.(Number.MAX_SAFE_INTEGER);
+    const el = logScrollRef.value;
+    if (el) el.scrollTop = el.scrollHeight;
     await nextTick();
     logStickToBottom.value = true;
   }
 }
 
-function onLogScroll({ scrollTop }: { scrollTop: number }) {
-  const wrap = logScrollRef.value?.wrapRef;
+function onLogScroll(ev: Event) {
+  const wrap = ev.target as HTMLElement;
   if (!wrap) return;
-  const { scrollHeight, clientHeight } = wrap;
+  const { scrollHeight, clientHeight, scrollTop } = wrap;
   if (scrollHeight <= 0 || clientHeight <= 0) return;
   const distToBottom = scrollHeight - (scrollTop + clientHeight);
   logStickToBottom.value = distToBottom <= 24;
@@ -83,7 +81,7 @@ async function loadTab() {
       await loadLog();
     }
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "加载失败");
   } finally {
     loading.value = false;
   }
@@ -154,95 +152,106 @@ function fmtTime(t: number) {
         本页只读展示：NoneBot 驱动监听、已连接账号、插件与日志摘要。不提供写配置；修改监听地址或端口请调整
         <code>.env</code> 后重启进程。
       </p>
-      <el-skeleton
+      <div
         v-if="loading && !system"
-        :rows="4"
-        animated
-      />
-      <el-descriptions
+        class="skel-wrap"
+      >
+        <t-skeleton animation />
+      </div>
+      <t-descriptions
         v-else-if="system"
         :column="1"
-        border
+        bordered
+        size="small"
       >
-        <el-descriptions-item label="NoneBot 监听">
+        <t-descriptions-item label="NoneBot 监听">
           <span class="pallas-kv">
             <code>host = {{ String(system.nonebot2_driver?.host) }}</code>
             <span class="kv-sep"> · </span>
             <code>port = {{ String(system.nonebot2_driver?.port) }}</code>
           </span>
-        </el-descriptions-item>
-        <el-descriptions-item label="超管账号数 (superusers)">
+        </t-descriptions-item>
+        <t-descriptions-item label="超管账号数 (superusers)">
           {{ system.superuser_count }}
-        </el-descriptions-item>
-        <el-descriptions-item label="已连 Bot 数">
+        </t-descriptions-item>
+        <t-descriptions-item label="已连 Bot 数">
           {{ system.bot_count }}
-        </el-descriptions-item>
-        <el-descriptions-item label="已加载插件数">
+        </t-descriptions-item>
+        <t-descriptions-item label="已加载插件数">
           {{ system.plugin_count }}
-        </el-descriptions-item>
-        <el-descriptions-item label="服务端时间">
+        </t-descriptions-item>
+        <t-descriptions-item label="服务端时间">
           {{ fmtTime(system.server_time) }}
-        </el-descriptions-item>
-        <el-descriptions-item
+        </t-descriptions-item>
+        <t-descriptions-item
           v-if="system.console?.static_root"
           label="控制台静态资源（后端挂载）"
         >
           <span class="pallas-kv"><code>{{ system.console.static_root }}</code></span>
-        </el-descriptions-item>
-      </el-descriptions>
-      <el-button
+        </t-descriptions-item>
+      </t-descriptions>
+      <t-button
         v-if="system"
         class="rfb"
-        plain
-        type="primary"
+        variant="outline"
+        theme="primary"
         :loading="loading"
         @click="loadSystem"
-      >仅刷新本页</el-button>
+      >
+        仅刷新本页
+      </t-button>
     </div>
 
     <div
       v-show="section === 'bots'"
       class="panel"
     >
-      <el-skeleton
+      <div
         v-if="loading && bots.length === 0"
-        :rows="3"
-        animated
-      />
-      <el-table
+        class="skel-wrap"
+      >
+        <t-skeleton animation />
+      </div>
+      <t-table
         v-else
         :data="bots"
-        border
-        size="default"
+        row-key="connection_key"
+        bordered
+        size="medium"
+        table-layout="fixed"
       >
-        <el-table-column
-          label="连接标识"
-          prop="connection_key"
-          min-width="160"
-          show-overflow-tooltip
+        <t-table-column
+          title="连接标识"
+          col-key="connection_key"
+          :ellipsis="{ tooltip: true }"
+          :min-width="160"
         />
-        <el-table-column
-          label="Bot 账号"
-          prop="self_id"
-          width="140"
+        <t-table-column
+          title="Bot 账号"
+          col-key="self_id"
+          :width="140"
         />
-        <el-table-column
-          label="适配器"
-          prop="adapter"
-          min-width="100"
+        <t-table-column
+          title="适配器"
+          col-key="adapter"
+          :min-width="100"
         />
-      </el-table>
-      <el-text
+      </t-table>
+      <p
         v-if="!loading && bots.length === 0"
         class="emp"
-      >当前无已连接账号；请检查协议端与 .env 中的 OneBot/反向 WS 配置</el-text>
-      <el-button
+      >
+        当前无已连接账号；请检查协议端与 .env 中的 OneBot/反向 WS 配置
+      </p>
+      <t-button
         class="rfb"
-        plain
-        type="primary"
+        variant="outline"
+        theme="primary"
         :loading="loading"
         @click="loadBots"
-      >仅刷新本页</el-button>
+      >
+        仅刷新本页
+      </t-button>
     </div>
 
     <div
@@ -250,49 +259,60 @@ function fmtTime(t: number) {
       class="panel panel-log"
     >
       <div class="log-bar">
-        <el-input-number
+        <t-input-number
           v-model="logN"
           :min="50"
           :max="logMax"
           :step="50"
           size="small"
-          controls-position="right"
+          theme="column"
         />
-        <el-text
-          type="info"
-          class="lhint"
+        <span class="lhint">最多 {{ logMax }} 行（受后端 pallas_webui_log_lines_max 限制）</span>
+        <t-radio-group
+          v-model="logScope"
+          variant="default-filled"
           size="small"
-        >最多 {{ logMax }} 行（受后端 pallas_webui_log_lines_max 限制）</el-text>
-        <el-radio-group v-model="logScope" size="small" :disabled="!connOk">
-          <el-radio-button label="all">全部</el-radio-button>
-          <el-radio-button label="webui">控制台</el-radio-button>
-          <el-radio-button label="protocol">协议</el-radio-button>
-        </el-radio-group>
-        <el-switch
+          :disabled="!connOk"
+        >
+          <t-radio-button value="all">
+            全部
+          </t-radio-button>
+          <t-radio-button value="webui">
+            控制台
+          </t-radio-button>
+          <t-radio-button value="protocol">
+            协议
+          </t-radio-button>
+        </t-radio-group>
+        <t-switch
           v-model="logFollow"
           size="small"
-          active-text="自动跟随"
-          inactive-text="手动查看"
+          :label="['自动跟随', '手动查看']"
         />
-        <el-button
-          type="primary"
+        <t-button
+          theme="primary"
           :loading="loading"
           @click="loadLog"
-        >拉取</el-button>
+        >
+          拉取
+        </t-button>
       </div>
-      <el-scrollbar
+      <div
         ref="logScrollRef"
         v-loading="loading"
-        class="log-box"
+        class="log-box log-box-scroll"
         @scroll="onLogScroll"
       >
         <PallasLogLines :lines="logLines" empty-text="（暂无，或日志环尚未有输出）" />
-      </el-scrollbar>
+      </div>
     </div>
   </PallasSidebarShell>
 </template>
 
 <style scoped lang="scss">
+.skel-wrap {
+  padding: 8px 0 12px;
+}
 .intro {
   line-height: 1.5;
   font-size: 13px;
@@ -323,20 +343,11 @@ function fmtTime(t: number) {
     height: auto;
   }
 }
-.panel-log .log-box {
+.panel-log .log-box-scroll {
   flex: 1 1 auto;
   min-height: 0;
   height: 0;
-}
-.panel-log .log-box :deep(.el-scrollbar) {
-  height: 100%;
-}
-.panel-log .log-box :deep(.el-scrollbar__wrap) {
-  max-height: none !important;
-  height: 100%;
-}
-.panel-log .log-box :deep(.el-scrollbar__view) {
-  min-height: 100%;
+  overflow: auto;
 }
 .rfb {
   margin-top: 12px;
@@ -355,6 +366,7 @@ function fmtTime(t: number) {
   margin-bottom: 10px;
   .lhint {
     font-size: 12px;
+    color: var(--el-text-color-placeholder);
   }
 }
 .log-box {
@@ -379,10 +391,7 @@ function fmtTime(t: number) {
     align-items: stretch;
     flex-direction: column;
   }
-  .log-bar :deep(.el-input-number) {
-    width: 100%;
-  }
-  .log-bar :deep(.el-input-number .el-input__wrapper) {
+  .log-bar :deep(.t-input-number) {
     width: 100%;
   }
 }

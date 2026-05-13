@@ -33,8 +33,14 @@ import {
   protocolServiceHttpBase,
   resolveProtocolMountPath,
 } from "@/utils/pallasProtocolPaths";
-import { CircleCloseFilled, Cpu, DataLine, OfficeBuilding, Warning } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import {
+  ChartLineMultiIcon,
+  CpuIcon,
+  ErrorCircleFilledIcon,
+  ErrorTriangleIcon,
+  HardDiskStorageIcon,
+} from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 const conn = inject(pallasConnectionKey);
@@ -52,10 +58,7 @@ const logMax = ref(2000);
 const logLoading = ref(false);
 const logFollow = ref(true);
 const logStickToBottom = ref(true);
-const logScrollRef = ref<{
-  setScrollTop?: (v: number) => void;
-  wrapRef?: HTMLElement;
-} | null>(null);
+const logScrollRef = ref<HTMLElement | null>(null);
 let logPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const sysLoading = ref(false);
@@ -290,9 +293,9 @@ function gpuVramPercent(g: { memory_used: number; memory_total: number }): numbe
 }
 
 function gpuVramBarColor(pct: number): string {
-  if (pct >= 92) return "var(--el-color-danger)";
-  if (pct >= 78) return "var(--el-color-warning)";
-  return "var(--el-color-success)";
+  if (pct >= 92) return "var(--td-error-color)";
+  if (pct >= 78) return "var(--td-warning-color)";
+  return "var(--td-success-color)";
 }
 
 function stopLogPoll() {
@@ -337,7 +340,7 @@ async function loadSystem(silent = true) {
     pythonLabel.value = typeof rt.python === "string" && rt.python ? rt.python : "-";
   } catch (e) {
     if (!silent) {
-      ElMessage.error(e instanceof Error ? e.message : "拉取系统监控失败");
+      MessagePlugin.error(e instanceof Error ? e.message : "拉取系统监控失败");
     }
   } finally {
     if (!silent) {
@@ -353,7 +356,7 @@ async function loadAiStatus(silent = true) {
     aiCfg.value = await fetchAiExtensionConfig();
     aiTest.value = await postAiExtensionTest();
   } catch (e) {
-    if (!silent) ElMessage.error(e instanceof Error ? e.message : "AI 连接信息加载失败");
+    if (!silent) MessagePlugin.error(e instanceof Error ? e.message : "AI 连接信息加载失败");
   } finally {
     if (!silent) aiTesting.value = false;
   }
@@ -434,7 +437,7 @@ async function loadInstances(silent = true) {
     protocolAccounts.value = (snap?.accounts ?? []) as NapcatAccountRow[];
   } catch (e) {
     if (!silent) {
-      ElMessage.error(e instanceof Error ? e.message : "拉取实例数据失败");
+      MessagePlugin.error(e instanceof Error ? e.message : "拉取实例数据失败");
     }
     nonebot.value = [];
     dbBots.value = [];
@@ -460,14 +463,14 @@ async function loadLogs(silent = false) {
     logMax.value = d.max;
     if (shouldFollow) {
       await nextTick();
-      logScrollRef.value?.setScrollTop?.(Number.MAX_SAFE_INTEGER);
+      const el = logScrollRef.value;
+      if (el) el.scrollTop = el.scrollHeight;
       await nextTick();
-      // 跟随后同步「在底部」状态，避免 DOM 变高与滚到底之间的 scroll 事件误判
       logStickToBottom.value = true;
     }
   } catch (e) {
     if (!silent) {
-      ElMessage.error(e instanceof Error ? e.message : "拉取日志失败");
+      MessagePlugin.error(e instanceof Error ? e.message : "拉取日志失败");
     }
     logLines.value = [];
   } finally {
@@ -477,10 +480,10 @@ async function loadLogs(silent = false) {
   }
 }
 
-function onLogScroll({ scrollTop }: { scrollTop: number }) {
-  const wrap = logScrollRef.value?.wrapRef;
+function onLogScroll(ev: Event) {
+  const wrap = ev.target as HTMLElement;
   if (!wrap) return;
-  const { scrollHeight, clientHeight } = wrap;
+  const { scrollHeight, clientHeight, scrollTop } = wrap;
   if (scrollHeight <= 0 || clientHeight <= 0) return;
   const distToBottom = scrollHeight - (scrollTop + clientHeight);
   logStickToBottom.value = distToBottom <= 24;
@@ -584,52 +587,63 @@ onUnmounted(() => {
         v-if="isMobile"
         class="mobile-dash-switch"
       >
-        <el-segmented
+        <t-radio-group
           v-model="mobileDashSection"
-          :options="[
-            { label: 'Bot', value: 'bot' },
-            { label: '系统', value: 'system' },
-            { label: '连接', value: 'connect' },
-          ]"
-          block
-        />
+          variant="default-filled"
+          size="medium"
+          class="mobile-dash-radio"
+        >
+          <t-radio-button value="bot">
+            Bot
+          </t-radio-button>
+          <t-radio-button value="system">
+            系统
+          </t-radio-button>
+          <t-radio-button value="connect">
+            连接
+          </t-radio-button>
+        </t-radio-group>
       </div>
       <div class="dash-top-grid">
         <div
           v-show="!isMobile || mobileDashSection === 'bot'"
           class="dash-left"
         >
-          <el-card
+          <t-card :bordered="true"
             v-if="selectedDashboardBot"
             class="nb-conn-card bot-hero bot-hero-vertical"
-            shadow="never"
           >
             <div class="bot-hero-top">
               <div class="bot-hero-online-title">在线的牛牛（{{ onlineBotCount }}）</div>
             </div>
             <div class="bot-hero-main">
               <div class="bot-hero-head">
-                <el-avatar
+                <t-avatar
                   v-if="selectedDashboardBotAvatar"
-                  :size="76"
-                  :src="selectedDashboardBotAvatar"
+                  size="76px"
+                  shape="circle"
+                  :image="selectedDashboardBotAvatar"
                 />
-                <el-avatar
+                <t-avatar
                   v-else
-                  :size="76"
-                >BOT</el-avatar>
+                  size="76px"
+                  shape="circle"
+                >
+                  BOT
+                </t-avatar>
                 <div class="bot-hero-title">
                   <strong>{{ botNickname(selectedDashboardBot.selfId, selectedDashboardBot.account) }}</strong>
                   <span class="bot-hero-sub mono">账号 {{ selectedDashboardBotQq }}</span>
                 </div>
               </div>
-              <el-tag
+              <t-tag
                 class="bot-status-badge"
-                :type="selectedDashboardBot.online ? 'success' : 'info'"
+                :theme="selectedDashboardBot.online ? 'success' : 'default'"
+                variant="light"
                 size="small"
               >
                 {{ selectedDashboardBot.online ? "在线" : "离线" }}
-              </el-tag>
+              </t-tag>
             </div>
             <div class="bot-inline-stats">
               <div class="bot-inline-item">
@@ -667,37 +681,42 @@ onUnmounted(() => {
                   <span class="pv">{{ protocolAccounts.length }} 个 · 在线 {{ protocolAccountConnectedCount }}</span>
                 </div>
                 <div class="bot-hero-protocol-sub">
-                  <el-link
+                  <t-link
                     v-if="protocolConsoleAccountUrl"
-                    type="primary"
+                    theme="primary"
                     :href="protocolConsoleAccountUrl"
                     target="_blank"
-                    rel="noopener"
+                    hover="color"
                     class="bot-hero-protocol-sub-link"
-                  >协议端控制台</el-link>
-                  <el-link
+                  >
+                    协议端控制台
+                  </t-link>
+                  <t-link
                     v-if="protocolNativeWebUiHref"
-                    type="info"
+                    theme="default"
                     :href="protocolNativeWebUiHref"
                     target="_blank"
-                    rel="noopener"
+                    hover="color"
                     class="bot-hero-protocol-sub-link"
-                  >原生 WebUI</el-link>
+                  >
+                    原生 WebUI
+                  </t-link>
                 </div>
               </div>
-              <el-link
-                type="primary"
+              <t-link
+                theme="primary"
                 :href="protocolManageUrl"
                 target="_blank"
-                rel="noopener"
+                hover="color"
                 class="bot-hero-protocol-main-link"
-              >前往协议管理</el-link>
+              >
+                前往协议管理
+              </t-link>
             </div>
-          </el-card>
-          <el-card
+          </t-card>
+          <t-card :bordered="true"
             v-else
             class="nb-conn-card bot-hero bot-hero-vertical bot-hero--empty"
-            shadow="never"
           >
             <div class="bot-hero-top">
               <div class="bot-hero-online-title">在线的牛牛（{{ onlineBotCount }}）</div>
@@ -709,9 +728,9 @@ onUnmounted(() => {
               <p v-else class="bot-hero-empty-desc">正在同步所选实例… 若长时间如此，请在侧栏「实例」中确认账号。</p>
               <router-link v-if="ok === true" class="bot-hero-empty-link" :to="{ name: 'accounts' }">前往实例</router-link>
             </div>
-          </el-card>
+          </t-card>
 
-          <el-card class="nb-conn-card bot-db-card" shadow="never">
+          <t-card :bordered="true" class="nb-conn-card bot-db-card">
             <div class="bot-db-stack">
               <div class="nb-conn-hd">数据库连接</div>
               <div class="nb-conn-grid bot-db-grid-main">
@@ -758,8 +777,8 @@ onUnmounted(() => {
               </div>
               <p v-if="dbOverviewNote" class="bot-db-note">{{ dbOverviewNote }}</p>
             </div>
-          </el-card>
-          <el-card class="nb-conn-card msg-stats-card" shadow="never">
+          </t-card>
+          <t-card :bordered="true" class="nb-conn-card msg-stats-card">
             <div class="nb-conn-hd">消息统计</div>
             <div class="nb-conn-grid msg-stats-grid">
               <div class="nb-item"><span class="k">发送消息</span><span class="v">{{ msgSent ?? "-" }}</span></div>
@@ -767,19 +786,19 @@ onUnmounted(() => {
               <div class="nb-item"><span class="k">今日发送</span><span class="v">{{ msgTodaySent ?? "-" }}</span></div>
               <div class="nb-item"><span class="k">今日接收</span><span class="v">{{ msgTodayReceived ?? "-" }}</span></div>
             </div>
-          </el-card>
+          </t-card>
         </div>
 
         <div
           v-show="!isMobile || mobileDashSection === 'system'"
           class="dash-system"
         >
-          <el-card class="intro-card intro-card--dash" shadow="never">
+          <t-card :bordered="true" class="intro-card intro-card--dash">
             <div class="intro-main">
-              <el-avatar
-                  :size="68"
-                  :src="`${baseUrl}pallas-priest.png`"
-                shape="square"
+              <t-avatar
+                size="68px"
+                shape="round"
+                :image="`${baseUrl}pallas-priest.png`"
                 class="intro-avatar"
               />
               <div class="intro-text">
@@ -788,13 +807,13 @@ onUnmounted(() => {
                 <p>{{ introText2 }}</p>
               </div>
             </div>
-          </el-card>
+          </t-card>
 
           <h4 class="dash-h dash-h--after">资源占用</h4>
-          <el-card shadow="hover" class="stat-strip-card stat-row-dash">
+          <t-card :bordered="true" class="stat-strip-card stat-row-dash">
             <div class="stat-strip">
               <div class="stat-strip-item">
-                <el-icon class="stat-strip-ico"><Cpu /></el-icon>
+                <CpuIcon class="stat-strip-ico" />
                 <div class="stat-strip-txt">
                   <span class="stat-strip-k">CPU</span>
                   <strong class="stat-strip-v" :class="metricClass(cpuPercent)">{{ cpuPercent == null ? "—" : `${cpuPercent.toFixed(1)}%` }}</strong>
@@ -803,7 +822,7 @@ onUnmounted(() => {
               </div>
               <div class="stat-strip-div" aria-hidden="true"></div>
               <div class="stat-strip-item">
-                <el-icon class="stat-strip-ico"><DataLine /></el-icon>
+                <ChartLineMultiIcon class="stat-strip-ico" />
                 <div class="stat-strip-txt">
                   <span class="stat-strip-k">内存</span>
                   <strong class="stat-strip-v" :class="metricClass(memPercent)">{{ memPercent == null ? "—" : `${memPercent.toFixed(1)}%` }}</strong>
@@ -812,7 +831,7 @@ onUnmounted(() => {
               </div>
               <div class="stat-strip-div" aria-hidden="true"></div>
               <div class="stat-strip-item">
-                <el-icon class="stat-strip-ico"><OfficeBuilding /></el-icon>
+                <HardDiskStorageIcon class="stat-strip-ico" />
                 <div class="stat-strip-txt">
                   <span class="stat-strip-k">磁盘</span>
                   <strong class="stat-strip-v" :class="metricClass(diskPercent)">{{ diskPercent == null ? "—" : `${diskPercent.toFixed(1)}%` }}</strong>
@@ -820,10 +839,10 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-          </el-card>
+          </t-card>
 
           <h4 class="dash-h dash-h--after">GPU 监控</h4>
-          <el-card shadow="hover" class="stat-strip-card gpu-card gpu-card--compact">
+          <t-card :bordered="true" class="stat-strip-card gpu-card gpu-card--compact">
             <div v-if="!gpu.available" class="gpu-dash-off">
               未启用 GPU 监控：{{ gpu.reason || "无可用 GPU 或未安装 pynvml" }}
             </div>
@@ -836,13 +855,20 @@ onUnmounted(() => {
               >
                 <div class="gpu-dash-device-top">
                   <span class="gpu-dash-title mono" :title="g.name">{{ gpuDisplayName(g.name) }}</span>
-                  <el-tag size="small" type="info" effect="plain" class="gpu-dash-idx">#{{ g.index }}</el-tag>
+                  <t-tag
+                    size="small"
+                    theme="primary"
+                    variant="outline"
+                    class="gpu-dash-idx"
+                  >
+                    #{{ g.index }}
+                  </t-tag>
                 </div>
-                <el-progress
+                <t-progress
                   :percentage="gpuVramPercent(g)"
                   :stroke-width="5"
-                  :show-text="false"
                   :color="gpuVramBarColor(gpuVramPercent(g))"
+                  track-color="var(--td-bg-color-component)"
                 />
                 <div class="gpu-dash-vram-line">
                   <span>显存 {{ formatBytes(g.memory_used) }} / {{ formatBytes(g.memory_total) }}（{{ gpuVramPercent(g) }}%） · 空闲 {{ formatBytes(g.memory_free) }}</span>
@@ -864,33 +890,57 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-          </el-card>
+          </t-card>
 
-          <el-card class="log-card log-card-compact log-card--dash-fill" shadow="hover">
+          <t-card :bordered="true" class="log-card log-card-compact log-card--dash-fill">
             <template #header>
               <div class="log-hd">
                 <span>连接日志</span>
                 <div class="log-ctl">
-                  <el-radio-group v-model="logScope" size="small" :disabled="ok !== true">
-                    <el-radio-button label="all">全部</el-radio-button>
-                    <el-radio-button label="webui">控制台</el-radio-button>
-                    <el-radio-button label="protocol">协议</el-radio-button>
-                  </el-radio-group>
-                  <el-button type="primary" size="small" :loading="logLoading" :disabled="ok !== true" @click="loadLogs(false)">刷新</el-button>
+                  <t-radio-group
+                    v-model="logScope"
+                    variant="default-filled"
+                    size="small"
+                    :disabled="ok !== true"
+                  >
+                    <t-radio-button value="all">
+                      全部
+                    </t-radio-button>
+                    <t-radio-button value="webui">
+                      控制台
+                    </t-radio-button>
+                    <t-radio-button value="protocol">
+                      协议
+                    </t-radio-button>
+                  </t-radio-group>
+                  <t-button
+                    theme="primary"
+                    size="small"
+                    :loading="logLoading"
+                    :disabled="ok !== true"
+                    @click="loadLogs(false)"
+                  >
+                    刷新
+                  </t-button>
                 </div>
               </div>
             </template>
-            <el-scrollbar ref="logScrollRef" v-loading="logLoading" class="log-scroll log-scroll--dash" @scroll="onLogScroll">
+            <div
+              ref="logScrollRef"
+              v-loading="logLoading"
+              class="log-scroll log-scroll--dash"
+              @scroll="onLogScroll"
+            >
               <PallasLogLines :lines="logLines" :empty-text="ok === true ? '（暂无输出）' : '—'" />
-            </el-scrollbar>
-          </el-card>
+            </div>
+          </t-card>
         </div>
 
         <div
           v-show="!isMobile || mobileDashSection === 'connect'"
           class="dash-right"
         >
-          <el-card class="nb-conn-card side-conn-card side-conn-card--nb" shadow="never">
+          <t-card :bordered="true" class="nb-conn-card side-conn-card side-conn-card--nb">
             <div class="nb-conn-hd">NoneBot</div>
             <div class="nb-conn-grid nb-conn-grid--nb-compact">
               <div class="nb-item"><span class="k">主机名</span><span class="v mono" :title="hostName">{{ hostName }}</span></div>
@@ -903,8 +953,8 @@ onUnmounted(() => {
               <div class="nb-item"><span class="k">驱动监听</span><span class="v mono">{{ driverHostPort }}</span></div>
               <div class="nb-item nb-item--dash-optional"><span class="k">超管</span><span class="v">{{ sysData?.superuser_count ?? "-" }}</span></div>
             </div>
-          </el-card>
-          <el-card class="nb-conn-card side-conn-card side-conn-card--ai" shadow="never">
+          </t-card>
+          <t-card :bordered="true" class="nb-conn-card side-conn-card side-conn-card--ai">
             <div class="nb-conn-hd">AI 连接</div>
             <div class="nb-conn-grid nb-conn-grid--ai-dash">
               <div class="nb-item nb-item--full">
@@ -917,7 +967,7 @@ onUnmounted(() => {
               </div>
               <div class="nb-item">
                 <span class="k">状态</span>
-                <span class="v"><el-tag :type="aiTest?.ok ? 'success' : 'danger'" size="small">{{ aiTest?.ok ? "已连接" : "未连接" }}</el-tag></span>
+                <span class="v"><t-tag :theme="aiTest?.ok ? 'success' : 'danger'" size="small" variant="light">{{ aiTest?.ok ? "已连接" : "未连接" }}</t-tag></span>
               </div>
               <div class="nb-item">
                 <span class="k">状态码</span>
@@ -925,9 +975,16 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="mini-actions">
-              <el-button type="primary" size="small" :loading="aiTesting" @click="loadAiStatus(false)">刷新 AI 连接</el-button>
+              <t-button
+                theme="primary"
+                size="small"
+                :loading="aiTesting"
+                @click="loadAiStatus(false)"
+              >
+                刷新 AI 连接
+              </t-button>
             </div>
-          </el-card>
+          </t-card>
         </div>
       </div>
     </section>
@@ -937,7 +994,7 @@ onUnmounted(() => {
 
     <div v-if="ok === false" class="pallas-dash-banner pallas-dash-banner--error" role="alert">
       <div class="pallas-dash-banner__icon" aria-hidden="true">
-        <el-icon><CircleCloseFilled /></el-icon>
+        <ErrorCircleFilledIcon class="pallas-dash-banner__icon-svg" />
       </div>
       <div class="pallas-dash-banner__body">
         <p class="pallas-dash-banner__title">无法连接控制台后端</p>
@@ -952,7 +1009,7 @@ onUnmounted(() => {
 
     <div v-if="ok === null" class="pallas-dash-banner pallas-dash-banner--pending" role="status">
       <div class="pallas-dash-banner__icon pallas-dash-banner__icon--muted" aria-hidden="true">
-        <el-icon><Warning /></el-icon>
+        <ErrorTriangleIcon class="pallas-dash-banner__icon-svg" />
       </div>
       <div class="pallas-dash-banner__body">
         <p class="pallas-dash-banner__title pallas-dash-banner__title--solo">正在连接控制台…</p>
@@ -1065,7 +1122,7 @@ onUnmounted(() => {
     flex-direction: column;
     overflow: hidden;
   }
-  .dash-left .bot-db-card :deep(.el-card__body) {
+  .dash-left .bot-db-card :deep(.t-card__body) {
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
@@ -1079,7 +1136,7 @@ onUnmounted(() => {
     flex-direction: column;
     overflow: visible;
   }
-  .dash-left .bot-hero :deep(.el-card__body) {
+  .dash-left .bot-hero :deep(.t-card__body) {
     flex: 0 0 auto;
     min-height: auto;
     overflow: visible;
@@ -1116,12 +1173,12 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
   }
-  .dash-left .msg-stats-card :deep(.el-card__body) {
+  .dash-left .msg-stats-card :deep(.t-card__body) {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
   }
-  .dash-right .side-conn-card--ai :deep(.el-card__body) {
+  .dash-right .side-conn-card--ai :deep(.t-card__body) {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1129,7 +1186,7 @@ onUnmounted(() => {
     padding: 6px 8px 8px;
     gap: 4px;
   }
-  .dash-system .gpu-card :deep(.el-card__body) {
+  .dash-system .gpu-card :deep(.t-card__body) {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
@@ -1145,25 +1202,25 @@ onUnmounted(() => {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
-    :deep(.el-card) {
+    :deep(.t-card) {
       flex: 1 1 0;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    :deep(.el-card__header) {
+    :deep(.t-card__header) {
       flex-shrink: 0;
       padding: 7px 10px;
     }
-    :deep(.el-card__body) {
+    :deep(.t-card__body) {
       flex: 1 1 0;
       display: flex;
       flex-direction: column;
       min-height: 0;
       padding-top: 6px;
       padding-bottom: 8px;
-      /* 仅由内层 el-scrollbar 承担滚动，避免卡片体与 wrap 各出一条纵向条 */
+      /* 内层日志区自行滚动 */
       overflow: hidden;
     }
   }
@@ -1173,40 +1230,28 @@ onUnmounted(() => {
     flex-basis: 0;
     min-height: 0;
     max-height: none;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
-  .dash-system .log-scroll--dash :deep(.el-scrollbar) {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: auto;
+  .dash-system .log-scroll--dash::-webkit-scrollbar {
+    width: 6px;
   }
-  .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap) {
-    max-height: none !important;
-    height: 100%;
-    overflow-x: hidden;
-    /* 隐藏 wrap 原生滚动条，只保留组件绘制的纵向轨道（否则常见「双滚动条」） */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap::-webkit-scrollbar) {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-  /* 细轨道 + 降低默认不透明度，减轻「大块滚动条」观感 */
-  .dash-system .log-scroll--dash :deep(.el-scrollbar) {
-    --el-scrollbar-opacity: 0.22;
-    --el-scrollbar-hover-opacity: 0.52;
-  }
-  .dash-system .log-scroll--dash :deep(.el-scrollbar__bar.is-vertical) {
-    width: 5px;
-    right: 1px;
+  .dash-system .log-scroll--dash::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--pallas-accent) 35%, transparent);
   }
 }
 .mobile-dash-switch {
   display: none;
+}
+.mobile-dash-radio {
+  width: 100%;
+  display: flex;
+}
+.mobile-dash-radio :deep(.t-radio-group__button) {
+  flex: 1 1 0;
+  justify-content: center;
 }
 @media (max-width: 900px) {
   .dash-top-grid {
@@ -1236,7 +1281,7 @@ onUnmounted(() => {
   .dash-system .log-card--dash-fill {
     flex: none !important;
     min-height: 0 !important;
-    :deep(.el-card__body) {
+    :deep(.t-card__body) {
       display: block !important;
       overflow: hidden;
     }
@@ -1244,12 +1289,9 @@ onUnmounted(() => {
   .dash-system .log-scroll--dash {
     max-height: min(228px, 42vh);
   }
-  .dash-system .log-scroll--dash :deep(.el-scrollbar__wrap) {
-    max-height: min(228px, 42vh) !important;
-  }
-  .nb-conn-card :deep(.el-card__body),
-  .intro-card :deep(.el-card__body),
-  .side-conn-card :deep(.el-card__body) {
+  .nb-conn-card :deep(.t-card__body),
+  .intro-card :deep(.t-card__body),
+  .side-conn-card :deep(.t-card__body) {
     padding: 8px;
   }
   .nb-conn-card {
@@ -1287,7 +1329,7 @@ onUnmounted(() => {
   .bot-inline-item .v {
     font-size: 13px;
   }
-  .stat-strip-card :deep(.el-card__body) {
+  .stat-strip-card :deep(.t-card__body) {
     padding: 8px 10px;
   }
   .stat-strip {
@@ -1319,7 +1361,7 @@ onUnmounted(() => {
     width: 100%;
     min-width: 0;
   }
-  .dash-left .bot-db-card :deep(.el-card__body) {
+  .dash-left .bot-db-card :deep(.t-card__body) {
     flex: none;
     min-height: auto;
     overflow: visible;
@@ -1358,10 +1400,10 @@ onUnmounted(() => {
   .bot-hero-actions {
     margin-bottom: 6px;
   }
-  .bot-hero-actions :deep(.el-link) {
+  .bot-hero-actions :deep(.t-link) {
     font-size: 12px;
   }
-  .dash-right .side-conn-card--ai .mini-actions :deep(.el-button) {
+  .dash-right .side-conn-card--ai .mini-actions :deep(.t-button) {
     font-size: 12px;
     padding: 5px 9px;
   }
@@ -1380,7 +1422,7 @@ onUnmounted(() => {
     -webkit-overflow-scrolling: touch;
   }
   /* 盖过文末 .bot-db-card .bot-db-grid-main，避免 minmax(0,1fr) 在窄屏把两列压得过扁 */
-  .view-page.dashboard .bot-db-card :deep(.el-card__body) {
+  .view-page.dashboard .bot-db-card :deep(.t-card__body) {
     padding: 8px 10px 10px;
   }
   .view-page.dashboard .bot-db-card .bot-db-grid-main {
@@ -1451,7 +1493,7 @@ onUnmounted(() => {
   border-left: 3px solid var(--c-main);
   box-shadow: var(--pallas-elev-1);
 }
-.stat-strip-card :deep(.el-card__body) {
+.stat-strip-card :deep(.t-card__body) {
   padding: 10px 12px;
   background: linear-gradient(165deg, color-mix(in srgb, var(--el-bg-color) 94%, var(--pallas-accent)) 0%, var(--el-bg-color) 100%);
 }
@@ -1526,7 +1568,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 @media (min-width: 901px) {
-  .dash-system .stat-strip-card :deep(.el-card__body) {
+  .dash-system .stat-strip-card :deep(.t-card__body) {
     padding: 8px 10px;
   }
   .dash-system .stat-strip-ico {
@@ -1671,7 +1713,7 @@ onUnmounted(() => {
 }
 .bot-hero--empty {
   min-height: 168px;
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding-top: 12px;
   }
 }
@@ -1701,7 +1743,7 @@ onUnmounted(() => {
   opacity: 0.88;
 }
 .bot-meta-card {
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 14px 16px;
     display: flex;
     align-items: center;
@@ -1711,7 +1753,7 @@ onUnmounted(() => {
   border-color: color-mix(in srgb, var(--pallas-accent) 16%, var(--el-border-color-lighter));
 }
 .bot-db-card {
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     display: flex;
     align-items: stretch;
     justify-content: flex-start;
@@ -1885,7 +1927,7 @@ onUnmounted(() => {
 .intro-card {
   border: 1px solid color-mix(in srgb, var(--pallas-accent) 20%, var(--el-border-color-lighter));
   background: var(--el-bg-color);
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 18px 22px;
   }
 }
@@ -1893,7 +1935,7 @@ onUnmounted(() => {
   border-color: var(--el-border-color-lighter);
   box-shadow: none;
   background: color-mix(in srgb, var(--el-bg-color) 96%, var(--pallas-accent));
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 10px 12px;
   }
   .intro-main {
@@ -1974,6 +2016,10 @@ onUnmounted(() => {
   color: #fff;
   background: linear-gradient(145deg, var(--el-color-danger), color-mix(in srgb, var(--el-color-danger) 75%, #000));
   box-shadow: 0 2px 8px color-mix(in srgb, var(--el-color-danger) 35%, transparent);
+}
+.pallas-dash-banner__icon-svg {
+  width: 22px;
+  height: 22px;
 }
 .pallas-dash-banner__icon--muted {
   background: var(--el-fill-color-dark);
@@ -2176,7 +2222,7 @@ html.dark .pallas-dash-banner__icon {
 .gpu-dash-idx {
   flex-shrink: 0;
 }
-.gpu-card :deep(.el-progress) {
+.gpu-card :deep(.t-progress) {
   display: block;
   margin-bottom: 0;
   line-height: 1;
@@ -2206,7 +2252,7 @@ html.dark .pallas-dash-banner__icon {
   user-select: none;
 }
 .side-conn-card {
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 8px 8px 10px;
   }
   .nb-conn-grid {
@@ -2225,7 +2271,7 @@ html.dark .pallas-dash-banner__icon {
   .side-conn-card--ai .nb-conn-grid--ai-dash .nb-item--full {
     grid-column: 1;
   }
-  .side-conn-card--ai .mini-actions :deep(.el-button) {
+  .side-conn-card--ai .mini-actions :deep(.t-button) {
     width: 100%;
   }
   .side-conn-card .nb-item:not(.nb-item--full) {
@@ -2270,7 +2316,7 @@ html.dark .pallas-dash-banner__icon {
   }
 }
 @container dash-bot (max-width: 280px) {
-  .bot-hero.bot-hero-vertical .bot-hero-head :deep(.el-avatar) {
+  .bot-hero.bot-hero-vertical .bot-hero-head :deep(.t-avatar) {
     width: 56px !important;
     height: 56px !important;
     font-size: 13px !important;
@@ -2296,7 +2342,7 @@ html.dark .pallas-dash-banner__icon {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .bot-hero.bot-hero-vertical .bot-hero-head :deep(.el-avatar) {
+  .bot-hero.bot-hero-vertical .bot-hero-head :deep(.t-avatar) {
     width: 48px !important;
     height: 48px !important;
     font-size: 11px !important;
@@ -2331,7 +2377,7 @@ html.dark .pallas-dash-banner__icon {
   .view-page.dashboard .dash-left .bot-hero .bot-hero-protocol-extra {
     display: none !important;
   }
-  .view-page.dashboard .dash-left .bot-hero.bot-hero-vertical .bot-hero-head :deep(.el-avatar) {
+  .view-page.dashboard .dash-left .bot-hero.bot-hero-vertical .bot-hero-head :deep(.t-avatar) {
     width: 62px !important;
     height: 62px !important;
   }
@@ -2359,7 +2405,7 @@ html.dark .pallas-dash-banner__icon {
 .v-mid { vertical-align: middle; }
 .log-card {
   border: 1px solid color-mix(in srgb, var(--pallas-accent) 12%, var(--el-border-color-lighter));
-  :deep(.el-card__header) {
+  :deep(.t-card__header) {
     padding: 12px 16px;
   }
 }

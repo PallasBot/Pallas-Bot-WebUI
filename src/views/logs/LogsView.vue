@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogEntryLevel, LogScope } from "@/api/pallasTypes";
-import { Document } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { confirmPallas } from "@/utils/pallasDialog";
+import { ArticleIcon } from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 
 const LEVELS: LogEntryLevel[] = ["debug", "info", "success", "warn", "error"];
@@ -106,17 +107,19 @@ async function onRefresh(): Promise<void> {
   try {
     await loadInitial();
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "刷新失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "刷新失败");
   }
 }
 
 async function onClearView(): Promise<void> {
   try {
-    await ElMessageBox.confirm(
-      "此操作仅清空浏览器视图中的日志，不会影响服务端的日志缓冲区。",
-      "清空当前日志视图？",
-      { type: "warning", confirmButtonText: "清空", cancelButtonText: "取消" },
-    );
+    await confirmPallas({
+      title: "清空当前日志视图？",
+      body: "此操作仅清空浏览器视图中的日志，不会影响服务端的日志缓冲区。",
+      theme: "warning",
+      confirmText: "清空",
+      cancelText: "取消",
+    });
     entries.value = [];
   } catch {
     /* cancel */
@@ -130,12 +133,12 @@ function copyVisible(): void {
   );
   const t = lines.join("\n");
   if (!t.trim()) {
-    ElMessage.warning("当前无可复制内容");
+    MessagePlugin.warning("当前无可复制内容");
     return;
   }
   void navigator.clipboard.writeText(t).then(
-    () => ElMessage.success("已复制"),
-    () => ElMessage.error("复制失败"),
+    () => MessagePlugin.success("已复制"),
+    () => MessagePlugin.error("复制失败"),
   );
 }
 
@@ -154,12 +157,12 @@ watch([entries, paused], () => {
 });
 
 watch(scope, () => {
-  void loadInitial().catch((e) => ElMessage.error(e instanceof Error ? e.message : "加载失败"));
+  void loadInitial().catch((e) => MessagePlugin.error(e instanceof Error ? e.message : "加载失败"));
   startStream();
 });
 
 onMounted(() => {
-  void loadInitial().catch((e) => ElMessage.error(e instanceof Error ? e.message : "加载失败"));
+  void loadInitial().catch((e) => MessagePlugin.error(e instanceof Error ? e.message : "加载失败"));
   startStream();
 });
 
@@ -170,42 +173,80 @@ onUnmounted(() => {
 
 <template>
   <div class="logs-page">
-    <el-card class="logs-card" shadow="never">
+    <t-card
+      class="logs-card"
+      :bordered="true"
+    >
       <template #header>
         <div class="logs-hd">
           <div class="logs-hd-titles">
             <div class="logs-title-row">
-              <el-icon class="logs-ico" :size="18">
-                <Document />
-              </el-icon>
+              <ArticleIcon class="logs-ico" />
               <span class="logs-title">运行日志</span>
-              <el-tag :type="streamStatus === '实时' ? 'success' : 'info'" size="small" effect="plain">
+              <t-tag
+                :theme="streamStatus === '实时' ? 'success' : 'default'"
+                variant="outline"
+                size="small"
+              >
                 {{ streamStatus }}
-              </el-tag>
+              </t-tag>
             </div>
             <p class="logs-desc">
               最近 {{ filtered.length }} / {{ entries.length }} 条 · SSE 推送 · 单次最多 {{ fetchN }}（上限 {{ maxLines }}）
             </p>
           </div>
           <div class="logs-tools">
-            <el-input
+            <t-input
               v-model="filterText"
               size="small"
               clearable
               placeholder="搜索消息 / 模块 / 级别"
               class="logs-search"
             />
-            <el-radio-group v-model="scope" size="small">
-              <el-radio-button label="all">全部</el-radio-button>
-              <el-radio-button label="webui">控制台</el-radio-button>
-              <el-radio-button label="protocol">协议</el-radio-button>
-            </el-radio-group>
-            <el-button size="small" @click="paused = !paused">
+            <t-radio-group
+              v-model="scope"
+              variant="default-filled"
+              size="small"
+            >
+              <t-radio-button value="all">
+                全部
+              </t-radio-button>
+              <t-radio-button value="webui">
+                控制台
+              </t-radio-button>
+              <t-radio-button value="protocol">
+                协议
+              </t-radio-button>
+            </t-radio-group>
+            <t-button
+              size="small"
+              variant="outline"
+              @click="paused = !paused"
+            >
               {{ paused ? "继续" : "暂停" }}
-            </el-button>
-            <el-button size="small" @click="onRefresh">刷新</el-button>
-            <el-button size="small" type="danger" plain @click="onClearView">清空视图</el-button>
-            <el-button size="small" @click="copyVisible">复制</el-button>
+            </t-button>
+            <t-button
+              size="small"
+              variant="outline"
+              @click="onRefresh"
+            >
+              刷新
+            </t-button>
+            <t-button
+              size="small"
+              theme="danger"
+              variant="outline"
+              @click="onClearView"
+            >
+              清空视图
+            </t-button>
+            <t-button
+              size="small"
+              variant="outline"
+              @click="copyVisible"
+            >
+              复制
+            </t-button>
           </div>
         </div>
       </template>
@@ -224,20 +265,32 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <el-card class="logs-scroll-card" shadow="never">
+        <div class="logs-scroll-card">
           <div class="logs-viewport">
-            <div v-if="filtered.length === 0" class="logs-empty">暂无日志</div>
-            <div v-for="log in filtered" :key="log.id" class="log-row">
+            <div
+              v-if="filtered.length === 0"
+              class="logs-empty"
+            >
+              暂无日志
+            </div>
+            <div
+              v-for="log in filtered"
+              :key="log.id"
+              class="log-row"
+            >
               <span class="log-t">{{ formatTime(log.time) }}</span>
-              <span class="log-lv" :class="levelClass(log.level)">{{ log.level.toUpperCase() }}</span>
+              <span
+                class="log-lv"
+                :class="levelClass(log.level)"
+              >{{ log.level.toUpperCase() }}</span>
               <span class="log-sc">[{{ log.scope }}]</span>
               <span class="log-msg">{{ log.message }}</span>
             </div>
             <div ref="logEndRef" />
           </div>
-        </el-card>
+        </div>
       </div>
-    </el-card>
+    </t-card>
   </div>
 </template>
 
@@ -260,11 +313,11 @@ onUnmounted(() => {
   flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
-  :deep(.el-card__header) {
+  :deep(.t-card__header) {
     padding: 18px 20px 12px;
     border-bottom: 1px solid var(--el-border-color-lighter);
   }
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 12px 18px 16px;
     display: flex;
     flex-direction: column;
@@ -288,13 +341,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  :deep(.el-card__body) {
-    padding: 0;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
 }
 .logs-hd {
   display: flex;
@@ -310,6 +356,9 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 .logs-ico {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   color: var(--el-color-primary);
 }
 .logs-title {

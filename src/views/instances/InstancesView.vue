@@ -25,9 +25,10 @@ import { pallasConnectionKey } from "@/types/pallas-connection";
 import { pallasBotContextKey } from "@/types/pallas-bot-context";
 import { getBotServiceBaseRef, ensureBotServiceBaseUrl } from "@/utils/botServiceBase";
 import { accountNativeWebUiUrl, protocolAccountUrl, protocolServiceHttpBase } from "@/utils/pallasProtocolPaths";
+import { confirmPallas } from "@/utils/pallasDialog";
 import { useMergedBotRows, type MergedBotRow } from "@/composables/useMergedBotRows";
-import { Connection } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ApplicationIcon } from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -43,7 +44,7 @@ type InstSection = "inst" | "friends" | "group";
 /** 路由页面范围 */
 const pageScope = computed(() => (route.meta.pallasScope === "accounts" ? "accounts" : "social"));
 
-const navItems = computed(() => [{ index: "inst", label: "实例", icon: Connection }]);
+const navItems = computed(() => [{ index: "inst", label: "实例", icon: ApplicationIcon }]);
 
 const sectionTitle: Record<InstSection, string> = {
   inst: "实例",
@@ -83,6 +84,7 @@ const protocolAccountRows = computed(
 );
 
 const pluginNames = ref<string[]>([]);
+const pluginOptions = computed(() => pluginNames.value.map((n) => ({ label: n, value: n })));
 
 const botBase = getBotServiceBaseRef();
 
@@ -227,7 +229,7 @@ const saving = ref(false);
 
 function openEditBot(row: MergedBotRow) {
   if (row.account < 0) {
-    ElMessage.warning("无法解析 self_id 为数字账号，请用数据库中已有账号行编辑或检查连接。");
+    MessagePlugin.warning("无法解析 self_id 为数字账号，请用数据库中已有账号行编辑或检查连接。");
     return;
   }
   const c = row.config;
@@ -277,11 +279,13 @@ async function batchDeleteBots() {
   const toDelete = mergedRows.value.filter((r) => selectedKeys.value.has(r.key) && r.account >= 0 && r.config);
   if (!toDelete.length) return;
   try {
-    await ElMessageBox.confirm(
-      `确认删除选中的 ${toDelete.length} 个实例配置？此操作不可撤销。`,
-      "批量删除",
-      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" },
-    );
+    await confirmPallas({
+      title: "批量删除",
+      body: `确认删除选中的 ${toDelete.length} 个实例配置？此操作不可撤销。`,
+      theme: "danger",
+      confirmText: "删除",
+      cancelText: "取消",
+    });
   } catch {
     return;
   }
@@ -302,9 +306,9 @@ async function batchDeleteBots() {
     selectedInstanceKey.value = mergedRows.value[0]?.key ?? null;
   }
   if (failedAccounts.length) {
-    ElMessage.warning(`已删除 ${successCount} 个，${failedAccounts.length} 个失败：${failedAccounts.join(", ")}`);
+    MessagePlugin.warning(`已删除 ${successCount} 个，${failedAccounts.length} 个失败：${failedAccounts.join(", ")}`);
   } else {
-    ElMessage.success(`已删除 ${successCount} 个实例配置`);
+    MessagePlugin.success(`已删除 ${successCount} 个实例配置`);
   }
   batchDeleting.value = false;
 }
@@ -312,11 +316,13 @@ async function batchDeleteBots() {
 async function deleteBot(row: MergedBotRow) {
   if (row.account < 0 || !row.config) return;
   try {
-    await ElMessageBox.confirm(
-      `确认删除 Bot QQ ${row.account} 的数据库配置？此操作不可撤销。`,
-      "删除实例配置",
-      { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" },
-    );
+    await confirmPallas({
+      title: "删除实例配置",
+      body: `确认删除 Bot QQ ${row.account} 的数据库配置？此操作不可撤销。`,
+      theme: "danger",
+      confirmText: "删除",
+      cancelText: "取消",
+    });
   } catch {
     return;
   }
@@ -327,9 +333,9 @@ async function deleteBot(row: MergedBotRow) {
     if (selectedInstanceKey.value === row.key) {
       selectedInstanceKey.value = mergedRows.value.find((r) => r.key !== row.key)?.key ?? null;
     }
-    ElMessage.success("已删除");
+    MessagePlugin.success("已删除");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "删除失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "删除失败");
   } finally {
     deleting.value = false;
   }
@@ -348,10 +354,10 @@ async function saveBot() {
     const i = dbBots.value.findIndex((b) => b.account === updated.account);
     if (i >= 0) dbBots.value[i] = updated;
     else dbBots.value = [...dbBots.value, updated];
-    ElMessage.success("已保存");
+    MessagePlugin.success("已保存");
     botDialog.value = false;
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "保存失败");
   } finally {
     saving.value = false;
   }
@@ -361,6 +367,12 @@ const editGroupId = ref(0);
 const gFormDisabled = ref<string[]>([]);
 const gFormRoulette = ref<0 | 1>(1);
 const gFormBanned = ref(false);
+const gFormRouletteSwitch = computed({
+  get: () => gFormRoulette.value === 1,
+  set: (v: boolean) => {
+    gFormRoulette.value = v ? 1 : 0;
+  },
+});
 const gSaving = ref(false);
 
 
@@ -374,9 +386,9 @@ async function saveGroup() {
     });
     const i = groups.value.findIndex((x) => x.group_id === updated.group_id);
     if (i >= 0) groups.value[i] = updated;
-    ElMessage.success("已保存");
+    MessagePlugin.success("已保存");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "保存失败");
   } finally {
     gSaving.value = false;
   }
@@ -395,7 +407,7 @@ async function loadFriendOverview() {
     const d = await fetchFriendRequests({ doubt: true });
     friendOverview.value = d.bots;
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "好友申请概览加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "好友申请概览加载失败");
     friendOverview.value = [];
   } finally {
     friendOvLoading.value = false;
@@ -480,7 +492,7 @@ async function loadSelectedUserConfig() {
     uFormBanned.value = data.banned;
   } catch (e) {
     userCfg.value = null;
-    ElMessage.error(e instanceof Error ? e.message : "用户配置加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "用户配置加载失败");
   } finally {
     userCfgLoading.value = false;
   }
@@ -493,9 +505,9 @@ async function saveUserConfig() {
   try {
     const data = await putUserConfig(uid, { banned: uFormBanned.value });
     userCfg.value = data;
-    ElMessage.success("已保存用户配置");
+    MessagePlugin.success("已保存用户配置");
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "用户配置保存失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "用户配置保存失败");
   } finally {
     userCfgSaving.value = false;
   }
@@ -536,7 +548,7 @@ async function load() {
     botProfiles.value = data.bot_profiles ?? {};
     protocolSnap.value = data.pallas_protocol ?? data.napcat ?? null;
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "加载失败");
   } finally {
     loading.value = false;
   }
@@ -548,7 +560,7 @@ async function loadGroups(selfId?: string | null) {
     const sid = selfId && /^\d+$/.test(selfId) ? parseInt(selfId, 10) : undefined;
     groups.value = await fetchGroupConfigs(socialPullLimit.value, sid);
   } catch (e) {
-    ElMessage.error(e instanceof Error ? e.message : "群配置加载失败");
+    MessagePlugin.error(e instanceof Error ? e.message : "群配置加载失败");
     groups.value = [];
   } finally {
     groupLoading.value = false;
@@ -741,25 +753,28 @@ watch(
         v-if="isMobile"
         class="mobile-pane-switch"
       >
-        <el-segmented
+        <t-radio-group
           v-model="mobileAccountsPane"
-          :options="[
-            { label: '实例列表', value: 'list' },
-            { label: '实例详情', value: 'detail' },
-          ]"
+          variant="default-filled"
           size="small"
-          block
-        />
+          class="mobile-pane-radio"
+        >
+          <t-radio-button value="list">
+            实例列表
+          </t-radio-button>
+          <t-radio-button value="detail">
+            实例详情
+          </t-radio-button>
+        </t-radio-group>
       </div>
       <div class="pan3 pan3--list-left">
         <section
           v-show="!isMobile || mobileAccountsPane === 'list'"
           class="pan3-main"
         >
-          <el-card
+          <t-card :bordered="true"
             v-loading="loading"
             class="c c-account-list"
-            shadow="hover"
           >
             <template #header>
               <div class="hd hd-inst-card">
@@ -776,12 +791,19 @@ watch(
                     >无协议快照</span>
                   </div>
                 </div>
-                <el-segmented
+                <t-radio-group
                   v-model="instanceListMode"
                   class="inst-list-segmented"
-                  :options="instanceListSegmentOptions"
+                  variant="default-filled"
                   size="small"
-                />
+                >
+                  <t-radio-button value="all">
+                    {{ instanceListSegmentOptions[0]?.label }}
+                  </t-radio-button>
+                  <t-radio-button value="adapter">
+                    {{ instanceListSegmentOptions[1]?.label }}
+                  </t-radio-button>
+                </t-radio-group>
               </div>
             </template>
             <div class="card-list-scroll">
@@ -798,125 +820,141 @@ watch(
                 @click="onInstRowClick(row)"
               >
                 <div class="mini-card-hd">
-                  <el-checkbox
+                  <t-checkbox
                     v-if="row.account >= 0 && row.config"
-                    :model-value="selectedKeys.has(row.key)"
+                    :checked="selectedKeys.has(row.key)"
                     class="mini-card-check"
-                    @click.stop="toggleSelect(row.key)"
+                    @click.stop
+                    @change="toggleSelect(row.key)"
                   />
                   <span class="mini-card-bot-name">{{ botNickname(row) }}</span>
-                  <el-tag :type="row.online ? 'success' : 'info'" size="small">{{ row.online ? "已连接" : "未连接" }}</el-tag>
+                  <t-tag
+                    :theme="row.online ? 'success' : 'default'"
+                    variant="light"
+                    size="small"
+                  >{{ row.online ? "已连接" : "未连接" }}</t-tag>
                 </div>
                 <div class="mini-kv">Bot QQ：<span class="mono">{{ row.account >= 0 ? row.account : row.selfId }}</span></div>
                 <div class="mini-kv">协议类型：{{ row.adapter }}</div>
                 <div class="mini-kv">管理员：<span class="mono sm">{{ row.config?.admins?.length ? row.config.admins.join(", ") : "—" }}</span></div>
                 <div class="mini-tags">
-                  <el-tag
+                  <t-tag
                     v-for="n in (row.config?.disabled_plugins || []).slice(0, 4)"
                     :key="n"
                     class="tag"
                     size="small"
-                    type="warning"
-                  >{{ n }}</el-tag>
+                    theme="warning"
+                    variant="light"
+                  >{{ n }}</t-tag>
                   <span class="mini-tags-empty" v-if="!(row.config?.disabled_plugins || []).length">无禁用插件</span>
                 </div>
                 <div class="mini-actions">
-                  <el-button
+                  <t-button
                     v-if="row.account >= 0"
-                    type="primary"
-                    link
+                    theme="primary"
+                    variant="text"
                     @click.stop="openEditBot(row)"
-                  >修改</el-button>
-                  <el-button
+                  >
+                    修改
+                  </t-button>
+                  <t-button
                     v-if="row.account >= 0 && row.config"
-                    type="danger"
-                    link
+                    theme="danger"
+                    variant="text"
                     :loading="deleting"
                     @click.stop="deleteBot(row)"
-                  >删除</el-button>
+                  >
+                    删除
+                  </t-button>
                 </div>
               </button>
               </div>
-              <el-empty
+              <t-empty
                 v-else
                 class="inst-list-empty"
                 :description="instanceListMode === 'adapter' ? '暂无 NoneBot 当前连接' : '暂无实例数据'"
-                :image-size="72"
               />
             </div>
             <div class="ft">
-              <el-button
-                type="primary"
-                plain
+              <t-button
+                theme="primary"
+                variant="outline"
                 :loading="loading"
                 @click="load"
-              >刷新本页</el-button>
+              >
+                刷新本页
+              </t-button>
               <template v-if="deletableRows.length">
-                <el-checkbox
-                  :model-value="allDeletableSelected"
+                <t-checkbox
+                  :checked="allDeletableSelected"
                   :indeterminate="selectedKeys.size > 0 && !allDeletableSelected"
-                  @click="toggleSelectAll"
-                >全选</el-checkbox>
-                <el-button
+                  @change="toggleSelectAll"
+                >
+                  全选
+                </t-checkbox>
+                <t-button
                   v-if="selectedKeys.size > 0"
-                  type="danger"
+                  theme="danger"
                   :loading="batchDeleting"
                   @click="batchDeleteBots"
-                >批量删除 ({{ selectedKeys.size }})</el-button>
+                >
+                  批量删除 ({{ selectedKeys.size }})
+                </t-button>
               </template>
             </div>
-          </el-card>
+          </t-card>
         </section>
         <aside
           v-show="!isMobile || mobileAccountsPane === 'detail'"
           class="pan3-insp"
           aria-label="实例详情"
         >
-          <el-card
+          <t-card :bordered="true"
             v-if="selectedMergedRow"
             class="c c-insp"
-            shadow="hover"
           >
             <template #header>
               <span class="insp-h">当前实例</span>
             </template>
-            <el-descriptions
+            <t-descriptions
               :column="1"
-              border
+              bordered
               size="small"
               class="insp-desc"
             >
-              <el-descriptions-item label="昵称">
+              <t-descriptions-item label="昵称">
                 {{ botNickname(selectedMergedRow) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="Bot QQ">
+              </t-descriptions-item>
+              <t-descriptions-item label="Bot QQ">
                 {{ selectedMergedRow.account >= 0 ? selectedMergedRow.account : "?" }}
-              </el-descriptions-item>
-              <el-descriptions-item label="适配器">
+              </t-descriptions-item>
+              <t-descriptions-item label="适配器">
                 {{ selectedMergedRow.adapter }}
-              </el-descriptions-item>
-              <el-descriptions-item label="连接">
-                <el-tag
-                  :type="selectedMergedRow.online ? 'success' : 'info'"
+              </t-descriptions-item>
+              <t-descriptions-item label="连接">
+                <t-tag
+                  :theme="selectedMergedRow.online ? 'success' : 'default'"
+                  variant="light"
                   size="small"
-                >{{ selectedMergedRow.online ? "已连接" : "未连接" }}</el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="管理员">
+                >{{ selectedMergedRow.online ? "已连接" : "未连接" }}</t-tag>
+              </t-descriptions-item>
+              <t-descriptions-item label="管理员">
                 <span
                   v-if="selectedMergedRow.config?.admins?.length"
                   class="mono sm"
                 >{{ selectedMergedRow.config.admins.join(", ") }}</span>
                 <span v-else>—</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="禁用插件">
+              </t-descriptions-item>
+              <t-descriptions-item label="禁用插件">
                 <div class="insp-tags">
-                  <el-tag
+                  <t-tag
                     v-for="n in (selectedMergedRow.config?.disabled_plugins || []).slice(0, 10)"
                     :key="n"
                     class="tag"
                     size="small"
-                    type="warning"
-                  >{{ n }}</el-tag>
+                    theme="warning"
+                    variant="light"
+                  >{{ n }}</t-tag>
                   <span
                     v-if="(selectedMergedRow.config?.disabled_plugins || []).length > 10"
                     class="sm"
@@ -925,35 +963,39 @@ watch(
                     v-if="!(selectedMergedRow.config?.disabled_plugins || []).length"
                   >—</span>
                 </div>
-              </el-descriptions-item>
-              <el-descriptions-item
+              </t-descriptions-item>
+              <t-descriptions-item
                 v-if="selectedMergedRow.config"
                 label="自动同意"
               >
                 <span class="insp-accept-tags">
-                  <el-tag :type="selectedMergedRow.config.auto_accept_friend ? 'success' : 'info'" size="small">好友 {{ selectedMergedRow.config.auto_accept_friend ? "自动通过" : "手动审核" }}</el-tag>
-                  <el-tag :type="selectedMergedRow.config.auto_accept_group ? 'success' : 'info'" size="small">入群 {{ selectedMergedRow.config.auto_accept_group ? "自动通过" : "手动审核" }}</el-tag>
+                  <t-tag :theme="selectedMergedRow.config.auto_accept_friend ? 'success' : 'default'" variant="light" size="small">好友 {{ selectedMergedRow.config.auto_accept_friend ? "自动通过" : "手动审核" }}</t-tag>
+                  <t-tag :theme="selectedMergedRow.config.auto_accept_group ? 'success' : 'default'" variant="light" size="small">入群 {{ selectedMergedRow.config.auto_accept_group ? "自动通过" : "手动审核" }}</t-tag>
                 </span>
-              </el-descriptions-item>
-              <el-descriptions-item
+              </t-descriptions-item>
+              <t-descriptions-item
                 v-if="selectedMergedRow.config"
                 label="安全模式"
-              >{{ selectedMergedRow.config.security ? "开" : "关" }}</el-descriptions-item>
-            </el-descriptions>
+              >{{ selectedMergedRow.config.security ? "开" : "关" }}</t-descriptions-item>
+            </t-descriptions>
             <div class="insp-actions">
-              <el-button
-                type="primary"
+              <t-button
+                theme="primary"
                 size="small"
                 :disabled="selectedMergedRow.account < 0"
                 @click="openEditBot(selectedMergedRow)"
-              >修改配置</el-button>
-              <el-button
+              >
+                修改配置
+              </t-button>
+              <t-button
                 v-if="selectedMergedRow.account >= 0 && selectedMergedRow.config"
-                type="danger"
+                theme="danger"
                 size="small"
                 :loading="deleting"
                 @click="deleteBot(selectedMergedRow)"
-              >删除实例</el-button>
+              >
+                删除实例
+              </t-button>
             </div>
             <div
               v-if="protocolSnap && protocolAccountsForSelection.length"
@@ -965,37 +1007,42 @@ watch(
                 :key="String(r.qq ?? r.id ?? '')"
                 class="insp-nap-row"
               >
-                <el-tag
+                <t-tag
                   size="small"
-                  :type="r.connected ? 'success' : 'info'"
-                >{{ r.connected ? "已连接" : "未连接" }}</el-tag>
-                <el-link
+                  variant="light"
+                  :theme="r.connected ? 'success' : 'default'"
+                >{{ r.connected ? "已连接" : "未连接" }}</t-tag>
+                <t-link
                   v-if="protocolSnap.webui_enabled"
-                  type="primary"
+                  theme="primary"
+                  hover="color"
                   :href="pallasProtocolAccountUrl(r)"
-                >Pallas-Bot 管理</el-link>
-                <el-link
+                >
+                  Pallas-Bot 管理
+                </t-link>
+                <t-link
                   v-if="accountNativeWebUiUrl(r)"
-                  type="primary"
+                  theme="primary"
+                  hover="color"
                   :href="accountNativeWebUiUrl(r)"
-                >原生Web</el-link>
+                >
+                  原生Web
+                </t-link>
               </div>
             </div>
             <p
               v-else-if="protocolSnap"
               class="muted sm insp-tip"
             >协议端未登记此 QQ。</p>
-          </el-card>
-          <el-card
+          </t-card>
+          <t-card :bordered="true"
             v-else
             class="c c-insp"
-            shadow="hover"
           >
-            <el-empty
+            <t-empty
               description="请选择实例"
-              :image-size="64"
             />
-          </el-card>
+          </t-card>
         </aside>
       </div>
 
@@ -1010,15 +1057,19 @@ watch(
           v-if="isMobile"
           class="mobile-pane-switch"
         >
-          <el-segmented
+          <t-radio-group
             v-model="mobileSocialSection"
-            :options="[
-              { label: '好友', value: 'friend' },
-              { label: '群', value: 'group' },
-            ]"
+            variant="default-filled"
             size="small"
-            block
-          />
+            class="mobile-pane-radio"
+          >
+            <t-radio-button value="friend">
+              好友
+            </t-radio-button>
+            <t-radio-button value="group">
+              群
+            </t-radio-button>
+          </t-radio-group>
         </div>
         <div
           v-show="!isMobile || mobileSocialSection === 'friend'"
@@ -1028,30 +1079,33 @@ watch(
             v-if="isMobile"
             class="mobile-pane-switch"
           >
-            <el-segmented
+            <t-radio-group
               v-model="mobileFriendPane"
-              :options="[
-                { label: '好友列表', value: 'list' },
-                { label: '好友配置', value: 'panel' },
-              ]"
+              variant="default-filled"
               size="small"
-              block
-            />
+              class="mobile-pane-radio"
+            >
+              <t-radio-button value="list">
+                好友列表
+              </t-radio-button>
+              <t-radio-button value="panel">
+                好友配置
+              </t-radio-button>
+            </t-radio-group>
           </div>
           <aside
             v-show="!isMobile || mobileFriendPane === 'list'"
             class="pan3-insp pan3-insp-wide"
             aria-label="好友列表"
           >
-            <el-card
+            <t-card :bordered="true"
               v-if="socialFriendList"
               class="c c-insp"
-              shadow="hover"
             >
               <template #header>
                 <div class="list-head">
                   <span class="insp-h">好友列表</span>
-                  <el-input
+                  <t-input
                     v-model="friendIdFilter"
                     class="list-search"
                     size="small"
@@ -1079,26 +1133,23 @@ watch(
                   </div>
                 </div>
               </div>
-            </el-card>
-            <el-card
+            </t-card>
+            <t-card :bordered="true"
               v-else
               class="c c-insp"
-              shadow="hover"
             >
-              <el-empty
+              <t-empty
                 description="该实例暂无可读好友列表"
-                :image-size="64"
               />
-            </el-card>
+            </t-card>
           </aside>
           <section
             v-show="!isMobile || mobileFriendPane === 'panel'"
             class="pan3-main"
           >
-            <el-card
+            <t-card :bordered="true"
               v-loading="friendOvLoading || socialFriendListLoading"
               class="c"
-              shadow="hover"
             >
               <template #header>
                 <div class="hd2">
@@ -1107,24 +1158,26 @@ watch(
                   </div>
                   <div class="hd2-ctl">
                     <span class="num-lab" title="拉取数量">条数</span>
-                    <el-input-number
+                    <t-input-number
                       v-model="socialPullLimit"
                       :min="50"
                       :max="10000"
                       :step="50"
                       size="small"
-                      controls-position="right"
+                      theme="column"
                       class="num num--pull"
                       @change="() => void loadSocialFriendList(socialSelectedBotSelfId)"
                     />
-                    <el-button
-                      type="primary"
-                      plain
+                    <t-button
+                      theme="primary"
+                      variant="outline"
                       size="small"
                       :loading="friendOvLoading || socialFriendListLoading"
                       :disabled="!pallasApiOk"
                       @click="loadFriendOverview(); loadSocialFriendList(socialSelectedBotSelfId)"
-                    >刷新</el-button>
+                    >
+                      刷新
+                    </t-button>
                   </div>
                 </div>
               </template>
@@ -1138,7 +1191,11 @@ watch(
                     <div class="cfg-row">
                       <span class="k">当前实例</span>
                       <span class="v mono">{{ socialSelectedBot.account >= 0 ? socialSelectedBot.account : socialSelectedBot.selfId }}</span>
-                      <el-tag :type="socialSelectedBot.online ? 'success' : 'info'" size="small">{{ socialSelectedBot.online ? "已连接" : "未连接" }}</el-tag>
+                      <t-tag
+                        :theme="socialSelectedBot.online ? 'success' : 'default'"
+                        variant="light"
+                        size="small"
+                      >{{ socialSelectedBot.online ? "已连接" : "未连接" }}</t-tag>
                     </div>
                     <div class="cfg-row">
                       <span class="k">自动同意好友</span>
@@ -1166,38 +1223,45 @@ watch(
                 </div>
                 <div class="cfg-card cfg-card--op">
                   <div class="cfg-card-title">用户控制</div>
-                  <el-form v-loading="userCfgLoading" size="small" label-width="88px">
-                    <el-form-item label="用户封禁">
-                      <el-switch
-                        v-model="uFormBanned"
-                        :disabled="!selectedFriendUserId"
-                        active-text="已封禁"
-                        inactive-text="正常"
-                      />
-                    </el-form-item>
-                  </el-form>
+                  <div
+                    v-loading="userCfgLoading"
+                    class="cfg-form-wrap"
+                  >
+                    <t-form label-width="88px">
+                      <t-form-item label="用户封禁">
+                        <t-switch
+                          v-model="uFormBanned"
+                          :disabled="!selectedFriendUserId"
+                          :label="['正常', '已封禁']"
+                        />
+                      </t-form-item>
+                    </t-form>
+                  </div>
                   <div class="mini-actions">
-                    <el-button
-                      type="primary"
+                    <t-button
+                      theme="primary"
                       :disabled="!selectedFriendUserId"
                       :loading="userCfgSaving"
                       @click="saveUserConfig"
-                    >保存用户配置</el-button>
-                    <el-button
-                      type="primary"
-                      link
+                    >
+                      保存用户配置
+                    </t-button>
+                    <t-button
+                      theme="primary"
+                      variant="text"
                       :disabled="socialSelectedBot.account < 0"
                       @click="openEditBot(socialSelectedBot)"
-                    >编辑 Bot 配置</el-button>
+                    >
+                      编辑 Bot 配置
+                    </t-button>
                   </div>
                 </div>
               </div>
-              <el-empty
+              <t-empty
                 v-else
                 description="请先选择可用实例"
-                :image-size="72"
               />
-            </el-card>
+            </t-card>
           </section>
         </div>
 
@@ -1209,26 +1273,30 @@ watch(
             v-if="isMobile"
             class="mobile-pane-switch"
           >
-            <el-segmented
+            <t-radio-group
               v-model="mobileGroupPane"
-              :options="[
-                { label: '群列表', value: 'list' },
-                { label: '群配置', value: 'panel' },
-              ]"
+              variant="default-filled"
               size="small"
-              block
-            />
+              class="mobile-pane-radio"
+            >
+              <t-radio-button value="list">
+                群列表
+              </t-radio-button>
+              <t-radio-button value="panel">
+                群配置
+              </t-radio-button>
+            </t-radio-group>
           </div>
           <aside
             v-show="!isMobile || mobileGroupPane === 'list'"
             class="pan3-insp pan3-insp-wide"
             aria-label="群列表"
           >
-            <el-card v-loading="groupLoading" class="c c-insp" shadow="hover">
+            <t-card :bordered="true" v-loading="groupLoading" class="c c-insp">
               <template #header>
                 <div class="list-head">
                   <span class="insp-h">群列表</span>
-                  <el-input
+                  <t-input
                     v-model="groupIdFilter"
                     class="list-search"
                     size="small"
@@ -1249,7 +1317,11 @@ watch(
                   >
                     <div class="li-title">
                       <strong class="li-name mono">{{ g.group_id }}</strong>
-                      <el-tag :type="g.banned ? 'danger' : 'success'" size="small">{{ g.banned ? "封禁" : "正常" }}</el-tag>
+                      <t-tag
+                        :theme="g.banned ? 'danger' : 'success'"
+                        variant="light"
+                        size="small"
+                      >{{ g.banned ? "封禁" : "正常" }}</t-tag>
                     </div>
                     <div class="li-meta">
                       <span class="li-badge">轮盘 {{ rouletteModeLabel(g.roulette_mode) }}</span>
@@ -1258,16 +1330,15 @@ watch(
                   </button>
                 </div>
               </div>
-            </el-card>
+            </t-card>
           </aside>
           <section
             v-show="!isMobile || mobileGroupPane === 'panel'"
             class="pan3-main"
           >
-            <el-card
+            <t-card :bordered="true"
               v-loading="groupLoading"
               class="c"
-              shadow="hover"
             >
               <template #header>
                 <div class="hd2">
@@ -1276,23 +1347,25 @@ watch(
                   </div>
                   <div class="hd2-ctl">
                     <span class="num-lab" title="拉取数量">条数</span>
-                    <el-input-number
+                    <t-input-number
                       v-model="socialPullLimit"
                       :min="50"
                       :max="10000"
                       :step="50"
                       size="small"
-                      controls-position="right"
+                      theme="column"
                       class="num num--pull"
                       @change="() => void loadGroups(socialSelectedBotSelfId)"
                     />
-                    <el-button
-                      type="primary"
-                      plain
+                    <t-button
+                      theme="primary"
+                      variant="outline"
                       size="small"
                       :loading="groupLoading"
                       @click="() => void loadGroups(socialSelectedBotSelfId)"
-                    >刷新</el-button>
+                    >
+                      刷新
+                    </t-button>
                   </div>
                 </div>
               </template>
@@ -1316,59 +1389,49 @@ watch(
                     <div class="cfg-card-title">群策略</div>
                     <div class="cfg-row cfg-row-switch">
                       <span class="k">轮盘模式</span>
-                      <el-switch
-                        v-model="gFormRoulette"
-                        :active-value="1"
-                        :inactive-value="0"
-                        active-text="禁言"
-                        inactive-text="踢人"
+                      <t-switch
+                        v-model="gFormRouletteSwitch"
+                        :label="['踢人', '禁言']"
                       />
                     </div>
                     <div class="cfg-row cfg-row-switch">
                       <span class="k">封禁</span>
-                      <el-switch v-model="gFormBanned" />
+                      <t-switch v-model="gFormBanned" />
                     </div>
                   </div>
                 </div>
                 <div class="cfg-card cfg-card--op">
                   <div class="cfg-card-title">插件控制</div>
-                  <el-form size="small" label-width="92px">
-                    <el-form-item label="本群禁用插件">
-                      <el-select
+                  <t-form label-width="92px">
+                    <t-form-item label="本群禁用插件">
+                      <t-select
                         v-model="gFormDisabled"
+                        class="w"
                         multiple
                         filterable
-                        allow-create
-                        default-first-option
-                        collapse-tags
-                        collapse-tags-tooltip
-                        :max-collapse-tags="2"
-                        class="w"
-                      >
-                        <el-option
-                          v-for="n in pluginNames"
-                          :key="n"
-                          :label="n"
-                          :value="n"
-                        />
-                      </el-select>
-                    </el-form-item>
-                  </el-form>
+                        creatable
+                        :options="pluginOptions"
+                        :min-collapsed-num="2"
+                        placeholder="选择或输入插件名"
+                      />
+                    </t-form-item>
+                  </t-form>
                   <div class="mini-actions">
-                    <el-button
-                      type="primary"
+                    <t-button
+                      theme="primary"
                       :loading="gSaving"
                       @click="saveGroup"
-                    >保存群配置模板</el-button>
+                    >
+                      保存群配置模板
+                    </t-button>
                   </div>
                 </div>
               </div>
-              <el-empty
+              <t-empty
                 v-else
                 description="请先在左侧选择群"
-                :image-size="72"
               />
-            </el-card>
+            </t-card>
           </section>
         </div>
       </div>
@@ -1376,59 +1439,66 @@ watch(
 
     </PallasSidebarShell>
 
-    <el-dialog
-      v-model="botDialog"
-      :title="`编辑 Bot（QQ ${editAccount}）`"
+    <t-dialog
+      v-model:visible="botDialog"
+      :header="`编辑 Bot（QQ ${editAccount}）`"
       width="min(92vw, 520px)"
       destroy-on-close
+      attach="body"
     >
-      <el-form label-width="130px">
-        <el-form-item label="管理员 QQ">
-          <el-input
+      <t-form label-width="130px">
+        <t-form-item label="管理员 QQ">
+          <t-textarea
             v-model="formAdminsText"
-            type="textarea"
-            :rows="2"
+            :autosize="{ minRows: 2, maxRows: 6 }"
             class="w"
             placeholder="逗号或空格分隔，如 12345, 67890"
           />
-        </el-form-item>
-        <el-form-item label="本号禁用的插件">
-          <el-select
+        </t-form-item>
+        <t-form-item label="本号禁用的插件">
+          <t-select
             v-model="formDisabled"
+            class="w"
             multiple
             filterable
-            allow-create
-            default-first-option
+            creatable
+            :options="pluginOptions"
             placeholder="从已加载插件中选，或直接输入后回车"
-            class="w"
+          />
+        </t-form-item>
+        <t-form-item label="好友与入群">
+          <t-space
+            size="small"
+            break-line
           >
-            <el-option
-              v-for="n in pluginNames"
-              :key="n"
-              :label="n"
-              :value="n"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="好友与入群">
-          <el-space>
-            <el-checkbox v-model="formAutoFriend">自动同意好友请求</el-checkbox>
-            <el-checkbox v-model="formAutoGroup">自动同意入群邀请</el-checkbox>
-          </el-space>
-        </el-form-item>
-        <el-form-item label="安全模式">
-          <el-switch v-model="formSecurity" />
-        </el-form-item>
-      </el-form>
+            <t-checkbox v-model="formAutoFriend">
+              自动同意好友请求
+            </t-checkbox>
+            <t-checkbox v-model="formAutoGroup">
+              自动同意入群邀请
+            </t-checkbox>
+          </t-space>
+        </t-form-item>
+        <t-form-item label="安全模式">
+          <t-switch v-model="formSecurity" />
+        </t-form-item>
+      </t-form>
       <template #footer>
-        <el-button @click="botDialog = false">取消</el-button>
-        <el-button
-          type="primary"
+        <t-button
+          variant="outline"
+          @click="botDialog = false"
+        >
+          取消
+        </t-button>
+        <t-button
+          theme="primary"
           :loading="saving"
           @click="saveBot"
-        >保存</el-button>
+        >
+          保存
+        </t-button>
       </template>
-    </el-dialog>
+    </t-dialog>
 
   </div>
 </template>
@@ -1449,7 +1519,7 @@ watch(
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  :deep(.el-radio-button__inner) {
+  :deep(.t-radio-button__label) {
     min-width: 68px;
     text-align: center;
   }
@@ -1502,6 +1572,13 @@ watch(
 .mobile-pane-switch {
   display: none;
 }
+.mobile-pane-radio {
+  width: 100%;
+}
+.cfg-form-wrap {
+  position: relative;
+  min-height: 48px;
+}
 .social-stack {
   display: flex;
   flex-direction: column;
@@ -1542,7 +1619,7 @@ watch(
     min-height: 0;
     overflow: hidden;
   }
-  .c :deep(.el-card__header) {
+  .c :deep(.t-card__header) {
     padding: 8px 12px;
   }
   .hd2 {
@@ -1564,14 +1641,14 @@ watch(
     width: 128px;
     max-width: min(36vw, 160px);
   }
-  .c :deep(.el-card__body) {
+  .c :deep(.t-card__body) {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
   }
-  .pan3-main > .c :deep(.el-card__body) {
+  .pan3-main > .c :deep(.t-card__body) {
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -1601,7 +1678,7 @@ watch(
   overflow: hidden;
   margin-bottom: 0;
 }
-.c-account-list :deep(.el-card__body) {
+.c-account-list :deep(.t-card__body) {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1627,7 +1704,7 @@ watch(
   overflow: hidden;
   margin-bottom: 0;
 }
-.inst-panel > .pan3 > .pan3-insp > .c :deep(.el-card__body) {
+.inst-panel > .pan3 > .pan3-insp > .c :deep(.t-card__body) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1825,10 +1902,10 @@ button.mini-card:hover {
   margin-top: 12px;
   grid-column: 1 / -1;
 }
-.cfg-panel--group .cfg-card--op :deep(.el-form-item) {
+.cfg-panel--group .cfg-card--op :deep(.t-form__item) {
   margin-bottom: 8px;
 }
-.cfg-panel--group .cfg-card--op :deep(.el-form-item:last-child) {
+.cfg-panel--group .cfg-card--op :deep(.t-form__item:last-child) {
   margin-bottom: 0;
 }
 .cfg-panel--group .cfg-card {
@@ -1968,7 +2045,7 @@ html.dark .cfg-card-title {
   justify-content: flex-start;
   flex-wrap: wrap;
 }
-.li-sub :deep(.el-tag) {
+.li-sub :deep(.t-tag) {
   height: 19px;
   line-height: 17px;
   padding: 0 8px;
@@ -1984,7 +2061,7 @@ html.dark .cfg-card-title {
 }
 .c-insp {
   margin-bottom: 0;
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding-top: 12px;
   }
 }
@@ -2040,7 +2117,7 @@ html.dark .cfg-card-title {
   align-items: center;
   gap: 6px;
 }
-.insp-desc :deep(.el-descriptions__label) {
+.insp-desc :deep(.t-descriptions__label) {
   white-space: nowrap;
 }
 .mini-card-check {
@@ -2069,12 +2146,6 @@ html.dark .cfg-card-title {
 .insp-pend {
   margin-top: 8px;
 }
-:deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
-  background: #ecf3ff !important;
-}
-html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
-  background: rgba(22, 100, 196, 0.18) !important;
-}
 @media (min-width: 1060px) {
   .cfg-panel--friend {
     display: grid;
@@ -2088,10 +2159,10 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .cfg-panel--friend .cfg-card--op {
     margin-top: 0;
   }
-  .cfg-panel--friend .cfg-card--op :deep(.el-form-item) {
+  .cfg-panel--friend .cfg-card--op :deep(.t-form__item) {
     margin-bottom: 8px;
   }
-  .cfg-panel--friend .cfg-card--op :deep(.el-form-item:last-child) {
+  .cfg-panel--friend .cfg-card--op :deep(.t-form__item:last-child) {
     margin-bottom: 0;
   }
 }
@@ -2157,7 +2228,7 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
   .pan3--social > .mobile-pane-switch {
     margin-bottom: 3px;
   }
-  .pan3--social .c-insp :deep(.el-card__header) {
+  .pan3--social .c-insp :deep(.t-card__header) {
     padding: 8px 12px;
   }
   .pan3--social .list-head {
@@ -2290,7 +2361,7 @@ html.dark :deep(.el-table__body tr.is-pan3-picked > td.el-table__cell) {
 .inst-list-segmented {
   width: 100%;
 }
-.inst-list-segmented :deep(.el-segmented__item) {
+.inst-list-segmented :deep(.t-radio-button) {
   flex: 1 1 0;
   min-width: 0;
 }
@@ -2328,69 +2399,6 @@ html.dark .hd-inst-stat {
 .num-lab {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-.tb-nap {
-  width: 100%;
-}
-.h-t {
-  font-weight: 600;
-  color: var(--c-main);
-  margin-right: 8px;
-}
-.tb {
-  width: 100%;
-  --el-table-border-color: rgba(22, 100, 196, 0.1);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(22, 100, 196, 0.08);
-}
-.tb-alt {
-  :deep(.el-table__inner-wrapper) {
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  :deep(.el-table__header th.el-table__cell) {
-    background: #edf4ff;
-  }
-  :deep(.el-table__header .cell) {
-    line-height: 1.45;
-    font-weight: 600;
-    color: #2b4770;
-  }
-  :deep(.el-table__body td.el-table__cell) {
-    vertical-align: middle;
-  }
-  :deep(.el-table__row:hover > td.el-table__cell) {
-    background: #f5f9ff !important;
-  }
-}
-/* 表格样式 */
-.tb-clean {
-  :deep(.el-table__inner-wrapper) {
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
-  }
-  :deep(.el-table__header th.el-table__cell) {
-    background: linear-gradient(180deg, #f9fbff 0%, #f2f6ff 100%);
-    border-bottom: 1px solid rgba(22, 100, 196, 0.16);
-  }
-  :deep(.el-table__header .cell) {
-    line-height: 1.5;
-    font-weight: 700;
-    color: #2b4770;
-    letter-spacing: 0.01em;
-  }
-  :deep(.el-table__body td.el-table__cell) {
-    vertical-align: middle;
-    padding-top: 13px;
-    padding-bottom: 13px;
-    border-bottom: 1px solid rgba(22, 100, 196, 0.08);
-    background: #fff;
-  }
-  :deep(.el-table__row:hover > td.el-table__cell) {
-    background: #f7fbff !important;
-  }
 }
 .fl-alert {
   margin-bottom: 10px;
