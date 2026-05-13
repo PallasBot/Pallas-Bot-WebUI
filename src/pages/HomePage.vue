@@ -2,24 +2,45 @@
 import { onMounted, ref } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
-import { fetchBots, fetchMessageStats, fetchSystem } from "@/api/consoleApi";
-import type { MessageStatsData, SystemData } from "@/api/pallasTypes";
+import { fetchBots, fetchInstances, fetchMessageStats, fetchSystem } from "@/api/consoleApi";
+import type { InstancesData, MessageStatsData, SystemData } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
+import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint, protocolSnapshot } from "@/utils/protocolLinks";
 
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const system = ref<SystemData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const botCount = ref(0);
+const instances = ref<InstancesData | null>(null);
+
+const consoleRoot = consolePublicRoot();
+const botBase = ref<string | null>(null);
+const driverHint = ref<string | null>(null);
+
+function yn(v: unknown): string {
+  if (v === true) return "是";
+  if (v === false) return "否";
+  return "—";
+}
 
 async function load() {
   err.value = "";
   try {
-    const [h, s, m, bots] = await Promise.all([fetchHealth(), fetchSystem(), fetchMessageStats(), fetchBots()]);
+    const [h, s, m, bots, inst] = await Promise.all([
+      fetchHealth(),
+      fetchSystem(),
+      fetchMessageStats(),
+      fetchBots(),
+      fetchInstances(),
+    ]);
     health.value = h;
     system.value = s;
     stats.value = m;
     botCount.value = bots.length;
+    instances.value = inst;
+    botBase.value = botHttpBaseFromSystem(s);
+    driverHint.value = nonebotDriverHint(s);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -34,7 +55,7 @@ onMounted(load);
       <p class="page-hero__eyebrow">Dashboard</p>
       <h1 class="page-hero__title">运行态势</h1>
       <p class="page-hero__desc">
-        与 Pallas-Bot 控制台 API 直连：健康检查、系统摘要与消息统计在一屏呈现。
+        与 Pallas-Bot 控制台 API 直连：健康检查、系统摘要与消息统计在一屏呈现；下方为常用入口与协议账号状态（不展示各账号原生 WebUI 地址）。
       </p>
     </header>
 
@@ -73,6 +94,101 @@ onMounted(load);
             : undefined
         "
       />
+    </div>
+
+    <div class="panel">
+      <div class="panel__hd">
+        <h2 class="panel__title">协议与外链</h2>
+        <RouterLink
+          class="link-quiet"
+          to="/instances"
+          style="font-size: 13px"
+        >实例详情 →</RouterLink>
+      </div>
+      <div class="panel__bd">
+        <div class="link-grid">
+          <a
+            class="link-card"
+            :href="`${consoleRoot}/`"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="link-card__label">Console</span>
+            <span class="link-card__title">本控制台</span>
+            <span class="link-card__meta">{{ consoleRoot }}/</span>
+          </a>
+          <a
+            v-if="botBase"
+            class="link-card"
+            :href="botBase"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="link-card__label">HTTP</span>
+            <span class="link-card__title">机器人服务基址</span>
+            <span class="link-card__meta">{{ botBase }}</span>
+          </a>
+          <div
+            v-else
+            class="link-card"
+          >
+            <span class="link-card__label">HTTP</span>
+            <span class="link-card__title">机器人服务基址</span>
+            <span class="link-card__meta muted">后端未返回 console.http_base</span>
+          </div>
+          <div class="link-card">
+            <span class="link-card__label">Driver</span>
+            <span class="link-card__title">NoneBot 监听（参考）</span>
+            <span class="link-card__meta">{{ driverHint ?? "—" }}</span>
+          </div>
+        </div>
+
+        <p
+          v-if="(protocolSnapshot(instances)?.accounts?.length ?? 0) > 0"
+          class="muted"
+          style="margin: 18px 0 8px; font-weight: 600"
+        >
+          协议账号状态（不展示原生 WebUI）
+        </p>
+        <div
+          v-if="(protocolSnapshot(instances)?.accounts?.length ?? 0) > 0"
+          class="link-grid"
+        >
+          <div
+            v-for="(a, idx) in protocolSnapshot(instances)?.accounts ?? []"
+            :key="idx"
+            class="link-card"
+          >
+            <span class="link-card__label">协议账号</span>
+            <span class="link-card__title">{{ a.qq ?? a.id ?? "—" }}</span>
+            <span class="link-card__meta muted">进程 {{ yn(a.process_running ?? a.running) }} · 已连接 {{ yn(a.connected) }}</span>
+          </div>
+        </div>
+        <p
+          v-else
+          class="muted"
+          style="margin: 12px 0 0"
+        >
+          当前实例快照中无协议账号（或未启用 pallas_protocol）。
+        </p>
+        <div
+          class="row-actions"
+          style="margin-top: 16px"
+        >
+          <RouterLink
+            class="btn btn--primary"
+            to="/bot-social-config"
+          >好友/群颗粒配置</RouterLink>
+          <RouterLink
+            class="btn"
+            to="/friends"
+          >好友管理</RouterLink>
+          <RouterLink
+            class="btn"
+            to="/groups"
+          >群管理</RouterLink>
+        </div>
+      </div>
     </div>
 
     <div class="panel">

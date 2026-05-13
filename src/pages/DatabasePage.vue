@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
 
@@ -9,6 +9,37 @@ const collection = ref("");
 const pipelineText = ref("[\n  { \"$limit\": 20 }\n]");
 const aggResult = ref<string>("");
 const aggLoading = ref(false);
+
+const nf = new Intl.NumberFormat("zh-CN");
+
+function isMongo(o: DbOverviewData | null): o is Extract<DbOverviewData, { backend: "mongodb" }> {
+  return o != null && o.backend === "mongodb";
+}
+
+function isPostgres(o: DbOverviewData | null): o is Extract<DbOverviewData, { backend: "postgres" }> {
+  return o != null && o.backend === "postgres";
+}
+
+const mongoCollections = computed(() => (isMongo(overview.value) ? overview.value.collections : []));
+const pgTables = computed(() => (isPostgres(overview.value) ? overview.value.tables : []));
+
+const backendLabel = computed(() => {
+  const o = overview.value;
+  if (!o) return "—";
+  if (o.backend === "mongodb") return "MongoDB";
+  if (o.backend === "postgres") return "PostgreSQL";
+  return o.backend;
+});
+
+const totalDocuments = computed(() => {
+  if (!isMongo(overview.value)) return null;
+  return overview.value.collections.reduce((s: number, c: { count: number }) => s + (c.count ?? 0), 0);
+});
+
+const totalRows = computed(() => {
+  if (!isPostgres(overview.value)) return null;
+  return overview.value.tables.reduce((s: number, t: { count: number }) => s + (t.count ?? 0), 0);
+});
 
 onMounted(async () => {
   try {
@@ -39,7 +70,7 @@ async function runAggregate() {
     <header class="page-hero">
       <p class="page-hero__eyebrow">Data</p>
       <h1 class="page-hero__title">数据库</h1>
-      <p class="page-hero__desc">查看后端返回的库概览；MongoDB 下可提交聚合管道（只读风险由后端约束）。</p>
+      <p class="page-hero__desc">结构化展示后端库类型与对象规模；MongoDB 下可提交聚合管道（权限与截断由后端控制）。</p>
     </header>
 
     <div
@@ -49,12 +80,122 @@ async function runAggregate() {
       {{ err }}
     </div>
 
-    <div class="panel">
+    <div
+      v-if="overview"
+      class="grid-stats"
+    >
+      <div class="card stat-card">
+        <div class="card__body">
+          <div class="stat-card__label">后端类型</div>
+          <div class="stat-card__value">{{ backendLabel }}</div>
+          <div
+            v-if="overview && 'note' in overview && overview.note"
+            class="stat-card__hint"
+          >
+            {{ overview.note }}
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="totalDocuments != null"
+        class="card stat-card"
+      >
+        <div class="card__body">
+          <div class="stat-card__label">集合文档（合计）</div>
+          <div class="stat-card__value">{{ nf.format(totalDocuments) }}</div>
+          <div class="stat-card__hint">{{ mongoCollections.length }} 个集合</div>
+        </div>
+      </div>
+      <div
+        v-if="totalRows != null"
+        class="card stat-card"
+      >
+        <div class="card__body">
+          <div class="stat-card__label">表行数（合计）</div>
+          <div class="stat-card__value">{{ nf.format(totalRows) }}</div>
+          <div class="stat-card__hint">{{ pgTables.length }} 张表</div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="overview?.backend === 'mongodb'"
+      class="panel"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">集合与文档数</h2>
+      </div>
+      <div class="panel__bd">
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>集合</th>
+                <th>文档字段</th>
+                <th style="text-align: right">数量</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="c in mongoCollections"
+                :key="c.name"
+              >
+                <td style="font-weight: 600">{{ c.name }}</td>
+                <td class="muted">{{ c.document }}</td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums">{{ nf.format(c.count) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-else-if="overview?.backend === 'postgres'"
+      class="panel"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">表与行数</h2>
+      </div>
+      <div class="panel__bd">
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>表名</th>
+                <th style="text-align: right">行数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="t in pgTables"
+                :key="t.table"
+              >
+                <td style="font-weight: 600">{{ t.table }}</td>
+                <td style="text-align: right; font-variant-numeric: tabular-nums">{{ nf.format(t.count) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-else-if="overview"
+      class="panel"
+    >
       <div class="panel__hd">
         <h2 class="panel__title">概览</h2>
       </div>
       <div class="panel__bd">
-        <pre class="pre-block">{{ overview ? JSON.stringify(overview, null, 2) : "—" }}</pre>
+        <p class="muted" style="margin: 0 0 12px">后端类型：<strong style="color: var(--text)">{{ overview.backend }}</strong></p>
+        <p
+          v-if="overview && 'note' in overview && overview.note"
+          class="muted"
+          style="margin: 0"
+        >
+          {{ overview.note }}
+        </p>
       </div>
     </div>
 
