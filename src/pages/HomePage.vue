@@ -28,6 +28,7 @@ import type {
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
+import standeeUrl from "@/assets/pallas-standee.webp?url";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
@@ -229,9 +230,74 @@ const selectedBotConfig = computed(() => {
 
 const selectedAdminsDisplay = computed(() => {
   const admins = selectedBotConfig.value?.admins;
-  if (!admins?.length) return "—";
-  return admins.map((id) => String(id)).join("、");
+  if (!admins?.length) return "未配置管理员";
+  return admins.map((id) => String(id)).join(" ");
 });
+
+const accountProtocolIsUnknown = computed(() => accountAdapterDisplay.value === "—");
+
+const friendCountDisplay = computed(() => {
+  if (socialBusy.value) return "…";
+  if (friendSnap.value == null) return "未拉取";
+  return String(friendSnap.value.friends?.length ?? 0);
+});
+
+const groupCountDisplay = computed(() => {
+  if (socialBusy.value) return "…";
+  if (groupSnap.value == null) return "未拉取";
+  return String(groupSnap.value.groups?.length ?? 0);
+});
+
+const socialCountsLoadHint = computed(() => {
+  if (socialBusy.value) return "";
+  if (friendSnap.value != null || groupSnap.value != null) return "";
+  return "好友/群列表未拉取，可点「刷新」重试";
+});
+
+const throughputTodayCaption = computed(() => {
+  if (socialBusy.value) return "正在拉取本 Bot 统计…";
+  const acc = selectedAccount.value;
+  const r = scopedBotStatsRow.value;
+  if (acc == null) return "选中账号后展示本 Bot 吞吐与调用明细";
+  if (!r) return "本账号暂无统计行，可稍后刷新";
+  const tr = r.today_received;
+  const ts = r.today_sent;
+  if (tr == null && ts == null) return "本日收发在后端上报后显示";
+  return `本日收 ${tr ?? "—"} · 发 ${ts ?? "—"}`;
+});
+
+const showApiSparkline = computed(() => {
+  if (socialBusy.value) return false;
+  const pts = scopedBotStatsRow.value?.api_calls_history;
+  return !!pts?.length;
+});
+
+const apiSparklinePolylinePoints = computed(() => {
+  const pts = scopedBotStatsRow.value?.api_calls_history;
+  if (!pts?.length) return "";
+  const vals = pts.map((p) => p.total);
+  const max = Math.max(...vals, 1);
+  const n = vals.length;
+  const w = 100;
+  const pad = 1;
+  const barH = 18;
+  const baseY = 21;
+  if (n === 1) {
+    const y = baseY - (vals[0]! / max) * barH;
+    return `${pad},${y} ${w - pad},${y}`;
+  }
+  return vals
+    .map((v, i) => {
+      const x = pad + (i / (n - 1)) * (w - pad * 2);
+      const y = baseY - (v / max) * barH;
+      return `${x},${y}`;
+    })
+    .join(" ");
+});
+
+function metricIsEmpty(v: string): boolean {
+  return v === "—";
+}
 
 function ensureSelectedAccount() {
   const rows = sortedDbBots.value;
@@ -342,9 +408,6 @@ const msgCapacityHint = computed(() => {
   if (!s || (s.today_received == null && s.today_sent == null)) return "全部账号合计";
   return `本日收 ${s.today_received ?? "—"} / 发 ${s.today_sent ?? "—"}（合计）`;
 });
-
-const friendCount = computed(() => friendSnap.value?.friends?.length ?? null);
-const groupCount = computed(() => groupSnap.value?.groups?.length ?? null);
 
 async function refreshSelectedBotDetails() {
   const acc = selectedAccount.value;
@@ -524,14 +587,24 @@ onMounted(load);
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
                           <p class="home-account-hero__proto muted">
-                            协议 · {{ accountAdapterDisplay }}
+                            <template v-if="!accountProtocolIsUnknown">
+                              协议 · {{ accountAdapterDisplay }}
+                            </template>
+                            <template v-else>
+                              协议 · <span class="home-account-hero__proto-hint">未上报</span>
+                              <span class="home-account-hero__proto-sub muted">可在「实例与连接」核对适配器</span>
+                            </template>
                           </p>
                         </div>
                       </div>
                       <div class="home-account-hero__detail home-account-hero__detail--color">
+                        <div class="home-account-hero__section-label">连接与社交</div>
                         <p class="home-account-hero__admin">
                           <span class="home-account-hero__admin-label">管理员</span>
-                          <span class="home-account-hero__admin-values">{{ selectedAdminsDisplay }}</span>
+                          <span
+                            class="home-account-hero__admin-values"
+                            :class="{ 'home-account-hero__admin-values--placeholder': !(selectedBotConfig?.admins?.length) }"
+                          >{{ selectedAdminsDisplay }}</span>
                         </p>
                         <div class="home-account-hero__links">
                           <a
@@ -548,17 +621,27 @@ onMounted(load);
                             target="_blank"
                             rel="noopener noreferrer"
                           >协议管理页</a>
+                          <RouterLink
+                            class="home-account-hero__link"
+                            to="/instances"
+                          >实例与连接</RouterLink>
                         </div>
                         <dl class="home-account-dl home-account-dl--tight home-account-dl--hero-foot">
                           <div>
                             <dt>好友</dt>
-                            <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
+                            <dd>{{ friendCountDisplay }}</dd>
                           </div>
                           <div>
                             <dt>群</dt>
-                            <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
+                            <dd>{{ groupCountDisplay }}</dd>
                           </div>
                         </dl>
+                        <p
+                          v-if="socialCountsLoadHint"
+                          class="home-account-hero__social-hint muted"
+                        >
+                          {{ socialCountsLoadHint }}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -570,12 +653,61 @@ onMounted(load);
                         <span class="home-account-metrics__sep muted">/</span>
                         <span class="home-account-metrics__sent">{{ socialBusy ? "…" : msgRecvSentPair.sent }}</span>
                       </div>
+                      <p class="home-account-metrics__caption muted">
+                        {{ throughputTodayCaption }}
+                      </p>
+                      <div
+                        v-if="showApiSparkline"
+                        class="home-account-metrics__spark"
+                        aria-hidden="true"
+                      >
+                        <svg
+                          class="home-account-metrics__spark-svg"
+                          viewBox="0 0 100 24"
+                          preserveAspectRatio="none"
+                        >
+                          <polyline
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.25"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            :points="apiSparklinePolylinePoints"
+                          />
+                        </svg>
+                      </div>
+                      <div
+                        v-else-if="!socialBusy"
+                        class="home-account-metrics__spark home-account-metrics__spark--empty"
+                        aria-hidden="true"
+                      >
+                        <span
+                          v-for="n in 14"
+                          :key="n"
+                          class="home-account-metrics__spark-faint"
+                        />
+                      </div>
                       <div class="home-account-metrics__stats">
-                        <div class="home-account-metrics__today-row">
-                          <span class="muted home-account-metrics__k">今日 API</span>
-                          <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
+                        <div
+                          class="home-account-metrics__today-block"
+                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
+                        >
+                          <div class="home-account-metrics__today-row">
+                            <span class="muted home-account-metrics__k">今日 API</span>
+                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
+                          </div>
+                          <div class="home-account-metrics__skel-track">
+                            <span
+                              v-for="n in 8"
+                              :key="n"
+                              class="home-account-metrics__skel-seg"
+                            />
+                          </div>
                         </div>
-                        <div class="home-account-metrics__stat-block">
+                        <div
+                          class="home-account-metrics__stat-block"
+                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginTodayTopStr) }"
+                        >
                           <div class="home-account-metrics__krow">
                             <span class="muted home-account-metrics__k">调用最多</span>
                             <span class="home-account-metrics__kind">插件</span>
@@ -584,8 +716,18 @@ onMounted(load);
                             class="home-account-metrics__v home-account-metrics__v--clip"
                             :title="pluginTodayTopStr"
                           >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
+                          <div class="home-account-metrics__skel-track">
+                            <span
+                              v-for="n in 8"
+                              :key="n"
+                              class="home-account-metrics__skel-seg"
+                            />
+                          </div>
                         </div>
-                        <div class="home-account-metrics__stat-block">
+                        <div
+                          class="home-account-metrics__stat-block"
+                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTopStr) }"
+                        >
                           <div class="home-account-metrics__krow">
                             <span class="muted home-account-metrics__k">调用最多</span>
                             <span class="home-account-metrics__kind">API</span>
@@ -594,15 +736,43 @@ onMounted(load);
                             class="home-account-metrics__v home-account-metrics__v--clip"
                             :title="apiTodayTopStr"
                           >{{ socialBusy ? "…" : apiTodayTopStr }}</span>
+                          <div class="home-account-metrics__skel-track">
+                            <span
+                              v-for="n in 8"
+                              :key="n"
+                              class="home-account-metrics__skel-seg"
+                            />
+                          </div>
+                        </div>
+                        <div
+                          class="home-account-metrics__matcher-row"
+                          :class="{
+                            'home-account-metrics__matcher-row--bad':
+                              !socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                          }"
+                        >
+                          <span class="muted home-account-metrics__k">Matcher 异常（今日）</span>
+                          <span class="home-account-metrics__matcher-val">{{
+                            socialBusy
+                              ? "…"
+                              : scopedPluginRunRow == null
+                                ? "—"
+                                : String(scopedPluginRunRow.errors_today ?? 0)
+                          }}</span>
                         </div>
                       </div>
-                      <div
-                        v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
-                        class="home-account-metrics__warn"
+                    </div>
+                  </div>
+                  <div class="home-account-unified__col home-account-unified__col--standee">
+                    <div class="home-account-standee">
+                      <img
+                        class="home-account-standee__img"
+                        :src="standeeUrl"
+                        alt="帕拉斯立绘"
+                        width="560"
+                        height="560"
+                        decoding="async"
                       >
-                        <span class="muted">Matcher 异常（今日）</span>
-                        <span>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
