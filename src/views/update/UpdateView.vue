@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { fetchUpdateCheck, postUpdateApply, fetchBotUpdateCheck, postBotUpdateApply } from "@/api/consoleApi";
 import type { UpdateCheckData, BotUpdateCheckData } from "@/api/pallasTypes";
-import { ref, onMounted } from "vue";
 import {
-  Refresh,
-  Download,
-  SuccessFilled,
-  WarningFilled,
-  InfoFilled,
-  Monitor,
-  Cpu,
-  Right,
-} from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+  CheckCircleFilledIcon,
+  ChevronRightIcon,
+  CpuIcon,
+  DesktopIcon,
+  DownloadIcon,
+  ErrorTriangleFilledIcon,
+  InfoCircleFilledIcon,
+  RefreshIcon,
+} from "tdesign-icons-vue-next";
+import { MessagePlugin } from "tdesign-vue-next";
+import { ref, onMounted } from "vue";
 
 const checking = ref(false);
 const applying = ref(false);
@@ -41,10 +41,10 @@ async function doApply() {
   applying.value = true;
   try {
     const result = await postUpdateApply();
-    ElMessage.success(`更新成功：${result.version ?? result.tag}`);
+    MessagePlugin.success(`更新成功：${result.version ?? result.tag}`);
     await doCheck();
   } catch (e: unknown) {
-    ElMessage.error(`更新失败：${e instanceof Error ? e.message : String(e)}`);
+    MessagePlugin.error(`更新失败：${e instanceof Error ? e.message : String(e)}`);
   } finally {
     applying.value = false;
   }
@@ -67,10 +67,10 @@ async function doBotApply() {
   botApplying.value = true;
   try {
     const result = await postBotUpdateApply();
-    ElMessage.success(`Bot 更新成功：${result.tag}`);
+    MessagePlugin.success(`Bot 更新成功：${result.tag}`);
     await doBotCheck();
   } catch (e: unknown) {
-    ElMessage.error(`Bot 更新失败：${e instanceof Error ? e.message : String(e)}`);
+    MessagePlugin.error(`Bot 更新失败：${e instanceof Error ? e.message : String(e)}`);
   } finally {
     botApplying.value = false;
   }
@@ -89,7 +89,7 @@ function formatTime(ts: number | undefined): string {
 
 <template>
   <div class="update-view">
-    <el-card class="update-shell-card" shadow="never">
+    <t-card :bordered="true" class="update-shell-card">
       <header class="page-head">
         <h1 class="page-title">版本与更新</h1>
         <p class="page-desc">
@@ -98,187 +98,232 @@ function formatTime(ts: number | undefined): string {
       </header>
 
       <div class="cards-grid">
-      <!-- 控制台前端（静态资源）更新 -->
-      <div class="update-card">
-        <div class="card-top">
-          <div class="card-icon-wrap web">
-            <el-icon :size="22"><Monitor /></el-icon>
-          </div>
-          <div class="card-head-text">
-            <div class="update-header">
-              <span class="update-title">控制台前端</span>
-              <el-button :icon="Refresh" :loading="checking" size="small" @click="doCheck">检查更新</el-button>
+        <!-- 控制台前端（静态资源）更新 -->
+        <div class="update-card">
+          <div class="card-top">
+            <div class="card-icon-wrap web">
+              <DesktopIcon />
             </div>
-            <p class="card-blurb">随 Bot 进程挂载的 Web 静态文件；更新后刷新浏览器即可加载新资源。</p>
+            <div class="card-head-text">
+              <div class="update-header">
+                <span class="update-title">控制台前端</span>
+                <t-button size="small" variant="outline" :loading="checking" @click="doCheck">
+                  <template #icon>
+                    <RefreshIcon />
+                  </template>
+                  检查更新
+                </t-button>
+              </div>
+              <p class="card-blurb">随 Bot 进程挂载的 Web 静态文件；更新后刷新浏览器即可加载新资源。</p>
+            </div>
+          </div>
+
+          <div v-if="checking && !info" class="update-loading">
+            <RefreshIcon class="spin" />
+            <span>正在检查更新...</span>
+          </div>
+
+          <template v-else-if="info">
+            <t-alert
+              v-if="checkError"
+              theme="warning"
+              class="update-alert"
+              :title="`检查更新失败：${checkError}`"
+            />
+
+            <div class="version-compare">
+              <div class="ver-col">
+                <span class="version-label">当前</span>
+                <t-tag
+                  :theme="info.current_tag ? 'primary' : 'warning'"
+                  variant="light"
+                  size="large"
+                  class="version-tag"
+                >
+                  {{ info.current_tag || "未知" }}
+                </t-tag>
+              </div>
+              <ChevronRightIcon class="ver-arrow" />
+              <div class="ver-col">
+                <span class="version-label">远程最新</span>
+                <t-tag
+                  v-if="info.latest_tag"
+                  :theme="info.has_update ? 'success' : 'primary'"
+                  variant="light"
+                  size="large"
+                  class="version-tag"
+                >
+                  {{ info.latest_tag }}
+                </t-tag>
+                <t-tag v-else theme="warning" variant="light" size="large" class="version-tag">获取失败</t-tag>
+              </div>
+            </div>
+
+            <div v-if="!checkError" class="update-status">
+              <template v-if="info.has_update">
+                <ErrorTriangleFilledIcon class="status-icon update-available" />
+                <span>发现新版本 <strong>{{ info.latest_tag }}</strong>，可一键更新静态资源</span>
+              </template>
+              <template v-else-if="info.latest_tag">
+                <CheckCircleFilledIcon class="status-icon up-to-date" />
+                <span>已是最新版本</span>
+              </template>
+            </div>
+
+            <div class="card-footer">
+              <div class="update-meta">
+                <InfoCircleFilledIcon />
+                检查时间：{{ formatTime(info.checked_at) }}
+              </div>
+              <div class="update-actions">
+                <t-button
+                  v-if="info.has_update"
+                  theme="primary"
+                  :loading="applying"
+                  @click="doApply"
+                >
+                  <template #icon>
+                    <DownloadIcon />
+                  </template>
+                  {{ applying ? "更新中..." : `更新到 ${info.latest_tag}` }}
+                </t-button>
+                <a v-if="info.release_url" :href="info.release_url" target="_blank" rel="noopener" class="release-link">
+                  发布说明
+                </a>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="update-empty">
+            <p>尚未拉取版本信息</p>
+            <t-button theme="primary" variant="outline" @click="doCheck">
+              <template #icon>
+                <RefreshIcon />
+              </template>
+              立即检查
+            </t-button>
           </div>
         </div>
 
-        <div v-if="checking && !info" class="update-loading">
-          <el-icon class="spin"><Refresh /></el-icon>
-          <span>正在检查更新...</span>
-        </div>
-
-        <template v-else-if="info">
-          <el-alert v-if="checkError" type="warning" :closable="false" class="update-alert">
-            <template #title>
-              <el-icon><WarningFilled /></el-icon>
-              检查更新失败：{{ checkError }}
-            </template>
-          </el-alert>
-
-          <div class="version-compare">
-            <div class="ver-col">
-              <span class="version-label">当前</span>
-              <el-tag :type="info.current_tag ? 'info' : 'warning'" size="large" class="version-tag">
-                {{ info.current_tag || "未知" }}
-              </el-tag>
+        <!-- Bot 主程序更新 -->
+        <div class="update-card">
+          <div class="card-top">
+            <div class="card-icon-wrap bot">
+              <CpuIcon />
             </div>
-            <el-icon class="ver-arrow"><Right /></el-icon>
-            <div class="ver-col">
-              <span class="version-label">远程最新</span>
-              <el-tag v-if="info.latest_tag" :type="info.has_update ? 'success' : 'info'" size="large" class="version-tag">
-                {{ info.latest_tag }}
-              </el-tag>
-              <el-tag v-else type="warning" size="large" class="version-tag">获取失败</el-tag>
+            <div class="card-head-text">
+              <div class="update-header">
+                <span class="update-title">Bot 主程序</span>
+                <t-button size="small" variant="outline" :loading="botChecking" @click="doBotCheck">
+                  <template #icon>
+                    <RefreshIcon />
+                  </template>
+                  检查更新
+                </t-button>
+              </div>
+              <p class="card-blurb">对主仓执行 git 拉取；需具备写权限与可用远端，更新后可能需重启 Bot 进程。</p>
             </div>
           </div>
 
-          <div v-if="!checkError" class="update-status">
-            <template v-if="info.has_update">
-              <el-icon class="status-icon update-available"><WarningFilled /></el-icon>
-              <span>发现新版本 <strong>{{ info.latest_tag }}</strong>，可一键更新静态资源</span>
-            </template>
-            <template v-else-if="info.latest_tag">
-              <el-icon class="status-icon up-to-date"><SuccessFilled /></el-icon>
-              <span>已是最新版本</span>
-            </template>
+          <div v-if="botChecking && !botInfo" class="update-loading">
+            <RefreshIcon class="spin" />
+            <span>正在检查更新...</span>
           </div>
 
-          <div class="card-footer">
-            <div class="update-meta">
-              <el-icon><InfoFilled /></el-icon>
-              检查时间：{{ formatTime(info.checked_at) }}
-            </div>
-            <div class="update-actions">
-              <el-button
-                v-if="info.has_update"
-                type="primary"
-                :icon="Download"
-                :loading="applying"
-                @click="doApply"
-              >
-                {{ applying ? "更新中..." : `更新到 ${info.latest_tag}` }}
-              </el-button>
-              <a v-if="info.release_url" :href="info.release_url" target="_blank" rel="noopener" class="release-link">
-                发布说明
-              </a>
-            </div>
-          </div>
-        </template>
+          <template v-else-if="botInfo">
+            <t-alert
+              v-if="botCheckError"
+              theme="warning"
+              class="update-alert"
+              :title="`检查更新失败：${botCheckError}`"
+            />
 
-        <div v-else class="update-empty">
-          <p>尚未拉取版本信息</p>
-          <el-button type="primary" plain :icon="Refresh" @click="doCheck">立即检查</el-button>
+            <div class="version-compare">
+              <div class="ver-col">
+                <span class="version-label">当前</span>
+                <t-tag
+                  :theme="botInfo.current_tag ? 'primary' : 'warning'"
+                  variant="light"
+                  size="large"
+                  class="version-tag"
+                >
+                  {{ botInfo.current_tag || botInfo.current_commit || "未知" }}
+                </t-tag>
+                <span v-if="botInfo.current_commit && botInfo.current_tag" class="commit-hint" :title="botInfo.current_commit">
+                  {{ botInfo.current_commit.slice(0, 7) }}
+                </span>
+              </div>
+              <ChevronRightIcon class="ver-arrow" />
+              <div class="ver-col">
+                <span class="version-label">远程最新</span>
+                <t-tag
+                  v-if="botInfo.latest_tag"
+                  :theme="botInfo.has_update ? 'success' : 'primary'"
+                  variant="light"
+                  size="large"
+                  class="version-tag"
+                >
+                  {{ botInfo.latest_tag }}
+                </t-tag>
+                <t-tag v-else theme="warning" variant="light" size="large" class="version-tag">获取失败</t-tag>
+              </div>
+            </div>
+
+            <div v-if="!botCheckError" class="update-status">
+              <template v-if="botInfo.has_update">
+                <ErrorTriangleFilledIcon class="status-icon update-available" />
+                <span>发现新版本 <strong>{{ botInfo.latest_tag }}</strong>，将执行 git pull</span>
+              </template>
+              <template v-else-if="botInfo.latest_tag">
+                <CheckCircleFilledIcon class="status-icon up-to-date" />
+                <span>已是最新版本</span>
+              </template>
+              <template v-else-if="!botInfo.current_tag">
+                <InfoCircleFilledIcon class="status-icon" />
+                <span>当前未处于 Release Tag，无法比较版本</span>
+              </template>
+            </div>
+
+            <div class="card-footer">
+              <div class="update-meta">
+                <InfoCircleFilledIcon />
+                检查时间：{{ formatTime(botInfo.checked_at) }}
+              </div>
+              <div class="update-actions">
+                <t-button
+                  v-if="botInfo.has_update"
+                  theme="primary"
+                  :loading="botApplying"
+                  @click="doBotApply"
+                >
+                  <template #icon>
+                    <DownloadIcon />
+                  </template>
+                  {{ botApplying ? "更新中..." : `更新到 ${botInfo.latest_tag}` }}
+                </t-button>
+                <a v-if="botInfo.release_url" :href="botInfo.release_url" target="_blank" rel="noopener" class="release-link">
+                  发布说明
+                </a>
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="update-empty">
+            <p>尚未拉取版本信息</p>
+            <t-button theme="primary" variant="outline" @click="doBotCheck">
+              <template #icon>
+                <RefreshIcon />
+              </template>
+              立即检查
+            </t-button>
+          </div>
         </div>
       </div>
+    </t-card>
 
-      <!-- Bot 主程序更新 -->
-      <div class="update-card">
-        <div class="card-top">
-          <div class="card-icon-wrap bot">
-            <el-icon :size="22"><Cpu /></el-icon>
-          </div>
-          <div class="card-head-text">
-            <div class="update-header">
-              <span class="update-title">Bot 主程序</span>
-              <el-button :icon="Refresh" :loading="botChecking" size="small" @click="doBotCheck">检查更新</el-button>
-            </div>
-            <p class="card-blurb">对主仓执行 git 拉取；需具备写权限与可用远端，更新后可能需重启 Bot 进程。</p>
-          </div>
-        </div>
-
-        <div v-if="botChecking && !botInfo" class="update-loading">
-          <el-icon class="spin"><Refresh /></el-icon>
-          <span>正在检查更新...</span>
-        </div>
-
-        <template v-else-if="botInfo">
-          <el-alert v-if="botCheckError" type="warning" :closable="false" class="update-alert">
-            <template #title>
-              <el-icon><WarningFilled /></el-icon>
-              检查更新失败：{{ botCheckError }}
-            </template>
-          </el-alert>
-
-          <div class="version-compare">
-            <div class="ver-col">
-              <span class="version-label">当前</span>
-              <el-tag :type="botInfo.current_tag ? 'info' : 'warning'" size="large" class="version-tag">
-                {{ botInfo.current_tag || botInfo.current_commit || "未知" }}
-              </el-tag>
-              <span v-if="botInfo.current_commit && botInfo.current_tag" class="commit-hint" :title="botInfo.current_commit">
-                {{ botInfo.current_commit.slice(0, 7) }}
-              </span>
-            </div>
-            <el-icon class="ver-arrow"><Right /></el-icon>
-            <div class="ver-col">
-              <span class="version-label">远程最新</span>
-              <el-tag v-if="botInfo.latest_tag" :type="botInfo.has_update ? 'success' : 'info'" size="large" class="version-tag">
-                {{ botInfo.latest_tag }}
-              </el-tag>
-              <el-tag v-else type="warning" size="large" class="version-tag">获取失败</el-tag>
-            </div>
-          </div>
-
-          <div v-if="!botCheckError" class="update-status">
-            <template v-if="botInfo.has_update">
-              <el-icon class="status-icon update-available"><WarningFilled /></el-icon>
-              <span>发现新版本 <strong>{{ botInfo.latest_tag }}</strong>，将执行 git pull</span>
-            </template>
-            <template v-else-if="botInfo.latest_tag">
-              <el-icon class="status-icon up-to-date"><SuccessFilled /></el-icon>
-              <span>已是最新版本</span>
-            </template>
-            <template v-else-if="!botInfo.current_tag">
-              <el-icon class="status-icon"><InfoFilled /></el-icon>
-              <span>当前未处于 Release Tag，无法比较版本</span>
-            </template>
-          </div>
-
-          <div class="card-footer">
-            <div class="update-meta">
-              <el-icon><InfoFilled /></el-icon>
-              检查时间：{{ formatTime(botInfo.checked_at) }}
-            </div>
-            <div class="update-actions">
-              <el-button
-                v-if="botInfo.has_update"
-                type="primary"
-                :icon="Download"
-                :loading="botApplying"
-                @click="doBotApply"
-              >
-                {{ botApplying ? "更新中..." : `更新到 ${botInfo.latest_tag}` }}
-              </el-button>
-              <a v-if="botInfo.release_url" :href="botInfo.release_url" target="_blank" rel="noopener" class="release-link">
-                发布说明
-              </a>
-            </div>
-          </div>
-        </template>
-
-        <div v-else class="update-empty">
-          <p>尚未拉取版本信息</p>
-          <el-button type="primary" plain :icon="Refresh" @click="doBotCheck">立即检查</el-button>
-        </div>
-      </div>
-      </div>
-    </el-card>
-
-    <el-alert class="page-foot-tip" type="info" :closable="false" show-icon>
-      <template #title>操作建议</template>
+    <t-alert theme="info" class="page-foot-tip" title="操作建议">
       先更新 Bot 再更新控制台，或按你的发布流程执行；生产环境请在维护窗口操作，并确认备份与回滚方式。
-    </el-alert>
+    </t-alert>
   </div>
 </template>
 
@@ -298,7 +343,7 @@ function formatTime(ts: number | undefined): string {
   background: var(--el-bg-color);
   box-shadow: 0 4px 18px color-mix(in srgb, var(--pallas-accent) 8%, rgba(0, 0, 0, 0.06));
 
-  :deep(.el-card__body) {
+  :deep(.t-card__body) {
     padding: 22px 26px 28px;
     display: flex;
     flex-direction: column;
@@ -368,6 +413,11 @@ function formatTime(ts: number | undefined): string {
 
   &.bot {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  }
+
+  :deep(svg) {
+    width: 22px;
+    height: 22px;
   }
 }
 
@@ -534,7 +584,7 @@ function formatTime(ts: number | undefined): string {
 .page-foot-tip {
   border-radius: 10px;
 
-  :deep(.el-alert__title) {
+  :deep(.t-alert__title) {
     font-weight: 600;
   }
 }
@@ -569,7 +619,7 @@ function formatTime(ts: number | undefined): string {
     gap: 16px;
   }
 
-  .update-shell-card :deep(.el-card__body) {
+  .update-shell-card :deep(.t-card__body) {
     padding: 16px 14px 20px;
     gap: 18px;
   }
