@@ -132,13 +132,14 @@ const uptimeHint = computed(() => runtime.value?.platform || undefined);
 
 const pallasBotVersionDisplay = computed(() => {
   const b = botUpdateCheck.value;
-  if (b != null && !b.error) {
-    const tag = (b.current_tag || "").trim();
-    if (tag) {
-      const c = (b.current_commit || "").trim();
-      const short = c.length >= 7 ? c.slice(0, 7) : c;
-      return short && short !== tag ? `${tag} · ${short}` : tag;
-    }
+  const tag = (b?.current_tag || "").trim();
+  const commitFull = (b?.current_commit || "").trim();
+  const short = commitFull.length >= 7 ? commitFull.slice(0, 7) : commitFull;
+  if (tag) {
+    return short && short !== tag ? `${tag} · ${short}` : tag;
+  }
+  if (short) {
+    return `git ${short}`;
   }
   return health.value?.pallas_bot ?? "—";
 });
@@ -488,6 +489,8 @@ onMounted(load);
                       <dd>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</dd>
                     </div>
                   </dl>
+                </div>
+                <div class="home-account-charts-span">
                   <HomePluginRunCharts
                     :plugins="scopedPluginPlugins"
                     :plugins-meta="pluginsList"
@@ -624,6 +627,7 @@ onMounted(load);
         >实例与连接</RouterLink>
       </div>
       <div class="panel__bd home-access-panel__bd">
+        <div class="home-access-panel__body">
         <div class="link-grid home-page__link-grid">
           <a
             class="link-card"
@@ -661,7 +665,7 @@ onMounted(load);
           </div>
         </div>
 
-        <div class="row-actions">
+        <div class="row-actions home-access-panel__actions">
           <RouterLink
             class="btn btn--primary"
             to="/protocol"
@@ -675,18 +679,19 @@ onMounted(load);
             to="/friends-groups"
           >好友与群</RouterLink>
         </div>
+        </div>
       </div>
     </div>
 
     <div class="panel home-page__panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">版本与运行环境</h2>
         <span
           v-if="health?.ok"
           class="badge badge--ok"
         >API 可用</span>
       </div>
-      <div class="panel__bd muted home-page__version">
+      <div class="panel__bd muted home-page__version home-page__version--grid">
         <dl class="home-dl">
           <dt>NoneBot2</dt>
           <dd>{{ health?.nonebot2 ?? "—" }} <span class="home-dl__sub">框架</span></dd>
