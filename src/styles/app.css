@@ -2274,13 +2274,6 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
   stroke: #6d28d9;
 }
 
-.home-account-metrics__spark-note {
-  margin: 2px 0 0;
-  font-size: 10px;
-  line-height: 1.35;
-  letter-spacing: 0.01em;
-}
-
 .home-account-metrics__spark--empty {
   display: flex;
   align-items: flex-end;

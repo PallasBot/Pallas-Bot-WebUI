@@ -318,19 +318,6 @@ const apiSparklinePolylinePoints = computed(() => {
   return buildThroughputSparkPolyline(vals, max);
 });
 
-const throughputSparklineNote = computed(() => {
-  const mode = throughputSparklineMode.value;
-  if (mode === "message") {
-    const sec = msgMainStats.value?.message_traffic_history_bucket_sec;
-    const label = sec != null ? `${sec}` : "时间桶";
-    return `青/紫折线为本 Bot 消息收/发（每 ${label} 秒一桶；进程内、重启清空）。`;
-  }
-  if (mode === "api") {
-    return "折线为「协议 API」按时间桶的成功调用次数（非消息条数；进程内、重启清空）。";
-  }
-  return "";
-});
-
 function metricIsEmpty(v: string): boolean {
   return v === "—";
 }
@@ -731,12 +718,6 @@ onMounted(load);
                           />
                         </svg>
                       </div>
-                      <p
-                        v-if="showThroughputSparkline"
-                        class="home-account-metrics__spark-note muted"
-                      >
-                        {{ throughputSparklineNote }}
-                      </p>
                       <div
                         v-else-if="!socialBusy"
                         class="home-account-metrics__spark home-account-metrics__spark--empty"
