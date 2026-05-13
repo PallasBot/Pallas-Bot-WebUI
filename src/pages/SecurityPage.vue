@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { changeConsoleLogin } from "@/api/consoleApi";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const ok = ref("");
 const p1 = ref("");
@@ -50,7 +52,9 @@ async function submit() {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">修改密码</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>修改密码
+        </h2>
       </div>
       <div class="panel__bd">
         <div style="margin-bottom: 14px">

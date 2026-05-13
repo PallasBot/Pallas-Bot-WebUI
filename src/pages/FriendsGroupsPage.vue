@@ -22,7 +22,9 @@ import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const busy = ref(false);
@@ -330,7 +332,9 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
     <div v-else>
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">当前账号</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
+        </h2>
         <div class="row-actions">
           <select
             v-model="selfIdStr"
@@ -359,7 +363,9 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
 
     <div class="panel">
       <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">好友列表</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
+        </h2>
         <span
           v-if="listsBusy"
           class="muted"
@@ -418,7 +424,9 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
 
     <div class="panel">
       <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">群列表</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群列表
+        </h2>
         <span
           v-if="listsBusy"
           class="muted"
@@ -479,7 +487,9 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
 
     <div class="panel">
       <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">好友申请</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友申请
+        </h2>
         <div class="row-actions">
           <span
             v-if="reqsBusy"
@@ -571,7 +581,9 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
 
     <div class="panel">
       <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">入群请求</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入群请求
+        </h2>
         <div class="row-actions">
           <span
             v-if="reqsBusy"

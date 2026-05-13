@@ -29,8 +29,7 @@ const router = createRouter({
           component: HomePage,
           meta: {
             title: "仪表盘",
-            description:
-              "面向生产运维的一屏摘要：框架与业务进程状态、消息吞吐、已登记账号及常用接入入口。协议进程级状态请在「实例与连接」核对。",
+            description: "容量、账号与接入摘要；协议进程见「实例与连接」。",
           },
         },
         {
@@ -39,8 +38,7 @@ const router = createRouter({
           component: LogsPage,
           meta: {
             title: "运行日志",
-            description:
-              "按时间线查看运行期输出；支持结构化条目与原始行两种视图，并可在前端按关键字过滤。",
+            description: "结构化或原始行视图，支持关键字过滤。",
           },
         },
         {
@@ -49,7 +47,7 @@ const router = createRouter({
           component: PluginsPage,
           meta: {
             title: "插件目录",
-            description: "在此查看已启用模块；进入单项可调整受控参数。支持在列表中展开预览配置项，无需进入详情页。",
+            description: "已启用模块；单项可调参，列表可展开预览。",
           },
         },
         {
@@ -58,7 +56,7 @@ const router = createRouter({
           component: PluginConfigPage,
           meta: {
             title: "插件配置",
-            description: "编辑受控运行参数；保存后由后端生效。",
+            description: "受控参数；保存后由后端生效。",
           },
         },
         {
@@ -67,14 +65,14 @@ const router = createRouter({
           component: CommonConfigPage,
           meta: {
             title: "通用配置",
-            description: "分区维护跨模块公共项；保存后立即由后端生效，请以实际运行结果为准。",
+            description: "跨模块公共项；保存后由后端生效。",
           },
         },
         {
           path: "instances",
           name: "instances",
           component: InstancesPage,
-          meta: { title: "实例与连接", description: "在线状态与协议快照" },
+          meta: { title: "实例与连接", description: "在线与协议快照" },
         },
         {
           path: "protocol",
@@ -82,7 +80,7 @@ const router = createRouter({
           component: ProtocolManagePage,
           meta: {
             title: "协议端管理",
-            description: "打开协议内置管理页（路径取自实例快照）；用于日常运维与排障。",
+            description: "协议内置页与运维入口。",
           },
         },
         {
@@ -91,7 +89,7 @@ const router = createRouter({
           component: FriendsGroupsPage,
           meta: {
             title: "好友与群",
-            description: "在同一页切换账号，查看好友与群列表，并处理好友申请与入群请求；操作经后端统一鉴权与审计。",
+            description: "好友/群列表与好友、入群审批。",
           },
         },
         { path: "friends", redirect: "/friends-groups" },
@@ -102,7 +100,7 @@ const router = createRouter({
           component: BotSocialConfigPage,
           meta: {
             title: "好友与群颗粒配置",
-            description: "按 QQ 或群号维护独立策略表，与账号级 Bot 配置分层；变更写入前请确认影响范围。",
+            description: "按 QQ/群号的独立策略表。",
           },
         },
         {
@@ -111,7 +109,7 @@ const router = createRouter({
           component: DatabasePage,
           meta: {
             title: "数据库",
-            description: "查看存储后端类型、集合/表体量与体量明细；Bot 与协议状态请在「实例与连接」查看。",
+            description: "存储类型与体量明细。",
           },
         },
         {
@@ -120,7 +118,7 @@ const router = createRouter({
           component: UpdatePage,
           meta: {
             title: "更新",
-            description: "检查上游发行说明并在维护窗口内执行升级；具体步骤与回滚策略由运行手册规定。",
+            description: "发行说明与升级窗口提示。",
           },
         },
         {
@@ -129,8 +127,7 @@ const router = createRouter({
           component: AiExtensionPage,
           meta: {
             title: "AI 扩展",
-            description:
-              "查看扩展服务配置与健康状态；网易云可通过扩展服务完成短信登录。运行记录由后端代理读取。",
+            description: "扩展服务配置与健康；运行记录由后端读取。",
           },
         },
         {
@@ -139,7 +136,7 @@ const router = createRouter({
           component: SecurityPage,
           meta: {
             title: "控制台口令",
-            description: "更新控制台登录口令；请在低峰期执行并同步保管凭据。",
+            description: "更新控制台登录口令。",
           },
         },
         {
@@ -148,7 +145,7 @@ const router = createRouter({
           component: PreferencesPage,
           meta: {
             title: "外观偏好",
-            description: "主题、圆角与密度仅保存在本机浏览器，用于控制台呈现，不参与服务端配置。",
+            description: "主题、圆角与密度（仅本机浏览器）。",
           },
         },
       ],

@@ -16,7 +16,9 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const ok = ref("");
@@ -326,7 +328,9 @@ onMounted(async () => {
     <div v-else>
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">群配置</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
+        </h2>
         <div class="row-actions">
           <select
             v-model="filterSelfId"
@@ -433,7 +437,9 @@ onMounted(async () => {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">好友（用户）配置</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友（用户）配置
+        </h2>
       </div>
       <div class="panel__bd">
         <p

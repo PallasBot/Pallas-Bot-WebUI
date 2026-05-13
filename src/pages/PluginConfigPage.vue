@@ -5,8 +5,10 @@ import { fetchPluginConfig, putPluginConfig } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const route = useRoute();
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const ok = ref("");
 const loading = ref(false);
@@ -130,7 +132,9 @@ async function save() {
       style="margin-bottom: 16px"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">配置项定义</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>配置项定义
+        </h2>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0; line-height: 1.55">
@@ -144,7 +148,9 @@ async function save() {
       class="panel"
     >
       <div class="panel__hd">
-        <h2 class="panel__title">字段</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>字段
+        </h2>
         <button
           type="button"
           class="btn btn--primary"

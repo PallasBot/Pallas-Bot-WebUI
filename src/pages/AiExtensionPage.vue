@@ -16,7 +16,9 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const ok = ref("");
@@ -266,7 +268,9 @@ onMounted(async () => {
           class="row-actions ai-ncm-hd-left"
           style="flex: 1; min-width: 0; flex-wrap: wrap; gap: 10px"
         >
-          <h2 class="panel__title ai-ncm-hd-title">网易云音乐登录</h2>
+          <h2 class="panel__title ai-ncm-hd-title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
+          </h2>
           <template v-if="ncmStatus">
             <span
               class="badge"
@@ -406,7 +410,9 @@ onMounted(async () => {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">配置 JSON</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>配置 JSON
+        </h2>
         <div class="row-actions">
           <button
             type="button"
@@ -450,7 +456,9 @@ onMounted(async () => {
 
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">扩展日志</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>扩展日志
+        </h2>
         <div class="row-actions">
           <select
             v-model="logKind"

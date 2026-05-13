@@ -9,7 +9,9 @@ import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const data = ref<InstancesData | null>(null);
@@ -285,7 +287,9 @@ onMounted(async () => {
     <template v-else-if="data">
       <div class="panel">
         <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">NoneBot 框架</h2>
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+          </h2>
           <button
             type="button"
             class="btn"
@@ -333,7 +337,9 @@ onMounted(async () => {
 
       <div class="panel">
         <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">数据库中的 Bot 配置</h2>
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的 Bot 配置
+          </h2>
           <div class="inst-db-panel__actions">
             <span
               v-if="data"

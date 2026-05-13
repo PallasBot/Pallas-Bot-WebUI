@@ -3,7 +3,9 @@ import { onMounted, ref } from "vue";
 import { fetchPluginConfig, fetchPlugins } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const list = ref<PluginRow[]>([]);
@@ -55,6 +57,11 @@ async function togglePreview(name: string) {
       v-else
       class="plugins-page__body"
     >
+    <div class="plugins-page__hero">
+      <h2 class="panel__title">
+        <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
+      </h2>
+    </div>
     <div
       class="grid-stats"
       style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))"

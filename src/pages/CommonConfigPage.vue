@@ -4,7 +4,9 @@ import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const ok = ref("");
@@ -123,7 +125,9 @@ async function save() {
     <div v-else>
     <div class="panel">
       <div class="panel__hd">
-        <h2 class="panel__title">分区</h2>
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>分区
+        </h2>
         <div class="row-actions">
           <select
             v-model="currentId"
