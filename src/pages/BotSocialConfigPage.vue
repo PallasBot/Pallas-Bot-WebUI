@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   fetchBots,
   fetchGroupConfigById,
   fetchGroupConfigs,
+  fetchPlugins,
   fetchUserConfigById,
   putGroupConfig,
   putUserConfig,
 } from "@/api/consoleApi";
-import type { BotRow, GroupConfigPublic, UserConfigPublic } from "@/api/pallasTypes";
+import type { BotRow, GroupConfigPublic, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 
 const err = ref("");
 const ok = ref("");
@@ -17,27 +19,43 @@ const busy = ref(false);
 const bots = ref<BotRow[]>([]);
 const filterSelfId = ref("");
 
+const plugins = ref<PluginRow[]>([]);
+const pluginLoadErr = ref("");
+
 const groupList = ref<GroupConfigPublic[]>([]);
 const groupIdInput = ref("");
 const groupCfg = ref<GroupConfigPublic | null>(null);
-const groupRoulette = ref(0);
-const groupBanned = ref(false);
-const groupPluginsText = ref("");
+const groupModalOpen = ref(false);
+const groupDraft = ref<{
+  roulette_mode: number;
+  banned: boolean;
+  disabled_plugins: string[];
+} | null>(null);
+const groupSaveBusy = ref(false);
+const groupSaveErr = ref("");
 
 const userIdInput = ref("");
 const userCfg = ref<UserConfigPublic | null>(null);
-const userBanned = ref(false);
+const userModalOpen = ref(false);
+const userDraft = ref<{ banned: boolean } | null>(null);
+const userSaveBusy = ref(false);
+const userSaveErr = ref("");
 
-function parsePlugins(raw: string): string[] {
-  return raw
-    .split(/[\n,，]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
 
-function formatPlugins(list: string[]): string {
-  return list.join("\n");
-}
+watch(
+  () => groupModalOpen.value || userModalOpen.value,
+  (open) => {
+    if (typeof document === "undefined") return;
+    document.body.style.overflow = open ? "hidden" : "";
+  },
+);
+
+onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
+  }
+});
 
 async function loadBots() {
   try {
@@ -63,11 +81,38 @@ async function loadGroupList() {
   }
 }
 
-function applyGroupToForm(g: GroupConfigPublic) {
+function syncGroupDraftFromConfig(g: GroupConfigPublic) {
   groupCfg.value = g;
-  groupRoulette.value = g.roulette_mode;
-  groupBanned.value = g.banned;
-  groupPluginsText.value = formatPlugins(g.disabled_plugins ?? []);
+  groupDraft.value = {
+    roulette_mode: g.roulette_mode,
+    banned: g.banned,
+    disabled_plugins: [...(g.disabled_plugins ?? [])].sort((a, b) => a.localeCompare(b)),
+  };
+  groupSaveErr.value = "";
+}
+
+function cancelGroupModal() {
+  groupModalOpen.value = false;
+  groupDraft.value = null;
+  groupCfg.value = null;
+  groupSaveErr.value = "";
+}
+
+function boolSelectVal(v: boolean): string {
+  return v ? "1" : "0";
+}
+
+function onGroupBannedSelect(raw: string) {
+  if (!groupDraft.value) return;
+  groupDraft.value.banned = raw === "1";
+}
+
+function toggleGroupPluginDisabled(name: string, checked: boolean) {
+  if (!groupDraft.value) return;
+  const set = new Set(groupDraft.value.disabled_plugins);
+  if (checked) set.add(name);
+  else set.delete(name);
+  groupDraft.value.disabled_plugins = [...set].sort((a, b) => a.localeCompare(b));
 }
 
 async function loadGroupById(raw?: string) {
@@ -83,39 +128,54 @@ async function loadGroupById(raw?: string) {
   try {
     const g = await fetchGroupConfigById(gid);
     groupIdInput.value = String(g.group_id);
-    applyGroupToForm(g);
+    syncGroupDraftFromConfig(g);
+    groupModalOpen.value = true;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     groupCfg.value = null;
+    groupDraft.value = null;
   } finally {
     busy.value = false;
   }
 }
 
-function editGroupRow(g: GroupConfigPublic) {
+async function openGroupEdit(g: GroupConfigPublic) {
   groupIdInput.value = String(g.group_id);
-  void loadGroupById(String(g.group_id));
+  await loadGroupById(String(g.group_id));
 }
 
-async function saveGroup() {
-  if (!groupCfg.value) return;
-  err.value = "";
+async function saveGroupModal() {
+  if (!groupCfg.value || !groupDraft.value) return;
+  groupSaveBusy.value = true;
+  groupSaveErr.value = "";
   ok.value = "";
-  busy.value = true;
   try {
     const g = await putGroupConfig(groupCfg.value.group_id, {
-      roulette_mode: groupRoulette.value,
-      banned: groupBanned.value,
-      disabled_plugins: parsePlugins(groupPluginsText.value),
+      roulette_mode: groupDraft.value.roulette_mode,
+      banned: groupDraft.value.banned,
+      disabled_plugins: groupDraft.value.disabled_plugins,
     });
-    applyGroupToForm(g);
+    syncGroupDraftFromConfig(g);
     ok.value = "群配置已保存。";
     await loadGroupList();
+    cancelGroupModal();
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    groupSaveErr.value = e instanceof Error ? e.message : String(e);
   } finally {
-    busy.value = false;
+    groupSaveBusy.value = false;
   }
+}
+
+function cancelUserModal() {
+  userModalOpen.value = false;
+  userDraft.value = null;
+  userCfg.value = null;
+  userSaveErr.value = "";
+}
+
+function onUserBannedSelect(raw: string) {
+  if (!userDraft.value) return;
+  userDraft.value.banned = raw === "1";
 }
 
 async function loadUser() {
@@ -130,36 +190,45 @@ async function loadUser() {
   try {
     const u = await fetchUserConfigById(uid);
     userCfg.value = u;
-    userBanned.value = u.banned;
-    ok.value = "";
+    userDraft.value = { banned: u.banned };
+    userSaveErr.value = "";
+    userModalOpen.value = true;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     userCfg.value = null;
+    userDraft.value = null;
   } finally {
     busy.value = false;
   }
 }
 
-async function saveUser() {
-  if (!userCfg.value) return;
-  err.value = "";
+async function saveUserModal() {
+  if (!userCfg.value || !userDraft.value) return;
+  userSaveBusy.value = true;
+  userSaveErr.value = "";
   ok.value = "";
-  busy.value = true;
   try {
-    const u = await putUserConfig(userCfg.value.user_id, { banned: userBanned.value });
+    const u = await putUserConfig(userCfg.value.user_id, { banned: userDraft.value.banned });
     userCfg.value = u;
-    userBanned.value = u.banned;
+    userDraft.value = { banned: u.banned };
     ok.value = "用户配置已保存。";
+    cancelUserModal();
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    userSaveErr.value = e instanceof Error ? e.message : String(e);
   } finally {
-    busy.value = false;
+    userSaveBusy.value = false;
   }
 }
 
 onMounted(async () => {
   await loadBots();
   await loadGroupList();
+  try {
+    plugins.value = await fetchPlugins();
+  } catch (e) {
+    pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+    plugins.value = [];
+  }
 });
 </script>
 
@@ -215,8 +284,18 @@ onMounted(async () => {
         </div>
       </div>
       <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">
-          下列为数据库中已有记录的群配置；也可直接输入群号加载（若不存在，保存时由后端按策略创建或报错）。
+        <p
+          v-if="pluginLoadErr"
+          class="muted"
+          style="margin: 0 0 10px"
+        >
+          插件列表加载失败，群「禁用插件」弹窗勾选不可用：{{ pluginLoadErr }}
+        </p>
+        <p
+          class="muted"
+          style="margin: 0 0 12px"
+        >
+          下列为数据库中已有记录的群配置；也可直接输入群号加载（若不存在，保存时由后端按策略创建或报错）。编辑在弹窗中进行。
         </p>
         <div
           class="row-actions"
@@ -265,7 +344,7 @@ onMounted(async () => {
                     type="button"
                     class="btn"
                     :disabled="busy"
-                    @click="editGroupRow(g)"
+                    @click="openGroupEdit(g)"
                   >
                     编辑
                   </button>
@@ -277,62 +356,17 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div
-      v-if="groupCfg"
-      class="panel"
-    >
-      <div class="panel__hd">
-        <h2 class="panel__title">编辑群 {{ groupCfg.group_id }}</h2>
-        <button
-          type="button"
-          class="btn btn--primary"
-          :disabled="busy"
-          @click="saveGroup"
-        >
-          保存
-        </button>
-      </div>
-      <div class="panel__bd">
-        <div style="margin-bottom: 14px">
-          <label class="muted" style="display: block; margin-bottom: 6px">轮盘模式 roulette_mode</label>
-          <input
-            v-model.number="groupRoulette"
-            class="inp"
-            type="number"
-            style="max-width: 160px"
-          >
-        </div>
-        <div style="margin-bottom: 14px">
-          <label class="muted" style="display: flex; align-items: center; gap: 8px; cursor: pointer">
-            <input
-              v-model="groupBanned"
-              type="checkbox"
-            >
-            banned（封禁/禁用群侧能力，以后端语义为准）
-          </label>
-        </div>
-        <div style="margin-bottom: 14px">
-          <label class="muted" style="display: block; margin-bottom: 6px">disabled_plugins（每行一个或英文逗号分隔）</label>
-          <textarea
-            v-model="groupPluginsText"
-            class="textarea"
-            rows="6"
-            placeholder="例如：&#10;plugin_a&#10;plugin_b"
-          />
-        </div>
-        <div>
-          <div class="muted" style="margin-bottom: 6px">sing_progress（只读）</div>
-          <pre class="pre-block">{{ JSON.stringify(groupCfg.sing_progress, null, 2) }}</pre>
-        </div>
-      </div>
-    </div>
-
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">好友（用户）配置</h2>
       </div>
       <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">当前 API 仅暴露用户级 <code>banned</code> 字段。</p>
+        <p
+          class="muted"
+          style="margin: 0 0 12px"
+        >
+          当前 API 仅暴露用户级 <code>banned</code> 字段。输入 QQ 并加载后在弹窗中编辑。
+        </p>
         <div class="row-actions" style="margin-bottom: 16px">
           <input
             v-model="userIdInput"
@@ -352,28 +386,220 @@ onMounted(async () => {
             加载
           </button>
         </div>
-        <template v-if="userCfg">
-          <div style="margin-bottom: 12px">
-            <span class="muted">user_id：</span>
-            <strong style="color: var(--text)">{{ userCfg.user_id }}</strong>
-          </div>
-          <label class="muted" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 14px">
-            <input
-              v-model="userBanned"
-              type="checkbox"
-            >
-            banned
-          </label>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy"
-            @click="saveUser"
-          >
-            保存用户配置
-          </button>
-        </template>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="groupModalOpen && groupCfg && groupDraft"
+        class="console-modal"
+        role="dialog"
+        :aria-modal="true"
+        aria-labelledby="group-policy-modal-title"
+      >
+        <div
+          class="console-modal__backdrop"
+          :aria-hidden="true"
+          @click="cancelGroupModal"
+        />
+        <div
+          class="console-modal__dialog"
+          @click.stop
+        >
+          <div class="console-modal__hd">
+            <div class="console-modal__head-text">
+              <h2
+                id="group-policy-modal-title"
+                class="console-modal__title"
+              >
+                编辑群颗粒配置
+              </h2>
+              <p class="console-modal__subtitle">
+                <span class="console-modal__subtitle-strong">群 {{ groupCfg.group_id }}</span>
+                <span class="muted"> · roulette / banned / 禁用插件</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="console-modal__close"
+              aria-label="关闭"
+              @click="cancelGroupModal"
+            >
+              ×
+            </button>
+          </div>
+          <div class="console-modal__bd">
+            <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+              <p
+                v-if="groupSaveErr"
+                class="alert alert--err"
+                style="margin-bottom: 12px"
+              >
+                {{ groupSaveErr }}
+              </p>
+              <div class="bot-config-edit__grid">
+                <div class="bot-config-edit__field">
+                  <label>轮盘模式</label>
+                  <input
+                    v-model.number="groupDraft.roulette_mode"
+                    class="inp"
+                    type="number"
+                    style="width: 100%"
+                  >
+                </div>
+                <div class="bot-config-edit__field">
+                  <label>封禁（banned）</label>
+                  <select
+                    class="sel"
+                    style="width: 100%"
+                    :value="boolSelectVal(groupDraft.banned)"
+                    @change="onGroupBannedSelect(($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="1">是</option>
+                    <option value="0">否</option>
+                  </select>
+                </div>
+              </div>
+              <div class="bot-config-edit__field" style="margin-bottom: 12px">
+                <label>禁用插件（勾选表示禁用）</label>
+                <p
+                  v-if="!pluginPickList.length"
+                  class="muted"
+                  style="margin: 0 0 8px; font-size: 12px"
+                >
+                  无插件清单，无法勾选禁用项。
+                </p>
+                <div
+                  v-else
+                  class="plugin-check-grid"
+                >
+                  <label
+                    v-for="p in pluginPickList"
+                    :key="`gpl-${groupCfg.group_id}-${p.name}`"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="groupDraft.disabled_plugins.includes(p.name)"
+                      @change="
+                        toggleGroupPluginDisabled(p.name, ($event.target as HTMLInputElement).checked)
+                      "
+                    >
+                    <span>{{ p.label }}</span>
+                  </label>
+                </div>
+              </div>
+              <div class="bot-config-edit__field">
+                <label>sing_progress（只读）</label>
+                <pre class="pre-block" style="max-height: 200px; overflow: auto; margin: 0">{{
+                  JSON.stringify(groupCfg.sing_progress, null, 2)
+                }}</pre>
+              </div>
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="groupSaveBusy"
+                  @click="saveGroupModal"
+                >
+                  {{ groupSaveBusy ? "保存中…" : "保存" }}
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="groupSaveBusy"
+                  @click="cancelGroupModal"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="userModalOpen && userCfg && userDraft"
+        class="console-modal"
+        role="dialog"
+        :aria-modal="true"
+        aria-labelledby="user-policy-modal-title"
+      >
+        <div
+          class="console-modal__backdrop"
+          :aria-hidden="true"
+          @click="cancelUserModal"
+        />
+        <div
+          class="console-modal__dialog"
+          @click.stop
+        >
+          <div class="console-modal__hd">
+            <div class="console-modal__head-text">
+              <h2
+                id="user-policy-modal-title"
+                class="console-modal__title"
+              >
+                编辑用户颗粒配置
+              </h2>
+              <p class="console-modal__subtitle">
+                <span class="console-modal__subtitle-strong">QQ {{ userCfg.user_id }}</span>
+                <span class="muted"> · banned</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              class="console-modal__close"
+              aria-label="关闭"
+              @click="cancelUserModal"
+            >
+              ×
+            </button>
+          </div>
+          <div class="console-modal__bd">
+            <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
+              <p
+                v-if="userSaveErr"
+                class="alert alert--err"
+                style="margin-bottom: 12px"
+              >
+                {{ userSaveErr }}
+              </p>
+              <div class="bot-config-edit__field">
+                <label>封禁（banned）</label>
+                <select
+                  class="sel"
+                  style="width: 100%; max-width: 280px"
+                  :value="boolSelectVal(userDraft.banned)"
+                  @change="onUserBannedSelect(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="1">是</option>
+                  <option value="0">否</option>
+                </select>
+              </div>
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="userSaveBusy"
+                  @click="saveUserModal"
+                >
+                  {{ userSaveBusy ? "保存中…" : "保存" }}
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="userSaveBusy"
+                  @click="cancelUserModal"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

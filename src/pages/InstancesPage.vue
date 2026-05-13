@@ -2,14 +2,18 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, NapcatManagerSnapshot, PluginRow } from "@/api/pallasTypes";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { accountHasNonebotBot } from "@/utils/botConnection";
+import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
+import { protocolDisp } from "@/utils/protocolUi";
 
 const err = ref("");
 const data = ref<InstancesData | null>(null);
 const plugins = ref<PluginRow[]>([]);
 const pluginLoadErr = ref("");
 
-const botView = ref<"table" | "cards">("table");
-const protoView = ref<"table" | "cards">("table");
+const botView = ref<"table" | "cards">(consolePrefs.instancesBotView);
+const protoView = ref<"table" | "cards">(consolePrefs.instancesProtoView);
 
 const editModalAccount = ref<number | null>(null);
 const draft = ref<{
@@ -41,6 +45,29 @@ const protocolSnap = computed<NapcatManagerSnapshot | null>(
   () => data.value?.pallas_protocol ?? data.value?.napcat ?? null,
 );
 
+const protocolAccountRows = computed(() =>
+  (protocolSnap.value?.accounts ?? []).map((a, i) => ({
+    key: `pa-${i}-${String(a.qq ?? a.id ?? i)}`,
+    raw: a,
+    run: protocolDisp(a.process_running ?? a.running, "运行", "停止"),
+    conn: protocolDisp(a.connected, "已连接", "未连接"),
+  })),
+);
+
+function isBotConnected(account: number): boolean {
+  return accountHasNonebotBot(data.value?.nonebot_bots, account);
+}
+
+function setBotView(v: "table" | "cards") {
+  botView.value = v;
+  setConsolePrefs({ instancesBotView: v });
+}
+
+function setProtoView(v: "table" | "cards") {
+  protoView.value = v;
+  setConsolePrefs({ instancesProtoView: v });
+}
+
 function botProfileEntry(account: number) {
   return data.value?.bot_profiles?.[String(account)];
 }
@@ -54,9 +81,7 @@ function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
 }
 
-const pluginNames = computed(() =>
-  [...new Set(plugins.value.map((p) => p.name).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-);
+const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
 
 function parseSelfId(s: string): number | null {
   const n = parseInt(s, 10);
@@ -180,7 +205,7 @@ onMounted(async () => {
         <p class="page-hero__eyebrow">Topology</p>
         <h1 class="page-hero__title">实例与连接</h1>
         <p class="page-hero__desc">
-          汇总编排器在线情况、数据面账号及协议管理器快照。Bot 数据面配置可在本页直接保存；好友/群/颗粒策略请用侧栏对应页面。
+          汇总编排器在线情况、数据面账号及协议管理器快照。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。
         </p>
       </div>
       <div class="page-hero__actions">
@@ -242,14 +267,14 @@ onMounted(async () => {
             <button
               type="button"
               :class="{ 'is-on': botView === 'table' }"
-              @click="botView = 'table'"
+              @click="setBotView('table')"
             >
               表格
             </button>
             <button
               type="button"
               :class="{ 'is-on': botView === 'cards' }"
-              @click="botView = 'cards'"
+              @click="setBotView('cards')"
             >
               卡片
             </button>
@@ -271,12 +296,13 @@ onMounted(async () => {
             <table class="data">
               <thead>
                 <tr>
-                  <th>account</th>
+                  <th>账号</th>
                   <th>昵称</th>
-                  <th>security</th>
-                  <th>auto_accept_friend</th>
-                  <th>auto_accept_group</th>
-                  <th>disabled_plugins</th>
+                  <th>连接</th>
+                  <th>安全模式</th>
+                  <th>自动同意好友</th>
+                  <th>自动同意入群</th>
+                  <th>禁用插件</th>
                   <th style="width: 88px">操作</th>
                 </tr>
               </thead>
@@ -286,11 +312,16 @@ onMounted(async () => {
                   :key="c.account"
                 >
                   <td style="font-weight: 600">{{ c.account }}</td>
-                  <td class="muted">{{ botNickname(c.account) || "—" }}</td>
+                  <td class="muted">{{ botNickname(c.account) || "BOT" }}</td>
+                  <td>
+                    <span :class="boolPillClass(isBotConnected(c.account))">{{
+                      isBotConnected(c.account) ? "已连接" : "未连接"
+                    }}</span>
+                  </td>
                   <td>{{ c.security }}</td>
                   <td>{{ c.auto_accept_friend }}</td>
                   <td>{{ c.auto_accept_group }}</td>
-                  <td class="muted">{{ c.disabled_plugins?.join(", ") || "—" }}</td>
+                  <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <button
                       type="button"
@@ -308,26 +339,25 @@ onMounted(async () => {
 
           <div
             v-else
-            class="data-card-grid"
+            class="data-card-grid data-card-grid--bots"
           >
             <div
               v-for="c in data.db_bot_configs"
               :key="`card-${c.account}`"
-              class="data-summary-card data-summary-card--kv"
+              class="data-summary-card data-summary-card--kv data-summary-card--bot"
             >
-              <div class="data-summary-card__head">
-                <div class="data-summary-card__title">账号 {{ c.account }}</div>
-                <template v-if="botNickname(c.account)">
-                  <div class="data-summary-card__nick-label">昵称</div>
-                  <div class="data-summary-card__nick">{{ botNickname(c.account) }}</div>
-                </template>
-                <p
-                  v-else
-                  class="muted"
-                  style="margin: 6px 0 0; font-size: 12px"
-                >
-                  暂无昵称（需 OneBot V11 在线且 get_login_info 可用）
-                </p>
+              <div class="data-summary-card__head data-summary-card__head--bot">
+                <div class="data-summary-card__head-main">
+                  <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                  <div class="data-summary-card__secondary muted">账号 {{ c.account }}</div>
+                </div>
+                <span
+                  :class="
+                    isBotConnected(c.account)
+                      ? 'data-conn-capsule data-conn-capsule--on'
+                      : 'data-conn-capsule data-conn-capsule--off'
+                  "
+                >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
               </div>
               <div class="data-summary-card__row">
                 <span class="data-summary-card__label">安全模式</span>
@@ -343,7 +373,11 @@ onMounted(async () => {
               </div>
               <div class="data-summary-card__plugins">
                 <span class="data-summary-card__plugins-label">禁用插件</span>
-                {{ c.disabled_plugins?.length ? c.disabled_plugins.join("、") : "无" }}
+                {{
+                  c.disabled_plugins?.length
+                    ? formatDisabledPluginIds(c.disabled_plugins, plugins)
+                    : "无"
+                }}
               </div>
               <div class="data-summary-card__tags">
                 <button
@@ -374,14 +408,14 @@ onMounted(async () => {
             <button
               type="button"
               :class="{ 'is-on': protoView === 'table' }"
-              @click="protoView = 'table'"
+              @click="setProtoView('table')"
             >
               表格
             </button>
             <button
               type="button"
               :class="{ 'is-on': protoView === 'cards' }"
-              @click="protoView = 'cards'"
+              @click="setProtoView('cards')"
             >
               卡片
             </button>
@@ -405,12 +439,28 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr
-                  v-for="(a, i) in protocolSnap.accounts"
-                  :key="i"
+                  v-for="row in protocolAccountRows"
+                  :key="row.key"
                 >
-                  <td>{{ a.qq || a.id }}</td>
-                  <td>{{ a.process_running ?? a.running }}</td>
-                  <td>{{ a.connected }}</td>
+                  <td>{{ row.raw.qq || row.raw.id }}</td>
+                  <td>
+                    <template v-if="row.run.kind === 'pill'">
+                      <span :class="boolPillClass(row.run.on)">{{ row.run.on ? row.run.onLabel : row.run.offLabel }}</span>
+                    </template>
+                    <span
+                      v-else
+                      class="muted"
+                    >{{ row.run.text }}</span>
+                  </td>
+                  <td>
+                    <template v-if="row.conn.kind === 'pill'">
+                      <span :class="boolPillClass(row.conn.on)">{{ row.conn.on ? row.conn.onLabel : row.conn.offLabel }}</span>
+                    </template>
+                    <span
+                      v-else
+                      class="muted"
+                    >{{ row.conn.text }}</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -420,19 +470,39 @@ onMounted(async () => {
             class="data-card-grid"
           >
             <div
-              v-for="(a, i) in protocolSnap.accounts"
-              :key="`pa-${i}`"
-              class="data-summary-card"
+              v-for="row in protocolAccountRows"
+              :key="row.key"
+              class="data-summary-card data-summary-card--kv"
             >
-              <div class="data-summary-card__title">{{ a.qq || a.id || "账号" }}</div>
-              <div class="data-summary-card__meta">
-                进程运行：{{ a.process_running ?? a.running ?? "—" }} · 已连接：{{ a.connected ?? "—" }}
+              <div class="data-summary-card__title">{{ row.raw.qq || row.raw.id || "账号" }}</div>
+              <div class="data-summary-card__row">
+                <span class="data-summary-card__label">进程</span>
+                <template v-if="row.run.kind === 'pill'">
+                  <span :class="boolPillClass(row.run.on)">{{ row.run.on ? row.run.onLabel : row.run.offLabel }}</span>
+                </template>
+                <span
+                  v-else
+                  class="muted"
+                  style="font-size: 12px"
+                >{{ row.run.text }}</span>
+              </div>
+              <div class="data-summary-card__row">
+                <span class="data-summary-card__label">连接</span>
+                <template v-if="row.conn.kind === 'pill'">
+                  <span :class="boolPillClass(row.conn.on)">{{ row.conn.on ? row.conn.onLabel : row.conn.offLabel }}</span>
+                </template>
+                <span
+                  v-else
+                  class="muted"
+                  style="font-size: 12px"
+                >{{ row.conn.text }}</span>
               </div>
               <div
-                v-if="a.display_name"
+                v-if="row.raw.display_name"
                 class="data-summary-card__meta muted"
+                style="margin-top: 4px"
               >
-                {{ a.display_name }}
+                {{ row.raw.display_name }}
               </div>
             </div>
           </div>
@@ -466,9 +536,10 @@ onMounted(async () => {
                 编辑 Bot 配置
               </h2>
               <p class="console-modal__subtitle">
-                账号 {{ editModalAccount }}<template v-if="editModalAccount != null && botNickname(editModalAccount)">
-                  · {{ botNickname(editModalAccount) }}
-                </template>
+                <span class="console-modal__subtitle-strong">{{
+                  editModalAccount != null ? botNickname(editModalAccount) || "BOT" : ""
+                }}</span>
+                <span class="muted"> · 账号 {{ editModalAccount }}</span>
               </p>
             </div>
             <button
@@ -599,7 +670,7 @@ onMounted(async () => {
               <div class="bot-config-edit__field">
                 <label>禁用插件（勾选表示禁用）</label>
                 <p
-                  v-if="!pluginNames.length"
+                  v-if="!pluginPickList.length"
                   class="muted"
                   style="margin: 0 0 8px; font-size: 12px"
                 >
@@ -610,17 +681,17 @@ onMounted(async () => {
                   class="plugin-check-grid"
                 >
                   <label
-                    v-for="name in pluginNames"
-                    :key="`mod-pl-${editModalAccount}-${name}`"
+                    v-for="p in pluginPickList"
+                    :key="`mod-pl-${editModalAccount}-${p.name}`"
                   >
                     <input
                       type="checkbox"
-                      :checked="draft.disabled_plugins.includes(name)"
+                      :checked="draft.disabled_plugins.includes(p.name)"
                       @change="
-                        togglePluginDisabled(name, ($event.target as HTMLInputElement).checked)
+                        togglePluginDisabled(p.name, ($event.target as HTMLInputElement).checked)
                       "
                     >
-                    <span>{{ name }}</span>
+                    <span>{{ p.label }}</span>
                   </label>
                 </div>
               </div>
