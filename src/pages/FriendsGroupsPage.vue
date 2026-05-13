@@ -17,6 +17,7 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
@@ -50,22 +51,53 @@ function profileNick(selfId: string): string {
 
 function botOptionLabel(b: BotRow): string {
   const nick = profileNick(b.self_id);
-  if (nick) return `${nick}（${b.self_id}）· ${b.adapter}`;
-  return `${b.self_id} · ${b.adapter}`;
+  if (nick) return `${nick}（${b.self_id}）`;
+  return b.self_id;
 }
 
 const botsVisible = computed(() => botPickerRowsFromInstances(instances.value));
 
-function friendRequestNickname(userId: number): string {
+function displayFriendReqNickname(row: { user_id: number; nickname?: string | null }): string {
+  const fromApi = row.nickname?.trim();
+  if (fromApi) return fromApi;
   const sid = selfIdStr.value;
-  if (!friends.value || friends.value.self_id !== sid) return `QQ ${userId}`;
-  const hit = friends.value.friends?.find((f) => f.user_id === userId);
-  return hit?.nickname?.trim() || `QQ ${userId}`;
+  if (friends.value && friends.value.self_id === sid) {
+    const hit = friends.value.friends?.find((f) => f.user_id === row.user_id);
+    const n = hit?.nickname?.trim();
+    if (n) return n;
+  }
+  return `QQ ${row.user_id}`;
 }
 
 function selfIdNum(): number | null {
   const n = parseInt(selfIdStr.value, 10);
   return Number.isFinite(n) ? n : null;
+}
+
+function offlineFriendPayload(selfId: string): FriendListData {
+  return {
+    self_id: selfId,
+    connection_key: "",
+    adapter: "",
+    friends: [],
+    truncated: false,
+    limit: 800,
+    error:
+      "当前账号未在 NoneBot 上线，无法拉取好友列表。请在「实例与连接」确认协议端已接入编排器后再试。",
+  };
+}
+
+function offlineGroupPayload(selfId: string): GroupListData {
+  return {
+    self_id: selfId,
+    connection_key: "",
+    adapter: "",
+    groups: [],
+    truncated: false,
+    limit: 1000,
+    error:
+      "当前账号未在 NoneBot 上线，无法拉取群列表。请在「实例与连接」确认协议端已接入编排器后再试。",
+  };
 }
 
 async function loadBots() {
@@ -86,16 +118,19 @@ async function loadData() {
   busy.value = true;
   err.value = "";
   try {
-    const [fl, fr, gl, ov] = await Promise.all([
-      fetchFriendList(sid),
-      fetchFriendRequests(),
-      fetchGroupList(sid),
-      fetchRequestOverview(),
-    ]);
-    friends.value = fl;
+    const connected = accountHasNonebotBot(instances.value?.nonebot_bots, sid);
+    const [fr, ov] = await Promise.all([fetchFriendRequests(), fetchRequestOverview()]);
     requests.value = fr;
-    groups.value = gl;
     overview.value = ov;
+    if (connected) {
+      const [fl, gl] = await Promise.all([fetchFriendList(sid), fetchGroupList(sid)]);
+      friends.value = fl;
+      groups.value = gl;
+    } else {
+      const sidStr = String(sid);
+      friends.value = offlineFriendPayload(sidStr);
+      groups.value = offlineGroupPayload(sidStr);
+    }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -109,6 +144,11 @@ watch(botsVisible, (list) => {
     selfIdStr.value = list[0]!.self_id;
   }
 });
+
+async function refreshPage() {
+  await loadBots();
+  await loadData();
+}
 
 watch(selfIdStr, () => {
   void loadData();
@@ -124,14 +164,25 @@ const requestRows = computed(() => {
     self_id: string;
     source: "pending" | "doubt";
     user_id: number;
+    nickname?: string | null;
   }> = [];
   const data = requests.value?.bots ?? [];
   for (const b of data) {
     for (const p of b.pending_friend_requests ?? []) {
-      out.push({ self_id: b.self_id, source: "pending", user_id: p.user_id });
+      out.push({
+        self_id: b.self_id,
+        source: "pending",
+        user_id: p.user_id,
+        nickname: p.nickname,
+      });
     }
     for (const d of b.doubt_friend_requests ?? []) {
-      out.push({ self_id: b.self_id, source: "doubt", user_id: d.user_id });
+      out.push({
+        self_id: b.self_id,
+        source: "doubt",
+        user_id: d.user_id,
+        nickname: d.nickname,
+      });
     }
   }
   return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
@@ -271,7 +322,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             type="button"
             class="btn btn--primary"
             :disabled="busy || !selfIdStr"
-            @click="loadData"
+            @click="refreshPage"
           >
             {{ busy ? "加载中…" : "刷新" }}
           </button>
@@ -316,7 +367,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
                 <td>{{ row.self_id }}</td>
                 <td>{{ row.source }}</td>
                 <td>{{ row.user_id }}</td>
-                <td>{{ friendRequestNickname(row.user_id) }}</td>
+                <td>{{ displayFriendReqNickname(row) }}</td>
                 <td>
                   <div class="row-actions">
                     <button

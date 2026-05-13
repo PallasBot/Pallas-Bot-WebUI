@@ -6,7 +6,6 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
-import { visibleBots } from "@/utils/botDisplay";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 
@@ -57,7 +56,7 @@ const expNonebot = ref(true);
 const expDbBots = ref(true);
 
 const sortedNonebotBots = computed(() => {
-  const rows = visibleBots([...(data.value?.nonebot_bots ?? [])]);
+  const rows = [...(data.value?.nonebot_bots ?? [])];
   rows.sort((a, b) => {
     const ia = parseSelfId(a.self_id);
     const ib = parseSelfId(b.self_id);
