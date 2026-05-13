@@ -11,6 +11,7 @@ import {
   fetchMessageStats,
   fetchPluginRunStats,
   fetchPlugins,
+  fetchRequestOverview,
   fetchSystem,
 } from "@/api/consoleApi";
 import type {
@@ -23,6 +24,7 @@ import type {
   NapcatAccountRow,
   PluginRow,
   PluginRunStatsData,
+  RequestOverviewData,
   SystemData,
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
@@ -50,6 +52,7 @@ const instances = ref<InstancesData | null>(null);
 const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
+const requestOverviewSnap = ref<RequestOverviewData | null>(null);
 const socialBusy = ref(false);
 /** 首屏主内容区：与全站骨架一致，数据就绪后再渲染 */
 const pageReady = ref(false);
@@ -248,6 +251,30 @@ const groupCountDisplay = computed(() => {
   return String(groupSnap.value.groups?.length ?? 0);
 });
 
+const scopedRequestOverviewRow = computed(() => {
+  const acc = selectedAccount.value;
+  const ov = requestOverviewSnap.value;
+  if (acc == null || !ov?.bots?.length) return null;
+  const sid = String(acc);
+  return ov.bots.find((b) => b.self_id === sid) ?? null;
+});
+
+const friendPendingApplyDisplay = computed(() => {
+  if (socialBusy.value) return "…";
+  const r = scopedRequestOverviewRow.value;
+  if (r == null) return "—";
+  const p = r.pending_friend_requests?.length ?? 0;
+  const d = r.doubt_friend_requests?.length ?? 0;
+  return String(p + d);
+});
+
+const groupPendingApplyDisplay = computed(() => {
+  if (socialBusy.value) return "…";
+  const r = scopedRequestOverviewRow.value;
+  if (r == null) return "—";
+  return String(r.pending_group_requests?.length ?? 0);
+});
+
 const socialCountsLoadHint = computed(() => {
   if (socialBusy.value) return "";
   if (friendSnap.value != null || groupSnap.value != null) return "";
@@ -439,25 +466,29 @@ async function refreshSelectedBotDetails() {
     pluginRunStatsScoped.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
+    requestOverviewSnap.value = null;
     return;
   }
   socialBusy.value = true;
   try {
-    const [ms, prs, fl, gl] = await Promise.all([
+    const [ms, prs, fl, gl, ro] = await Promise.all([
       fetchMessageStats(acc),
       fetchPluginRunStats(acc),
       fetchFriendList(acc),
       fetchGroupList(acc),
+      fetchRequestOverview(),
     ]);
     statsScoped.value = ms;
     pluginRunStatsScoped.value = prs;
     friendSnap.value = fl;
     groupSnap.value = gl;
+    requestOverviewSnap.value = ro;
   } catch {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
+    requestOverviewSnap.value = null;
   } finally {
     socialBusy.value = false;
   }
@@ -537,10 +568,6 @@ onMounted(load);
               <h2 class="panel__title">
                 <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
               </h2>
-              <RouterLink
-                class="home-instances-capsule"
-                to="/instances"
-              >实例与连接</RouterLink>
               <button
                 type="button"
                 class="home-instances-capsule home-instances-capsule--action"
@@ -652,11 +679,17 @@ onMounted(load);
                         <dl class="home-account-dl home-account-dl--tight home-account-dl--hero-foot">
                           <div>
                             <dt>好友</dt>
-                            <dd>{{ friendCountDisplay }}</dd>
+                            <dd class="home-account-dl__stack">
+                              <span class="home-account-dl__stack-count">{{ friendCountDisplay }}</span>
+                              <span class="home-account-dl__stack-pending">待同意申请 {{ friendPendingApplyDisplay }} 条</span>
+                            </dd>
                           </div>
                           <div>
                             <dt>群</dt>
-                            <dd>{{ groupCountDisplay }}</dd>
+                            <dd class="home-account-dl__stack">
+                              <span class="home-account-dl__stack-count">{{ groupCountDisplay }}</span>
+                              <span class="home-account-dl__stack-pending">待同意申请 {{ groupPendingApplyDisplay }} 条</span>
+                            </dd>
                           </div>
                         </dl>
                         <p
@@ -734,10 +767,8 @@ onMounted(load);
                           class="home-account-metrics__today-block"
                           :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
                         >
-                          <div class="home-account-metrics__today-row">
-                            <span class="muted home-account-metrics__k">今日 API</span>
-                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
-                          </div>
+                          <span class="muted home-account-metrics__k">今日 API 调用</span>
+                          <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
                           <div class="home-account-metrics__skel-track">
                             <span
                               v-for="n in 8"
@@ -750,10 +781,7 @@ onMounted(load);
                           class="home-account-metrics__stat-block"
                           :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginTodayTopStr) }"
                         >
-                          <div class="home-account-metrics__krow">
-                            <span class="muted home-account-metrics__k">调用最多</span>
-                            <span class="home-account-metrics__kind">插件</span>
-                          </div>
+                          <span class="muted home-account-metrics__k">调用最多插件</span>
                           <span
                             class="home-account-metrics__v home-account-metrics__v--clip"
                             :title="pluginTodayTopStr"
@@ -770,10 +798,7 @@ onMounted(load);
                           class="home-account-metrics__stat-block"
                           :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTopStr) }"
                         >
-                          <div class="home-account-metrics__krow">
-                            <span class="muted home-account-metrics__k">调用最多</span>
-                            <span class="home-account-metrics__kind">API</span>
-                          </div>
+                          <span class="muted home-account-metrics__k">调用最多 API</span>
                           <span
                             class="home-account-metrics__v home-account-metrics__v--clip"
                             :title="apiTodayTopStr"
@@ -830,28 +855,6 @@ onMounted(load);
                     :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
                     :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                   />
-                </div>
-                <div class="home-account-msg-tools-span">
-                  <div class="home-account-msg-tools">
-                    <div class="home-account-msg-tools__hd">
-                      <h3 class="home-account-msg-tools__title">
-                        <span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">≡</span>消息与过滤
-                      </h3>
-                      <p class="home-account-msg-tools__desc muted">
-                        日志关键字过滤；好友/群策略见配置页。
-                      </p>
-                    </div>
-                    <div class="home-account-msg-tools__links">
-                      <RouterLink
-                        class="btn btn--primary"
-                        to="/logs"
-                      >运行日志</RouterLink>
-                      <RouterLink
-                        class="btn"
-                        to="/bot-social-config"
-                      >好友/群颗粒配置</RouterLink>
-                    </div>
-                  </div>
                 </div>
               </div>
             </template>
