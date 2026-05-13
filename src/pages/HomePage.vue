@@ -563,8 +563,8 @@ onMounted(load);
                     </div>
                   </div>
                   <div class="home-account-unified__col home-account-unified__col--metrics">
-                    <div class="home-account-metrics">
-                      <div class="home-account-metrics__head muted">吞吐（累计）</div>
+                    <div class="home-account-metrics home-account-metrics--color">
+                      <div class="home-account-metrics__head">吞吐（累计）</div>
                       <div class="home-account-metrics__big">
                         <span class="home-account-metrics__recv">{{ socialBusy ? "…" : msgRecvSentPair.recv }}</span>
                         <span class="home-account-metrics__sep muted">/</span>
