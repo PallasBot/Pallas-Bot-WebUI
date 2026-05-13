@@ -61,7 +61,7 @@ const connectionBadge = computed(() => {
     return { text: "未连接", cls: "shell__topbar-conn shell__topbar-conn--err" as const };
   }
   if (health.value?.ok) {
-    return { text: "API 正常", cls: "shell__topbar-conn shell__topbar-conn--ok" as const };
+    return { text: "已连接", cls: "shell__topbar-conn shell__topbar-conn--ok" as const };
   }
   return { text: "API 异常", cls: "shell__topbar-conn shell__topbar-conn--warn" as const };
 });

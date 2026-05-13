@@ -221,6 +221,18 @@ const sortedDbBots = computed(() => {
   return rows;
 });
 
+const selectedBotConfig = computed(() => {
+  const acc = selectedAccount.value;
+  if (acc == null) return null;
+  return sortedDbBots.value.find((r) => r.account === acc) ?? null;
+});
+
+const selectedAdminsDisplay = computed(() => {
+  const admins = selectedBotConfig.value?.admins;
+  if (!admins?.length) return "—";
+  return admins.map((id) => String(id)).join("、");
+});
+
 function ensureSelectedAccount() {
   const rows = sortedDbBots.value;
   if (!rows.length) {
@@ -487,100 +499,105 @@ onMounted(load);
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
               >
-                <div class="home-account-split-col">
-                  <div class="home-account-hero">
-                    <div class="home-account-hero__avatar">
-                      <img
-                        :src="qqAvatarUrl(selectedAccount)"
-                        alt=""
-                        width="64"
-                        height="64"
-                        decoding="async"
-                        referrerpolicy="no-referrer"
-                        @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-                      >
-                    </div>
-                    <div class="home-account-hero__main">
-                      <div class="home-account-hero__title">
-                        {{ dbNick(selectedAccount) || "BOT" }}
-                        <span
-                          class="home-account-conn"
-                          :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                        >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                <div class="home-account-unified">
+                  <div class="home-account-unified__col">
+                    <div class="home-account-hero home-account-hero--unified">
+                      <div class="home-account-hero__avatar">
+                        <img
+                          :src="qqAvatarUrl(selectedAccount)"
+                          alt=""
+                          width="64"
+                          height="64"
+                          decoding="async"
+                          referrerpolicy="no-referrer"
+                          @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                        >
                       </div>
-                      <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                      <p class="home-account-hero__proto muted">
-                        协议 · {{ accountAdapterDisplay }}
-                      </p>
-                      <div class="home-account-hero__links">
-                        <a
-                          v-if="nativeProtocolWebUiHref"
-                          class="home-account-hero__link"
-                          :href="nativeProtocolWebUiHref"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >原生 WebUI</a>
-                        <a
-                          v-if="protocolBuiltInManageHref"
-                          class="home-account-hero__link"
-                          :href="protocolBuiltInManageHref"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >协议管理页</a>
+                      <div class="home-account-hero__main">
+                        <div class="home-account-hero__title">
+                          {{ dbNick(selectedAccount) || "BOT" }}
+                          <span
+                            class="home-account-conn"
+                            :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
+                          >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                        </div>
+                        <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
+                        <p class="home-account-hero__proto muted">
+                          协议 · {{ accountAdapterDisplay }}
+                        </p>
+                        <p class="home-account-hero__sub muted home-account-hero__admin">
+                          管理员 {{ selectedAdminsDisplay }}
+                        </p>
+                        <div class="home-account-hero__links">
+                          <a
+                            v-if="nativeProtocolWebUiHref"
+                            class="home-account-hero__link"
+                            :href="nativeProtocolWebUiHref"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >原生 WebUI</a>
+                          <a
+                            v-if="protocolBuiltInManageHref"
+                            class="home-account-hero__link"
+                            :href="protocolBuiltInManageHref"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >协议管理页</a>
+                        </div>
+                        <dl class="home-account-dl home-account-dl--tight">
+                          <div>
+                            <dt>好友</dt>
+                            <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
+                          </div>
+                          <div>
+                            <dt>群</dt>
+                            <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
+                          </div>
+                        </dl>
                       </div>
-                      <dl class="home-account-dl home-account-dl--tight">
-                        <div>
-                          <dt>好友</dt>
-                          <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
-                        </div>
-                        <div>
-                          <dt>群</dt>
-                          <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
-                        </div>
-                      </dl>
                     </div>
                   </div>
-                </div>
-                <div class="home-account-split-col home-account-split-col--calls">
-                  <div class="home-account-metrics">
-                    <div class="home-account-metrics__head muted">吞吐（累计）</div>
-                    <div class="home-account-metrics__big">
-                      <span class="home-account-metrics__recv">{{ socialBusy ? "…" : msgRecvSentPair.recv }}</span>
-                      <span class="home-account-metrics__sep muted">/</span>
-                      <span class="home-account-metrics__sent">{{ socialBusy ? "…" : msgRecvSentPair.sent }}</span>
-                    </div>
-                    <div class="home-account-metrics__stats">
-                      <div class="home-account-metrics__today-row">
-                        <span class="muted home-account-metrics__k">今日 API</span>
-                        <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
+                  <div class="home-account-unified__col home-account-unified__col--metrics">
+                    <div class="home-account-metrics">
+                      <div class="home-account-metrics__head muted">吞吐（累计）</div>
+                      <div class="home-account-metrics__big">
+                        <span class="home-account-metrics__recv">{{ socialBusy ? "…" : msgRecvSentPair.recv }}</span>
+                        <span class="home-account-metrics__sep muted">/</span>
+                        <span class="home-account-metrics__sent">{{ socialBusy ? "…" : msgRecvSentPair.sent }}</span>
                       </div>
-                      <div class="home-account-metrics__stat-block">
-                        <div class="home-account-metrics__krow">
-                          <span class="muted home-account-metrics__k">调用最多</span>
-                          <span class="home-account-metrics__kind">插件</span>
+                      <div class="home-account-metrics__stats">
+                        <div class="home-account-metrics__today-row">
+                          <span class="muted home-account-metrics__k">今日 API</span>
+                          <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
                         </div>
-                        <span
-                          class="home-account-metrics__v home-account-metrics__v--clip"
-                          :title="pluginTodayTopStr"
-                        >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
-                      </div>
-                      <div class="home-account-metrics__stat-block">
-                        <div class="home-account-metrics__krow">
-                          <span class="muted home-account-metrics__k">调用最多</span>
-                          <span class="home-account-metrics__kind">API</span>
+                        <div class="home-account-metrics__stat-block">
+                          <div class="home-account-metrics__krow">
+                            <span class="muted home-account-metrics__k">调用最多</span>
+                            <span class="home-account-metrics__kind">插件</span>
+                          </div>
+                          <span
+                            class="home-account-metrics__v home-account-metrics__v--clip"
+                            :title="pluginTodayTopStr"
+                          >{{ socialBusy ? "…" : pluginTodayTopStr }}</span>
                         </div>
-                        <span
-                          class="home-account-metrics__v home-account-metrics__v--clip"
-                          :title="apiTodayTopStr"
-                        >{{ socialBusy ? "…" : apiTodayTopStr }}</span>
+                        <div class="home-account-metrics__stat-block">
+                          <div class="home-account-metrics__krow">
+                            <span class="muted home-account-metrics__k">调用最多</span>
+                            <span class="home-account-metrics__kind">API</span>
+                          </div>
+                          <span
+                            class="home-account-metrics__v home-account-metrics__v--clip"
+                            :title="apiTodayTopStr"
+                          >{{ socialBusy ? "…" : apiTodayTopStr }}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div
-                      v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
-                      class="home-account-metrics__warn"
-                    >
-                      <span class="muted">Matcher 异常（今日）</span>
-                      <span>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</span>
+                      <div
+                        v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
+                        class="home-account-metrics__warn"
+                      >
+                        <span class="muted">Matcher 异常（今日）</span>
+                        <span>{{ socialBusy ? "…" : (scopedPluginRunRow?.errors_today ?? 0) }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
