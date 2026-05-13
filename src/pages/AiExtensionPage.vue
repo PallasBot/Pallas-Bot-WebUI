@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import {
   fetchAiExtensionConfig,
   fetchAiExtensionLogs,
@@ -11,6 +11,7 @@ import {
   putAiExtensionConfig,
 } from "@/api/consoleApi";
 import type { AiExtensionConfig, AiProxyResult } from "@/api/pallasTypes";
+import { slicePage, totalPages } from "@/utils/paginate";
 
 const err = ref("");
 const ok = ref("");
@@ -41,6 +42,26 @@ const ncmStatusMessage = computed(() => {
   const p = ncmPayload.value;
   const m = p.message;
   return typeof m === "string" ? m : "";
+});
+
+const ncmExtraLine = computed(() => {
+  const m = ncmStatusMessage.value.trim();
+  if (!m) return "";
+  if (ncmLoggedIn.value && /已登录|登录成功|logged in|login ok/i.test(m)) return "";
+  return m;
+});
+
+const NCM_RAW_LINES = 14;
+const ncmRawPage = ref(1);
+const ncmRawLines = computed(() => {
+  if (!ncmStatus.value) return [] as string[];
+  return JSON.stringify(ncmStatus.value, null, 2).split("\n");
+});
+const ncmRawSlice = computed(() => slicePage(ncmRawLines.value, ncmRawPage.value, NCM_RAW_LINES).join("\n"));
+const ncmRawMaxPage = computed(() => totalPages(ncmRawLines.value.length, NCM_RAW_LINES));
+
+watch(ncmStatus, () => {
+  ncmRawPage.value = 1;
 });
 
 async function load() {
@@ -250,10 +271,10 @@ onMounted(async () => {
               :class="ncmLoggedIn ? 'badge--ok' : 'badge--warn'"
             >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
             <span
-              v-if="ncmStatusMessage"
+              v-if="ncmExtraLine"
               class="muted"
               style="font-size: 13px"
-            >{{ ncmStatusMessage }}</span>
+            >{{ ncmExtraLine }}</span>
           </div>
           <p
             v-if="ncmStatus && !ncmStatus.ok"
@@ -345,10 +366,33 @@ onMounted(async () => {
           class="muted"
           style="margin-top: 16px; font-size: 12px"
         >
-          <summary style="cursor: pointer">原始响应（调试用）</summary>
-          <pre class="pre-block" style="margin-top: 8px; max-height: 200px; overflow: auto">{{
-            JSON.stringify(ncmStatus, null, 2)
-          }}</pre>
+          <summary style="cursor: pointer">原始响应（分页查看）</summary>
+          <pre class="pre-block" style="margin-top: 8px; max-height: 220px; overflow: auto">{{ ncmRawSlice }}</pre>
+          <div
+            v-if="ncmRawLines.length > NCM_RAW_LINES"
+            class="console-pager"
+            style="border-top: none; margin-top: 8px; padding-top: 0"
+          >
+            <span class="muted">共 {{ ncmRawLines.length }} 行 · 第 {{ ncmRawPage }} / {{ ncmRawMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="ncmRawPage <= 1"
+                @click="ncmRawPage = Math.max(1, ncmRawPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="ncmRawPage >= ncmRawMaxPage"
+                @click="ncmRawPage = Math.min(ncmRawMaxPage, ncmRawPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
         </details>
       </div>
     </div>

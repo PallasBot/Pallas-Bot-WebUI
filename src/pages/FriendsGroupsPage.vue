@@ -5,6 +5,7 @@ import {
   fetchFriendList,
   fetchFriendRequests,
   fetchGroupList,
+  fetchInstances,
   fetchRequestOverview,
   postRequestAction,
 } from "@/api/consoleApi";
@@ -13,8 +14,11 @@ import type {
   FriendListData,
   FriendOverviewData,
   GroupListData,
+  InstancesData,
   RequestOverviewData,
 } from "@/api/pallasTypes";
+import { visibleBots } from "@/utils/botDisplay";
+import { slicePage, totalPages } from "@/utils/paginate";
 
 const err = ref("");
 const busy = ref(false);
@@ -24,6 +28,33 @@ const friends = ref<FriendListData | null>(null);
 const requests = ref<FriendOverviewData | null>(null);
 const groups = ref<GroupListData | null>(null);
 const overview = ref<RequestOverviewData | null>(null);
+const instances = ref<InstancesData | null>(null);
+
+const PAGE = 12;
+const pageFriendReq = ref(1);
+const pageGroupReq = ref(1);
+const pageFriends = ref(1);
+const pageGroups = ref(1);
+
+function profileNick(selfId: string): string {
+  const n = instances.value?.bot_profiles?.[selfId]?.nickname?.trim();
+  return n || "";
+}
+
+function botOptionLabel(b: BotRow): string {
+  const nick = profileNick(b.self_id);
+  if (nick) return `${nick}（${b.self_id}）· ${b.adapter}`;
+  return `${b.self_id} · ${b.adapter}`;
+}
+
+const botsVisible = computed(() => visibleBots(bots.value));
+
+function friendRequestNickname(userId: number): string {
+  const sid = selfIdStr.value;
+  if (!friends.value || friends.value.self_id !== sid) return `QQ ${userId}`;
+  const hit = friends.value.friends?.find((f) => f.user_id === userId);
+  return hit?.nickname?.trim() || `QQ ${userId}`;
+}
 
 function selfIdNum(): number | null {
   const n = parseInt(selfIdStr.value, 10);
@@ -32,9 +63,11 @@ function selfIdNum(): number | null {
 
 async function loadBots() {
   try {
-    bots.value = await fetchBots();
-    if (!selfIdStr.value && bots.value.length) {
-      selfIdStr.value = bots.value[0].self_id;
+    const [b, inst] = await Promise.all([fetchBots(), fetchInstances()]);
+    bots.value = b;
+    instances.value = inst;
+    if (!selfIdStr.value && botsVisible.value.length) {
+      selfIdStr.value = botsVisible.value[0]!.self_id;
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -64,6 +97,13 @@ async function loadData() {
   }
 }
 
+watch(botsVisible, (list) => {
+  if (!list.length) return;
+  if (!list.some((b) => b.self_id === selfIdStr.value)) {
+    selfIdStr.value = list[0]!.self_id;
+  }
+});
+
 watch(selfIdStr, () => {
   void loadData();
 });
@@ -78,15 +118,14 @@ const requestRows = computed(() => {
     self_id: string;
     source: "pending" | "doubt";
     user_id: number;
-    flag: string;
   }> = [];
   const data = requests.value?.bots ?? [];
   for (const b of data) {
     for (const p of b.pending_friend_requests ?? []) {
-      out.push({ self_id: b.self_id, source: "pending", user_id: p.user_id, flag: p.flag });
+      out.push({ self_id: b.self_id, source: "pending", user_id: p.user_id });
     }
     for (const d of b.doubt_friend_requests ?? []) {
-      out.push({ self_id: b.self_id, source: "doubt", user_id: d.user_id, flag: d.flag });
+      out.push({ self_id: b.self_id, source: "doubt", user_id: d.user_id });
     }
   }
   return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
@@ -112,6 +151,25 @@ const groupRequestRows = computed(() => {
     }
   }
   return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
+});
+
+const pagedRequestRows = computed(() => slicePage(requestRows.value, pageFriendReq.value, PAGE));
+const reqRowsMaxPage = computed(() => totalPages(requestRows.value.length, PAGE));
+
+const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, pageGroupReq.value, PAGE));
+const groupReqMaxPage = computed(() => totalPages(groupRequestRows.value.length, PAGE));
+
+const pagedFriends = computed(() => slicePage(friends.value?.friends ?? [], pageFriends.value, PAGE));
+const friendsMaxPage = computed(() => totalPages(friends.value?.friends?.length ?? 0, PAGE));
+
+const pagedGroups = computed(() => slicePage(groups.value?.groups ?? [], pageGroups.value, PAGE));
+const groupsMaxPage = computed(() => totalPages(groups.value?.groups?.length ?? 0, PAGE));
+
+watch([requestRows, groupRequestRows, () => friends.value?.friends?.length, () => groups.value?.groups?.length, selfIdStr], () => {
+  pageFriendReq.value = 1;
+  pageGroupReq.value = 1;
+  pageFriends.value = 1;
+  pageGroups.value = 1;
 });
 
 async function actFriend(
@@ -187,14 +245,14 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           <select
             v-model="selfIdStr"
             class="sel"
-            style="min-width: 220px"
+            style="min-width: 280px"
           >
             <option
-              v-for="b in bots"
+              v-for="b in botsVisible"
               :key="b.self_id"
               :value="b.self_id"
             >
-              {{ b.self_id }} · {{ b.adapter }}
+              {{ botOptionLabel(b) }}
             </option>
           </select>
           <button
@@ -233,20 +291,20 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
               <tr>
                 <th>账号</th>
                 <th>来源</th>
-                <th>用户</th>
-                <th>flag</th>
+                <th>用户 QQ</th>
+                <th>用户昵称</th>
                 <th style="width: 200px">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="(row, i) in requestRows"
+                v-for="(row, i) in pagedRequestRows"
                 :key="i"
               >
                 <td>{{ row.self_id }}</td>
                 <td>{{ row.source }}</td>
                 <td>{{ row.user_id }}</td>
-                <td class="muted">{{ row.flag }}</td>
+                <td>{{ friendRequestNickname(row.user_id) }}</td>
                 <td>
                   <div class="row-actions">
                     <button
@@ -270,6 +328,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
               </tr>
             </tbody>
           </table>
+        </div>
+        <div
+          v-if="requestRows.length > PAGE"
+          class="console-pager"
+        >
+          <span class="muted">共 {{ requestRows.length }} 条 · 第 {{ pageFriendReq }} / {{ reqRowsMaxPage }} 页</span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageFriendReq <= 1"
+              @click="pageFriendReq = Math.max(1, pageFriendReq - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageFriendReq >= reqRowsMaxPage"
+              @click="pageFriendReq = Math.min(reqRowsMaxPage, pageFriendReq + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -309,7 +391,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </thead>
             <tbody>
               <tr
-                v-for="f in friends?.friends ?? []"
+                v-for="f in pagedFriends"
                 :key="f.user_id"
               >
                 <td>{{ f.user_id }}</td>
@@ -318,6 +400,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
               </tr>
             </tbody>
           </table>
+        </div>
+        <div
+          v-if="(friends?.friends?.length ?? 0) > PAGE"
+          class="console-pager"
+        >
+          <span class="muted">共 {{ friends?.friends?.length ?? 0 }} 条 · 第 {{ pageFriends }} / {{ friendsMaxPage }} 页</span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageFriends <= 1"
+              @click="pageFriends = Math.max(1, pageFriends - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageFriends >= friendsMaxPage"
+              @click="pageFriends = Math.min(friendsMaxPage, pageFriends + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -354,7 +460,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </thead>
             <tbody>
               <tr
-                v-for="(row, i) in groupRequestRows"
+                v-for="(row, i) in pagedGroupRequestRows"
                 :key="i"
               >
                 <td>{{ row.self_id }}</td>
@@ -385,6 +491,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
               </tr>
             </tbody>
           </table>
+        </div>
+        <div
+          v-if="groupRequestRows.length > PAGE"
+          class="console-pager"
+        >
+          <span class="muted">共 {{ groupRequestRows.length }} 条 · 第 {{ pageGroupReq }} / {{ groupReqMaxPage }} 页</span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageGroupReq <= 1"
+              @click="pageGroupReq = Math.max(1, pageGroupReq - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageGroupReq >= groupReqMaxPage"
+              @click="pageGroupReq = Math.min(groupReqMaxPage, pageGroupReq + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -425,7 +555,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </thead>
             <tbody>
               <tr
-                v-for="g in groups?.groups ?? []"
+                v-for="g in pagedGroups"
                 :key="g.group_id"
               >
                 <td>{{ g.group_id }}</td>
@@ -435,6 +565,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
               </tr>
             </tbody>
           </table>
+        </div>
+        <div
+          v-if="(groups?.groups?.length ?? 0) > PAGE"
+          class="console-pager"
+        >
+          <span class="muted">共 {{ groups?.groups?.length ?? 0 }} 条 · 第 {{ pageGroups }} / {{ groupsMaxPage }} 页</span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageGroups <= 1"
+              @click="pageGroups = Math.max(1, pageGroups - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="pageGroups >= groupsMaxPage"
+              @click="pageGroups = Math.min(groupsMaxPage, pageGroups + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>
