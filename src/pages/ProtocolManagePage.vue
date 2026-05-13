@@ -95,14 +95,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Protocol</p>
-      <h1 class="page-hero__title">协议端管理</h1>
-      <p class="page-hero__desc">
-        打开协议内置管理页（路径取自实例快照）；用于日常运维与排障。
-      </p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

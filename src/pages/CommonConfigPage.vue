@@ -103,12 +103,6 @@ async function save() {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Environment</p>
-      <h1 class="page-hero__title">通用配置</h1>
-      <p class="page-hero__desc">分区维护跨模块公共项；保存后立即由后端生效，请以实际运行结果为准。</p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

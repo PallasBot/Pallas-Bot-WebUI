@@ -15,12 +15,6 @@ function setDensity(v: DensityMode) {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Preferences</p>
-      <h1 class="page-hero__title">外观偏好</h1>
-      <p class="page-hero__desc">主题、圆角与密度仅保存在本机浏览器，用于控制台呈现，不参与服务端配置。</p>
-    </header>
-
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">颜色模式</h2>

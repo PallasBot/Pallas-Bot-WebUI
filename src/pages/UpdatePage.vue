@@ -64,12 +64,6 @@ onMounted(load);
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Release</p>
-      <h1 class="page-hero__title">更新</h1>
-      <p class="page-hero__desc">检查上游发行说明并在维护窗口内执行升级；具体步骤与回滚策略由运行手册规定。</p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

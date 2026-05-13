@@ -94,17 +94,17 @@ async function save() {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Plugin</p>
-      <h1 class="page-hero__title">{{ data?.plugin || pluginName }}</h1>
-      <p class="page-hero__desc">
-        <RouterLink
-          class="link-quiet"
-          to="/plugins"
-        >← 返回目录</RouterLink>
-        <span class="muted"> · {{ data?.module }}</span>
-      </p>
-    </header>
+    <p
+      v-if="pluginName"
+      class="muted"
+      style="margin: 0 0 12px; font-size: 13px"
+    >
+      <RouterLink
+        class="link-quiet"
+        to="/plugins"
+      >← 返回目录</RouterLink>
+      <span v-if="data?.module"> · {{ data.module }}</span>
+    </p>
 
     <div
       v-if="err"

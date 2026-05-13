@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import { normalizeMainNavOrder } from "@/config/mainNav";
 
 const STORAGE_KEY = "pallas_console_prefs_v1";
 
@@ -18,6 +19,8 @@ export interface ConsolePrefsState {
   instancesBotView: DataViewMode;
   /** 控制台各列表默认每页条数（4–80） */
   tablePageSize: number;
+  /** 侧栏主导航 path 顺序（与 mainNav 对齐） */
+  sidebarNavOrder: string[];
 }
 
 const defaults: ConsolePrefsState = {
@@ -27,6 +30,7 @@ const defaults: ConsolePrefsState = {
   sidebarCollapsed: false,
   instancesBotView: "table",
   tablePageSize: 12,
+  sidebarNavOrder: normalizeMainNavOrder(undefined),
 };
 
 function load(): ConsolePrefsState {
@@ -41,6 +45,9 @@ function load(): ConsolePrefsState {
     const ps = Number(merged.tablePageSize);
     if (!Number.isFinite(ps)) merged.tablePageSize = defaults.tablePageSize;
     else merged.tablePageSize = Math.min(80, Math.max(4, Math.floor(ps)));
+    merged.sidebarNavOrder = normalizeMainNavOrder(
+      Array.isArray(parsed.sidebarNavOrder) ? (parsed.sidebarNavOrder as string[]) : undefined,
+    );
     return merged;
   } catch {
     return { ...defaults };
@@ -74,7 +81,11 @@ export function persistConsolePrefs(): void {
 }
 
 export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
-  Object.assign(consolePrefs, patch);
+  const next = { ...patch };
+  if (next.sidebarNavOrder !== undefined) {
+    next.sidebarNavOrder = normalizeMainNavOrder(next.sidebarNavOrder);
+  }
+  Object.assign(consolePrefs, next);
   persistConsolePrefs();
   applyConsolePrefsToDocument();
 }

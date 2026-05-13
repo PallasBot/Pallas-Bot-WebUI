@@ -35,12 +35,6 @@ async function submit() {
 
 <template>
   <div>
-    <header class="page-hero">
-      <p class="page-hero__eyebrow">Security</p>
-      <h1 class="page-hero__title">控制台口令</h1>
-      <p class="page-hero__desc">更新控制台登录口令；请在低峰期执行并同步保管凭据。</p>
-    </header>
-
     <div
       v-if="err"
       class="alert alert--err"

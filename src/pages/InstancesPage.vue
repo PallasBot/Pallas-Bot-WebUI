@@ -261,24 +261,15 @@ onMounted(async () => {
 
 <template>
   <div>
-    <header class="page-hero page-hero--with-actions">
-      <div class="page-hero__main">
-        <p class="page-hero__eyebrow">Topology</p>
-        <h1 class="page-hero__title">实例与连接</h1>
-        <p class="page-hero__desc">
-          汇总框架在线情况与数据面账号。Bot 数据面配置可在本页直接保存；好友与群、颗粒策略请用侧栏对应页面。协议进程级状态见「协议端」。
-        </p>
-      </div>
-      <div class="page-hero__actions">
-        <button
-          type="button"
-          class="btn"
-          @click="reload"
-        >
-          刷新
-        </button>
-      </div>
-    </header>
+    <div class="page-actions-bar">
+      <button
+        type="button"
+        class="btn"
+        @click="reload"
+      >
+        刷新
+      </button>
+    </div>
 
     <div
       v-if="err"
