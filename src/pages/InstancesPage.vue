@@ -23,6 +23,29 @@ onMounted(async () => {
       <p class="page-hero__desc">聚合 NoneBot 在线、数据库账号配置与协议管理器快照。</p>
     </header>
 
+    <div class="panel">
+      <div class="panel__hd">
+        <h2 class="panel__title">社交数据</h2>
+      </div>
+      <div class="panel__bd muted">
+        <p style="margin: 0 0 10px">好友列表、好友申请与群列表已拆成独立页面，便于日常运营。</p>
+        <div class="row-actions">
+          <RouterLink
+            class="btn btn--primary"
+            to="/bot-social-config"
+          >颗粒配置</RouterLink>
+          <RouterLink
+            class="btn"
+            to="/friends"
+          >好友</RouterLink>
+          <RouterLink
+            class="btn"
+            to="/groups"
+          >群</RouterLink>
+        </div>
+      </div>
+    </div>
+
     <div
       v-if="err"
       class="alert alert--err"

@@ -28,6 +28,7 @@
     "src/layout/AppShell.vue",
     "src/pages/**/*.vue",
     "src/components/StatCard.vue",
-    "src/styles/**/*.css"
+    "src/styles/**/*.css",
+    "src/utils/**/*.ts"
   ]
 }
