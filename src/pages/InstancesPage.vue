@@ -74,7 +74,7 @@ const sortedNonebotBots = computed(() => {
     const nb = (ib != null ? botNickname(ib) ?? "" : "").toLowerCase();
     const cmp = na.localeCompare(nb, "zh-CN");
     if (cmp !== 0) return cmp;
-    return a.self_id.localeCompare(b.self_id, "zh-CN", { numeric: true });
+    return String(a.self_id).localeCompare(String(b.self_id), "zh-CN", { numeric: true });
   });
   return rows;
 });
@@ -166,6 +166,12 @@ function boolPillClass(on: boolean): string {
 }
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
+
+function nonebotRowNick(selfId: string): string {
+  const n = parseSelfId(selfId);
+  if (n == null) return "";
+  return botNickname(n) ?? "";
+}
 
 function parseSelfId(s: string): number | null {
   const n = parseInt(s, 10);
@@ -342,7 +348,7 @@ onMounted(async () => {
                   v-for="(b, i) in pagedNonebotBots"
                   :key="i"
                 >
-                  <td style="font-weight: 600">{{ (parseSelfId(b.self_id) != null ? botNickname(parseSelfId(b.self_id)!) : undefined) || "—" }}</td>
+                  <td style="font-weight: 600">{{ nonebotRowNick(b.self_id) || "—" }}</td>
                   <td>{{ b.self_id }}</td>
                   <td class="muted">{{ b.adapter }}</td>
                   <td class="muted">{{ b.connection_key }}</td>

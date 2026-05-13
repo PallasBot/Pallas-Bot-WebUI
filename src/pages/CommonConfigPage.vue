@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@/api/consoleApi";
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
+import JsonTextareaField from "@/components/JsonTextareaField.vue";
 
 const err = ref("");
 const ok = ref("");
@@ -165,11 +166,11 @@ async function save() {
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
-          <textarea
+          <JsonTextareaField
             v-else-if="f.kind === 'json'"
             v-model="fieldValues[f.name]"
-            class="textarea"
-            rows="5"
+            :title="`${currentId} · ${f.name}（JSON）`"
+            :rows="5"
           />
           <input
             v-else

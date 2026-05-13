@@ -11,6 +11,7 @@ import {
   putAiExtensionConfig,
 } from "@/api/consoleApi";
 import type { AiExtensionConfig, AiProxyResult } from "@/api/pallasTypes";
+import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { slicePage, totalPages } from "@/utils/paginate";
 
 const err = ref("");
@@ -425,10 +426,11 @@ onMounted(async () => {
         </div>
       </div>
       <div class="panel__bd">
-        <textarea
+        <JsonTextareaField
           v-model="jsonText"
-          class="textarea"
-          rows="14"
+          title="AI 扩展配置 JSON"
+          :rows="8"
+          placeholder="点击或聚焦，在弹窗中编辑扩展服务配置 JSON"
         />
         <div
           v-if="testOut"

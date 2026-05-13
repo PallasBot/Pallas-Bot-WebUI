@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
+import JsonTextareaField from "@/components/JsonTextareaField.vue";
 
 const err = ref("");
 const overview = ref<DbOverviewData | null>(null);
@@ -256,10 +257,11 @@ async function runAggregate() {
           >
         </div>
         <label class="muted" style="display: block; margin-bottom: 6px">Pipeline（JSON 数组）</label>
-        <textarea
+        <JsonTextareaField
           v-model="pipelineText"
-          class="textarea"
-          rows="10"
+          title="Pipeline（JSON 数组）"
+          :rows="8"
+          placeholder='点击或聚焦，在弹窗中编辑；须为 JSON 数组，例如 [{"$limit":20}]'
         />
         <div
           v-if="aggResult"
