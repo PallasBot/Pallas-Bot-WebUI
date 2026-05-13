@@ -85,9 +85,9 @@ const matcherErrLayers = computed(() => {
   return buildLayers(rows);
 });
 
-const sparkPoly = computed(() => {
+const sparkPoly = computed((): string | undefined => {
   const s = props.series;
-  if (s.length < 2) return null;
+  if (s.length < 2) return undefined;
   const minT = Math.min(...s.map((x) => x.t));
   const maxT = Math.max(...s.map((x) => x.t));
   const totals = s.map((x) => x.total);
