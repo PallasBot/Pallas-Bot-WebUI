@@ -7,6 +7,50 @@ import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 const COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#4ade80", "#fbbf24", "#94a3b8", "#fb7185", "#2dd4bf"];
 
 const CHART_SEL_KEY = "pallas_home_chart_sel_v1";
+const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
+
+type ChartPanelId =
+  | "plugins_top"
+  | "api_hourly"
+  | "api_bucket"
+  | "matcher_hourly"
+  | "matcher_bucket"
+  | "matcher_err_hourly"
+  | "matcher_err_bucket"
+  | "local_spark";
+
+const PANEL_ORDER: ChartPanelId[] = [
+  "plugins_top",
+  "api_hourly",
+  "api_bucket",
+  "matcher_hourly",
+  "matcher_bucket",
+  "matcher_err_hourly",
+  "matcher_err_bucket",
+  "local_spark",
+];
+
+function isChartPanelId(s: string): s is ChartPanelId {
+  return (PANEL_ORDER as string[]).includes(s);
+}
+
+function loadChartPanel(): ChartPanelId | null {
+  try {
+    const v = localStorage.getItem(CHART_PANEL_KEY);
+    if (v && isChartPanelId(v)) return v;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function saveChartPanel(id: ChartPanelId) {
+  try {
+    localStorage.setItem(CHART_PANEL_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
 
 type SelState = { api: string[]; matcher: string[]; matcherErr: string[] };
 
@@ -352,6 +396,65 @@ const matcherErrCandidates = computed(() =>
   (props.matcherErrorsByPlugin ?? []).filter((s) => (s.points?.length ?? 0) > 0),
 );
 
+const chartPanel = ref<ChartPanelId>("plugins_top");
+const panelPickReady = ref(false);
+
+const panelAvailability = computed(() => ({
+  plugins_top: true,
+  api_hourly: apiCandidates.value.length > 0,
+  api_bucket: apiCandidates.value.length > 0,
+  matcher_hourly: matcherRunCandidates.value.length > 0,
+  matcher_bucket: matcherRunCandidates.value.length > 0,
+  matcher_err_hourly: matcherErrCandidates.value.length > 0,
+  matcher_err_bucket: matcherErrCandidates.value.length > 0,
+  local_spark: showLocalSpark.value,
+}));
+
+const panelOptions = computed(() => {
+  const labels: Record<ChartPanelId, string> = {
+    plugins_top: "插件今日次数（Top）",
+    api_hourly: "协议 API · 今日各小时",
+    api_bucket: "协议 API · 按时间桶",
+    matcher_hourly: "Matcher · 今日各小时",
+    matcher_bucket: "Matcher · 按时间桶",
+    matcher_err_hourly: "Matcher 异常 · 今日各小时",
+    matcher_err_bucket: "Matcher 异常 · 按时间桶",
+    local_spark: "Matcher 累计（本机采样）",
+  };
+  return PANEL_ORDER.map((id) => ({
+    id,
+    label: labels[id],
+    available: panelAvailability.value[id],
+  }));
+});
+
+watch(
+  [panelAvailability, () => selHydrated.value],
+  () => {
+    if (!selHydrated.value) return;
+    const a = panelAvailability.value;
+    if (!panelPickReady.value) {
+      const saved = loadChartPanel();
+      if (saved && a[saved]) chartPanel.value = saved;
+      else {
+        const first = PANEL_ORDER.find((id) => a[id]);
+        if (first) chartPanel.value = first;
+      }
+      panelPickReady.value = true;
+      return;
+    }
+    if (!a[chartPanel.value]) {
+      const next = PANEL_ORDER.find((id) => a[id]);
+      if (next) chartPanel.value = next;
+    }
+  },
+  { immediate: true },
+);
+
+watch(chartPanel, (v) => {
+  saveChartPanel(v);
+});
+
 function toggleAllApis(on: boolean) {
   selectedApiKeys.value = on ? apiCandidates.value.map((s) => s.api) : [];
 }
@@ -371,7 +474,31 @@ function pluginBarLabel(name: string): string {
 
 <template>
   <div class="home-plugin-charts">
-    <div class="home-plugin-charts__block">
+    <div class="home-plugin-charts__toolbar">
+      <label
+        class="home-plugin-charts__toolbar-label muted"
+        for="home-chart-panel-sel"
+      >图表视图</label>
+      <select
+        id="home-chart-panel-sel"
+        v-model="chartPanel"
+        class="sel home-plugin-charts__pick"
+      >
+        <option
+          v-for="o in panelOptions"
+          :key="o.id"
+          :value="o.id"
+          :disabled="!o.available"
+        >
+          {{ o.label }}
+        </option>
+      </select>
+    </div>
+
+    <div
+      v-if="chartPanel === 'plugins_top'"
+      class="home-plugin-charts__block"
+    >
       <div class="home-plugin-charts__caption">
         插件今日次数（Top）
       </div>
@@ -412,14 +539,14 @@ function pluginBarLabel(name: string): string {
     </div>
 
     <div
-      v-if="hourlyApiLayers?.length"
+      v-if="chartPanel === 'api_hourly'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
         协议 API · 今日各小时（本地日）
       </div>
       <p class="muted home-plugin-charts__hint">
-        横轴 0–23 点为本地自然日；将下方各接口时间桶累计到对应小时。可与下方「按桶」曲线对照。
+        横轴 0–23 点为本地自然日；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
       </p>
       <div
         v-if="apiCandidates.length"
@@ -456,7 +583,10 @@ function pluginBarLabel(name: string): string {
           </label>
         </div>
       </div>
-      <div class="home-plugin-multi">
+      <div
+        v-if="hourlyApiLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
@@ -491,19 +621,69 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="apiCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一条协议 API 曲线。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无协议 API 时序数据。
+      </p>
     </div>
 
     <div
-      v-if="apiLayers?.length"
+      v-if="chartPanel === 'api_bucket'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
         协议 API（服务端 · 按时间桶）
       </div>
       <p class="muted home-plugin-charts__hint">
-        桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}；纵轴为所选曲线在窗内的峰值归一。勾选同上。
+        桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}；纵轴为所选曲线在窗内的峰值归一。勾选下方接口名。
       </p>
-      <div class="home-plugin-multi">
+      <div
+        v-if="apiCandidates.length"
+        class="home-plugin-sel"
+      >
+        <span class="home-plugin-sel__actions">
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllApis(true)"
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllApis(false)"
+          >
+            全不选
+          </button>
+        </span>
+        <div class="home-plugin-sel__grid">
+          <label
+            v-for="s in apiCandidates"
+            :key="`bucket-${s.api}`"
+            class="home-plugin-sel__item"
+          >
+            <input
+              v-model="selectedApiKeys"
+              type="checkbox"
+              :value="s.api"
+            >
+            <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
+          </label>
+        </div>
+      </div>
+      <div
+        v-if="apiLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark"
           viewBox="0 0 100 48"
@@ -535,10 +715,22 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="apiCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一条协议 API 曲线。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无协议 API 时序数据。
+      </p>
     </div>
 
     <div
-      v-if="hourlyMatcherLayers?.length"
+      v-if="chartPanel === 'matcher_hourly'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
@@ -582,7 +774,10 @@ function pluginBarLabel(name: string): string {
           </label>
         </div>
       </div>
-      <div class="home-plugin-multi">
+      <div
+        v-if="hourlyMatcherLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
@@ -617,19 +812,69 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="matcherRunCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个 Matcher 插件。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 时序数据。
+      </p>
     </div>
 
     <div
-      v-if="matcherRunLayers?.length"
+      v-if="chartPanel === 'matcher_bucket'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
         Matcher 执行（服务端 · 按时间桶）
       </div>
       <p class="muted home-plugin-charts__hint">
-        桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；每曲线为该插件 Matcher 每桶执行次数。
+        桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；每曲线为该插件 Matcher 每桶执行次数。勾选见上类视图或下方。
       </p>
-      <div class="home-plugin-multi">
+      <div
+        v-if="matcherRunCandidates.length"
+        class="home-plugin-sel"
+      >
+        <span class="home-plugin-sel__actions">
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllMatchers(true)"
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllMatchers(false)"
+          >
+            全不选
+          </button>
+        </span>
+        <div class="home-plugin-sel__grid">
+          <label
+            v-for="s in matcherRunCandidates"
+            :key="`mb-${s.plugin}`"
+            class="home-plugin-sel__item"
+          >
+            <input
+              v-model="selectedMatcherKeys"
+              type="checkbox"
+              :value="s.plugin"
+            >
+            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+          </label>
+        </div>
+      </div>
+      <div
+        v-if="matcherRunLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark"
           viewBox="0 0 100 48"
@@ -661,10 +906,22 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="matcherRunCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个 Matcher 插件。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 时序数据。
+      </p>
     </div>
 
     <div
-      v-if="hourlyMatcherErrLayers?.length"
+      v-if="chartPanel === 'matcher_err_hourly'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
@@ -696,7 +953,7 @@ function pluginBarLabel(name: string): string {
         <div class="home-plugin-sel__grid">
           <label
             v-for="s in matcherErrCandidates"
-            :key="s.plugin"
+            :key="`errh-${s.plugin}`"
             class="home-plugin-sel__item"
           >
             <input
@@ -708,7 +965,10 @@ function pluginBarLabel(name: string): string {
           </label>
         </div>
       </div>
-      <div class="home-plugin-multi">
+      <div
+        v-if="hourlyMatcherErrLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
@@ -743,19 +1003,69 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="matcherErrCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个插件以查看异常曲线。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 异常时序数据。
+      </p>
     </div>
 
     <div
-      v-if="matcherErrLayers?.length"
+      v-if="chartPanel === 'matcher_err_bucket'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
         Matcher 异常（服务端 · 按时间桶）
       </div>
       <p class="muted home-plugin-charts__hint">
-        与上同桶；勾选见上块。
+        与上同桶；勾选下方插件名。
       </p>
-      <div class="home-plugin-multi">
+      <div
+        v-if="matcherErrCandidates.length"
+        class="home-plugin-sel"
+      >
+        <span class="home-plugin-sel__actions">
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllMatcherErr(true)"
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            class="home-plugin-sel__btn"
+            @click="toggleAllMatcherErr(false)"
+          >
+            全不选
+          </button>
+        </span>
+        <div class="home-plugin-sel__grid">
+          <label
+            v-for="s in matcherErrCandidates"
+            :key="`meb-${s.plugin}`"
+            class="home-plugin-sel__item"
+          >
+            <input
+              v-model="selectedMatcherErrKeys"
+              type="checkbox"
+              :value="s.plugin"
+            >
+            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+          </label>
+        </div>
+      </div>
+      <div
+        v-if="matcherErrLayers?.length"
+        class="home-plugin-multi"
+      >
         <svg
           class="home-plugin-spark"
           viewBox="0 0 100 48"
@@ -787,10 +1097,22 @@ function pluginBarLabel(name: string): string {
           </span>
         </div>
       </div>
+      <p
+        v-else-if="matcherErrCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个插件以查看异常曲线。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 异常时序数据。
+      </p>
     </div>
 
     <div
-      v-if="showLocalSpark"
+      v-if="chartPanel === 'local_spark' && showLocalSpark"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__caption">
@@ -826,7 +1148,26 @@ function pluginBarLabel(name: string): string {
 .home-plugin-charts {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+}
+.home-plugin-charts__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 2px 0 4px;
+}
+.home-plugin-charts__toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.home-plugin-charts__pick {
+  min-width: min(100%, 320px);
+  max-width: 100%;
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 13px;
 }
 .home-plugin-charts__block {
   min-width: 0;
