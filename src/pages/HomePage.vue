@@ -413,6 +413,15 @@ const throughputBarBuckets = computed((): ThroughputBarBucket[] => {
 
 type ThroughputBarTick = { leftPct: number; label: string };
 
+const THROUGHPUT_CHART_AXIS_HOUR_SEC = 3600;
+
+function startOfLocalHour(tsSec: number): number {
+  const d = new Date(tsSec * 1000);
+  d.setMinutes(0, 0, 0);
+  d.setMilliseconds(0);
+  return Math.floor(d.getTime() / 1000);
+}
+
 function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number): string {
   const a = new Date(atSec * 1000);
   const lo = new Date(rangeLo * 1000);
@@ -443,24 +452,46 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   const n = pts.length;
   const pad = 1.5;
   const W = 100;
-  const slot = (W - 2 * pad) / n;
+  const inner = W - 2 * pad;
   const atOf = (p: { at: number }) => Number(p.at);
   const rangeLo = atOf(pts[0]!);
   const rangeHi = atOf(pts[n - 1]!);
-  const idxs: number[] = [];
-  if (n <= 5) {
-    for (let i = 0; i < n; i++) idxs.push(i);
-  } else {
-    const segs = 4;
-    for (let k = 0; k <= segs; k++) {
-      idxs.push(Math.round((k / segs) * (n - 1)));
-    }
+  const span = Math.max(rangeHi - rangeLo, 60);
+
+  const raw: ThroughputBarTick[] = [];
+  for (let h = startOfLocalHour(rangeLo); h <= rangeHi + 1; h += THROUGHPUT_CHART_AXIS_HOUR_SEC) {
+    const xNorm = (h - rangeLo) / span;
+    if (xNorm < -0.02 || xNorm > 1.02) continue;
+    const clamped = Math.max(0, Math.min(1, xNorm));
+    const leftPct = ((pad + clamped * inner) / W) * 100;
+    raw.push({
+      leftPct,
+      label: formatThroughputHistTick(h, rangeLo, rangeHi),
+    });
   }
-  const uniq = [...new Set(idxs)].sort((a, b) => a - b);
-  return uniq.map((i) => ({
-    leftPct: ((pad + (i + 0.5) * slot) / W) * 100,
-    label: formatThroughputHistTick(atOf(pts[i]!), rangeLo, rangeHi),
-  }));
+
+  const seen = new Set<number>();
+  const ticks: ThroughputBarTick[] = [];
+  for (const t of raw) {
+    const k = Math.round(t.leftPct * 20) / 20;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    ticks.push(t);
+  }
+
+  if (!ticks.length) {
+    return [
+      {
+        leftPct: (pad / W) * 100,
+        label: formatThroughputHistTick(rangeLo, rangeLo, rangeHi),
+      },
+      {
+        leftPct: ((pad + inner) / W) * 100,
+        label: formatThroughputHistTick(rangeHi, rangeLo, rangeHi),
+      },
+    ];
+  }
+  return ticks;
 });
 
 const showThroughputBars = computed(() => throughputBarBuckets.value.length > 0);
@@ -765,7 +796,6 @@ onMounted(load);
                           </div>
                         </aside>
                         <div class="home-account-hero__detail-main">
-                          <div class="home-account-hero__section-label">连接与社交</div>
                           <p class="home-account-hero__admin">
                             <span class="home-account-hero__admin-label">管理员</span>
                             <span

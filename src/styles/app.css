@@ -1883,7 +1883,7 @@ html[data-theme="light"] .bot-config-edit {
 
 .home-account-unified__col--metrics {
   border-left: 1px solid var(--border);
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
   justify-content: center;
 }
 
@@ -2317,26 +2317,6 @@ html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot d
   margin-top: 3px;
   font-size: 10px;
   line-height: 1.35;
-}
-
-.home-account-hero__section-label {
-  margin: 0 0 8px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.home-account-hero--color .home-account-hero__section-label {
-  color: transparent;
-  background-image: linear-gradient(95deg, #94a3b8 0%, #7dd3fc 40%, #a78bfa 85%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__section-label {
-  background-image: linear-gradient(95deg, #64748b 0%, #0284c7 45%, #6d28d9 90%);
 }
 
 .home-account-hero__admin-values--placeholder {
@@ -2852,7 +2832,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-account-unified__col--metrics {
     border-left: none;
     border-top: 1px solid var(--border);
-    padding: 12px 14px 14px;
+    padding: 10px 12px 12px;
   }
 
   .home-account-charts-span {
@@ -3489,7 +3469,7 @@ html[data-theme="light"] .plugin-preview {
 
 /* —— 总览页：紧凑仪表盘（不引入第三方组件库，避免双主题与包体膨胀） */
 .home-page {
-  max-width: 1040px;
+  max-width: 900px;
   margin-inline: auto;
 }
 .home-page__panel {
@@ -3499,6 +3479,10 @@ html[data-theme="light"] .plugin-preview {
 .home-page .panel__hd {
   padding: 11px 16px;
   gap: 8px;
+}
+
+.home-dashboard__accounts > .home-page__panel .panel__hd {
+  padding: 10px 12px;
 }
 .home-page .panel__title {
   font-size: 0.9rem;
@@ -3560,7 +3544,11 @@ html[data-theme="light"] .home-page__panel-tag {
   background: rgba(15, 23, 42, 0.04);
 }
 .home-page .panel__bd {
-  padding: 14px 16px;
+  padding: 12px 14px;
+}
+
+.home-dashboard__accounts > .home-page__panel .panel__bd {
+  padding: 11px 12px;
 }
 .home-page .card:hover {
   transform: none;
