@@ -187,7 +187,7 @@ a:hover {
   width: 100%;
   position: relative;
   overflow: hidden;
-  --shell-chrome-h: 48px;
+  --shell-chrome-h: 52px;
 }
 
 .shell__bg {
@@ -209,7 +209,7 @@ a:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 5px 10px 12px;
+  padding: 0 10px 12px;
   border-right: 1px solid var(--border);
   background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
@@ -220,7 +220,7 @@ a:hover {
 .shell__sidebar-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 6px;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -228,40 +228,6 @@ a:hover {
   padding: 0 2px 0 0;
   margin-bottom: 8px;
   border-bottom: 1px solid var(--border);
-}
-
-.shell__sidebar-toggle {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-shell);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background 0.15s var(--ease),
-    color 0.15s var(--ease),
-    border-color 0.15s var(--ease);
-}
-
-.shell__sidebar-toggle:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-html[data-theme="light"] .shell__sidebar-toggle {
-  background: rgba(15, 23, 42, 0.04);
-}
-
-html[data-theme="light"] .shell__sidebar-toggle:hover {
-  background: rgba(15, 23, 42, 0.08);
 }
 
 .shell__brand {
@@ -523,13 +489,50 @@ html[data-theme="light"] .shell__topbar-menu {
 html[data-theme="light"] .shell__topbar-menu:hover {
   background: rgba(255, 255, 255, 0.98);
 }
+
+.shell__topbar-collapse {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  border-radius: var(--radius-shell);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s var(--ease),
+    color 0.15s var(--ease),
+    border-color 0.15s var(--ease);
+}
+
+.shell__topbar-collapse:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] .shell__topbar-collapse {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .shell__topbar-collapse:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
 .shell__topbar-lead {
   min-width: 0;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1px;
+  gap: 0;
+  min-height: 0;
 }
 .shell__topbar-title {
   margin: 0;
@@ -540,7 +543,7 @@ html[data-theme="light"] .shell__topbar-menu:hover {
   font-size: clamp(0.95rem, 1.8vw, 1.08rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .shell__topbar-ico {
   flex-shrink: 0;
@@ -557,8 +560,8 @@ html[data-theme="light"] .shell__topbar-menu:hover {
 }
 .shell__topbar-desc {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: 10px;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1101,23 +1104,18 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 
   .shell--sidebar-collapsed .shell__sidebar-top {
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: var(--shell-chrome-h);
+    display: none;
+    margin: 0;
     padding: 0;
-    margin-bottom: 8px;
+    border: none;
+  }
+
+  .shell--sidebar-collapsed .shell__nav {
+    padding-top: 10px;
   }
 
   .shell--sidebar-collapsed .shell__brand {
     display: none;
-  }
-
-  .shell--sidebar-collapsed .shell__sidebar-toggle {
-    width: 36px;
-    height: 32px;
-    align-self: center;
   }
 
   .shell--sidebar-collapsed .shell__nav-item {
@@ -2826,6 +2824,38 @@ html[data-theme="light"] .plugin-preview {
 
 .home-page__version-panel .badge {
   font-weight: 500;
+}
+
+.home-page__version-panel .home-dl--version-rows {
+  row-gap: 8px;
+}
+
+.home-page__version-panel .home-page__version--grid .home-dl dd {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.home-page__version-panel .home-page__version--grid .home-dl__pill {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.home-page__version-panel .home-page__version--grid .home-dl__sub {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.home-page__version-panel .home-version-commit {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
 }
 .home-page__panel-tag {
   font-size: 11px;

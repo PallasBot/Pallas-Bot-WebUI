@@ -189,6 +189,16 @@ onUnmounted(() => {
       aria-label="当前页与连接"
     >
       <button
+        v-if="!isNarrow"
+        type="button"
+        class="shell__topbar-collapse"
+        :aria-expanded="!consolePrefs.sidebarCollapsed"
+        :aria-label="consolePrefs.sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'"
+        @click="toggleSidebar"
+      >
+        {{ consolePrefs.sidebarCollapsed ? "»" : "«" }}
+      </button>
+      <button
         v-if="isNarrow"
         type="button"
         class="shell__topbar-menu"
@@ -256,15 +266,6 @@ onUnmounted(() => {
         <div class="shell__brand">
           <div class="shell__title">Pallas-Bot</div>
         </div>
-        <button
-          type="button"
-          class="shell__sidebar-toggle"
-          :aria-expanded="!consolePrefs.sidebarCollapsed"
-          :aria-label="consolePrefs.sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'"
-          @click="toggleSidebar"
-        >
-          {{ consolePrefs.sidebarCollapsed ? "»" : "«" }}
-        </button>
       </div>
       <nav class="shell__nav" aria-label="主导航">
         <div
