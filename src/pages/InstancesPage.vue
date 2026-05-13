@@ -93,6 +93,11 @@ const sortedDbBotConfigs = computed(() => {
   return rows;
 });
 
+const dbBotsConnectedCount = computed(
+  () => sortedDbBotConfigs.value.filter((c) => isBotConnected(c.account)).length,
+);
+const dbBotsTotalCount = computed(() => sortedDbBotConfigs.value.length);
+
 const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, tablePageSize.value));
 const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, tablePageSize.value));
 
@@ -338,10 +343,19 @@ onMounted(async () => {
       <div class="panel">
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">数据库中的 Bot 配置</h2>
-          <div
-            class="row-actions"
-            style="flex-wrap: wrap; gap: 8px; align-items: center"
-          >
+          <div class="inst-db-panel__actions">
+            <span
+              v-if="data"
+              class="inst-db-stat muted"
+            >
+              当前已连接
+              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+              / {{ dbBotsTotalCount }} 账号
+            </span>
+            <div
+              class="row-actions"
+              style="flex-wrap: wrap; gap: 8px; align-items: center"
+            >
             <button
               type="button"
               class="btn"
@@ -371,6 +385,7 @@ onMounted(async () => {
               </button>
             </div>
           </div>
+        </div>
         </div>
         <div
           v-show="expDbBots"

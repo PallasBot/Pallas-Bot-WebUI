@@ -71,6 +71,32 @@ function botFilterLabel(b: BotRow): string {
   return b.self_id;
 }
 
+type SingProgressUi = {
+  songId: string;
+  complete: boolean;
+  chunkIndex: number | null;
+  key: number | null;
+};
+
+function singProgressModel(raw: unknown): SingProgressUi | null {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const hasShape = ["song_id", "complete", "chunk_index", "key"].some((k) => k in o);
+  if (!hasShape) return null;
+  let songId = "";
+  if (typeof o.song_id === "string") songId = o.song_id;
+  else if (typeof o.song_id === "number" && Number.isFinite(o.song_id)) songId = String(o.song_id);
+  const complete = o.complete === true;
+  const chunkIndex =
+    typeof o.chunk_index === "number" && Number.isFinite(o.chunk_index) ? o.chunk_index : null;
+  const key = typeof o.key === "number" && Number.isFinite(o.key) ? o.key : null;
+  return { songId, complete, chunkIndex, key };
+}
+
+const groupSingProgressUi = computed(() =>
+  groupCfg.value ? singProgressModel(groupCfg.value.sing_progress) : null,
+);
+
 const pagedGroupList = computed(() => slicePage(groupList.value, groupPage.value, tablePageSize.value));
 
 watch(groupList, () => {
@@ -549,9 +575,47 @@ onMounted(async () => {
               </div>
               <div class="bot-config-edit__field">
                 <label>sing_progress（只读）</label>
-                <pre class="pre-block" style="max-height: 200px; overflow: auto; margin: 0">{{
-                  JSON.stringify(groupCfg.sing_progress, null, 2)
-                }}</pre>
+                <div
+                  v-if="groupSingProgressUi"
+                  class="sing-progress-card"
+                >
+                  <div class="sing-progress-card__header">
+                    <span class="muted sing-progress-card__eyebrow">演唱进度</span>
+                    <span
+                      class="badge"
+                      :class="groupSingProgressUi.complete ? 'badge--ok' : 'badge--warn'"
+                    >{{ groupSingProgressUi.complete ? "已完成" : "进行中" }}</span>
+                  </div>
+                  <dl class="sing-progress-card__dl">
+                    <div v-if="groupSingProgressUi.songId">
+                      <dt>歌曲 ID</dt>
+                      <dd class="sing-progress-card__mono">{{ groupSingProgressUi.songId }}</dd>
+                    </div>
+                    <div v-if="groupSingProgressUi.chunkIndex != null">
+                      <dt>当前片段</dt>
+                      <dd>#{{ groupSingProgressUi.chunkIndex }}</dd>
+                    </div>
+                    <div v-if="groupSingProgressUi.key != null">
+                      <dt>会话键</dt>
+                      <dd class="sing-progress-card__mono">{{ groupSingProgressUi.key }}</dd>
+                    </div>
+                  </dl>
+                  <div
+                    v-if="!groupSingProgressUi.complete"
+                    class="sing-progress-card__bar"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    :aria-valuenow="groupSingProgressUi.chunkIndex ?? 0"
+                    aria-valuetext="进行中"
+                  >
+                    <span class="sing-progress-card__bar-fill" />
+                  </div>
+                </div>
+                <pre
+                  v-else
+                  class="pre-block"
+                  style="max-height: 200px; overflow: auto; margin: 0"
+                >{{ JSON.stringify(groupCfg.sing_progress, null, 2) }}</pre>
               </div>
               <div class="row-actions">
                 <button
@@ -662,3 +726,74 @@ onMounted(async () => {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.sing-progress-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--bg-elev);
+}
+.sing-progress-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.sing-progress-card__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+}
+.sing-progress-card__dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+.sing-progress-card__dl dt {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.sing-progress-card__dl dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.sing-progress-card__mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.sing-progress-card__bar {
+  margin-top: 12px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.sing-progress-card__bar-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: sing-progress-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sing-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.35);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+</style>

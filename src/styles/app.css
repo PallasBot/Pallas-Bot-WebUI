@@ -1392,10 +1392,10 @@ html[data-theme="light"] .bot-config-edit {
   border: 0;
 }
 
-/* 总览：账户 → 系统性能（整行）→ 容量卡片（整行） */
+/* 总览：账户 → 容量卡片（整行）→ 系统性能（整行） */
 .home-dashboard {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 18px;
 }
 .home-dashboard__accounts {
@@ -1628,11 +1628,11 @@ html[data-theme="light"] .bot-config-edit {
     grid-column: 1;
     grid-row: 1;
   }
-  .home-dashboard__perf {
+  .home-dashboard__capacity {
     grid-column: 1;
     grid-row: 2;
   }
-  .home-dashboard__capacity {
+  .home-dashboard__perf {
     grid-column: 1;
     grid-row: 3;
   }
@@ -2137,8 +2137,41 @@ html[data-theme="light"] .home-page__panel-tag {
   font-size: 12px;
 }
 .home-page__link-grid {
-  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 12px;
+}
+.home-access-panel__bd {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.home-instances-capsule {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.2s var(--ease),
+    background 0.2s var(--ease),
+    color 0.2s var(--ease);
+}
+.home-instances-capsule:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-card);
+}
+html[data-theme="light"] .home-instances-capsule {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 .home-page .link-card {
   padding: 11px 12px;
@@ -2150,9 +2183,25 @@ html[data-theme="light"] .home-page__panel-tag {
 .home-page > .panel + .panel {
   margin-top: 14px;
 }
+.inst-db-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px 14px;
+}
+.inst-db-stat {
+  font-size: 13px;
+  line-height: 1.35;
+}
+.inst-db-stat__num {
+  color: var(--text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 .home-page__capacity-grid {
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 0;
 }
 @media (max-width: 720px) {
