@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { fetchInstances, fetchSystem } from "@/api/consoleApi";
-import type { InstancesData, SystemData } from "@/api/pallasTypes";
+import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import { botHttpBaseFromSystem, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 
 const err = ref("");
@@ -11,6 +11,34 @@ const instances = ref<InstancesData | null>(null);
 const snap = computed(() => protocolSnapshot(instances.value));
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const botBase = computed(() => botHttpBaseFromSystem(system.value));
+
+function profileNick(a: NapcatAccountRow): string {
+  const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
+  const nick = instances.value?.bot_profiles?.[String(q)]?.nickname?.trim();
+  if (Number.isFinite(q) && nick) return nick;
+  return String(a.display_name ?? "").trim();
+}
+
+const protocolAccountsSorted = computed(() => {
+  const list = [...(snap.value?.accounts ?? [])];
+  list.sort((a, b) => {
+    const ca = a.connected === true ? 1 : 0;
+    const cb = b.connected === true ? 1 : 0;
+    if (ca !== cb) return cb - ca;
+    const na = profileNick(a).toLowerCase();
+    const nb = profileNick(b).toLowerCase();
+    const cmp = na.localeCompare(nb, "zh-CN");
+    if (cmp !== 0) return cmp;
+    return String(a.qq ?? a.id ?? "").localeCompare(String(b.qq ?? b.id ?? ""), "zh-CN", { numeric: true });
+  });
+  return list;
+});
+
+function primaryTitle(a: NapcatAccountRow): string {
+  const nick = profileNick(a);
+  if (nick) return nick;
+  return String(a.qq ?? a.id ?? "—");
+}
 
 async function load() {
   err.value = "";
@@ -94,6 +122,7 @@ onMounted(load);
           <table class="data">
             <thead>
               <tr>
+                <th>昵称</th>
                 <th>账号</th>
                 <th>进程</th>
                 <th>已连接</th>
@@ -102,10 +131,11 @@ onMounted(load);
             </thead>
             <tbody>
               <tr
-                v-for="(a, i) in snap?.accounts ?? []"
+                v-for="(a, i) in protocolAccountsSorted"
                 :key="i"
               >
-                <td>{{ a.qq ?? a.id ?? "—" }}</td>
+                <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
+                <td class="muted">{{ a.qq ?? a.id ?? "—" }}</td>
                 <td>{{ yn(a.process_running ?? a.running) }}</td>
                 <td>{{ yn(a.connected) }}</td>
                 <td class="muted">{{ a.webui_port ?? "—" }}</td>

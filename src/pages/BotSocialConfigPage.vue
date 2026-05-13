@@ -4,12 +4,15 @@ import {
   fetchBots,
   fetchGroupConfigById,
   fetchGroupConfigs,
+  fetchInstances,
   fetchPlugins,
   fetchUserConfigById,
   putGroupConfig,
   putUserConfig,
 } from "@/api/consoleApi";
-import type { BotRow, GroupConfigPublic, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import type { BotRow, GroupConfigPublic, InstancesData, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import { visibleBots } from "@/utils/botDisplay";
+import { slicePage, totalPages } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 
 const err = ref("");
@@ -17,7 +20,11 @@ const ok = ref("");
 const busy = ref(false);
 
 const bots = ref<BotRow[]>([]);
+const instances = ref<InstancesData | null>(null);
 const filterSelfId = ref("");
+
+const GROUP_PAGE = 15;
+const groupPage = ref(1);
 
 const plugins = ref<PluginRow[]>([]);
 const pluginLoadErr = ref("");
@@ -43,6 +50,25 @@ const userSaveErr = ref("");
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
 
+const botsVisible = computed(() => visibleBots(bots.value));
+
+function profileNick(selfId: string): string {
+  return instances.value?.bot_profiles?.[selfId]?.nickname?.trim() || "";
+}
+
+function botFilterLabel(b: BotRow): string {
+  const nick = profileNick(b.self_id);
+  if (nick) return `${nick}（${b.self_id}）`;
+  return b.self_id;
+}
+
+const pagedGroupList = computed(() => slicePage(groupList.value, groupPage.value, GROUP_PAGE));
+const groupListMaxPage = computed(() => totalPages(groupList.value.length, GROUP_PAGE));
+
+watch(groupList, () => {
+  groupPage.value = 1;
+});
+
 watch(
   () => groupModalOpen.value || userModalOpen.value,
   (open) => {
@@ -59,7 +85,9 @@ onUnmounted(() => {
 
 async function loadBots() {
   try {
-    bots.value = await fetchBots();
+    const [b, inst] = await Promise.all([fetchBots(), fetchInstances()]);
+    bots.value = b;
+    instances.value = inst;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -266,11 +294,11 @@ onMounted(async () => {
           >
             <option value="">全部账号</option>
             <option
-              v-for="b in bots"
+              v-for="b in botsVisible"
               :key="b.self_id"
               :value="b.self_id"
             >
-              {{ b.self_id }}
+              {{ botFilterLabel(b) }} · {{ b.adapter }}
             </option>
           </select>
           <button
@@ -332,7 +360,7 @@ onMounted(async () => {
             </thead>
             <tbody>
               <tr
-                v-for="g in groupList"
+                v-for="g in pagedGroupList"
                 :key="g.group_id"
               >
                 <td style="font-weight: 600">{{ g.group_id }}</td>
@@ -352,6 +380,30 @@ onMounted(async () => {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div
+          v-if="groupList.length > GROUP_PAGE"
+          class="console-pager"
+        >
+          <span class="muted">共 {{ groupList.length }} 条 · 第 {{ groupPage }} / {{ groupListMaxPage }} 页</span>
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn"
+              :disabled="groupPage <= 1"
+              @click="groupPage = Math.max(1, groupPage - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="groupPage >= groupListMaxPage"
+              @click="groupPage = Math.min(groupListMaxPage, groupPage + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
     </div>

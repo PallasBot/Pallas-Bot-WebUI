@@ -4,7 +4,9 @@ import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, NapcatManagerSnapshot, PluginRow } from "@/api/pallasTypes";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
+import { visibleBots } from "@/utils/botDisplay";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
+import { slicePage, totalPages } from "@/utils/paginate";
 import { protocolDisp } from "@/utils/protocolUi";
 
 const err = ref("");
@@ -53,6 +55,88 @@ const protocolAccountRows = computed(() =>
     conn: protocolDisp(a.connected, "已连接", "未连接"),
   })),
 );
+
+const PAGE_SIZE = 12;
+
+const instNbPage = ref(1);
+const instDbPage = ref(1);
+const instProtoPage = ref(1);
+const expNonebot = ref(true);
+const expDbBots = ref(true);
+const expProtocol = ref(true);
+
+const sortedNonebotBots = computed(() => {
+  const rows = visibleBots([...(data.value?.nonebot_bots ?? [])]);
+  rows.sort((a, b) => {
+    const ia = parseSelfId(a.self_id);
+    const ib = parseSelfId(b.self_id);
+    const na = (ia != null ? botNickname(ia) : "").toLowerCase();
+    const nb = (ib != null ? botNickname(ib) : "").toLowerCase();
+    const cmp = na.localeCompare(nb, "zh-CN");
+    if (cmp !== 0) return cmp;
+    return a.self_id.localeCompare(b.self_id, "zh-CN", { numeric: true });
+  });
+  return rows;
+});
+
+const sortedDbBotConfigs = computed(() => {
+  const rows = [...(data.value?.db_bot_configs ?? [])];
+  rows.sort((a, b) => {
+    const ca = isBotConnected(a.account) ? 1 : 0;
+    const cb = isBotConnected(b.account) ? 1 : 0;
+    if (ca !== cb) return cb - ca;
+    const na = (botNickname(a.account) || "").toLowerCase();
+    const nb = (botNickname(b.account) || "").toLowerCase();
+    const cmp = na.localeCompare(nb, "zh-CN");
+    if (cmp !== 0) return cmp;
+    return a.account - b.account;
+  });
+  return rows;
+});
+
+const sortedProtocolAccountRows = computed(() => {
+  const rows = [...protocolAccountRows.value];
+  rows.sort((a, b) => {
+    const ca = a.raw.connected === true ? 1 : 0;
+    const cb = b.raw.connected === true ? 1 : 0;
+    if (ca !== cb) return cb - ca;
+    const qa = parseSelfId(String(a.raw.qq ?? a.raw.id ?? ""));
+    const qb = parseSelfId(String(b.raw.qq ?? b.raw.id ?? ""));
+    const na = (qa != null ? botNickname(qa) : "") || String(a.raw.display_name ?? "").trim();
+    const nb = (qb != null ? botNickname(qb) : "") || String(b.raw.display_name ?? "").trim();
+    const cmp = na.toLowerCase().localeCompare(nb.toLowerCase(), "zh-CN");
+    if (cmp !== 0) return cmp;
+    return String(a.raw.qq ?? a.raw.id ?? "").localeCompare(String(b.raw.qq ?? b.raw.id ?? ""), "zh-CN", {
+      numeric: true,
+    });
+  });
+  return rows;
+});
+
+const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, PAGE_SIZE));
+const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, PAGE_SIZE));
+const pagedProtocolRows = computed(() => slicePage(sortedProtocolAccountRows.value, instProtoPage.value, PAGE_SIZE));
+
+const instNbMaxPage = computed(() => totalPages(sortedNonebotBots.value.length, PAGE_SIZE));
+const instDbMaxPage = computed(() => totalPages(sortedDbBotConfigs.value.length, PAGE_SIZE));
+const instProtoMaxPage = computed(() => totalPages(sortedProtocolAccountRows.value.length, PAGE_SIZE));
+
+watch(data, () => {
+  instNbPage.value = 1;
+  instDbPage.value = 1;
+  instProtoPage.value = 1;
+});
+
+function protocolPrimaryTitle(row: (typeof sortedProtocolAccountRows.value)[0]): string {
+  const q = parseSelfId(String(row.raw.qq ?? row.raw.id ?? ""));
+  if (q != null) {
+    const nick = botNickname(q);
+    if (nick) return nick;
+  }
+  const d = String(row.raw.display_name ?? "").trim();
+  if (d) return d;
+  return String(row.raw.qq ?? row.raw.id ?? "—");
+}
 
 function isBotConnected(account: number): boolean {
   return accountHasNonebotBot(data.value?.nonebot_bots, account);
@@ -228,59 +312,112 @@ onMounted(async () => {
 
     <template v-if="data">
       <div class="panel">
-        <div class="panel__hd">
+        <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">NoneBot 连接</h2>
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="expNonebot = !expNonebot"
+          >
+            {{ expNonebot ? "收起" : "展开" }}
+          </button>
         </div>
-        <div class="panel__bd">
+        <div
+          v-show="expNonebot"
+          class="panel__bd"
+        >
           <div class="table-wrap">
             <table class="data">
               <thead>
                 <tr>
+                  <th>昵称</th>
                   <th>self_id</th>
-                  <th>adapter</th>
-                  <th>connection_key</th>
+                  <th>适配器</th>
+                  <th>连接键</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="(b, i) in data.nonebot_bots"
+                  v-for="(b, i) in pagedNonebotBots"
                   :key="i"
                 >
+                  <td style="font-weight: 600">{{ (parseSelfId(b.self_id) != null ? botNickname(parseSelfId(b.self_id)!) : undefined) || "—" }}</td>
                   <td>{{ b.self_id }}</td>
-                  <td>{{ b.adapter }}</td>
+                  <td class="muted">{{ b.adapter }}</td>
                   <td class="muted">{{ b.connection_key }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <div
+            v-if="sortedNonebotBots.length > PAGE_SIZE"
+            class="console-pager"
+          >
+            <span class="muted">共 {{ sortedNonebotBots.length }} 条 · 第 {{ instNbPage }} / {{ instNbMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="instNbPage <= 1"
+                @click="instNbPage = Math.max(1, instNbPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="instNbPage >= instNbMaxPage"
+                @click="instNbPage = Math.min(instNbMaxPage, instNbPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="panel">
-        <div class="panel__hd">
+        <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">数据库中的 Bot 配置</h2>
           <div
-            class="console-view-toggle"
-            role="group"
-            aria-label="Bot 配置视图"
+            class="row-actions"
+            style="flex-wrap: wrap; gap: 8px; align-items: center"
           >
             <button
               type="button"
-              :class="{ 'is-on': botView === 'table' }"
-              @click="setBotView('table')"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="expDbBots = !expDbBots"
             >
-              表格
+              {{ expDbBots ? "收起" : "展开" }}
             </button>
-            <button
-              type="button"
-              :class="{ 'is-on': botView === 'cards' }"
-              @click="setBotView('cards')"
+            <div
+              class="console-view-toggle"
+              role="group"
+              aria-label="Bot 配置视图"
             >
-              卡片
-            </button>
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'table' }"
+                @click="setBotView('table')"
+              >
+                表格
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'cards' }"
+                @click="setBotView('cards')"
+              >
+                卡片
+              </button>
+            </div>
           </div>
         </div>
-        <div class="panel__bd">
+        <div
+          v-show="expDbBots"
+          class="panel__bd"
+        >
           <p
             v-if="pluginLoadErr"
             class="muted"
@@ -296,8 +433,8 @@ onMounted(async () => {
             <table class="data">
               <thead>
                 <tr>
-                  <th>账号</th>
                   <th>昵称</th>
+                  <th>账号</th>
                   <th>连接</th>
                   <th>安全模式</th>
                   <th>自动同意好友</th>
@@ -308,11 +445,11 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr
-                  v-for="c in data.db_bot_configs"
+                  v-for="c in pagedDbBotConfigs"
                   :key="c.account"
                 >
-                  <td style="font-weight: 600">{{ c.account }}</td>
-                  <td class="muted">{{ botNickname(c.account) || "BOT" }}</td>
+                  <td style="font-weight: 600">{{ botNickname(c.account) || "BOT" }}</td>
+                  <td>{{ c.account }}</td>
                   <td>
                     <span :class="boolPillClass(isBotConnected(c.account))">{{
                       isBotConnected(c.account) ? "已连接" : "未连接"
@@ -336,13 +473,37 @@ onMounted(async () => {
               </tbody>
             </table>
           </div>
+          <div
+            v-if="botView === 'table' && sortedDbBotConfigs.length > PAGE_SIZE"
+            class="console-pager"
+          >
+            <span class="muted">共 {{ sortedDbBotConfigs.length }} 条 · 第 {{ instDbPage }} / {{ instDbMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="instDbPage <= 1"
+                @click="instDbPage = Math.max(1, instDbPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="instDbPage >= instDbMaxPage"
+                @click="instDbPage = Math.min(instDbMaxPage, instDbPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
 
           <div
-            v-else
+            v-else-if="botView === 'cards'"
             class="data-card-grid data-card-grid--bots"
           >
             <div
-              v-for="c in data.db_bot_configs"
+              v-for="c in pagedDbBotConfigs"
               :key="`card-${c.account}`"
               class="data-summary-card data-summary-card--kv data-summary-card--bot"
             >
@@ -391,6 +552,30 @@ onMounted(async () => {
               </div>
             </div>
           </div>
+          <div
+            v-if="botView === 'cards' && sortedDbBotConfigs.length > PAGE_SIZE"
+            class="console-pager"
+          >
+            <span class="muted">共 {{ sortedDbBotConfigs.length }} 条 · 第 {{ instDbPage }} / {{ instDbMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="instDbPage <= 1"
+                @click="instDbPage = Math.max(1, instDbPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="instDbPage >= instDbMaxPage"
+                @click="instDbPage = Math.min(instDbMaxPage, instDbPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -398,30 +583,46 @@ onMounted(async () => {
         v-if="protocolSnap"
         class="panel"
       >
-        <div class="panel__hd">
+        <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">协议管理（{{ protocolSnap.plugin }}）</h2>
           <div
-            class="console-view-toggle"
-            role="group"
-            aria-label="协议视图"
+            class="row-actions"
+            style="flex-wrap: wrap; gap: 8px; align-items: center"
           >
             <button
               type="button"
-              :class="{ 'is-on': protoView === 'table' }"
-              @click="setProtoView('table')"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="expProtocol = !expProtocol"
             >
-              表格
+              {{ expProtocol ? "收起" : "展开" }}
             </button>
-            <button
-              type="button"
-              :class="{ 'is-on': protoView === 'cards' }"
-              @click="setProtoView('cards')"
+            <div
+              class="console-view-toggle"
+              role="group"
+              aria-label="协议视图"
             >
-              卡片
-            </button>
+              <button
+                type="button"
+                :class="{ 'is-on': protoView === 'table' }"
+                @click="setProtoView('table')"
+              >
+                表格
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': protoView === 'cards' }"
+                @click="setProtoView('cards')"
+              >
+                卡片
+              </button>
+            </div>
           </div>
         </div>
-        <div class="panel__bd">
+        <div
+          v-show="expProtocol"
+          class="panel__bd"
+        >
           <p class="muted" style="margin: 0 0 12px">
             WebUI：{{ protocolSnap.webui_enabled ? "启用" : "关闭" }} · 路径 {{ protocolSnap.webui_path }}
           </p>
@@ -432,6 +633,7 @@ onMounted(async () => {
             <table class="data">
               <thead>
                 <tr>
+                  <th>昵称</th>
                   <th>账号</th>
                   <th>运行</th>
                   <th>已连接</th>
@@ -439,10 +641,11 @@ onMounted(async () => {
               </thead>
               <tbody>
                 <tr
-                  v-for="row in protocolAccountRows"
+                  v-for="row in pagedProtocolRows"
                   :key="row.key"
                 >
-                  <td>{{ row.raw.qq || row.raw.id }}</td>
+                  <td style="font-weight: 600">{{ protocolPrimaryTitle(row) }}</td>
+                  <td class="muted">{{ row.raw.qq || row.raw.id }}</td>
                   <td>
                     <template v-if="row.run.kind === 'pill'">
                       <span :class="boolPillClass(row.run.on)">{{ row.run.on ? row.run.onLabel : row.run.offLabel }}</span>
@@ -466,15 +669,42 @@ onMounted(async () => {
             </table>
           </div>
           <div
-            v-else
+            v-if="protoView === 'table' && sortedProtocolAccountRows.length > PAGE_SIZE"
+            class="console-pager"
+          >
+            <span class="muted">共 {{ sortedProtocolAccountRows.length }} 条 · 第 {{ instProtoPage }} / {{ instProtoMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="instProtoPage <= 1"
+                @click="instProtoPage = Math.max(1, instProtoPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="instProtoPage >= instProtoMaxPage"
+                @click="instProtoPage = Math.min(instProtoMaxPage, instProtoPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
+          <div
+            v-else-if="protoView === 'cards'"
             class="data-card-grid"
           >
             <div
-              v-for="row in protocolAccountRows"
+              v-for="row in pagedProtocolRows"
               :key="row.key"
               class="data-summary-card data-summary-card--kv"
             >
-              <div class="data-summary-card__title">{{ row.raw.qq || row.raw.id || "账号" }}</div>
+              <div class="data-summary-card__title">{{ protocolPrimaryTitle(row) }}</div>
+              <div class="data-summary-card__secondary muted" style="margin-top: 2px">
+                账号 {{ row.raw.qq || row.raw.id || "—" }}
+              </div>
               <div class="data-summary-card__row">
                 <span class="data-summary-card__label">进程</span>
                 <template v-if="row.run.kind === 'pill'">
@@ -497,13 +727,30 @@ onMounted(async () => {
                   style="font-size: 12px"
                 >{{ row.conn.text }}</span>
               </div>
-              <div
-                v-if="row.raw.display_name"
-                class="data-summary-card__meta muted"
-                style="margin-top: 4px"
+            </div>
+          </div>
+          <div
+            v-if="protoView === 'cards' && sortedProtocolAccountRows.length > PAGE_SIZE"
+            class="console-pager"
+          >
+            <span class="muted">共 {{ sortedProtocolAccountRows.length }} 条 · 第 {{ instProtoPage }} / {{ instProtoMaxPage }} 页</span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="instProtoPage <= 1"
+                @click="instProtoPage = Math.max(1, instProtoPage - 1)"
               >
-                {{ row.raw.display_name }}
-              </div>
+                上一页
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="instProtoPage >= instProtoMaxPage"
+                @click="instProtoPage = Math.min(instProtoMaxPage, instProtoPage + 1)"
+              >
+                下一页
+              </button>
             </div>
           </div>
         </div>

@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
-import { fetchBots, fetchMessageStats, fetchSystem } from "@/api/consoleApi";
-import type { BotRow, MessageStatsData, SystemData } from "@/api/pallasTypes";
+import {
+  fetchBots,
+  fetchFriendList,
+  fetchGroupList,
+  fetchInstances,
+  fetchMessageStats,
+  fetchSystem,
+} from "@/api/consoleApi";
+import type {
+  BotRow,
+  FriendListData,
+  GroupListData,
+  InstancesData,
+  MessageStatsData,
+  SystemData,
+} from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
+import { accountHasNonebotBot } from "@/utils/botConnection";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 import { botHttpBaseFromSystem, consolePublicRoot, nonebotDriverHint } from "@/utils/protocolLinks";
 
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const system = ref<SystemData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
+const statsScoped = ref<MessageStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
+const instances = ref<InstancesData | null>(null);
+const selectedAccount = ref<number | null>(null);
+const friendSnap = ref<FriendListData | null>(null);
+const groupSnap = ref<GroupListData | null>(null);
+const socialBusy = ref(false);
 
 const consoleRoot = consolePublicRoot();
 const botBase = ref<string | null>(null);
@@ -109,22 +131,109 @@ const diskBarPct = computed(() =>
   barPct(runtime.value?.disk?.percent ?? null, runtime.value?.disk?.used ?? null, runtime.value?.disk?.total ?? null),
 );
 
+function dbNick(account: number): string {
+  return instances.value?.bot_profiles?.[String(account)]?.nickname?.trim() || "";
+}
+
+const sortedDbBots = computed(() => {
+  const rows = [...(instances.value?.db_bot_configs ?? [])];
+  rows.sort((a, b) => {
+    const ca = accountHasNonebotBot(instances.value?.nonebot_bots, a.account) ? 1 : 0;
+    const cb = accountHasNonebotBot(instances.value?.nonebot_bots, b.account) ? 1 : 0;
+    if (ca !== cb) return cb - ca;
+    const na = (dbNick(a.account) || "").toLowerCase();
+    const nb = (dbNick(b.account) || "").toLowerCase();
+    const cmp = na.localeCompare(nb, "zh-CN");
+    if (cmp !== 0) return cmp;
+    return a.account - b.account;
+  });
+  return rows;
+});
+
+function ensureSelectedAccount() {
+  const rows = sortedDbBots.value;
+  if (!rows.length) {
+    selectedAccount.value = null;
+    return;
+  }
+  if (selectedAccount.value != null && rows.some((r) => r.account === selectedAccount.value)) return;
+  selectedAccount.value = rows[0]!.account;
+}
+
+const selectedConnected = computed(() => {
+  const acc = selectedAccount.value;
+  if (acc == null) return false;
+  return accountHasNonebotBot(instances.value?.nonebot_bots, acc);
+});
+
+const msgMainStats = computed(() => statsScoped.value ?? stats.value);
+
+const msgTotalStr = computed(() => {
+  const s = msgMainStats.value;
+  if (!s) return "—";
+  return `${s.total_received} / ${s.total_sent}`;
+});
+
+const msgTodayStr = computed(() => {
+  const s = msgMainStats.value;
+  if (!s || (s.today_received == null && s.today_sent == null)) return undefined;
+  return `本日 ${s.today_received ?? "—"} / ${s.today_sent ?? "—"}`;
+});
+
+const friendCount = computed(() => friendSnap.value?.friends?.length ?? null);
+const groupCount = computed(() => groupSnap.value?.groups?.length ?? null);
+
+async function refreshSelectedBotDetails() {
+  const acc = selectedAccount.value;
+  if (acc == null) {
+    statsScoped.value = null;
+    friendSnap.value = null;
+    groupSnap.value = null;
+    return;
+  }
+  socialBusy.value = true;
+  try {
+    const [ms, fl, gl] = await Promise.all([fetchMessageStats(acc), fetchFriendList(acc), fetchGroupList(acc)]);
+    statsScoped.value = ms;
+    friendSnap.value = fl;
+    groupSnap.value = gl;
+  } catch {
+    statsScoped.value = null;
+    friendSnap.value = null;
+    groupSnap.value = null;
+  } finally {
+    socialBusy.value = false;
+  }
+}
+
+watch(selectedAccount, () => {
+  void refreshSelectedBotDetails();
+});
+
+watch(sortedDbBots, () => {
+  ensureSelectedAccount();
+});
+
 async function load() {
   err.value = "";
   try {
-    const [h, s, m, botList] = await Promise.all([
+    const [h, s, m, botList, inst] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
       fetchBots(),
+      fetchInstances(),
     ]);
     health.value = h;
     system.value = s;
     stats.value = m;
     bots.value = botList;
+    instances.value = inst;
     botCount.value = botList.length;
     botBase.value = botHttpBaseFromSystem(s);
     driverHint.value = nonebotDriverHint(s);
+    ensureSelectedAccount();
+    await refreshSelectedBotDetails();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -174,36 +283,80 @@ onMounted(load);
           </div>
           <div class="panel__bd">
             <p
-              v-if="!bots.length"
+              v-if="!sortedDbBots.length"
               class="muted"
               style="margin: 0"
             >
-              当前无已登记在线账号。请在后端核对 Bot 配置与适配器连接后刷新。
+              数据库中暂无 Bot 配置记录。请在后端创建 <code>bot_config</code> 后刷新。
             </p>
-            <div
-              v-else
-              class="table-wrap"
-            >
-              <table class="data">
-                <thead>
-                  <tr>
-                    <th>账号标识</th>
-                    <th>适配器</th>
-                    <th>连接键</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(b, idx) in bots"
-                    :key="`${b.connection_key}-${idx}`"
+            <template v-else>
+              <div class="home-account-picker">
+                <label for="home-db-bot-sel">选择数据库 Bot</label>
+                <select
+                  id="home-db-bot-sel"
+                  v-model.number="selectedAccount"
+                  class="sel home-account-picker__sel"
+                >
+                  <option
+                    v-for="c in sortedDbBots"
+                    :key="c.account"
+                    :value="c.account"
                   >
-                    <td style="font-weight: 600">{{ b.self_id }}</td>
-                    <td class="muted">{{ b.adapter }}</td>
-                    <td class="muted" style="font-size: 12px; word-break: break-all">{{ b.connection_key }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                    {{ dbNick(c.account) || "BOT" }} · {{ c.account }} · {{
+                      accountHasNonebotBot(instances?.nonebot_bots, c.account) ? "已连接" : "未连接"
+                    }}
+                  </option>
+                </select>
+              </div>
+              <div
+                v-if="selectedAccount != null"
+                class="home-account-hero"
+              >
+                <div class="home-account-hero__avatar">
+                  <img
+                    :src="qqAvatarUrl(selectedAccount)"
+                    alt=""
+                    width="72"
+                    height="72"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                    @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                  >
+                </div>
+                <div class="home-account-hero__main">
+                  <div class="home-account-hero__title">
+                    {{ dbNick(selectedAccount) || "BOT" }}
+                    <span
+                      :class="
+                        selectedConnected
+                          ? 'data-conn-capsule data-conn-capsule--on'
+                          : 'data-conn-capsule data-conn-capsule--off'
+                      "
+                      style="margin-left: 8px; vertical-align: middle"
+                    >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                  </div>
+                  <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
+                  <dl class="home-account-dl">
+                    <div>
+                      <dt>好友数量</dt>
+                      <dd>{{ socialBusy ? "…" : friendCount ?? "—" }}</dd>
+                    </div>
+                    <div>
+                      <dt>群数量</dt>
+                      <dd>{{ socialBusy ? "…" : groupCount ?? "—" }}</dd>
+                    </div>
+                    <div>
+                      <dt>消息 收/发</dt>
+                      <dd>{{ msgTotalStr }}</dd>
+                    </div>
+                    <div>
+                      <dt>今日 收/发</dt>
+                      <dd>{{ msgTodayStr ?? "—" }}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </section>
@@ -310,12 +463,8 @@ onMounted(load);
           <StatCard
             dense
             label="消息 收/发"
-            :value="stats ? `${stats.total_received} / ${stats.total_sent}` : '—'"
-            :hint="
-              stats?.today_received != null
-                ? `本日 ${stats.today_received} / ${stats.today_sent ?? '—'}`
-                : undefined
-            "
+            :value="msgTotalStr"
+            :hint="msgTodayStr"
           />
         </div>
       </section>
