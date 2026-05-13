@@ -7,11 +7,14 @@ const props = withDefaults(
     rows?: number;
     title?: string;
     placeholder?: string;
+    /** 打开弹窗的按钮文案 */
+    expandLabel?: string;
   }>(),
   {
     rows: 6,
     title: "编辑 JSON",
     placeholder: "点击或聚焦此处，在弹窗中编辑",
+    expandLabel: "放大编辑",
   },
 );
 
@@ -71,6 +74,16 @@ onUnmounted(() => {
 
 <template>
   <div class="json-textarea-field">
+    <div class="json-textarea-field__toolbar">
+      <button
+        type="button"
+        class="btn json-textarea-field__expand"
+        :aria-label="`${expandLabel}：${title}`"
+        @click="openModal"
+      >
+        {{ expandLabel }}
+      </button>
+    </div>
     <textarea
       ref="peekTa"
       class="textarea json-textarea-field__peek"
@@ -152,6 +165,17 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.json-textarea-field__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.json-textarea-field__expand {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .json-textarea-field__peek {
   cursor: pointer;
   width: 100%;
