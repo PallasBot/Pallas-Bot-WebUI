@@ -1860,10 +1860,11 @@ html[data-theme="light"] .bot-config-edit {
 }
 
 .home-account-unified {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 0;
-  align-items: stretch;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -1873,6 +1874,7 @@ html[data-theme="light"] .bot-config-edit {
 
 .home-account-unified__col {
   min-width: 0;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
 }
@@ -1902,7 +1904,7 @@ html[data-theme="light"] .bot-config-edit {
 }
 
 .home-account-standee {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2076,6 +2078,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
 
 .home-account-hero__pending-card:last-child {
   margin-top: auto;
+  transform: translateY(-2px);
 }
 
 .home-account-hero__detail--with-pending-rail:has(.home-account-hero__social-hint) .home-account-hero__pending-card:last-child {
@@ -2373,12 +2376,12 @@ html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot d
   gap: 5px;
   padding: 0 2px 2px 4px;
   min-height: 0;
-  height: 100%;
   justify-content: flex-start;
 }
 
 .home-account-unified__col--metrics .home-account-metrics {
   padding: 0;
+  height: auto;
 }
 .home-account-metrics__head {
   font-size: 12px;
@@ -2850,10 +2853,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 
 @media (max-width: 860px) {
-  .home-account-unified {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
   .home-account-unified__col--standee {
     display: none;
   }
@@ -2861,7 +2860,12 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
 @media (max-width: 560px) {
   .home-account-unified {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .home-account-unified__col {
+    flex: 0 1 auto;
+    width: 100%;
   }
 
   .home-account-unified__col--metrics {
@@ -2894,6 +2898,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .home-account-hero__pending-card:last-child {
     margin-top: 0;
+    transform: none;
   }
 
   .home-account-hero__pending-card {
