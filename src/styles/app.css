@@ -180,7 +180,7 @@ a:hover {
   grid-template-columns: 200px minmax(0, 1fr);
   grid-template-rows: var(--shell-chrome-h) minmax(0, 1fr);
   grid-template-areas:
-    "shell-top shell-top"
+    "shell-side shell-top"
     "shell-side shell-main";
   flex: 1;
   min-height: 0;
@@ -1613,14 +1613,14 @@ html[data-theme="light"] .bot-config-edit {
 .home-page__body {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 12px;
 }
 
 /* 总览：账户 → 容量卡片（整行）→ 系统性能（整行） */
 .home-dashboard {
   display: grid;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
 }
 .home-dashboard__accounts {
   grid-column: 1 / -1;
@@ -1778,6 +1778,11 @@ html[data-theme="light"] .bot-config-edit {
   width: 100%;
   padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.home-account-hero--unified .home-account-hero__detail {
+  padding-left: calc(64px + 14px);
+  box-sizing: border-box;
 }
 
 .home-account-hero__detail--color .home-account-hero__admin {
@@ -1966,7 +1971,7 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 .home-account-metrics {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 4px 2px 4px 4px;
   min-height: 0;
   height: 100%;
@@ -1983,21 +1988,21 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px 10px;
+  gap: 4px 8px;
   font-variant-numeric: tabular-nums;
 }
 .home-account-metrics__recv {
-  font-size: 1.28rem;
-  font-weight: 650;
+  font-size: 1.12rem;
+  font-weight: 600;
   letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: #7dd3fc;
 }
 .home-account-metrics__sent {
-  font-size: 1.28rem;
-  font-weight: 650;
+  font-size: 1.12rem;
+  font-weight: 600;
   letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: #c4b5fd;
 }
 .home-account-metrics__sep {
@@ -2006,7 +2011,7 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 .home-account-metrics__stats {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding-top: 2px;
   min-width: 0;
 }
@@ -2021,7 +2026,7 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 .home-account-metrics__stat-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 .home-account-metrics__krow {
@@ -2041,7 +2046,7 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   font-size: 11px;
 }
 .home-account-metrics__v {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -2064,13 +2069,14 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
   color: #fb7185;
 }
 
-/* 吞吐侧：与账户详情区一致的彩色强调 */
+/* 吞吐侧：彩色 + 字号层级（大数 → 今日 → 明细） */
 .home-account-metrics--color .home-account-metrics__head {
   margin: 0;
-  font-weight: 700;
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  line-height: 1.3;
   background: linear-gradient(95deg, #94a3b8 0%, #7dd3fc 40%, #a78bfa 85%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2080,6 +2086,10 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 .home-account-metrics--color .home-account-metrics__recv,
 .home-account-metrics--color .home-account-metrics__sent {
   display: inline-block;
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -2094,22 +2104,29 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 }
 
 .home-account-metrics--color .home-account-metrics__sep {
+  font-size: 0.95rem;
+  font-weight: 500;
   color: color-mix(in srgb, var(--text-dim) 55%, #64748b);
 }
 
 .home-account-metrics--color .home-account-metrics__k {
+  font-size: 11px;
+  font-weight: 500;
   color: #93c5fd;
-  font-weight: 600;
 }
 
 .home-account-metrics--color .home-account-metrics__kind {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: #c4b5fd;
-  font-weight: 650;
 }
 
 .home-account-metrics--color .home-account-metrics__today-row .home-account-metrics__v {
   display: inline-block;
-  font-weight: 750;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   background: linear-gradient(95deg, #fbbf24 0%, #fb923c 55%, #f472b6 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2117,13 +2134,15 @@ html[data-theme="light"] .home-account-hero__detail--color .home-account-dl--her
 }
 
 .home-account-metrics--color .home-account-metrics__stats > .home-account-metrics__stat-block:nth-child(2) .home-account-metrics__v--clip {
+  font-size: 12px;
+  font-weight: 500;
   color: #6ee7b7;
-  font-weight: 650;
 }
 
 .home-account-metrics--color .home-account-metrics__stats > .home-account-metrics__stat-block:nth-child(3) .home-account-metrics__v--clip {
+  font-size: 12px;
+  font-weight: 500;
   color: #e9d5ff;
-  font-weight: 650;
 }
 
 html[data-theme="light"] .home-account-metrics--color .home-account-metrics__head {
@@ -2178,6 +2197,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-account-charts-span,
   .home-account-msg-tools-span {
     grid-column: auto;
+  }
+
+  .home-account-hero--unified .home-account-hero__detail {
+    padding-left: 0;
   }
 }
 
@@ -2791,6 +2814,18 @@ html[data-theme="light"] .plugin-preview {
 }
 .home-page .panel__title {
   font-size: 0.9rem;
+}
+
+.home-page__version-panel .panel__title {
+  font-weight: 500;
+}
+
+.home-page__version-panel .home-dl__pill--version {
+  font-weight: 500;
+}
+
+.home-page__version-panel .badge {
+  font-weight: 500;
 }
 .home-page__panel-tag {
   font-size: 11px;
