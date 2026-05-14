@@ -18,7 +18,23 @@ export interface SystemData {
     platform?: string;
     python?: string;
     cpu_percent?: number | null;
-    memory?: { total?: number | null; used?: number | null; percent?: number | null };
+    /** 各逻辑核心占用 0–100；与 cpu_percent 同源采样（cpu_percent 为各核算术平均） */
+    cpu_per_core?: number[] | null;
+    /** Unix 类系统：1 / 5 / 15 分钟平均负载；Windows 通常为 null */
+    cpu_load_avg?: [number, number, number] | null;
+    memory?: {
+      total?: number | null;
+      used?: number | null;
+      available?: number | null;
+      free?: number | null;
+      percent?: number | null;
+      /** Linux 等；页缓存，可回收 */
+      cached?: number | null;
+      buffers?: number | null;
+      shared?: number | null;
+      /** macOS 等 */
+      wired?: number | null;
+    };
     disk?: { total?: number | null; used?: number | null; free?: number | null; percent?: number | null };
     gpu?: {
       available?: boolean;

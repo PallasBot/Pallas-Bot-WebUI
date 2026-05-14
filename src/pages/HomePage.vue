@@ -45,6 +45,10 @@ import { displayVersionWithoutSha } from "@/utils/versionDisplay";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
+/** 系统性能 runtime 轮询间隔（毫秒） */
+const HOME_SYSTEM_POLL_MS = 5000;
+/** 消息吞吐（累计）等 message-stats 轮询间隔 */
+const HOME_THROUGHPUT_POLL_MS = 5 * 60 * 1000;
 
 function readSavedHomeAccount(): number | null {
   try {
@@ -84,6 +88,19 @@ const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
 const requestOverviewSnap = ref<RequestOverviewData | null>(null);
 const socialBusy = ref(false);
+/** ≤560px：吞吐卡片与图表收纳，由「更多」展开 */
+const homeAccountNarrow560 = ref(
+  typeof window !== "undefined" && window.matchMedia("(max-width: 560px)").matches,
+);
+const throughputExtraOpen = ref(false);
+let homeAccountMql: MediaQueryList | null = null;
+
+function applyHomeAccountNarrowFromMq() {
+  if (!homeAccountMql) return;
+  const m = homeAccountMql.matches;
+  homeAccountNarrow560.value = m;
+  if (!m) throughputExtraOpen.value = false;
+}
 /** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
 const pageReady = ref(false);
 /** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
@@ -168,27 +185,59 @@ function pct(n: number | null | undefined, digits = 1): string {
 const perfSampled = computed(() => {
   const r = runtime.value;
   if (!r) return false;
+  const gpuOk = Boolean(r.gpu?.available && (r.gpu.devices?.length ?? 0) > 0);
   return (
     r.cpu_percent != null ||
+    (Array.isArray(r.cpu_per_core) && r.cpu_per_core.length > 0) ||
+    (Array.isArray(r.cpu_load_avg) && r.cpu_load_avg.length >= 3) ||
     r.memory?.percent != null ||
+    (r.memory?.available != null && r.memory?.available >= 0) ||
     (r.memory?.used != null && r.memory?.total != null) ||
     r.disk?.percent != null ||
     (r.disk?.used != null && r.disk?.total != null) ||
-    r.boot_time != null
+    r.boot_time != null ||
+    gpuOk
   );
 });
 
 const cpuDisplay = computed(() => pct(runtime.value?.cpu_percent ?? null));
 const memDisplay = computed(() => {
   const m = runtime.value?.memory;
-  if (m?.percent != null) return pct(m.percent);
-  if (m?.used != null && m?.total != null && m.total > 0) return pct((m.used / m.total) * 100);
+  if (m?.percent != null) return pct(m.percent, 2);
+  if (m?.used != null && m?.total != null && m.total > 0) return pct((m.used / m.total) * 100, 2);
   return "—";
 });
 const memHint = computed(() => {
   const m = runtime.value?.memory;
   if (!m) return undefined;
-  return `${fmtBytes(m.used)} / ${fmtBytes(m.total)}`;
+  const parts: string[] = [];
+  if (m.used != null && m.total != null && m.total > 0) {
+    parts.push(`已用 ${fmtBytes(m.used)} / 共 ${fmtBytes(m.total)}`);
+  } else if (m.total != null && m.total > 0) {
+    parts.push(`共 ${fmtBytes(m.total)}`);
+  }
+  if (m.available != null) {
+    parts.push(`可用 ${fmtBytes(m.available)}`);
+  } else if (m.free != null && m.free > 0) {
+    parts.push(`空闲 ${fmtBytes(m.free)}`);
+  }
+  const sub: string[] = [];
+  if (m.cached != null && m.cached > 0) {
+    sub.push(`缓存 ${fmtBytes(m.cached)}`);
+  }
+  if (m.buffers != null && m.buffers > 0) {
+    sub.push(`缓冲 ${fmtBytes(m.buffers)}`);
+  }
+  if (m.shared != null && m.shared > 0) {
+    sub.push(`共享 ${fmtBytes(m.shared)}`);
+  }
+  if (m.wired != null && m.wired > 0) {
+    sub.push(`常驻 ${fmtBytes(m.wired)}`);
+  }
+  if (sub.length) {
+    parts.push(sub.join(" · "));
+  }
+  return parts.length ? parts.join(" · ") : undefined;
 });
 const diskDisplay = computed(() => {
   const d = runtime.value?.disk;
@@ -288,12 +337,67 @@ function barPct(
 }
 
 const cpuBarPct = computed(() => barPct(runtime.value?.cpu_percent ?? null, null, null));
+
+/** 各逻辑核心占用 0–100，供迷你柱可视化 */
+const cpuPerCorePercents = computed((): number[] => {
+  const raw = runtime.value?.cpu_per_core;
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw.map((x) => {
+    const n = typeof x === "number" ? x : Number(x);
+    if (!Number.isFinite(n)) return 0;
+    return Math.min(100, Math.max(0, n));
+  });
+});
+
+const cpuFootHint = computed(() => {
+  const chunks: string[] = [];
+  const la = runtime.value?.cpu_load_avg;
+  if (Array.isArray(la) && la.length >= 3) {
+    const a = typeof la[0] === "number" ? la[0] : Number(la[0]);
+    const b = typeof la[1] === "number" ? la[1] : Number(la[1]);
+    const c = typeof la[2] === "number" ? la[2] : Number(la[2]);
+    if ([a, b, c].every((x) => Number.isFinite(x))) {
+      chunks.push(`负载 ${a.toFixed(2)} / ${b.toFixed(2)} / ${c.toFixed(2)}`);
+    }
+  }
+  const n = cpuPerCorePercents.value.length;
+  if (n > 0) {
+    chunks.push(`${n} 逻辑核心 · 均值`);
+  }
+  if (!chunks.length) return undefined;
+  return chunks.join(" · ");
+});
 const memBarPct = computed(() =>
   barPct(runtime.value?.memory?.percent ?? null, runtime.value?.memory?.used ?? null, runtime.value?.memory?.total ?? null),
 );
 const diskBarPct = computed(() =>
   barPct(runtime.value?.disk?.percent ?? null, runtime.value?.disk?.used ?? null, runtime.value?.disk?.total ?? null),
 );
+
+const gpuDevices = computed(() => {
+  const g = runtime.value?.gpu;
+  if (!g?.available) return [];
+  return g.devices ?? [];
+});
+
+function gpuUtilBarPct(util: number | null | undefined): number | null {
+  return barPct(util ?? null, null, null);
+}
+
+function gpuMemBarPct(used: number, total: number): number | null {
+  return barPct(null, used, total);
+}
+
+function gpuNameShort(name: string, maxLen = 28): string {
+  const t = name.trim();
+  if (t.length <= maxLen) return t;
+  return `${t.slice(0, maxLen - 1)}…`;
+}
+
+function tempDisplay(c: number | null | undefined): string {
+  if (c == null || Number.isNaN(c)) return "—";
+  return `${Math.round(c)}°C`;
+}
 
 function dbNick(account: number): string {
   return instances.value?.bot_profiles?.[String(account)]?.nickname?.trim() || "";
@@ -882,6 +986,7 @@ async function refreshSelectedBotDetails() {
 
 watch(selectedAccount, () => {
   accountPickerOpen.value = false;
+  throughputExtraOpen.value = false;
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
 });
@@ -939,7 +1044,89 @@ async function load() {
   }
 }
 
-onMounted(load);
+async function refreshSystemRuntimeOnly() {
+  try {
+    const s = await fetchSystem();
+    system.value = s;
+  } catch {
+    /* 保留上一次 system */
+  }
+}
+
+let homeSystemPollId: ReturnType<typeof setInterval> | null = null;
+
+function startHomeSystemPolling() {
+  if (homeSystemPollId != null) return;
+  homeSystemPollId = setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    void refreshSystemRuntimeOnly();
+  }, HOME_SYSTEM_POLL_MS);
+}
+
+function stopHomeSystemPolling() {
+  if (homeSystemPollId == null) return;
+  clearInterval(homeSystemPollId);
+  homeSystemPollId = null;
+}
+
+function onHomeSystemVisibility() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible") {
+    void refreshSystemRuntimeOnly();
+  }
+}
+
+async function refreshMessageStatsOnly() {
+  try {
+    const m = await fetchMessageStats();
+    stats.value = m;
+  } catch {
+    /* 保留当前 stats */
+  }
+  const acc = selectedAccount.value;
+  if (acc == null) return;
+  try {
+    const ms = await fetchMessageStats(acc);
+    statsScoped.value = ms;
+  } catch {
+    /* 保留当前 statsScoped */
+  }
+}
+
+let homeThroughputPollId: ReturnType<typeof setInterval> | null = null;
+
+function startHomeThroughputPolling() {
+  if (homeThroughputPollId != null) return;
+  homeThroughputPollId = setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    void refreshMessageStatsOnly();
+  }, HOME_THROUGHPUT_POLL_MS);
+}
+
+function stopHomeThroughputPolling() {
+  if (homeThroughputPollId == null) return;
+  clearInterval(homeThroughputPollId);
+  homeThroughputPollId = null;
+}
+
+onMounted(async () => {
+  if (typeof window !== "undefined") {
+    homeAccountMql = window.matchMedia("(max-width: 560px)");
+    applyHomeAccountNarrowFromMq();
+    homeAccountMql.addEventListener("change", applyHomeAccountNarrowFromMq);
+  }
+  await load();
+  startHomeSystemPolling();
+  startHomeThroughputPolling();
+  document.addEventListener("visibilitychange", onHomeSystemVisibility);
+});
+
+onUnmounted(() => {
+  homeAccountMql?.removeEventListener("change", applyHomeAccountNarrowFromMq);
+  stopHomeSystemPolling();
+  stopHomeThroughputPolling();
+  document.removeEventListener("visibilitychange", onHomeSystemVisibility);
+});
 </script>
 
 <template>
@@ -1002,6 +1189,9 @@ onMounted(load);
               <div
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
+                :class="{
+                  'home-account-split-bd--throughput-collapsed': homeAccountNarrow560 && !throughputExtraOpen,
+                }"
               >
                 <div class="home-account-unified">
                   <div class="home-account-unified__col home-account-unified__col--hero">
@@ -1202,6 +1392,19 @@ onMounted(load);
                           </li>
                         </ul>
                       </details>
+                      <button
+                        v-if="homeAccountNarrow560"
+                        type="button"
+                        class="home-account-hero__throughput-more"
+                        :aria-expanded="throughputExtraOpen"
+                        :aria-label="throughputExtraOpen ? '收起吞吐与图表' : '展开吞吐与图表'"
+                        @click="throughputExtraOpen = !throughputExtraOpen"
+                      >
+                        <span
+                          class="home-account-hero__throughput-more__tri"
+                          aria-hidden="true"
+                        >▸</span>
+                      </button>
                     </div>
                   </div>
                   <div class="home-account-unified__col home-account-unified__col--metrics">
@@ -1437,17 +1640,19 @@ onMounted(load);
                   </div>
                 </div>
                 <div class="home-account-charts-span">
-                  <HomePluginRunCharts
-                    :plugins="scopedPluginPlugins"
-                    :plugins-meta="pluginsList"
-                    :series="pluginRunTimeSamples"
-                    :busy="socialBusy"
-                    :api-history-by-api="scopedApiCallsByApi"
-                    :api-history-bucket-sec="msgMainStats?.api_calls_history_bucket_sec"
-                    :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
-                    :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
-                    :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
-                  />
+                  <div class="home-account-charts-shell">
+                    <HomePluginRunCharts
+                      :plugins="scopedPluginPlugins"
+                      :plugins-meta="pluginsList"
+                      :series="pluginRunTimeSamples"
+                      :busy="socialBusy"
+                      :api-history-by-api="scopedApiCallsByApi"
+                      :api-history-bucket-sec="msgMainStats?.api_calls_history_bucket_sec"
+                      :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
+                      :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
+                      :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
+                    />
+                  </div>
                 </div>
               </div>
             </template>
@@ -1494,76 +1699,141 @@ onMounted(load);
               v-if="!perfSampled"
               class="muted home-page__empty"
             >
-              当前未上报 CPU/内存/磁盘等指标。请确认后端已启用系统快照并刷新。
+              当前未上报 CPU/内存/磁盘/GPU 等指标。请确认后端已启用系统快照并刷新。
             </p>
-            <div
-              v-else
-              class="home-metric-grid"
-            >
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">CPU</span>
-                  <span class="home-metric__val">{{ cpuDisplay }}</span>
+            <template v-else>
+              <div class="home-metric-grid">
+                <div class="home-metric home-metric--cpu">
+                  <div class="home-metric__row">
+                    <span class="home-metric__label">CPU</span>
+                    <span class="home-metric__val">{{ cpuDisplay }}</span>
+                  </div>
+                  <div
+                    v-if="cpuPerCorePercents.length"
+                    class="home-cpu-cores"
+                    role="img"
+                    :aria-label="`共 ${cpuPerCorePercents.length} 个逻辑核心，柱高表示各核占用率`"
+                  >
+                    <div
+                      v-for="(p, i) in cpuPerCorePercents"
+                      :key="i"
+                      class="home-cpu-core"
+                      :title="`核心 ${i}：${p.toFixed(1)}%`"
+                    >
+                      <span
+                        class="home-cpu-core__fill"
+                        :style="{ height: `${Math.min(100, Math.max(0, p))}%` }"
+                      />
+                    </div>
+                  </div>
+                  <div
+                    v-else-if="cpuBarPct != null"
+                    class="home-metric__bar"
+                    aria-hidden="true"
+                  >
+                    <span :style="{ width: `${cpuBarPct}%` }" />
+                  </div>
+                  <p
+                    v-if="cpuFootHint"
+                    class="home-metric__hint"
+                  >
+                    {{ cpuFootHint }}
+                  </p>
+                </div>
+                <div class="home-metric">
+                  <div class="home-metric__row">
+                    <span class="home-metric__label">内存</span>
+                    <span class="home-metric__val">{{ memDisplay }}</span>
+                  </div>
+                  <div
+                    v-if="memBarPct != null"
+                    class="home-metric__bar"
+                    aria-hidden="true"
+                  >
+                    <span :style="{ width: `${memBarPct}%` }" />
+                  </div>
+                  <p
+                    v-if="memHint"
+                    class="home-metric__hint"
+                  >
+                    {{ memHint }}
+                  </p>
+                </div>
+                <div class="home-metric">
+                  <div class="home-metric__row">
+                    <span class="home-metric__label">磁盘</span>
+                    <span class="home-metric__val">{{ diskDisplay }}</span>
+                  </div>
+                  <div
+                    v-if="diskBarPct != null"
+                    class="home-metric__bar"
+                    aria-hidden="true"
+                  >
+                    <span :style="{ width: `${diskBarPct}%` }" />
+                  </div>
+                  <p
+                    v-if="diskHint"
+                    class="home-metric__hint"
+                  >
+                    {{ diskHint }}
+                  </p>
+                </div>
+                <div class="home-metric home-metric--plain">
+                  <div class="home-metric__row">
+                    <span class="home-metric__label">运行时长</span>
+                    <span class="home-metric__val home-metric__val--sm">{{ uptimeDisplay }}</span>
+                  </div>
+                  <p
+                    v-if="uptimeHint"
+                    class="home-metric__hint"
+                  >
+                    {{ uptimeHint }}
+                  </p>
                 </div>
                 <div
-                  v-if="cpuBarPct != null"
-                  class="home-metric__bar"
-                  aria-hidden="true"
+                  v-for="dev in gpuDevices"
+                  :key="dev.index"
+                  class="home-metric home-metric--gpu"
                 >
-                  <span :style="{ width: `${cpuBarPct}%` }" />
+                  <div class="home-metric__row">
+                    <span class="home-metric__label">GPU {{ dev.index }}</span>
+                    <span class="home-metric__val">{{ pct(dev.utilization_gpu) }}</span>
+                  </div>
+                  <p
+                    class="home-metric__hint home-metric__hint--gpu-name"
+                    :title="(dev.name || '').trim() || undefined"
+                  >
+                    {{ gpuNameShort(dev.name || '', 36) }}
+                  </p>
+                  <div
+                    v-if="gpuUtilBarPct(dev.utilization_gpu) != null"
+                    class="home-metric__bar"
+                    aria-hidden="true"
+                  >
+                    <span :style="{ width: `${gpuUtilBarPct(dev.utilization_gpu)}%` }" />
+                  </div>
+                  <div class="home-metric__row home-metric__row--gpu-sub">
+                    <span class="home-metric__label">显存</span>
+                    <span class="home-metric__val home-metric__val--sm">{{
+                      dev.memory_total > 0
+                        ? pct((dev.memory_used / dev.memory_total) * 100)
+                        : pct(dev.utilization_memory)
+                    }}</span>
+                  </div>
+                  <div
+                    v-if="gpuMemBarPct(dev.memory_used, dev.memory_total) != null"
+                    class="home-metric__bar"
+                    aria-hidden="true"
+                  >
+                    <span :style="{ width: `${gpuMemBarPct(dev.memory_used, dev.memory_total)}%` }" />
+                  </div>
+                  <p class="home-metric__hint">
+                    {{ fmtBytes(dev.memory_used) }} / {{ fmtBytes(dev.memory_total) }}
+                    <template v-if="dev.temperature != null"> · {{ tempDisplay(dev.temperature) }}</template>
+                  </p>
                 </div>
               </div>
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">内存</span>
-                  <span class="home-metric__val">{{ memDisplay }}</span>
-                </div>
-                <div
-                  v-if="memBarPct != null"
-                  class="home-metric__bar"
-                  aria-hidden="true"
-                >
-                  <span :style="{ width: `${memBarPct}%` }" />
-                </div>
-                <p
-                  v-if="memHint"
-                  class="home-metric__hint"
-                >
-                  {{ memHint }}
-                </p>
-              </div>
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">磁盘</span>
-                  <span class="home-metric__val">{{ diskDisplay }}</span>
-                </div>
-                <div
-                  v-if="diskBarPct != null"
-                  class="home-metric__bar"
-                  aria-hidden="true"
-                >
-                  <span :style="{ width: `${diskBarPct}%` }" />
-                </div>
-                <p
-                  v-if="diskHint"
-                  class="home-metric__hint"
-                >
-                  {{ diskHint }}
-                </p>
-              </div>
-              <div class="home-metric home-metric--plain">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">运行时长</span>
-                  <span class="home-metric__val home-metric__val--sm">{{ uptimeDisplay }}</span>
-                </div>
-                <p
-                  v-if="uptimeHint"
-                  class="home-metric__hint"
-                >
-                  {{ uptimeHint }}
-                </p>
-              </div>
-            </div>
+            </template>
           </div>
         </div>
       </section>
