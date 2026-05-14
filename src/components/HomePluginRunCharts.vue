@@ -1314,9 +1314,6 @@ function pluginBarLabel(name: string): string {
   font-size: 12px;
   line-height: 1.45;
 }
-.home-plugin-charts__hint code {
-  font-size: 11px;
-}
 .home-plugin-charts__empty {
   margin: 0;
   font-size: 13px;

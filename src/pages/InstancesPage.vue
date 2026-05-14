@@ -4,6 +4,7 @@ import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -135,6 +136,11 @@ function botNickname(account: number): string | undefined {
 
 function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
+}
+
+function formatBotAdminsDisplay(admins: number[] | undefined | null): string {
+  if (!admins?.length) return "—";
+  return [...admins].sort((a, b) => a - b).join("、");
 }
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
@@ -286,20 +292,23 @@ onMounted(async () => {
               @click="reloadFromUser"
             />
           </h2>
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
-            @click="expNonebot = !expNonebot"
-          >
-            {{ expNonebot ? "收起" : "展开" }}
-          </button>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/instances" />
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expNonebot = !expNonebot"
+            >
+              {{ expNonebot ? "收起" : "展开" }}
+            </button>
+          </div>
         </div>
         <div
           v-show="expNonebot"
           class="panel__bd"
         >
           <div class="table-wrap">
-            <table class="data">
+            <table class="data console-data-table">
               <thead>
                 <tr>
                   <th>昵称</th>
@@ -333,7 +342,7 @@ onMounted(async () => {
       <div class="panel">
         <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的 Bot 配置
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据中的实例
           </h2>
           <button
             type="button"
@@ -343,6 +352,7 @@ onMounted(async () => {
             {{ expDbBots ? "收起" : "展开" }}
           </button>
           <div class="inst-db-panel__actions">
+            <PanelSidebarAdd main-path="/instances" />
             <span
               v-if="data"
               class="inst-db-stat muted"
@@ -355,7 +365,7 @@ onMounted(async () => {
               <div
                 class="console-view-toggle"
                 role="group"
-                aria-label="Bot 配置视图"
+                aria-label="实例表格或卡片视图"
               >
                 <button
                   type="button"
@@ -391,7 +401,7 @@ onMounted(async () => {
             v-if="botView === 'table'"
             class="table-wrap"
           >
-            <table class="data">
+            <table class="data console-data-table">
               <thead>
                 <tr>
                   <th>昵称</th>
@@ -400,6 +410,7 @@ onMounted(async () => {
                   <th>安全模式</th>
                   <th>自动同意好友</th>
                   <th>自动同意入群</th>
+                  <th>管理员</th>
                   <th>禁用插件</th>
                   <th style="width: 88px">操作</th>
                 </tr>
@@ -429,6 +440,7 @@ onMounted(async () => {
                       c.auto_accept_group ? "开启" : "关闭"
                     }}</span>
                   </td>
+                  <td class="muted inst-db-admins-cell">{{ formatBotAdminsDisplay(c.admins) }}</td>
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <div class="inst-actions">
@@ -495,6 +507,10 @@ onMounted(async () => {
               <div class="data-summary-card__row">
                 <span class="data-summary-card__label">自动同意入群</span>
                 <span :class="boolPillClass(c.auto_accept_group)">{{ c.auto_accept_group ? "开启" : "关闭" }}</span>
+              </div>
+              <div class="data-summary-card__row data-summary-card__row--admins">
+                <span class="data-summary-card__label">管理员</span>
+                <span class="muted data-summary-card__admins-text">{{ formatBotAdminsDisplay(c.admins) }}</span>
               </div>
               <div class="data-summary-card__plugins">
                 <span class="data-summary-card__plugins-label">禁用插件</span>
@@ -771,5 +787,25 @@ onMounted(async () => {
 .inst-fav-star[aria-pressed="true"] {
   opacity: 1;
   color: #fbbf24;
+}
+
+.inst-db-admins-cell {
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+  max-width: 12rem;
+}
+
+.data-summary-card__row--admins {
+  align-items: flex-start;
+}
+
+.data-summary-card__admins-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
 }
 </style>

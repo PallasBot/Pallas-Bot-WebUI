@@ -19,6 +19,7 @@ import type {
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
@@ -248,7 +249,13 @@ function scrollFriendsGroupsHashIntoView() {
   });
 }
 
-watch(() => route.hash, () => scrollFriendsGroupsHashIntoView());
+watch(
+  () => [route.hash, pageReady.value] as const,
+  () => {
+    if (!pageReady.value) return;
+    scrollFriendsGroupsHashIntoView();
+  },
+);
 
 const requestRows = computed(() => {
   const out: Array<{
@@ -598,8 +605,11 @@ function toggleGroupsListPanel() {
       :panels="5"
     />
     <div v-else>
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
+    <div
+      id="fg-account"
+      class="panel friends-groups-account-panel"
+    >
+      <div class="panel__hd friends-groups-account-panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
           <RefreshIconButton
@@ -609,11 +619,13 @@ function toggleGroupsListPanel() {
             @click="refreshPage"
           />
         </h2>
-        <div class="row-actions">
+        <div class="friends-groups-account-hd-tail">
+          <span class="friends-groups-account-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-account" />
+          </span>
           <select
             v-model="selfIdStr"
-            class="sel"
-            style="min-width: 280px"
+            class="sel friends-groups-account-sel"
           >
             <option value="">请选择 Bot…</option>
             <option
@@ -628,12 +640,19 @@ function toggleGroupsListPanel() {
       </div>
     </div>
 
-    <div class="panel">
+    <div
+      id="fg-friends"
+      class="panel"
+    >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
         </h2>
-        <div class="row-actions friends-groups-list-hd-actions">
+        <div
+          class="row-actions friends-groups-list-hd-actions"
+          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+        >
+          <PanelSidebarAdd pin-id="friends-groups-friends" />
           <span
             v-if="selfIdStr && listsBusy"
             class="muted"
@@ -680,7 +699,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>QQ</th>
@@ -709,12 +728,19 @@ function toggleGroupsListPanel() {
       </div>
     </div>
 
-    <div class="panel">
+    <div
+      id="fg-groups"
+      class="panel"
+    >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
         </h2>
-        <div class="row-actions friends-groups-list-hd-actions">
+        <div
+          class="row-actions friends-groups-list-hd-actions"
+          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+        >
+          <PanelSidebarAdd pin-id="friends-groups-groups" />
           <span
             v-if="selfIdStr && listsBusy"
             class="muted"
@@ -761,7 +787,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>群号</th>
@@ -806,7 +832,11 @@ function toggleGroupsListPanel() {
             @click="loadRequestsOnly"
           />
         </h2>
-        <div class="row-actions">
+        <div
+          class="row-actions"
+          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+        >
+          <PanelSidebarAdd pin-id="friends-groups-friend-req" />
           <span
             v-if="reqsBusy"
             class="muted"
@@ -868,7 +898,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th style="width: 44px">
@@ -950,7 +980,11 @@ function toggleGroupsListPanel() {
             @click="loadRequestsOnly"
           />
         </h2>
-        <div class="row-actions">
+        <div
+          class="row-actions"
+          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+        >
+          <PanelSidebarAdd pin-id="friends-groups-group-req" />
           <span
             v-if="reqsBusy"
             class="muted"
@@ -1011,7 +1045,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th style="width: 44px">

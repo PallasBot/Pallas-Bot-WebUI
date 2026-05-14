@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import {
   fetchGroupConfigById,
   fetchGroupConfigs,
@@ -16,10 +17,12 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
+const route = useRoute();
 const err = ref("");
 const pageReady = ref(false);
 const ok = ref("");
@@ -61,6 +64,18 @@ const userSaveBusy = ref(false);
 const userSaveErr = ref("");
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
+
+function toggleGroupListPanel() {
+  setConsolePrefs({ botSocialPageGroupListOpen: !consolePrefs.botSocialPageGroupListOpen });
+}
+
+function scrollSocialConfigAnchor() {
+  const id = (route.hash || "").replace(/^#/, "").trim();
+  if (id !== "bsc-group-config" && id !== "bsc-user-config") return;
+  nextTick(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
 
 const botsVisible = computed(() => botPickerRowsFromInstances(instances.value));
 
@@ -291,6 +306,14 @@ async function saveUserModal() {
   }
 }
 
+watch(
+  () => [route.hash, pageReady.value] as const,
+  () => {
+    if (!pageReady.value) return;
+    scrollSocialConfigAnchor();
+  },
+);
+
 onMounted(async () => {
   try {
     await loadBots();
@@ -327,8 +350,11 @@ onMounted(async () => {
       :panels="4"
     />
     <div v-else>
-    <div class="panel">
-      <div class="panel__hd">
+    <div
+      id="bsc-group-config"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
           <RefreshIconButton
@@ -339,6 +365,7 @@ onMounted(async () => {
           />
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd pin-id="bot-social-groups" />
           <select
             v-model="filterSelfId"
             class="sel"
@@ -353,6 +380,14 @@ onMounted(async () => {
               {{ botFilterLabel(b) }}
             </option>
           </select>
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="toggleGroupListPanel"
+          >
+            {{ consolePrefs.botSocialPageGroupListOpen ? "收起列表" : "展开列表" }}
+          </button>
         </div>
       </div>
       <div class="panel__bd">
@@ -391,54 +426,69 @@ onMounted(async () => {
             加载该群
           </button>
         </div>
-        <div class="table-wrap">
-          <table class="data">
-            <thead>
-              <tr>
-                <th>群号</th>
-                <th>禁言/封禁</th>
-                <th>轮盘模式</th>
-                <th>禁用插件数</th>
-                <th style="width: 100px">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="g in pagedGroupList"
-                :key="g.group_id"
-              >
-                <td style="font-weight: 600">{{ g.group_id }}</td>
-                <td>{{ g.banned ? "是" : "否" }}</td>
-                <td>{{ g.roulette_mode }}</td>
-                <td class="muted">{{ g.disabled_plugins?.length ?? 0 }}</td>
-                <td>
-                  <button
-                    type="button"
-                    class="btn"
-                    :disabled="busy"
-                    @click="openGroupEdit(g)"
-                  >
-                    编辑
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <ConsolePagerBar
-          v-if="groupList.length > 0"
-          v-model:page="groupPage"
-          v-model:page-size="tablePageSize"
-          :total="groupList.length"
-        />
+        <template v-if="consolePrefs.botSocialPageGroupListOpen">
+          <div class="table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th>群号</th>
+                  <th>禁言/封禁</th>
+                  <th>轮盘模式</th>
+                  <th>禁用插件数</th>
+                  <th style="width: 100px">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="g in pagedGroupList"
+                  :key="g.group_id"
+                >
+                  <td style="font-weight: 600">{{ g.group_id }}</td>
+                  <td>{{ g.banned ? "是" : "否" }}</td>
+                  <td>{{ g.roulette_mode }}</td>
+                  <td class="muted">{{ g.disabled_plugins?.length ?? 0 }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn"
+                      :disabled="busy"
+                      @click="openGroupEdit(g)"
+                    >
+                      编辑
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ConsolePagerBar
+            v-if="groupList.length > 0"
+            v-model:page="groupPage"
+            v-model:page-size="tablePageSize"
+            :total="groupList.length"
+          />
+        </template>
+        <p
+          v-else
+          class="muted"
+          style="margin: 0"
+        >
+          群列表已收起（{{ groupList.length }} 条记录）· 点「展开列表」查看表格。
+        </p>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel__hd">
+    <div
+      id="bsc-user-config"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友（用户）配置
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd pin-id="bot-social-users" />
+        </div>
       </div>
       <div class="panel__bd">
         <p
