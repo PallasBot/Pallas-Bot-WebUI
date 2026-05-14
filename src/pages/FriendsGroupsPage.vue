@@ -97,6 +97,26 @@ function displayFriendReqNickname(row: { user_id: number; nickname?: string | nu
   return `QQ ${row.user_id}`;
 }
 
+/** 好友申请来源（内部仍为 pending / doubt，表格展示中文） */
+function friendSourceLabel(source: string): string {
+  if (source === "pending") return "待确认";
+  if (source === "doubt") return "被过滤";
+  return source;
+}
+
+/** 入群请求 sub_type（协议枚举，表格展示中文） */
+function groupRequestSubTypeLabel(subType: string): string {
+  const raw = subType.trim();
+  const k = raw.toLowerCase();
+  const map: Record<string, string> = {
+    invite: "邀请入群",
+    add: "主动申请",
+  };
+  if (map[k]) return map[k];
+  if (!raw) return "—";
+  return `其他（${raw}）`;
+}
+
 function selfIdNum(): number | null {
   const n = parseInt(selfIdStr.value, 10);
   return Number.isFinite(n) ? n : null;
@@ -786,30 +806,32 @@ function toggleGroupsListPanel() {
             v-if="requestRows.length"
             class="badge badge--warn"
           >{{ requestRows.length }} 条</span>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy || pickedFriendKeys.size === 0"
-            @click="approvePickedFriends"
-          >
-            同意所选
-          </button>
-          <button
-            type="button"
-            class="btn"
-            :disabled="busy || pickedFriendKeys.size === 0"
-            @click="rejectPickedFriends"
-          >
-            拒绝所选
-          </button>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy || !requestRows.length"
-            @click="approveAllFriends"
-          >
-            全部同意
-          </button>
+          <div class="friends-groups-req-hd-bulk-btns">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="busy || pickedFriendKeys.size === 0"
+              @click="approvePickedFriends"
+            >
+              同意所选
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="busy || pickedFriendKeys.size === 0"
+              @click="rejectPickedFriends"
+            >
+              拒绝所选
+            </button>
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="busy || !requestRows.length"
+              @click="approveAllFriends"
+            >
+              全部同意
+            </button>
+          </div>
         </div>
       </div>
       <div class="panel__bd">
@@ -848,11 +870,10 @@ function toggleGroupsListPanel() {
                     @click.prevent="togglePickAllFriends()"
                   >
                 </th>
-                <th>账号</th>
-                <th>来源</th>
                 <th>用户 QQ</th>
                 <th>用户昵称</th>
-                <th style="width: 200px">操作</th>
+                <th>来源</th>
+                <th style="min-width: 108px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -868,12 +889,11 @@ function toggleGroupsListPanel() {
                     @click.prevent="togglePickFriend(friendReqKey(row))"
                   >
                 </td>
-                <td>{{ row.self_id }}</td>
-                <td>{{ row.source }}</td>
                 <td>{{ row.user_id }}</td>
                 <td>{{ displayFriendReqNickname(row) }}</td>
+                <td>{{ friendSourceLabel(row.source) }}</td>
                 <td>
-                  <div class="row-actions">
+                  <div class="friends-req-actions">
                     <button
                       type="button"
                       class="btn btn--primary"
@@ -929,30 +949,32 @@ function toggleGroupsListPanel() {
             v-if="groupRequestRows.length"
             class="badge badge--warn"
           >{{ groupRequestRows.length }} 条</span>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy || pickedGroupKeys.size === 0"
-            @click="approvePickedGroups"
-          >
-            同意所选
-          </button>
-          <button
-            type="button"
-            class="btn"
-            :disabled="busy || pickedGroupKeys.size === 0"
-            @click="rejectPickedGroups"
-          >
-            拒绝所选
-          </button>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy || !groupRequestRows.length"
-            @click="approveAllGroups"
-          >
-            全部同意
-          </button>
+          <div class="friends-groups-req-hd-bulk-btns">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="busy || pickedGroupKeys.size === 0"
+              @click="approvePickedGroups"
+            >
+              同意所选
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="busy || pickedGroupKeys.size === 0"
+              @click="rejectPickedGroups"
+            >
+              拒绝所选
+            </button>
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="busy || !groupRequestRows.length"
+              @click="approveAllGroups"
+            >
+              全部同意
+            </button>
+          </div>
         </div>
       </div>
       <div class="panel__bd">
@@ -991,12 +1013,11 @@ function toggleGroupsListPanel() {
                     @click.prevent="togglePickAllGroups()"
                   >
                 </th>
-                <th>账号</th>
                 <th>群号</th>
-                <th>用户</th>
+                <th>用户 QQ</th>
                 <th>类型</th>
                 <th>备注</th>
-                <th style="width: 200px">操作</th>
+                <th style="min-width: 108px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1012,13 +1033,12 @@ function toggleGroupsListPanel() {
                     @click.prevent="togglePickGroup(groupReqKey(row))"
                   >
                 </td>
-                <td>{{ row.self_id }}</td>
                 <td>{{ row.group_id }}</td>
                 <td>{{ row.user_id }}</td>
-                <td class="muted">{{ row.sub_type }}</td>
+                <td class="muted">{{ groupRequestSubTypeLabel(row.sub_type) }}</td>
                 <td class="muted">{{ row.comment }}</td>
                 <td>
-                  <div class="row-actions">
+                  <div class="friends-req-actions">
                     <button
                       type="button"
                       class="btn btn--primary"
