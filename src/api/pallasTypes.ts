@@ -122,6 +122,8 @@ export interface PluginRunStatsData {
   total_errors_today: number;
   matcher_calls_history_bucket_sec?: number;
   matcher_calls_history_max_buckets?: number;
+  /** 最近若干条 ERROR/CRITICAL 日志（进程内环形缓冲 + jsonl；与 Matcher 异常清理策略一致） */
+  log_error_log?: MatcherErrorLogEntry[];
   bots: Array<{
     self_id: string;
     connection_key: string;

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layout/AppShell.vue";
 import HomePage from "@/pages/HomePage.vue";
 import LogsPage from "@/pages/LogsPage.vue";
+import LogErrorsPage from "@/pages/LogErrorsPage.vue";
 import PluginsPage from "@/pages/PluginsPage.vue";
 import PluginConfigPage from "@/pages/PluginConfigPage.vue";
 import CommonConfigPage from "@/pages/CommonConfigPage.vue";
@@ -39,6 +40,15 @@ const router = createRouter({
           meta: {
             title: "运行日志",
             description: "结构化或原始行视图，支持关键字过滤。",
+          },
+        },
+        {
+          path: "log-errors",
+          name: "log-errors",
+          component: LogErrorsPage,
+          meta: {
+            title: "日志报错",
+            description: "ERROR / CRITICAL 快照与持久化记录。",
           },
         },
         {

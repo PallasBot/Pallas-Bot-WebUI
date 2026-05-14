@@ -13,6 +13,7 @@ export interface MainNavItem {
 export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/", label: "仪表盘", icon: "◆", description: "容量与账号摘要", section: "运行与观测" },
   { to: "/logs", label: "运行日志", icon: "≡", description: "检索与导出", section: "运行与观测" },
+  { to: "/log-errors", label: "日志报错", icon: "⚠", description: "ERROR 快照与归档", section: "运行与观测" },
   { to: "/instances", label: "实例与连接", icon: "◎", description: "在线与协议快照", section: "接入与实例" },
   { to: "/protocol", label: "协议端", icon: "⎈", description: "协议控制台", section: "接入与实例" },
   { to: "/plugins", label: "插件", icon: "▣", description: "已启用模块", section: "模块与配置" },
