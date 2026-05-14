@@ -18,6 +18,18 @@ const fieldValues = ref<Record<string, string>>({});
 /** 命令权限矩阵：command_id -> 选中的等级 id */
 const permSelections = ref<Record<string, string>>({});
 
+const CMD_PERM_SECTION_ID = "cmd_perm";
+
+/** 下拉与默认分区：命令权限固定排第一（与后端列表顺序无关） */
+function sortSectionsCmdPermFirst(list: CommonConfigSectionMeta[]): CommonConfigSectionMeta[] {
+  const i = list.findIndex((s) => s.id === CMD_PERM_SECTION_ID);
+  if (i <= 0) return [...list];
+  const next = [...list];
+  const [picked] = next.splice(i, 1);
+  next.unshift(picked);
+  return next;
+}
+
 const showCmdPermMatrix = computed(
   () => currentId.value === "cmd_perm" && Boolean(data.value?.command_perm_ui),
 );
@@ -69,9 +81,11 @@ function buildOverridesFromMatrix(): Record<string, string> {
 
 async function loadSections() {
   try {
-    sections.value = await fetchCommonConfigSections();
+    const raw = await fetchCommonConfigSections();
+    sections.value = sortSectionsCmdPermFirst(raw);
     if (!currentId.value && sections.value.length) {
-      currentId.value = sections.value[0].id;
+      currentId.value =
+        sections.value.find((s) => s.id === CMD_PERM_SECTION_ID)?.id ?? sections.value[0].id;
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);

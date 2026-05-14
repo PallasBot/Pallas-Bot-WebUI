@@ -790,6 +790,47 @@ html[data-theme="light"] .shell-page-loading {
   padding-bottom: 20px;
 }
 
+.shell-back-top {
+  position: fixed;
+  z-index: 35;
+  right: max(18px, env(safe-area-inset-right, 0px));
+  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-card) 92%, var(--accent) 8%);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  transition:
+    background 0.15s var(--ease),
+    color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    transform 0.12s var(--ease);
+}
+
+.shell-back-top:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%);
+}
+
+.shell-back-top:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+html[data-theme="light"] .shell-back-top {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
 .logs-page {
   flex: 1;
   min-height: 0;
@@ -1858,7 +1899,7 @@ html[data-theme="light"] .bot-config-edit {
   gap: 2px 8px;
   margin: 0;
   font-size: 1.02rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.3;
 }
@@ -1878,7 +1919,7 @@ html[data-theme="light"] .bot-config-edit {
   margin: 0 0 0 4px;
   padding: 0 2px;
   font-size: 0.88em;
-  font-weight: 600;
+  font-weight: 650;
   line-height: inherit;
   border: none;
   border-radius: 4px;
@@ -2019,6 +2060,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-me
 }
 .home-account-hero__picker-item-sub {
   font-size: 11px;
+  font-weight: 600;
 }
 .home-account-hero--color .home-account-hero__picker-item {
   color: #e2e8f0;
@@ -2035,6 +2077,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-hero__sub {
   margin: 0;
   font-size: 12px;
+  font-weight: 650;
   line-height: 1.35;
 }
 .home-account-dl {
@@ -2190,11 +2233,12 @@ html[data-theme="light"] .home-account-unified__col--standee {
 
 .home-account-hero--color .home-account-hero__proto-hint {
   color: #fdba74;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .home-account-hero--color .home-account-hero__proto-sub {
   color: color-mix(in srgb, var(--text-muted) 78%, #94a3b8 22%);
+  font-weight: 650;
 }
 
 .home-account-hero--color .home-account-hero__avatar {
@@ -2206,6 +2250,7 @@ html[data-theme="light"] .home-account-unified__col--standee {
 
 .home-account-hero--color .home-account-hero__social-hint {
   color: color-mix(in srgb, var(--text-muted) 70%, #38bdf8 30%);
+  font-weight: 600;
 }
 
 html[data-theme="light"] .home-account-hero--color .home-account-hero__title-name {
@@ -2242,6 +2287,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 
 html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hint {
   color: color-mix(in srgb, var(--text-muted) 72%, #0284c7 28%);
+  font-weight: 600;
 }
 
 .home-account-hero__detail {
@@ -2344,7 +2390,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
 .home-account-hero__pending-val {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.25;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -2417,7 +2463,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-v
 }
 
 .home-account-hero__admin-values {
-  font-weight: 650;
+  font-weight: 700;
   font-size: 12px;
   color: #fde68a;
   word-break: break-all;
@@ -2449,7 +2495,7 @@ html[data-theme="light"] .home-account-hero__admin-values {
   gap: 2px;
 }
 .home-account-hero--color .home-account-hero__links-grid .home-account-hero__link {
-  font-weight: 650;
+  font-weight: 700;
 }
 .home-account-hero--color .home-account-hero__links-grid__col--friend .home-account-hero__link {
   color: #2dd4bf;
@@ -2480,7 +2526,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
   width: 100%;
   margin: 2px 0 0;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.25;
   min-width: 0;
 }
@@ -2495,7 +2541,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
   gap: 8px;
   margin: 2px 0 0;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.25;
   min-width: 0;
 }
@@ -2535,7 +2581,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
 .home-account-conn {
   margin-left: 8px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 650;
   vertical-align: middle;
 }
 .home-account-conn--on {
@@ -2547,11 +2593,12 @@ html[data-theme="light"] .home-account-hero__counts-num {
 .home-account-hero__proto {
   margin: 0;
   font-size: 11px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
 .home-account-hero__proto-hint {
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-muted);
 }
 
@@ -2559,17 +2606,19 @@ html[data-theme="light"] .home-account-hero__counts-num {
   display: block;
   margin-top: 3px;
   font-size: 10px;
+  font-weight: 600;
   line-height: 1.35;
 }
 
 .home-account-hero__admin-values--placeholder {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-dim);
 }
 
 .home-account-hero__social-hint {
   margin: 8px 0 0;
   font-size: 11px;
+  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -2604,6 +2653,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
 }
 .home-account-metrics__head {
   font-size: 12px;
+  font-weight: 600;
 }
 .home-account-metrics__big-row {
   display: flex;
@@ -2627,25 +2677,27 @@ html[data-theme="light"] .home-account-hero__counts-num {
 }
 .home-account-metrics__recv {
   font-size: 1.28rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: #7dd3fc;
 }
 .home-account-metrics__sent {
   font-size: 1.28rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: #c4b5fd;
 }
 .home-account-metrics__sep {
   font-size: 1.12rem;
+  font-weight: 600;
 }
 
 .home-account-metrics__caption {
   margin: 1px 0 0;
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.45;
   min-height: 2.6em;
 }
@@ -2660,6 +2712,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
   min-width: min(5.75rem, 100%);
   max-width: 13rem;
   font-size: 11px;
+  font-weight: 600;
   line-height: 1.35;
   text-align: right;
 }
@@ -2685,6 +2738,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
   height: 15px;
   margin-top: 2px;
   font-size: 9px;
+  font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.02em;
   overflow: hidden;
@@ -2699,6 +2753,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2877,11 +2932,12 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
 }
 .home-account-metrics__k {
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.35;
 }
 .home-account-metrics__v {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -2902,7 +2958,7 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
 
 .home-account-metrics__stat-sub {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -2918,6 +2974,7 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
   padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -2947,7 +3004,7 @@ html[data-theme="light"] .home-account-metrics__matcher-row--bad .home-account-m
 /* 吞吐侧：彩色 + 字号层级（大数 → 今日 → 明细） */
 .home-account-metrics--color .home-account-metrics__head {
   margin: 0;
-  font-weight: 600;
+  font-weight: 650;
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -2962,7 +3019,7 @@ html[data-theme="light"] .home-account-metrics__matcher-row--bad .home-account-m
 .home-account-metrics--color .home-account-metrics__sent {
   display: inline-block;
   font-size: 1.34rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.12;
   -webkit-background-clip: text;
@@ -2978,20 +3035,20 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sen
 
 .home-account-metrics--color .home-account-metrics__sep {
   font-size: 1.06rem;
-  font-weight: 500;
+  font-weight: 600;
   color: color-mix(in srgb, var(--text-dim) 55%, #64748b);
 }
 
 .home-account-metrics--color .home-account-metrics__k {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: #93c5fd;
 }
 
 .home-account-metrics--color .home-account-metrics__today-block > .home-account-metrics__v {
   display: inline-block;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: -0.02em;
   background: linear-gradient(95deg, #fbbf24 0%, #fb923c 55%, #f472b6 100%);
   -webkit-background-clip: text;
@@ -3001,18 +3058,19 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sen
 
 .home-account-metrics--color .home-account-metrics__stat-block--plugin .home-account-metrics__v--clip {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: #6ee7b7;
 }
 
 .home-account-metrics--color .home-account-metrics__stat-block--api .home-account-metrics__v--clip {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: #e9d5ff;
 }
 
 .home-account-metrics--color .home-account-metrics__today-inline {
   color: color-mix(in srgb, #94a3b8 52%, #7dd3fc 48%);
+  font-weight: 600;
 }
 
 .home-account-metrics--color .home-account-metrics__stat-sub--plugin {
@@ -3059,6 +3117,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
 html[data-theme="light"] .home-account-metrics--color .home-account-metrics__today-inline {
   color: color-mix(in srgb, #64748b 55%, #0284c7 45%);
+  font-weight: 600;
 }
 
 html[data-theme="light"] .home-account-metrics--color .home-account-metrics__stat-sub--plugin {
@@ -3347,6 +3406,24 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   margin-bottom: 18px;
   overflow: hidden;
 }
+
+/* 主内容区纵向滚动时：卡片标题栏吸顶（依赖祖先非 overflow:hidden，见下条覆盖） */
+.shell__main-inner:not(.shell__main-inner--logs) .panel {
+  overflow: visible;
+}
+
+.shell__main-inner--logs .logs-page .panel {
+  overflow: hidden;
+}
+
+.shell__main-inner:not(.shell__main-inner--logs) .panel__hd {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg-card);
+  backdrop-filter: blur(14px);
+}
+
 .panel__hd {
   display: flex;
   flex-wrap: wrap;
@@ -3751,6 +3828,7 @@ table.data tbody tr:hover td {
 }
 .plugin-card__top {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
   gap: 0;
   min-width: 0;
@@ -3758,25 +3836,95 @@ table.data tbody tr:hover td {
 .plugin-card__top .plugin-card__link {
   flex: 1;
   min-width: 0;
-  padding-right: 8px;
+  padding-right: 18px;
 }
-.plugin-card__help {
+.plugin-card__help-panel {
   flex-shrink: 0;
+  padding: 0 18px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-deep) 35%, transparent);
+}
+html[data-theme="light"] .plugin-card__help-panel {
+  background: color-mix(in srgb, var(--bg-deep) 8%, var(--bg-card));
+}
+.plugin-card__help-head {
   display: flex;
   align-items: flex-start;
-  padding: 16px 14px 0 0;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
 }
-.plugin-card__help input {
-  width: 16px;
-  height: 16px;
+.plugin-card__help-text {
+  flex: 1;
+  min-width: 0;
+}
+.plugin-card__help-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.plugin-card__help-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.plugin-card__help-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.plugin-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  margin: 2px 0 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-muted) 28%, var(--bg-card));
   cursor: pointer;
+  transition:
+    background 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    opacity 0.15s var(--ease);
 }
-.plugin-card__help--disabled {
-  opacity: 0.45;
+.plugin-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s var(--ease);
+}
+.plugin-switch--on {
+  background: color-mix(in srgb, var(--accent) 72%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.plugin-switch--on::after {
+  transform: translateX(18px);
+}
+.plugin-switch:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.plugin-switch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.plugin-switch:disabled {
+  opacity: 0.42;
   cursor: not-allowed;
 }
-.plugin-card__help--disabled input {
-  cursor: not-allowed;
+.plugin-switch--busy {
+  opacity: 0.55;
+  pointer-events: none;
 }
 .plugin-card__link {
   display: block;
