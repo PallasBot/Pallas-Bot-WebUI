@@ -1487,4 +1487,33 @@ function pluginBarLabel(name: string): string {
   font-size: 11px;
   margin-top: 4px;
 }
+
+@media (max-width: 560px) {
+  .home-plugin-charts__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .home-plugin-charts__toolbar-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .home-plugin-charts__toolbar-label {
+    width: 100%;
+  }
+
+  .home-plugin-charts__pick {
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .home-plugin-charts__draw-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+}
 </style>
