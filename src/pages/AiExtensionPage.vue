@@ -16,6 +16,7 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -270,6 +271,12 @@ onMounted(async () => {
         >
           <h2 class="panel__title ai-ncm-hd-title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
+            <RefreshIconButton
+              :busy="ncmBusy"
+              :disabled="ncmBusy"
+              label="刷新状态"
+              @click="refreshNcmStatus"
+            />
           </h2>
           <template v-if="ncmStatus">
             <span
@@ -282,16 +289,6 @@ onMounted(async () => {
               style="font-size: 13px"
             >{{ ncmExtraLine }}</span>
           </template>
-        </div>
-        <div class="row-actions">
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="ncmBusy"
-            @click="refreshNcmStatus"
-          >
-            {{ ncmBusy ? "请求中…" : "刷新状态" }}
-          </button>
         </div>
       </div>
       <div class="panel__bd">
@@ -314,7 +311,7 @@ onMounted(async () => {
           class="muted"
           style="margin: 0 0 12px"
         >
-          尚未拉取状态。请先配置下方「扩展基址」并保存，再点「刷新状态」。
+          尚未拉取状态。请先配置下方「扩展基址」并保存，再点标题旁刷新图标。
         </p>
 
         <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">

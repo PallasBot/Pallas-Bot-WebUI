@@ -4,6 +4,7 @@ import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
@@ -58,6 +59,7 @@ const instNbPage = ref(1);
 const instDbPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
+const reloadBusy = ref(false);
 
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
@@ -230,6 +232,15 @@ async function reload() {
   }
 }
 
+async function reloadFromUser() {
+  reloadBusy.value = true;
+  try {
+    await reload();
+  } finally {
+    reloadBusy.value = false;
+  }
+}
+
 async function saveBotConfig() {
   const account = editModalAccount.value;
   if (!draft.value || account == null) return;
@@ -263,16 +274,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="page-actions-bar">
-      <button
-        type="button"
-        class="btn"
-        @click="reload"
-      >
-        刷新
-      </button>
-    </div>
-
     <div
       v-if="err"
       class="alert alert--err"
@@ -289,6 +290,12 @@ onMounted(async () => {
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+            <RefreshIconButton
+              :busy="reloadBusy"
+              :disabled="reloadBusy"
+              label="刷新实例数据"
+              @click="reloadFromUser"
+            />
           </h2>
           <button
             type="button"
@@ -350,14 +357,6 @@ onMounted(async () => {
               / {{ dbBotsTotalCount }} 账号
             </span>
             <div class="row-actions inst-db-panel__toolbar">
-              <button
-                type="button"
-                class="btn"
-                style="padding: 6px 12px; font-size: 12px"
-                @click="expDbBots = !expDbBots"
-              >
-                {{ expDbBots ? "收起" : "展开" }}
-              </button>
               <div
                 class="console-view-toggle"
                 role="group"
@@ -378,6 +377,14 @@ onMounted(async () => {
                   卡片
                 </button>
               </div>
+              <button
+                type="button"
+                class="btn"
+                style="padding: 6px 12px; font-size: 12px"
+                @click="expDbBots = !expDbBots"
+              >
+                {{ expDbBots ? "收起" : "展开" }}
+              </button>
             </div>
           </div>
         </div>

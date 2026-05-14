@@ -20,6 +20,7 @@ import type {
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -245,7 +246,7 @@ const requestRows = computed(() => {
       });
     }
   }
-  return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
+  return out.filter((r) => Boolean(selfIdStr.value.trim()) && r.self_id === selfIdStr.value);
 });
 
 const groupRequestRows = computed(() => {
@@ -267,7 +268,7 @@ const groupRequestRows = computed(() => {
       });
     }
   }
-  return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
+  return out.filter((r) => Boolean(selfIdStr.value.trim()) && r.self_id === selfIdStr.value);
 });
 
 function friendReqKey(row: { self_id: string; source: string; user_id: number }): string {
@@ -348,6 +349,8 @@ const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, p
 const pagedFriends = computed(() => slicePage(friends.value?.friends ?? [], pageFriends.value, tablePageSize.value));
 
 const pagedGroups = computed(() => slicePage(groups.value?.groups ?? [], pageGroups.value, tablePageSize.value));
+
+const pageRefreshBusy = computed(() => busy.value || listsBusy.value || reqsBusy.value);
 
 watch(
   () => consolePrefs.tablePageSize,
@@ -566,9 +569,15 @@ function toggleGroupsListPanel() {
     />
     <div v-else>
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
+          <RefreshIconButton
+            :busy="pageRefreshBusy"
+            :disabled="pageRefreshBusy"
+            label="刷新本页数据"
+            @click="refreshPage"
+          />
         </h2>
         <div class="row-actions">
           <select
@@ -585,14 +594,6 @@ function toggleGroupsListPanel() {
               {{ botOptionLabel(b) }}
             </option>
           </select>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy || listsBusy || reqsBusy || !selfIdStr"
-            @click="refreshPage"
-          >
-            {{ busy || listsBusy || reqsBusy ? "加载中…" : "刷新" }}
-          </button>
         </div>
       </div>
     </div>
@@ -768,6 +769,12 @@ function toggleGroupsListPanel() {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友申请
+          <RefreshIconButton
+            :busy="reqsBusy"
+            :disabled="reqsBusy || busy || !selfIdStr.trim()"
+            label="刷新审批数据"
+            @click="loadRequestsOnly"
+          />
         </h2>
         <div class="row-actions">
           <span
@@ -803,14 +810,6 @@ function toggleGroupsListPanel() {
           >
             全部同意
           </button>
-          <button
-            type="button"
-            class="btn"
-            :disabled="reqsBusy || busy || !selfIdStr"
-            @click="loadRequestsOnly"
-          >
-            刷新审批
-          </button>
         </div>
       </div>
       <div class="panel__bd">
@@ -818,13 +817,19 @@ function toggleGroupsListPanel() {
           v-if="reqsBusy"
           class="muted"
         >
-          正在拉取好友申请与可疑请求，请稍候；也可稍后点击「刷新审批」。
+          正在拉取好友申请与可疑请求，请稍候；也可点击标题旁刷新图标重试。
+        </div>
+        <div
+          v-else-if="!selfIdStr.trim()"
+          class="muted"
+        >
+          请选择 Bot 后查看与处理本账号的好友申请。
         </div>
         <div
           v-else-if="!requestRows.length"
           class="muted"
         >
-          暂无待处理申请（或当前账号无数据）。
+          暂无待处理申请。
         </div>
         <div
           v-else
@@ -907,6 +912,12 @@ function toggleGroupsListPanel() {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入群请求
+          <RefreshIconButton
+            :busy="reqsBusy"
+            :disabled="reqsBusy || busy || !selfIdStr.trim()"
+            label="刷新审批数据"
+            @click="loadRequestsOnly"
+          />
         </h2>
         <div class="row-actions">
           <span
@@ -942,14 +953,6 @@ function toggleGroupsListPanel() {
           >
             全部同意
           </button>
-          <button
-            type="button"
-            class="btn"
-            :disabled="reqsBusy || busy || !selfIdStr"
-            @click="loadRequestsOnly"
-          >
-            刷新审批
-          </button>
         </div>
       </div>
       <div class="panel__bd">
@@ -957,7 +960,13 @@ function toggleGroupsListPanel() {
           v-if="reqsBusy"
           class="muted"
         >
-          正在拉取入群审批与概览，请稍候。
+          正在拉取入群审批与概览，请稍候；也可点击标题旁刷新图标重试。
+        </div>
+        <div
+          v-else-if="!selfIdStr.trim()"
+          class="muted"
+        >
+          请选择 Bot 后查看与处理本账号的入群请求。
         </div>
         <div
           v-else-if="!groupRequestRows.length"
