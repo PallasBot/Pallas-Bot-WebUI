@@ -576,22 +576,37 @@ const throughputApiLineModel = computed((): {
 
 type ThroughputBarTick = { leftPct: number; label: string };
 
-const THROUGHPUT_CHART_AXIS_HOUR_SEC = 3600;
-
-function startOfLocalHour(tsSec: number): number {
+function localDayStartSec(tsSec: number): number {
   const d = new Date(tsSec * 1000);
-  d.setMinutes(0, 0, 0);
+  d.setHours(0, 0, 0, 0);
   d.setMilliseconds(0);
   return Math.floor(d.getTime() / 1000);
 }
 
-function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number): string {
+/** 将时刻向下对齐到 strideSec 的本地自然日偏移网格（stride 须整除 86400 或常用 60/300/3600） */
+function alignDownLocalGrid(tsSec: number, strideSec: number): number {
+  if (strideSec <= 0) return tsSec;
+  const d0 = localDayStartSec(tsSec);
+  const off = tsSec - d0;
+  return d0 + Math.floor(off / strideSec) * strideSec;
+}
+
+/** 时间轴刻度：按本地整分钟对齐，步长固定 60s；刻度过密时均匀抽样以免重叠 */
+const THROUGHPUT_AXIS_TICK_SEC = 60;
+const THROUGHPUT_AXIS_MAX_LABELS = 16;
+
+function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number, strideSec: number): string {
   const a = new Date(atSec * 1000);
   const lo = new Date(rangeLo * 1000);
   const hi = new Date(rangeHi * 1000);
   const sameCal = (x: Date, y: Date) =>
     x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
-  if (sameCal(lo, hi) && sameCal(a, lo)) {
+  const sameDayLoHi = sameCal(lo, hi);
+  const hm = `${a.getHours().toString().padStart(2, "0")}:${a.getMinutes().toString().padStart(2, "0")}`;
+  if (strideSec < 3600 && sameDayLoHi && sameCal(a, lo)) {
+    return hm;
+  }
+  if (strideSec < 86400 && sameDayLoHi && sameCal(a, lo)) {
     return `${a.getHours()}`;
   }
   return a.toLocaleString(undefined, {
@@ -612,32 +627,38 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
       ? sliceThroughputBarPoints(scopedMessageTrafficHistory.value)
       : sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
   if (!pts.length) return [];
-  const n = pts.length;
   const pad = 1.5;
   const W = 100;
   const inner = W - 2 * pad;
   const atOf = (p: { at: number }) => Number(p.at);
   const rangeLo = atOf(pts[0]!);
-  const rangeHi = atOf(pts[n - 1]!);
+  const rangeHi = atOf(pts[pts.length - 1]!);
   const span = Math.max(rangeHi - rangeLo, 60);
 
+  const strideSec = THROUGHPUT_AXIS_TICK_SEC;
   const raw: ThroughputBarTick[] = [];
-  for (let h = startOfLocalHour(rangeLo); h <= rangeHi + 1; h += THROUGHPUT_CHART_AXIS_HOUR_SEC) {
-    const xNorm = (h - rangeLo) / span;
+  for (let t = alignDownLocalGrid(rangeLo, strideSec); t <= rangeHi + strideSec; t += strideSec) {
+    const xNorm = (t - rangeLo) / span;
     if (xNorm < -0.02 || xNorm > 1.02) continue;
     const clamped = Math.max(0, Math.min(1, xNorm));
     const rawPct = ((pad + clamped * inner) / W) * 100;
     const leftPct = Math.min(96, Math.max(4, rawPct));
     raw.push({
       leftPct,
-      label: formatThroughputHistTick(h, rangeLo, rangeHi),
+      label: formatThroughputHistTick(t, rangeLo, rangeHi, strideSec),
     });
+  }
+
+  let thinned = raw;
+  if (thinned.length > THROUGHPUT_AXIS_MAX_LABELS) {
+    const step = Math.ceil(thinned.length / THROUGHPUT_AXIS_MAX_LABELS);
+    thinned = thinned.filter((_, i) => i % step === 0);
   }
 
   const seen = new Set<number>();
   const ticks: ThroughputBarTick[] = [];
-  for (const t of raw) {
-    const k = Math.round(t.leftPct * 20) / 20;
+  for (const t of thinned) {
+    const k = Math.round(t.leftPct * 100) / 100;
     if (seen.has(k)) continue;
     seen.add(k);
     ticks.push(t);
@@ -647,11 +668,11 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
     return [
       {
         leftPct: Math.min(96, Math.max(4, (pad / W) * 100)),
-        label: formatThroughputHistTick(rangeLo, rangeLo, rangeHi),
+        label: formatThroughputHistTick(rangeLo, rangeLo, rangeHi, strideSec),
       },
       {
         leftPct: Math.min(96, Math.max(4, ((pad + inner) / W) * 100)),
-        label: formatThroughputHistTick(rangeHi, rangeLo, rangeHi),
+        label: formatThroughputHistTick(rangeHi, rangeLo, rangeHi, strideSec),
       },
     ];
   }
