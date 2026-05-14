@@ -800,26 +800,36 @@ html[data-theme="light"] .shell-page-loading {
   height: 44px;
   margin: 0;
   padding: 0;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-card) 92%, var(--accent) 8%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%) 0%,
+    color-mix(in srgb, var(--bg-elev) 94%, var(--accent) 6%) 100%
+  );
   color: var(--text);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.32);
   transition:
     background 0.15s var(--ease),
     color 0.15s var(--ease),
     border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
     transform 0.12s var(--ease);
 }
 
 .shell-back-top:hover {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border-strong));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 12px 32px rgba(0, 0, 0, 0.38);
+  transform: translateY(-1px);
 }
 
 .shell-back-top:focus-visible {
@@ -828,7 +838,9 @@ html[data-theme="light"] .shell-page-loading {
 }
 
 html[data-theme="light"] .shell-back-top {
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
+    0 8px 22px rgba(15, 23, 42, 0.14);
 }
 
 .logs-page {
@@ -2308,8 +2320,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
 .home-account-hero--unified .home-account-hero__detail--with-pending-rail {
   display: grid;
   grid-template-columns: minmax(0, 5.75rem) minmax(0, 1fr);
-  gap: 8px 14px;
-  align-items: stretch;
+  gap: 10px 14px;
+  align-items: start;
   padding-left: 0;
 }
 
@@ -2320,10 +2332,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
   gap: 0;
   min-width: 0;
   min-height: 0;
-  height: 100%;
   box-sizing: border-box;
   padding-top: 2px;
   text-align: center;
+  align-self: start;
 }
 
 .home-account-hero__pending-card:last-child {
@@ -2397,18 +2409,43 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
 }
 
 .home-account-hero__pending-count-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: 3px;
+  row-gap: 0;
+  max-width: 100%;
   color: inherit;
   text-decoration: none;
   cursor: pointer;
+  font-weight: inherit;
+  line-height: 1.2;
+  font-variant-numeric: inherit;
+}
+
+.home-account-hero__pending-count-num {
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-  font-variant-numeric: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-account-hero__pending-count-suffix {
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: inherit;
+  opacity: 0.86;
 }
 
 .home-account-hero__pending-count-link:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.home-account-hero__pending-count-link:hover .home-account-hero__pending-count-suffix {
+  opacity: 1;
 }
 
 .home-account-hero__pending-count-link:focus-visible {
@@ -2484,7 +2521,7 @@ html[data-theme="light"] .home-account-hero__admin-values {
   display: grid;
   /* 与下行数量共用列线：避免两个独立 1fr 网格因 min-content 不同导致第二列错位 */
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 4px 16px;
+  gap: 6px 12px;
   align-items: start;
   width: 100%;
   margin: 0;
@@ -2638,6 +2675,8 @@ html[data-theme="light"] .home-account-hero__counts-num {
   font-size: 12px;
   color: var(--accent);
   text-decoration: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .home-account-hero__link:hover {
   text-decoration: underline;
@@ -3133,6 +3172,54 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   color: #5b21b6;
 }
 
+@media (max-width: 900px) {
+  .home-account-hero--unified .home-account-hero__detail--with-pending-rail {
+    grid-template-columns: minmax(0, 4.75rem) minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-account-hero--unified .home-account-hero__detail {
+    padding-left: 0;
+  }
+
+  .home-account-hero--unified .home-account-hero__detail--with-pending-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .home-account-hero__pending-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    width: 100%;
+    height: auto;
+    align-items: stretch;
+    justify-items: stretch;
+  }
+
+  .home-account-hero__pending-card:last-child {
+    margin-top: 0;
+    transform: none;
+  }
+
+  .home-account-hero__pending-card {
+    min-width: 0;
+  }
+
+  .home-account-hero__detail-main {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 420px) {
+  .home-account-hero__pending-rail {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 860px) {
   .home-account-unified__col--standee {
     display: none;
@@ -3157,40 +3244,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .home-account-charts-span {
     grid-column: auto;
-  }
-
-  .home-account-hero--unified .home-account-hero__detail {
-    padding-left: 0;
-  }
-
-  .home-account-hero--unified .home-account-hero__detail--with-pending-rail {
-    grid-template-columns: 1fr;
-  }
-
-  .home-account-hero__pending-rail {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    justify-content: center;
-    gap: 8px 12px;
-    width: 100%;
-    height: auto;
-  }
-
-  .home-account-hero__pending-card:last-child {
-    margin-top: 0;
-    transform: none;
-  }
-
-  .home-account-hero__pending-card {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .home-account-hero__detail-main {
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-    margin-top: 8px;
   }
 
   .home-account-hero__proto-sub {
@@ -3412,21 +3465,24 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   overflow: hidden;
 }
 
-/* 主内容区纵向滚动时：卡片标题栏吸顶（依赖祖先非 overflow:hidden，见下条覆盖） */
-.shell__main-inner:not(.shell__main-inner--logs) .panel {
-  overflow: visible;
-}
-
+/* 运行日志：内层卡片仍裁剪圆角，避免与内部滚动冲突 */
 .shell__main-inner--logs .logs-page .panel {
   overflow: hidden;
 }
 
-.shell__main-inner:not(.shell__main-inner--logs) .panel__hd {
+/* 仅通用配置页：分区标题栏吸顶（单卡片，依赖该卡片 overflow:visible） */
+.shell__main-inner:not(.shell__main-inner--logs) .common-config-page > .panel {
+  overflow: visible;
+}
+
+.shell__main-inner:not(.shell__main-inner--logs) .common-config-page > .panel > .panel__hd {
   position: sticky;
   top: 0;
   z-index: 4;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--bg-card);
   backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 85%, transparent);
 }
 
 .panel__hd {

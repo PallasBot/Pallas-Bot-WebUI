@@ -900,7 +900,10 @@ onMounted(load);
                                 v-else
                                 class="home-account-hero__pending-count-link"
                                 :to="friendsGroupsFriendPendingTo"
-                              >{{ friendPendingApplyDisplay }} 条待同意</RouterLink>
+                              >
+                                <span class="home-account-hero__pending-count-num">{{ friendPendingApplyDisplay }}</span>
+                                <span class="home-account-hero__pending-count-suffix"> 条待同意</span>
+                              </RouterLink>
                             </div>
                           </div>
                           <div class="home-account-hero__pending-card">
@@ -911,7 +914,10 @@ onMounted(load);
                                 v-else
                                 class="home-account-hero__pending-count-link"
                                 :to="friendsGroupsGroupPendingTo"
-                              >{{ groupPendingApplyDisplay }} 条待同意</RouterLink>
+                              >
+                                <span class="home-account-hero__pending-count-num">{{ groupPendingApplyDisplay }}</span>
+                                <span class="home-account-hero__pending-count-suffix"> 条待同意</span>
+                              </RouterLink>
                             </div>
                           </div>
                         </aside>
