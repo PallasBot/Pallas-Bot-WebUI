@@ -671,7 +671,22 @@ onUnmounted(() => {
           title="返回顶部"
           @click="scrollPageToTop"
         >
-          ↑
+          <svg
+            class="shell-back-top__ico"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            aria-hidden="true"
+          >
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 7h12M12 19L12 9M8 13l4-4 4 4"
+            />
+          </svg>
         </button>
       </Teleport>
     </div>

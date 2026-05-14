@@ -427,7 +427,7 @@ const throughputSparklineMode = computed<"message" | "api" | null>(() => {
 });
 
 const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
-  if (socialBusy.value || throughputSparklineMode.value !== "message") return [];
+  if (socialBusy.value) return [];
   const W = 100;
   const H = 30;
   const pad = 1.5;
@@ -456,20 +456,36 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   });
 });
 
-/** API 吞吐迷你图：折线（与消息柱图同 viewBox） */
+/** API 吞吐迷你图：折线（与消息柱图同 viewBox；有消息柱时在柱上叠画，按桶 at 对齐） */
 const throughputApiLineModel = computed((): { polyline: string; dot: { x: number; y: number } | null } => {
   const empty = { polyline: "", dot: null as { x: number; y: number } | null };
-  if (socialBusy.value || throughputSparklineMode.value !== "api") return empty;
-  const pts = sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
-  if (!pts.length) return empty;
+  if (socialBusy.value) return empty;
+
+  const apiRaw = scopedBotStatsRow.value?.api_calls_history ?? [];
+  const apiSlice = sliceThroughputBarPoints(apiRaw);
+  if (!apiSlice.length) return empty;
+
   const W = 100;
   const H = 30;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
-  const vals = pts.map((p) => Number(p.total ?? 0));
+
+  const msgSlice = sliceThroughputBarPoints(scopedMessageTrafficHistory.value);
+  let vals: number[];
+  let n: number;
+  if (msgSlice.length) {
+    const apiByAt = new Map(apiSlice.map((p) => [p.at, Number(p.total ?? 0)]));
+    vals = msgSlice.map((m) => apiByAt.get(m.at) ?? 0);
+    n = vals.length;
+    if (!vals.some((v) => v > 0)) return empty;
+  } else {
+    vals = apiSlice.map((p) => Number(p.total ?? 0));
+    n = vals.length;
+    if (!vals.some((v) => v > 0)) return empty;
+  }
+
   const max = Math.max(...vals, 1);
-  const n = vals.length;
   const slot = (W - 2 * pad) / n;
   const xy: { x: number; y: number }[] = [];
   for (let i = 0; i < n; i++) {
@@ -781,22 +797,20 @@ onMounted(load);
     <div class="home-dashboard">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
-          <div class="panel__hd home-account-panel__hd">
-            <div class="home-account-panel__hd-main">
-              <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
-                <RefreshIconButton
-                  :busy="overviewBusy"
-                  :disabled="overviewBusy"
-                  label="刷新概况"
-                  @click="load"
-                />
-              </h2>
-              <RouterLink
-                class="home-instances-capsule"
-                to="/instances"
-              >实例与连接</RouterLink>
-            </div>
+          <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
+              <RefreshIconButton
+                :busy="overviewBusy"
+                :disabled="overviewBusy"
+                label="刷新概况"
+                @click="load"
+              />
+            </h2>
+            <RouterLink
+              class="home-instances-capsule"
+              to="/instances"
+            >实例与连接</RouterLink>
           </div>
           <div class="panel__bd">
             <p
@@ -1004,7 +1018,7 @@ onMounted(load);
                           overflow="hidden"
                           aria-hidden="true"
                         >
-                          <template v-if="throughputSparklineMode === 'message'">
+                          <template v-if="throughputMessageBarBuckets.length">
                             <g
                               v-for="(b, i) in throughputMessageBarBuckets"
                               :key="i"
@@ -1027,24 +1041,22 @@ onMounted(load);
                               />
                             </g>
                           </template>
-                          <template v-else-if="throughputSparklineMode === 'api'">
-                            <polyline
-                              v-if="throughputApiLineModel.polyline"
-                              class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
-                              fill="none"
-                              stroke-width="1.35"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              :points="throughputApiLineModel.polyline"
-                            />
-                            <circle
-                              v-else-if="throughputApiLineModel.dot"
-                              class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
-                              :cx="throughputApiLineModel.dot.x"
-                              :cy="throughputApiLineModel.dot.y"
-                              r="2"
-                            />
-                          </template>
+                          <polyline
+                            v-if="throughputApiLineModel.polyline"
+                            class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
+                            fill="none"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            :points="throughputApiLineModel.polyline"
+                          />
+                          <circle
+                            v-else-if="throughputApiLineModel.dot"
+                            class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
+                            :cx="throughputApiLineModel.dot.x"
+                            :cy="throughputApiLineModel.dot.y"
+                            r="2"
+                          />
                         </svg>
                         <div class="home-account-metrics__bars-ticks muted">
                           <span
@@ -1202,11 +1214,11 @@ onMounted(load);
 
       <section class="home-dashboard__perf">
         <div class="panel home-page__panel">
-          <div class="panel__hd">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
               <span class="panel__title-ico" aria-hidden="true">▤</span>系统性能
             </h2>
-            <span class="home-page__panel-tag">节点采样</span>
+            <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
           </div>
           <div class="panel__bd">
             <p
@@ -1289,14 +1301,14 @@ onMounted(load);
     </div>
 
     <div class="panel home-page__panel home-page__version-panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
         </h2>
         <span
           v-if="health?.ok"
-          class="badge badge--ok"
-        >API 可用</span>
+          class="home-page__hd-capsule home-page__hd-capsule--ok"
+        >API 连接</span>
       </div>
       <div class="panel__bd muted home-page__version home-page__version--grid">
         <dl class="home-dl home-dl--version-rows home-version-dl">
