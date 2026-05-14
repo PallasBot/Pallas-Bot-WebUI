@@ -115,122 +115,126 @@ function lineClass(lv: LogEntry["level"]): string {
       v-else
       class="logs-page__body"
     >
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
-          <RefreshIconButton
-            :busy="loading"
-            :disabled="loading"
-            label="刷新日志"
-            @click="load"
-          />
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/logs" />
-          <select
-            v-model="scope"
-            class="sel"
-          >
-            <option value="all">全部</option>
-            <option value="webui">WebUI</option>
-            <option value="protocol">协议</option>
-          </select>
-          <input
-            v-model.number="n"
-            class="inp"
-            type="number"
-            min="20"
-            max="2000"
-            style="width: 100px"
-          >
-          <input
-            v-model="q"
-            class="inp"
-            type="search"
-            placeholder="筛选消息 / scope / 级别…"
-            style="min-width: 200px; flex: 1"
-          >
-          <button
-            type="button"
-            class="btn"
-            :class="{ 'btn--primary': view === 'feed' }"
-            @click="view = 'feed'"
-          >
-            结构化
-          </button>
-          <button
-            type="button"
-            class="btn"
-            :class="{ 'btn--primary': view === 'raw' }"
-            @click="view = 'raw'"
-          >
-            原始行
-          </button>
-        </div>
-      </div>
-      <div class="panel__bd">
-        <p
-          v-if="payload?.max != null"
-          class="muted"
-          style="margin: 0 0 12px"
-        >
-          单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目 · 原始行 {{ lines.length }} 行
-        </p>
-
-        <div class="logs-page__scroll">
-          <template v-if="view === 'feed'">
-            <div
-              v-if="!filtered.length && !loading"
-              class="muted"
-            >
-              暂无条目（或筛选无结果）。
-            </div>
-            <div
-              v-else
-              ref="feedScrollEl"
-              class="log-feed"
-              @scroll.passive="onLogContainerScroll"
-            >
-              <div
-                v-for="row in filtered"
-                :key="row.id"
-                :class="lineClass(row.level)"
+      <div class="panel">
+        <div class="panel__hd panel__hd--split">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
+            <RefreshIconButton
+              :busy="loading"
+              :disabled="loading"
+              label="刷新日志"
+              @click="load"
+            />
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/logs" />
+            <div class="logs-page__filter-row">
+              <input
+                v-model="q"
+                class="inp"
+                type="search"
+                placeholder="关键词…"
+                title="按消息、scope、级别等过滤"
               >
-                <div class="log-line__meta">
-                  <span class="log-line__time">{{ row.time }}</span>
-                  <span
-                    class="badge log-line__badge"
-                    :class="{
-                      'badge--ok':
-                        row.level === 'info' || row.level === 'success' || row.level === 'debug',
-                      'badge--warn': row.level === 'warn',
-                      'badge--err': row.level === 'error',
-                    }"
-                  >{{ row.level }}</span>
-                  <span class="log-line__scope">{{ row.scope }}</span>
-                </div>
-                <div class="log-line__msg">{{ row.message }}</div>
+              <select
+                v-model="scope"
+                class="sel"
+                aria-label="日志范围"
+              >
+                <option value="all">全</option>
+                <option value="webui">WebUI</option>
+                <option value="protocol">协议</option>
+              </select>
+              <input
+                v-model.number="n"
+                class="inp logs-page__n-inp"
+                type="number"
+                min="20"
+                max="2000"
+              >
+            </div>
+            <div class="logs-page__view-btns">
+              <button
+                type="button"
+                class="btn"
+                :class="{ 'btn--primary': view === 'feed' }"
+                @click="view = 'feed'"
+              >
+                结构化
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :class="{ 'btn--primary': view === 'raw' }"
+                @click="view = 'raw'"
+              >
+                原始行
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="panel__bd">
+          <p
+            v-if="payload?.max != null"
+            class="muted"
+            style="margin: 0 0 12px"
+          >
+            单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目 · 原始行 {{ lines.length }} 行
+          </p>
+
+          <div class="logs-page__scroll">
+            <template v-if="view === 'feed'">
+              <div
+                v-if="!filtered.length && !loading"
+                class="muted"
+              >
+                暂无条目（或筛选无结果）。
               </div>
-            </div>
-          </template>
-          <template v-else>
-            <div
-              v-if="!lines.length && !loading"
-              class="muted"
-            >
-              无原始行数据（后端可能仅返回结构化 entries）。
-            </div>
-            <pre
-              v-else
-              ref="rawScrollEl"
-              class="pre-block pre-block--logs-tall"
-              @scroll.passive="onLogContainerScroll"
-            >{{ lines.join("\n") }}</pre>
-          </template>
+              <div
+                v-else
+                ref="feedScrollEl"
+                class="log-feed"
+                @scroll.passive="onLogContainerScroll"
+              >
+                <div
+                  v-for="row in filtered"
+                  :key="row.id"
+                  :class="lineClass(row.level)"
+                >
+                  <div class="log-line__meta">
+                    <span class="log-line__time">{{ row.time }}</span>
+                    <span
+                      class="badge log-line__badge"
+                      :class="{
+                        'badge--ok':
+                          row.level === 'info' || row.level === 'success' || row.level === 'debug',
+                        'badge--warn': row.level === 'warn',
+                        'badge--err': row.level === 'error',
+                      }"
+                    >{{ row.level }}</span>
+                    <span class="log-line__scope">{{ row.scope }}</span>
+                  </div>
+                  <div class="log-line__msg">{{ row.message }}</div>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div
+                v-if="!lines.length && !loading"
+                class="muted"
+              >
+                无原始行数据（后端可能仅返回结构化 entries）。
+              </div>
+              <pre
+                v-else
+                ref="rawScrollEl"
+                class="pre-block pre-block--logs-tall"
+                @scroll.passive="onLogContainerScroll"
+              >{{ lines.join("\n") }}</pre>
+            </template>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
