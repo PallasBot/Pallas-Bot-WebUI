@@ -300,7 +300,7 @@ async function runAggregate() {
           v-model="pipelineText"
           title="Pipeline（JSON 数组）"
           :rows="8"
-          placeholder='点击或聚焦，在弹窗中编辑；须为 JSON 数组，例如 [{"$limit":20}]'
+          placeholder='页内或弹窗编辑；须为 JSON 数组，例如 [{"$limit":20}]'
         />
         <div
           v-if="aggResult"

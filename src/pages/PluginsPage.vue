@@ -115,7 +115,6 @@ async function togglePreview(name: string) {
               <div class="muted plugin-card__desc-line">
                 {{ p.metadata?.description || p.module }}
               </div>
-              <div class="plugin-card__enter-hint">进入配置编辑 →</div>
             </RouterLink>
             <div
               class="plugin-card__help-panel"
