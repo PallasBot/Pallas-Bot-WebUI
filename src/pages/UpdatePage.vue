@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import {
   fetchBotUpdateCheck,
   fetchUpdateCheck,
@@ -11,12 +12,23 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
+const route = useRoute();
 const err = ref("");
 const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
 const bot = ref<BotUpdateCheckData | null>(null);
 const busy = ref(false);
 const msg = ref("");
+
+function scrollUpdateHashIntoView() {
+  const raw = (route.hash || "").replace(/^#/, "").trim();
+  if (!raw) return;
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
 
 async function load() {
   err.value = "";
@@ -29,6 +41,7 @@ async function load() {
   } finally {
     pageReady.value = true;
   }
+  scrollUpdateHashIntoView();
 }
 
 async function applyWeb() {
@@ -61,7 +74,16 @@ async function applyBot() {
   }
 }
 
-onMounted(load);
+watch(
+  () => route.hash,
+  () => {
+    if (pageReady.value) scrollUpdateHashIntoView();
+  },
+);
+
+onMounted(() => {
+  void load();
+});
 </script>
 
 <template>
@@ -95,7 +117,10 @@ onMounted(load);
       </button>
     </div>
 
-    <div class="panel">
+    <div
+      id="console-update-webui"
+      class="panel"
+    >
       <div class="panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
@@ -125,7 +150,10 @@ onMounted(load);
       </div>
     </div>
 
-    <div class="panel">
+    <div
+      id="console-update-bot"
+      class="panel"
+    >
       <div class="panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
