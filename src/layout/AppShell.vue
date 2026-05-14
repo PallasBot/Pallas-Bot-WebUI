@@ -24,6 +24,18 @@ const isNarrow = ref(false);
 
 const webuiVersion = __WEBUI_VERSION__;
 
+/** 与首屏「控制台资源」一致：优先展示服务端上报的静态资源版本，缺失时回退构建号 */
+const brandVersionDisplay = computed(() => {
+  const c = health.value?.console;
+  const ver = (c?.version || "").trim();
+  const commit = (c?.commit || "").trim();
+  const short = commit.length >= 7 ? commit.slice(0, 7) : commit;
+  if (ver) {
+    return short && !ver.includes(short) ? `${ver} · ${short}` : ver;
+  }
+  return `v${webuiVersion}`;
+});
+
 const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
   "shell__main-inner--logs": route.name === "logs",
@@ -245,6 +257,7 @@ onUnmounted(() => {
         <p
           v-if="topBarDesc"
           class="shell__topbar-desc muted"
+          :class="{ 'shell__topbar-desc--hide-narrow': isNarrow }"
           :title="topBarDesc"
         >
           {{ topBarDesc }}
@@ -375,7 +388,7 @@ onUnmounted(() => {
           >
           <div class="shell__brand-main">
             <div class="shell__title">Pallas-Bot</div>
-            <div class="shell__version">v{{ webuiVersion }}</div>
+            <div class="shell__version">{{ brandVersionDisplay }}</div>
           </div>
         </div>
       </div>
@@ -459,7 +472,7 @@ onUnmounted(() => {
               >
               <div class="shell-mobile-nav__brand-text">
                 <span class="shell-mobile-nav__brand">Pallas-Bot</span>
-                <span class="shell-mobile-nav__ver">v{{ webuiVersion }}</span>
+                <span class="shell-mobile-nav__ver">{{ brandVersionDisplay }}</span>
               </div>
             </div>
             <button

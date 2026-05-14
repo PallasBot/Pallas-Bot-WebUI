@@ -11,7 +11,7 @@ let initialHideTimer: ReturnType<typeof setTimeout> | undefined;
 let navHideTimer: ReturnType<typeof setTimeout> | undefined;
 let initialHideScheduled = false;
 
-const NAV_MIN_MS = 220;
+const NAV_MIN_MS = 140;
 
 export function installRouteLoading(router: Router): void {
   router.beforeEach((to, from, next) => {
@@ -31,7 +31,7 @@ export function installRouteLoading(router: Router): void {
       initialHideTimer = setTimeout(() => {
         initialShellLoading.value = false;
         initialHideTimer = undefined;
-      }, 380);
+      }, 120);
     }
 
     if (routeNavLoading.value) {
