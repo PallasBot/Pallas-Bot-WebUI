@@ -68,8 +68,8 @@ function onSizeChange(ev: Event) {
     class="console-pager"
     :class="{ 'console-pager--embedded': embedded }"
   >
-    <span class="muted">共 {{ total }} {{ unit }}</span>
-    <div class="row-actions console-pager__controls">
+    <span class="muted console-pager__total">共 {{ total }} {{ unit }}</span>
+    <div class="console-pager__toolbar">
       <label class="muted console-pager__size">
         每页
         <select
@@ -88,7 +88,7 @@ function onSizeChange(ev: Event) {
       </label>
       <button
         type="button"
-        class="btn"
+        class="btn console-pager__btn-prev"
         :disabled="page <= 1"
         @click="onPrev"
       >
@@ -109,7 +109,7 @@ function onSizeChange(ev: Event) {
       </span>
       <button
         type="button"
-        class="btn"
+        class="btn console-pager__btn-next"
         :disabled="page >= maxPage"
         @click="onNext"
       >
@@ -120,34 +120,111 @@ function onSizeChange(ev: Event) {
 </template>
 
 <style scoped>
-.console-pager__controls {
-  margin-left: auto;
+.console-pager {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
+
+.console-pager__total {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.console-pager__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-left: auto;
+}
+
 .console-pager__size {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
 }
+
 .console-pager__size .sel {
   min-width: 72px;
   padding: 6px 10px;
   font-size: 13px;
 }
+
 .console-pager__jump {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
 }
+
 .console-pager__jump .inp {
   width: 64px;
   padding: 6px 8px;
 }
+
 .console-pager--embedded {
   border-top: none;
   margin-top: 0;
   padding-top: 0;
+}
+
+@media (max-width: 640px) {
+  .console-pager {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .console-pager__toolbar {
+    margin-left: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    row-gap: 10px;
+    align-items: center;
+  }
+
+  .console-pager__size {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: end;
+    flex-wrap: wrap;
+  }
+
+  .console-pager__btn-prev {
+    grid-row: 2;
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .console-pager__jump {
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .console-pager__btn-next {
+    grid-row: 2;
+    grid-column: 3;
+    width: 100%;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
 }
 </style>
