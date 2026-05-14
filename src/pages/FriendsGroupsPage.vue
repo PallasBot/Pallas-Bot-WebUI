@@ -3,7 +3,6 @@ import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchFriendList,
-  fetchFriendRequests,
   fetchGroupList,
   fetchInstances,
   fetchRequestOverview,
@@ -185,9 +184,20 @@ async function loadRequestsOnly() {
   reqsBusy.value = true;
   err.value = "";
   try {
-    const [fr, ov] = await Promise.all([fetchFriendRequests(), fetchRequestOverview()]);
-    requests.value = fr;
+    // 仅拉 /request-overview：与 /friend-requests 在后端重复执行 _friend_requests_overview，
+    // 并行会加倍协议调用，易导致「好友列表已 200 但审批区仍卡在加载」。
+    const ov = await fetchRequestOverview();
     overview.value = ov;
+    requests.value = {
+      bots: ov.bots.map((b) => ({
+        self_id: b.self_id,
+        connection_key: b.connection_key,
+        adapter: b.adapter,
+        online: b.online,
+        pending_friend_requests: b.pending_friend_requests,
+        doubt_friend_requests: b.doubt_friend_requests,
+      })),
+    };
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -839,7 +849,8 @@ function toggleGroupsListPanel() {
           v-if="reqsBusy"
           class="muted"
         >
-          正在拉取好友申请与可疑请求，请稍候；也可点击标题旁刷新图标重试。
+          <template v-if="listsBusy">正在加载好友/群列表，随后拉取审批数据…</template>
+          <template v-else>正在拉取好友申请、可疑请求与入群审批；也可点击标题旁刷新图标重试。</template>
         </div>
         <div
           v-else-if="!selfIdStr.trim()"
