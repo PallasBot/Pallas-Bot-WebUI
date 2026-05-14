@@ -216,7 +216,7 @@ onMounted(() => {
       >
         <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>GitHub 令牌
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span><span class="update-page__title-keep">GitHub 令牌</span>
           </h2>
           <div class="row-actions">
             <PanelSidebarAdd main-path="/update" />
@@ -594,5 +594,29 @@ onMounted(() => {
   margin: 14px 0 0;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.update-page__title-keep {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .update-page__gh-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .update-page__gh-inp {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .update-page__gh-row .btn {
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.25;
+    min-height: 0;
+  }
 }
 </style>

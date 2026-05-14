@@ -607,9 +607,9 @@ function toggleGroupsListPanel() {
     <div v-else>
     <div
       id="fg-account"
-      class="panel"
+      class="panel friends-groups-account-panel"
     >
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd friends-groups-account-panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
           <RefreshIconButton
@@ -619,15 +619,13 @@ function toggleGroupsListPanel() {
             @click="refreshPage"
           />
         </h2>
-        <div
-          class="row-actions"
-          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-        >
-          <PanelSidebarAdd pin-id="friends-groups-account" />
+        <div class="friends-groups-account-hd-tail">
+          <span class="friends-groups-account-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-account" />
+          </span>
           <select
             v-model="selfIdStr"
-            class="sel"
-            style="min-width: 280px"
+            class="sel friends-groups-account-sel"
           >
             <option value="">请选择 Bot…</option>
             <option
