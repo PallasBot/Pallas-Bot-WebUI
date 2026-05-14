@@ -446,12 +446,31 @@ const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.mess
 /** 吞吐迷你图高度（viewBox 与柱/折线计算共用） */
 const THROUGHPUT_MINI_SVG_H = 34;
 
-/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾；后端最多约 288 桶） */
-const THROUGHPUT_BAR_VISIBLE_BUCKETS = 48;
+/** 迷你图横轴覆盖的时长（秒）；桶越细同屏桶数越多 */
+const THROUGHPUT_CHART_VISIBLE_SEC = 6 * 3600;
+
+/** 迷你图最多取的桶数（避免超宽屏仍一次拉满 24h 的 1 分钟桶） */
+const THROUGHPUT_BAR_VISIBLE_BUCKETS_MAX = 480;
+
+function throughputHistBucketSec(): number {
+  const st = msgMainStats.value;
+  const a = st?.message_traffic_history_bucket_sec;
+  const b = st?.api_calls_history_bucket_sec;
+  if (typeof a === "number" && a > 0) return a;
+  if (typeof b === "number" && b > 0) return b;
+  return 300;
+}
+
+function throughputVisibleBucketCount(): number {
+  const bs = throughputHistBucketSec();
+  const n = Math.ceil(THROUGHPUT_CHART_VISIBLE_SEC / bs);
+  return Math.min(THROUGHPUT_BAR_VISIBLE_BUCKETS_MAX, Math.max(48, n));
+}
 
 function sliceThroughputBarPoints<T extends { at: number }>(arr: T[]): T[] {
-  if (arr.length <= THROUGHPUT_BAR_VISIBLE_BUCKETS) return arr;
-  return arr.slice(-THROUGHPUT_BAR_VISIBLE_BUCKETS);
+  const maxN = throughputVisibleBucketCount();
+  if (arr.length <= maxN) return arr;
+  return arr.slice(-maxN);
 }
 
 const throughputSparklineMode = computed<"message" | "api" | null>(() => {
@@ -476,7 +495,7 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   const max = Math.max(...recvVals, ...sentVals, 1);
   const n = pts.length;
   const slot = (W - 2 * pad) / n;
-  const bwScale = n > 36 ? 0.4 : n > 24 ? 0.37 : 0.34;
+  const bwScale = n > 120 ? 0.3 : n > 72 ? 0.34 : n > 48 ? 0.37 : n > 36 ? 0.4 : n > 24 ? 0.37 : 0.34;
   return pts.map((_, i) => {
     const r = recvVals[i]! / max;
     const s = sentVals[i]! / max;
@@ -551,7 +570,7 @@ const throughputApiLineModel = computed((): {
     areaPath += i === 0 ? `M${first.x},${bottom}L${p.x},${p.y}` : `L${p.x},${p.y}`;
   }
   areaPath += `L${last.x},${bottom}Z`;
-  const lineDots = xy.length >= 2 && xy.length <= 44 ? xy : [];
+  const lineDots = xy.length >= 2 && xy.length <= 72 ? xy : [];
   return { polyline, dot: null, areaPath, lineDots };
 });
 
