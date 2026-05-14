@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
   fetchBotUpdateCheck,
@@ -13,6 +13,7 @@ import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 
 const WEBUI_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
 const BOT_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot/releases";
@@ -27,6 +28,9 @@ const err = ref("");
 const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
 const bot = ref<BotUpdateCheckData | null>(null);
+
+const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
+const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
 const busy = ref(false);
 const msg = ref("");
 const refreshWebBusy = ref(false);
@@ -317,7 +321,10 @@ onMounted(() => {
             <summary class="update-page__release-notes-summary">
               {{ web?.latest_tag ? `「${web.latest_tag}」发行说明` : "最新发行说明" }}
             </summary>
-            <pre class="update-page__release-notes-body">{{ web?.release_notes }}</pre>
+            <div
+              class="update-page__release-notes-body update-page__release-notes-body--md"
+              v-html="webReleaseNotesHtml"
+            />
           </details>
           <p v-if="web?.error">错误：{{ web.error }}</p>
           <button
@@ -375,7 +382,10 @@ onMounted(() => {
             <summary class="update-page__release-notes-summary">
               {{ bot?.latest_tag ? `「${bot.latest_tag}」发行说明` : "最新发行说明" }}
             </summary>
-            <pre class="update-page__release-notes-body">{{ bot?.release_notes }}</pre>
+            <div
+              class="update-page__release-notes-body update-page__release-notes-body--md"
+              v-html="botReleaseNotesHtml"
+            />
           </details>
           <p v-if="bot?.error">错误：{{ bot.error }}</p>
           <p class="update-page__bot-note">
@@ -495,6 +505,22 @@ onMounted(() => {
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--text-muted);
+}
+
+.update-page__release-notes-body--md {
+  white-space: normal;
+}
+
+.update-page__release-notes-body--md :deep(a.update-page__commit-link) {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.update-page__release-notes-body--md :deep(a.update-page__commit-link:hover) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .update-page__apply {
