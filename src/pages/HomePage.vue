@@ -41,6 +41,30 @@ import { protocolSnapshot, accountWebUiHref, protocolDashboardUrl } from "@/util
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 
+/** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
+const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
+
+function readSavedHomeAccount(): number | null {
+  try {
+    const v = localStorage.getItem(HOME_SELECTED_ACCOUNT_KEY);
+    if (v == null || v === "") return null;
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedHomeAccount(acc: number | null) {
+  try {
+    if (acc == null) localStorage.removeItem(HOME_SELECTED_ACCOUNT_KEY);
+    else localStorage.setItem(HOME_SELECTED_ACCOUNT_KEY, String(Math.floor(acc)));
+  } catch {
+    /* ignore */
+  }
+}
+
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
@@ -101,6 +125,7 @@ function toggleAccountPicker(ev: MouseEvent) {
 
 function pickAccountFromList(account: number) {
   selectedAccount.value = account;
+  writeSavedHomeAccount(account);
   accountPickerOpen.value = false;
 }
 
@@ -368,10 +393,17 @@ function ensureSelectedAccount() {
   const rows = sortedDbBots.value;
   if (!rows.length) {
     selectedAccount.value = null;
+    writeSavedHomeAccount(null);
     return;
   }
   if (selectedAccount.value != null && rows.some((r) => r.account === selectedAccount.value)) return;
+  const saved = readSavedHomeAccount();
+  if (saved != null && rows.some((r) => r.account === saved)) {
+    selectedAccount.value = saved;
+    return;
+  }
   selectedAccount.value = rows[0]!.account;
+  writeSavedHomeAccount(selectedAccount.value);
 }
 
 const selectedConnected = computed(() => {
