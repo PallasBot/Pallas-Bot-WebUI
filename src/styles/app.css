@@ -2436,11 +2436,16 @@ html[data-theme="light"] .home-account-hero__admin-values {
 
 .home-account-hero__links-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 与下行数量共用列线：避免两个独立 1fr 网格因 min-content 不同导致第二列错位 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 4px 16px;
   align-items: start;
   width: 100%;
   margin: 0;
+}
+.home-account-hero__links-grid > .home-account-hero__counts-pair--grid-cell {
+  min-width: 0;
+  align-self: baseline;
 }
 .home-account-hero__links-grid__col {
   min-width: 0;
@@ -2472,22 +2477,6 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
   pointer-events: none;
   user-select: none;
 }
-.home-account-hero__counts-line--grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 16px;
-  align-items: baseline;
-  width: 100%;
-  margin: 2px 0 0;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.25;
-  min-width: 0;
-}
-.home-account-hero__counts-line--grid .home-account-hero__counts-pair {
-  min-width: 0;
-}
-
 .home-account-hero__counts-line {
   display: flex;
   flex-wrap: nowrap;

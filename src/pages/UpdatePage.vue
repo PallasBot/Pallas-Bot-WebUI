@@ -50,8 +50,9 @@ async function applyWeb() {
   busy.value = true;
   try {
     const r = await postUpdateApply();
-    msg.value = r.message || "已触发。";
-    await load();
+    msg.value = r.message ? `${r.message} · 正在刷新页面以载入新版本…` : "WebUI 已更新，正在刷新页面…";
+    await nextTick();
+    window.location.reload();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
