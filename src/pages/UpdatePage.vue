@@ -1,19 +1,27 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 import {
   fetchBotUpdateCheck,
+  fetchCommonConfig,
   fetchUpdateCheck,
   postBotUpdateApply,
   postUpdateApply,
+  putCommonConfig,
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 
 const WEBUI_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
 const BOT_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot/releases";
+
+/** 与 `common-config/pallas_protocol` 一致，写入根目录 `.env` */
+const PALLAS_PROTOCOL_SECTION_ID = "pallas_protocol";
+const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 
 const panelNavIcon = usePanelNavIcon();
 const route = useRoute();
@@ -21,10 +29,73 @@ const err = ref("");
 const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
 const bot = ref<BotUpdateCheckData | null>(null);
+
+const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
+const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
 const busy = ref(false);
 const msg = ref("");
 const refreshWebBusy = ref(false);
 const refreshBotBusy = ref(false);
+
+const ghTokenInput = ref("");
+const ghTokenHadValue = ref(false);
+const ghTokenBusy = ref(false);
+const ghTokenErr = ref("");
+const ghTokenOk = ref("");
+
+async function loadGithubTokenHint() {
+  ghTokenErr.value = "";
+  ghTokenOk.value = "";
+  try {
+    const data = await fetchCommonConfig(PALLAS_PROTOCOL_SECTION_ID);
+    const f = data.fields.find((x) => x.name === GITHUB_TOKEN_FIELD);
+    const cur = f?.current;
+    const s = cur === null || cur === undefined ? "" : String(cur).trim();
+    ghTokenHadValue.value = s.length > 0;
+    ghTokenInput.value = "";
+  } catch (e) {
+    ghTokenErr.value = e instanceof Error ? e.message : String(e);
+    ghTokenHadValue.value = false;
+  }
+}
+
+async function saveGithubToken() {
+  const next = ghTokenInput.value.trim();
+  if (!next) {
+    ghTokenErr.value = "请输入新令牌，或使用下方「清除」移除已保存的令牌。";
+    return;
+  }
+  ghTokenBusy.value = true;
+  ghTokenErr.value = "";
+  ghTokenOk.value = "";
+  try {
+    await putCommonConfig(PALLAS_PROTOCOL_SECTION_ID, { [GITHUB_TOKEN_FIELD]: next });
+    ghTokenHadValue.value = true;
+    ghTokenInput.value = "";
+    ghTokenOk.value = "已保存到 .env，重启 Bot 后生效。";
+  } catch (e) {
+    ghTokenErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ghTokenBusy.value = false;
+  }
+}
+
+async function clearGithubToken() {
+  if (!confirm("确定清除已保存的 GitHub 令牌？")) return;
+  ghTokenBusy.value = true;
+  ghTokenErr.value = "";
+  ghTokenOk.value = "";
+  try {
+    await putCommonConfig(PALLAS_PROTOCOL_SECTION_ID, { [GITHUB_TOKEN_FIELD]: "" });
+    ghTokenHadValue.value = false;
+    ghTokenInput.value = "";
+    ghTokenOk.value = "已清除；重启 Bot 后生效。";
+  } catch (e) {
+    ghTokenErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ghTokenBusy.value = false;
+  }
+}
 
 function scrollUpdateHashIntoView() {
   const raw = (route.hash || "").replace(/^#/, "").trim();
@@ -40,14 +111,14 @@ async function load() {
   err.value = "";
   msg.value = "";
   try {
-    web.value = await fetchUpdateCheck();
-    bot.value = await fetchBotUpdateCheck();
+    await Promise.all([fetchUpdateCheck().then((r) => (web.value = r)), fetchBotUpdateCheck().then((r) => (bot.value = r))]);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     pageReady.value = true;
   }
   scrollUpdateHashIntoView();
+  void loadGithubTokenHint();
 }
 
 /** 与原先「重新检查」一致：仅重新拉取 WebUI 远端比对结果 */
@@ -140,6 +211,77 @@ onMounted(() => {
     />
     <template v-else>
       <div
+        id="console-update-github"
+        class="panel update-page__panel"
+      >
+        <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span><span class="update-page__title-keep">GitHub 令牌</span>
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/update" />
+          </div>
+        </div>
+        <div class="panel__bd muted update-page__bd">
+          <p>
+            可选。用于 Release 检查与下载、协议端在线拉包等；写入根目录
+            <code>.env</code> 的 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+          </p>
+          <p>
+            当前：<strong class="update-page__strong">{{ ghTokenHadValue ? "已配置" : "未配置" }}</strong>
+            <span v-if="ghTokenHadValue">（不显示内容；输入新值覆盖）</span>
+          </p>
+          <div class="update-page__gh-row">
+            <input
+              v-model="ghTokenInput"
+              class="inp update-page__gh-inp"
+              type="password"
+              autocomplete="off"
+              placeholder="粘贴 fine-grained 或 classic PAT"
+              :disabled="ghTokenBusy"
+            >
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="ghTokenBusy"
+              @click="saveGithubToken"
+            >
+              {{ ghTokenBusy ? "保存中…" : "保存" }}
+            </button>
+            <button
+              v-if="ghTokenHadValue"
+              type="button"
+              class="btn"
+              :disabled="ghTokenBusy"
+              @click="clearGithubToken"
+            >
+              清除
+            </button>
+          </div>
+          <div
+            v-if="ghTokenErr"
+            class="alert alert--err update-page__gh-alert"
+          >
+            {{ ghTokenErr }}
+          </div>
+          <div
+            v-if="ghTokenOk"
+            class="alert alert--ok update-page__gh-alert"
+          >
+            {{ ghTokenOk }}
+          </div>
+          <p class="update-page__gh-more">
+            更多协议相关项见
+            <RouterLink
+              class="update-page__link"
+              to="/common-config"
+            >通用配置</RouterLink>
+            → 选择「协议端 / Pallas Protocol」。
+          </p>
+        </div>
+      </div>
+
+      <div
         id="console-update-webui"
         class="panel update-page__panel"
       >
@@ -148,6 +290,7 @@ onMounted(() => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
           </h2>
           <div class="update-page__hd-tail">
+            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshWebBusy"
               :disabled="busy"
@@ -183,7 +326,10 @@ onMounted(() => {
             <summary class="update-page__release-notes-summary">
               {{ web?.latest_tag ? `「${web.latest_tag}」发行说明` : "最新发行说明" }}
             </summary>
-            <pre class="update-page__release-notes-body">{{ web?.release_notes }}</pre>
+            <div
+              class="update-page__release-notes-body update-page__release-notes-body--md"
+              v-html="webReleaseNotesHtml"
+            />
           </details>
           <p v-if="web?.error">错误：{{ web.error }}</p>
           <button
@@ -206,6 +352,7 @@ onMounted(() => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
           </h2>
           <div class="update-page__hd-tail">
+            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshBotBusy"
               :disabled="busy"
@@ -241,7 +388,10 @@ onMounted(() => {
             <summary class="update-page__release-notes-summary">
               {{ bot?.latest_tag ? `「${bot.latest_tag}」发行说明` : "最新发行说明" }}
             </summary>
-            <pre class="update-page__release-notes-body">{{ bot?.release_notes }}</pre>
+            <div
+              class="update-page__release-notes-body update-page__release-notes-body--md"
+              v-html="botReleaseNotesHtml"
+            />
           </details>
           <p v-if="bot?.error">错误：{{ bot.error }}</p>
           <p class="update-page__bot-note">
@@ -363,6 +513,22 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.update-page__release-notes-body--md {
+  white-space: normal;
+}
+
+.update-page__release-notes-body--md :deep(a.update-page__commit-link) {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.update-page__release-notes-body--md :deep(a.update-page__commit-link:hover) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .update-page__apply {
   margin-top: 14px;
 }
@@ -404,5 +570,53 @@ onMounted(() => {
 .update-page__docker-hint a {
   color: var(--accent);
   font-weight: 600;
+}
+
+.update-page__gh-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.update-page__gh-inp {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.update-page__gh-alert {
+  margin-top: 12px;
+}
+
+.update-page__gh-more {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.update-page__title-keep {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .update-page__gh-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .update-page__gh-inp {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .update-page__gh-row .btn {
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.25;
+    min-height: 0;
+  }
 }
 </style>

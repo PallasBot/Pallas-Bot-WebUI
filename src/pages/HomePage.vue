@@ -32,6 +32,7 @@ import type {
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import standeeUrl from "@/assets/pallas-standee.webp?url";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -366,11 +367,8 @@ const groupPendingApplyDisplay = computed(() => {
   return String(r.pending_group_requests?.length ?? 0);
 });
 
-const socialCountsLoadHint = computed(() => {
-  if (socialBusy.value) return "";
-  if (friendSnap.value != null || groupSnap.value != null) return "";
-  return "好友/群列表未拉取，可点账户信息标题旁的刷新图标重试";
-});
+const friendCountNumPending = computed(() => !socialBusy.value && friendSnap.value == null);
+const groupCountNumPending = computed(() => !socialBusy.value && groupSnap.value == null);
 
 const throughputTodayInline = computed(() => {
   if (socialBusy.value) return "…";
@@ -594,9 +592,58 @@ function alignDownLocalGrid(tsSec: number, strideSec: number): number {
   return d0 + Math.floor(off / strideSec) * strideSec;
 }
 
-/** 时间轴：每 5 分钟一刻度，再隔一个显示一个；仍过长时均匀抽样 */
-const THROUGHPUT_AXIS_TICK_SEC = 300;
-const THROUGHPUT_AXIS_MAX_LABELS = 30;
+/** 时间轴：按可视跨度自适应步长；minGap 须覆盖「HH:mm」居中占位，避免刻度挤成一团 */
+const THROUGHPUT_AXIS_MAX_TICKS = 6;
+const THROUGHPUT_AXIS_MIN_GAP_PCT = 15;
+
+const THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC = [
+  60, 120, 300, 600, 900, 1200, 1800, 3600, 7200, 14400, 28800, 43200, 86400,
+] as const;
+
+function throughputAxisStrideSec(rangeLo: number, rangeHi: number): number {
+  const span = Math.max(rangeHi - rangeLo, 60);
+  const minStride = span / THROUGHPUT_AXIS_MAX_TICKS;
+  for (const c of THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC) {
+    if (c >= minStride) return c;
+  }
+  // 跨度大于候选表最大步长时，86400 会小于 minStride，若仍用它会在循环里生成过多刻度
+  return Math.max(60, Math.ceil(span / THROUGHPUT_AXIS_MAX_TICKS));
+}
+
+function thinThroughputTicksByMinGap(ticks: ThroughputBarTick[], minGapPct: number): ThroughputBarTick[] {
+  const sorted = [...ticks].sort((a, b) => a.leftPct - b.leftPct);
+  const out: ThroughputBarTick[] = [];
+  let last = -Infinity;
+  for (const t of sorted) {
+    if (t.leftPct - last >= minGapPct - 0.05) {
+      out.push(t);
+      last = t.leftPct;
+    }
+  }
+  return out;
+}
+
+/** 刻度已按步长生成但仍偏多时，沿时间轴均匀保留若干条，避免与柱宽解耦后标签互相遮挡 */
+function capThroughputTickLabels(ticks: ThroughputBarTick[], maxN: number): ThroughputBarTick[] {
+  if (ticks.length <= maxN) return ticks;
+  const sorted = [...ticks].sort((a, b) => a.leftPct - b.leftPct);
+  if (maxN <= 2) {
+    return [sorted[0]!, sorted[sorted.length - 1]!];
+  }
+  const out: ThroughputBarTick[] = [];
+  const lastIdx = sorted.length - 1;
+  for (let k = 0; k < maxN; k++) {
+    const idx = Math.round((k / (maxN - 1)) * lastIdx);
+    out.push(sorted[idx]!);
+  }
+  const dedup: ThroughputBarTick[] = [];
+  for (const t of out) {
+    if (!dedup.length || Math.abs(dedup[dedup.length - 1]!.leftPct - t.leftPct) > 0.35) {
+      dedup.push(t);
+    }
+  }
+  return dedup.length ? dedup : sorted.slice(0, maxN);
+}
 
 function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number, strideSec: number): string {
   const a = new Date(atSec * 1000);
@@ -638,7 +685,7 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   const rangeHi = atOf(pts[pts.length - 1]!);
   const span = Math.max(rangeHi - rangeLo, 60);
 
-  const strideSec = THROUGHPUT_AXIS_TICK_SEC;
+  const strideSec = throughputAxisStrideSec(rangeLo, rangeHi);
   const raw: ThroughputBarTick[] = [];
   for (let t = alignDownLocalGrid(rangeLo, strideSec); t <= rangeHi + strideSec; t += strideSec) {
     const xNorm = (t - rangeLo) / span;
@@ -652,19 +699,10 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
     });
   }
 
-  let thinned = raw.filter((_, i) => i % 2 === 0);
-  if (thinned.length > THROUGHPUT_AXIS_MAX_LABELS) {
-    const step = Math.ceil(thinned.length / THROUGHPUT_AXIS_MAX_LABELS);
-    thinned = thinned.filter((_, i) => i % step === 0);
-  }
-
-  const seen = new Set<number>();
-  const ticks: ThroughputBarTick[] = [];
-  for (const t of thinned) {
-    const k = Math.round(t.leftPct * 100) / 100;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    ticks.push(t);
+  let ticks = thinThroughputTicksByMinGap(raw, THROUGHPUT_AXIS_MIN_GAP_PCT);
+  if (ticks.length > THROUGHPUT_AXIS_MAX_TICKS) {
+    ticks = capThroughputTickLabels(ticks, THROUGHPUT_AXIS_MAX_TICKS);
+    ticks = thinThroughputTicksByMinGap(ticks, THROUGHPUT_AXIS_MIN_GAP_PCT);
   }
 
   if (!ticks.length) {
@@ -770,11 +808,29 @@ const scopedPluginRunRow = computed(() => {
   return pr.bots.find((b) => b.self_id === sid) ?? null;
 });
 
+/** 当前账号各插件 Matcher 今日执行次数合计（插件运行统计 bots[].runs_today） */
+const pluginMatcherTodayTotalStr = computed(() => {
+  const row = scopedPluginRunRow.value;
+  if (row == null) return "—";
+  return String(row.runs_today ?? 0);
+});
+
 const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
 
 const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
 
 const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
+
+const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
+
+function formatMatcherErrorAt(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return "—";
+  try {
+    return new Date(sec * 1000).toLocaleString();
+  } catch {
+    return String(sec);
+  }
+}
 
 const pluginRunTimeSamples = ref<PluginRunSample[]>([]);
 
@@ -926,10 +982,13 @@ onMounted(load);
                 @click="load"
               />
             </h2>
-            <RouterLink
-              class="home-instances-capsule"
-              to="/instances"
-            >实例与连接</RouterLink>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <RouterLink
+                class="home-instances-capsule"
+                to="/instances"
+              >实例与连接</RouterLink>
+            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -1091,17 +1150,58 @@ onMounted(load);
                                 aria-hidden="true"
                               > </span>
                             </div>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
+                            <div class="home-account-hero__links-grid__counts">
+                              <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong
+                                class="home-account-hero__counts-num"
+                                :class="{ 'home-account-hero__counts-num--pending': friendCountNumPending }"
+                              >{{ friendCountDisplay }}</strong></span>
+                              <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong
+                                class="home-account-hero__counts-num"
+                                :class="{ 'home-account-hero__counts-num--pending': groupCountNumPending }"
+                              >{{ groupCountDisplay }}</strong></span>
+                            </div>
                           </div>
-                          <p
-                            v-if="socialCountsLoadHint"
-                            class="home-account-hero__social-hint muted"
-                          >
-                            {{ socialCountsLoadHint }}
-                          </p>
                         </div>
                       </div>
+                    </div>
+                    <div class="home-account-hero__matcher-stack">
+                      <div
+                        class="home-account-hero__matcher-foot"
+                        :class="{
+                          'home-account-hero__matcher-foot--bad':
+                            !socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                        }"
+                      >
+                        <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
+                        <span class="home-account-hero__matcher-foot__v">{{
+                          socialBusy
+                            ? "…"
+                            : scopedPluginRunRow == null
+                              ? "—"
+                              : String(scopedPluginRunRow.errors_today ?? 0)
+                        }}</span>
+                      </div>
+                      <details
+                        v-if="!socialBusy && scopedMatcherErrorLog.length"
+                        class="home-account-hero__matcher-details muted"
+                      >
+                        <summary class="home-account-hero__matcher-details-summary">最近异常（{{ scopedMatcherErrorLog.length }}）</summary>
+                        <ul class="home-account-hero__matcher-details-list">
+                          <li
+                            v-for="(it, idx) in scopedMatcherErrorLog"
+                            :key="`${it.at}-${idx}-${it.plugin}`"
+                            class="home-account-hero__matcher-details-item"
+                          >
+                            <div class="home-account-hero__matcher-details-head">
+                              <span>{{ formatMatcherErrorAt(it.at) }}</span>
+                              <span class="home-account-hero__matcher-details-plugin">{{ it.plugin }}</span>
+                              <span>{{ it.exc_type }}</span>
+                            </div>
+                            <div class="home-account-hero__matcher-details-msg">{{ it.message }}</div>
+                            <pre class="home-account-hero__matcher-details-tb">{{ it.traceback }}</pre>
+                          </li>
+                        </ul>
+                      </details>
                     </div>
                   </div>
                   <div class="home-account-unified__col home-account-unified__col--metrics">
@@ -1242,18 +1342,34 @@ onMounted(load);
                         />
                       </div>
                       <div class="home-account-metrics__stats">
-                        <div
-                          class="home-account-metrics__today-block"
-                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
-                        >
-                          <span class="muted home-account-metrics__k">今日 API 调用</span>
-                          <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
-                          <div class="home-account-metrics__skel-track">
-                            <span
-                              v-for="n in 8"
-                              :key="n"
-                              class="home-account-metrics__skel-seg"
-                            />
+                        <div class="home-account-metrics__today-row">
+                          <div
+                            class="home-account-metrics__today-block"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">今日 API 调用</span>
+                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
+                          </div>
+                          <div
+                            class="home-account-metrics__today-block home-account-metrics__today-block--plugin"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginMatcherTodayTotalStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">今日插件调用</span>
+                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : pluginMatcherTodayTotalStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div class="home-account-metrics__tops-grid">
@@ -1303,19 +1419,6 @@ onMounted(load);
                               />
                             </div>
                           </div>
-                        </div>
-                        <div
-                          v-if="!socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0"
-                          class="home-account-metrics__matcher-row home-account-metrics__matcher-row--bad"
-                        >
-                          <span class="muted home-account-metrics__k">Matcher 异常（今日）</span>
-                          <span class="home-account-metrics__matcher-val">{{
-                            socialBusy
-                              ? "…"
-                              : scopedPluginRunRow == null
-                                ? "—"
-                                : String(scopedPluginRunRow.errors_today ?? 0)
-                          }}</span>
                         </div>
                       </div>
                     </div>
@@ -1381,7 +1484,10 @@ onMounted(load);
             <h2 class="panel__title">
               <span class="panel__title-ico" aria-hidden="true">▤</span>系统性能
             </h2>
-            <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
+            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -1468,10 +1574,13 @@ onMounted(load);
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
         </h2>
-        <span
-          v-if="health?.ok"
-          class="home-page__hd-capsule home-page__hd-capsule--ok"
-        >API 连接</span>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/" />
+          <span
+            v-if="health?.ok"
+            class="home-page__hd-capsule home-page__hd-capsule--ok"
+          >API 连接</span>
+        </div>
       </div>
       <div class="panel__bd muted home-page__version home-page__version--grid">
         <dl class="home-dl home-dl--version-rows home-version-dl">

@@ -7,6 +7,7 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -126,6 +127,9 @@ onMounted(async () => {
             @click="load"
           />
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/protocol" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 10px">
@@ -133,7 +137,7 @@ onMounted(async () => {
           <span v-if="snap?.webui_path"> · 路径 <code>{{ snap.webui_path }}</code></span>
         </p>
         <p class="muted" style="margin: 0 0 14px">
-          控制台鉴权已配置：<strong style="color: var(--text)">{{ snap?.console_auth_configured ? "是" : "否" }}</strong>
+          控制台鉴权：<strong style="color: var(--text)">{{ snap?.console_auth_configured ? "已配置" : "未配置" }}</strong>
         </p>
         <div class="row-actions">
           <a
@@ -167,24 +171,27 @@ onMounted(async () => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>协议账号
         </h2>
-        <button
-          type="button"
-          class="btn"
-          style="padding: 6px 12px; font-size: 12px"
-          @click="expProtocolAccounts = !expProtocolAccounts"
-        >
-          {{ expProtocolAccounts ? "收起" : "展开" }}
-        </button>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/protocol" />
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="expProtocolAccounts = !expProtocolAccounts"
+          >
+            {{ expProtocolAccounts ? "收起" : "展开" }}
+          </button>
+        </div>
       </div>
       <div
         v-show="expProtocolAccounts"
         class="panel__bd"
       >
         <div class="table-wrap">
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
-                <th>昵称</th>
+                <th>协议端昵称</th>
                 <th>账号</th>
                 <th>进程</th>
                 <th>已连接</th>

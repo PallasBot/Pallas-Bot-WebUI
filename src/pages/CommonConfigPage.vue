@@ -4,6 +4,7 @@ import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -177,11 +178,12 @@ async function save() {
       class="common-config-page"
     >
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>分区
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd main-path="/common-config" />
           <select
             v-model="currentId"
             class="sel"
@@ -215,7 +217,7 @@ async function save() {
         >
           <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
             下列为各命令当前生效权限（单选）。仅当所选等级与插件声明的默认不同时，会写入
-            <code class="muted">PALLAS_COMMAND_PERMISSION_OVERRIDES</code>。
+            <code>PALLAS_COMMAND_PERMISSION_OVERRIDES</code>。
           </p>
           <div
             v-for="pg in data.command_perm_ui.plugins"

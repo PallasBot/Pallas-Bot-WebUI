@@ -1,52 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import {
-  fetchPluginConfig,
-  fetchPlugins,
-  fetchPluginsHelpMenuVisibility,
-  putPluginsHelpMenuVisibility,
-} from "@/api/consoleApi";
+import { fetchPluginConfig, fetchPlugins } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const list = ref<PluginRow[]>([]);
-const helpMenuHidden = ref<string[]>([]);
-const helpToggleBusy = ref<string | null>(null);
 const open = ref<string | null>(null);
 const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
 
-function pluginHelpShown(p: PluginRow): boolean {
-  if (p.help_ignored) return false;
-  return Boolean(p.help_visible ?? !p.help_hidden);
-}
-
-async function togglePluginHelpMenu(p: PluginRow, wantShown: boolean) {
-  const name = p.name;
-  if (!name || p.help_ignored || helpToggleBusy.value) return;
-  helpToggleBusy.value = name;
-  try {
-    const set = new Set(helpMenuHidden.value);
-    if (wantShown) set.delete(name);
-    else set.add(name);
-    const out = await putPluginsHelpMenuVisibility([...set]);
-    helpMenuHidden.value = [...out.hidden_plugins];
-    list.value = await fetchPlugins();
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    helpToggleBusy.value = null;
-  }
-}
-
 onMounted(async () => {
   try {
-    const [rows, vis] = await Promise.all([fetchPlugins(), fetchPluginsHelpMenuVisibility()]);
-    list.value = rows;
-    helpMenuHidden.value = [...vis.hidden_plugins];
+    list.value = await fetchPlugins();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -90,13 +59,18 @@ async function togglePreview(name: string) {
       class="plugins-page__body"
     >
       <div class="plugins-page__hero">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
-        </h2>
+        <div class="plugins-page__hero-main">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
+          </h2>
+          <p class="muted plugins-page__hero-note">
+            是否在「牛牛帮助」总列表中展示该插件，请在进入对应插件后的配置页顶部「帮助菜单」中设置。
+          </p>
+        </div>
+        <PanelSidebarAdd main-path="/plugins" />
       </div>
       <div
-        class="grid-stats"
-        style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))"
+        class="grid-stats plugins-page__plugin-grid"
       >
         <div
           v-for="p in list"
@@ -108,49 +82,16 @@ async function togglePreview(name: string) {
               class="plugin-card__link"
               :to="{ name: 'plugin-config', params: { name: p.name } }"
             >
-              <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em; margin-bottom: 6px">
+              <div class="plugin-card__title-line">
                 {{ p.metadata?.name || p.name }}
               </div>
-              <div class="muted" style="font-size: 13px; line-height: 1.45">
+              <div
+                class="muted plugin-card__desc-line"
+                :title="(p.metadata?.description || p.module) || undefined"
+              >
                 {{ p.metadata?.description || p.module }}
               </div>
-              <div style="margin-top: 12px; font-size: 12px; color: var(--accent)">进入配置编辑 →</div>
             </RouterLink>
-            <div
-              class="plugin-card__help-panel"
-              @click.stop
-            >
-              <div class="plugin-card__help-head">
-                <div class="plugin-card__help-text">
-                  <div class="plugin-card__help-title">
-                    帮助菜单
-                  </div>
-                  <p class="plugin-card__help-desc muted">
-                    在「牛牛帮助」总列表中展示该插件；关闭后命令仍可用，仅不出现在帮助索引。
-                  </p>
-                  <p
-                    v-if="p.help_ignored"
-                    class="plugin-card__help-note muted"
-                  >
-                    该插件在帮助插件的 ignored_plugins 中，无法出现在帮助菜单。
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  class="plugin-switch"
-                  role="switch"
-                  :aria-checked="pluginHelpShown(p) ? 'true' : 'false'"
-                  :aria-busy="helpToggleBusy === p.name ? 'true' : 'false'"
-                  :aria-label="pluginHelpShown(p) ? '关闭帮助菜单展示' : '开启帮助菜单展示'"
-                  :disabled="Boolean(p.help_ignored) || helpToggleBusy === p.name"
-                  :class="{
-                    'plugin-switch--on': pluginHelpShown(p),
-                    'plugin-switch--busy': helpToggleBusy === p.name,
-                  }"
-                  @click="void togglePluginHelpMenu(p, !pluginHelpShown(p))"
-                />
-              </div>
-            </div>
           </div>
           <div class="plugin-card__actions">
             <button
@@ -182,7 +123,7 @@ async function togglePreview(name: string) {
                 共 <strong style="color: var(--text)">{{ (preview[p.name] as PluginConfigData).fields.length }}</strong> 个字段
               </div>
               <div class="table-wrap">
-                <table class="data">
+                <table class="data console-data-table">
                   <thead>
                     <tr>
                       <th>字段</th>

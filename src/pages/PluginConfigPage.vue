@@ -11,6 +11,7 @@ import {
 import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const route = useRoute();
@@ -188,10 +189,13 @@ async function save() {
       class="panel"
       style="margin-bottom: 16px"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>帮助菜单
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/plugins" />
+        </div>
       </div>
       <div class="panel__bd">
         <p
@@ -242,10 +246,13 @@ async function save() {
       class="panel"
       style="margin-bottom: 16px"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>配置项定义
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/plugins" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0; line-height: 1.55">
@@ -258,18 +265,21 @@ async function save() {
       v-if="data"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>字段
         </h2>
-        <button
-          type="button"
-          class="btn btn--primary"
-          :disabled="saving"
-          @click="save"
-        >
-          {{ saving ? "保存中…" : "保存" }}
-        </button>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/plugins" />
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="saving"
+            @click="save"
+          >
+            {{ saving ? "保存中…" : "保存" }}
+          </button>
+        </div>
       </div>
       <div class="panel__bd">
         <div

@@ -12,10 +12,10 @@ import {
 } from "@/api/consoleApi";
 import type { AiExtensionConfig, AiProxyResult } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
-import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -23,10 +23,20 @@ const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const ok = ref("");
-const jsonText = ref("");
+const saving = ref(false);
 const testOut = ref("");
 const logKind = ref<"uvicorn" | "celery">("uvicorn");
 const logOut = ref("");
+const logErr = ref("");
+
+const baseScheme = ref<"http" | "https">("http");
+const baseHostPort = ref("127.0.0.1:9099");
+const apiPrefix = ref("/api");
+const token = ref("");
+const healthPathsText = ref("/health\n/api/health");
+const uvicornLogFile = ref("");
+const celeryLogFile = ref("");
+const timeoutSec = ref(8);
 
 const ncmPhone = ref("");
 const ncmCtcode = ref(86);
@@ -85,11 +95,63 @@ watch(
   },
 );
 
+function parseBaseUrlParts(raw: string): { scheme: "http" | "https"; hostPort: string } {
+  const s = (raw || "").trim();
+  const m = s.match(/^(https?):\/\/([^/?#]+)/i);
+  if (m) {
+    const scheme = m[1].toLowerCase() === "https" ? "https" : "http";
+    return { scheme, hostPort: m[2] };
+  }
+  const t = s.replace(/\/+$/, "");
+  if (t && !/\s/.test(t)) {
+    const hostPart = t.split("/")[0] ?? "";
+    if (hostPart) return { scheme: "http", hostPort: hostPart };
+  }
+  return { scheme: "http", hostPort: "127.0.0.1:9099" };
+}
+
+function buildBaseUrl(scheme: "http" | "https", hostPort: string): string {
+  const hp = hostPort.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!hp) return `${scheme}://127.0.0.1:9099`;
+  return `${scheme}://${hp}`;
+}
+
+function hydrateFromConfig(c: AiExtensionConfig): void {
+  const { scheme, hostPort } = parseBaseUrlParts(c.base_url);
+  baseScheme.value = scheme;
+  baseHostPort.value = hostPort;
+  apiPrefix.value = c.api_prefix || "/api";
+  token.value = c.token || "";
+  healthPathsText.value = (c.health_paths?.length ? c.health_paths : ["/health", "/api/health"]).join("\n");
+  uvicornLogFile.value = c.uvicorn_log_file || "";
+  celeryLogFile.value = c.celery_log_file || "";
+  timeoutSec.value = c.timeout_sec ?? 8;
+}
+
+function buildConfigPayload(): AiExtensionConfig {
+  const paths = healthPathsText.value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const ap = apiPrefix.value.trim();
+  const api_prefix = ap.startsWith("/") ? ap : `/${ap}`;
+  const t = Math.min(30, Math.max(2, Math.floor(Number(timeoutSec.value)) || 8));
+  return {
+    base_url: buildBaseUrl(baseScheme.value, baseHostPort.value),
+    api_prefix,
+    token: token.value,
+    health_paths: paths.length ? paths : ["/health", "/api/health"],
+    uvicorn_log_file: uvicornLogFile.value.trim(),
+    celery_log_file: celeryLogFile.value.trim(),
+    timeout_sec: t,
+  };
+}
+
 async function load() {
   err.value = "";
   try {
     const c = await fetchAiExtensionConfig();
-    jsonText.value = JSON.stringify(c, null, 2);
+    hydrateFromConfig(c);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -98,13 +160,15 @@ async function load() {
 async function save() {
   err.value = "";
   ok.value = "";
+  saving.value = true;
   try {
-    const body = JSON.parse(jsonText.value) as AiExtensionConfig;
-    const c = await putAiExtensionConfig(body);
-    jsonText.value = JSON.stringify(c, null, 2);
+    const c = await putAiExtensionConfig(buildConfigPayload());
+    hydrateFromConfig(c);
     ok.value = "已保存。";
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -120,13 +184,13 @@ async function runTest() {
 }
 
 async function loadLogs() {
-  err.value = "";
+  logErr.value = "";
   logOut.value = "";
   try {
     const r = await fetchAiExtensionLogs(logKind.value, 200);
     logOut.value = JSON.stringify(r, null, 2);
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    logErr.value = e instanceof Error ? e.message : String(e);
   }
 }
 
@@ -263,219 +327,385 @@ onMounted(async () => {
       :panels="4"
     />
     <div v-else>
-    <div class="panel">
-      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-        <h2 class="panel__title ai-ncm-hd-title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
-          <RefreshIconButton
-            :busy="ncmBusy"
-            :disabled="ncmBusy"
-            label="刷新状态"
-            @click="refreshNcmStatus"
-          />
-        </h2>
-        <div
-          v-if="ncmStatus"
-          class="ai-ncm-hd-status"
-        >
-          <span
-            class="home-page__hd-capsule"
-            :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
-          >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
-          <span
-            v-if="ncmExtraLine"
-            class="muted ai-ncm-hd-extra"
-          >{{ ncmExtraLine }}</span>
+      <div class="panel">
+        <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+          <h2 class="panel__title ai-ncm-hd-title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
+            <RefreshIconButton
+              :busy="ncmBusy"
+              :disabled="ncmBusy"
+              label="刷新状态"
+              @click="refreshNcmStatus"
+            />
+          </h2>
+          <div
+            class="row-actions"
+            style="flex-wrap: wrap; justify-content: flex-end"
+          >
+            <PanelSidebarAdd main-path="/ai" />
+            <div
+              v-if="ncmStatus"
+              class="ai-ncm-hd-status"
+            >
+              <span
+                class="home-page__hd-capsule"
+                :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
+              >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
+              <span
+                v-if="ncmExtraLine"
+                class="muted ai-ncm-hd-extra"
+              >{{ ncmExtraLine }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel__bd">
+          <p
+            v-if="ncmLastNote"
+            class="muted"
+            style="margin: 0 0 12px"
+          >
+            {{ ncmLastNote }}
+          </p>
+          <p
+            v-if="ncmStatus && !ncmStatus.ok"
+            class="muted"
+            style="margin: 0 0 12px; font-size: 12px"
+          >
+            代理：{{ ncmStatus.url }}<template v-if="ncmStatus.error"> · {{ ncmStatus.error }}</template>
+          </p>
+          <p
+            v-else-if="!ncmStatus"
+            class="muted"
+            style="margin: 0 0 12px"
+          >
+            尚未拉取状态。请先配置下方「扩展服务连接」并保存，再点标题旁刷新图标。
+          </p>
+
+          <div
+            class="bot-config-edit"
+            style="border: none; background: transparent; padding: 0; margin: 0"
+          >
+            <div class="bot-config-edit__grid">
+              <div class="bot-config-edit__field">
+                <label>手机号</label>
+                <input
+                  v-model="ncmPhone"
+                  class="inp"
+                  type="text"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="11 位手机号"
+                  style="width: 100%"
+                >
+              </div>
+              <div class="bot-config-edit__field">
+                <label>国家区号 ctcode</label>
+                <input
+                  v-model.number="ncmCtcode"
+                  class="inp"
+                  type="number"
+                  min="1"
+                  max="999"
+                  style="width: 100%"
+                >
+              </div>
+            </div>
+            <div
+              class="row-actions"
+              style="margin-top: 12px; flex-wrap: wrap"
+            >
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="ncmBusy"
+                @click="sendNcmSms"
+              >
+                发送验证码
+              </button>
+            </div>
+            <div
+              class="bot-config-edit__field"
+              style="margin-top: 16px"
+            >
+              <label>短信验证码</label>
+              <input
+                v-model="ncmCaptcha"
+                class="inp ai-ncm-captcha-inp"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                placeholder="收到的验证码"
+                @keydown.enter.prevent="verifyNcmSms"
+              >
+            </div>
+            <div
+              class="row-actions"
+              style="margin-top: 12px; flex-wrap: wrap; gap: 8px"
+            >
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="ncmBusy"
+                @click="verifyNcmSms"
+              >
+                验证并登录
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :disabled="ncmBusy"
+                @click="logoutNcm"
+              >
+                登出网易云
+              </button>
+            </div>
+          </div>
+
+          <details
+            v-if="ncmStatus"
+            class="muted"
+            style="margin-top: 16px; font-size: 12px"
+          >
+            <summary style="cursor: pointer">原始响应（分页查看）</summary>
+            <pre
+              class="pre-block"
+              style="margin-top: 8px; max-height: 220px; overflow: auto"
+            >{{ ncmRawSlice }}</pre>
+            <div style="border-top: none; margin-top: 8px; padding-top: 0">
+              <ConsolePagerBar
+                v-if="ncmRawLines.length > 0"
+                v-model:page="ncmRawPage"
+                v-model:page-size="tablePageSize"
+                :total="ncmRawLines.length"
+                unit="行"
+                embedded
+                :page-sizes="[8, 10, 12, 14, 16, 20, 24, 32]"
+              />
+            </div>
+          </details>
         </div>
       </div>
-      <div class="panel__bd">
-        <p
-          v-if="ncmLastNote"
-          class="muted"
-          style="margin: 0 0 12px"
-        >
-          {{ ncmLastNote }}
-        </p>
-        <p
-          v-if="ncmStatus && !ncmStatus.ok"
-          class="muted"
-          style="margin: 0 0 12px; font-size: 12px"
-        >
-          代理：{{ ncmStatus.url }}<template v-if="ncmStatus.error"> · {{ ncmStatus.error }}</template>
-        </p>
-        <p
-          v-else-if="!ncmStatus"
-          class="muted"
-          style="margin: 0 0 12px"
-        >
-          尚未拉取状态。请先配置下方「扩展基址」并保存，再点标题旁刷新图标。
-        </p>
 
-        <div class="bot-config-edit" style="border: none; background: transparent; padding: 0; margin: 0">
-          <div class="bot-config-edit__grid">
-            <div class="bot-config-edit__field">
-              <label>手机号</label>
-              <input
-                v-model="ncmPhone"
-                class="inp"
-                type="text"
-                inputmode="tel"
-                autocomplete="tel"
-                placeholder="11 位手机号"
-                style="width: 100%"
-              >
-            </div>
-            <div class="bot-config-edit__field">
-              <label>国家区号 ctcode</label>
-              <input
-                v-model.number="ncmCtcode"
-                class="inp"
-                type="number"
-                min="1"
-                max="999"
-                style="width: 100%"
-              >
-            </div>
-          </div>
-          <div class="row-actions" style="margin-top: 12px; flex-wrap: wrap">
+      <div class="panel">
+        <div class="panel__hd panel__hd--split">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>扩展日志
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/ai" />
+            <select
+              v-model="logKind"
+              class="sel"
+            >
+              <option value="uvicorn">uvicorn</option>
+              <option value="celery">celery</option>
+            </select>
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="ncmBusy"
-              @click="sendNcmSms"
+              @click="loadLogs"
             >
-              发送验证码
+              拉取
             </button>
           </div>
-          <div class="bot-config-edit__field" style="margin-top: 16px">
-            <label>短信验证码</label>
-            <input
-              v-model="ncmCaptcha"
-              class="inp ai-ncm-captcha-inp"
-              type="text"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              placeholder="收到的验证码"
-              @keydown.enter.prevent="verifyNcmSms"
-            >
+        </div>
+        <div class="panel__bd">
+          <p
+            v-if="!logOut && !logErr"
+            class="muted"
+            style="margin: 0 0 10px"
+          >
+            选择日志类型后点「拉取」读取扩展服务端日志片段（JSON）。
+          </p>
+          <div
+            v-if="logErr"
+            class="alert alert--err"
+            style="margin-bottom: 10px"
+          >
+            {{ logErr }}
           </div>
-          <div class="row-actions" style="margin-top: 12px; flex-wrap: wrap; gap: 8px">
+          <pre
+            v-if="logOut"
+            class="pre-block"
+          >{{ logOut }}</pre>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__hd panel__hd--split">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>扩展服务连接
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/ai" />
+            <button
+              type="button"
+              class="btn"
+              :disabled="saving"
+              @click="load"
+            >
+              重新加载
+            </button>
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="ncmBusy"
-              @click="verifyNcmSms"
+              :disabled="saving"
+              @click="save"
             >
-              验证并登录
+              {{ saving ? "保存中…" : "保存" }}
             </button>
             <button
               type="button"
               class="btn"
-              :disabled="ncmBusy"
-              @click="logoutNcm"
+              :disabled="saving"
+              @click="runTest"
             >
-              登出网易云
+              健康测试
             </button>
           </div>
         </div>
-
-        <details
-          v-if="ncmStatus"
-          class="muted"
-          style="margin-top: 16px; font-size: 12px"
-        >
-          <summary style="cursor: pointer">原始响应（分页查看）</summary>
-          <pre class="pre-block" style="margin-top: 8px; max-height: 220px; overflow: auto">{{ ncmRawSlice }}</pre>
-          <div style="border-top: none; margin-top: 8px; padding-top: 0">
-            <ConsolePagerBar
-              v-if="ncmRawLines.length > 0"
-              v-model:page="ncmRawPage"
-              v-model:page-size="tablePageSize"
-              :total="ncmRawLines.length"
-              unit="行"
-              embedded
-              :page-sizes="[8, 10, 12, 14, 16, 20, 24, 32]"
-            />
+        <div class="panel__bd">
+          <div class="ai-ext-config-form bot-config-edit">
+            <p
+              class="muted"
+              style="margin: 0 0 12px; font-size: 13px; line-height: 1.55"
+            >
+              以下为 Bot 访问 AI 扩展服务所用的连接参数；保存后写入服务端配置。
+            </p>
+            <div class="ai-ext-url-row">
+              <div class="ai-ext-url-row__scheme">
+                <label class="ai-ext-field-label">协议</label>
+                <select
+                  v-model="baseScheme"
+                  class="sel"
+                  style="width: 100%"
+                >
+                  <option value="http">http</option>
+                  <option value="https">https</option>
+                </select>
+              </div>
+              <div class="ai-ext-url-row__host">
+                <label class="ai-ext-field-label">主机与端口</label>
+                <input
+                  v-model="baseHostPort"
+                  class="inp"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="127.0.0.1:9099 或 [::1]:9099"
+                  style="width: 100%"
+                >
+              </div>
+            </div>
+            <div class="bot-config-edit__field">
+              <label>API 前缀</label>
+              <input
+                v-model="apiPrefix"
+                class="inp"
+                type="text"
+                autocomplete="off"
+                placeholder="/api"
+                style="width: 100%; max-width: 480px"
+              >
+            </div>
+            <div class="bot-config-edit__field">
+              <label>Bearer Token（可选）</label>
+              <input
+                v-model="token"
+                class="inp"
+                type="password"
+                autocomplete="off"
+                placeholder="留空表示不携带 Authorization"
+                style="width: 100%; max-width: 520px"
+              >
+            </div>
+            <div class="bot-config-edit__field">
+              <label>健康检查路径（每行一条）</label>
+              <textarea
+                v-model="healthPathsText"
+                class="textarea"
+                rows="3"
+                spellcheck="false"
+                style="width: 100%; max-width: 560px; font-family: ui-monospace, monospace; font-size: 12px"
+              />
+            </div>
+            <div class="bot-config-edit__field">
+              <label>请求超时（秒）</label>
+              <input
+                v-model.number="timeoutSec"
+                class="inp"
+                type="number"
+                min="2"
+                max="30"
+                style="width: 100%; max-width: 200px"
+              >
+            </div>
+            <div class="bot-config-edit__field">
+              <label>uvicorn 日志路径</label>
+              <input
+                v-model="uvicornLogFile"
+                class="inp"
+                type="text"
+                autocomplete="off"
+                style="width: 100%"
+              >
+            </div>
+            <div class="bot-config-edit__field">
+              <label>celery 日志路径</label>
+              <input
+                v-model="celeryLogFile"
+                class="inp"
+                type="text"
+                autocomplete="off"
+                style="width: 100%"
+              >
+            </div>
           </div>
-        </details>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>配置 JSON
-        </h2>
-        <div class="row-actions">
-          <button
-            type="button"
-            class="btn"
-            @click="load"
+          <div
+            v-if="testOut"
+            style="margin-top: 16px"
           >
-            重新加载
-          </button>
-          <button
-            type="button"
-            class="btn btn--primary"
-            @click="save"
-          >
-            保存
-          </button>
-          <button
-            type="button"
-            class="btn"
-            @click="runTest"
-          >
-            健康测试
-          </button>
+            <div
+              class="muted"
+              style="margin-bottom: 8px"
+            >健康测试结果</div>
+            <pre class="pre-block">{{ testOut }}</pre>
+          </div>
         </div>
       </div>
-      <div class="panel__bd">
-        <JsonTextareaField
-          v-model="jsonText"
-          title="AI 扩展配置 JSON"
-          :rows="8"
-          placeholder="点击或聚焦，在弹窗中编辑扩展服务配置 JSON"
-        />
-        <div
-          v-if="testOut"
-          style="margin-top: 16px"
-        >
-          <div class="muted" style="margin-bottom: 8px">测试结果</div>
-          <pre class="pre-block">{{ testOut }}</pre>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel__hd">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>扩展日志
-        </h2>
-        <div class="row-actions">
-          <select
-            v-model="logKind"
-            class="sel"
-          >
-            <option value="uvicorn">uvicorn</option>
-            <option value="celery">celery</option>
-          </select>
-          <button
-            type="button"
-            class="btn btn--primary"
-            @click="loadLogs"
-          >
-            拉取
-          </button>
-        </div>
-      </div>
-      <div
-        v-if="logOut"
-        class="panel__bd"
-      >
-        <pre class="pre-block">{{ logOut }}</pre>
-      </div>
-    </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.ai-ext-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.ai-ext-config-form {
+  min-width: 0;
+}
+
+.ai-ext-url-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ai-ext-url-row__scheme {
+  flex: 0 1 120px;
+  min-width: 0;
+}
+
+.ai-ext-url-row__host {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+</style>
