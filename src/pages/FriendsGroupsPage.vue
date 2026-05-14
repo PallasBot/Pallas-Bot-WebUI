@@ -131,9 +131,7 @@ async function loadBots() {
   try {
     const inst = await fetchInstances();
     instances.value = inst;
-    if (!selfIdStr.value && botsVisible.value.length) {
-      selfIdStr.value = botsVisible.value[0]!.self_id;
-    }
+    applySelfIdFromRouteQuery();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -177,20 +175,28 @@ async function loadRequestsOnly() {
 }
 
 watch(botsVisible, (list) => {
-  if (!list.length) return;
-  if (!list.some((b) => b.self_id === selfIdStr.value)) {
-    selfIdStr.value = list[0]!.self_id;
+  const cur = selfIdStr.value.trim();
+  if (!cur) return;
+  if (!list.some((b) => b.self_id === cur)) {
+    selfIdStr.value = "";
   }
 });
 
 async function refreshPage() {
   await loadBots();
-  applySelfIdFromRouteQuery();
-  await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+  const tasks: Promise<void>[] = [loadRequestsOnly()];
+  if (selfIdStr.value.trim()) tasks.push(loadListsOnly());
+  await Promise.all(tasks);
 }
 
 watch(selfIdStr, () => {
   if (skipSelfIdWatch.value) return;
+  const sid = selfIdStr.value.trim();
+  if (!sid) {
+    friends.value = null;
+    groups.value = null;
+    return;
+  }
   reqsBusy.value = true;
   requests.value = null;
   overview.value = null;
@@ -526,14 +532,23 @@ watch(
 onMounted(async () => {
   try {
     await loadBots();
-    applySelfIdFromRouteQuery();
-    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+    const tasks: Promise<void>[] = [loadRequestsOnly()];
+    if (selfIdStr.value.trim()) tasks.push(loadListsOnly());
+    await Promise.all(tasks);
   } finally {
     pageReady.value = true;
     skipSelfIdWatch.value = false;
     scrollFriendsGroupsHashIntoView();
   }
 });
+
+function toggleFriendsListPanel() {
+  setConsolePrefs({ friendsPageFriendsListOpen: !consolePrefs.friendsPageFriendsListOpen });
+}
+
+function toggleGroupsListPanel() {
+  setConsolePrefs({ friendsPageGroupsListOpen: !consolePrefs.friendsPageGroupsListOpen });
+}
 </script>
 
 <template>
@@ -561,6 +576,7 @@ onMounted(async () => {
             class="sel"
             style="min-width: 280px"
           >
+            <option value="">请选择 Bot…</option>
             <option
               v-for="b in botsVisible"
               :key="b.self_id"
@@ -586,19 +602,39 @@ onMounted(async () => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
         </h2>
-        <span
-          v-if="listsBusy"
-          class="muted"
-          style="font-size: 12px"
-        >列表加载中…</span>
-        <span
-          v-else-if="friends?.truncated"
-          class="badge badge--warn"
-        >已截断</span>
+        <div class="row-actions friends-groups-list-hd-actions">
+          <span
+            v-if="selfIdStr && listsBusy"
+            class="muted"
+            style="font-size: 12px"
+          >列表加载中…</span>
+          <span
+            v-else-if="friends?.truncated"
+            class="badge badge--warn"
+          >已截断</span>
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="toggleFriendsListPanel"
+          >
+            {{ consolePrefs.friendsPageFriendsListOpen ? "收起" : "展开" }}
+          </button>
+        </div>
       </div>
-      <div class="panel__bd">
+      <div
+        v-show="consolePrefs.friendsPageFriendsListOpen"
+        class="panel__bd"
+      >
         <p
-          v-if="friends?.error"
+          v-if="!selfIdStr.trim()"
+          class="muted"
+          style="margin: 0"
+        >
+          请选择 Bot 后加载好友列表。
+        </p>
+        <p
+          v-else-if="friends?.error"
           class="alert alert--err"
         >
           {{ friends.error }}
@@ -647,19 +683,39 @@ onMounted(async () => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
         </h2>
-        <span
-          v-if="listsBusy"
-          class="muted"
-          style="font-size: 12px"
-        >列表加载中…</span>
-        <span
-          v-else-if="groups?.truncated"
-          class="badge badge--warn"
-        >已截断 · limit {{ groups?.limit }}</span>
+        <div class="row-actions friends-groups-list-hd-actions">
+          <span
+            v-if="selfIdStr && listsBusy"
+            class="muted"
+            style="font-size: 12px"
+          >列表加载中…</span>
+          <span
+            v-else-if="groups?.truncated"
+            class="badge badge--warn"
+          >已截断 · limit {{ groups?.limit }}</span>
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="toggleGroupsListPanel"
+          >
+            {{ consolePrefs.friendsPageGroupsListOpen ? "收起" : "展开" }}
+          </button>
+        </div>
       </div>
-      <div class="panel__bd">
+      <div
+        v-show="consolePrefs.friendsPageGroupsListOpen"
+        class="panel__bd"
+      >
         <p
-          v-if="groups?.error"
+          v-if="!selfIdStr.trim()"
+          class="muted"
+          style="margin: 0"
+        >
+          请选择 Bot 后加载群聊列表。
+        </p>
+        <p
+          v-else-if="groups?.error"
           class="alert alert--err"
         >
           {{ groups.error }}
