@@ -21,6 +21,10 @@ export interface ConsolePrefsState {
   tablePageSize: number;
   /** 侧栏主导航 path 顺序（与 mainNav 对齐） */
   sidebarNavOrder: string[];
+  /** 好友与群页：好友列表面板是否展开 */
+  friendsPageFriendsListOpen: boolean;
+  /** 好友与群页：群聊列表面板是否展开 */
+  friendsPageGroupsListOpen: boolean;
 }
 
 const defaults: ConsolePrefsState = {
@@ -31,6 +35,8 @@ const defaults: ConsolePrefsState = {
   instancesBotView: "table",
   tablePageSize: 12,
   sidebarNavOrder: normalizeMainNavOrder(undefined),
+  friendsPageFriendsListOpen: true,
+  friendsPageGroupsListOpen: true,
 };
 
 function load(): ConsolePrefsState {
@@ -48,6 +54,12 @@ function load(): ConsolePrefsState {
     merged.sidebarNavOrder = normalizeMainNavOrder(
       Array.isArray(parsed.sidebarNavOrder) ? (parsed.sidebarNavOrder as string[]) : undefined,
     );
+    if (typeof parsed.friendsPageFriendsListOpen === "boolean") {
+      merged.friendsPageFriendsListOpen = parsed.friendsPageFriendsListOpen;
+    }
+    if (typeof parsed.friendsPageGroupsListOpen === "boolean") {
+      merged.friendsPageGroupsListOpen = parsed.friendsPageGroupsListOpen;
+    }
     return merged;
   } catch {
     return { ...defaults };

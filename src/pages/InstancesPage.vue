@@ -349,40 +349,37 @@ onMounted(async () => {
               <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
               / {{ dbBotsTotalCount }} 账号
             </span>
-            <div
-              class="row-actions"
-              style="flex-wrap: wrap; gap: 8px; align-items: center"
-            >
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
-              @click="expDbBots = !expDbBots"
-            >
-              {{ expDbBots ? "收起" : "展开" }}
-            </button>
-            <div
-              class="console-view-toggle"
-              role="group"
-              aria-label="Bot 配置视图"
-            >
+            <div class="row-actions inst-db-panel__toolbar">
               <button
                 type="button"
-                :class="{ 'is-on': botView === 'table' }"
-                @click="setBotView('table')"
+                class="btn"
+                style="padding: 6px 12px; font-size: 12px"
+                @click="expDbBots = !expDbBots"
               >
-                表格
+                {{ expDbBots ? "收起" : "展开" }}
               </button>
-              <button
-                type="button"
-                :class="{ 'is-on': botView === 'cards' }"
-                @click="setBotView('cards')"
+              <div
+                class="console-view-toggle"
+                role="group"
+                aria-label="Bot 配置视图"
               >
-                卡片
-              </button>
+                <button
+                  type="button"
+                  :class="{ 'is-on': botView === 'table' }"
+                  @click="setBotView('table')"
+                >
+                  表格
+                </button>
+                <button
+                  type="button"
+                  :class="{ 'is-on': botView === 'cards' }"
+                  @click="setBotView('cards')"
+                >
+                  卡片
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         </div>
         <div
           v-show="expDbBots"
@@ -425,9 +422,19 @@ onMounted(async () => {
                       isBotConnected(c.account) ? "已连接" : "未连接"
                     }}</span>
                   </td>
-                  <td>{{ c.security }}</td>
-                  <td>{{ c.auto_accept_friend }}</td>
-                  <td>{{ c.auto_accept_group }}</td>
+                  <td>
+                    <span :class="boolPillClass(c.security)">{{ c.security ? "开启" : "关闭" }}</span>
+                  </td>
+                  <td>
+                    <span :class="boolPillClass(c.auto_accept_friend)">{{
+                      c.auto_accept_friend ? "开启" : "关闭"
+                    }}</span>
+                  </td>
+                  <td>
+                    <span :class="boolPillClass(c.auto_accept_group)">{{
+                      c.auto_accept_group ? "开启" : "关闭"
+                    }}</span>
+                  </td>
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <div class="inst-actions">

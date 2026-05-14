@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -64,43 +64,10 @@ const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
 
-const accountPickerOpen = ref(false);
-const accountPickerRoot = ref<HTMLElement | null>(null);
-
-function onAccountPickerDocDown(ev: MouseEvent) {
-  if (!accountPickerOpen.value) return;
-  const root = accountPickerRoot.value;
-  const t = ev.target;
-  if (!(t instanceof Node)) return;
-  if (root?.contains(t)) return;
-  accountPickerOpen.value = false;
-}
-
-watch(accountPickerOpen, (open) => {
-  if (open) {
-    nextTick(() => {
-      requestAnimationFrame(() => {
-        document.addEventListener("mousedown", onAccountPickerDocDown, true);
-      });
-    });
-  } else {
-    document.removeEventListener("mousedown", onAccountPickerDocDown, true);
-  }
-});
-
-onUnmounted(() => {
-  document.removeEventListener("mousedown", onAccountPickerDocDown, true);
-});
-
-function toggleAccountPicker(ev: MouseEvent) {
-  ev.stopPropagation();
-  if (sortedDbBots.value.length <= 1) return;
-  accountPickerOpen.value = !accountPickerOpen.value;
-}
-
-function pickAccountFromList(account: number) {
-  selectedAccount.value = account;
-  accountPickerOpen.value = false;
+function onHomeAccountSelectChange(ev: Event) {
+  const el = ev.target as HTMLSelectElement;
+  const n = parseInt(el.value, 10);
+  selectedAccount.value = Number.isFinite(n) ? n : null;
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
@@ -689,7 +656,6 @@ async function refreshSelectedBotDetails() {
 }
 
 watch(selectedAccount, () => {
-  accountPickerOpen.value = false;
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
 });
@@ -701,9 +667,6 @@ watch([scopedPluginRunRow, selectedAccount, socialBusy], ([row, acc, busy]) => {
 });
 
 watch(sortedDbBots, () => {
-  if (sortedDbBots.value.length <= 1) {
-    accountPickerOpen.value = false;
-  }
   ensureSelectedAccount();
 });
 
@@ -828,51 +791,27 @@ onMounted(load);
                           >
                         </div>
                         <div class="home-account-hero__main">
-                          <div
-                            ref="accountPickerRoot"
-                            class="home-account-hero__picker"
-                          >
-                            <div class="home-account-hero__title home-account-hero__title--picker">
-                              <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
-                              <button
-                                v-if="sortedDbBots.length > 1"
-                                type="button"
-                                class="home-account-hero__picker-toggle"
-                                :aria-expanded="accountPickerOpen"
-                                aria-haspopup="listbox"
-                                aria-label="切换账号"
-                                @click="toggleAccountPicker"
-                              >
-                                <span
-                                  class="home-account-hero__picker-caret"
-                                  aria-hidden="true"
-                                />
-                              </button>
-                              <span
-                                class="home-account-conn"
-                                :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                              >{{ selectedConnected ? "已连接" : "未连接" }}</span>
-                            </div>
-                            <div
-                              v-if="accountPickerOpen && sortedDbBots.length > 1"
-                              class="home-account-hero__picker-menu"
-                              role="listbox"
-                              aria-label="选择 Bot 账号"
+                          <div class="home-account-hero__title home-account-hero__title--picker">
+                            <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
+                            <select
+                              v-if="sortedDbBots.length > 1"
+                              class="home-account-hero__acct-sel-native"
+                              aria-label="切换账号"
+                              :value="selectedAccount != null ? String(selectedAccount) : ''"
+                              @change="onHomeAccountSelectChange"
                             >
-                              <button
+                              <option
                                 v-for="c in sortedDbBots"
                                 :key="c.account"
-                                type="button"
-                                class="home-account-hero__picker-item"
-                                :class="{ 'is-active': c.account === selectedAccount }"
-                                role="option"
-                                :aria-selected="c.account === selectedAccount"
-                                @click="pickAccountFromList(c.account)"
+                                :value="String(c.account)"
                               >
-                                <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
-                                <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
-                              </button>
-                            </div>
+                                {{ dbNick(c.account) || "BOT" }} · {{ c.account }}
+                              </option>
+                            </select>
+                            <span
+                              class="home-account-conn"
+                              :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
+                            >{{ selectedConnected ? "已连接" : "未连接" }}</span>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
                           <p class="home-account-hero__proto muted">
@@ -954,9 +893,8 @@ onMounted(load);
                               > </span>
                             </div>
                           </div>
-                          <div class="home-account-hero__counts-line">
+                          <div class="home-account-hero__counts-line home-account-hero__counts-line--grid">
                             <span class="home-account-hero__counts-pair">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
-                            <span class="home-account-hero__counts-sep muted">·</span>
                             <span class="home-account-hero__counts-pair">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
                           </div>
                           <p

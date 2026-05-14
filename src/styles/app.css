@@ -855,6 +855,31 @@ html[data-theme="light"] .shell-page-loading {
   align-items: center;
 }
 
+.inst-db-panel__actions {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 12px;
+  margin-left: auto;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.inst-db-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.friends-groups-list-hd-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .ai-ncm-hd-title {
   margin: 0;
 }
@@ -1846,6 +1871,44 @@ html[data-theme="light"] .bot-config-edit {
 .home-account-hero__title--picker .home-account-conn {
   margin-left: 2px;
 }
+/* 原生 <select>：弱化成标题行内联，避免像多叠一块卡片 */
+.home-account-hero__acct-sel-native {
+  flex-shrink: 0;
+  max-width: min(200px, 50vw);
+  margin: 0 0 0 4px;
+  padding: 0 2px;
+  font-size: 0.88em;
+  font-weight: 600;
+  line-height: inherit;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: none;
+}
+.home-account-hero__acct-sel-native:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.home-account-hero__acct-sel-native:focus {
+  outline: none;
+}
+.home-account-hero__acct-sel-native:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+.home-account-hero--color .home-account-hero__acct-sel-native {
+  color: color-mix(in srgb, #e2e8f0 90%, #7dd3fc 10%);
+}
+.home-account-hero--color .home-account-hero__acct-sel-native:hover {
+  background: color-mix(in srgb, #fff 8%, transparent);
+}
+html[data-theme="light"] .home-account-hero--color .home-account-hero__acct-sel-native {
+  color: #0f172a;
+}
+html[data-theme="light"] .home-account-hero--color .home-account-hero__acct-sel-native:hover {
+  background: color-mix(in srgb, #0f172a 6%, transparent);
+}
 .home-account-hero__picker-toggle {
   display: inline-flex;
   align-items: center;
@@ -2406,6 +2469,22 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
   pointer-events: none;
   user-select: none;
 }
+.home-account-hero__counts-line--grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+  align-items: baseline;
+  width: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  min-width: 0;
+}
+.home-account-hero__counts-line--grid .home-account-hero__counts-pair {
+  min-width: 0;
+}
+
 .home-account-hero__counts-line {
   display: flex;
   flex-wrap: nowrap;
@@ -2886,14 +2965,12 @@ html[data-theme="light"] .home-account-metrics__matcher-row--bad .home-account-m
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  background-image: linear-gradient(95deg, #38bdf8 0%, #818cf8 48%, #e879f9 100%);
 }
 
-.home-account-metrics--color .home-account-metrics__recv {
-  background-image: linear-gradient(100deg, #38bdf8 0%, #22d3ee 45%, #a5f3fc 100%);
-}
-
-.home-account-metrics--color .home-account-metrics__sent {
-  background-image: linear-gradient(100deg, #a78bfa 0%, #c084fc 50%, #f9a8d4 100%);
+html[data-theme="light"] .home-account-metrics--color .home-account-metrics__recv,
+html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sent {
+  background-image: linear-gradient(95deg, #0284c7 0%, #4f46e5 48%, #a21caf 100%);
 }
 
 .home-account-metrics--color .home-account-metrics__sep {
