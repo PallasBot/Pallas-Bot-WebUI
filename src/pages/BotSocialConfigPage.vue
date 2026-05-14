@@ -16,6 +16,7 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -330,6 +331,12 @@ onMounted(async () => {
       <div class="panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
+          <RefreshIconButton
+            :busy="busy"
+            :disabled="busy"
+            label="刷新群配置列表"
+            @click="loadGroupList"
+          />
         </h2>
         <div class="row-actions">
           <select
@@ -346,14 +353,6 @@ onMounted(async () => {
               {{ botFilterLabel(b) }}
             </option>
           </select>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="busy"
-            @click="loadGroupList"
-          >
-            刷新列表
-          </button>
         </div>
       </div>
       <div class="panel__bd">

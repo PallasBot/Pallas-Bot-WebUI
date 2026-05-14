@@ -7,6 +7,7 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -27,6 +28,8 @@ const tablePageSize = computed({
 });
 
 const protoAccPage = ref(1);
+const expProtocolAccounts = ref(true);
+const loadBusy = ref(false);
 
 watch(
   () => consolePrefs.tablePageSize,
@@ -77,12 +80,15 @@ function primaryTitle(a: NapcatAccountRow): string {
 
 async function load() {
   err.value = "";
+  loadBusy.value = true;
   try {
     const [s, i] = await Promise.all([fetchSystem(), fetchInstances()]);
     system.value = s;
     instances.value = i;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    loadBusy.value = false;
   }
 }
 
@@ -110,9 +116,15 @@ onMounted(async () => {
     />
     <div v-else>
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入口
+          <RefreshIconButton
+            :busy="loadBusy"
+            :disabled="loadBusy"
+            label="刷新协议端数据"
+            @click="load"
+          />
         </h2>
       </div>
       <div class="panel__bd">
@@ -151,12 +163,23 @@ onMounted(async () => {
       v-if="(snap?.accounts?.length ?? 0) > 0"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>协议账号
         </h2>
+        <button
+          type="button"
+          class="btn"
+          style="padding: 6px 12px; font-size: 12px"
+          @click="expProtocolAccounts = !expProtocolAccounts"
+        >
+          {{ expProtocolAccounts ? "收起" : "展开" }}
+        </button>
       </div>
-      <div class="panel__bd">
+      <div
+        v-show="expProtocolAccounts"
+        class="panel__bd"
+      >
         <div class="table-wrap">
           <table class="data">
             <thead>
@@ -200,16 +223,6 @@ onMounted(async () => {
           :total="protocolAccountsSorted.length"
         />
       </div>
-    </div>
-
-    <div class="row-actions">
-      <button
-        type="button"
-        class="btn btn--primary"
-        @click="load"
-      >
-        刷新
-      </button>
     </div>
     </div>
   </div>

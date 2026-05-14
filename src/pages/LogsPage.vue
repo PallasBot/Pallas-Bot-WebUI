@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -117,6 +118,12 @@ function lineClass(lv: LogEntry["level"]): string {
       <div class="panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
+          <RefreshIconButton
+            :busy="loading"
+            :disabled="loading"
+            label="刷新日志"
+            @click="load"
+          />
         </h2>
         <div class="row-actions">
           <select
@@ -157,14 +164,6 @@ function lineClass(lv: LogEntry["level"]): string {
             @click="view = 'raw'"
           >
             原始行
-          </button>
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="loading"
-            @click="load"
-          >
-            {{ loading ? "加载中…" : "刷新" }}
           </button>
         </div>
       </div>

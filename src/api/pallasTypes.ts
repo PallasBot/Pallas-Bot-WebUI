@@ -158,10 +158,35 @@ export interface PluginConfigField {
   current: unknown;
 }
 
+/** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
+export interface CommandPermUiLevel {
+  id: string;
+  label: string;
+}
+
+export interface CommandPermUiCommand {
+  command_id: string;
+  label: string;
+  default_level: string;
+  effective_level: string;
+}
+
+export interface CommandPermUiPlugin {
+  plugin: string;
+  title: string;
+  commands: CommandPermUiCommand[];
+}
+
+export interface CommandPermUiData {
+  levels: CommandPermUiLevel[];
+  plugins: CommandPermUiPlugin[];
+}
+
 export interface PluginConfigData {
   plugin: string;
   module: string;
   fields: PluginConfigField[];
+  command_perm_ui?: CommandPermUiData;
 }
 
 /** GET /common-config/sections */
