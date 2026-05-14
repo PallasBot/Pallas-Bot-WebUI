@@ -638,6 +638,9 @@ html[data-theme="light"] .shell__topbar-exit:hover {
   text-overflow: ellipsis;
   max-width: none;
 }
+.shell__topbar-desc--hide-narrow {
+  display: none;
+}
 .shell__topbar-end {
   display: flex;
   align-items: center;
@@ -2230,70 +2233,76 @@ html[data-theme="light"] .home-account-hero__admin-values {
   color: #a16207;
 }
 
-.home-account-hero--color .home-account-hero__links {
-  gap: 10px 16px;
+.home-account-hero__links-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  align-items: start;
+  width: 100%;
+  margin: 0;
 }
-
-.home-account-hero--color .home-account-hero__link {
-  font-weight: 650;
-}
-
-.home-account-hero--color .home-account-hero__link:nth-child(1) {
-  color: #2dd4bf;
-}
-
-.home-account-hero--color .home-account-hero__link:nth-child(2) {
-  color: #c4b5fd;
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__link:nth-child(1) {
-  color: #0f766e;
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__link:nth-child(2) {
-  color: #5b21b6;
-}
-
-.home-account-hero--color .home-account-dl--hero-foot {
-  margin-top: 2px;
-}
-
-.home-account-hero--color .home-account-dl--hero-foot dt {
-  color: #93c5fd;
-  font-weight: 700;
-}
-
-.home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack {
+.home-account-hero__links-grid__col {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  margin: 0;
-  font-weight: inherit;
-  font-size: inherit;
-  letter-spacing: normal;
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  color: var(--text);
+  gap: 2px;
 }
-
-.home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
-  display: inline-block;
+.home-account-hero--color .home-account-hero__links-grid .home-account-hero__link {
+  font-weight: 650;
+}
+.home-account-hero--color .home-account-hero__links-grid__col--friend .home-account-hero__link {
+  color: #2dd4bf;
+}
+.home-account-hero--color .home-account-hero__links-grid__col--group .home-account-hero__link {
+  color: #c4b5fd;
+}
+html[data-theme="light"] .home-account-hero--color .home-account-hero__links-grid__col--friend .home-account-hero__link {
+  color: #0f766e;
+}
+html[data-theme="light"] .home-account-hero--color .home-account-hero__links-grid__col--group .home-account-hero__link {
+  color: #5b21b6;
+}
+.home-account-hero__link-ph {
+  display: block;
+  min-height: 1.15em;
+  font-size: 12px;
+  line-height: 1.15;
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.home-account-hero__counts-line {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  min-width: 0;
+}
+.home-account-hero__counts-pair {
+  color: #93c5fd;
+  white-space: nowrap;
+}
+.home-account-hero__counts-sep {
+  flex-shrink: 0;
+}
+.home-account-hero__counts-num {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.02em;
+  margin-left: 2px;
   background: linear-gradient(95deg, #38bdf8 0%, #818cf8 48%, #e879f9 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
-html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot dt {
+html[data-theme="light"] .home-account-hero__counts-pair {
   color: #2563eb;
 }
-
-html[data-theme="light"] .home-account-hero--color .home-account-dl--hero-foot dd.home-account-dl__stack .home-account-dl__stack-count {
+html[data-theme="light"] .home-account-hero__counts-num {
   background: linear-gradient(95deg, #0284c7 0%, #4f46e5 48%, #a21caf 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -2904,6 +2913,16 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-account-hero__pending-card {
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .home-account-hero__detail-main {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 8px;
+  }
+
+  .home-account-hero__proto-sub {
+    display: none;
   }
 }
 
