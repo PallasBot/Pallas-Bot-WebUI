@@ -411,8 +411,11 @@ type ThroughputBarBucket = { recv: ThroughputBarRect; sent: ThroughputBarRect };
 
 const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.message_traffic_history ?? []);
 
-/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾） */
-const THROUGHPUT_BAR_VISIBLE_BUCKETS = 15;
+/** 吞吐迷你图高度（viewBox 与柱/折线计算共用） */
+const THROUGHPUT_MINI_SVG_H = 34;
+
+/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾；后端最多约 288 桶） */
+const THROUGHPUT_BAR_VISIBLE_BUCKETS = 48;
 
 function sliceThroughputBarPoints<T extends { at: number }>(arr: T[]): T[] {
   if (arr.length <= THROUGHPUT_BAR_VISIBLE_BUCKETS) return arr;
@@ -427,9 +430,9 @@ const throughputSparklineMode = computed<"message" | "api" | null>(() => {
 });
 
 const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
-  if (socialBusy.value || throughputSparklineMode.value !== "message") return [];
+  if (socialBusy.value) return [];
   const W = 100;
-  const H = 30;
+  const H = THROUGHPUT_MINI_SVG_H;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
@@ -441,11 +444,12 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   const max = Math.max(...recvVals, ...sentVals, 1);
   const n = pts.length;
   const slot = (W - 2 * pad) / n;
+  const bwScale = n > 36 ? 0.4 : n > 24 ? 0.37 : 0.34;
   return pts.map((_, i) => {
     const r = recvVals[i]! / max;
     const s = sentVals[i]! / max;
-    const bw = slot * 0.34;
-    const gap = slot * 0.08;
+    const bw = slot * bwScale;
+    const gap = slot * Math.min(0.08, 0.12 - bwScale * 0.15);
     const left = pad + i * slot + (slot - 2 * bw - gap) / 2;
     const hr = Math.max(chartH * r, 0.4);
     const hs = Math.max(chartH * s, 0.4);
@@ -456,20 +460,46 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   });
 });
 
-/** API 吞吐迷你图：折线（与消息柱图同 viewBox） */
-const throughputApiLineModel = computed((): { polyline: string; dot: { x: number; y: number } | null } => {
-  const empty = { polyline: "", dot: null as { x: number; y: number } | null };
-  if (socialBusy.value || throughputSparklineMode.value !== "api") return empty;
-  const pts = sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
-  if (!pts.length) return empty;
+/** API 吞吐迷你图：折线（与消息柱图同 viewBox；有消息柱时在柱上叠画，按桶 at 对齐） */
+const throughputApiLineModel = computed((): {
+  polyline: string;
+  dot: { x: number; y: number } | null;
+  areaPath: string;
+  lineDots: { x: number; y: number }[];
+} => {
+  const empty = {
+    polyline: "",
+    dot: null as { x: number; y: number } | null,
+    areaPath: "",
+    lineDots: [] as { x: number; y: number }[],
+  };
+  if (socialBusy.value) return empty;
+
+  const apiRaw = scopedBotStatsRow.value?.api_calls_history ?? [];
+  const apiSlice = sliceThroughputBarPoints(apiRaw);
+  if (!apiSlice.length) return empty;
+
   const W = 100;
-  const H = 30;
+  const H = THROUGHPUT_MINI_SVG_H;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
-  const vals = pts.map((p) => Number(p.total ?? 0));
+
+  const msgSlice = sliceThroughputBarPoints(scopedMessageTrafficHistory.value);
+  let vals: number[];
+  let n: number;
+  if (msgSlice.length) {
+    const apiByAt = new Map(apiSlice.map((p) => [p.at, Number(p.total ?? 0)]));
+    vals = msgSlice.map((m) => apiByAt.get(m.at) ?? 0);
+    n = vals.length;
+    if (!vals.some((v) => v > 0)) return empty;
+  } else {
+    vals = apiSlice.map((p) => Number(p.total ?? 0));
+    n = vals.length;
+    if (!vals.some((v) => v > 0)) return empty;
+  }
+
   const max = Math.max(...vals, 1);
-  const n = vals.length;
   const slot = (W - 2 * pad) / n;
   const xy: { x: number; y: number }[] = [];
   for (let i = 0; i < n; i++) {
@@ -478,9 +508,19 @@ const throughputApiLineModel = computed((): { polyline: string; dot: { x: number
     xy.push({ x, y });
   }
   if (xy.length === 1) {
-    return { polyline: "", dot: xy[0]! };
+    return { polyline: "", dot: xy[0]!, areaPath: "", lineDots: [] };
   }
-  return { polyline: xy.map((p) => `${p.x},${p.y}`).join(" "), dot: null };
+  const polyline = xy.map((p) => `${p.x},${p.y}`).join(" ");
+  const first = xy[0]!;
+  const last = xy[xy.length - 1]!;
+  let areaPath = "";
+  for (let i = 0; i < xy.length; i++) {
+    const p = xy[i]!;
+    areaPath += i === 0 ? `M${first.x},${bottom}L${p.x},${p.y}` : `L${p.x},${p.y}`;
+  }
+  areaPath += `L${last.x},${bottom}Z`;
+  const lineDots = xy.length >= 2 && xy.length <= 44 ? xy : [];
+  return { polyline, dot: null, areaPath, lineDots };
 });
 
 type ThroughputBarTick = { leftPct: number; label: string };
@@ -781,22 +821,20 @@ onMounted(load);
     <div class="home-dashboard">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
-          <div class="panel__hd home-account-panel__hd">
-            <div class="home-account-panel__hd-main">
-              <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
-                <RefreshIconButton
-                  :busy="overviewBusy"
-                  :disabled="overviewBusy"
-                  label="刷新概况"
-                  @click="load"
-                />
-              </h2>
-              <RouterLink
-                class="home-instances-capsule"
-                to="/instances"
-              >实例与连接</RouterLink>
-            </div>
+          <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
+              <RefreshIconButton
+                :busy="overviewBusy"
+                :disabled="overviewBusy"
+                label="刷新概况"
+                @click="load"
+              />
+            </h2>
+            <RouterLink
+              class="home-instances-capsule"
+              to="/instances"
+            >实例与连接</RouterLink>
           </div>
           <div class="panel__bd">
             <p
@@ -900,7 +938,10 @@ onMounted(load);
                                 v-else
                                 class="home-account-hero__pending-count-link"
                                 :to="friendsGroupsFriendPendingTo"
-                              >{{ friendPendingApplyDisplay }} 条待同意</RouterLink>
+                              >
+                                <span class="home-account-hero__pending-count-num">{{ friendPendingApplyDisplay }}</span>
+                                <span class="home-account-hero__pending-count-suffix"> 条待同意</span>
+                              </RouterLink>
                             </div>
                           </div>
                           <div class="home-account-hero__pending-card">
@@ -911,7 +952,10 @@ onMounted(load);
                                 v-else
                                 class="home-account-hero__pending-count-link"
                                 :to="friendsGroupsGroupPendingTo"
-                              >{{ groupPendingApplyDisplay }} 条待同意</RouterLink>
+                              >
+                                <span class="home-account-hero__pending-count-num">{{ groupPendingApplyDisplay }}</span>
+                                <span class="home-account-hero__pending-count-suffix"> 条待同意</span>
+                              </RouterLink>
                             </div>
                           </div>
                         </aside>
@@ -993,12 +1037,38 @@ onMounted(load);
                       >
                         <svg
                           class="home-account-metrics__bars-svg"
-                          viewBox="0 0 100 30"
+                          viewBox="0 0 100 34"
                           preserveAspectRatio="none"
                           overflow="hidden"
                           aria-hidden="true"
                         >
-                          <template v-if="throughputSparklineMode === 'message'">
+                          <defs>
+                            <linearGradient
+                              id="home-throughput-api-area-fill"
+                              x1="50"
+                              y1="34"
+                              x2="50"
+                              y2="0"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop
+                                offset="0%"
+                                stop-color="#38bdf8"
+                                stop-opacity="0"
+                              />
+                              <stop
+                                offset="55%"
+                                stop-color="#38bdf8"
+                                stop-opacity="0.11"
+                              />
+                              <stop
+                                offset="100%"
+                                stop-color="#a5f3fc"
+                                stop-opacity="0.28"
+                              />
+                            </linearGradient>
+                          </defs>
+                          <template v-if="throughputMessageBarBuckets.length">
                             <g
                               v-for="(b, i) in throughputMessageBarBuckets"
                               :key="i"
@@ -1009,7 +1079,7 @@ onMounted(load);
                                 :y="b.recv.y"
                                 :width="b.recv.w"
                                 :height="b.recv.h"
-                                rx="0.5"
+                                rx="0.65"
                               />
                               <rect
                                 class="home-account-metrics__bar home-account-metrics__bar--sent"
@@ -1017,28 +1087,40 @@ onMounted(load);
                                 :y="b.sent.y"
                                 :width="b.sent.w"
                                 :height="b.sent.h"
-                                rx="0.5"
+                                rx="0.65"
                               />
                             </g>
                           </template>
-                          <template v-else-if="throughputSparklineMode === 'api'">
-                            <polyline
-                              v-if="throughputApiLineModel.polyline"
-                              class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
-                              fill="none"
-                              stroke-width="1.35"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              :points="throughputApiLineModel.polyline"
-                            />
-                            <circle
-                              v-else-if="throughputApiLineModel.dot"
-                              class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
-                              :cx="throughputApiLineModel.dot.x"
-                              :cy="throughputApiLineModel.dot.y"
-                              r="2"
-                            />
-                          </template>
+                          <path
+                            v-if="throughputApiLineModel.areaPath"
+                            class="home-account-metrics__throughput-area"
+                            :d="throughputApiLineModel.areaPath"
+                            fill="url(#home-throughput-api-area-fill)"
+                          />
+                          <polyline
+                            v-if="throughputApiLineModel.polyline"
+                            class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
+                            fill="none"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            :points="throughputApiLineModel.polyline"
+                          />
+                          <circle
+                            v-for="(pt, pi) in throughputApiLineModel.lineDots"
+                            :key="'api-line-dot-' + pi"
+                            class="home-account-metrics__throughput-line-vertex"
+                            :cx="pt.x"
+                            :cy="pt.y"
+                            r="0.95"
+                          />
+                          <circle
+                            v-if="throughputApiLineModel.dot"
+                            class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
+                            :cx="throughputApiLineModel.dot.x"
+                            :cy="throughputApiLineModel.dot.y"
+                            r="2"
+                          />
                         </svg>
                         <div class="home-account-metrics__bars-ticks muted">
                           <span
@@ -1196,11 +1278,11 @@ onMounted(load);
 
       <section class="home-dashboard__perf">
         <div class="panel home-page__panel">
-          <div class="panel__hd">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
               <span class="panel__title-ico" aria-hidden="true">▤</span>系统性能
             </h2>
-            <span class="home-page__panel-tag">节点采样</span>
+            <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
           </div>
           <div class="panel__bd">
             <p
@@ -1283,14 +1365,14 @@ onMounted(load);
     </div>
 
     <div class="panel home-page__panel home-page__version-panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
         </h2>
         <span
           v-if="health?.ok"
-          class="badge badge--ok"
-        >API 可用</span>
+          class="home-page__hd-capsule home-page__hd-capsule--ok"
+        >API 连接</span>
       </div>
       <div class="panel__bd muted home-page__version home-page__version--grid">
         <dl class="home-dl home-dl--version-rows home-version-dl">

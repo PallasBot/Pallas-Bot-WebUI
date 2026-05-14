@@ -68,86 +68,177 @@ function onSizeChange(ev: Event) {
     class="console-pager"
     :class="{ 'console-pager--embedded': embedded }"
   >
-    <span class="muted">共 {{ total }} {{ unit }}</span>
-    <div class="row-actions console-pager__controls">
-      <label class="muted console-pager__size">
-        每页
-        <select
-          class="sel"
-          :value="pageSize"
-          @change="onSizeChange"
-        >
-          <option
-            v-for="s in sizeOptions"
-            :key="s"
-            :value="s"
+    <div class="console-pager__bar">
+      <div class="console-pager__meta">
+        <span class="muted console-pager__total">共 {{ total }} {{ unit }}</span>
+        <label class="muted console-pager__size">
+          每页
+          <select
+            class="sel"
+            :value="pageSize"
+            @change="onSizeChange"
           >
-            {{ s }}
-          </option>
-        </select>
-      </label>
-      <button
-        type="button"
-        class="btn"
-        :disabled="page <= 1"
-        @click="onPrev"
-      >
-        上一页
-      </button>
-      <span class="muted console-pager__jump">
-        第
-        <input
-          v-model="jumpStr"
-          class="inp"
-          type="number"
-          min="1"
-          :max="maxPage"
-          @change="goJump"
-          @keyup.enter="goJump"
+            <option
+              v-for="s in sizeOptions"
+              :key="s"
+              :value="s"
+            >
+              {{ s }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <div class="console-pager__nav">
+        <button
+          type="button"
+          class="btn console-pager__btn-prev"
+          :disabled="page <= 1"
+          @click="onPrev"
         >
-        / {{ maxPage }} 页
-      </span>
-      <button
-        type="button"
-        class="btn"
-        :disabled="page >= maxPage"
-        @click="onNext"
-      >
-        下一页
-      </button>
+          上一页
+        </button>
+        <span class="muted console-pager__jump">
+          第
+          <input
+            v-model="jumpStr"
+            class="inp"
+            type="number"
+            min="1"
+            :max="maxPage"
+            @change="goJump"
+            @keyup.enter="goJump"
+          >
+          / {{ maxPage }} 页
+        </span>
+        <button
+          type="button"
+          class="btn console-pager__btn-next"
+          :disabled="page >= maxPage"
+          @click="onNext"
+        >
+          下一页
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.console-pager__controls {
-  margin-left: auto;
-  flex-wrap: wrap;
+.console-pager {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
+
+.console-pager__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  width: 100%;
+}
+
+.console-pager__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  min-width: 0;
+}
+
+.console-pager__total {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .console-pager__size {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
 }
+
 .console-pager__size .sel {
   min-width: 72px;
   padding: 6px 10px;
   font-size: 13px;
 }
+
+.console-pager__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-left: auto;
+}
+
 .console-pager__jump {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
 }
+
 .console-pager__jump .inp {
   width: 64px;
   padding: 6px 8px;
 }
+
 .console-pager--embedded {
   border-top: none;
   margin-top: 0;
   padding-top: 0;
+}
+
+@media (max-width: 720px) {
+  .console-pager__bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .console-pager__meta {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px 14px;
+  }
+
+  .console-pager__nav {
+    margin-left: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: center;
+  }
+
+  .console-pager__btn-prev {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .console-pager__jump {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .console-pager__btn-next {
+    grid-column: 3;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
 }
 </style>

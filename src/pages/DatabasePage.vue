@@ -7,11 +7,15 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
+/** 上次成功拉取的总览，用于再次进入页面时直接展示，减少骨架屏 */
+let dbOverviewCache: DbOverviewData | null = null;
+
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const pageReady = ref(false);
+/** 仅首次无缓存时阻塞展示（轻量骨架）；有缓存时只走 dbRefreshBusy */
+const blockingLoad = ref(false);
 const dbRefreshBusy = ref(false);
-const overview = ref<DbOverviewData | null>(null);
+const overview = ref<DbOverviewData | null>(dbOverviewCache);
 
 const collection = ref("");
 const pipelineText = ref("[\n  { \"$limit\": 20 }\n]");
@@ -51,13 +55,17 @@ const totalRows = computed(() => {
 
 async function loadAll() {
   err.value = "";
+  const noDataYet = overview.value == null;
+  if (noDataYet) blockingLoad.value = true;
   dbRefreshBusy.value = true;
   try {
-    overview.value = await fetchDbOverview();
+    const next = await fetchDbOverview();
+    overview.value = next;
+    dbOverviewCache = next;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    pageReady.value = true;
+    blockingLoad.value = false;
     dbRefreshBusy.value = false;
   }
 }
@@ -89,11 +97,6 @@ async function runAggregate() {
       {{ err }}
     </div>
 
-    <ConsolePageSkeleton
-      v-if="!pageReady"
-      :panels="3"
-    />
-    <div v-else>
     <div class="plugins-page__hero database-page__hero">
       <h2 class="panel__title">
         <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库总览
@@ -105,6 +108,12 @@ async function runAggregate() {
         />
       </h2>
     </div>
+
+    <ConsolePageSkeleton
+      v-if="blockingLoad && !overview"
+      :panels="1"
+    />
+
     <div
       v-if="overview"
       class="grid-stats"
@@ -288,7 +297,6 @@ async function runAggregate() {
           <pre class="pre-block">{{ aggResult }}</pre>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
