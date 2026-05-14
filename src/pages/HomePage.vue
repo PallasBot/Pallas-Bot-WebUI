@@ -411,8 +411,11 @@ type ThroughputBarBucket = { recv: ThroughputBarRect; sent: ThroughputBarRect };
 
 const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.message_traffic_history ?? []);
 
-/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾） */
-const THROUGHPUT_BAR_VISIBLE_BUCKETS = 15;
+/** 吞吐迷你图高度（viewBox 与柱/折线计算共用） */
+const THROUGHPUT_MINI_SVG_H = 34;
+
+/** 吞吐迷你柱状图最多展示的桶数（取时间序列末尾；后端最多约 288 桶） */
+const THROUGHPUT_BAR_VISIBLE_BUCKETS = 48;
 
 function sliceThroughputBarPoints<T extends { at: number }>(arr: T[]): T[] {
   if (arr.length <= THROUGHPUT_BAR_VISIBLE_BUCKETS) return arr;
@@ -429,7 +432,7 @@ const throughputSparklineMode = computed<"message" | "api" | null>(() => {
 const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   if (socialBusy.value) return [];
   const W = 100;
-  const H = 30;
+  const H = THROUGHPUT_MINI_SVG_H;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
@@ -441,11 +444,12 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
   const max = Math.max(...recvVals, ...sentVals, 1);
   const n = pts.length;
   const slot = (W - 2 * pad) / n;
+  const bwScale = n > 36 ? 0.4 : n > 24 ? 0.37 : 0.34;
   return pts.map((_, i) => {
     const r = recvVals[i]! / max;
     const s = sentVals[i]! / max;
-    const bw = slot * 0.34;
-    const gap = slot * 0.08;
+    const bw = slot * bwScale;
+    const gap = slot * Math.min(0.08, 0.12 - bwScale * 0.15);
     const left = pad + i * slot + (slot - 2 * bw - gap) / 2;
     const hr = Math.max(chartH * r, 0.4);
     const hs = Math.max(chartH * s, 0.4);
@@ -457,8 +461,18 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
 });
 
 /** API 吞吐迷你图：折线（与消息柱图同 viewBox；有消息柱时在柱上叠画，按桶 at 对齐） */
-const throughputApiLineModel = computed((): { polyline: string; dot: { x: number; y: number } | null } => {
-  const empty = { polyline: "", dot: null as { x: number; y: number } | null };
+const throughputApiLineModel = computed((): {
+  polyline: string;
+  dot: { x: number; y: number } | null;
+  areaPath: string;
+  lineDots: { x: number; y: number }[];
+} => {
+  const empty = {
+    polyline: "",
+    dot: null as { x: number; y: number } | null,
+    areaPath: "",
+    lineDots: [] as { x: number; y: number }[],
+  };
   if (socialBusy.value) return empty;
 
   const apiRaw = scopedBotStatsRow.value?.api_calls_history ?? [];
@@ -466,7 +480,7 @@ const throughputApiLineModel = computed((): { polyline: string; dot: { x: number
   if (!apiSlice.length) return empty;
 
   const W = 100;
-  const H = 30;
+  const H = THROUGHPUT_MINI_SVG_H;
   const pad = 1.5;
   const bottom = H - pad;
   const chartH = H - 2 * pad;
@@ -494,9 +508,19 @@ const throughputApiLineModel = computed((): { polyline: string; dot: { x: number
     xy.push({ x, y });
   }
   if (xy.length === 1) {
-    return { polyline: "", dot: xy[0]! };
+    return { polyline: "", dot: xy[0]!, areaPath: "", lineDots: [] };
   }
-  return { polyline: xy.map((p) => `${p.x},${p.y}`).join(" "), dot: null };
+  const polyline = xy.map((p) => `${p.x},${p.y}`).join(" ");
+  const first = xy[0]!;
+  const last = xy[xy.length - 1]!;
+  let areaPath = "";
+  for (let i = 0; i < xy.length; i++) {
+    const p = xy[i]!;
+    areaPath += i === 0 ? `M${first.x},${bottom}L${p.x},${p.y}` : `L${p.x},${p.y}`;
+  }
+  areaPath += `L${last.x},${bottom}Z`;
+  const lineDots = xy.length >= 2 && xy.length <= 44 ? xy : [];
+  return { polyline, dot: null, areaPath, lineDots };
 });
 
 type ThroughputBarTick = { leftPct: number; label: string };
@@ -1013,11 +1037,37 @@ onMounted(load);
                       >
                         <svg
                           class="home-account-metrics__bars-svg"
-                          viewBox="0 0 100 30"
+                          viewBox="0 0 100 34"
                           preserveAspectRatio="none"
                           overflow="hidden"
                           aria-hidden="true"
                         >
+                          <defs>
+                            <linearGradient
+                              id="home-throughput-api-area-fill"
+                              x1="50"
+                              y1="34"
+                              x2="50"
+                              y2="0"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop
+                                offset="0%"
+                                stop-color="#38bdf8"
+                                stop-opacity="0"
+                              />
+                              <stop
+                                offset="55%"
+                                stop-color="#38bdf8"
+                                stop-opacity="0.11"
+                              />
+                              <stop
+                                offset="100%"
+                                stop-color="#a5f3fc"
+                                stop-opacity="0.28"
+                              />
+                            </linearGradient>
+                          </defs>
                           <template v-if="throughputMessageBarBuckets.length">
                             <g
                               v-for="(b, i) in throughputMessageBarBuckets"
@@ -1029,7 +1079,7 @@ onMounted(load);
                                 :y="b.recv.y"
                                 :width="b.recv.w"
                                 :height="b.recv.h"
-                                rx="0.5"
+                                rx="0.65"
                               />
                               <rect
                                 class="home-account-metrics__bar home-account-metrics__bar--sent"
@@ -1037,21 +1087,35 @@ onMounted(load);
                                 :y="b.sent.y"
                                 :width="b.sent.w"
                                 :height="b.sent.h"
-                                rx="0.5"
+                                rx="0.65"
                               />
                             </g>
                           </template>
+                          <path
+                            v-if="throughputApiLineModel.areaPath"
+                            class="home-account-metrics__throughput-area"
+                            :d="throughputApiLineModel.areaPath"
+                            fill="url(#home-throughput-api-area-fill)"
+                          />
                           <polyline
                             v-if="throughputApiLineModel.polyline"
                             class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
                             fill="none"
-                            stroke-width="1.5"
+                            stroke-width="2"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             :points="throughputApiLineModel.polyline"
                           />
                           <circle
-                            v-else-if="throughputApiLineModel.dot"
+                            v-for="(pt, pi) in throughputApiLineModel.lineDots"
+                            :key="'api-line-dot-' + pi"
+                            class="home-account-metrics__throughput-line-vertex"
+                            :cx="pt.x"
+                            :cy="pt.y"
+                            r="0.95"
+                          />
+                          <circle
+                            v-if="throughputApiLineModel.dot"
                             class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
                             :cx="throughputApiLineModel.dot.x"
                             :cy="throughputApiLineModel.dot.y"

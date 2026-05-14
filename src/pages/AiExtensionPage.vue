@@ -264,31 +264,28 @@ onMounted(async () => {
     />
     <div v-else>
     <div class="panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+        <h2 class="panel__title ai-ncm-hd-title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
+          <RefreshIconButton
+            :busy="ncmBusy"
+            :disabled="ncmBusy"
+            label="刷新状态"
+            @click="refreshNcmStatus"
+          />
+        </h2>
         <div
-          class="row-actions ai-ncm-hd-left"
-          style="flex: 1; min-width: 0; flex-wrap: wrap; gap: 10px"
+          v-if="ncmStatus"
+          class="ai-ncm-hd-status"
         >
-          <h2 class="panel__title ai-ncm-hd-title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
-            <RefreshIconButton
-              :busy="ncmBusy"
-              :disabled="ncmBusy"
-              label="刷新状态"
-              @click="refreshNcmStatus"
-            />
-          </h2>
-          <template v-if="ncmStatus">
-            <span
-              class="badge"
-              :class="ncmLoggedIn ? 'badge--ok' : 'badge--warn'"
-            >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
-            <span
-              v-if="ncmExtraLine"
-              class="muted"
-              style="font-size: 13px"
-            >{{ ncmExtraLine }}</span>
-          </template>
+          <span
+            class="home-page__hd-capsule"
+            :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
+          >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
+          <span
+            v-if="ncmExtraLine"
+            class="muted ai-ncm-hd-extra"
+          >{{ ncmExtraLine }}</span>
         </div>
       </div>
       <div class="panel__bd">
@@ -354,12 +351,11 @@ onMounted(async () => {
             <label>短信验证码</label>
             <input
               v-model="ncmCaptcha"
-              class="inp"
+              class="inp ai-ncm-captcha-inp"
               type="text"
               inputmode="numeric"
               autocomplete="one-time-code"
               placeholder="收到的验证码"
-              style="max-width: 280px; width: 100%"
               @keydown.enter.prevent="verifyNcmSms"
             >
           </div>
