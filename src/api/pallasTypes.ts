@@ -106,6 +106,15 @@ export interface PluginMatcherNamedSeries {
   points: ApiCallHistoryPoint[];
 }
 
+/** 单次 Matcher 异常快照（进程内环形缓冲；接口返回条数与 traceback 长度有上限） */
+export interface MatcherErrorLogEntry {
+  at: number;
+  plugin: string;
+  exc_type: string;
+  message: string;
+  traceback: string;
+}
+
 export interface PluginRunStatsData {
   total_runs: number;
   total_errors: number;
@@ -125,6 +134,8 @@ export interface PluginRunStatsData {
     matcher_runs_by_plugin?: PluginMatcherNamedSeries[];
     /** 各插件 Matcher 执行异常次数按桶 */
     matcher_errors_by_plugin?: PluginMatcherNamedSeries[];
+    /** 最近若干次 Matcher 异常（含截断后的 traceback） */
+    matcher_error_log?: MatcherErrorLogEntry[];
   }>;
 }
 
