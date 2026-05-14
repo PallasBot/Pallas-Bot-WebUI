@@ -1193,7 +1193,7 @@ onMounted(load);
                             v-if="throughputApiLineModel.polyline"
                             class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
                             fill="none"
-                            stroke-width="2"
+                            stroke-width="1.1"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             :points="throughputApiLineModel.polyline"
@@ -1204,14 +1204,14 @@ onMounted(load);
                             class="home-account-metrics__throughput-line-vertex"
                             :cx="pt.x"
                             :cy="pt.y"
-                            r="0.95"
+                            r="0.55"
                           />
                           <circle
                             v-if="throughputApiLineModel.dot"
                             class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
                             :cx="throughputApiLineModel.dot.x"
                             :cy="throughputApiLineModel.dot.y"
-                            r="2"
+                            r="1.05"
                           />
                         </svg>
                         <div
