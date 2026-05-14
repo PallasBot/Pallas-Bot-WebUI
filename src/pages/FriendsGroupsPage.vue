@@ -852,7 +852,7 @@ function toggleGroupsListPanel() {
                 <th>来源</th>
                 <th>用户 QQ</th>
                 <th>用户昵称</th>
-                <th style="width: 200px">操作</th>
+                <th style="min-width: 108px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -873,7 +873,7 @@ function toggleGroupsListPanel() {
                 <td>{{ row.user_id }}</td>
                 <td>{{ displayFriendReqNickname(row) }}</td>
                 <td>
-                  <div class="row-actions">
+                  <div class="friends-req-actions">
                     <button
                       type="button"
                       class="btn btn--primary"
@@ -996,7 +996,7 @@ function toggleGroupsListPanel() {
                 <th>用户</th>
                 <th>类型</th>
                 <th>备注</th>
-                <th style="width: 200px">操作</th>
+                <th style="min-width: 108px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1018,7 +1018,7 @@ function toggleGroupsListPanel() {
                 <td class="muted">{{ row.sub_type }}</td>
                 <td class="muted">{{ row.comment }}</td>
                 <td>
-                  <div class="row-actions">
+                  <div class="friends-req-actions">
                     <button
                       type="button"
                       class="btn btn--primary"

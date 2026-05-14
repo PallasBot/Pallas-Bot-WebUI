@@ -793,11 +793,11 @@ html[data-theme="light"] .shell-page-loading {
 .shell-back-top {
   position: fixed;
   z-index: 35;
-  right: max(18px, env(safe-area-inset-right, 0px));
-  bottom: max(22px, env(safe-area-inset-bottom, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   margin: 0;
   padding: 0;
   border-radius: var(--radius-md);
@@ -808,13 +808,13 @@ html[data-theme="light"] .shell-page-loading {
     color-mix(in srgb, var(--bg-elev) 94%, var(--accent) 6%) 100%
   );
   color: var(--text);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
-    0 10px 28px rgba(0, 0, 0, 0.32);
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
+    0 6px 18px rgba(0, 0, 0, 0.26);
   transition:
     background 0.15s var(--ease),
     color 0.15s var(--ease),
@@ -839,8 +839,8 @@ html[data-theme="light"] .shell-page-loading {
 
 html[data-theme="light"] .shell-back-top {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
-    0 8px 22px rgba(15, 23, 42, 0.14);
+    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent),
+    0 4px 14px rgba(15, 23, 42, 0.12);
 }
 
 .logs-page {
@@ -985,6 +985,31 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
 .friends-groups-list-hd-actions {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* 好友/入群审批表格内：同意、拒绝横排紧凑，避免命中 panel__bd .row-actions 纵向规则 */
+.friends-req-actions {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.friends-req-actions .btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  border-radius: var(--radius-sm);
+  line-height: 1.2;
+}
+
+@media (max-width: 560px) {
+  .friends-req-actions {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
 }
 
 .ai-ncm-hd-title {
