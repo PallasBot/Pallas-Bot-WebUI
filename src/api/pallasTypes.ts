@@ -378,6 +378,8 @@ export interface UpdateCheckData {
   has_update: boolean;
   release_url: string;
   asset_url: string;
+  /** GitHub Release 正文（Markdown），网页兜底拉 tag 时可能为空 */
+  release_notes?: string | null;
   error: string | null;
   checked_at: number;
 }
@@ -397,6 +399,8 @@ export interface BotUpdateCheckData {
   latest_tag: string | null;
   has_update: boolean;
   release_url: string;
+  /** GitHub Release 正文（Markdown），网页兜底拉 tag 时可能为空 */
+  release_notes?: string | null;
   error: string | null;
   checked_at: number;
 }
