@@ -3033,10 +3033,15 @@ html[data-theme="light"] .home-account-hero__counts-num {
 
 .home-account-metrics__legend-swatch--api {
   width: 14px;
-  height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, #38bdf8 72%, var(--accent) 28%);
-  box-shadow: 0 0.5px 1px color-mix(in srgb, var(--bg-deep) 40%, #0ea5e9 40%);
+  height: 2px;
+  border-radius: 1px;
+  background: #ea580c;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .home-account-metrics__legend-swatch--api {
+  background: #c2410c;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .home-account-metrics__legend-swatch--recv {
@@ -3045,11 +3050,6 @@ html[data-theme="light"] .home-account-metrics__legend-swatch--recv {
 
 html[data-theme="light"] .home-account-metrics__legend-swatch--sent {
   background: #6d28d9;
-}
-
-html[data-theme="light"] .home-account-metrics__legend-swatch--api {
-  background: color-mix(in srgb, #0284c7 78%, var(--accent) 22%);
-  box-shadow: 0 0.5px 1px rgba(3, 105, 161, 0.2);
 }
 
 .home-account-metrics__bars-tick {
@@ -3086,15 +3086,15 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__bar
 
 .home-account-metrics__throughput-line-vertex {
   pointer-events: none;
-  fill: #f0f9ff;
-  stroke: #0ea5e9;
-  stroke-width: 0.2;
-  opacity: 0.96;
+  fill: #fff7ed;
+  stroke: #ea580c;
+  stroke-width: 0.16;
+  opacity: 0.98;
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-line-vertex {
   fill: #fff;
-  stroke: #0284c7;
+  stroke: #c2410c;
 }
 
 .home-account-metrics__bar {
@@ -3121,23 +3121,20 @@ html[data-theme="light"] .home-account-metrics__bar--sent {
 
 .home-account-metrics__throughput-line--api {
   fill: none;
-  stroke: color-mix(in srgb, #38bdf8 72%, var(--accent) 28%);
   opacity: 0.98;
-  filter: drop-shadow(0 0.25px 0.35px color-mix(in srgb, var(--bg-deep) 50%, #0ea5e9 40%));
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-line--api {
-  stroke: color-mix(in srgb, #0284c7 78%, var(--accent) 22%);
-  filter: drop-shadow(0 0.25px 0.45px rgba(3, 105, 161, 0.14));
+  opacity: 0.98;
 }
 
 .home-account-metrics__throughput-dot--api {
-  fill: color-mix(in srgb, var(--accent) 65%, #94a3b8);
-  opacity: 0.95;
+  fill: #ea580c;
+  opacity: 0.96;
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-dot--api {
-  fill: color-mix(in srgb, var(--accent) 50%, #64748b);
+  fill: #c2410c;
 }
 
 .home-account-metrics__spark-svg {
@@ -3148,7 +3145,7 @@ html[data-theme="light"] .home-account-metrics__throughput-dot--api {
 
 .home-account-metrics__spark-line {
   fill: none;
-  stroke-width: 0.82;
+  stroke-width: 0.32;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

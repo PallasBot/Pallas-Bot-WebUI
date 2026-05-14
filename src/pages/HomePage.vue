@@ -40,6 +40,7 @@ import { qqAvatarUrl } from "@/utils/botDisplay";
 import { protocolSnapshot, accountWebUiHref, protocolDashboardUrl } from "@/utils/protocolLinks";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
+import { displayVersionWithoutSha } from "@/utils/versionDisplay";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
@@ -202,18 +203,25 @@ const diskHint = computed(() => {
 const uptimeDisplay = computed(() => uptimeFromBoot(runtime.value?.boot_time ?? null));
 const uptimeHint = computed(() => runtime.value?.platform || undefined);
 
+const nonebot2VersionDisplay = computed(() => {
+  const s = (health.value?.nonebot2 ?? "").trim();
+  const x = displayVersionWithoutSha(s);
+  return x || s || "—";
+});
+
 const pallasBotVersionDisplay = computed(() => {
   const b = botUpdateCheck.value;
   const tag = (b?.current_tag || "").trim();
-  const commitFull = (b?.current_commit || "").trim();
-  const short = commitFull.length >= 7 ? commitFull.slice(0, 7) : commitFull;
-  if (tag) {
-    return short && short !== tag ? `${tag} · ${short}` : tag;
-  }
-  if (short) {
-    return `git ${short}`;
-  }
-  return health.value?.pallas_bot ?? "—";
+  if (tag) return tag;
+  const pb = (health.value?.pallas_bot ?? "").trim();
+  const x = displayVersionWithoutSha(pb);
+  return x || pb || "—";
+});
+
+const consoleResourceVersionDisplay = computed(() => {
+  const v = (health.value?.console?.version ?? "").trim();
+  const x = displayVersionWithoutSha(v);
+  return x || v || "—";
 });
 
 /** 待同意跳转：带上当前选中账号，好友与群页自动选中对应 Bot */
@@ -591,7 +599,7 @@ function alignDownLocalGrid(tsSec: number, strideSec: number): number {
   return d0 + Math.floor(off / strideSec) * strideSec;
 }
 
-/** 时间轴刻度：本地对齐、每 5 分钟一刻度；过密时均匀抽样以免标签重叠 */
+/** 时间轴：每 5 分钟一刻度，再隔一个显示一个；仍过长时均匀抽样 */
 const THROUGHPUT_AXIS_TICK_SEC = 300;
 const THROUGHPUT_AXIS_MAX_LABELS = 30;
 
@@ -649,7 +657,7 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
     });
   }
 
-  let thinned = raw;
+  let thinned = raw.filter((_, i) => i % 2 === 0);
   if (thinned.length > THROUGHPUT_AXIS_MAX_LABELS) {
     const step = Math.ceil(thinned.length / THROUGHPUT_AXIS_MAX_LABELS);
     thinned = thinned.filter((_, i) => i % step === 0);
@@ -1145,18 +1153,18 @@ onMounted(load);
                             >
                               <stop
                                 offset="0%"
-                                stop-color="#38bdf8"
+                                stop-color="#ea580c"
                                 stop-opacity="0"
                               />
                               <stop
                                 offset="55%"
-                                stop-color="#38bdf8"
-                                stop-opacity="0.11"
+                                stop-color="#fb923c"
+                                stop-opacity="0.08"
                               />
                               <stop
                                 offset="100%"
-                                stop-color="#a5f3fc"
-                                stop-opacity="0.28"
+                                stop-color="#fdba74"
+                                stop-opacity="0.22"
                               />
                             </linearGradient>
                           </defs>
@@ -1193,9 +1201,11 @@ onMounted(load);
                             v-if="throughputApiLineModel.polyline"
                             class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
                             fill="none"
-                            stroke-width="0.85"
+                            stroke="#ea580c"
+                            stroke-width="0.35"
                             stroke-linecap="round"
                             stroke-linejoin="round"
+                            vector-effect="non-scaling-stroke"
                             :points="throughputApiLineModel.polyline"
                           />
                           <circle
@@ -1204,14 +1214,14 @@ onMounted(load);
                             class="home-account-metrics__throughput-line-vertex"
                             :cx="pt.x"
                             :cy="pt.y"
-                            r="0.4"
+                            r="0.32"
                           />
                           <circle
                             v-if="throughputApiLineModel.dot"
                             class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
                             :cx="throughputApiLineModel.dot.x"
                             :cy="throughputApiLineModel.dot.y"
-                            r="0.8"
+                            r="0.65"
                           />
                         </svg>
                         <div
@@ -1488,7 +1498,7 @@ onMounted(load);
         <dl class="home-dl home-dl--version-rows home-version-dl">
           <dt>NoneBot2</dt>
           <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ health?.nonebot2 ?? "—" }}</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
             <span class="home-dl__sub muted">框架</span>
           </dd>
           <dt>Pallas-Bot</dt>
@@ -1509,12 +1519,7 @@ onMounted(load);
           </dd>
           <dt>控制台资源</dt>
           <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ health?.console?.version ?? "—" }}</span>
-            <span
-              v-if="(health?.console?.commit || '').trim()"
-              class="home-version-commit"
-              :title="health?.console?.commit || undefined"
-            >{{ (health?.console?.commit || "").trim() }}</span>
+            <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
             <RouterLink
               v-if="webUpdateCheck?.has_update"
               class="home-version-update-link"
