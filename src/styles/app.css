@@ -1183,6 +1183,44 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   flex-shrink: 0;
 }
 
+/* 好友页「当前账号」：宽屏标题左、侧栏 + Bot 选择右组；窄屏见 @media (max-width: 560px) */
+#fg-account.friends-groups-account-panel .friends-groups-account-panel__hd.panel__hd {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  min-width: 0;
+}
+
+#fg-account.friends-groups-account-panel .friends-groups-account-panel__hd .panel__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#fg-account.friends-groups-account-panel .friends-groups-account-hd-tail {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+#fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+#fg-account.friends-groups-account-panel .friends-groups-account-sel {
+  min-width: min(280px, 100%);
+  flex: 0 1 auto;
+}
+
 /* 好友/入群审批表格内：同意、拒绝横排紧凑，避免命中 panel__bd .row-actions 纵向规则 */
 .friends-req-actions {
   display: inline-flex;
@@ -1405,6 +1443,29 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   gap: 4px;
   padding: 12px;
   overflow-y: auto;
+}
+
+.shell-mobile-nav__item {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  border-radius: var(--radius-shell);
+}
+
+.shell-mobile-nav__item .shell-mobile-nav__link {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.shell-mobile-nav__item .shell__nav-grip {
+  min-width: 36px;
+  touch-action: none;
+}
+
+.shell-mobile-nav__item .shell__nav-remove {
+  min-width: 40px;
 }
 
 .shell-mobile-nav__theme {
@@ -4222,6 +4283,143 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: center;
   }
 
+  /* 各页标题栏：「添加到侧栏」勿被窄屏纵向布局拉成全宽条 */
+  .panel__hd .row-actions > .panel-sidebar-add,
+  .panel__hd .inst-db-panel__actions > .panel-sidebar-add {
+    align-self: flex-end;
+    width: auto !important;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+
+  .panel__hd .update-page__hd-tail > .panel-sidebar-add {
+    flex: 0 0 auto;
+  }
+
+  /* 首页「账户信息」：标题栏右侧勿纵向全宽拉伸（实例与连接胶囊） */
+  .home-account-panel__hd.panel__hd .row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .home-account-panel__hd.panel__hd .row-actions > .home-instances-capsule {
+    width: auto;
+    min-width: 0;
+    flex: 0 1 auto;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* 首页：系统性能 / 版本 标题栏（节点采样、API 连接）勿被 row-actions 全宽拉伸 */
+  .home-dashboard__perf .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .row-actions,
+  .home-page__version-panel .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .home-dashboard__perf .panel__hd .row-actions > .home-page__hd-capsule,
+  .home-page__version-panel .panel__hd .row-actions > .home-page__hd-capsule {
+    width: auto;
+    flex: 0 1 auto;
+    max-width: min(100%, 9.5rem);
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  .home-dashboard__perf .panel__hd.home-page__panel-hd-nowrap .panel__title,
+  .home-page__version-panel .panel__hd.home-page__panel-hd-nowrap .panel__title {
+    font-size: 0.9rem;
+  }
+
+  .home-dashboard__perf .home-metric-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* 更新页：标题栏右侧（侧栏 + 徽标）勿全宽竖排拉伸 */
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap .row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap .update-page__hd-tail {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  /* 好友页「当前账号」：侧栏按钮与标题同一行右侧，Bot 下拉独占下一行 */
+  #fg-account.friends-groups-account-panel .friends-groups-account-panel__hd.panel__hd {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 10px;
+  }
+
+  #fg-account.friends-groups-account-panel .friends-groups-account-panel__hd > .panel__title {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  #fg-account.friends-groups-account-panel .friends-groups-account-hd-tail {
+    display: contents;
+  }
+
+  #fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+
+  #fg-account.friends-groups-account-panel select.friends-groups-account-sel {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none;
+    min-height: 34px;
+    font-size: 12px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
   /* 标题栏 row-actions 窄屏纵向时：徽标勿被 align-items: stretch 拉成整行条带 */
   .panel__hd .row-actions > .badge {
     align-self: flex-start;
@@ -4244,6 +4442,12 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .logs-page .panel__hd .row-actions > .btn {
     width: auto;
     min-width: 0;
+  }
+
+  .logs-page .panel__hd .row-actions > .panel-sidebar-add {
+    justify-self: end;
+    align-self: center;
+    width: auto !important;
   }
 
   .panel__bd {

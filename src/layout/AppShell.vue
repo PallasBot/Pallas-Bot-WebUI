@@ -760,57 +760,87 @@ onUnmounted(() => {
               >
                 {{ row.section }}
               </div>
-              <RouterLink
-                v-if="row.kind === 'main'"
-                v-slot="{ navigate }"
-                custom
-                :to="row.item.to"
-                :end="row.item.to === '/'"
+              <div
+                class="shell-mobile-nav__item"
+                :class="{
+                  'shell__nav-item--drag-over':
+                    dragOverPath === row.token && dragPath != null && dragPath !== row.token,
+                }"
+                @dragover="onNavDragOver(row.token, $event)"
+                @dragleave="onNavDragLeave(row.token)"
+                @drop="onNavDrop(row.token, $event)"
               >
-                <button
-                  type="button"
-                  class="shell-mobile-nav__link"
-                  :class="{
-                    'shell__nav-link--root': row.item.to === '/',
-                    'is-router-active': isMainLinkActiveForPath(row.item),
-                    'is-router-exact': isMainLinkExact(row.item),
-                  }"
-                  :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
-                  @click="
-                    navigate();
-                    closeMobileNav();
-                  "
+                <span
+                  v-if="sidebarNavRows.length > 1"
+                  class="shell__nav-grip"
+                  draggable="true"
+                  aria-label="拖动调整顺序"
+                  title="拖动排序"
+                  @dragstart="onGripDragStart(row.token, $event)"
+                  @dragend="onGripDragEnd"
+                >⋮</span>
+                <RouterLink
+                  v-if="row.kind === 'main'"
+                  v-slot="{ navigate }"
+                  custom
+                  :to="row.item.to"
+                  :end="row.item.to === '/'"
                 >
-                  <span class="shell__nav-ico">{{ row.item.icon }}</span>
-                  <span class="shell__nav-text">
-                    <span class="shell__nav-label">{{ row.item.label }}</span>
-                    <span class="shell__nav-desc">{{ row.item.description }}</span>
-                  </span>
-                </button>
-              </RouterLink>
-              <RouterLink
-                v-else
-                v-slot="{ navigate }"
-                custom
-                :to="{ path: row.pin.path, hash: row.pin.hash }"
-              >
-                <button
-                  type="button"
-                  class="shell-mobile-nav__link shell__nav-link--pin"
-                  :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
-                  :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
-                  @click="
-                    navigate();
-                    closeMobileNav();
-                  "
+                  <button
+                    type="button"
+                    class="shell-mobile-nav__link"
+                    :class="{
+                      'shell__nav-link--root': row.item.to === '/',
+                      'is-router-active': isMainLinkActiveForPath(row.item),
+                      'is-router-exact': isMainLinkExact(row.item),
+                    }"
+                    :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
+                    @click="
+                      navigate();
+                      closeMobileNav();
+                    "
+                  >
+                    <span class="shell__nav-ico">{{ row.item.icon }}</span>
+                    <span class="shell__nav-text">
+                      <span class="shell__nav-label">{{ row.item.label }}</span>
+                      <span class="shell__nav-desc">{{ row.item.description }}</span>
+                    </span>
+                  </button>
+                </RouterLink>
+                <RouterLink
+                  v-else
+                  v-slot="{ navigate }"
+                  custom
+                  :to="{ path: row.pin.path, hash: row.pin.hash }"
                 >
-                  <span class="shell__nav-ico">{{ row.pin.icon }}</span>
-                  <span class="shell__nav-text">
-                    <span class="shell__nav-label">{{ row.pin.label }}</span>
-                    <span class="shell__nav-desc">{{ row.pin.description }}</span>
-                  </span>
+                  <button
+                    type="button"
+                    class="shell-mobile-nav__link shell__nav-link--pin"
+                    :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
+                    :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
+                    @click="
+                      navigate();
+                      closeMobileNav();
+                    "
+                  >
+                    <span class="shell__nav-ico">{{ row.pin.icon }}</span>
+                    <span class="shell__nav-text">
+                      <span class="shell__nav-label">{{ row.pin.label }}</span>
+                      <span class="shell__nav-desc">{{ row.pin.description }}</span>
+                    </span>
+                  </button>
+                </RouterLink>
+                <button
+                  v-if="sidebarNavRows.length > 1"
+                  type="button"
+                  class="shell__nav-remove"
+                  :aria-label="`从侧栏移除「${row.kind === 'main' ? row.item.label : row.pin.label}」`"
+                  title="从侧栏移除"
+                  @click.stop="removeNavToken(row.token)"
+                >
+                  ×
                 </button>
-              </RouterLink>
+              </div>
             </template>
             <div
               v-if="sidebarPoolRows.length"
