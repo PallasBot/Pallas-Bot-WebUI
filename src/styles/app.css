@@ -2994,6 +2994,64 @@ html[data-theme="light"] .home-account-hero__counts-num {
   overflow: hidden;
 }
 
+.home-account-metrics__bars-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 5px 0 1px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.home-account-metrics__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.home-account-metrics__legend-swatch {
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.home-account-metrics__legend-swatch--recv {
+  width: 8px;
+  height: 8px;
+  background: #38bdf8;
+  opacity: 0.92;
+}
+
+.home-account-metrics__legend-swatch--sent {
+  width: 8px;
+  height: 8px;
+  background: #c084fc;
+  opacity: 0.92;
+}
+
+.home-account-metrics__legend-swatch--api {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, #38bdf8 72%, var(--accent) 28%);
+  box-shadow: 0 0.5px 1px color-mix(in srgb, var(--bg-deep) 40%, #0ea5e9 40%);
+}
+
+html[data-theme="light"] .home-account-metrics__legend-swatch--recv {
+  background: #0369a1;
+}
+
+html[data-theme="light"] .home-account-metrics__legend-swatch--sent {
+  background: #6d28d9;
+}
+
+html[data-theme="light"] .home-account-metrics__legend-swatch--api {
+  background: color-mix(in srgb, #0284c7 78%, var(--accent) 22%);
+  box-shadow: 0 0.5px 1px rgba(3, 105, 161, 0.2);
+}
+
 .home-account-metrics__bars-tick {
   position: absolute;
   top: 0;
