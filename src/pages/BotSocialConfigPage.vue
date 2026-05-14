@@ -428,7 +428,7 @@ onMounted(async () => {
         </div>
         <template v-if="consolePrefs.botSocialPageGroupListOpen">
           <div class="table-wrap">
-            <table class="data">
+            <table class="data console-data-table">
               <thead>
                 <tr>
                   <th>群号</th>

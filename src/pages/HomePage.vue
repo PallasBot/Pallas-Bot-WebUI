@@ -367,12 +367,6 @@ const groupPendingApplyDisplay = computed(() => {
   return String(r.pending_group_requests?.length ?? 0);
 });
 
-const socialCountsLoadHint = computed(() => {
-  if (socialBusy.value) return "";
-  if (friendSnap.value != null || groupSnap.value != null) return "";
-  return "好友/群列表未拉取，可点账户信息标题旁的刷新图标重试";
-});
-
 const friendCountNumPending = computed(() => !socialBusy.value && friendSnap.value == null);
 const groupCountNumPending = computed(() => !socialBusy.value && groupSnap.value == null);
 
@@ -598,9 +592,9 @@ function alignDownLocalGrid(tsSec: number, strideSec: number): number {
   return d0 + Math.floor(off / strideSec) * strideSec;
 }
 
-/** 时间轴：按可视跨度自适应步长，控制刻度数量，避免标签横向叠在一起 */
-const THROUGHPUT_AXIS_MAX_TICKS = 8;
-const THROUGHPUT_AXIS_MIN_GAP_PCT = 9;
+/** 时间轴：按可视跨度自适应步长；minGap 须覆盖「HH:mm」居中占位，避免刻度挤成一团 */
+const THROUGHPUT_AXIS_MAX_TICKS = 6;
+const THROUGHPUT_AXIS_MIN_GAP_PCT = 15;
 
 const THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC = [
   60, 120, 300, 600, 900, 1200, 1800, 3600, 7200, 14400, 28800, 43200, 86400,
@@ -612,7 +606,8 @@ function throughputAxisStrideSec(rangeLo: number, rangeHi: number): number {
   for (const c of THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC) {
     if (c >= minStride) return c;
   }
-  return THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC[THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC.length - 1]!;
+  // 跨度大于候选表最大步长时，86400 会小于 minStride，若仍用它会在循环里生成过多刻度
+  return Math.max(60, Math.ceil(span / THROUGHPUT_AXIS_MAX_TICKS));
 }
 
 function thinThroughputTicksByMinGap(ticks: ThroughputBarTick[], minGapPct: number): ThroughputBarTick[] {
@@ -626,6 +621,28 @@ function thinThroughputTicksByMinGap(ticks: ThroughputBarTick[], minGapPct: numb
     }
   }
   return out;
+}
+
+/** 刻度已按步长生成但仍偏多时，沿时间轴均匀保留若干条，避免与柱宽解耦后标签互相遮挡 */
+function capThroughputTickLabels(ticks: ThroughputBarTick[], maxN: number): ThroughputBarTick[] {
+  if (ticks.length <= maxN) return ticks;
+  const sorted = [...ticks].sort((a, b) => a.leftPct - b.leftPct);
+  if (maxN <= 2) {
+    return [sorted[0]!, sorted[sorted.length - 1]!];
+  }
+  const out: ThroughputBarTick[] = [];
+  const lastIdx = sorted.length - 1;
+  for (let k = 0; k < maxN; k++) {
+    const idx = Math.round((k / (maxN - 1)) * lastIdx);
+    out.push(sorted[idx]!);
+  }
+  const dedup: ThroughputBarTick[] = [];
+  for (const t of out) {
+    if (!dedup.length || Math.abs(dedup[dedup.length - 1]!.leftPct - t.leftPct) > 0.35) {
+      dedup.push(t);
+    }
+  }
+  return dedup.length ? dedup : sorted.slice(0, maxN);
 }
 
 function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number, strideSec: number): string {
@@ -683,13 +700,9 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   }
 
   let ticks = thinThroughputTicksByMinGap(raw, THROUGHPUT_AXIS_MIN_GAP_PCT);
-
   if (ticks.length > THROUGHPUT_AXIS_MAX_TICKS) {
-    const step = Math.ceil(ticks.length / THROUGHPUT_AXIS_MAX_TICKS);
-    ticks = thinThroughputTicksByMinGap(
-      ticks.filter((_, i) => i % step === 0),
-      THROUGHPUT_AXIS_MIN_GAP_PCT,
-    );
+    ticks = capThroughputTickLabels(ticks, THROUGHPUT_AXIS_MAX_TICKS);
+    ticks = thinThroughputTicksByMinGap(ticks, THROUGHPUT_AXIS_MIN_GAP_PCT);
   }
 
   if (!ticks.length) {
@@ -793,6 +806,13 @@ const scopedPluginRunRow = computed(() => {
   if (acc == null || !pr?.bots?.length) return null;
   const sid = String(acc);
   return pr.bots.find((b) => b.self_id === sid) ?? null;
+});
+
+/** 当前账号各插件 Matcher 今日执行次数合计（插件运行统计 bots[].runs_today） */
+const pluginMatcherTodayTotalStr = computed(() => {
+  const row = scopedPluginRunRow.value;
+  if (row == null) return "—";
+  return String(row.runs_today ?? 0);
 });
 
 const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
@@ -1141,12 +1161,6 @@ onMounted(load);
                               >{{ groupCountDisplay }}</strong></span>
                             </div>
                           </div>
-                          <p
-                            v-if="socialCountsLoadHint"
-                            class="home-account-hero__social-hint muted"
-                          >
-                            {{ socialCountsLoadHint }}
-                          </p>
                         </div>
                       </div>
                     </div>
@@ -1328,18 +1342,34 @@ onMounted(load);
                         />
                       </div>
                       <div class="home-account-metrics__stats">
-                        <div
-                          class="home-account-metrics__today-block"
-                          :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
-                        >
-                          <span class="muted home-account-metrics__k">今日 API 调用</span>
-                          <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
-                          <div class="home-account-metrics__skel-track">
-                            <span
-                              v-for="n in 8"
-                              :key="n"
-                              class="home-account-metrics__skel-seg"
-                            />
+                        <div class="home-account-metrics__today-row">
+                          <div
+                            class="home-account-metrics__today-block"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(apiTodayTotalStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">今日 API 调用</span>
+                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : apiTodayTotalStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
+                          </div>
+                          <div
+                            class="home-account-metrics__today-block home-account-metrics__today-block--plugin"
+                            :class="{ 'is-empty': !socialBusy && metricIsEmpty(pluginMatcherTodayTotalStr) }"
+                          >
+                            <span class="muted home-account-metrics__k">今日插件调用</span>
+                            <span class="home-account-metrics__v">{{ socialBusy ? "…" : pluginMatcherTodayTotalStr }}</span>
+                            <div class="home-account-metrics__skel-track">
+                              <span
+                                v-for="n in 8"
+                                :key="n"
+                                class="home-account-metrics__skel-seg"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div class="home-account-metrics__tops-grid">

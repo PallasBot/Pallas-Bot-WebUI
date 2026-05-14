@@ -217,7 +217,7 @@ async function save() {
         >
           <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
             下列为各命令当前生效权限（单选）。仅当所选等级与插件声明的默认不同时，会写入
-            <code class="muted">PALLAS_COMMAND_PERMISSION_OVERRIDES</code>。
+            <code>PALLAS_COMMAND_PERMISSION_OVERRIDES</code>。
           </p>
           <div
             v-for="pg in data.command_perm_ui.plugins"

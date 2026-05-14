@@ -699,7 +699,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>QQ</th>
@@ -787,7 +787,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>群号</th>
@@ -898,7 +898,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th style="width: 44px">
@@ -1045,7 +1045,7 @@ function toggleGroupsListPanel() {
           v-else
           class="table-wrap"
         >
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th style="width: 44px">

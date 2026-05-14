@@ -137,7 +137,7 @@ onMounted(async () => {
           <span v-if="snap?.webui_path"> · 路径 <code>{{ snap.webui_path }}</code></span>
         </p>
         <p class="muted" style="margin: 0 0 14px">
-          控制台鉴权已配置：<strong style="color: var(--text)">{{ snap?.console_auth_configured ? "是" : "否" }}</strong>
+          控制台鉴权：<strong style="color: var(--text)">{{ snap?.console_auth_configured ? "已配置" : "未配置" }}</strong>
         </p>
         <div class="row-actions">
           <a
@@ -188,10 +188,10 @@ onMounted(async () => {
         class="panel__bd"
       >
         <div class="table-wrap">
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
-                <th>昵称</th>
+                <th>协议端昵称</th>
                 <th>账号</th>
                 <th>进程</th>
                 <th>已连接</th>
