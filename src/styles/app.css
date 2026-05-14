@@ -800,21 +800,15 @@ html[data-theme="light"] .shell-page-loading {
   height: 36px;
   margin: 0;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%) 0%,
-    color-mix(in srgb, var(--bg-elev) 94%, var(--accent) 6%) 100%
-  );
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
   cursor: pointer;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
-    0 6px 18px rgba(0, 0, 0, 0.26);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--bg-deep) 18%, transparent);
   transition:
     background 0.15s var(--ease),
     color 0.15s var(--ease),
@@ -823,12 +817,15 @@ html[data-theme="light"] .shell-page-loading {
     transform 0.12s var(--ease);
 }
 
+.shell-back-top__ico {
+  display: block;
+}
+
 .shell-back-top:hover {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border-strong));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
-    0 12px 32px rgba(0, 0, 0, 0.38);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--bg-card) 92%, var(--accent) 8%);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--bg-deep) 22%, transparent);
   transform: translateY(-1px);
 }
 
@@ -838,9 +835,7 @@ html[data-theme="light"] .shell-page-loading {
 }
 
 html[data-theme="light"] .shell-back-top {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent),
-    0 4px 14px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 .logs-page {
@@ -1005,10 +1000,41 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   line-height: 1.2;
 }
 
+/* 好友申请 / 入群请求标题栏：三主按钮成组（宽屏与 .row-actions 横排一致） */
+.friends-groups-req-hd-bulk-btns {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 @media (max-width: 560px) {
   .friends-req-actions {
     justify-content: flex-start;
     max-width: 100%;
+  }
+
+  /* 好友申请 / 入群请求：标题栏批量操作三按钮窄屏单行均分（避免命中 .panel__hd .row-actions > .btn 全宽竖排） */
+  .friends-groups-req-hd-bulk-btns {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .friends-groups-req-hd-bulk-btns > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    justify-content: center;
+    padding: 7px 5px;
+    font-size: 12px;
+    font-weight: 650;
   }
 }
 
@@ -1985,14 +2011,29 @@ html[data-theme="light"] .bot-config-edit {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 12px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.home-account-panel__hd .panel__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.home-account-panel__hd .home-instances-capsule {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.home-page__panel-hd-nowrap {
   flex-wrap: nowrap;
 }
-.home-account-panel__hd-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+
+.home-page__panel-hd-nowrap .panel__title {
+  flex: 1 1 auto;
   min-width: 0;
 }
 .home-account-panel__loading-hint {
@@ -2463,7 +2504,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__social-hi
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0;
+  gap: 10px;
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
@@ -2599,7 +2640,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__pending-t
 .home-account-hero__detail-main {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -2655,7 +2696,7 @@ html[data-theme="light"] .home-account-hero__admin-values {
   display: grid;
   /* 与下行数量共用列线：避免两个独立 1fr 网格因 min-content 不同导致第二列错位 */
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px 12px;
+  gap: 10px 12px;
   align-items: start;
   width: 100%;
   margin: 0;
@@ -2819,7 +2860,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
 .home-account-metrics {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 11px;
   padding: 0 2px 2px 4px;
   min-height: 0;
   justify-content: flex-start;
@@ -2904,7 +2945,7 @@ html[data-theme="light"] .home-account-hero__counts-num {
 }
 
 .home-account-metrics__bars-wrap {
-  margin: 3px 0 1px;
+  margin: 6px 0 14px;
   width: 100%;
   min-height: 48px;
   overflow-x: hidden;
@@ -2974,7 +3015,8 @@ html[data-theme="light"] .home-account-metrics__bar--sent {
 .home-account-metrics__throughput-line--api {
   fill: none;
   stroke: color-mix(in srgb, var(--accent) 65%, #94a3b8);
-  opacity: 0.95;
+  opacity: 0.98;
+  filter: drop-shadow(0 0 0.35px color-mix(in srgb, var(--bg-deep) 90%, transparent));
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-line--api {
@@ -3051,7 +3093,7 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -3088,15 +3130,15 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
 .home-account-metrics__stats {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 0;
+  gap: 12px;
+  padding-top: 4px;
   min-width: 0;
 }
 
 .home-account-metrics__tops-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 12px;
+  gap: 10px 12px;
   align-items: start;
   min-width: 0;
 }
@@ -3105,7 +3147,7 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 5px;
   min-width: 0;
 }
 .home-account-metrics__k {
@@ -3705,12 +3747,28 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     align-items: stretch;
   }
 
+  /* 首页：账户信息 / 系统性能 / 版本 标题行保持横排 + 右侧胶囊 */
+  .home-account-panel__hd.panel__hd--split.home-page__panel-hd-nowrap,
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
   .panel__hd .panel__title {
     width: 100%;
     min-width: 0;
     flex-wrap: wrap;
     row-gap: 4px;
     font-size: 0.88rem;
+  }
+
+  .home-account-panel__hd.panel__hd--split.home-page__panel-hd-nowrap .panel__title,
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .panel__title {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .panel__hd .row-actions,
@@ -4373,17 +4431,42 @@ html[data-theme="light"] .plugin-preview {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.home-page__panel-tag {
+.home-page__hd-capsule {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(100%, 12rem);
+  padding: 2px 10px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-dim);
-  padding: 3px 8px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
 }
-html[data-theme="light"] .home-page__panel-tag {
-  background: rgba(15, 23, 42, 0.04);
+
+.home-page__hd-capsule--muted {
+  color: var(--text-muted);
+}
+
+.home-page__hd-capsule--ok {
+  color: color-mix(in srgb, #6ee7b7 55%, var(--text));
+  border-color: color-mix(in srgb, #34d399 32%, var(--border));
+  background: color-mix(in srgb, #34d399 14%, var(--bg-card));
+}
+
+html[data-theme="light"] .home-page__hd-capsule {
+  background: color-mix(in srgb, var(--bg-muted) 40%, #fff 60%);
+}
+
+html[data-theme="light"] .home-page__hd-capsule--ok {
+  color: color-mix(in srgb, #047857 78%, var(--text));
+  border-color: color-mix(in srgb, #34d399 45%, var(--border));
+  background: color-mix(in srgb, #d1fae5 55%, #fff 45%);
 }
 .home-page .panel__bd {
   padding: 12px 14px;
