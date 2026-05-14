@@ -1,6 +1,9 @@
 import { reactive } from "vue";
-import { normalizeMainNavOrder } from "@/config/mainNav";
-
+import {
+  DEFAULT_SIDEBAR_NAV_ORDER,
+  migrateSidebarOrderUpdateToEnd,
+  normalizeMainNavOrder,
+} from "@/config/mainNav";
 const STORAGE_KEY = "pallas_console_prefs_v1";
 
 export type ThemeMode = "dark" | "light" | "system";
@@ -19,14 +22,17 @@ export interface ConsolePrefsState {
   instancesBotView: DataViewMode;
   /** 控制台各列表默认每页条数（4–80） */
   tablePageSize: number;
-  /** 侧栏主导航 path 顺序（与 mainNav 对齐） */
+  /** 侧栏 token 顺序（path 或 pin:id，见 mainNav / sidebarPins） */
   sidebarNavOrder: string[];
+  /** 侧栏布局版本：用于一次性迁移默认顺序等 */
+  sidebarNavLayoutVersion: number;
   /** 好友与群页：好友列表面板是否展开 */
   friendsPageFriendsListOpen: boolean;
   /** 好友与群页：群聊列表面板是否展开 */
   friendsPageGroupsListOpen: boolean;
+  /** 颗粒配置页：群配置下列表区域是否展开 */
+  botSocialPageGroupListOpen: boolean;
 }
-
 const defaults: ConsolePrefsState = {
   theme: "system",
   radius: "default",
@@ -34,11 +40,12 @@ const defaults: ConsolePrefsState = {
   sidebarCollapsed: false,
   instancesBotView: "table",
   tablePageSize: 12,
-  sidebarNavOrder: normalizeMainNavOrder(undefined),
+  sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
+  sidebarNavLayoutVersion: 2,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
+  botSocialPageGroupListOpen: true,
 };
-
 function load(): ConsolePrefsState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -51,17 +58,30 @@ function load(): ConsolePrefsState {
     const ps = Number(merged.tablePageSize);
     if (!Number.isFinite(ps)) merged.tablePageSize = defaults.tablePageSize;
     else merged.tablePageSize = Math.min(80, Math.max(4, Math.floor(ps)));
-    merged.sidebarNavOrder = normalizeMainNavOrder(
-      Array.isArray(parsed.sidebarNavOrder) ? (parsed.sidebarNavOrder as string[]) : undefined,
-    );
+
+    const layoutVerRaw = (parsed as { sidebarNavLayoutVersion?: unknown }).sidebarNavLayoutVersion;
+    const layoutVer =
+      typeof layoutVerRaw === "number" && Number.isFinite(layoutVerRaw) ? Math.floor(layoutVerRaw) : 0;
+
+    let nextOrder = Array.isArray(parsed.sidebarNavOrder) ? (parsed.sidebarNavOrder as string[]) : undefined;
+    if (layoutVer < 2) {
+      nextOrder = migrateSidebarOrderUpdateToEnd(nextOrder);
+      merged.sidebarNavLayoutVersion = 2;
+    } else {
+      merged.sidebarNavLayoutVersion = Math.max(2, layoutVer);
+    }
+    merged.sidebarNavOrder = normalizeMainNavOrder(nextOrder);
+
     if (typeof parsed.friendsPageFriendsListOpen === "boolean") {
       merged.friendsPageFriendsListOpen = parsed.friendsPageFriendsListOpen;
     }
     if (typeof parsed.friendsPageGroupsListOpen === "boolean") {
       merged.friendsPageGroupsListOpen = parsed.friendsPageGroupsListOpen;
     }
-    if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {
-      merged.theme = defaults.theme;
+    if (typeof (parsed as { botSocialPageGroupListOpen?: unknown }).botSocialPageGroupListOpen === "boolean") {
+      merged.botSocialPageGroupListOpen = (parsed as { botSocialPageGroupListOpen: boolean }).botSocialPageGroupListOpen;
+    }
+    if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {      merged.theme = defaults.theme;
     }
     return merged;
   } catch {
@@ -105,6 +125,13 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
   applyConsolePrefsToDocument();
 }
 
+/** 恢复侧栏默认顺序与固定项（含「更新」在末尾） */
+export function resetSidebarNavToDefaults(): void {
+  setConsolePrefs({
+    sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
+    sidebarNavLayoutVersion: 2,
+  });
+}
 export function initConsolePrefs(): void {
   applyConsolePrefsToDocument();
   if (typeof window === "undefined") return;

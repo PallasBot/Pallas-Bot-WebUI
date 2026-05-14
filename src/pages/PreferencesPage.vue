@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
-import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -70,6 +70,29 @@ function scrollToPasswordIfNeeded() {
 
 <template>
   <div>
+    <div
+      id="sidebar-prefs"
+      class="panel"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>侧栏
+        </h2>
+      </div>
+      <div class="panel__bd">
+        <p class="muted" style="margin: 0 0 12px; line-height: 1.55">
+          可在侧栏拖动排序、移除项，或通过「添加快捷入口」把颗粒配置中的群列表等固定到侧栏。若误删导致只剩一项，仍可继续操作；若侧栏过空，请点下方恢复默认。
+        </p>
+        <button
+          type="button"
+          class="btn btn--primary"
+          @click="resetSidebarNavToDefaults"
+        >
+          恢复侧栏默认顺序与项目
+        </button>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">
