@@ -28,7 +28,7 @@ export interface ConsolePrefsState {
 }
 
 const defaults: ConsolePrefsState = {
-  theme: "dark",
+  theme: "system",
   radius: "default",
   density: "comfortable",
   sidebarCollapsed: false,
@@ -59,6 +59,9 @@ function load(): ConsolePrefsState {
     }
     if (typeof parsed.friendsPageGroupsListOpen === "boolean") {
       merged.friendsPageGroupsListOpen = parsed.friendsPageGroupsListOpen;
+    }
+    if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {
+      merged.theme = defaults.theme;
     }
     return merged;
   } catch {

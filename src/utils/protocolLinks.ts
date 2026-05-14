@@ -9,13 +9,25 @@ export function joinHttpPath(base: string, path: string): string {
   return `${b}${p2}`;
 }
 
-/** pallas_protocol 内置管理页（挂在牛牛 HTTP 基址下的 webui_path） */
+/** pallas_protocol 内置管理页 URL：``webui_path`` 在站点根下，勿与 ``console.http_base``（WebUI 前缀）拼接。 */
 export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
   if (!snap?.webui_enabled) return null;
+  const raw = snap.webui_path?.trim();
+  if (!raw) return null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+    return raw;
+  }
+  const path = raw.startsWith("/") ? raw : `/${raw}`;
+
   const base = botHttpBaseFromSystem(system);
-  const path = snap.webui_path?.trim();
-  if (!base || !path) return null;
-  return joinHttpPath(base, path);
+  if (base && /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(base)) {
+    return joinHttpPath(base, path);
+  }
+
+  if (typeof window === "undefined") {
+    return path;
+  }
+  return `${window.location.origin}${path}`;
 }
 
 /** 当前浏览器下的控制台根路径（含 base），末尾无斜杠 */
