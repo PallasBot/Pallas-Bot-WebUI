@@ -148,6 +148,19 @@ const pallasBotVersionDisplay = computed(() => {
   return health.value?.pallas_bot ?? "—";
 });
 
+/** 待同意跳转：带上当前选中账号，好友与群页自动选中对应 Bot */
+const friendsGroupsFriendPendingTo = computed(() => {
+  const acc = selectedAccount.value;
+  const q = acc != null ? { self_id: String(acc) } : {};
+  return { path: "/friends-groups", query: q, hash: "#friends-groups-friend-requests" };
+});
+
+const friendsGroupsGroupPendingTo = computed(() => {
+  const acc = selectedAccount.value;
+  const q = acc != null ? { self_id: String(acc) } : {};
+  return { path: "/friends-groups", query: q, hash: "#friends-groups-group-requests" };
+});
+
 const versionServerTimeStr = computed(() => {
   const t = system.value?.server_time;
   if (t == null) return "—";
@@ -822,7 +835,7 @@ onMounted(load);
                               <RouterLink
                                 v-else
                                 class="home-account-hero__pending-count-link"
-                                to="/friends-groups#friends-groups-friend-requests"
+                                :to="friendsGroupsFriendPendingTo"
                               >{{ friendPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
                           </div>
@@ -833,7 +846,7 @@ onMounted(load);
                               <RouterLink
                                 v-else
                                 class="home-account-hero__pending-count-link"
-                                to="/friends-groups#friends-groups-group-requests"
+                                :to="friendsGroupsGroupPendingTo"
                               >{{ groupPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
                           </div>
@@ -846,36 +859,41 @@ onMounted(load);
                               :class="{ 'home-account-hero__admin-values--placeholder': !(selectedBotConfig?.admins?.length) }"
                             >{{ selectedAdminsDisplay }}</span>
                           </p>
-                          <div class="home-account-hero__links">
-                            <a
-                              v-if="nativeProtocolWebUiHref"
-                              class="home-account-hero__link"
-                              :href="nativeProtocolWebUiHref"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >原生 WebUI</a>
-                            <a
-                              v-if="protocolBuiltInManageHref"
-                              class="home-account-hero__link"
-                              :href="protocolBuiltInManageHref"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >协议管理页</a>
+                          <div class="home-account-hero__links-grid">
+                            <div class="home-account-hero__links-grid__col home-account-hero__links-grid__col--friend">
+                              <a
+                                v-if="nativeProtocolWebUiHref"
+                                class="home-account-hero__link"
+                                :href="nativeProtocolWebUiHref"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >原生 WebUI</a>
+                              <span
+                                v-else
+                                class="home-account-hero__link-ph"
+                                aria-hidden="true"
+                              > </span>
+                            </div>
+                            <div class="home-account-hero__links-grid__col home-account-hero__links-grid__col--group">
+                              <a
+                                v-if="protocolBuiltInManageHref"
+                                class="home-account-hero__link"
+                                :href="protocolBuiltInManageHref"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >协议管理页</a>
+                              <span
+                                v-else
+                                class="home-account-hero__link-ph"
+                                aria-hidden="true"
+                              > </span>
+                            </div>
                           </div>
-                          <dl class="home-account-dl home-account-dl--tight home-account-dl--hero-foot">
-                            <div>
-                              <dt>好友</dt>
-                              <dd class="home-account-dl__stack">
-                                <span class="home-account-dl__stack-count">{{ friendCountDisplay }}</span>
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>群</dt>
-                              <dd class="home-account-dl__stack">
-                                <span class="home-account-dl__stack-count">{{ groupCountDisplay }}</span>
-                              </dd>
-                            </div>
-                          </dl>
+                          <div class="home-account-hero__counts-line">
+                            <span class="home-account-hero__counts-pair">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-sep muted">·</span>
+                            <span class="home-account-hero__counts-pair">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
+                          </div>
                           <p
                             v-if="socialCountsLoadHint"
                             class="home-account-hero__social-hint muted"
