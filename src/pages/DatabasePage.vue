@@ -4,6 +4,7 @@ import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -156,10 +157,13 @@ async function runAggregate() {
       v-if="overview?.backend === 'mongodb'"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>集合与文档数
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/database" />
+        </div>
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
@@ -190,10 +194,13 @@ async function runAggregate() {
       v-else-if="overview?.backend === 'postgres'"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>表与行数
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/database" />
+        </div>
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
@@ -222,10 +229,13 @@ async function runAggregate() {
       v-else-if="overview"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>概览
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/database" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">后端类型：<strong style="color: var(--text)">{{ overview.backend }}</strong></p>
@@ -243,18 +253,21 @@ async function runAggregate() {
       v-if="overview && overview.backend === 'mongodb'"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>MongoDB 聚合
         </h2>
-        <button
-          type="button"
-          class="btn btn--primary"
-          :disabled="aggLoading || !collection.trim()"
-          @click="runAggregate"
-        >
-          {{ aggLoading ? "执行中…" : "执行" }}
-        </button>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/database" />
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="aggLoading || !collection.trim()"
+            @click="runAggregate"
+          >
+            {{ aggLoading ? "执行中…" : "执行" }}
+          </button>
+        </div>
       </div>
       <div class="panel__bd">
         <div style="margin-bottom: 12px">

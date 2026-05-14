@@ -7,6 +7,7 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -126,6 +127,9 @@ onMounted(async () => {
             @click="load"
           />
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/protocol" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 10px">
@@ -167,14 +171,17 @@ onMounted(async () => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>协议账号
         </h2>
-        <button
-          type="button"
-          class="btn"
-          style="padding: 6px 12px; font-size: 12px"
-          @click="expProtocolAccounts = !expProtocolAccounts"
-        >
-          {{ expProtocolAccounts ? "收起" : "展开" }}
-        </button>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/protocol" />
+          <button
+            type="button"
+            class="btn"
+            style="padding: 6px 12px; font-size: 12px"
+            @click="expProtocolAccounts = !expProtocolAccounts"
+          >
+            {{ expProtocolAccounts ? "收起" : "展开" }}
+          </button>
+        </div>
       </div>
       <div
         v-show="expProtocolAccounts"

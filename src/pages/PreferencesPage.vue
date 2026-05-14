@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -24,6 +25,38 @@ const pwdOk = ref("");
 const p1 = ref("");
 const p2 = ref("");
 const pwdBusy = ref(false);
+
+const sidebarSectionDraft = ref("");
+
+function formatSidebarSectionMap(map: Record<string, string>): string {
+  const entries = Object.entries(map).filter(([k, v]) => k.trim() && v.trim());
+  entries.sort(([a], [b]) => a.localeCompare(b, "zh-CN"));
+  return entries.map(([k, v]) => `${k}=${v}`).join("\n");
+}
+
+function syncSidebarSectionDraft() {
+  sidebarSectionDraft.value = formatSidebarSectionMap(consolePrefs.sidebarNavSectionByToken);
+}
+
+function applySidebarSectionDraft() {
+  const out: Record<string, string> = {};
+  for (const line of sidebarSectionDraft.value.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const eq = t.indexOf("=");
+    if (eq <= 0) continue;
+    const key = t.slice(0, eq).trim();
+    const val = t.slice(eq + 1).trim();
+    if (key && val) out[key] = val;
+  }
+  setConsolePrefs({ sidebarNavSectionByToken: out });
+  syncSidebarSectionDraft();
+}
+
+function clearSidebarSectionOverrides() {
+  setConsolePrefs({ sidebarNavSectionByToken: {} });
+  sidebarSectionDraft.value = "";
+}
 
 async function submitPassword() {
   pwdErr.value = "";
@@ -51,6 +84,7 @@ async function submitPassword() {
 
 onMounted(() => {
   scrollToPasswordIfNeeded();
+  syncSidebarSectionDraft();
 });
 
 watch(
@@ -74,14 +108,17 @@ function scrollToPasswordIfNeeded() {
       id="sidebar-prefs"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>侧栏
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px; line-height: 1.55">
-          可在侧栏拖动排序、移除项，或通过「添加快捷入口」把颗粒配置中的群列表等固定到侧栏。若误删导致只剩一项，仍可继续操作；若侧栏过空，请点下方恢复默认。
+          可在侧栏拖动排序、移除项。未显示在侧栏中的入口会归在侧栏底部的「未在侧栏」里；在任意设置卡片的标题栏点「+」也可把当前页面对应的侧栏项或子区块加回。若误删导致只剩一项，仍可继续操作；侧栏过空时可点下方恢复默认。
         </p>
         <button
           type="button"
@@ -90,14 +127,56 @@ function scrollToPasswordIfNeeded() {
         >
           恢复侧栏默认顺序与项目
         </button>
+        <details style="margin-top: 14px">
+          <summary
+            class="muted"
+            style="cursor: pointer; font-weight: 650; user-select: none"
+          >自定义侧栏分组标题</summary>
+          <p
+            class="muted"
+            style="margin: 10px 0 8px; line-height: 1.55; font-size: 13px"
+          >
+            每行一条 <code>token=分组名</code>：token 为主导航路径（如 <code>/logs</code>）或固定项（如 <code>pin:bot-social-groups</code>）。相邻且分组名相同的项在侧栏中会归为一组；未写到的 token 仍用内置分组。
+          </p>
+          <textarea
+            v-model="sidebarSectionDraft"
+            class="inp"
+            rows="7"
+            spellcheck="false"
+            aria-label="侧栏分组映射"
+            style="width: 100%; max-width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; min-height: 120px"
+          />
+          <div
+            class="row-actions"
+            style="margin-top: 10px"
+          >
+            <button
+              type="button"
+              class="btn btn--primary"
+              @click="applySidebarSectionDraft"
+            >
+              保存分组
+            </button>
+            <button
+              type="button"
+              class="btn"
+              @click="clearSidebarSectionOverrides"
+            >
+              清除自定义分组
+            </button>
+          </div>
+        </details>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>颜色模式
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">「跟随系统」会监听系统深色 / 浅色切换。</p>
@@ -131,10 +210,13 @@ function scrollToPasswordIfNeeded() {
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>圆角风格
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px">影响卡片、面板、按钮与下拉框等控件的圆角。</p>
@@ -168,10 +250,13 @@ function scrollToPasswordIfNeeded() {
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>内容密度
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
       </div>
       <div class="panel__bd">
         <div class="row-actions">
@@ -199,10 +284,13 @@ function scrollToPasswordIfNeeded() {
       id="console-password"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>控制台口令
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
       </div>
       <div class="panel__bd">
         <div

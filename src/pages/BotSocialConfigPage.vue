@@ -17,6 +17,7 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -364,6 +365,7 @@ onMounted(async () => {
           />
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd pin-id="bot-social-groups" />
           <select
             v-model="filterSelfId"
             class="sel"
@@ -480,10 +482,13 @@ onMounted(async () => {
       id="bsc-user-config"
       class="panel"
     >
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友（用户）配置
         </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd pin-id="bot-social-users" />
+        </div>
       </div>
       <div class="panel__bd">
         <p

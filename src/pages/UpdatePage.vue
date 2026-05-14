@@ -11,6 +11,7 @@ import {
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
@@ -217,6 +218,9 @@ onMounted(() => {
           <h2 class="panel__title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>GitHub 令牌
           </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/update" />
+          </div>
         </div>
         <div class="panel__bd muted update-page__bd">
           <p>
@@ -286,6 +290,7 @@ onMounted(() => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
           </h2>
           <div class="update-page__hd-tail">
+            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshWebBusy"
               :disabled="busy"
@@ -347,6 +352,7 @@ onMounted(() => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
           </h2>
           <div class="update-page__hd-tail">
+            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshBotBusy"
               :disabled="busy"

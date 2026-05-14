@@ -4,6 +4,7 @@ import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -286,13 +287,16 @@ onMounted(async () => {
               @click="reloadFromUser"
             />
           </h2>
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
-            @click="expNonebot = !expNonebot"
-          >
-            {{ expNonebot ? "收起" : "展开" }}
-          </button>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/instances" />
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expNonebot = !expNonebot"
+            >
+              {{ expNonebot ? "收起" : "展开" }}
+            </button>
+          </div>
         </div>
         <div
           v-show="expNonebot"
@@ -343,6 +347,7 @@ onMounted(async () => {
             {{ expDbBots ? "收起" : "展开" }}
           </button>
           <div class="inst-db-panel__actions">
+            <PanelSidebarAdd main-path="/instances" />
             <span
               v-if="data"
               class="inst-db-stat muted"

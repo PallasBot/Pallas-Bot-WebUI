@@ -16,6 +16,7 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -274,18 +275,21 @@ onMounted(async () => {
             @click="refreshNcmStatus"
           />
         </h2>
-        <div
-          v-if="ncmStatus"
-          class="ai-ncm-hd-status"
-        >
-          <span
-            class="home-page__hd-capsule"
-            :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
-          >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
-          <span
-            v-if="ncmExtraLine"
-            class="muted ai-ncm-hd-extra"
-          >{{ ncmExtraLine }}</span>
+        <div class="row-actions" style="flex-wrap: wrap; justify-content: flex-end">
+          <PanelSidebarAdd main-path="/ai" />
+          <div
+            v-if="ncmStatus"
+            class="ai-ncm-hd-status"
+          >
+            <span
+              class="home-page__hd-capsule"
+              :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
+            >{{ ncmLoggedIn ? "已登录" : "未登录" }}</span>
+            <span
+              v-if="ncmExtraLine"
+              class="muted ai-ncm-hd-extra"
+            >{{ ncmExtraLine }}</span>
+          </div>
         </div>
       </div>
       <div class="panel__bd">
@@ -402,11 +406,12 @@ onMounted(async () => {
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>配置 JSON
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd main-path="/ai" />
           <button
             type="button"
             class="btn"
@@ -448,11 +453,12 @@ onMounted(async () => {
     </div>
 
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>扩展日志
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd main-path="/ai" />
           <select
             v-model="logKind"
             class="sel"

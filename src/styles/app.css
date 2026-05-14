@@ -484,14 +484,14 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   background: rgba(248, 113, 113, 0.1);
 }
 
-.shell__nav-add {
+.shell__nav-pool {
   margin: 8px 2px 0;
   border-radius: var(--radius-sm);
   border: 1px dashed color-mix(in srgb, var(--border) 88%, transparent);
   padding: 2px 6px 8px;
 }
 
-.shell__nav-add-summary {
+.shell__nav-pool-summary {
   cursor: pointer;
   font-size: 11px;
   font-weight: 650;
@@ -501,22 +501,104 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   list-style: none;
 }
 
-.shell__nav-add-summary::-webkit-details-marker {
+.shell__nav-pool-summary::-webkit-details-marker {
   display: none;
 }
 
-.shell__nav-add-body {
+.shell__nav-pool-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 0 6px 4px;
 }
 
-.shell__nav-add-btn {
+.shell__nav-pool-section {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 6px 2px 0;
+}
+
+.shell__nav-pool-btn {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
   font-size: 12px !important;
   padding: 7px 10px !important;
   justify-content: flex-start;
   text-align: left;
+}
+
+.shell__nav-pool-plus {
+  font-weight: 800;
+  color: var(--accent);
+  width: 14px;
+  text-align: center;
+}
+
+.shell__nav-pool-ico {
+  width: 18px;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.shell__page-offers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 40px 10px;
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.shell__page-offers-label {
+  font-size: 12px;
+  font-weight: 650;
+  flex-shrink: 0;
+}
+
+.shell__page-offers-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.shell__page-offers-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  max-width: 100%;
+}
+
+.shell__page-offers-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.shell__page-offers-plus {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.shell__page-offers-ico {
+  opacity: 0.85;
+  font-size: 13px;
 }
 
 .shell__nav-link--pin {
@@ -533,18 +615,28 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
   padding: 12px 14px 4px;
 }
 
-.shell-mobile-nav__add {
+.shell-mobile-nav__pool {
   margin-top: 10px;
   padding: 12px 14px 16px;
   border-top: 1px solid var(--border);
 }
 
-.shell-mobile-nav__add-title {
+.shell-mobile-nav__pool-title {
   font-size: 12px;
   margin-bottom: 8px;
+  font-weight: 650;
 }
 
-.shell-mobile-nav__add-btn {
+.shell-mobile-nav__pool-section {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 8px 0 4px;
+}
+
+.shell-mobile-nav__pool-btn {
   display: block;
   width: 100%;
   margin-bottom: 6px;
@@ -2919,6 +3011,15 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
   background-clip: text;
   color: transparent;
 }
+.home-account-hero__counts-num--pending {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--text-muted);
+}
 html[data-theme="light"] .home-account-hero__counts-pair {
   color: #2563eb;
 }
@@ -2927,6 +3028,12 @@ html[data-theme="light"] .home-account-hero__counts-num {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+html[data-theme="light"] .home-account-hero__counts-num--pending {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--text-muted);
 }
 
 .home-account-charts-span {
@@ -4383,9 +4490,33 @@ table.data tbody tr:hover td {
 /* 插件目录卡片 + fields 预览 */
 .plugins-page__hero {
   margin: 0 0 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 .plugins-page__hero .panel__title {
   margin: 0;
+}
+.plugins-page__plugin-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.plugin-card__title-line {
+  font-weight: 800;
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  line-height: 1.25;
+}
+.plugin-card__desc-line {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.plugin-card__enter-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--accent);
 }
 .plugin-card {
   position: relative;
@@ -4407,11 +4538,11 @@ table.data tbody tr:hover td {
 .plugin-card__top .plugin-card__link {
   flex: 1;
   min-width: 0;
-  padding-right: 18px;
+  padding-right: 14px;
 }
 .plugin-card__help-panel {
   flex-shrink: 0;
-  padding: 0 18px 12px;
+  padding: 0 14px 10px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   background: color-mix(in srgb, var(--bg-deep) 35%, transparent);
 }
@@ -4422,8 +4553,8 @@ html[data-theme="light"] .plugin-card__help-panel {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
+  gap: 10px;
+  padding-top: 10px;
 }
 .plugin-card__help-text {
   flex: 1;
@@ -4499,7 +4630,7 @@ html[data-theme="light"] .plugin-card__help-panel {
 }
 .plugin-card__link {
   display: block;
-  padding: 18px 18px 8px;
+  padding: 12px 14px 6px;
   color: inherit;
   text-decoration: none;
   transition: background var(--ease);
@@ -4508,7 +4639,7 @@ html[data-theme="light"] .plugin-card__help-panel {
   background: var(--bg-card-hover);
 }
 .plugin-card__actions {
-  padding: 0 18px 14px;
+  padding: 0 14px 10px;
 }
 .plugin-preview {
   border-top: 1px solid var(--border);

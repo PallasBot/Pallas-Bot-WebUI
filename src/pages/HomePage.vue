@@ -32,6 +32,7 @@ import type {
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import standeeUrl from "@/assets/pallas-standee.webp?url";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -371,6 +372,9 @@ const socialCountsLoadHint = computed(() => {
   if (friendSnap.value != null || groupSnap.value != null) return "";
   return "好友/群列表未拉取，可点账户信息标题旁的刷新图标重试";
 });
+
+const friendCountNumPending = computed(() => !socialBusy.value && friendSnap.value == null);
+const groupCountNumPending = computed(() => !socialBusy.value && groupSnap.value == null);
 
 const throughputTodayInline = computed(() => {
   if (socialBusy.value) return "…";
@@ -947,10 +951,13 @@ onMounted(load);
                 @click="load"
               />
             </h2>
-            <RouterLink
-              class="home-instances-capsule"
-              to="/instances"
-            >实例与连接</RouterLink>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <RouterLink
+                class="home-instances-capsule"
+                to="/instances"
+              >实例与连接</RouterLink>
+            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -1112,8 +1119,14 @@ onMounted(load);
                                 aria-hidden="true"
                               > </span>
                             </div>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong
+                              class="home-account-hero__counts-num"
+                              :class="{ 'home-account-hero__counts-num--pending': friendCountNumPending }"
+                            >{{ friendCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong
+                              class="home-account-hero__counts-num"
+                              :class="{ 'home-account-hero__counts-num--pending': groupCountNumPending }"
+                            >{{ groupCountDisplay }}</strong></span>
                           </div>
                           <p
                             v-if="socialCountsLoadHint"
@@ -1402,7 +1415,10 @@ onMounted(load);
             <h2 class="panel__title">
               <span class="panel__title-ico" aria-hidden="true">▤</span>系统性能
             </h2>
-            <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
+            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -1489,10 +1505,13 @@ onMounted(load);
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
         </h2>
-        <span
-          v-if="health?.ok"
-          class="home-page__hd-capsule home-page__hd-capsule--ok"
-        >API 连接</span>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/" />
+          <span
+            v-if="health?.ok"
+            class="home-page__hd-capsule home-page__hd-capsule--ok"
+          >API 连接</span>
+        </div>
       </div>
       <div class="panel__bd muted home-page__version home-page__version--grid">
         <dl class="home-dl home-dl--version-rows home-version-dl">
