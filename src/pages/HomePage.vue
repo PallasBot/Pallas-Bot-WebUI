@@ -664,6 +664,26 @@ const showThroughputMiniChart = computed(
     Boolean(throughputApiLineModel.value.polyline || throughputApiLineModel.value.dot),
 );
 
+type ThroughputMiniLegendItem = { key: string; label: string; swatch: "recv" | "sent" | "api" };
+
+const throughputMiniLegendItems = computed((): ThroughputMiniLegendItem[] => {
+  const items: ThroughputMiniLegendItem[] = [];
+  if (throughputMessageBarBuckets.value.length) {
+    items.push({ key: "recv", label: "消息收", swatch: "recv" });
+    items.push({ key: "sent", label: "消息发", swatch: "sent" });
+  }
+  const api = throughputApiLineModel.value;
+  if (api.polyline || api.dot || api.areaPath) {
+    items.push({ key: "api", label: "协议 API（成功）", swatch: "api" });
+  }
+  return items;
+});
+
+const throughputMiniLegendAria = computed(() => {
+  const xs = throughputMiniLegendItems.value.map((x) => x.label);
+  return xs.length ? `迷你图图例：${xs.join("，")}` : "";
+});
+
 const apiTodayTotalStr = computed(() => {
   const r = scopedBotStatsRow.value;
   if (!r || r.today_api_calls == null) return "—";
@@ -1173,6 +1193,24 @@ onMounted(load);
                             r="2"
                           />
                         </svg>
+                        <div
+                          v-if="throughputMiniLegendItems.length"
+                          class="home-account-metrics__bars-legend muted"
+                          :aria-label="throughputMiniLegendAria || undefined"
+                        >
+                          <span
+                            v-for="it in throughputMiniLegendItems"
+                            :key="it.key"
+                            class="home-account-metrics__legend-item"
+                          >
+                            <i
+                              class="home-account-metrics__legend-swatch"
+                              :class="`home-account-metrics__legend-swatch--${it.swatch}`"
+                              aria-hidden="true"
+                            />
+                            {{ it.label }}
+                          </span>
+                        </div>
                         <div class="home-account-metrics__bars-ticks muted">
                           <span
                             v-for="(tk, ti) in throughputBarTimeTicks"
