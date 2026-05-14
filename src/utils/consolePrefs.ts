@@ -24,6 +24,8 @@ export interface ConsolePrefsState {
   tablePageSize: number;
   /** 侧栏 token 顺序（path 或 pin:id，见 mainNav / sidebarPins） */
   sidebarNavOrder: string[];
+  /** 侧栏项 token → 自定义分组标题（仅影响侧栏与「未在侧栏」列表的分组展示） */
+  sidebarNavSectionByToken: Record<string, string>;
   /** 侧栏布局版本：用于一次性迁移默认顺序等 */
   sidebarNavLayoutVersion: number;
   /** 好友与群页：好友列表面板是否展开 */
@@ -41,6 +43,7 @@ const defaults: ConsolePrefsState = {
   instancesBotView: "table",
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
+  sidebarNavSectionByToken: {},
   sidebarNavLayoutVersion: 2,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
@@ -81,6 +84,17 @@ function load(): ConsolePrefsState {
     if (typeof (parsed as { botSocialPageGroupListOpen?: unknown }).botSocialPageGroupListOpen === "boolean") {
       merged.botSocialPageGroupListOpen = (parsed as { botSocialPageGroupListOpen: boolean }).botSocialPageGroupListOpen;
     }
+    const sectRaw = (parsed as { sidebarNavSectionByToken?: unknown }).sidebarNavSectionByToken;
+    if (sectRaw && typeof sectRaw === "object" && !Array.isArray(sectRaw)) {
+      const cleaned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(sectRaw as Record<string, unknown>)) {
+        if (typeof k !== "string" || typeof v !== "string") continue;
+        const kt = k.trim();
+        const vt = v.trim();
+        if (kt && vt) cleaned[kt] = vt;
+      }
+      merged.sidebarNavSectionByToken = cleaned;
+    }
     if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {      merged.theme = defaults.theme;
     }
     return merged;
@@ -119,6 +133,19 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
   const next = { ...patch };
   if (next.sidebarNavOrder !== undefined) {
     next.sidebarNavOrder = normalizeMainNavOrder(next.sidebarNavOrder);
+  }
+  if (next.sidebarNavSectionByToken !== undefined) {
+    const o = next.sidebarNavSectionByToken;
+    const cleaned: Record<string, string> = {};
+    if (o && typeof o === "object" && !Array.isArray(o)) {
+      for (const [k, v] of Object.entries(o)) {
+        if (typeof k !== "string" || typeof v !== "string") continue;
+        const kt = k.trim();
+        const vt = v.trim();
+        if (kt && vt) cleaned[kt] = vt;
+      }
+    }
+    next.sidebarNavSectionByToken = cleaned;
   }
   Object.assign(consolePrefs, next);
   persistConsolePrefs();

@@ -4,6 +4,7 @@ import { fetchCommonConfig, fetchCommonConfigSections, putCommonConfig } from "@
 import type { CommonConfigSectionMeta, PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -177,11 +178,12 @@ async function save() {
       class="common-config-page"
     >
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>分区
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd main-path="/common-config" />
           <select
             v-model="currentId"
             class="sel"

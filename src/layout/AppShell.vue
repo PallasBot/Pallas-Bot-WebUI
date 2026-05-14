@@ -4,7 +4,7 @@ import { useRoute } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
-import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
+import { mainNavIconForPath, mainNavItemByPath, MAIN_NAV_ITEMS, type MainNavItem } from "@/config/mainNav";
 import {
   parseSidebarPinToken,
   SIDEBAR_PIN_DEFINITIONS,
@@ -14,6 +14,8 @@ import {
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import { addNavTokenToSidebar } from "@/utils/sidebarNavActions";
+import { effectiveSidebarSection } from "@/utils/sidebarSectionLabels";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const route = useRoute();
@@ -39,16 +41,65 @@ const sidebarNavRows = computed((): SidebarNavRowView[] => {
   }
   let prevSection: string | null = null;
   return raw.map((r) => {
-    const section = r.kind === "main" ? r.item.section : r.pin.section;
+    const fallback = r.kind === "main" ? r.item.section : r.pin.section;
+    const section = effectiveSidebarSection(r.token, fallback);
     const showSection = section !== prevSection;
     prevSection = section;
     return { ...r, section, showSection };
   });
 });
 
-const pinsAddable = computed(() =>
-  SIDEBAR_PIN_DEFINITIONS.filter((p) => !consolePrefs.sidebarNavOrder.includes(sidebarPinToken(p.id))),
-);
+type SidebarPoolRow =
+  | { kind: "main"; token: string; item: MainNavItem; section: string; showSection: boolean }
+  | { kind: "pin"; token: string; pin: SidebarPinDefinition; section: string; showSection: boolean };
+
+const sidebarPoolRows = computed((): SidebarPoolRow[] => {
+  const order = new Set(consolePrefs.sidebarNavOrder);
+  const tmp: SidebarPoolRow[] = [];
+  for (const item of MAIN_NAV_ITEMS) {
+    if (!order.has(item.to)) {
+      const section = effectiveSidebarSection(item.to, item.section);
+      tmp.push({ kind: "main", token: item.to, item, section, showSection: false });
+    }
+  }
+  for (const pin of SIDEBAR_PIN_DEFINITIONS) {
+    const tok = sidebarPinToken(pin.id);
+    if (!order.has(tok)) {
+      const section = effectiveSidebarSection(tok, pin.section);
+      tmp.push({ kind: "pin", token: tok, pin, section, showSection: false });
+    }
+  }
+  let prev: string | null = null;
+  for (const r of tmp) {
+    const show = r.section !== prev;
+    prev = r.section;
+    r.showSection = show;
+  }
+  return tmp;
+});
+
+function routeMainSidebarPath(): string {
+  const p = route.path || "/";
+  if (p === "/" || p === "") return "/";
+  const seg = p.split("/").filter(Boolean)[0];
+  return seg ? `/${seg}` : "/";
+}
+
+const pageSidebarAddChips = computed(() => {
+  const order = new Set(consolePrefs.sidebarNavOrder);
+  const chips: { token: string; label: string; icon: string }[] = [];
+  const mainPath = routeMainSidebarPath();
+  const mainItem = mainNavItemByPath(mainPath);
+  if (mainItem && !order.has(mainPath)) {
+    chips.push({ token: mainPath, label: mainItem.label, icon: mainItem.icon });
+  }
+  for (const pin of SIDEBAR_PIN_DEFINITIONS) {
+    if (pin.path !== route.path) continue;
+    const tok = sidebarPinToken(pin.id);
+    if (!order.has(tok)) chips.push({ token: tok, label: pin.label, icon: pin.icon });
+  }
+  return chips;
+});
 
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
   const atPath = route.path === item.to || (item.to !== "/" && route.path.startsWith(`${item.to}/`));
@@ -74,12 +125,6 @@ function removeNavToken(token: string) {
   setConsolePrefs({
     sidebarNavOrder: consolePrefs.sidebarNavOrder.filter((t) => t !== token),
   });
-}
-
-function addSidebarPin(id: string) {
-  const tok = sidebarPinToken(id);
-  if (consolePrefs.sidebarNavOrder.includes(tok)) return;
-  setConsolePrefs({ sidebarNavOrder: [...consolePrefs.sidebarNavOrder, tok] });
 }
 
 const mobileNavOpen = ref(false);
@@ -649,20 +694,40 @@ onUnmounted(() => {
           </div>
         </template>
         <details
-          v-if="!isNarrow && !consolePrefs.sidebarCollapsed && pinsAddable.length"
-          class="shell__nav-add"
+          v-if="!isNarrow && !consolePrefs.sidebarCollapsed && sidebarPoolRows.length"
+          class="shell__nav-pool"
         >
-          <summary class="shell__nav-add-summary">添加快捷入口</summary>
-          <div class="shell__nav-add-body">
-            <button
-              v-for="p in pinsAddable"
-              :key="p.id"
-              type="button"
-              class="btn shell__nav-add-btn"
-              @click="addSidebarPin(p.id)"
-            >
-              {{ p.label }}
-            </button>
+          <summary class="shell__nav-pool-summary">未在侧栏（{{ sidebarPoolRows.length }}）</summary>
+          <div class="shell__nav-pool-body">
+            <template v-for="row in sidebarPoolRows" :key="'pool-' + row.token">
+              <div
+                v-if="row.showSection"
+                class="shell__nav-pool-section"
+                role="presentation"
+              >
+                {{ row.section }}
+              </div>
+              <button
+                v-if="row.kind === 'main'"
+                type="button"
+                class="btn shell__nav-pool-btn"
+                @click="addNavTokenToSidebar(row.token)"
+              >
+                <span class="shell__nav-pool-plus" aria-hidden="true">+</span>
+                <span class="shell__nav-pool-ico" aria-hidden="true">{{ row.item.icon }}</span>
+                {{ row.item.label }}
+              </button>
+              <button
+                v-else
+                type="button"
+                class="btn shell__nav-pool-btn shell__nav-pool-btn--pin"
+                @click="addNavTokenToSidebar(row.token)"
+              >
+                <span class="shell__nav-pool-plus" aria-hidden="true">+</span>
+                <span class="shell__nav-pool-ico" aria-hidden="true">{{ row.pin.icon }}</span>
+                {{ row.pin.label }}
+              </button>
+            </template>
           </div>
         </details>
       </nav>
@@ -771,24 +836,45 @@ onUnmounted(() => {
               </RouterLink>
             </template>
             <div
-              v-if="pinsAddable.length"
-              class="shell-mobile-nav__add"
+              v-if="sidebarPoolRows.length"
+              class="shell-mobile-nav__pool"
             >
-              <div class="shell-mobile-nav__add-title muted">
-                添加快捷入口
+              <div class="shell-mobile-nav__pool-title muted">
+                未在侧栏（{{ sidebarPoolRows.length }}）
               </div>
-              <button
-                v-for="p in pinsAddable"
-                :key="'add-' + p.id"
-                type="button"
-                class="btn shell-mobile-nav__add-btn"
-                @click="
-                  addSidebarPin(p.id);
-                  closeMobileNav();
-                "
-              >
-                {{ p.label }}
-              </button>
+              <template v-for="row in sidebarPoolRows" :key="'mpool-' + row.token">
+                <div
+                  v-if="row.showSection"
+                  class="shell-mobile-nav__pool-section"
+                  role="presentation"
+                >
+                  {{ row.section }}
+                </div>
+                <button
+                  v-if="row.kind === 'main'"
+                  type="button"
+                  class="btn shell-mobile-nav__pool-btn"
+                  @click="
+                    addNavTokenToSidebar(row.token);
+                    closeMobileNav();
+                  "
+                >
+                  <span aria-hidden="true">+</span>
+                  {{ row.item.label }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="btn shell-mobile-nav__pool-btn"
+                  @click="
+                    addNavTokenToSidebar(row.token);
+                    closeMobileNav();
+                  "
+                >
+                  <span aria-hidden="true">+</span>
+                  {{ row.pin.label }}
+                </button>
+              </template>
             </div>
           </nav>
         </aside>
@@ -825,6 +911,27 @@ onUnmounted(() => {
         :class="mainInnerClass"
         @scroll.passive="onMainInnerScroll"
       >
+        <div
+          v-if="pageSidebarAddChips.length"
+          class="shell__page-offers"
+          role="region"
+          aria-label="固定到侧栏"
+        >
+          <span class="shell__page-offers-label muted">固定到侧栏</span>
+          <div class="shell__page-offers-chips">
+            <button
+              v-for="c in pageSidebarAddChips"
+              :key="c.token"
+              type="button"
+              class="shell__page-offers-btn"
+              @click="addNavTokenToSidebar(c.token)"
+            >
+              <span class="shell__page-offers-plus" aria-hidden="true">+</span>
+              <span class="shell__page-offers-ico" aria-hidden="true">{{ c.icon }}</span>
+              {{ c.label }}
+            </button>
+          </div>
+        </div>
         <router-view v-slot="{ Component, route: r }">
           <transition
             name="shell-page"

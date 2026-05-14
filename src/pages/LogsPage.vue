@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -115,7 +116,7 @@ function lineClass(lv: LogEntry["level"]): string {
       class="logs-page__body"
     >
     <div class="panel">
-      <div class="panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
           <RefreshIconButton
@@ -126,6 +127,7 @@ function lineClass(lv: LogEntry["level"]): string {
           />
         </h2>
         <div class="row-actions">
+          <PanelSidebarAdd main-path="/logs" />
           <select
             v-model="scope"
             class="sel"

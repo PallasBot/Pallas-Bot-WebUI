@@ -8,6 +8,7 @@ import {
 } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
@@ -93,10 +94,10 @@ async function togglePreview(name: string) {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
         </h2>
+        <PanelSidebarAdd main-path="/plugins" />
       </div>
       <div
-        class="grid-stats"
-        style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))"
+        class="grid-stats plugins-page__plugin-grid"
       >
         <div
           v-for="p in list"
@@ -108,13 +109,13 @@ async function togglePreview(name: string) {
               class="plugin-card__link"
               :to="{ name: 'plugin-config', params: { name: p.name } }"
             >
-              <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em; margin-bottom: 6px">
+              <div class="plugin-card__title-line">
                 {{ p.metadata?.name || p.name }}
               </div>
-              <div class="muted" style="font-size: 13px; line-height: 1.45">
+              <div class="muted plugin-card__desc-line">
                 {{ p.metadata?.description || p.module }}
               </div>
-              <div style="margin-top: 12px; font-size: 12px; color: var(--accent)">进入配置编辑 →</div>
+              <div class="plugin-card__enter-hint">进入配置编辑 →</div>
             </RouterLink>
             <div
               class="plugin-card__help-panel"
