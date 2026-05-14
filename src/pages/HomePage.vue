@@ -952,10 +952,8 @@ onMounted(load);
                                 aria-hidden="true"
                               > </span>
                             </div>
-                          </div>
-                          <div class="home-account-hero__counts-line home-account-hero__counts-line--grid">
-                            <span class="home-account-hero__counts-pair">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
-                            <span class="home-account-hero__counts-pair">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
                           </div>
                           <p
                             v-if="socialCountsLoadHint"
