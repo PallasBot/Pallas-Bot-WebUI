@@ -1230,6 +1230,7 @@ function pluginBarLabel(name: string): string {
 
 <style scoped>
 .home-plugin-charts {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1488,7 +1489,8 @@ function pluginBarLabel(name: string): string {
   margin-top: 4px;
 }
 
-@media (max-width: 560px) {
+/* 按「图表区块实际宽度」断行，避免宽视口 + 窄内容列时仍横向挤压 */
+@container (max-width: 640px) {
   .home-plugin-charts__toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -1499,6 +1501,7 @@ function pluginBarLabel(name: string): string {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    width: 100%;
   }
 
   .home-plugin-charts__toolbar-label {
@@ -1509,11 +1512,46 @@ function pluginBarLabel(name: string): string {
     width: 100%;
     min-width: 0;
     flex: 0 0 auto;
+    box-sizing: border-box;
   }
 
   .home-plugin-charts__draw-toggle {
     width: 100%;
     justify-content: center;
+    box-sizing: border-box;
+  }
+}
+
+/* 无容器查询时的回退（整页窄屏） */
+@media (max-width: 640px) {
+  .home-plugin-charts__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .home-plugin-charts__toolbar-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .home-plugin-charts__toolbar-label {
+    width: 100%;
+  }
+
+  .home-plugin-charts__pick {
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+  }
+
+  .home-plugin-charts__draw-toggle {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
   }
 }
 </style>
