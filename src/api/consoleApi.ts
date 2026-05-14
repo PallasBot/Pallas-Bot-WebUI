@@ -220,6 +220,33 @@ export async function postRequestAction(body: {
   return unwrap(data, "/request-actions");
 }
 
+export interface RequestActionsBatchError {
+  self_id: number;
+  user_id: number;
+  source?: string;
+  group_id?: number;
+  error: string;
+}
+
+export interface RequestActionsBatchResult {
+  friends_ok: number;
+  friends_fail: number;
+  friends_errors: RequestActionsBatchError[];
+  groups_ok: number;
+  groups_fail: number;
+  groups_errors: RequestActionsBatchError[];
+}
+
+/** 批量好友/入群审批（单次请求、服务端单次写盘） */
+export async function postRequestActionsBatch(body: {
+  action: "approve" | "reject";
+  friends: Array<{ self_id: number; user_id: number; source: "pending" | "doubt" }>;
+  groups: Array<{ self_id: number; user_id: number; group_id: number }>;
+}): Promise<RequestActionsBatchResult> {
+  const { data } = await http.post<ApiOk<RequestActionsBatchResult>>("/request-actions/batch", body);
+  return unwrap(data, "/request-actions/batch");
+}
+
 export async function fetchBotConfigs(): Promise<BotConfigPublic[]> {
   const { data } = await http.get<ApiOk<BotConfigPublic[]>>("/bot-configs");
   return unwrap(data, "/bot-configs");

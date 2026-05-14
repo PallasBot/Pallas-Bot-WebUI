@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import { fetchPluginConfig, putPluginConfig } from "@/api/consoleApi";
-import type { PluginConfigData, PluginConfigField } from "@/api/pallasTypes";
+import {
+  fetchPluginConfig,
+  fetchPlugins,
+  fetchPluginsHelpMenuVisibility,
+  putPluginConfig,
+  putPluginsHelpMenuVisibility,
+} from "@/api/consoleApi";
+import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -14,6 +20,56 @@ const ok = ref("");
 const loading = ref(false);
 const saving = ref(false);
 const data = ref<PluginConfigData | null>(null);
+const pluginRow = ref<PluginRow | null>(null);
+const helpMenuHiddenList = ref<string[]>([]);
+const helpMenuIgnoredList = ref<string[]>([]);
+const helpMenuBusy = ref(false);
+const helpMenuErr = ref("");
+
+const showInHelpMenu = computed(() => {
+  if (!pluginRow.value) return false;
+  if (pluginRow.value.help_ignored) return false;
+  return Boolean(pluginRow.value.help_visible ?? !pluginRow.value.help_hidden);
+});
+
+async function loadHelpMenuState() {
+  const name = pluginName.value;
+  if (!name) return;
+  helpMenuBusy.value = true;
+  helpMenuErr.value = "";
+  try {
+    const [rows, vis] = await Promise.all([fetchPlugins(), fetchPluginsHelpMenuVisibility()]);
+    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+    helpMenuHiddenList.value = [...vis.hidden_plugins];
+    helpMenuIgnoredList.value = [...vis.ignored_plugins];
+  } catch (e) {
+    helpMenuErr.value = e instanceof Error ? e.message : String(e);
+    pluginRow.value = null;
+  } finally {
+    helpMenuBusy.value = false;
+  }
+}
+
+async function toggleHelpMenuVisible(wantVisible: boolean) {
+  const name = pluginName.value;
+  if (!name || !pluginRow.value?.name) return;
+  if (pluginRow.value.help_ignored) return;
+  helpMenuBusy.value = true;
+  helpMenuErr.value = "";
+  try {
+    const set = new Set(helpMenuHiddenList.value);
+    if (wantVisible) set.delete(name);
+    else set.add(name);
+    const out = await putPluginsHelpMenuVisibility([...set]);
+    helpMenuHiddenList.value = [...out.hidden_plugins];
+    const rows = await fetchPlugins();
+    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+  } catch (e) {
+    helpMenuErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    helpMenuBusy.value = false;
+  }
+}
 
 const pluginName = computed(() => String(route.params.name || ""));
 
@@ -29,6 +85,7 @@ async function load() {
   } finally {
     loading.value = false;
   }
+  void loadHelpMenuState();
 }
 
 watch(
@@ -127,6 +184,60 @@ async function save() {
     />
     <template v-else>
     <div
+      v-if="pluginName"
+      class="panel"
+      style="margin-bottom: 16px"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>帮助菜单
+        </h2>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="helpMenuBusy && !pluginRow"
+          class="muted"
+        >
+          加载帮助菜单状态…
+        </p>
+        <div
+          v-else-if="helpMenuErr"
+          class="alert alert--err"
+        >
+          {{ helpMenuErr }}
+        </div>
+        <template v-else-if="pluginRow">
+          <label
+            class="plugin-help-menu-label"
+            :class="{ 'plugin-help-menu-label--disabled': pluginRow.help_ignored || helpMenuBusy }"
+          >
+            <input
+              type="checkbox"
+              :checked="showInHelpMenu"
+              :disabled="helpMenuBusy || Boolean(pluginRow.help_ignored)"
+              @click.prevent="void toggleHelpMenuVisible(!showInHelpMenu)"
+            >
+            <span>在「牛牛帮助」总列表中显示该插件</span>
+          </label>
+          <p
+            v-if="pluginRow.help_ignored"
+            class="muted"
+            style="margin: 10px 0 0; line-height: 1.55"
+          >
+            该插件在帮助插件的 ignored_plugins 中，无法出现在帮助菜单。
+          </p>
+          <p
+            v-else
+            class="muted"
+            style="margin: 10px 0 0; line-height: 1.55"
+          >
+            变更立即写入服务端；下一条「牛牛帮助」即按新列表渲染。
+          </p>
+        </template>
+      </div>
+    </div>
+
+    <div
       v-if="data && data.plugin === pluginName"
       class="panel"
       style="margin-bottom: 16px"
@@ -204,3 +315,17 @@ async function save() {
     </template>
   </div>
 </template>
+
+<style scoped>
+.plugin-help-menu-label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-weight: 600;
+}
+.plugin-help-menu-label--disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+</style>

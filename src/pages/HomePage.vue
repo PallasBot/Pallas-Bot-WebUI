@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -13,6 +13,7 @@ import {
   fetchPlugins,
   fetchRequestOverview,
   fetchSystem,
+  fetchUpdateCheck,
 } from "@/api/consoleApi";
 import type {
   BotRow,
@@ -26,6 +27,7 @@ import type {
   PluginRunStatsData,
   RequestOverviewData,
   SystemData,
+  UpdateCheckData,
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -41,6 +43,7 @@ import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHisto
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
+const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
@@ -60,6 +63,45 @@ const pageReady = ref(false);
 const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
+
+const accountPickerOpen = ref(false);
+const accountPickerRoot = ref<HTMLElement | null>(null);
+
+function onAccountPickerDocDown(ev: MouseEvent) {
+  if (!accountPickerOpen.value) return;
+  const root = accountPickerRoot.value;
+  const t = ev.target;
+  if (!(t instanceof Node)) return;
+  if (root?.contains(t)) return;
+  accountPickerOpen.value = false;
+}
+
+watch(accountPickerOpen, (open) => {
+  if (open) {
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        document.addEventListener("mousedown", onAccountPickerDocDown, true);
+      });
+    });
+  } else {
+    document.removeEventListener("mousedown", onAccountPickerDocDown, true);
+  }
+});
+
+onUnmounted(() => {
+  document.removeEventListener("mousedown", onAccountPickerDocDown, true);
+});
+
+function toggleAccountPicker(ev: MouseEvent) {
+  ev.stopPropagation();
+  if (sortedDbBots.value.length <= 1) return;
+  accountPickerOpen.value = !accountPickerOpen.value;
+}
+
+function pickAccountFromList(account: number) {
+  selectedAccount.value = account;
+  accountPickerOpen.value = false;
+}
 
 const runtime = computed(() => system.value?.runtime ?? null);
 
@@ -146,6 +188,19 @@ const pallasBotVersionDisplay = computed(() => {
     return `git ${short}`;
   }
   return health.value?.pallas_bot ?? "—";
+});
+
+/** 待同意跳转：带上当前选中账号，好友与群页自动选中对应 Bot */
+const friendsGroupsFriendPendingTo = computed(() => {
+  const acc = selectedAccount.value;
+  const q = acc != null ? { self_id: String(acc) } : {};
+  return { path: "/friends-groups", query: q, hash: "#friends-groups-friend-requests" };
+});
+
+const friendsGroupsGroupPendingTo = computed(() => {
+  const acc = selectedAccount.value;
+  const q = acc != null ? { self_id: String(acc) } : {};
+  return { path: "/friends-groups", query: q, hash: "#friends-groups-group-requests" };
 });
 
 const versionServerTimeStr = computed(() => {
@@ -634,6 +689,7 @@ async function refreshSelectedBotDetails() {
 }
 
 watch(selectedAccount, () => {
+  accountPickerOpen.value = false;
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
 });
@@ -645,6 +701,9 @@ watch([scopedPluginRunRow, selectedAccount, socialBusy], ([row, acc, busy]) => {
 });
 
 watch(sortedDbBots, () => {
+  if (sortedDbBots.value.length <= 1) {
+    accountPickerOpen.value = false;
+  }
   ensureSelectedAccount();
 });
 
@@ -652,7 +711,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -661,9 +720,11 @@ async function load() {
       fetchInstances(),
       fetchPlugins(),
       fetchBotUpdateCheck().catch(() => null),
+      fetchUpdateCheck().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
+    webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
     stats.value = m;
     pluginRunStats.value = pr;
@@ -737,28 +798,6 @@ onMounted(load);
                 {{ overviewBusy ? "加载中…" : "刷新" }}
               </button>
             </div>
-            <div
-              v-if="sortedDbBots.length"
-              class="home-account-bot-pick"
-            >
-              <label
-                class="visually-hidden"
-                for="home-db-bot-sel"
-              >选择数据库 Bot</label>
-              <select
-                id="home-db-bot-sel"
-                v-model.number="selectedAccount"
-                class="sel home-account-bot-pick__sel"
-              >
-                  <option
-                    v-for="c in sortedDbBots"
-                    :key="c.account"
-                    :value="c.account"
-                  >
-                    {{ dbNick(c.account) || "BOT" }} · {{ c.account }}
-                  </option>
-              </select>
-            </div>
           </div>
           <div class="panel__bd">
             <p
@@ -789,12 +828,51 @@ onMounted(load);
                           >
                         </div>
                         <div class="home-account-hero__main">
-                          <div class="home-account-hero__title">
-                            {{ dbNick(selectedAccount) || "BOT" }}
-                            <span
-                              class="home-account-conn"
-                              :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                            >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                          <div
+                            ref="accountPickerRoot"
+                            class="home-account-hero__picker"
+                          >
+                            <div class="home-account-hero__title home-account-hero__title--picker">
+                              <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
+                              <button
+                                v-if="sortedDbBots.length > 1"
+                                type="button"
+                                class="home-account-hero__picker-toggle"
+                                :aria-expanded="accountPickerOpen"
+                                aria-haspopup="listbox"
+                                aria-label="切换账号"
+                                @click="toggleAccountPicker"
+                              >
+                                <span
+                                  class="home-account-hero__picker-caret"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                              <span
+                                class="home-account-conn"
+                                :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
+                              >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                            </div>
+                            <div
+                              v-if="accountPickerOpen && sortedDbBots.length > 1"
+                              class="home-account-hero__picker-menu"
+                              role="listbox"
+                              aria-label="选择 Bot 账号"
+                            >
+                              <button
+                                v-for="c in sortedDbBots"
+                                :key="c.account"
+                                type="button"
+                                class="home-account-hero__picker-item"
+                                :class="{ 'is-active': c.account === selectedAccount }"
+                                role="option"
+                                :aria-selected="c.account === selectedAccount"
+                                @click="pickAccountFromList(c.account)"
+                              >
+                                <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
+                                <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                              </button>
+                            </div>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
                           <p class="home-account-hero__proto muted">
@@ -822,7 +900,7 @@ onMounted(load);
                               <RouterLink
                                 v-else
                                 class="home-account-hero__pending-count-link"
-                                to="/friends-groups#friends-groups-friend-requests"
+                                :to="friendsGroupsFriendPendingTo"
                               >{{ friendPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
                           </div>
@@ -833,7 +911,7 @@ onMounted(load);
                               <RouterLink
                                 v-else
                                 class="home-account-hero__pending-count-link"
-                                to="/friends-groups#friends-groups-group-requests"
+                                :to="friendsGroupsGroupPendingTo"
                               >{{ groupPendingApplyDisplay }} 条待同意</RouterLink>
                             </div>
                           </div>
@@ -846,36 +924,41 @@ onMounted(load);
                               :class="{ 'home-account-hero__admin-values--placeholder': !(selectedBotConfig?.admins?.length) }"
                             >{{ selectedAdminsDisplay }}</span>
                           </p>
-                          <div class="home-account-hero__links">
-                            <a
-                              v-if="nativeProtocolWebUiHref"
-                              class="home-account-hero__link"
-                              :href="nativeProtocolWebUiHref"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >原生 WebUI</a>
-                            <a
-                              v-if="protocolBuiltInManageHref"
-                              class="home-account-hero__link"
-                              :href="protocolBuiltInManageHref"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >协议管理页</a>
+                          <div class="home-account-hero__links-grid">
+                            <div class="home-account-hero__links-grid__col home-account-hero__links-grid__col--friend">
+                              <a
+                                v-if="nativeProtocolWebUiHref"
+                                class="home-account-hero__link"
+                                :href="nativeProtocolWebUiHref"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >原生 WebUI</a>
+                              <span
+                                v-else
+                                class="home-account-hero__link-ph"
+                                aria-hidden="true"
+                              > </span>
+                            </div>
+                            <div class="home-account-hero__links-grid__col home-account-hero__links-grid__col--group">
+                              <a
+                                v-if="protocolBuiltInManageHref"
+                                class="home-account-hero__link"
+                                :href="protocolBuiltInManageHref"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >协议管理页</a>
+                              <span
+                                v-else
+                                class="home-account-hero__link-ph"
+                                aria-hidden="true"
+                              > </span>
+                            </div>
                           </div>
-                          <dl class="home-account-dl home-account-dl--tight home-account-dl--hero-foot">
-                            <div>
-                              <dt>好友</dt>
-                              <dd class="home-account-dl__stack">
-                                <span class="home-account-dl__stack-count">{{ friendCountDisplay }}</span>
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>群</dt>
-                              <dd class="home-account-dl__stack">
-                                <span class="home-account-dl__stack-count">{{ groupCountDisplay }}</span>
-                              </dd>
-                            </div>
-                          </dl>
+                          <div class="home-account-hero__counts-line">
+                            <span class="home-account-hero__counts-pair">好友 <strong class="home-account-hero__counts-num">{{ friendCountDisplay }}</strong></span>
+                            <span class="home-account-hero__counts-sep muted">·</span>
+                            <span class="home-account-hero__counts-pair">群聊 <strong class="home-account-hero__counts-num">{{ groupCountDisplay }}</strong></span>
+                          </div>
                           <p
                             v-if="socialCountsLoadHint"
                             class="home-account-hero__social-hint muted"
@@ -1223,6 +1306,17 @@ onMounted(load);
           <dt>Pallas-Bot</dt>
           <dd>
             <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+            <RouterLink
+              v-if="botUpdateCheck?.has_update"
+              class="home-version-update-link"
+              to="/update#console-update-bot"
+            >
+              <span class="badge badge--warn">有更新</span>
+              <span
+                v-if="(botUpdateCheck?.latest_tag || '').trim()"
+                class="home-version-update-meta muted"
+              >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
+            </RouterLink>
             <span class="home-dl__sub muted">业务</span>
           </dd>
           <dt>控制台资源</dt>
@@ -1233,6 +1327,17 @@ onMounted(load);
               class="home-version-commit"
               :title="health?.console?.commit || undefined"
             >{{ (health?.console?.commit || "").trim() }}</span>
+            <RouterLink
+              v-if="webUpdateCheck?.has_update"
+              class="home-version-update-link"
+              to="/update#console-update-webui"
+            >
+              <span class="badge badge--warn">有更新</span>
+              <span
+                v-if="(webUpdateCheck?.latest_tag || '').trim()"
+                class="home-version-update-meta muted"
+              >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
+            </RouterLink>
           </dd>
           <dt>服务时间</dt>
           <dd>

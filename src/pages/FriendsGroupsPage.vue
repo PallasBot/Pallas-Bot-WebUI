@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchFriendList,
@@ -8,6 +8,7 @@ import {
   fetchInstances,
   fetchRequestOverview,
   postRequestAction,
+  postRequestActionsBatch,
 } from "@/api/consoleApi";
 import type {
   BotRow,
@@ -66,6 +67,22 @@ function botOptionLabel(b: BotRow): string {
 }
 
 const botsVisible = computed(() => botPickerRowsFromInstances(instances.value));
+
+function applySelfIdFromRouteQuery() {
+  const raw = route.query.self_id ?? route.query.account;
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  const id = s != null ? String(s).trim() : "";
+  if (!id) return;
+  const list = botsVisible.value;
+  if (!list.some((b) => b.self_id === id)) return;
+  if (selfIdStr.value === id) return;
+  const prevSkip = skipSelfIdWatch.value;
+  skipSelfIdWatch.value = true;
+  selfIdStr.value = id;
+  nextTick(() => {
+    skipSelfIdWatch.value = prevSkip;
+  });
+}
 
 function displayFriendReqNickname(row: { user_id: number; nickname?: string | null }): string {
   const fromApi = row.nickname?.trim();
@@ -168,8 +185,8 @@ watch(botsVisible, (list) => {
 
 async function refreshPage() {
   await loadBots();
-  await loadListsOnly();
-  void loadRequestsOnly();
+  applySelfIdFromRouteQuery();
+  await Promise.all([loadListsOnly(), loadRequestsOnly()]);
 }
 
 watch(selfIdStr, () => {
@@ -195,20 +212,6 @@ function scrollFriendsGroupsHashIntoView() {
 }
 
 watch(() => route.hash, () => scrollFriendsGroupsHashIntoView());
-
-onMounted(async () => {
-  try {
-    await loadBots();
-    await loadListsOnly();
-    void loadRequestsOnly().finally(() => {
-      scrollFriendsGroupsHashIntoView();
-    });
-  } finally {
-    pageReady.value = true;
-    skipSelfIdWatch.value = false;
-    scrollFriendsGroupsHashIntoView();
-  }
-});
 
 const requestRows = computed(() => {
   const out: Array<{
@@ -261,6 +264,77 @@ const groupRequestRows = computed(() => {
   return out.filter((r) => !selfIdStr.value || r.self_id === selfIdStr.value);
 });
 
+function friendReqKey(row: { self_id: string; source: string; user_id: number }): string {
+  return `${row.self_id}\t${row.source}\t${row.user_id}`;
+}
+
+function groupReqKey(row: { self_id: string; group_id: number; user_id: number }): string {
+  return `${row.self_id}\t${row.group_id}\t${row.user_id}`;
+}
+
+const pickedFriendKeys = shallowRef(new Set<string>());
+const pickedGroupKeys = shallowRef(new Set<string>());
+
+function setPickedFriends(next: Set<string>) {
+  pickedFriendKeys.value = next;
+}
+
+function setPickedGroups(next: Set<string>) {
+  pickedGroupKeys.value = next;
+}
+
+function togglePickFriend(key: string) {
+  const s = new Set(pickedFriendKeys.value);
+  if (s.has(key)) s.delete(key);
+  else s.add(key);
+  setPickedFriends(s);
+}
+
+function togglePickGroup(key: string) {
+  const s = new Set(pickedGroupKeys.value);
+  if (s.has(key)) s.delete(key);
+  else s.add(key);
+  setPickedGroups(s);
+}
+
+const allFriendKeys = computed(() => requestRows.value.map(friendReqKey));
+
+const allGroupKeys = computed(() => groupRequestRows.value.map(groupReqKey));
+
+const allFriendsPicked = computed(
+  () => allFriendKeys.value.length > 0 && allFriendKeys.value.every((k) => pickedFriendKeys.value.has(k)),
+);
+
+const someFriendsPicked = computed(() => pickedFriendKeys.value.size > 0 && !allFriendsPicked.value);
+
+const allGroupsPicked = computed(
+  () => allGroupKeys.value.length > 0 && allGroupKeys.value.every((k) => pickedGroupKeys.value.has(k)),
+);
+
+const someGroupsPicked = computed(() => pickedGroupKeys.value.size > 0 && !allGroupsPicked.value);
+
+function togglePickAllFriends() {
+  if (allFriendsPicked.value) setPickedFriends(new Set());
+  else setPickedFriends(new Set(allFriendKeys.value));
+}
+
+function togglePickAllGroups() {
+  if (allGroupsPicked.value) setPickedGroups(new Set());
+  else setPickedGroups(new Set(allGroupKeys.value));
+}
+
+watch(requestRows, (rows) => {
+  const allowed = new Set(rows.map(friendReqKey));
+  const s = new Set([...pickedFriendKeys.value].filter((k) => allowed.has(k)));
+  if (s.size !== pickedFriendKeys.value.size) setPickedFriends(s);
+});
+
+watch(groupRequestRows, (rows) => {
+  const allowed = new Set(rows.map(groupReqKey));
+  const s = new Set([...pickedGroupKeys.value].filter((k) => allowed.has(k)));
+  if (s.size !== pickedGroupKeys.value.size) setPickedGroups(s);
+});
+
 const pagedRequestRows = computed(() => slicePage(requestRows.value, pageFriendReq.value, tablePageSize.value));
 
 const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, pageGroupReq.value, tablePageSize.value));
@@ -304,7 +378,11 @@ async function actFriend(
       source,
       user_id: userId,
     });
-    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+    const k = friendReqKey({ self_id: targetSelf, source, user_id: userId });
+    const ns = new Set(pickedFriendKeys.value);
+    ns.delete(k);
+    setPickedFriends(ns);
+    await loadRequestsOnly();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -326,13 +404,136 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
       user_id: userId,
       group_id: groupId,
     });
-    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+    const k = groupReqKey({ self_id: targetSelf, group_id: groupId, user_id: userId });
+    const ns = new Set(pickedGroupKeys.value);
+    ns.delete(k);
+    setPickedGroups(ns);
+    await loadRequestsOnly();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     busy.value = false;
   }
 }
+
+function formatBatchErr(
+  label: string,
+  ok: number,
+  fail: number,
+  errors: Array<{ error?: string }>,
+): string {
+  if (fail <= 0) return "";
+  const first = errors[0]?.error?.trim();
+  const tail = first ? `：${first}` : "";
+  return `${label} 部分失败（成功 ${ok} / 失败 ${fail}）${tail}`;
+}
+
+async function actFriendBatch(rows: typeof requestRows.value, action: "approve" | "reject") {
+  if (!rows.length) return;
+  busy.value = true;
+  err.value = "";
+  try {
+    const friends = rows
+      .map((row) => {
+        const sid = parseInt(row.self_id, 10);
+        if (!Number.isFinite(sid)) return null;
+        return { self_id: sid, user_id: row.user_id, source: row.source };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null);
+    if (!friends.length) return;
+    const r = await postRequestActionsBatch({ action, friends, groups: [] });
+    setPickedFriends(new Set());
+    await loadRequestsOnly();
+    if (r.friends_fail > 0) {
+      err.value = formatBatchErr("好友申请", r.friends_ok, r.friends_fail, r.friends_errors);
+    }
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function actGroupBatch(rows: typeof groupRequestRows.value, action: "approve" | "reject") {
+  if (!rows.length) return;
+  busy.value = true;
+  err.value = "";
+  try {
+    const groups = rows
+      .map((row) => {
+        const sid = parseInt(row.self_id, 10);
+        if (!Number.isFinite(sid)) return null;
+        return { self_id: sid, user_id: row.user_id, group_id: row.group_id };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null);
+    if (!groups.length) return;
+    const r = await postRequestActionsBatch({ action, friends: [], groups });
+    setPickedGroups(new Set());
+    await loadRequestsOnly();
+    if (r.groups_fail > 0) {
+      err.value = formatBatchErr("入群请求", r.groups_ok, r.groups_fail, r.groups_errors);
+    }
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function approvePickedFriends() {
+  const keys = [...pickedFriendKeys.value];
+  const rows = requestRows.value.filter((r) => keys.includes(friendReqKey(r)));
+  await actFriendBatch(rows, "approve");
+}
+
+async function approveAllFriends() {
+  await actFriendBatch([...requestRows.value], "approve");
+}
+
+async function approvePickedGroups() {
+  const keys = [...pickedGroupKeys.value];
+  const rows = groupRequestRows.value.filter((r) => keys.includes(groupReqKey(r)));
+  await actGroupBatch(rows, "approve");
+}
+
+async function approveAllGroups() {
+  await actGroupBatch([...groupRequestRows.value], "approve");
+}
+
+async function rejectPickedFriends() {
+  const keys = [...pickedFriendKeys.value];
+  const rows = requestRows.value.filter((r) => keys.includes(friendReqKey(r)));
+  await actFriendBatch(rows, "reject");
+}
+
+async function rejectPickedGroups() {
+  const keys = [...pickedGroupKeys.value];
+  const rows = groupRequestRows.value.filter((r) => keys.includes(groupReqKey(r)));
+  await actGroupBatch(rows, "reject");
+}
+
+watch(
+  () => String(route.query.self_id ?? route.query.account ?? "").trim(),
+  async (sid, prev) => {
+    applySelfIdFromRouteQuery();
+    if (!pageReady.value) return;
+    if (sid === prev) return;
+    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+    scrollFriendsGroupsHashIntoView();
+  },
+);
+
+onMounted(async () => {
+  try {
+    await loadBots();
+    applySelfIdFromRouteQuery();
+    await Promise.all([loadListsOnly(), loadRequestsOnly()]);
+  } finally {
+    pageReady.value = true;
+    skipSelfIdWatch.value = false;
+    scrollFriendsGroupsHashIntoView();
+  }
+});
 </script>
 
 <template>
@@ -444,7 +645,7 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
     <div class="panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群列表
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
         </h2>
         <span
           v-if="listsBusy"
@@ -524,6 +725,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           >{{ requestRows.length }} 条</span>
           <button
             type="button"
+            class="btn btn--primary"
+            :disabled="busy || pickedFriendKeys.size === 0"
+            @click="approvePickedFriends"
+          >
+            同意所选
+          </button>
+          <button
+            type="button"
+            class="btn"
+            :disabled="busy || pickedFriendKeys.size === 0"
+            @click="rejectPickedFriends"
+          >
+            拒绝所选
+          </button>
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="busy || !requestRows.length"
+            @click="approveAllFriends"
+          >
+            全部同意
+          </button>
+          <button
+            type="button"
             class="btn"
             :disabled="reqsBusy || busy || !selfIdStr"
             @click="loadRequestsOnly"
@@ -552,6 +777,16 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           <table class="data">
             <thead>
               <tr>
+                <th style="width: 44px">
+                  <input
+                    type="checkbox"
+                    title="全选当前筛选下的全部好友申请"
+                    :checked="allFriendsPicked"
+                    :indeterminate.prop="someFriendsPicked"
+                    :disabled="!requestRows.length || busy"
+                    @click.prevent="togglePickAllFriends()"
+                  >
+                </th>
                 <th>账号</th>
                 <th>来源</th>
                 <th>用户 QQ</th>
@@ -561,9 +796,17 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </thead>
             <tbody>
               <tr
-                v-for="(row, i) in pagedRequestRows"
-                :key="i"
+                v-for="row in pagedRequestRows"
+                :key="friendReqKey(row)"
               >
+                <td>
+                  <input
+                    type="checkbox"
+                    :checked="pickedFriendKeys.has(friendReqKey(row))"
+                    :disabled="busy"
+                    @click.prevent="togglePickFriend(friendReqKey(row))"
+                  >
+                </td>
                 <td>{{ row.self_id }}</td>
                 <td>{{ row.source }}</td>
                 <td>{{ row.user_id }}</td>
@@ -621,6 +864,30 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           >{{ groupRequestRows.length }} 条</span>
           <button
             type="button"
+            class="btn btn--primary"
+            :disabled="busy || pickedGroupKeys.size === 0"
+            @click="approvePickedGroups"
+          >
+            同意所选
+          </button>
+          <button
+            type="button"
+            class="btn"
+            :disabled="busy || pickedGroupKeys.size === 0"
+            @click="rejectPickedGroups"
+          >
+            拒绝所选
+          </button>
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="busy || !groupRequestRows.length"
+            @click="approveAllGroups"
+          >
+            全部同意
+          </button>
+          <button
+            type="button"
             class="btn"
             :disabled="reqsBusy || busy || !selfIdStr"
             @click="loadRequestsOnly"
@@ -649,6 +916,16 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
           <table class="data">
             <thead>
               <tr>
+                <th style="width: 44px">
+                  <input
+                    type="checkbox"
+                    title="全选当前筛选下的全部入群请求"
+                    :checked="allGroupsPicked"
+                    :indeterminate.prop="someGroupsPicked"
+                    :disabled="!groupRequestRows.length || busy"
+                    @click.prevent="togglePickAllGroups()"
+                  >
+                </th>
                 <th>账号</th>
                 <th>群号</th>
                 <th>用户</th>
@@ -659,9 +936,17 @@ async function actGroup(targetSelf: string, userId: number, groupId: number, act
             </thead>
             <tbody>
               <tr
-                v-for="(row, i) in pagedGroupRequestRows"
-                :key="i"
+                v-for="row in pagedGroupRequestRows"
+                :key="groupReqKey(row)"
               >
+                <td>
+                  <input
+                    type="checkbox"
+                    :checked="pickedGroupKeys.has(groupReqKey(row))"
+                    :disabled="busy"
+                    @click.prevent="togglePickGroup(groupReqKey(row))"
+                  >
+                </td>
                 <td>{{ row.self_id }}</td>
                 <td>{{ row.group_id }}</td>
                 <td>{{ row.user_id }}</td>
