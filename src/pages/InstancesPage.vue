@@ -38,8 +38,8 @@ const draft = ref<{
   admins: number[];
 } | null>(null);
 
-const extraAdminIds = ref<number[]>([]);
 const addAdminInput = ref<string>("");
+const adminAddHint = ref("");
 
 const saveBusy = ref(false);
 const saveErr = ref("");
@@ -47,6 +47,7 @@ const saveErr = ref("");
 watch(editModalAccount, (acc) => {
   if (typeof document === "undefined") return;
   document.body.style.overflow = acc != null ? "hidden" : "";
+  if (acc == null) adminAddHint.value = "";
 });
 
 onUnmounted(() => {
@@ -149,37 +150,33 @@ function parseSelfId(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const adminCandidates = computed(() => {
-  const set = new Set<number>();
-  for (const b of data.value?.nonebot_bots ?? []) {
-    const n = parseSelfId(b.self_id);
-    if (n != null) set.add(n);
+function addAdminFromInput() {
+  if (!draft.value) return;
+  adminAddHint.value = "";
+  const raw = addAdminInput.value.trim();
+  if (!raw) return;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    adminAddHint.value = "请输入有效的 QQ 号。";
+    return;
   }
-  for (const c of data.value?.db_bot_configs ?? []) {
-    for (const a of c.admins ?? []) set.add(a);
+  if (draft.value.admins.includes(n)) {
+    adminAddHint.value = "该号码已在列表中。";
+    return;
   }
-  for (const x of extraAdminIds.value) {
-    if (Number.isFinite(x) && x > 0) set.add(Math.floor(x));
-  }
-  return [...set].sort((a, b) => a - b);
-});
-
-function addAdminCandidate() {
-  const n = parseInt(addAdminInput.value.trim(), 10);
-  if (!Number.isFinite(n) || n < 1) return;
-  if (!extraAdminIds.value.includes(n)) extraAdminIds.value = [...extraAdminIds.value, n];
+  draft.value.admins = [...draft.value.admins, n].sort((a, b) => a - b);
   addAdminInput.value = "";
 }
 
-function removeExtraAdmin(id: number) {
-  extraAdminIds.value = extraAdminIds.value.filter((x) => x !== id);
+function removeAdminFromDraft(id: number) {
+  if (!draft.value) return;
+  draft.value.admins = draft.value.admins.filter((x) => x !== id);
 }
-
 
 function startEdit(c: BotConfigPublic) {
   editModalAccount.value = c.account;
-  extraAdminIds.value = [];
   addAdminInput.value = "";
+  adminAddHint.value = "";
   draft.value = {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
@@ -193,8 +190,8 @@ function startEdit(c: BotConfigPublic) {
 function cancelEdit() {
   editModalAccount.value = null;
   draft.value = null;
-  extraAdminIds.value = [];
   addAdminInput.value = "";
+  adminAddHint.value = "";
   saveErr.value = "";
 }
 
@@ -204,14 +201,6 @@ function togglePluginDisabled(name: string, checked: boolean) {
   if (checked) set.add(name);
   else set.delete(name);
   draft.value.disabled_plugins = [...set].sort((a, b) => a.localeCompare(b));
-}
-
-function toggleAdmin(id: number, checked: boolean) {
-  if (!draft.value) return;
-  const set = new Set(draft.value.admins);
-  if (checked) set.add(id);
-  else set.delete(id);
-  draft.value.admins = [...set].sort((a, b) => a - b);
 }
 
 function boolSelectVal(v: boolean): string {
@@ -299,8 +288,7 @@ onMounted(async () => {
           </h2>
           <button
             type="button"
-            class="btn"
-            style="padding: 6px 12px; font-size: 12px"
+            class="btn panel-hd-collapse-btn"
             @click="expNonebot = !expNonebot"
           >
             {{ expNonebot ? "收起" : "展开" }}
@@ -356,7 +344,7 @@ onMounted(async () => {
               <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
               / {{ dbBotsTotalCount }} 账号
             </span>
-            <div class="row-actions inst-db-panel__toolbar">
+            <div class="inst-db-panel__toolbar">
               <div
                 class="console-view-toggle"
                 role="group"
@@ -379,8 +367,7 @@ onMounted(async () => {
               </div>
               <button
                 type="button"
-                class="btn"
-                style="padding: 6px 12px; font-size: 12px"
+                class="btn panel-hd-collapse-btn"
                 @click="expDbBots = !expDbBots"
               >
                 {{ expDbBots ? "收起" : "展开" }}
@@ -641,69 +628,70 @@ onMounted(async () => {
                 </div>
               </div>
               <div class="bot-config-edit__field">
-                <label>管理员 QQ（多选）</label>
-                <div class="row-actions" style="margin-bottom: 8px; flex-wrap: wrap; gap: 8px">
+                <label>管理员 QQ</label>
+                <p
+                  class="muted"
+                  style="margin: 0 0 8px; font-size: 12px"
+                >
+                  输入号码后点击添加；每个账号右上角 × 可移除。
+                </p>
+                <div
+                  class="row-actions"
+                  style="margin-bottom: 4px; flex-wrap: wrap; gap: 8px"
+                >
                   <input
                     v-model="addAdminInput"
                     class="inp"
-                    type="number"
-                    min="1"
-                    step="1"
-                    placeholder="补充 QQ 号"
-                    style="max-width: 160px"
-                    @keydown.enter.prevent="addAdminCandidate"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    placeholder="QQ 号"
+                    style="max-width: 200px; min-width: 0; flex: 1 1 140px"
+                    @keydown.enter.prevent="addAdminFromInput"
                   >
                   <button
                     type="button"
                     class="btn"
-                    @click="addAdminCandidate"
+                    @click="addAdminFromInput"
                   >
-                    加入候选
+                    添加
                   </button>
                 </div>
                 <p
-                  v-if="extraAdminIds.length"
-                  class="muted"
-                  style="margin: 0 0 8px; font-size: 12px"
+                  v-if="adminAddHint"
+                  class="alert alert--err"
+                  style="margin: 0 0 8px; padding: 8px 10px; font-size: 12px"
                 >
-                  手动候选：
-                  <template
-                    v-for="id in extraAdminIds"
-                    :key="`mod-ex-${id}`"
-                  >
-                    <code>{{ id }}</code>
-                    <button
-                      type="button"
-                      class="link-quiet"
-                      @click="removeExtraAdmin(id)"
-                    >
-                      移除
-                    </button>
-                  </template>
-                </p>
-                <p
-                  v-if="!adminCandidates.length"
-                  class="muted"
-                  style="margin: 0 0 8px; font-size: 12px"
-                >
-                  尚无候选：请用上方数字框添加 QQ，或让 NoneBot 先上线该账号。
+                  {{ adminAddHint }}
                 </p>
                 <div
-                  v-else
-                  class="admin-check-grid"
+                  v-if="draft.admins.length"
+                  class="admin-chip-list"
                 >
-                  <label
-                    v-for="id in adminCandidates"
-                    :key="`mod-adm-${editModalAccount}-${id}`"
+                  <div
+                    v-for="id in draft.admins"
+                    :key="`adm-${editModalAccount}-${id}`"
+                    class="admin-chip"
                   >
-                    <input
-                      type="checkbox"
-                      :checked="draft.admins.includes(id)"
-                      @change="toggleAdmin(id, ($event.target as HTMLInputElement).checked)"
+                    <span class="admin-chip__id">{{ id }}</span>
+                    <button
+                      type="button"
+                      class="admin-chip__rm"
+                      :aria-label="`移除管理员 ${id}`"
+                      title="移除"
+                      @click="removeAdminFromDraft(id)"
                     >
-                    <span>{{ id }}</span>
-                  </label>
+                      ×
+                    </button>
+                  </div>
                 </div>
+                <p
+                  v-else
+                  class="muted"
+                  style="margin: 4px 0 0; font-size: 12px"
+                >
+                  尚未添加管理员。
+                </p>
               </div>
               <div class="bot-config-edit__field">
                 <label>禁用插件（勾选表示禁用）</label>
