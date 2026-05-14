@@ -801,6 +801,17 @@ const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.match
 
 const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
 
+const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
+
+function formatMatcherErrorAt(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return "—";
+  try {
+    return new Date(sec * 1000).toLocaleString();
+  } catch {
+    return String(sec);
+  }
+}
+
 const pluginRunTimeSamples = ref<PluginRunSample[]>([]);
 
 function syncPluginRunSeriesFromStorage() {
@@ -1139,21 +1150,44 @@ onMounted(load);
                         </div>
                       </div>
                     </div>
-                    <div
-                      class="home-account-hero__matcher-foot"
-                      :class="{
-                        'home-account-hero__matcher-foot--bad':
-                          !socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0,
-                      }"
-                    >
-                      <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
-                      <span class="home-account-hero__matcher-foot__v">{{
-                        socialBusy
-                          ? "…"
-                          : scopedPluginRunRow == null
-                            ? "—"
-                            : String(scopedPluginRunRow.errors_today ?? 0)
-                      }}</span>
+                    <div class="home-account-hero__matcher-stack">
+                      <div
+                        class="home-account-hero__matcher-foot"
+                        :class="{
+                          'home-account-hero__matcher-foot--bad':
+                            !socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                        }"
+                      >
+                        <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
+                        <span class="home-account-hero__matcher-foot__v">{{
+                          socialBusy
+                            ? "…"
+                            : scopedPluginRunRow == null
+                              ? "—"
+                              : String(scopedPluginRunRow.errors_today ?? 0)
+                        }}</span>
+                      </div>
+                      <details
+                        v-if="!socialBusy && scopedMatcherErrorLog.length"
+                        class="home-account-hero__matcher-details muted"
+                      >
+                        <summary class="home-account-hero__matcher-details-summary">最近异常（{{ scopedMatcherErrorLog.length }}）</summary>
+                        <ul class="home-account-hero__matcher-details-list">
+                          <li
+                            v-for="(it, idx) in scopedMatcherErrorLog"
+                            :key="`${it.at}-${idx}-${it.plugin}`"
+                            class="home-account-hero__matcher-details-item"
+                          >
+                            <div class="home-account-hero__matcher-details-head">
+                              <span>{{ formatMatcherErrorAt(it.at) }}</span>
+                              <span class="home-account-hero__matcher-details-plugin">{{ it.plugin }}</span>
+                              <span>{{ it.exc_type }}</span>
+                            </div>
+                            <div class="home-account-hero__matcher-details-msg">{{ it.message }}</div>
+                            <pre class="home-account-hero__matcher-details-tb">{{ it.traceback }}</pre>
+                          </li>
+                        </ul>
+                      </details>
                     </div>
                   </div>
                   <div class="home-account-unified__col home-account-unified__col--metrics">

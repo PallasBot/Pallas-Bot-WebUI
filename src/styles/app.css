@@ -2551,13 +2551,23 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-height: 0;
 }
 
-/* 账户卡同列底部：与吞吐区同源的 Matcher 统计，margin-top:auto 吃满左侧余高 */
+/* 账户卡同列底部：Matcher 条 + 可展开异常列表，整栈顶到列底吃余高 */
+.home-account-hero__matcher-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
 .home-account-hero__matcher-foot {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-top: auto;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2593,6 +2603,79 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad {
 
 html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-hero__matcher-foot__v {
   color: #b91c1c;
+}
+
+.home-account-hero__matcher-details {
+  font-size: 12px;
+  line-height: 1.45;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  padding: 6px 10px 8px;
+  background: color-mix(in srgb, var(--bg-card) 92%, var(--bg-muted) 8%);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.home-account-hero__matcher-details-summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.home-account-hero__matcher-details-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-account-hero__matcher-details-item {
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+.home-account-hero__matcher-details-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.home-account-hero__matcher-details-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.home-account-hero__matcher-details-plugin {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-account-hero__matcher-details-msg {
+  margin-top: 4px;
+  word-break: break-word;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.home-account-hero__matcher-details-tb {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.35;
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--bg-deep) 35%, var(--bg-muted));
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .home-account-unified__col--metrics {
