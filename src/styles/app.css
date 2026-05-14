@@ -3088,7 +3088,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__bar
   pointer-events: none;
   fill: #f0f9ff;
   stroke: #0ea5e9;
-  stroke-width: 0.28;
+  stroke-width: 0.2;
   opacity: 0.96;
 }
 
@@ -3123,12 +3123,12 @@ html[data-theme="light"] .home-account-metrics__bar--sent {
   fill: none;
   stroke: color-mix(in srgb, #38bdf8 72%, var(--accent) 28%);
   opacity: 0.98;
-  filter: drop-shadow(0 0.35px 0.45px color-mix(in srgb, var(--bg-deep) 55%, #0ea5e9 45%));
+  filter: drop-shadow(0 0.25px 0.35px color-mix(in srgb, var(--bg-deep) 50%, #0ea5e9 40%));
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-line--api {
   stroke: color-mix(in srgb, #0284c7 78%, var(--accent) 22%);
-  filter: drop-shadow(0 0.35px 0.55px rgba(3, 105, 161, 0.18));
+  filter: drop-shadow(0 0.25px 0.45px rgba(3, 105, 161, 0.14));
 }
 
 .home-account-metrics__throughput-dot--api {
@@ -3148,7 +3148,7 @@ html[data-theme="light"] .home-account-metrics__throughput-dot--api {
 
 .home-account-metrics__spark-line {
   fill: none;
-  stroke-width: 0.95;
+  stroke-width: 0.82;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

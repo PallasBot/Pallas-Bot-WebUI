@@ -591,9 +591,9 @@ function alignDownLocalGrid(tsSec: number, strideSec: number): number {
   return d0 + Math.floor(off / strideSec) * strideSec;
 }
 
-/** 时间轴刻度：按本地整分钟对齐，步长固定 60s；刻度过密时均匀抽样以免重叠 */
-const THROUGHPUT_AXIS_TICK_SEC = 60;
-const THROUGHPUT_AXIS_MAX_LABELS = 16;
+/** 时间轴刻度：本地对齐、每 5 分钟一刻度；过密时均匀抽样以免标签重叠 */
+const THROUGHPUT_AXIS_TICK_SEC = 300;
+const THROUGHPUT_AXIS_MAX_LABELS = 30;
 
 function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number, strideSec: number): string {
   const a = new Date(atSec * 1000);
@@ -1193,7 +1193,7 @@ onMounted(load);
                             v-if="throughputApiLineModel.polyline"
                             class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
                             fill="none"
-                            stroke-width="1.1"
+                            stroke-width="0.85"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             :points="throughputApiLineModel.polyline"
@@ -1204,14 +1204,14 @@ onMounted(load);
                             class="home-account-metrics__throughput-line-vertex"
                             :cx="pt.x"
                             :cy="pt.y"
-                            r="0.55"
+                            r="0.4"
                           />
                           <circle
                             v-if="throughputApiLineModel.dot"
                             class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
                             :cx="throughputApiLineModel.dot.x"
                             :cy="throughputApiLineModel.dot.y"
-                            r="1.05"
+                            r="0.8"
                           />
                         </svg>
                         <div
