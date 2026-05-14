@@ -7,6 +7,7 @@ import type { HealthResponse } from "@/api/health";
 import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
+import { displayVersionWithoutSha } from "@/utils/versionDisplay";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const dragPath = ref<string | null>(null);
@@ -85,15 +86,13 @@ function scrollPageToTop() {
 
 const webuiVersion = __WEBUI_VERSION__;
 
-/** 与首屏「控制台资源」一致：优先展示服务端上报的静态资源版本，缺失时回退构建号 */
+/** 与首屏「控制台资源」一致：展示服务端上报版本（去掉哈希片段），缺失时回退构建号 */
 const brandVersionDisplay = computed(() => {
   const c = health.value?.console;
   const ver = (c?.version || "").trim();
-  const commit = (c?.commit || "").trim();
-  const short = commit.length >= 7 ? commit.slice(0, 7) : commit;
-  if (ver) {
-    return short && !ver.includes(short) ? `${ver} · ${short}` : ver;
-  }
+  const cleaned = displayVersionWithoutSha(ver);
+  if (cleaned) return cleaned;
+  if (ver) return ver;
   return `v${webuiVersion}`;
 });
 

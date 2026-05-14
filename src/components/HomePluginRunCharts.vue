@@ -4,7 +4,7 @@ import type { ApiCallNamedSeries, PluginMatcherNamedSeries, PluginRunStatsRow, P
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 
-const COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#4ade80", "#fbbf24", "#94a3b8", "#fb7185", "#2dd4bf"];
+const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
 
 /** 今日各小时图横轴刻度 0–23（本地自然日） */
 const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -670,7 +670,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -770,7 +770,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -865,7 +865,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -965,7 +965,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -1060,7 +1060,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -1160,7 +1160,7 @@ function pluginBarLabel(name: string): string {
             :key="idx"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.88"
+            stroke-width="0.32"
             stroke-opacity="0.92"
             vector-effect="non-scaling-stroke"
             :points="ly.poly"
@@ -1213,8 +1213,8 @@ function pluginBarLabel(name: string): string {
         >
           <polyline
             fill="none"
-            stroke="var(--accent)"
-            stroke-width="0.88"
+            stroke="#ea580c"
+            stroke-width="0.32"
             vector-effect="non-scaling-stroke"
             :points="sparkPoly"
           />
