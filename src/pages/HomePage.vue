@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -32,6 +32,7 @@ import type {
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import standeeUrl from "@/assets/pallas-standee.webp?url";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
@@ -64,10 +65,43 @@ const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
 
-function onHomeAccountSelectChange(ev: Event) {
-  const el = ev.target as HTMLSelectElement;
-  const n = parseInt(el.value, 10);
-  selectedAccount.value = Number.isFinite(n) ? n : null;
+const accountPickerOpen = ref(false);
+const accountPickerRoot = ref<HTMLElement | null>(null);
+
+function onAccountPickerDocDown(ev: MouseEvent) {
+  if (!accountPickerOpen.value) return;
+  const root = accountPickerRoot.value;
+  const t = ev.target;
+  if (!(t instanceof Node)) return;
+  if (root?.contains(t)) return;
+  accountPickerOpen.value = false;
+}
+
+watch(accountPickerOpen, (open) => {
+  if (open) {
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        document.addEventListener("mousedown", onAccountPickerDocDown, true);
+      });
+    });
+  } else {
+    document.removeEventListener("mousedown", onAccountPickerDocDown, true);
+  }
+});
+
+onUnmounted(() => {
+  document.removeEventListener("mousedown", onAccountPickerDocDown, true);
+});
+
+function toggleAccountPicker(ev: MouseEvent) {
+  ev.stopPropagation();
+  if (sortedDbBots.value.length <= 1) return;
+  accountPickerOpen.value = !accountPickerOpen.value;
+}
+
+function pickAccountFromList(account: number) {
+  selectedAccount.value = account;
+  accountPickerOpen.value = false;
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
@@ -302,7 +336,7 @@ const groupPendingApplyDisplay = computed(() => {
 const socialCountsLoadHint = computed(() => {
   if (socialBusy.value) return "";
   if (friendSnap.value != null || groupSnap.value != null) return "";
-  return "好友/群列表未拉取，可点「刷新」重试";
+  return "好友/群列表未拉取，可点账户信息标题旁的刷新图标重试";
 });
 
 const throughputTodayInline = computed(() => {
@@ -656,6 +690,7 @@ async function refreshSelectedBotDetails() {
 }
 
 watch(selectedAccount, () => {
+  accountPickerOpen.value = false;
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
 });
@@ -667,6 +702,9 @@ watch([scopedPluginRunRow, selectedAccount, socialBusy], ([row, acc, busy]) => {
 });
 
 watch(sortedDbBots, () => {
+  if (sortedDbBots.value.length <= 1) {
+    accountPickerOpen.value = false;
+  }
   ensureSelectedAccount();
 });
 
@@ -747,19 +785,17 @@ onMounted(load);
             <div class="home-account-panel__hd-main">
               <h2 class="panel__title">
                 <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
+                <RefreshIconButton
+                  :busy="overviewBusy"
+                  :disabled="overviewBusy"
+                  label="刷新概况"
+                  @click="load"
+                />
               </h2>
               <RouterLink
                 class="home-instances-capsule"
                 to="/instances"
               >实例与连接</RouterLink>
-              <button
-                type="button"
-                class="home-instances-capsule home-instances-capsule--action"
-                :disabled="overviewBusy"
-                @click="load"
-              >
-                {{ overviewBusy ? "加载中…" : "刷新" }}
-              </button>
             </div>
           </div>
           <div class="panel__bd">
@@ -791,27 +827,51 @@ onMounted(load);
                           >
                         </div>
                         <div class="home-account-hero__main">
-                          <div class="home-account-hero__title home-account-hero__title--picker">
-                            <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
-                            <select
-                              v-if="sortedDbBots.length > 1"
-                              class="home-account-hero__acct-sel-native"
-                              aria-label="切换账号"
-                              :value="selectedAccount != null ? String(selectedAccount) : ''"
-                              @change="onHomeAccountSelectChange"
+                          <div
+                            ref="accountPickerRoot"
+                            class="home-account-hero__picker"
+                          >
+                            <div class="home-account-hero__title home-account-hero__title--picker">
+                              <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
+                              <button
+                                v-if="sortedDbBots.length > 1"
+                                type="button"
+                                class="home-account-hero__picker-toggle"
+                                :aria-expanded="accountPickerOpen"
+                                aria-haspopup="listbox"
+                                aria-label="切换账号"
+                                @click="toggleAccountPicker"
+                              >
+                                <span
+                                  class="home-account-hero__picker-caret"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                              <span
+                                class="home-account-conn"
+                                :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
+                              >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                            </div>
+                            <div
+                              v-if="accountPickerOpen && sortedDbBots.length > 1"
+                              class="home-account-hero__picker-menu"
+                              role="listbox"
+                              aria-label="选择 Bot 账号"
                             >
-                              <option
+                              <button
                                 v-for="c in sortedDbBots"
                                 :key="c.account"
-                                :value="String(c.account)"
+                                type="button"
+                                class="home-account-hero__picker-item"
+                                :class="{ 'is-active': c.account === selectedAccount }"
+                                role="option"
+                                :aria-selected="c.account === selectedAccount"
+                                @click="pickAccountFromList(c.account)"
                               >
-                                {{ dbNick(c.account) || "BOT" }} · {{ c.account }}
-                              </option>
-                            </select>
-                            <span
-                              class="home-account-conn"
-                              :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                            >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                                <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
+                                <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                              </button>
+                            </div>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
                           <p class="home-account-hero__proto muted">
