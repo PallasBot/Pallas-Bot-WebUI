@@ -1968,6 +1968,9 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-to
   top: calc(100% + 4px);
   min-width: min(100%, 220px);
   max-width: min(280px, 92vw);
+  max-height: min(320px, 52vh);
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
@@ -2472,7 +2475,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__links-gri
 .home-account-hero__counts-line--grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px 16px;
+  gap: 4px 16px;
   align-items: baseline;
   width: 100%;
   margin: 2px 0 0;
@@ -3373,6 +3376,38 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 .panel__title-ico--sm {
   font-size: 0.95em;
 }
+
+.btn-refresh-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  margin: 0 0 0 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text) 12%);
+  cursor: pointer;
+  line-height: 0;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.btn-refresh-icon:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.btn-refresh-icon:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.btn-refresh-icon:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.btn-refresh-icon__svg--spin {
+  animation: shell-page-loading-spin 0.72s linear infinite;
+}
+
 .panel__bd {
   padding: 14px 16px;
 }
@@ -3713,6 +3748,35 @@ table.data tbody tr:hover td {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+.plugin-card__top {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+}
+.plugin-card__top .plugin-card__link {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+.plugin-card__help {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 14px 0 0;
+}
+.plugin-card__help input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.plugin-card__help--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.plugin-card__help--disabled input {
+  cursor: not-allowed;
 }
 .plugin-card__link {
   display: block;

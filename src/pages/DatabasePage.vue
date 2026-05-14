@@ -4,11 +4,13 @@ import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
 import type { DbOverviewData } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
+const dbRefreshBusy = ref(false);
 const overview = ref<DbOverviewData | null>(null);
 
 const collection = ref("");
@@ -49,12 +51,14 @@ const totalRows = computed(() => {
 
 async function loadAll() {
   err.value = "";
+  dbRefreshBusy.value = true;
   try {
     overview.value = await fetchDbOverview();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     pageReady.value = true;
+    dbRefreshBusy.value = false;
   }
 }
 
@@ -78,16 +82,6 @@ async function runAggregate() {
 
 <template>
   <div>
-    <div class="page-actions-bar">
-      <button
-        type="button"
-        class="btn"
-        @click="loadAll"
-      >
-        刷新
-      </button>
-    </div>
-
     <div
       v-if="err"
       class="alert alert--err"
@@ -100,6 +94,17 @@ async function runAggregate() {
       :panels="3"
     />
     <div v-else>
+    <div class="plugins-page__hero database-page__hero">
+      <h2 class="panel__title">
+        <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库总览
+        <RefreshIconButton
+          :busy="dbRefreshBusy"
+          :disabled="dbRefreshBusy"
+          label="刷新数据库总览"
+          @click="loadAll"
+        />
+      </h2>
+    </div>
     <div
       v-if="overview"
       class="grid-stats"
