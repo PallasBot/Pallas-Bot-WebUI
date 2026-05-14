@@ -331,10 +331,17 @@ onMounted(async () => {
       </div>
 
       <div class="panel">
-        <div class="panel__hd panel__hd--split">
+        <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的 Bot 配置
           </h2>
+          <button
+            type="button"
+            class="btn panel-hd-collapse-btn"
+            @click="expDbBots = !expDbBots"
+          >
+            {{ expDbBots ? "收起" : "展开" }}
+          </button>
           <div class="inst-db-panel__actions">
             <span
               v-if="data"
@@ -365,13 +372,6 @@ onMounted(async () => {
                   卡片
                 </button>
               </div>
-              <button
-                type="button"
-                class="btn panel-hd-collapse-btn"
-                @click="expDbBots = !expDbBots"
-              >
-                {{ expDbBots ? "收起" : "展开" }}
-              </button>
             </div>
           </div>
         </div>
