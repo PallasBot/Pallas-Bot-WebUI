@@ -78,29 +78,6 @@ const sidebarPoolRows = computed((): SidebarPoolRow[] => {
   return tmp;
 });
 
-function routeMainSidebarPath(): string {
-  const p = route.path || "/";
-  if (p === "/" || p === "") return "/";
-  const seg = p.split("/").filter(Boolean)[0];
-  return seg ? `/${seg}` : "/";
-}
-
-const pageSidebarAddChips = computed(() => {
-  const order = new Set(consolePrefs.sidebarNavOrder);
-  const chips: { token: string; label: string; icon: string }[] = [];
-  const mainPath = routeMainSidebarPath();
-  const mainItem = mainNavItemByPath(mainPath);
-  if (mainItem && !order.has(mainPath)) {
-    chips.push({ token: mainPath, label: mainItem.label, icon: mainItem.icon });
-  }
-  for (const pin of SIDEBAR_PIN_DEFINITIONS) {
-    if (pin.path !== route.path) continue;
-    const tok = sidebarPinToken(pin.id);
-    if (!order.has(tok)) chips.push({ token: tok, label: pin.label, icon: pin.icon });
-  }
-  return chips;
-});
-
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
   const atPath = route.path === item.to || (item.to !== "/" && route.path.startsWith(`${item.to}/`));
   if (!atPath) return false;
@@ -911,27 +888,6 @@ onUnmounted(() => {
         :class="mainInnerClass"
         @scroll.passive="onMainInnerScroll"
       >
-        <div
-          v-if="pageSidebarAddChips.length"
-          class="shell__page-offers"
-          role="region"
-          aria-label="固定到侧栏"
-        >
-          <span class="shell__page-offers-label muted">固定到侧栏</span>
-          <div class="shell__page-offers-chips">
-            <button
-              v-for="c in pageSidebarAddChips"
-              :key="c.token"
-              type="button"
-              class="shell__page-offers-btn"
-              @click="addNavTokenToSidebar(c.token)"
-            >
-              <span class="shell__page-offers-plus" aria-hidden="true">+</span>
-              <span class="shell__page-offers-ico" aria-hidden="true">{{ c.icon }}</span>
-              {{ c.label }}
-            </button>
-          </div>
-        </div>
         <router-view v-slot="{ Component, route: r }">
           <transition
             name="shell-page"

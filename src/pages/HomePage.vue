@@ -1119,14 +1119,16 @@ onMounted(load);
                                 aria-hidden="true"
                               > </span>
                             </div>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong
-                              class="home-account-hero__counts-num"
-                              :class="{ 'home-account-hero__counts-num--pending': friendCountNumPending }"
-                            >{{ friendCountDisplay }}</strong></span>
-                            <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong
-                              class="home-account-hero__counts-num"
-                              :class="{ 'home-account-hero__counts-num--pending': groupCountNumPending }"
-                            >{{ groupCountDisplay }}</strong></span>
+                            <div class="home-account-hero__links-grid__counts">
+                              <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">好友 <strong
+                                class="home-account-hero__counts-num"
+                                :class="{ 'home-account-hero__counts-num--pending': friendCountNumPending }"
+                              >{{ friendCountDisplay }}</strong></span>
+                              <span class="home-account-hero__counts-pair home-account-hero__counts-pair--grid-cell">群聊 <strong
+                                class="home-account-hero__counts-num"
+                                :class="{ 'home-account-hero__counts-num--pending': groupCountNumPending }"
+                              >{{ groupCountDisplay }}</strong></span>
+                            </div>
                           </div>
                           <p
                             v-if="socialCountsLoadHint"

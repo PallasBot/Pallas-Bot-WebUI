@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
+import { MAIN_NAV_ITEMS } from "@/config/mainNav";
+import { SIDEBAR_PIN_DEFINITIONS, sidebarPinToken } from "@/config/sidebarPins";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
@@ -26,36 +28,56 @@ const p1 = ref("");
 const p2 = ref("");
 const pwdBusy = ref(false);
 
-const sidebarSectionDraft = ref("");
+type SidebarSectionRow = {
+  token: string;
+  title: string;
+  pathHint: string;
+  defaultSection: string;
+};
 
-function formatSidebarSectionMap(map: Record<string, string>): string {
-  const entries = Object.entries(map).filter(([k, v]) => k.trim() && v.trim());
-  entries.sort(([a], [b]) => a.localeCompare(b, "zh-CN"));
-  return entries.map(([k, v]) => `${k}=${v}`).join("\n");
+const sidebarSectionRows = computed((): SidebarSectionRow[] => {
+  const mains: SidebarSectionRow[] = MAIN_NAV_ITEMS.map((i) => ({
+    token: i.to,
+    title: i.label,
+    pathHint: i.to,
+    defaultSection: i.section,
+  }));
+  const pins: SidebarSectionRow[] = SIDEBAR_PIN_DEFINITIONS.map((p) => ({
+    token: sidebarPinToken(p.id),
+    title: p.label,
+    pathHint: `${p.path}${p.hash || ""}`,
+    defaultSection: p.section,
+  }));
+  return [...mains, ...pins].sort((a, b) => {
+    const c = a.defaultSection.localeCompare(b.defaultSection, "zh-CN");
+    if (c !== 0) return c;
+    return a.title.localeCompare(b.title, "zh-CN");
+  });
+});
+
+/** 草稿：token → 分组名；空串表示沿用内置 */
+const sidebarSectionInputs = reactive<Record<string, string>>({});
+
+function loadSidebarSectionInputs() {
+  for (const row of sidebarSectionRows.value) {
+    const cur = consolePrefs.sidebarNavSectionByToken[row.token];
+    sidebarSectionInputs[row.token] = typeof cur === "string" && cur.trim() ? cur.trim() : "";
+  }
 }
 
-function syncSidebarSectionDraft() {
-  sidebarSectionDraft.value = formatSidebarSectionMap(consolePrefs.sidebarNavSectionByToken);
-}
-
-function applySidebarSectionDraft() {
+function saveSidebarSectionInputs() {
   const out: Record<string, string> = {};
-  for (const line of sidebarSectionDraft.value.split(/\r?\n/)) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const eq = t.indexOf("=");
-    if (eq <= 0) continue;
-    const key = t.slice(0, eq).trim();
-    const val = t.slice(eq + 1).trim();
-    if (key && val) out[key] = val;
+  for (const row of sidebarSectionRows.value) {
+    const v = (sidebarSectionInputs[row.token] ?? "").trim();
+    if (v && v !== row.defaultSection) out[row.token] = v;
   }
   setConsolePrefs({ sidebarNavSectionByToken: out });
-  syncSidebarSectionDraft();
+  loadSidebarSectionInputs();
 }
 
 function clearSidebarSectionOverrides() {
   setConsolePrefs({ sidebarNavSectionByToken: {} });
-  sidebarSectionDraft.value = "";
+  loadSidebarSectionInputs();
 }
 
 async function submitPassword() {
@@ -84,7 +106,11 @@ async function submitPassword() {
 
 onMounted(() => {
   scrollToPasswordIfNeeded();
-  syncSidebarSectionDraft();
+  loadSidebarSectionInputs();
+});
+
+onActivated(() => {
+  loadSidebarSectionInputs();
 });
 
 watch(
@@ -100,6 +126,8 @@ function scrollToPasswordIfNeeded() {
     document.getElementById("console-password")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
+
+loadSidebarSectionInputs();
 </script>
 
 <template>
@@ -118,7 +146,7 @@ function scrollToPasswordIfNeeded() {
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px; line-height: 1.55">
-          可在侧栏拖动排序、移除项。未显示在侧栏中的入口会归在侧栏底部的「未在侧栏」里；在任意设置卡片的标题栏点「+」也可把当前页面对应的侧栏项或子区块加回。若误删导致只剩一项，仍可继续操作；侧栏过空时可点下方恢复默认。
+          可在侧栏拖动排序、移除项。未显示在侧栏中的入口会归在侧栏底部的「未在侧栏」里；也可在各设置卡标题栏点「+」将对应入口加回侧栏。若误删导致只剩一项，仍可继续操作；侧栏过空时可点下方恢复默认。
         </p>
         <button
           type="button"
@@ -131,29 +159,44 @@ function scrollToPasswordIfNeeded() {
           <summary
             class="muted"
             style="cursor: pointer; font-weight: 650; user-select: none"
-          >自定义侧栏分组标题</summary>
+          >侧栏分组标题</summary>
           <p
             class="muted"
             style="margin: 10px 0 8px; line-height: 1.55; font-size: 13px"
           >
-            每行一条 <code>token=分组名</code>：token 为主导航路径（如 <code>/logs</code>）或固定项（如 <code>pin:bot-social-groups</code>）。相邻且分组名相同的项在侧栏中会归为一组；未写到的 token 仍用内置分组。
+            为每个入口填写在侧栏里显示的分组名称；<strong style="color: var(--text)">留空</strong>或与「内置」相同则沿用默认。相邻且分组名相同的项会合并为一段。
           </p>
-          <textarea
-            v-model="sidebarSectionDraft"
-            class="inp"
-            rows="7"
-            spellcheck="false"
-            aria-label="侧栏分组映射"
-            style="width: 100%; max-width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; min-height: 120px"
-          />
+          <div class="prefs-sidebar-sections">
+            <div
+              v-for="row in sidebarSectionRows"
+              :key="row.token"
+              class="prefs-sidebar-sections__row"
+            >
+              <div class="prefs-sidebar-sections__meta">
+                <div class="prefs-sidebar-sections__title">
+                  {{ row.title }}
+                </div>
+                <div class="prefs-sidebar-sections__hint muted">
+                  {{ row.pathHint }} · 内置 {{ row.defaultSection }}
+                </div>
+              </div>
+              <input
+                v-model="sidebarSectionInputs[row.token]"
+                class="inp prefs-sidebar-sections__inp"
+                type="text"
+                :placeholder="row.defaultSection"
+                :aria-label="`${row.title} 的侧栏分组名`"
+              >
+            </div>
+          </div>
           <div
             class="row-actions"
-            style="margin-top: 10px"
+            style="margin-top: 12px"
           >
             <button
               type="button"
               class="btn btn--primary"
-              @click="applySidebarSectionDraft"
+              @click="saveSidebarSectionInputs"
             >
               保存分组
             </button>

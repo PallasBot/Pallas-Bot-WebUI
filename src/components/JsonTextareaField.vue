@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, useId, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, useId, watch } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -9,14 +9,24 @@ const props = withDefaults(
     placeholder?: string;
     /** 打开弹窗的按钮文案 */
     expandLabel?: string;
+    /** 为 true 时页内文本框可直接编辑，仍保留「弹窗编辑」 */
+    inlineEditable?: boolean;
   }>(),
   {
     rows: 6,
     title: "编辑 JSON",
-    placeholder: "点击或聚焦此处，在弹窗中编辑",
-    expandLabel: "放大编辑",
+    placeholder: undefined,
+    expandLabel: "弹窗编辑",
+    inlineEditable: true,
   },
 );
+
+const peekPlaceholder = computed(() => {
+  if (props.placeholder != null && props.placeholder !== "") return props.placeholder;
+  return props.inlineEditable
+    ? "可直接编辑 JSON；亦可点「弹窗编辑」在大窗口中修改"
+    : "预览；点「弹窗编辑」打开编辑窗口";
+});
 
 const emit = defineEmits<{ "update:modelValue": [string] }>();
 
@@ -37,6 +47,11 @@ watch(
 function setBodyScroll(lock: boolean) {
   if (typeof document === "undefined") return;
   document.body.style.overflow = lock ? "hidden" : "";
+}
+
+function onPeekInput(e: Event) {
+  if (!props.inlineEditable) return;
+  emit("update:modelValue", (e.target as HTMLTextAreaElement).value);
 }
 
 function openModal() {
@@ -74,6 +89,18 @@ onUnmounted(() => {
 
 <template>
   <div class="json-textarea-field">
+    <textarea
+      ref="peekTa"
+      class="textarea json-textarea-field__peek"
+      :readonly="!inlineEditable"
+      :tabindex="inlineEditable ? undefined : 0"
+      spellcheck="false"
+      :rows="rows"
+      :value="modelValue"
+      :placeholder="peekPlaceholder"
+      :aria-label="title"
+      @input="onPeekInput"
+    />
     <div class="json-textarea-field__toolbar">
       <button
         type="button"
@@ -84,19 +111,6 @@ onUnmounted(() => {
         {{ expandLabel }}
       </button>
     </div>
-    <textarea
-      ref="peekTa"
-      class="textarea json-textarea-field__peek"
-      readonly
-      tabindex="0"
-      spellcheck="false"
-      :rows="rows"
-      :value="modelValue"
-      :placeholder="placeholder"
-      :aria-label="title"
-      @focus="openModal"
-      @click="openModal"
-    />
     <Teleport to="body">
       <div
         v-if="modalOpen"
@@ -122,7 +136,9 @@ onUnmounted(() => {
               >
                 {{ title }}
               </h2>
-              <p class="console-modal__subtitle muted">大窗口编辑；确定后写回表单。</p>
+              <p class="console-modal__subtitle muted">
+                {{ inlineEditable ? "大窗口编辑；确定后与页内输入框同步。" : "在弹窗中编辑；确定后写回表单。" }}
+              </p>
             </div>
             <button
               type="button"
@@ -168,7 +184,7 @@ onUnmounted(() => {
 .json-textarea-field__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 8px;
+  margin-top: 8px;
 }
 
 .json-textarea-field__expand {
@@ -177,10 +193,17 @@ onUnmounted(() => {
 }
 
 .json-textarea-field__peek {
-  cursor: pointer;
   width: 100%;
   max-width: 100%;
   resize: vertical;
+}
+
+.json-textarea-field__peek[readonly] {
+  cursor: default;
+}
+
+.json-textarea-field__peek:not([readonly]) {
+  cursor: text;
 }
 
 .json-textarea-field__dialog {
@@ -195,5 +218,17 @@ onUnmounted(() => {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .json-textarea-field__dialog {
+    max-width: calc(100vw - 16px);
+    margin: 0 8px;
+  }
+
+  .json-textarea-field__editor {
+    min-height: min(52vh, 360px);
+    font-size: 12px;
+  }
 }
 </style>
