@@ -167,7 +167,7 @@ async function runAggregate() {
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>集合</th>
@@ -204,7 +204,7 @@ async function runAggregate() {
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
-          <table class="data">
+          <table class="data console-data-table">
             <thead>
               <tr>
                 <th>表名</th>

@@ -30,7 +30,7 @@ const router = createRouter({
           component: HomePage,
           meta: {
             title: "仪表盘",
-            description: "容量、账号与接入摘要；协议进程见「实例与连接」。",
+            description: "容量、账号与接入摘要",
           },
         },
         {
@@ -39,7 +39,7 @@ const router = createRouter({
           component: LogsPage,
           meta: {
             title: "运行日志",
-            description: "结构化或原始行视图，支持关键字过滤。",
+            description: "结构化或原始行视图",
           },
         },
         {
@@ -48,7 +48,7 @@ const router = createRouter({
           component: LogErrorsPage,
           meta: {
             title: "日志报错",
-            description: "ERROR / CRITICAL 快照与持久化记录。",
+            description: "ERROR / CRITICAL 快照与持久化记录",
           },
         },
         {
@@ -57,7 +57,7 @@ const router = createRouter({
           component: PluginsPage,
           meta: {
             title: "插件目录",
-            description: "已启用模块；单项可调参，列表可展开预览。",
+            description: "已启用模块",
           },
         },
         {
@@ -66,7 +66,7 @@ const router = createRouter({
           component: PluginConfigPage,
           meta: {
             title: "插件配置",
-            description: "受控参数；保存后由后端生效。",
+            description: "受控参数；保存后由后端生效",
           },
         },
         {
@@ -75,7 +75,7 @@ const router = createRouter({
           component: CommonConfigPage,
           meta: {
             title: "通用配置",
-            description: "跨模块公共项；保存后由后端生效。",
+            description: "跨模块公共项；保存后由后端生效",
           },
         },
         {
@@ -90,7 +90,7 @@ const router = createRouter({
           component: ProtocolManagePage,
           meta: {
             title: "协议端管理",
-            description: "协议内置页与运维入口。",
+            description: "协议内置页与运维入口",
           },
         },
         {
@@ -99,7 +99,7 @@ const router = createRouter({
           component: FriendsGroupsPage,
           meta: {
             title: "好友与群聊",
-            description: "好友/群聊列表与好友、入群审批。",
+            description: "好友/群聊列表与好友、入群审批",
           },
         },
         { path: "friends", redirect: "/friends-groups" },
@@ -110,7 +110,7 @@ const router = createRouter({
           component: BotSocialConfigPage,
           meta: {
             title: "颗粒配置",
-            description: "群 / 用户级策略与列表。",
+            description: "群 / 用户级策略与列表",
           },
         },
         {
@@ -119,7 +119,7 @@ const router = createRouter({
           component: DatabasePage,
           meta: {
             title: "数据库",
-            description: "存储类型与体量明细。",
+            description: "存储类型与体量明细",
           },
         },
         {
@@ -128,7 +128,7 @@ const router = createRouter({
           component: UpdatePage,
           meta: {
             title: "更新",
-            description: "发行说明与升级窗口提示。",
+            description: "发行说明与升级窗口提示",
           },
         },
         {
@@ -137,7 +137,7 @@ const router = createRouter({
           component: AiExtensionPage,
           meta: {
             title: "AI 扩展",
-            description: "扩展服务配置与健康；运行记录由后端读取。",
+            description: "扩展服务配置与健康；运行记录由后端读取",
           },
         },
         {
@@ -150,7 +150,7 @@ const router = createRouter({
           component: PreferencesPage,
           meta: {
             title: "偏好与口令",
-            description: "主题、圆角、密度与控制台登录口令。",
+            description: "主题、圆角、密度与控制台登录口令",
           },
         },
       ],
