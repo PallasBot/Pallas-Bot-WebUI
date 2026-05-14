@@ -4,79 +4,20 @@ import { useRoute } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
-import { mainNavIconForPath, mainNavItemByPath, MAIN_NAV_ITEMS, type MainNavItem } from "@/config/mainNav";
-import {
-  parseSidebarPinToken,
-  SIDEBAR_PIN_DEFINITIONS,
-  sidebarPinToken,
-  type SidebarPinDefinition,
-} from "@/config/sidebarPins";
+import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
+import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
-import { addNavTokenToSidebar } from "@/utils/sidebarNavActions";
-import { effectiveSidebarSection } from "@/utils/sidebarSectionLabels";
+import { addNavTokenToSidebar, removeNavTokenFromSidebar } from "@/utils/sidebarNavActions";
+import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const route = useRoute();
 const dragPath = ref<string | null>(null);
 const dragOverPath = ref<string | null>(null);
 
-type SidebarNavRow =
-  | { kind: "main"; token: string; item: MainNavItem }
-  | { kind: "pin"; token: string; pin: SidebarPinDefinition };
-
-type SidebarNavRowView = SidebarNavRow & { section: string; showSection: boolean };
-
-const sidebarNavRows = computed((): SidebarNavRowView[] => {
-  const raw: SidebarNavRow[] = [];
-  for (const token of consolePrefs.sidebarNavOrder) {
-    const pin = parseSidebarPinToken(token);
-    if (pin) {
-      raw.push({ kind: "pin", token, pin });
-      continue;
-    }
-    const item = mainNavItemByPath(token);
-    if (item) raw.push({ kind: "main", token, item });
-  }
-  let prevSection: string | null = null;
-  return raw.map((r) => {
-    const fallback = r.kind === "main" ? r.item.section : r.pin.section;
-    const section = effectiveSidebarSection(r.token, fallback);
-    const showSection = section !== prevSection;
-    prevSection = section;
-    return { ...r, section, showSection };
-  });
-});
-
-type SidebarPoolRow =
-  | { kind: "main"; token: string; item: MainNavItem; section: string; showSection: boolean }
-  | { kind: "pin"; token: string; pin: SidebarPinDefinition; section: string; showSection: boolean };
-
-const sidebarPoolRows = computed((): SidebarPoolRow[] => {
-  const order = new Set(consolePrefs.sidebarNavOrder);
-  const tmp: SidebarPoolRow[] = [];
-  for (const item of MAIN_NAV_ITEMS) {
-    if (!order.has(item.to)) {
-      const section = effectiveSidebarSection(item.to, item.section);
-      tmp.push({ kind: "main", token: item.to, item, section, showSection: false });
-    }
-  }
-  for (const pin of SIDEBAR_PIN_DEFINITIONS) {
-    const tok = sidebarPinToken(pin.id);
-    if (!order.has(tok)) {
-      const section = effectiveSidebarSection(tok, pin.section);
-      tmp.push({ kind: "pin", token: tok, pin, section, showSection: false });
-    }
-  }
-  let prev: string | null = null;
-  for (const r of tmp) {
-    const show = r.section !== prev;
-    prev = r.section;
-    r.showSection = show;
-  }
-  return tmp;
-});
+const { sidebarNavRows, sidebarPoolRows } = useSidebarNavLists();
 
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
   const atPath = route.path === item.to || (item.to !== "/" && route.path.startsWith(`${item.to}/`));
@@ -95,13 +36,6 @@ function isMainLinkExact(item: MainNavItem): boolean {
   if (item.to === "/") return route.path === "/";
   if (route.path !== item.to) return false;
   return isMainLinkActiveForPath(item);
-}
-
-function removeNavToken(token: string) {
-  if (consolePrefs.sidebarNavOrder.length <= 1) return;
-  setConsolePrefs({
-    sidebarNavOrder: consolePrefs.sidebarNavOrder.filter((t) => t !== token),
-  });
 }
 
 const mobileNavOpen = ref(false);
@@ -664,7 +598,7 @@ onUnmounted(() => {
               class="shell__nav-remove"
               :aria-label="`从侧栏移除「${row.kind === 'main' ? row.item.label : row.pin.label}」`"
               title="从侧栏移除"
-              @click.stop="removeNavToken(row.token)"
+              @click.stop="removeNavTokenFromSidebar(row.token)"
             >
               ×
             </button>
@@ -760,129 +694,75 @@ onUnmounted(() => {
               >
                 {{ row.section }}
               </div>
-              <div
-                class="shell-mobile-nav__item"
-                :class="{
-                  'shell__nav-item--drag-over':
-                    dragOverPath === row.token && dragPath != null && dragPath !== row.token,
-                }"
-                @dragover="onNavDragOver(row.token, $event)"
-                @dragleave="onNavDragLeave(row.token)"
-                @drop="onNavDrop(row.token, $event)"
+              <RouterLink
+                v-if="row.kind === 'main'"
+                v-slot="{ navigate }"
+                custom
+                :to="row.item.to"
+                :end="row.item.to === '/'"
               >
-                <span
-                  v-if="sidebarNavRows.length > 1"
-                  class="shell__nav-grip"
-                  draggable="true"
-                  aria-label="拖动调整顺序"
-                  title="拖动排序"
-                  @dragstart="onGripDragStart(row.token, $event)"
-                  @dragend="onGripDragEnd"
-                >⋮</span>
-                <RouterLink
-                  v-if="row.kind === 'main'"
-                  v-slot="{ navigate }"
-                  custom
-                  :to="row.item.to"
-                  :end="row.item.to === '/'"
-                >
-                  <button
-                    type="button"
-                    class="shell-mobile-nav__link"
-                    :class="{
-                      'shell__nav-link--root': row.item.to === '/',
-                      'is-router-active': isMainLinkActiveForPath(row.item),
-                      'is-router-exact': isMainLinkExact(row.item),
-                    }"
-                    :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
-                    @click="
-                      navigate();
-                      closeMobileNav();
-                    "
-                  >
-                    <span class="shell__nav-ico">{{ row.item.icon }}</span>
-                    <span class="shell__nav-text">
-                      <span class="shell__nav-label">{{ row.item.label }}</span>
-                      <span class="shell__nav-desc">{{ row.item.description }}</span>
-                    </span>
-                  </button>
-                </RouterLink>
-                <RouterLink
-                  v-else
-                  v-slot="{ navigate }"
-                  custom
-                  :to="{ path: row.pin.path, hash: row.pin.hash }"
-                >
-                  <button
-                    type="button"
-                    class="shell-mobile-nav__link shell__nav-link--pin"
-                    :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
-                    :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
-                    @click="
-                      navigate();
-                      closeMobileNav();
-                    "
-                  >
-                    <span class="shell__nav-ico">{{ row.pin.icon }}</span>
-                    <span class="shell__nav-text">
-                      <span class="shell__nav-label">{{ row.pin.label }}</span>
-                      <span class="shell__nav-desc">{{ row.pin.description }}</span>
-                    </span>
-                  </button>
-                </RouterLink>
                 <button
-                  v-if="sidebarNavRows.length > 1"
                   type="button"
-                  class="shell__nav-remove"
-                  :aria-label="`从侧栏移除「${row.kind === 'main' ? row.item.label : row.pin.label}」`"
-                  title="从侧栏移除"
-                  @click.stop="removeNavToken(row.token)"
+                  class="shell-mobile-nav__link"
+                  :class="{
+                    'shell__nav-link--root': row.item.to === '/',
+                    'is-router-active': isMainLinkActiveForPath(row.item),
+                    'is-router-exact': isMainLinkExact(row.item),
+                  }"
+                  :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
+                  @click="
+                    navigate();
+                    closeMobileNav();
+                  "
                 >
-                  ×
+                  <span class="shell__nav-ico">{{ row.item.icon }}</span>
+                  <span class="shell__nav-text">
+                    <span class="shell__nav-label">{{ row.item.label }}</span>
+                    <span class="shell__nav-desc">{{ row.item.description }}</span>
+                  </span>
                 </button>
-              </div>
+              </RouterLink>
+              <RouterLink
+                v-else
+                v-slot="{ navigate }"
+                custom
+                :to="{ path: row.pin.path, hash: row.pin.hash }"
+              >
+                <button
+                  type="button"
+                  class="shell-mobile-nav__link shell__nav-link--pin"
+                  :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
+                  :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
+                  @click="
+                    navigate();
+                    closeMobileNav();
+                  "
+                >
+                  <span class="shell__nav-ico">{{ row.pin.icon }}</span>
+                  <span class="shell__nav-text">
+                    <span class="shell__nav-label">{{ row.pin.label }}</span>
+                    <span class="shell__nav-desc">{{ row.pin.description }}</span>
+                  </span>
+                </button>
+              </RouterLink>
             </template>
-            <div
+            <RouterLink
               v-if="sidebarPoolRows.length"
-              class="shell-mobile-nav__pool"
+              custom
+              to="/preferences#sidebar-order"
+              v-slot="{ navigate }"
             >
-              <div class="shell-mobile-nav__pool-title muted">
-                未在侧栏（{{ sidebarPoolRows.length }}）
-              </div>
-              <template v-for="row in sidebarPoolRows" :key="'mpool-' + row.token">
-                <div
-                  v-if="row.showSection"
-                  class="shell-mobile-nav__pool-section"
-                  role="presentation"
-                >
-                  {{ row.section }}
-                </div>
-                <button
-                  v-if="row.kind === 'main'"
-                  type="button"
-                  class="btn shell-mobile-nav__pool-btn"
-                  @click="
-                    addNavTokenToSidebar(row.token);
-                    closeMobileNav();
-                  "
-                >
-                  <span aria-hidden="true">+</span>
-                  {{ row.item.label }}
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  class="btn shell-mobile-nav__pool-btn"
-                  @click="
-                    addNavTokenToSidebar(row.token);
-                    closeMobileNav();
-                  "
-                >
-                  <span aria-hidden="true">+</span>
-                  {{ row.pin.label }}
-                </button>
-              </template>
-            </div>
+              <button
+                type="button"
+                class="shell-mobile-nav__prefs-link muted"
+                @click="
+                  navigate();
+                  closeMobileNav();
+                "
+              >
+                调整侧栏顺序与项目…
+              </button>
+            </RouterLink>
           </nav>
         </aside>
         <div
