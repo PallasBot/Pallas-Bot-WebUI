@@ -116,19 +116,41 @@ async function togglePreview(name: string) {
               </div>
               <div style="margin-top: 12px; font-size: 12px; color: var(--accent)">进入配置编辑 →</div>
             </RouterLink>
-            <label
-              class="plugin-card__help"
-              :class="{ 'plugin-card__help--disabled': p.help_ignored || helpToggleBusy === p.name }"
-              title="在帮助菜单中显示"
+            <div
+              class="plugin-card__help-panel"
               @click.stop
             >
-              <input
-                type="checkbox"
-                :checked="pluginHelpShown(p)"
-                :disabled="Boolean(p.help_ignored) || helpToggleBusy === p.name"
-                @click.prevent="void togglePluginHelpMenu(p, !pluginHelpShown(p))"
-              >
-            </label>
+              <div class="plugin-card__help-head">
+                <div class="plugin-card__help-text">
+                  <div class="plugin-card__help-title">
+                    帮助菜单
+                  </div>
+                  <p class="plugin-card__help-desc muted">
+                    在「牛牛帮助」总列表中展示该插件；关闭后命令仍可用，仅不出现在帮助索引。
+                  </p>
+                  <p
+                    v-if="p.help_ignored"
+                    class="plugin-card__help-note muted"
+                  >
+                    该插件在帮助插件的 ignored_plugins 中，无法出现在帮助菜单。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="plugin-switch"
+                  role="switch"
+                  :aria-checked="pluginHelpShown(p) ? 'true' : 'false'"
+                  :aria-busy="helpToggleBusy === p.name ? 'true' : 'false'"
+                  :aria-label="pluginHelpShown(p) ? '关闭帮助菜单展示' : '开启帮助菜单展示'"
+                  :disabled="Boolean(p.help_ignored) || helpToggleBusy === p.name"
+                  :class="{
+                    'plugin-switch--on': pluginHelpShown(p),
+                    'plugin-switch--busy': helpToggleBusy === p.name,
+                  }"
+                  @click="void togglePluginHelpMenu(p, !pluginHelpShown(p))"
+                />
+              </div>
+            </div>
           </div>
           <div class="plugin-card__actions">
             <button

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
@@ -21,6 +21,67 @@ const orderedNav = computed((): MainNavItem[] =>
 const route = useRoute();
 const mobileNavOpen = ref(false);
 const isNarrow = ref(false);
+
+const mainInnerRef = ref<HTMLElement | null>(null);
+const backTopVisible = ref(false);
+/** 运行日志页：主区域不滚动，监听列表/原始视图滚动容器 */
+let logsScrollEl: HTMLElement | null = null;
+const BACK_TOP_SCROLL_THRESHOLD = 200;
+let logsScrollRaf = 0;
+
+function detachLogsScrollListener() {
+  if (logsScrollEl) {
+    logsScrollEl.removeEventListener("scroll", onLogsScrollScroll);
+    logsScrollEl = null;
+  }
+}
+
+function scanLogsScrollTarget(root: HTMLElement): HTMLElement | null {
+  const feed = root.querySelector(".log-feed");
+  const raw = root.querySelector(".pre-block--logs-tall");
+  for (const el of [feed, raw]) {
+    if (el instanceof HTMLElement && el.scrollHeight > el.clientHeight + 2) return el;
+  }
+  if (feed instanceof HTMLElement) return feed;
+  if (raw instanceof HTMLElement) return raw;
+  return null;
+}
+
+function bindLogsScrollTarget() {
+  detachLogsScrollListener();
+  if (route.name !== "logs") return;
+  const root = mainInnerRef.value;
+  if (!root) return;
+  logsScrollEl = scanLogsScrollTarget(root);
+  if (logsScrollEl) {
+    logsScrollEl.addEventListener("scroll", onLogsScrollScroll, { passive: true });
+  }
+  updateBackTopVisibility();
+}
+
+function onLogsScrollScroll() {
+  updateBackTopVisibility();
+}
+
+function updateBackTopVisibility() {
+  const main = mainInnerRef.value;
+  const mainScrolled = main ? main.scrollTop > BACK_TOP_SCROLL_THRESHOLD : false;
+  const logsScrolled = logsScrollEl ? logsScrollEl.scrollTop > BACK_TOP_SCROLL_THRESHOLD : false;
+  backTopVisible.value = mainScrolled || logsScrolled;
+}
+
+function onMainInnerScroll() {
+  updateBackTopVisibility();
+}
+
+function scrollPageToTop() {
+  const smooth = typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const behavior: ScrollBehavior = smooth ? "smooth" : "auto";
+  mainInnerRef.value?.scrollTo({ top: 0, behavior });
+  if (logsScrollEl) {
+    logsScrollEl.scrollTo({ top: 0, behavior });
+  }
+}
 
 const webuiVersion = __WEBUI_VERSION__;
 
@@ -190,6 +251,27 @@ onMounted(() => {
   healthPollTimer = setInterval(() => {
     void refreshHealth();
   }, 45000);
+  void nextTick(() => {
+    bindLogsScrollTarget();
+    updateBackTopVisibility();
+  });
+});
+
+onUpdated(() => {
+  if (route.name !== "logs") return;
+  if (typeof window === "undefined") return;
+  if (logsScrollRaf) window.cancelAnimationFrame(logsScrollRaf);
+  logsScrollRaf = window.requestAnimationFrame(() => {
+    logsScrollRaf = 0;
+    const root = mainInnerRef.value;
+    if (!root) return;
+    const next = scanLogsScrollTarget(root);
+    const cur = logsScrollEl;
+    const curBad = cur != null && !cur.isConnected;
+    if (next !== cur || curBad) {
+      bindLogsScrollTarget();
+    }
+  });
 });
 
 watch(mobileNavOpen, (open) => {
@@ -202,14 +284,32 @@ watch(
   () => {
     closeMobileNav();
     void refreshHealth();
+    detachLogsScrollListener();
+    backTopVisible.value = false;
+    void nextTick(() => {
+      bindLogsScrollTarget();
+      updateBackTopVisibility();
+    });
   },
 );
+
+watch(pageLoadingVisible, async (vis) => {
+  if (vis) return;
+  await nextTick();
+  bindLogsScrollTarget();
+  updateBackTopVisibility();
+});
 
 onUnmounted(() => {
   window.removeEventListener("resize", updateNarrow);
   if (healthPollTimer != null) {
     clearInterval(healthPollTimer);
     healthPollTimer = null;
+  }
+  detachLogsScrollListener();
+  if (typeof window !== "undefined" && logsScrollRaf) {
+    window.cancelAnimationFrame(logsScrollRaf);
+    logsScrollRaf = 0;
   }
   if (typeof document !== "undefined") {
     document.body.style.overflow = "";
@@ -544,7 +644,11 @@ onUnmounted(() => {
           </p>
         </div>
       </div>
-      <div :class="mainInnerClass">
+      <div
+        ref="mainInnerRef"
+        :class="mainInnerClass"
+        @scroll.passive="onMainInnerScroll"
+      >
         <router-view v-slot="{ Component, route: r }">
           <transition
             name="shell-page"
@@ -557,6 +661,18 @@ onUnmounted(() => {
           </transition>
         </router-view>
       </div>
+      <Teleport to="body">
+        <button
+          v-show="backTopVisible"
+          type="button"
+          class="shell-back-top"
+          aria-label="返回顶部"
+          title="返回顶部"
+          @click="scrollPageToTop"
+        >
+          ↑
+        </button>
+      </Teleport>
     </div>
   </div>
 </template>
