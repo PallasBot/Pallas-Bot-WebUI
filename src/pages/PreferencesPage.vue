@@ -8,9 +8,30 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
 import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
+import {
+  addNavTokenToSidebar,
+  moveNavTokenInOrder,
+  removeNavTokenFromSidebar,
+} from "@/utils/sidebarNavActions";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
+
+const { sidebarNavRows, sidebarPoolRows } = useSidebarNavLists();
+
+function navOrderIndex(token: string): number {
+  return consolePrefs.sidebarNavOrder.indexOf(token);
+}
+
+function canMoveNavUp(token: string): boolean {
+  return navOrderIndex(token) > 0;
+}
+
+function canMoveNavDown(token: string): boolean {
+  const i = navOrderIndex(token);
+  return i >= 0 && i < consolePrefs.sidebarNavOrder.length - 1;
+}
 
 function setTheme(v: ThemeMode) {
   setConsolePrefs({ theme: v });
@@ -111,6 +132,7 @@ onMounted(() => {
 
 onActivated(() => {
   loadSidebarSectionInputs();
+  scrollToPasswordIfNeeded();
 });
 
 watch(
@@ -121,10 +143,17 @@ watch(
 );
 
 function scrollToPasswordIfNeeded() {
-  if (route.hash !== "#console-password") return;
-  requestAnimationFrame(() => {
-    document.getElementById("console-password")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  if (route.hash === "#console-password") {
+    requestAnimationFrame(() => {
+      document.getElementById("console-password")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return;
+  }
+  if (route.hash === "#sidebar-order") {
+    requestAnimationFrame(() => {
+      document.getElementById("sidebar-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 }
 
 loadSidebarSectionInputs();
@@ -146,8 +175,111 @@ loadSidebarSectionInputs();
       </div>
       <div class="panel__bd">
         <p class="muted" style="margin: 0 0 12px; line-height: 1.55">
-          可在侧栏拖动排序、移除项。未显示在侧栏中的入口会归在侧栏底部的「未在侧栏」里；也可在各设置卡标题栏点「+」将对应入口加回侧栏。若误删导致只剩一项，仍可继续操作；侧栏过空时可点下方恢复默认。
+          宽屏侧栏可拖动 ⋮ 排序、点 × 移除；未在侧栏的入口在侧栏底部折叠池内。移动端抽屉仅用于跳转，调整顺序、添加或移除请在下方「侧栏顺序与项目」中完成。各页标题栏「+」仍可把入口加回侧栏。若误删导致只剩一项仍可继续操作；侧栏过空时可点「恢复默认」。
         </p>
+        <details
+          id="sidebar-order"
+          class="prefs-sidebar-order"
+          style="margin-bottom: 14px"
+        >
+          <summary
+            class="prefs-sidebar-order__summary muted"
+          >侧栏顺序与项目</summary>
+          <p
+            class="muted"
+            style="margin: 10px 0 12px; line-height: 1.55; font-size: 13px"
+          >
+            使用「上移 / 下移」调整顺序；「移除」至少保留一项。下方「未在侧栏」可添加条目。
+          </p>
+          <div class="prefs-sidebar-order__list">
+            <template
+              v-for="row in sidebarNavRows"
+              :key="'ord-' + row.token"
+            >
+              <div
+                v-if="row.showSection"
+                class="prefs-sidebar-order__sec"
+                role="presentation"
+              >
+                {{ row.section }}
+              </div>
+              <div class="prefs-sidebar-order__row">
+                <span
+                  class="prefs-sidebar-order__ico"
+                  aria-hidden="true"
+                >{{ row.kind === "main" ? row.item.icon : row.pin.icon }}</span>
+                <div class="prefs-sidebar-order__meta">
+                  <div class="prefs-sidebar-order__label">
+                    {{ row.kind === "main" ? row.item.label : row.pin.label }}
+                  </div>
+                  <div class="prefs-sidebar-order__desc muted">
+                    {{ row.kind === "main" ? row.item.description : row.pin.description }}
+                  </div>
+                </div>
+                <div class="prefs-sidebar-order__actions">
+                  <button
+                    type="button"
+                    class="btn prefs-sidebar-order__btn"
+                    :disabled="!canMoveNavUp(row.token)"
+                    @click="moveNavTokenInOrder(row.token, -1)"
+                  >
+                    上移
+                  </button>
+                  <button
+                    type="button"
+                    class="btn prefs-sidebar-order__btn"
+                    :disabled="!canMoveNavDown(row.token)"
+                    @click="moveNavTokenInOrder(row.token, 1)"
+                  >
+                    下移
+                  </button>
+                  <button
+                    v-if="sidebarNavRows.length > 1"
+                    type="button"
+                    class="btn prefs-sidebar-order__btn prefs-sidebar-order__btn--danger"
+                    @click="removeNavTokenFromSidebar(row.token)"
+                  >
+                    移除
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div
+            v-if="sidebarPoolRows.length"
+            class="prefs-sidebar-order__pool"
+          >
+            <div class="prefs-sidebar-order__pool-title muted">
+              未在侧栏（{{ sidebarPoolRows.length }}）
+            </div>
+            <template
+              v-for="row in sidebarPoolRows"
+              :key="'pool-' + row.token"
+            >
+              <div
+                v-if="row.showSection"
+                class="prefs-sidebar-order__pool-sec"
+                role="presentation"
+              >
+                {{ row.section }}
+              </div>
+              <div class="prefs-sidebar-order__pool-row">
+                <span
+                  class="prefs-sidebar-order__ico"
+                  aria-hidden="true"
+                >{{ row.kind === "main" ? row.item.icon : row.pin.icon }}</span>
+                <span class="prefs-sidebar-order__pool-label">{{ row.kind === "main" ? row.item.label : row.pin.label }}</span>
+                <button
+                  type="button"
+                  class="btn btn--primary prefs-sidebar-order__btn"
+                  @click="addNavTokenToSidebar(row.token)"
+                >
+                  添加
+                </button>
+              </div>
+            </template>
+          </div>
+        </details>
         <button
           type="button"
           class="btn btn--primary"
