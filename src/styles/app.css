@@ -3495,12 +3495,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 }
 
-@media (max-width: 420px) {
-  .home-account-hero__pending-rail {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 860px) {
   .home-account-unified__col--standee {
     display: none;
