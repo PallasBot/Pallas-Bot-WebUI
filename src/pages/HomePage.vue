@@ -594,9 +594,35 @@ function alignDownLocalGrid(tsSec: number, strideSec: number): number {
   return d0 + Math.floor(off / strideSec) * strideSec;
 }
 
-/** 时间轴：每 5 分钟一刻度，再隔一个显示一个；仍过长时均匀抽样 */
-const THROUGHPUT_AXIS_TICK_SEC = 300;
-const THROUGHPUT_AXIS_MAX_LABELS = 30;
+/** 时间轴：按可视跨度自适应步长，控制刻度数量，避免标签横向叠在一起 */
+const THROUGHPUT_AXIS_MAX_TICKS = 8;
+const THROUGHPUT_AXIS_MIN_GAP_PCT = 9;
+
+const THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC = [
+  60, 120, 300, 600, 900, 1200, 1800, 3600, 7200, 14400, 28800, 43200, 86400,
+] as const;
+
+function throughputAxisStrideSec(rangeLo: number, rangeHi: number): number {
+  const span = Math.max(rangeHi - rangeLo, 60);
+  const minStride = span / THROUGHPUT_AXIS_MAX_TICKS;
+  for (const c of THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC) {
+    if (c >= minStride) return c;
+  }
+  return THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC[THROUGHPUT_AXIS_STRIDE_CANDIDATES_SEC.length - 1]!;
+}
+
+function thinThroughputTicksByMinGap(ticks: ThroughputBarTick[], minGapPct: number): ThroughputBarTick[] {
+  const sorted = [...ticks].sort((a, b) => a.leftPct - b.leftPct);
+  const out: ThroughputBarTick[] = [];
+  let last = -Infinity;
+  for (const t of sorted) {
+    if (t.leftPct - last >= minGapPct - 0.05) {
+      out.push(t);
+      last = t.leftPct;
+    }
+  }
+  return out;
+}
 
 function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: number, strideSec: number): string {
   const a = new Date(atSec * 1000);
@@ -638,7 +664,7 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   const rangeHi = atOf(pts[pts.length - 1]!);
   const span = Math.max(rangeHi - rangeLo, 60);
 
-  const strideSec = THROUGHPUT_AXIS_TICK_SEC;
+  const strideSec = throughputAxisStrideSec(rangeLo, rangeHi);
   const raw: ThroughputBarTick[] = [];
   for (let t = alignDownLocalGrid(rangeLo, strideSec); t <= rangeHi + strideSec; t += strideSec) {
     const xNorm = (t - rangeLo) / span;
@@ -652,19 +678,14 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
     });
   }
 
-  let thinned = raw.filter((_, i) => i % 2 === 0);
-  if (thinned.length > THROUGHPUT_AXIS_MAX_LABELS) {
-    const step = Math.ceil(thinned.length / THROUGHPUT_AXIS_MAX_LABELS);
-    thinned = thinned.filter((_, i) => i % step === 0);
-  }
+  let ticks = thinThroughputTicksByMinGap(raw, THROUGHPUT_AXIS_MIN_GAP_PCT);
 
-  const seen = new Set<number>();
-  const ticks: ThroughputBarTick[] = [];
-  for (const t of thinned) {
-    const k = Math.round(t.leftPct * 100) / 100;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    ticks.push(t);
+  if (ticks.length > THROUGHPUT_AXIS_MAX_TICKS) {
+    const step = Math.ceil(ticks.length / THROUGHPUT_AXIS_MAX_TICKS);
+    ticks = thinThroughputTicksByMinGap(
+      ticks.filter((_, i) => i % step === 0),
+      THROUGHPUT_AXIS_MIN_GAP_PCT,
+    );
   }
 
   if (!ticks.length) {
