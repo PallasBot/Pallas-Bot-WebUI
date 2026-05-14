@@ -172,7 +172,10 @@ async function save() {
       v-if="!pageReady"
       :panels="2"
     />
-    <div v-else>
+    <div
+      v-else
+      class="common-config-page"
+    >
     <div class="panel">
       <div class="panel__hd">
         <h2 class="panel__title">
