@@ -6,7 +6,7 @@ import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
-import { initialShellLoading, routeNavLoading } from "@/utils/routeLoading";
+import { initialShellLoading } from "@/utils/routeLoading";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const dragPath = ref<string | null>(null);
@@ -102,7 +102,7 @@ const mainInnerClass = computed(() => ({
   "shell__main-inner--logs": route.name === "logs",
 }));
 
-const pageLoadingVisible = computed(() => routeNavLoading.value || initialShellLoading.value);
+const pageLoadingVisible = computed(() => initialShellLoading.value);
 
 const pageLoadingTitle = computed(() => {
   const t = route.meta?.title;
@@ -283,7 +283,6 @@ watch(
   () => route.fullPath,
   () => {
     closeMobileNav();
-    void refreshHealth();
     detachLogsScrollListener();
     backTopVisible.value = false;
     void nextTick(() => {
@@ -654,10 +653,12 @@ onUnmounted(() => {
             name="shell-page"
             mode="out-in"
           >
-            <component
-              :is="Component"
-              :key="r.path"
-            />
+            <keep-alive :max="24">
+              <component
+                :is="Component"
+                :key="r.path"
+              />
+            </keep-alive>
           </transition>
         </router-view>
       </div>
