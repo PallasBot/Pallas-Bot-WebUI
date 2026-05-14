@@ -5,21 +5,83 @@ import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import { mainNavIconForPath, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
+import {
+  parseSidebarPinToken,
+  SIDEBAR_PIN_DEFINITIONS,
+  sidebarPinToken,
+  type SidebarPinDefinition,
+} from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
+const route = useRoute();
 const dragPath = ref<string | null>(null);
 const dragOverPath = ref<string | null>(null);
 
-const orderedNav = computed((): MainNavItem[] =>
-  consolePrefs.sidebarNavOrder
-    .map((to) => mainNavItemByPath(to))
-    .filter((item): item is MainNavItem => item != null),
+type SidebarNavRow =
+  | { kind: "main"; token: string; item: MainNavItem }
+  | { kind: "pin"; token: string; pin: SidebarPinDefinition };
+
+type SidebarNavRowView = SidebarNavRow & { section: string; showSection: boolean };
+
+const sidebarNavRows = computed((): SidebarNavRowView[] => {
+  const raw: SidebarNavRow[] = [];
+  for (const token of consolePrefs.sidebarNavOrder) {
+    const pin = parseSidebarPinToken(token);
+    if (pin) {
+      raw.push({ kind: "pin", token, pin });
+      continue;
+    }
+    const item = mainNavItemByPath(token);
+    if (item) raw.push({ kind: "main", token, item });
+  }
+  let prevSection: string | null = null;
+  return raw.map((r) => {
+    const section = r.kind === "main" ? r.item.section : r.pin.section;
+    const showSection = section !== prevSection;
+    prevSection = section;
+    return { ...r, section, showSection };
+  });
+});
+
+const pinsAddable = computed(() =>
+  SIDEBAR_PIN_DEFINITIONS.filter((p) => !consolePrefs.sidebarNavOrder.includes(sidebarPinToken(p.id))),
 );
 
-const route = useRoute();
+function isMainLinkActiveForPath(item: MainNavItem): boolean {
+  const atPath = route.path === item.to || (item.to !== "/" && route.path.startsWith(`${item.to}/`));
+  if (!atPath) return false;
+  if (route.path !== item.to) return true;
+  const h = (route.hash || "").trim();
+  if (!h) return true;
+  return !SIDEBAR_PIN_DEFINITIONS.some((p) => p.path === item.to && p.hash === h);
+}
+
+function isPinLinkActive(pin: SidebarPinDefinition): boolean {
+  return route.path === pin.path && (route.hash || "").trim() === pin.hash;
+}
+
+function isMainLinkExact(item: MainNavItem): boolean {
+  if (item.to === "/") return route.path === "/";
+  if (route.path !== item.to) return false;
+  return isMainLinkActiveForPath(item);
+}
+
+function removeNavToken(token: string) {
+  if (consolePrefs.sidebarNavOrder.length <= 1) return;
+  setConsolePrefs({
+    sidebarNavOrder: consolePrefs.sidebarNavOrder.filter((t) => t !== token),
+  });
+}
+
+function addSidebarPin(id: string) {
+  const tok = sidebarPinToken(id);
+  if (consolePrefs.sidebarNavOrder.includes(tok)) return;
+  setConsolePrefs({ sidebarNavOrder: [...consolePrefs.sidebarNavOrder, tok] });
+}
+
 const mobileNavOpen = ref(false);
 const isNarrow = ref(false);
 
@@ -108,7 +170,16 @@ const pageLoadingTitle = computed(() => {
   return typeof t === "string" && t.trim() ? t.trim() : "页面";
 });
 
+const matchedPinForTopBar = computed(() => {
+  const h = (route.hash || "").trim();
+  return SIDEBAR_PIN_DEFINITIONS.find((p) => p.path === route.path && p.hash === h);
+});
+
+const topBarIcon = computed(() => mainNavIconForPath(route.path, route.hash));
+
 const topBarTitle = computed(() => {
+  const pin = matchedPinForTopBar.value;
+  if (pin) return pin.label;
   if (route.name === "plugin-config") {
     const n = route.params.name;
     if (typeof n === "string" && n.trim()) return n.trim();
@@ -117,9 +188,9 @@ const topBarTitle = computed(() => {
   return typeof t === "string" && t.trim() ? t.trim() : "控制台";
 });
 
-const topBarIcon = computed(() => mainNavIconForPath(route.path));
-
 const topBarDesc = computed(() => {
+  const pin = matchedPinForTopBar.value;
+  if (pin) return pin.description;
   const d = route.meta?.description;
   return typeof d === "string" && d.trim() ? d.trim() : "";
 });
@@ -491,53 +562,109 @@ onUnmounted(() => {
         </div>
       </div>
       <nav class="shell__nav" aria-label="主导航">
-        <div
-          v-for="item in orderedNav"
-          :key="item.to"
-          class="shell__nav-item"
-          :class="{
-            'shell__nav-item--drag-over':
-              dragOverPath === item.to && dragPath != null && dragPath !== item.to,
-          }"
-          @dragover="onNavDragOver(item.to, $event)"
-          @dragleave="onNavDragLeave(item.to)"
-          @drop="onNavDrop(item.to, $event)"
-        >
-          <span
-            v-if="!isNarrow && !consolePrefs.sidebarCollapsed"
-            class="shell__nav-grip"
-            draggable="true"
-            aria-label="拖动调整顺序"
-            title="拖动排序"
-            @dragstart="onGripDragStart(item.to, $event)"
-            @dragend="onGripDragEnd"
-          >⋮</span>
-          <RouterLink
-            v-slot="{ navigate, isActive, isExactActive }"
-            custom
-            :to="item.to"
-            :end="item.to === '/'"
+        <template v-for="row in sidebarNavRows" :key="row.token">
+          <div
+            v-if="row.showSection"
+            class="shell__nav-section"
+            role="presentation"
           >
-            <button
-              type="button"
-              class="shell__nav-link"
-              :class="{
-                'shell__nav-link--root': item.to === '/',
-                'is-router-active': isActive,
-                'is-router-exact': isExactActive,
-              }"
-              :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, item.label)"
-              :aria-current="isExactActive ? 'page' : undefined"
-              @click="navigate"
+            {{ row.section }}
+          </div>
+          <div
+            class="shell__nav-item"
+            :class="{
+              'shell__nav-item--drag-over':
+                dragOverPath === row.token && dragPath != null && dragPath !== row.token,
+            }"
+            @dragover="onNavDragOver(row.token, $event)"
+            @dragleave="onNavDragLeave(row.token)"
+            @drop="onNavDrop(row.token, $event)"
+          >
+            <span
+              v-if="!isNarrow && !consolePrefs.sidebarCollapsed"
+              class="shell__nav-grip"
+              draggable="true"
+              aria-label="拖动调整顺序"
+              title="拖动排序"
+              @dragstart="onGripDragStart(row.token, $event)"
+              @dragend="onGripDragEnd"
+            >⋮</span>
+            <RouterLink
+              v-if="row.kind === 'main'"
+              v-slot="{ navigate }"
+              custom
+              :to="row.item.to"
+              :end="row.item.to === '/'"
             >
-              <span class="shell__nav-ico">{{ item.icon }}</span>
-              <span class="shell__nav-text">
-                <span class="shell__nav-label">{{ item.label }}</span>
-                <span class="shell__nav-desc">{{ item.description }}</span>
-              </span>
+              <button
+                type="button"
+                class="shell__nav-link"
+                :class="{
+                  'shell__nav-link--root': row.item.to === '/',
+                  'is-router-active': isMainLinkActiveForPath(row.item),
+                  'is-router-exact': isMainLinkExact(row.item),
+                }"
+                :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, row.item.label)"
+                :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
+                @click="navigate"
+              >
+                <span class="shell__nav-ico">{{ row.item.icon }}</span>
+                <span class="shell__nav-text">
+                  <span class="shell__nav-label">{{ row.item.label }}</span>
+                  <span class="shell__nav-desc">{{ row.item.description }}</span>
+                </span>
+              </button>
+            </RouterLink>
+            <RouterLink
+              v-else
+              v-slot="{ navigate }"
+              custom
+              :to="{ path: row.pin.path, hash: row.pin.hash }"
+            >
+              <button
+                type="button"
+                class="shell__nav-link shell__nav-link--pin"
+                :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
+                :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, row.pin.label)"
+                :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
+                @click="navigate"
+              >
+                <span class="shell__nav-ico">{{ row.pin.icon }}</span>
+                <span class="shell__nav-text">
+                  <span class="shell__nav-label">{{ row.pin.label }}</span>
+                  <span class="shell__nav-desc">{{ row.pin.description }}</span>
+                </span>
+              </button>
+            </RouterLink>
+            <button
+              v-if="!isNarrow && !consolePrefs.sidebarCollapsed && sidebarNavRows.length > 1"
+              type="button"
+              class="shell__nav-remove"
+              :aria-label="`从侧栏移除「${row.kind === 'main' ? row.item.label : row.pin.label}」`"
+              title="从侧栏移除"
+              @click.stop="removeNavToken(row.token)"
+            >
+              ×
             </button>
-          </RouterLink>
-        </div>
+          </div>
+        </template>
+        <details
+          v-if="!isNarrow && !consolePrefs.sidebarCollapsed && pinsAddable.length"
+          class="shell__nav-add"
+        >
+          <summary class="shell__nav-add-summary">添加快捷入口</summary>
+          <div class="shell__nav-add-body">
+            <button
+              v-for="p in pinsAddable"
+              :key="p.id"
+              type="button"
+              class="btn shell__nav-add-btn"
+              @click="addSidebarPin(p.id)"
+            >
+              {{ p.label }}
+            </button>
+          </div>
+        </details>
       </nav>
       <div class="shell__sidebar-bottom">
         <footer class="shell__foot">
@@ -583,35 +710,86 @@ onUnmounted(() => {
             </button>
           </div>
           <nav class="shell-mobile-nav__links" aria-label="主导航">
-            <RouterLink
-              v-for="item in orderedNav"
-              :key="`m-${item.to}`"
-              v-slot="{ navigate, isActive, isExactActive }"
-              custom
-              :to="item.to"
-              :end="item.to === '/'"
+            <template v-for="row in sidebarNavRows" :key="`m-${row.token}`">
+              <div
+                v-if="row.showSection"
+                class="shell-mobile-nav__section"
+                role="presentation"
+              >
+                {{ row.section }}
+              </div>
+              <RouterLink
+                v-if="row.kind === 'main'"
+                v-slot="{ navigate }"
+                custom
+                :to="row.item.to"
+                :end="row.item.to === '/'"
+              >
+                <button
+                  type="button"
+                  class="shell-mobile-nav__link"
+                  :class="{
+                    'shell__nav-link--root': row.item.to === '/',
+                    'is-router-active': isMainLinkActiveForPath(row.item),
+                    'is-router-exact': isMainLinkExact(row.item),
+                  }"
+                  :aria-current="isMainLinkExact(row.item) ? 'page' : undefined"
+                  @click="
+                    navigate();
+                    closeMobileNav();
+                  "
+                >
+                  <span class="shell__nav-ico">{{ row.item.icon }}</span>
+                  <span class="shell__nav-text">
+                    <span class="shell__nav-label">{{ row.item.label }}</span>
+                    <span class="shell__nav-desc">{{ row.item.description }}</span>
+                  </span>
+                </button>
+              </RouterLink>
+              <RouterLink
+                v-else
+                v-slot="{ navigate }"
+                custom
+                :to="{ path: row.pin.path, hash: row.pin.hash }"
+              >
+                <button
+                  type="button"
+                  class="shell-mobile-nav__link shell__nav-link--pin"
+                  :class="{ 'is-router-active': isPinLinkActive(row.pin) }"
+                  :aria-current="isPinLinkActive(row.pin) ? 'page' : undefined"
+                  @click="
+                    navigate();
+                    closeMobileNav();
+                  "
+                >
+                  <span class="shell__nav-ico">{{ row.pin.icon }}</span>
+                  <span class="shell__nav-text">
+                    <span class="shell__nav-label">{{ row.pin.label }}</span>
+                    <span class="shell__nav-desc">{{ row.pin.description }}</span>
+                  </span>
+                </button>
+              </RouterLink>
+            </template>
+            <div
+              v-if="pinsAddable.length"
+              class="shell-mobile-nav__add"
             >
+              <div class="shell-mobile-nav__add-title muted">
+                添加快捷入口
+              </div>
               <button
+                v-for="p in pinsAddable"
+                :key="'add-' + p.id"
                 type="button"
-                class="shell-mobile-nav__link"
-                :class="{
-                  'shell__nav-link--root': item.to === '/',
-                  'is-router-active': isActive,
-                  'is-router-exact': isExactActive,
-                }"
-                :aria-current="isExactActive ? 'page' : undefined"
+                class="btn shell-mobile-nav__add-btn"
                 @click="
-                  navigate();
+                  addSidebarPin(p.id);
                   closeMobileNav();
                 "
               >
-                <span class="shell__nav-ico">{{ item.icon }}</span>
-                <span class="shell__nav-text">
-                  <span class="shell__nav-label">{{ item.label }}</span>
-                  <span class="shell__nav-desc">{{ item.description }}</span>
-                </span>
+                {{ p.label }}
               </button>
-            </RouterLink>
+            </div>
           </nav>
         </aside>
         <div

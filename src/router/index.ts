@@ -14,6 +14,7 @@ import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
 import { installRouteLoading } from "@/utils/routeLoading";
+import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -98,8 +99,8 @@ const router = createRouter({
           name: "bot-social-config",
           component: BotSocialConfigPage,
           meta: {
-            title: "好友与群颗粒配置",
-            description: "按 QQ/群号的独立策略表。",
+            title: "颗粒配置",
+            description: "群 / 用户级策略与列表。",
           },
         },
         {
@@ -150,7 +151,9 @@ const router = createRouter({
 const baseTitle = "Pallas-Bot 控制台";
 
 router.afterEach((to) => {
-  const piece = to.meta.title as string | undefined;
+  const h = (to.hash || "").trim();
+  const pin = SIDEBAR_PIN_DEFINITIONS.find((p) => p.path === to.path && p.hash === h);
+  const piece = pin?.label ?? (to.meta.title as string | undefined);
   document.title = piece ? `${piece} · ${baseTitle}` : baseTitle;
 });
 
