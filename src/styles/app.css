@@ -2547,6 +2547,52 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-unified__col--hero {
   align-items: stretch;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+/* 账户卡同列底部：与吞吐区同源的 Matcher 统计，margin-top:auto 吃满左侧余高 */
+.home-account-hero__matcher-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-muted) 12%);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.home-account-hero__matcher-foot__v {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.home-account-hero__matcher-foot--bad {
+  border-color: color-mix(in srgb, #fb7185 35%, var(--border));
+  color: #fb7185;
+}
+
+.home-account-hero__matcher-foot--bad .home-account-hero__matcher-foot__v {
+  color: #fb7185;
+}
+
+html[data-theme="light"] .home-account-hero__matcher-foot--bad {
+  color: #b91c1c;
+}
+
+html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-hero__matcher-foot__v {
+  color: #b91c1c;
 }
 
 .home-account-unified__col--metrics {
@@ -2926,12 +2972,14 @@ html[data-theme="light"] .home-account-hero__admin-values {
 
 .home-account-hero__links-grid {
   display: grid;
-  /* 与下行数量共用列线：避免两个独立 1fr 网格因 min-content 不同导致第二列错位 */
-  grid-template-columns: repeat(2, minmax(min(112px, 100%), 1fr));
+  /* 两列必须可压到 0，否则窄宽下最小宽度之和会挤出父级（如压住右侧吞吐区） */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px 12px;
   align-items: start;
   width: 100%;
+  max-width: 100%;
   margin: 0;
+  box-sizing: border-box;
 }
 .home-account-hero__links-grid__counts {
   grid-column: 1 / -1;
@@ -2956,9 +3004,13 @@ html[data-theme="light"] .home-account-hero__admin-values {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  max-width: 100%;
 }
 .home-account-hero--color .home-account-hero__links-grid .home-account-hero__link {
   font-weight: 700;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .home-account-hero--color .home-account-hero__links-grid__col--friend .home-account-hero__link {
   color: #2dd4bf;
@@ -3498,42 +3550,6 @@ html[data-theme="light"] .home-account-metrics__spark-line--sent {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   word-break: break-word;
-}
-
-.home-account-metrics__matcher-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 2px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.home-account-metrics__matcher-row .home-account-metrics__matcher-val {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-
-.home-account-metrics__matcher-row--bad {
-  border-top-color: rgba(251, 113, 133, 0.32);
-  color: #fb7185;
-}
-
-.home-account-metrics__matcher-row--bad .home-account-metrics__matcher-val {
-  color: #fb7185;
-}
-
-html[data-theme="light"] .home-account-metrics__matcher-row--bad {
-  color: #b91c1c;
-}
-
-html[data-theme="light"] .home-account-metrics__matcher-row--bad .home-account-metrics__matcher-val {
-  color: #b91c1c;
 }
 
 /* 吞吐侧：彩色 + 字号层级（大数 → 今日 → 明细） */

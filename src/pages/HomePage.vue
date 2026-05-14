@@ -1139,6 +1139,22 @@ onMounted(load);
                         </div>
                       </div>
                     </div>
+                    <div
+                      class="home-account-hero__matcher-foot"
+                      :class="{
+                        'home-account-hero__matcher-foot--bad':
+                          !socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                      }"
+                    >
+                      <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
+                      <span class="home-account-hero__matcher-foot__v">{{
+                        socialBusy
+                          ? "…"
+                          : scopedPluginRunRow == null
+                            ? "—"
+                            : String(scopedPluginRunRow.errors_today ?? 0)
+                      }}</span>
+                    </div>
                   </div>
                   <div class="home-account-unified__col home-account-unified__col--metrics">
                     <div class="home-account-metrics home-account-metrics--color">
@@ -1339,19 +1355,6 @@ onMounted(load);
                               />
                             </div>
                           </div>
-                        </div>
-                        <div
-                          v-if="!socialBusy && (scopedPluginRunRow?.errors_today ?? 0) > 0"
-                          class="home-account-metrics__matcher-row home-account-metrics__matcher-row--bad"
-                        >
-                          <span class="muted home-account-metrics__k">Matcher 异常（今日）</span>
-                          <span class="home-account-metrics__matcher-val">{{
-                            socialBusy
-                              ? "…"
-                              : scopedPluginRunRow == null
-                                ? "—"
-                                : String(scopedPluginRunRow.errors_today ?? 0)
-                          }}</span>
                         </div>
                       </div>
                     </div>
