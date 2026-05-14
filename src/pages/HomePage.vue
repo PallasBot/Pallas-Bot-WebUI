@@ -522,15 +522,11 @@ const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
 /** API 吞吐迷你图：折线（与消息柱图同 viewBox；有消息柱时在柱上叠画，按桶 at 对齐） */
 const throughputApiLineModel = computed((): {
   polyline: string;
-  dot: { x: number; y: number } | null;
   areaPath: string;
-  lineDots: { x: number; y: number }[];
 } => {
   const empty = {
     polyline: "",
-    dot: null as { x: number; y: number } | null,
     areaPath: "",
-    lineDots: [] as { x: number; y: number }[],
   };
   if (socialBusy.value) return empty;
 
@@ -567,7 +563,7 @@ const throughputApiLineModel = computed((): {
     xy.push({ x, y });
   }
   if (xy.length === 1) {
-    return { polyline: "", dot: xy[0]!, areaPath: "", lineDots: [] };
+    return empty;
   }
   const polyline = xy.map((p) => `${p.x},${p.y}`).join(" ");
   const first = xy[0]!;
@@ -578,8 +574,7 @@ const throughputApiLineModel = computed((): {
     areaPath += i === 0 ? `M${first.x},${bottom}L${p.x},${p.y}` : `L${p.x},${p.y}`;
   }
   areaPath += `L${last.x},${bottom}Z`;
-  const lineDots = xy.length >= 2 && xy.length <= 72 ? xy : [];
-  return { polyline, dot: null, areaPath, lineDots };
+  return { polyline, areaPath };
 });
 
 type ThroughputBarTick = { leftPct: number; label: string };
@@ -690,7 +685,7 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
 const showThroughputMiniChart = computed(
   () =>
     throughputMessageBarBuckets.value.length > 0 ||
-    Boolean(throughputApiLineModel.value.polyline || throughputApiLineModel.value.dot),
+    Boolean(throughputApiLineModel.value.polyline),
 );
 
 type ThroughputMiniLegendItem = { key: string; label: string; swatch: "recv" | "sent" | "api" };
@@ -702,7 +697,7 @@ const throughputMiniLegendItems = computed((): ThroughputMiniLegendItem[] => {
     items.push({ key: "sent", label: "消息发", swatch: "sent" });
   }
   const api = throughputApiLineModel.value;
-  if (api.polyline || api.dot || api.areaPath) {
+  if (api.polyline || api.areaPath) {
     items.push({ key: "api", label: "协议 API（成功）", swatch: "api" });
   }
   return items;
@@ -1202,26 +1197,10 @@ onMounted(load);
                             class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
                             fill="none"
                             stroke="#ea580c"
-                            stroke-width="0.35"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             vector-effect="non-scaling-stroke"
                             :points="throughputApiLineModel.polyline"
-                          />
-                          <circle
-                            v-for="(pt, pi) in throughputApiLineModel.lineDots"
-                            :key="'api-line-dot-' + pi"
-                            class="home-account-metrics__throughput-line-vertex"
-                            :cx="pt.x"
-                            :cy="pt.y"
-                            r="0.32"
-                          />
-                          <circle
-                            v-if="throughputApiLineModel.dot"
-                            class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--api"
-                            :cx="throughputApiLineModel.dot.x"
-                            :cy="throughputApiLineModel.dot.y"
-                            r="0.65"
                           />
                         </svg>
                         <div

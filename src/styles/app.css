@@ -3084,19 +3084,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__bar
   opacity: 0.92;
 }
 
-.home-account-metrics__throughput-line-vertex {
-  pointer-events: none;
-  fill: #fff7ed;
-  stroke: #ea580c;
-  stroke-width: 0.16;
-  opacity: 0.98;
-}
-
-html[data-theme="light"] .home-account-metrics__throughput-line-vertex {
-  fill: #fff;
-  stroke: #c2410c;
-}
-
 .home-account-metrics__bar {
   shape-rendering: geometricPrecision;
 }
@@ -3122,19 +3109,11 @@ html[data-theme="light"] .home-account-metrics__bar--sent {
 .home-account-metrics__throughput-line--api {
   fill: none;
   opacity: 0.98;
+  stroke-width: 2px;
 }
 
 html[data-theme="light"] .home-account-metrics__throughput-line--api {
   opacity: 0.98;
-}
-
-.home-account-metrics__throughput-dot--api {
-  fill: #ea580c;
-  opacity: 0.96;
-}
-
-html[data-theme="light"] .home-account-metrics__throughput-dot--api {
-  fill: #c2410c;
 }
 
 .home-account-metrics__spark-svg {
@@ -3145,7 +3124,7 @@ html[data-theme="light"] .home-account-metrics__throughput-dot--api {
 
 .home-account-metrics__spark-line {
   fill: none;
-  stroke-width: 0.32;
+  stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3848,7 +3827,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   /* 首页：账户信息 / 系统性能 / 版本 标题行保持横排 + 右侧胶囊 */
   .home-account-panel__hd.panel__hd--split.home-page__panel-hd-nowrap,
-  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap {
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap,
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
@@ -3864,7 +3844,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   .home-account-panel__hd.panel__hd--split.home-page__panel-hd-nowrap .panel__title,
-  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .panel__title {
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .panel__title,
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap .panel__title {
     width: auto;
     flex: 1 1 auto;
     min-width: 0;

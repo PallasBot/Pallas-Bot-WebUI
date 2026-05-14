@@ -668,11 +668,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in hourlyApiLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -768,11 +767,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in apiLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -863,11 +861,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in hourlyMatcherLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -963,11 +960,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in matcherRunLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -1058,11 +1054,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in hourlyMatcherErrLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -1158,11 +1153,10 @@ function pluginBarLabel(name: string): string {
           <polyline
             v-for="(ly, idx) in matcherErrLayers"
             :key="idx"
+            class="home-plugin-chart-line"
             fill="none"
             :stroke="ly.color"
-            stroke-width="0.32"
             stroke-opacity="0.92"
-            vector-effect="non-scaling-stroke"
             :points="ly.poly"
           />
         </svg>
@@ -1212,10 +1206,9 @@ function pluginBarLabel(name: string): string {
           aria-hidden="true"
         >
           <polyline
+            class="home-plugin-chart-line"
             fill="none"
             stroke="#ea580c"
-            stroke-width="0.32"
-            vector-effect="non-scaling-stroke"
             :points="sparkPoly"
           />
         </svg>
@@ -1487,6 +1480,11 @@ function pluginBarLabel(name: string): string {
 .home-plugin-spark-meta {
   font-size: 11px;
   margin-top: 4px;
+}
+
+.home-plugin-chart-line {
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
 }
 
 /* 按「图表区块实际宽度」断行，避免宽视口 + 窄内容列时仍横向挤压 */
