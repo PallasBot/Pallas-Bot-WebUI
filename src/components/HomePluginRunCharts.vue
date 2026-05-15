@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { ApiCallNamedSeries, PluginMatcherNamedSeries, PluginRunStatsRow, PluginRow } from "@/api/pallasTypes";
+import type {
+  ApiCallNamedSeries,
+  ConsoleDailyStatRow,
+  PluginMatcherNamedSeries,
+  PluginRunStatsRow,
+  PluginRow,
+} from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 
@@ -14,6 +20,7 @@ const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
 type ChartPanelId =
   | "plugins_top"
+  | "daily_msg_matcher"
   | "api_hourly"
   | "api_bucket"
   | "matcher_hourly"
@@ -24,6 +31,7 @@ type ChartPanelId =
 
 const PANEL_ORDER: ChartPanelId[] = [
   "plugins_top",
+  "daily_msg_matcher",
   "api_hourly",
   "api_bucket",
   "matcher_hourly",
@@ -110,6 +118,8 @@ const props = defineProps<{
   matcherRunsByPlugin?: PluginMatcherNamedSeries[];
   matcherErrorsByPlugin?: PluginMatcherNamedSeries[];
   matcherHistoryBucketSec?: number;
+  /** GET /console-daily-stats 的 rows（当前选中账号） */
+  dailyStatRows?: ConsoleDailyStatRow[] | null;
 }>();
 
 const selectedApiKeys = ref<string[]>([]);
@@ -433,6 +443,7 @@ function toggleChartsDraw() {
 
 const panelAvailability = computed(() => ({
   plugins_top: true,
+  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 2,
   api_hourly: apiCandidates.value.length > 0,
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
@@ -445,6 +456,7 @@ const panelAvailability = computed(() => ({
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
     plugins_top: "插件今日次数（Top）",
+    daily_msg_matcher: "消息 / Matcher（按日）",
     api_hourly: "协议 API · 今日各小时",
     api_bucket: "协议 API · 按时间桶",
     matcher_hourly: "Matcher · 今日各小时",
@@ -521,6 +533,118 @@ function toggleAllMatcherErr(on: boolean) {
 function pluginBarLabel(name: string): string {
   return matcherPluginDisplayName(name, props.pluginsMeta ?? undefined);
 }
+
+function catmullStrokePath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0]!.x} ${pts[0]!.y}`;
+  let d = `M ${pts[0]!.x} ${pts[0]!.y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = i > 0 ? pts[i - 1]! : pts[0]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = i + 2 < pts.length ? pts[i + 2]! : p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+function linearAreaPath(pts: { x: number; y: number }[], bottomY: number): string {
+  if (!pts.length) return "";
+  const first = pts[0]!;
+  const last = pts[pts.length - 1]!;
+  let d = `M ${first.x} ${bottomY} L ${first.x} ${first.y}`;
+  for (let i = 1; i < pts.length; i++) {
+    d += ` L ${pts[i]!.x} ${pts[i]!.y}`;
+  }
+  d += ` L ${last.x} ${bottomY} Z`;
+  return d;
+}
+
+function pickTickIndices(n: number, maxTicks: number): number[] {
+  if (n <= 0) return [];
+  if (n <= maxTicks) return Array.from({ length: n }, (_, i) => i);
+  const out: number[] = [0];
+  const step = (n - 1) / (maxTicks - 1);
+  for (let k = 1; k < maxTicks - 1; k++) {
+    out.push(Math.min(n - 1, Math.round(k * step)));
+  }
+  out.push(n - 1);
+  return [...new Set(out)].sort((a, b) => a - b);
+}
+
+const dailyChartPack = computed(() => {
+  const raw = [...(props.dailyStatRows ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  if (raw.length < 2) return null;
+  const W = 400;
+  const H = 200;
+  const padL = 44;
+  const padR = 44;
+  const padT = 36;
+  const padB = 40;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const top = padT;
+  const bottom = padT + innerH;
+  const msgSums = raw.map((r) => (Number(r.received) || 0) + (Number(r.sent) || 0));
+  const mats = raw.map((r) => Number(r.matcher_runs) || 0);
+  const maxM = Math.max(...msgSums, 1);
+  const maxMat = Math.max(...mats, 1);
+  const n = raw.length;
+  const xAt = (i: number) => left + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const yMsg = (v: number) => bottom - (v / maxM) * innerH;
+  const yMat = (v: number) => bottom - (v / maxMat) * innerH;
+  const msgPts = msgSums.map((v, i) => ({ x: xAt(i), y: yMsg(v) }));
+  const matPts = mats.map((v, i) => ({ x: xAt(i), y: yMat(v) }));
+  const msgPathD = catmullStrokePath(msgPts);
+  const matPathD = catmullStrokePath(matPts);
+  const msgAreaD = linearAreaPath(msgPts, bottom);
+  const matAreaD = linearAreaPath(matPts, bottom);
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
+  const fmtTick = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+  const leftTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
+    { y: top, t: fmtTick(maxM) },
+  ];
+  const rightTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
+    { y: top, t: fmtTick(maxMat) },
+  ];
+  const xi = pickTickIndices(n, 10);
+  const xTicks = xi.map((i) => ({
+    x: xAt(i),
+    t: raw[i]!.date.length >= 10 ? raw[i]!.date.slice(5) : raw[i]!.date,
+  }));
+  return {
+    W,
+    H,
+    padL,
+    padR,
+    padT,
+    padB,
+    innerW,
+    innerH,
+    left,
+    top,
+    bottom,
+    gridYs,
+    msgPathD,
+    matPathD,
+    msgAreaD,
+    matAreaD,
+    msgDots: msgPts,
+    matDots: matPts,
+    leftTicks,
+    rightTicks,
+    xTicks,
+  };
+});
 </script>
 
 <template>
@@ -605,6 +729,167 @@ function pluginBarLabel(name: string): string {
             />
           </div>
           <span class="home-plugin-bars__val">{{ p.runs_today }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="chartPanel === 'daily_msg_matcher'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__caption home-plugin-daily__title">
+        消息 / Matcher 统计
+      </div>
+      <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
+        按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
+      </p>
+      <p
+        v-if="busy"
+        class="muted home-plugin-charts__empty"
+      >
+        加载中…
+      </p>
+      <p
+        v-else-if="!dailyChartPack"
+        class="muted home-plugin-charts__empty"
+      >
+        至少需要 2 个自然日的记录才能绘制折线。请保持 Bot 运行并隔日查看。
+      </p>
+      <div
+        v-else
+        class="home-plugin-daily"
+      >
+        <div class="home-plugin-daily__legend muted">
+          <span class="home-plugin-daily__leg-item">
+            <i
+              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--msg"
+              aria-hidden="true"
+            />
+            消息收+发
+          </span>
+          <span class="home-plugin-daily__leg-item">
+            <i
+              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--mat"
+              aria-hidden="true"
+            />
+            Matcher
+          </span>
+        </div>
+        <div class="home-plugin-daily__svg-wrap">
+          <svg
+            class="home-plugin-daily__svg"
+            :viewBox="`0 0 ${dailyChartPack.W} ${dailyChartPack.H}`"
+            preserveAspectRatio="xMidYMid meet"
+            overflow="visible"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient
+                id="home-daily-msg-area"
+                gradientUnits="userSpaceOnUse"
+                :x1="dailyChartPack.left"
+                :y1="dailyChartPack.bottom"
+                :x2="dailyChartPack.left"
+                :y2="dailyChartPack.top"
+              >
+                <stop
+                  offset="0%"
+                  stop-color="#f472b6"
+                  stop-opacity="0"
+                />
+                <stop
+                  offset="100%"
+                  stop-color="#f472b6"
+                  stop-opacity="0.2"
+                />
+              </linearGradient>
+              <linearGradient
+                id="home-daily-mat-area"
+                gradientUnits="userSpaceOnUse"
+                :x1="dailyChartPack.left"
+                :y1="dailyChartPack.bottom"
+                :x2="dailyChartPack.left"
+                :y2="dailyChartPack.top"
+              >
+                <stop
+                  offset="0%"
+                  stop-color="#d946ef"
+                  stop-opacity="0"
+                />
+                <stop
+                  offset="100%"
+                  stop-color="#d946ef"
+                  stop-opacity="0.18"
+                />
+              </linearGradient>
+            </defs>
+            <line
+              v-for="(gy, gi) in dailyChartPack.gridYs"
+              :key="`g-${gi}`"
+              class="home-plugin-daily__grid"
+              :x1="dailyChartPack.left"
+              :y1="gy"
+              :x2="dailyChartPack.left + dailyChartPack.innerW"
+              :y2="gy"
+            />
+            <text
+              v-for="(tk, ti) in dailyChartPack.leftTicks"
+              :key="`lt-${ti}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--left"
+              :x="6"
+              :y="tk.y + 4"
+            >{{ tk.t }}</text>
+            <text
+              v-for="(tk, ti) in dailyChartPack.rightTicks"
+              :key="`rt-${ti}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--right"
+              :x="dailyChartPack.W - 6"
+              :y="tk.y + 4"
+            >{{ tk.t }}</text>
+            <text
+              v-for="(xt, xi) in dailyChartPack.xTicks"
+              :key="`xt-${xi}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--x"
+              :x="xt.x"
+              :y="dailyChartPack.H - 8"
+            >{{ xt.t }}</text>
+            <path
+              class="home-plugin-daily__area home-plugin-daily__area--mat"
+              :d="dailyChartPack.matAreaD"
+              fill="url(#home-daily-mat-area)"
+            />
+            <path
+              class="home-plugin-daily__area home-plugin-daily__area--msg"
+              :d="dailyChartPack.msgAreaD"
+              fill="url(#home-daily-msg-area)"
+            />
+            <path
+              class="home-plugin-daily__line home-plugin-daily__line--mat"
+              :d="dailyChartPack.matPathD"
+              fill="none"
+            />
+            <path
+              class="home-plugin-daily__line home-plugin-daily__line--msg"
+              :d="dailyChartPack.msgPathD"
+              fill="none"
+            />
+            <circle
+              v-for="(p, di) in dailyChartPack.matDots"
+              :key="`md-${di}`"
+              class="home-plugin-daily__dot home-plugin-daily__dot--mat"
+              :cx="p.x"
+              :cy="p.y"
+              r="3.2"
+            />
+            <circle
+              v-for="(p, di) in dailyChartPack.msgDots"
+              :key="`mg-${di}`"
+              class="home-plugin-daily__dot home-plugin-daily__dot--msg"
+              :cx="p.x"
+              :cy="p.y"
+              r="3.2"
+            />
+          </svg>
         </div>
       </div>
     </div>
@@ -1548,5 +1833,137 @@ function pluginBarLabel(name: string): string {
     justify-content: center;
     box-sizing: border-box;
   }
+}
+
+.home-plugin-daily__title {
+  font-weight: 700;
+}
+
+.home-plugin-daily__hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.home-plugin-daily {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  background: var(--bg-elev);
+  padding: 10px 12px 12px;
+}
+
+.home-plugin-daily__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 22px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.home-plugin-daily__leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-plugin-daily__leg-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.home-plugin-daily__leg-swatch--msg {
+  background: linear-gradient(90deg, #f472b6, #fb7185);
+}
+
+.home-plugin-daily__leg-swatch--mat {
+  background: linear-gradient(90deg, #d946ef, #e879f9);
+}
+
+.home-plugin-daily__svg-wrap {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.home-plugin-daily__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+}
+
+.home-plugin-daily__grid {
+  stroke: color-mix(in srgb, var(--border) 70%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-daily__axis {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-sans, system-ui);
+}
+
+.home-plugin-daily__axis--left {
+  text-anchor: start;
+}
+
+.home-plugin-daily__axis--right {
+  text-anchor: end;
+}
+
+.home-plugin-daily__axis--x {
+  text-anchor: middle;
+}
+
+.home-plugin-daily__line {
+  stroke-width: 2.25px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-daily__line--msg {
+  stroke: #f472b6;
+}
+
+.home-plugin-daily__line--mat {
+  stroke: #d946ef;
+}
+
+.home-plugin-daily__dot {
+  stroke: color-mix(in srgb, var(--panel) 82%, #1f2937 18%);
+  stroke-width: 1px;
+}
+
+.home-plugin-daily__dot--msg {
+  fill: #fdf2f8;
+}
+
+.home-plugin-daily__dot--mat {
+  fill: #faf5ff;
+}
+
+html[data-theme="light"] .home-plugin-daily__line--msg {
+  stroke: #db2777;
+}
+
+html[data-theme="light"] .home-plugin-daily__line--mat {
+  stroke: #a21caf;
+}
+
+html[data-theme="light"] .home-plugin-daily__dot--msg {
+  fill: #fff1f2;
+  stroke: #fce7f3;
+}
+
+html[data-theme="light"] .home-plugin-daily__dot--mat {
+  fill: #fdf4ff;
+  stroke: #fae8ff;
 }
 </style>

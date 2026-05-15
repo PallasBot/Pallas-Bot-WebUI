@@ -8,6 +8,7 @@ import {
   fetchFriendList,
   fetchGroupList,
   fetchInstances,
+  fetchConsoleDailyStats,
   fetchMessageStats,
   fetchPluginRunStats,
   fetchPlugins,
@@ -21,8 +22,10 @@ import type {
   FriendListData,
   GroupListData,
   InstancesData,
+  ConsoleDailyStatsData,
   MessageStatsData,
   NapcatAccountRow,
+  PluginMatcherNamedSeries,
   PluginRow,
   PluginRunStatsData,
   RequestOverviewData,
@@ -80,6 +83,8 @@ const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
 const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
+/** 当前选中账号的按日持久化统计（GET /console-daily-stats） */
+const consoleDailyStats = ref<ConsoleDailyStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
 const instances = ref<InstancesData | null>(null);
@@ -547,13 +552,9 @@ const scopedBotStatsRow = computed(() => {
   return st.bots.find((b) => b.self_id === sid) ?? null;
 });
 
-type ThroughputBarRect = { x: number; y: number; w: number; h: number };
-
-type ThroughputBarBucket = { recv: ThroughputBarRect; sent: ThroughputBarRect };
-
 const scopedMessageTrafficHistory = computed(() => scopedBotStatsRow.value?.message_traffic_history ?? []);
 
-/** 吞吐迷你图高度（viewBox 与柱/折线计算共用） */
+/** 吞吐迷你图高度（viewBox 与折线计算共用） */
 const THROUGHPUT_MINI_SVG_H = 34;
 
 /** 迷你图横轴覆盖的时长（秒）；桶越细同屏桶数越多 */
@@ -582,102 +583,6 @@ function sliceThroughputBarPoints<T extends { at: number }>(arr: T[]): T[] {
   if (arr.length <= maxN) return arr;
   return arr.slice(-maxN);
 }
-
-const throughputSparklineMode = computed<"message" | "api" | null>(() => {
-  if (socialBusy.value) return null;
-  if (scopedMessageTrafficHistory.value.length) return "message";
-  const pts = scopedBotStatsRow.value?.api_calls_history;
-  return pts?.length ? "api" : null;
-});
-
-const throughputMessageBarBuckets = computed((): ThroughputBarBucket[] => {
-  if (socialBusy.value) return [];
-  const W = 100;
-  const H = THROUGHPUT_MINI_SVG_H;
-  const pad = 1.5;
-  const bottom = H - pad;
-  const chartH = H - 2 * pad;
-
-  const pts = sliceThroughputBarPoints(scopedMessageTrafficHistory.value);
-  if (!pts.length) return [];
-  const recvVals = pts.map((p) => Number(p.received ?? 0));
-  const sentVals = pts.map((p) => Number(p.sent ?? 0));
-  const max = Math.max(...recvVals, ...sentVals, 1);
-  const n = pts.length;
-  const slot = (W - 2 * pad) / n;
-  const bwScale = n > 120 ? 0.3 : n > 72 ? 0.34 : n > 48 ? 0.37 : n > 36 ? 0.4 : n > 24 ? 0.37 : 0.34;
-  return pts.map((_, i) => {
-    const r = recvVals[i]! / max;
-    const s = sentVals[i]! / max;
-    const bw = slot * bwScale;
-    const gap = slot * Math.min(0.08, 0.12 - bwScale * 0.15);
-    const left = pad + i * slot + (slot - 2 * bw - gap) / 2;
-    const hr = Math.max(chartH * r, 0.4);
-    const hs = Math.max(chartH * s, 0.4);
-    return {
-      recv: { x: left, y: bottom - hr, w: bw, h: hr },
-      sent: { x: left + bw + gap, y: bottom - hs, w: bw, h: hs },
-    };
-  });
-});
-
-/** API 吞吐迷你图：折线（与消息柱图同 viewBox；有消息柱时在柱上叠画，按桶 at 对齐） */
-const throughputApiLineModel = computed((): {
-  polyline: string;
-  areaPath: string;
-} => {
-  const empty = {
-    polyline: "",
-    areaPath: "",
-  };
-  if (socialBusy.value) return empty;
-
-  const apiRaw = scopedBotStatsRow.value?.api_calls_history ?? [];
-  const apiSlice = sliceThroughputBarPoints(apiRaw);
-  if (!apiSlice.length) return empty;
-
-  const W = 100;
-  const H = THROUGHPUT_MINI_SVG_H;
-  const pad = 1.5;
-  const bottom = H - pad;
-  const chartH = H - 2 * pad;
-
-  const msgSlice = sliceThroughputBarPoints(scopedMessageTrafficHistory.value);
-  let vals: number[];
-  let n: number;
-  if (msgSlice.length) {
-    const apiByAt = new Map(apiSlice.map((p) => [p.at, Number(p.total ?? 0)]));
-    vals = msgSlice.map((m) => apiByAt.get(m.at) ?? 0);
-    n = vals.length;
-    if (!vals.some((v) => v > 0)) return empty;
-  } else {
-    vals = apiSlice.map((p) => Number(p.total ?? 0));
-    n = vals.length;
-    if (!vals.some((v) => v > 0)) return empty;
-  }
-
-  const max = Math.max(...vals, 1);
-  const slot = (W - 2 * pad) / n;
-  const xy: { x: number; y: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = pad + i * slot + slot / 2;
-    const y = bottom - (vals[i]! / max) * chartH;
-    xy.push({ x, y });
-  }
-  if (xy.length === 1) {
-    return empty;
-  }
-  const polyline = xy.map((p) => `${p.x},${p.y}`).join(" ");
-  const first = xy[0]!;
-  const last = xy[xy.length - 1]!;
-  let areaPath = "";
-  for (let i = 0; i < xy.length; i++) {
-    const p = xy[i]!;
-    areaPath += i === 0 ? `M${first.x},${bottom}L${p.x},${p.y}` : `L${p.x},${p.y}`;
-  }
-  areaPath += `L${last.x},${bottom}Z`;
-  return { polyline, areaPath };
-});
 
 type ThroughputBarTick = { leftPct: number; label: string };
 
@@ -774,13 +679,8 @@ function formatThroughputHistTick(atSec: number, rangeLo: number, rangeHi: numbe
 
 const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
   if (socialBusy.value) return [];
-  const mode = throughputSparklineMode.value;
-  if (mode !== "message" && mode !== "api") return [];
-  const pts =
-    mode === "message"
-      ? sliceThroughputBarPoints(scopedMessageTrafficHistory.value)
-      : sliceThroughputBarPoints(scopedBotStatsRow.value?.api_calls_history ?? []);
-  if (!pts.length) return [];
+  const pts = throughputMsgMatcherSeries.value;
+  if (pts.length < 2) return [];
   const pad = 1.5;
   const W = 100;
   const inner = W - 2 * pad;
@@ -826,28 +726,30 @@ const throughputBarTimeTicks = computed((): ThroughputBarTick[] => {
 
 const showThroughputMiniChart = computed(
   () =>
-    throughputMessageBarBuckets.value.length > 0 ||
-    Boolean(throughputApiLineModel.value.polyline),
+    Boolean(throughputMsgMatcherLineModel.value.polyMsg) &&
+    Boolean(throughputMsgMatcherLineModel.value.polyMatcher),
 );
 
-type ThroughputMiniLegendItem = { key: string; label: string; swatch: "recv" | "sent" | "api" };
+type ThroughputMiniLegendItem = { key: string; label: string; swatch: "msg-sum" | "matcher" };
 
 const throughputMiniLegendItems = computed((): ThroughputMiniLegendItem[] => {
-  const items: ThroughputMiniLegendItem[] = [];
-  if (throughputMessageBarBuckets.value.length) {
-    items.push({ key: "recv", label: "消息收", swatch: "recv" });
-    items.push({ key: "sent", label: "消息发", swatch: "sent" });
-  }
-  const api = throughputApiLineModel.value;
-  if (api.polyline || api.areaPath) {
-    items.push({ key: "api", label: "协议 API（成功）", swatch: "api" });
-  }
-  return items;
+  const m = throughputMsgMatcherLineModel.value;
+  if (!m.polyMsg || !m.polyMatcher) return [];
+  return [
+    { key: "msg", label: "消息收+发（桶内）", swatch: "msg-sum" },
+    { key: "matcher", label: "Matcher（桶内）", swatch: "matcher" },
+  ];
 });
 
 const throughputMiniLegendAria = computed(() => {
   const xs = throughputMiniLegendItems.value.map((x) => x.label);
   return xs.length ? `迷你图图例：${xs.join("，")}` : "";
+});
+
+const throughputDualScaleHint = computed(() => {
+  const m = throughputMsgMatcherLineModel.value;
+  if (!m.polyMsg) return "";
+  return `左轴峰值 ${m.maxMsg} 条 · 右轴峰值 ${m.maxMatcher} 次`;
 });
 
 const apiTodayTotalStr = computed(() => {
@@ -923,6 +825,91 @@ const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? 
 
 const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
 
+/** 各插件 Matcher 按桶次数合并为每个时间桶一条总计（与 message_traffic_history 的 at 对齐） */
+function matcherTotalsByAt(seriesList: PluginMatcherNamedSeries[]): Map<number, number> {
+  const m = new Map<number, number>();
+  for (const ser of seriesList) {
+    for (const pt of ser.points ?? []) {
+      const at = Number(pt.at);
+      if (!Number.isFinite(at)) continue;
+      const t = Number(pt.total ?? 0);
+      m.set(at, (m.get(at) ?? 0) + t);
+    }
+  }
+  return m;
+}
+
+type ThroughputMsgMatcherPoint = { at: number; msgSum: number; matcher: number };
+
+const throughputMsgMatcherSeries = computed((): ThroughputMsgMatcherPoint[] => {
+  if (socialBusy.value) return [];
+  const matcherByAt = matcherTotalsByAt(scopedMatcherRunsByPlugin.value);
+  const msgRaw = scopedMessageTrafficHistory.value;
+  const msgSlice = sliceThroughputBarPoints(msgRaw);
+  if (msgSlice.length) {
+    return msgSlice.map((p) => ({
+      at: p.at,
+      msgSum: Number(p.received ?? 0) + Number(p.sent ?? 0),
+      matcher: matcherByAt.get(p.at) ?? 0,
+    }));
+  }
+  const matcherRows = [...matcherByAt.entries()]
+    .map(([at, matcher]) => ({ at, matcher, msgSum: 0 as number }))
+    .sort((a, b) => a.at - b.at);
+  if (!matcherRows.length) return [];
+  const msgByAt = new Map(
+    msgRaw.map((p) => [p.at, Number(p.received ?? 0) + Number(p.sent ?? 0)]),
+  );
+  for (const row of matcherRows) {
+    row.msgSum = msgByAt.get(row.at) ?? 0;
+  }
+  return sliceThroughputBarPoints(matcherRows);
+});
+
+/** 双纵轴：左轴消息收+发合计，右轴 Matcher 次数（同一套时间桶 at） */
+const throughputMsgMatcherLineModel = computed(() => {
+  const empty = {
+    polyMsg: "",
+    polyMatcher: "",
+    msgDots: [] as { cx: number; cy: number }[],
+    matcherDots: [] as { cx: number; cy: number }[],
+    maxMsg: 1,
+    maxMatcher: 1,
+  };
+  if (socialBusy.value) return empty;
+  const series = throughputMsgMatcherSeries.value;
+  if (series.length < 2) return empty;
+  const msgVals = series.map((s) => s.msgSum);
+  const matVals = series.map((s) => s.matcher);
+  if (!msgVals.some((v) => v > 0) && !matVals.some((v) => v > 0)) return empty;
+
+  const W = 100;
+  const H = THROUGHPUT_MINI_SVG_H;
+  const pad = 1.5;
+  const bottom = H - pad;
+  const chartH = H - 2 * pad;
+  const maxMsg = Math.max(...msgVals, 1);
+  const maxMatcher = Math.max(...matVals, 1);
+  const n = series.length;
+  const slot = (W - 2 * pad) / n;
+
+  const xyMsg: { x: number; y: number }[] = [];
+  const xyMat: { x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = pad + i * slot + slot / 2;
+    xyMsg.push({ x, y: bottom - (msgVals[i]! / maxMsg) * chartH });
+    xyMat.push({ x, y: bottom - (matVals[i]! / maxMatcher) * chartH });
+  }
+  return {
+    polyMsg: xyMsg.map((p) => `${p.x},${p.y}`).join(" "),
+    polyMatcher: xyMat.map((p) => `${p.x},${p.y}`).join(" "),
+    msgDots: xyMsg.map((p) => ({ cx: p.x, cy: p.y })),
+    matcherDots: xyMat.map((p) => ({ cx: p.x, cy: p.y })),
+    maxMsg,
+    maxMatcher,
+  };
+});
+
 const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
 
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
@@ -954,6 +941,7 @@ async function refreshSelectedBotDetails() {
   if (acc == null) {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
+    consoleDailyStats.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
     requestOverviewSnap.value = null;
@@ -961,21 +949,24 @@ async function refreshSelectedBotDetails() {
   }
   socialBusy.value = true;
   try {
-    const [ms, prs, fl, gl, ro] = await Promise.all([
+    const [ms, prs, cds, fl, gl, ro] = await Promise.all([
       fetchMessageStats(acc),
       fetchPluginRunStats(acc),
+      fetchConsoleDailyStats({ selfId: acc }),
       fetchFriendList(acc),
       fetchGroupList(acc),
       fetchRequestOverview(),
     ]);
     statsScoped.value = ms;
     pluginRunStatsScoped.value = prs;
+    consoleDailyStats.value = cds;
     friendSnap.value = fl;
     groupSnap.value = gl;
     requestOverviewSnap.value = ro;
   } catch {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
+    consoleDailyStats.value = null;
     friendSnap.value = null;
     groupSnap.value = null;
     requestOverviewSnap.value = null;
@@ -1440,70 +1431,39 @@ onUnmounted(() => {
                           overflow="hidden"
                           aria-hidden="true"
                         >
-                          <defs>
-                            <linearGradient
-                              id="home-throughput-api-area-fill"
-                              x1="50"
-                              y1="34"
-                              x2="50"
-                              y2="0"
-                              gradientUnits="userSpaceOnUse"
-                            >
-                              <stop
-                                offset="0%"
-                                stop-color="#ea580c"
-                                stop-opacity="0"
-                              />
-                              <stop
-                                offset="55%"
-                                stop-color="#fb923c"
-                                stop-opacity="0.08"
-                              />
-                              <stop
-                                offset="100%"
-                                stop-color="#fdba74"
-                                stop-opacity="0.22"
-                              />
-                            </linearGradient>
-                          </defs>
-                          <template v-if="throughputMessageBarBuckets.length">
-                            <g
-                              v-for="(b, i) in throughputMessageBarBuckets"
-                              :key="i"
-                            >
-                              <rect
-                                class="home-account-metrics__bar home-account-metrics__bar--recv"
-                                :x="b.recv.x"
-                                :y="b.recv.y"
-                                :width="b.recv.w"
-                                :height="b.recv.h"
-                                rx="0.65"
-                              />
-                              <rect
-                                class="home-account-metrics__bar home-account-metrics__bar--sent"
-                                :x="b.sent.x"
-                                :y="b.sent.y"
-                                :width="b.sent.w"
-                                :height="b.sent.h"
-                                rx="0.65"
-                              />
-                            </g>
-                          </template>
-                          <path
-                            v-if="throughputApiLineModel.areaPath"
-                            class="home-account-metrics__throughput-area"
-                            :d="throughputApiLineModel.areaPath"
-                            fill="url(#home-throughput-api-area-fill)"
-                          />
                           <polyline
-                            v-if="throughputApiLineModel.polyline"
-                            class="home-account-metrics__throughput-line home-account-metrics__throughput-line--api"
+                            v-if="throughputMsgMatcherLineModel.polyMatcher"
+                            class="home-account-metrics__throughput-line home-account-metrics__throughput-line--matcher"
                             fill="none"
-                            stroke="#ea580c"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             vector-effect="non-scaling-stroke"
-                            :points="throughputApiLineModel.polyline"
+                            :points="throughputMsgMatcherLineModel.polyMatcher"
+                          />
+                          <polyline
+                            v-if="throughputMsgMatcherLineModel.polyMsg"
+                            class="home-account-metrics__throughput-line home-account-metrics__throughput-line--msg-sum"
+                            fill="none"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            vector-effect="non-scaling-stroke"
+                            :points="throughputMsgMatcherLineModel.polyMsg"
+                          />
+                          <circle
+                            v-for="(d, di) in throughputMsgMatcherLineModel.matcherDots"
+                            :key="`m-${di}`"
+                            class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--matcher"
+                            :cx="d.cx"
+                            :cy="d.cy"
+                            r="0.55"
+                          />
+                          <circle
+                            v-for="(d, di) in throughputMsgMatcherLineModel.msgDots"
+                            :key="`g-${di}`"
+                            class="home-account-metrics__throughput-dot home-account-metrics__throughput-dot--msg-sum"
+                            :cx="d.cx"
+                            :cy="d.cy"
+                            r="0.55"
                           />
                         </svg>
                         <div
@@ -1524,6 +1484,12 @@ onUnmounted(() => {
                             {{ it.label }}
                           </span>
                         </div>
+                        <p
+                          v-if="throughputDualScaleHint"
+                          class="home-account-metrics__dual-scale-hint muted"
+                        >
+                          {{ throughputDualScaleHint }}
+                        </p>
                         <div class="home-account-metrics__bars-ticks muted">
                           <span
                             v-for="(tk, ti) in throughputBarTimeTicks"
@@ -1651,6 +1617,7 @@ onUnmounted(() => {
                       :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
                       :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
                       :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
+                      :daily-stat-rows="consoleDailyStats?.rows ?? []"
                     />
                   </div>
                 </div>
