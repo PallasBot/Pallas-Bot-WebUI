@@ -18,7 +18,7 @@ export interface ConsolePrefsState {
   density: DensityMode;
   /** 桌面宽度下是否收起左侧主导航（仅图标条） */
   sidebarCollapsed: boolean;
-  /** 实例页：数据中的实例表格/卡片默认视图 */
+  /** 实例页：数据库中的实例表格/卡片默认视图 */
   instancesBotView: DataViewMode;
   /** 控制台各列表默认每页条数（4–80） */
   tablePageSize: number;

@@ -614,7 +614,6 @@ function toggleGroupsListPanel() {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
           <RefreshIconButton
             :busy="pageRefreshBusy"
-            :disabled="pageRefreshBusy"
             label="刷新本页数据"
             @click="refreshPage"
           />
@@ -827,7 +826,7 @@ function toggleGroupsListPanel() {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友申请
           <RefreshIconButton
             :busy="reqsBusy"
-            :disabled="reqsBusy || busy || !selfIdStr.trim()"
+            :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"
             @click="loadRequestsOnly"
           />
@@ -975,7 +974,7 @@ function toggleGroupsListPanel() {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入群请求
           <RefreshIconButton
             :busy="reqsBusy"
-            :disabled="reqsBusy || busy || !selfIdStr.trim()"
+            :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"
             @click="loadRequestsOnly"
           />

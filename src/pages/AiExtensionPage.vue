@@ -333,7 +333,6 @@ onMounted(async () => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>网易云音乐登录
             <RefreshIconButton
               :busy="ncmBusy"
-              :disabled="ncmBusy"
               label="刷新状态"
               @click="refreshNcmStatus"
             />
