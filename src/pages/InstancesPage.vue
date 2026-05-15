@@ -476,10 +476,10 @@ onMounted(async () => {
                     class="inst-db-admins-wrap inst-db-admins-wrap--card"
                   >
                     <span
-                      v-for="(id, idx) in sortedAdminsList(c.admins)"
+                      v-for="id in sortedAdminsList(c.admins)"
                       :key="`card-${c.account}-adm-${id}`"
                       class="inst-db-admin-item"
-                    ><template v-if="idx > 0">、</template>{{ id }}</span>
+                    >{{ id }}</span>
                   </span>
                 </span>
               </div>
@@ -831,6 +831,7 @@ onMounted(async () => {
 
 .inst-db-admins-wrap--card {
   justify-content: flex-end;
+  gap: 0 0.35em;
 }
 
 .inst-db-admin-item {
