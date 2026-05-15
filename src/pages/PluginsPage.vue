@@ -1,18 +1,39 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { fetchPluginConfig, fetchPlugins } from "@/api/consoleApi";
+import { computed, onMounted, ref } from "vue";
+import { fetchPluginConfig, fetchPlugins, peekPluginsCache } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { pluginFavoriteNames, toggleFavoritePlugin } from "@/utils/pluginFavorites";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const pageReady = ref(false);
+const pageReady = ref(true);
 const list = ref<PluginRow[]>([]);
+{
+  const warm = peekPluginsCache();
+  if (warm?.length) list.value = warm;
+}
 const open = ref<string | null>(null);
 const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
 
+const sortedPlugins = computed(() => {
+  const rows = [...list.value];
+  rows.sort((a, b) => {
+    const fa = pluginFavoriteNames.value.has(a.name) ? 1 : 0;
+    const fb = pluginFavoriteNames.value.has(b.name) ? 1 : 0;
+    if (fa !== fb) return fb - fa;
+    const na = (a.metadata?.name || a.name).toLowerCase();
+    const nb = (b.metadata?.name || b.name).toLowerCase();
+    return na.localeCompare(nb, "zh-CN");
+  });
+  return rows;
+});
+
+function isPluginFavorite(name: string): boolean {
+  return pluginFavoriteNames.value.has(name);
+}
 onMounted(async () => {
   try {
     list.value = await fetchPlugins();
@@ -73,25 +94,37 @@ async function togglePreview(name: string) {
         class="grid-stats plugins-page__plugin-grid"
       >
         <div
-          v-for="p in list"
+          v-for="p in sortedPlugins"
           :key="p.name"
           class="plugin-card"
         >
           <div class="plugin-card__top">
-            <RouterLink
-              class="plugin-card__link"
-              :to="{ name: 'plugin-config', params: { name: p.name } }"
-            >
-              <div class="plugin-card__title-line">
-                {{ p.metadata?.name || p.name }}
-              </div>
-              <div
-                class="muted plugin-card__desc-line"
-                :title="(p.metadata?.description || p.module) || undefined"
+            <div class="plugin-card__head-row">
+              <RouterLink
+                class="plugin-card__link"
+                :to="{ name: 'plugin-config', params: { name: p.name } }"
               >
-                {{ p.metadata?.description || p.module }}
-              </div>
-            </RouterLink>
+                <div class="plugin-card__title-line">
+                  {{ p.metadata?.name || p.name }}
+                </div>
+                <div
+                  class="muted plugin-card__desc-line"
+                  :title="(p.metadata?.description || p.module) || undefined"
+                >
+                  {{ p.metadata?.description || p.module }}
+                </div>
+              </RouterLink>
+              <button
+                type="button"
+                class="plugin-card__fav"
+                :aria-pressed="isPluginFavorite(p.name)"
+                :title="isPluginFavorite(p.name) ? '取消收藏' : '收藏'"
+                :aria-label="isPluginFavorite(p.name) ? `取消收藏「${p.metadata?.name || p.name}」` : `收藏「${p.metadata?.name || p.name}」`"
+                @click.stop="toggleFavoritePlugin(p.name)"
+              >
+                ★
+              </button>
+            </div>
           </div>
           <div class="plugin-card__actions plugin-card__actions--pair">
             <RouterLink

@@ -15,6 +15,8 @@ import {
   fetchRequestOverview,
   fetchSystem,
   fetchUpdateCheck,
+  peekBotsCache,
+  peekPluginsCache,
 } from "@/api/consoleApi";
 import type {
   BotRow,
@@ -36,8 +38,14 @@ import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
-import { botFavoriteAccounts } from "@/utils/botFavorites";
+import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
+import {
+  cachePutFriendGroupLists,
+  cachePutRequestOverview,
+  cacheTryGetFriendGroupLists,
+  cacheTryGetRequestOverview,
+} from "@/utils/consoleSocialCache";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
@@ -83,6 +91,13 @@ const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
 const consoleDailyStats = ref<ConsoleDailyStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
+{
+  const warmBots = peekBotsCache();
+  if (warmBots?.length) {
+    bots.value = warmBots;
+    botCount.value = warmBots.length;
+  }
+}
 const instances = ref<InstancesData | null>(null);
 const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
@@ -95,11 +110,15 @@ const pageReady = ref(false);
 const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
+{
+  const warmPl = peekPluginsCache();
+  if (warmPl?.length) pluginsList.value = warmPl;
+}
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
-/** 双列布局下左侧整列（资料卡 + Matcher），用于宽屏限制右侧图表区高度 */
-const accountUnifiedColHeroRef = ref<HTMLElement | null>(null);
+/** 双列布局下账号信息卡，用于宽屏锁定右侧图表区高度与之对齐 */
+const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
 
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
@@ -116,7 +135,7 @@ function measureAccountHeroLockHeight() {
     accountHeroLockHeightPx.value = 0;
     return;
   }
-  const el = accountUnifiedColHeroRef.value;
+  const el = accountCardRef.value;
   if (!el) {
     accountHeroLockHeightPx.value = 0;
     return;
@@ -130,7 +149,7 @@ watchEffect((onCleanup) => {
     accountHeroLockHeightPx.value = 0;
     return;
   }
-  const el = accountUnifiedColHeroRef.value;
+  const el = accountCardRef.value;
   if (!el) {
     accountHeroLockHeightPx.value = 0;
     return;
@@ -456,12 +475,12 @@ const selectedAdminsDisplay = computed(() => {
 const accountProtocolIsUnknown = computed(() => accountAdapterDisplay.value === "—");
 
 const friendCountDisplay = computed(() => {
-  if (friendSnap.value == null) return "未拉取";
+  if (friendSnap.value == null) return "—";
   return String(friendSnap.value.friends?.length ?? 0);
 });
 
 const groupCountDisplay = computed(() => {
-  if (groupSnap.value == null) return "未拉取";
+  if (groupSnap.value == null) return "—";
   return String(groupSnap.value.groups?.length ?? 0);
 });
 
@@ -563,26 +582,26 @@ const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.mat
 
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
 
-/** 图表工具栏旁小字：今日 API（与 message-stats 账户行一致） */
+/** 图表工具栏旁小字：API 今日调用次数片段（与 message-stats 账户行一致） */
 const chartToolbarSummaryApi = computed(() => {
   const row = scopedBotStatsRow.value;
   if (row == null) return "";
   const n = row.today_api_calls;
-  if (n == null) return "今日 API —";
+  if (n == null) return "API —";
   const num = Number(n);
-  if (!Number.isFinite(num)) return "今日 API —";
-  return `今日 API ${Math.floor(num)}`;
+  if (!Number.isFinite(num)) return "API —";
+  return `API ${Math.floor(num)}`;
 });
 
-/** 图表工具栏旁小字：插件今日调用（与 plugin-run-stats 账户行一致） */
+/** 图表工具栏旁小字：插件 Matcher 今日次数片段（与 plugin-run-stats 账户行一致） */
 const chartToolbarSummaryPlugin = computed(() => {
   const row = scopedPluginRunRow.value;
   if (row == null) return "";
   const n = row.runs_today;
-  if (n == null) return "插件今日 —";
+  if (n == null) return "插件 —";
   const num = Number(n);
-  if (!Number.isFinite(num)) return "插件今日 —";
-  return `插件今日 ${Math.floor(num)}`;
+  if (!Number.isFinite(num)) return "插件 —";
+  return `插件 ${Math.floor(num)}`;
 });
 
 function formatMatcherErrorAt(sec: number): string {
@@ -618,8 +637,14 @@ async function refreshSelectedBotDetails() {
     requestOverviewSnap.value = null;
     return;
   }
+  const sidKey = String(acc);
   socialBusy.value = true;
   try {
+    const cachedListsWarm = cacheTryGetFriendGroupLists(sidKey);
+    if (cachedListsWarm) {
+      friendSnap.value = cachedListsWarm.friends;
+      groupSnap.value = cachedListsWarm.groups;
+    }
     const settled = await Promise.allSettled([
       fetchMessageStats(acc),
       fetchPluginRunStats(acc),
@@ -638,6 +663,19 @@ async function refreshSelectedBotDetails() {
     friendSnap.value = take<FriendListData>(3);
     groupSnap.value = take<GroupListData>(4);
     requestOverviewSnap.value = take<RequestOverviewData>(5);
+    if (!friendSnap.value || !groupSnap.value) {
+      const fb = cacheTryGetFriendGroupLists(sidKey);
+      if (fb) {
+        if (!friendSnap.value) friendSnap.value = fb.friends;
+        if (!groupSnap.value) groupSnap.value = fb.groups;
+      }
+    }
+    if (friendSnap.value && groupSnap.value) {
+      cachePutFriendGroupLists(sidKey, friendSnap.value, groupSnap.value);
+    }
+    if (requestOverviewSnap.value) {
+      cachePutRequestOverview(requestOverviewSnap.value);
+    }
   } finally {
     socialBusy.value = false;
   }
@@ -649,9 +687,18 @@ watch(selectedAccount, (acc, prev) => {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
     consoleDailyStats.value = null;
-    friendSnap.value = null;
-    groupSnap.value = null;
-    requestOverviewSnap.value = null;
+    const sidKey = String(acc);
+    const cachedLists = cacheTryGetFriendGroupLists(sidKey);
+    if (cachedLists) {
+      friendSnap.value = cachedLists.friends;
+      groupSnap.value = cachedLists.groups;
+    } else {
+      friendSnap.value = null;
+      groupSnap.value = null;
+    }
+    const cachedOv = cacheTryGetRequestOverview();
+    if (cachedOv) requestOverviewSnap.value = cachedOv;
+    else requestOverviewSnap.value = null;
   }
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
@@ -669,6 +716,79 @@ watch(sortedDbBots, () => {
   }
   ensureSelectedAccount();
 });
+
+const HOME_CONN_DURATION_TICK_MS = 1_000;
+
+/** NoneBot 在线会话中与当前选中账号对应的条目（含接入时刻） */
+const selectedNonebotRuntimeBot = computed(() => {
+  const acc = selectedAccount.value;
+  if (acc == null) return null;
+  const sid = String(acc);
+  const bots = instances.value?.nonebot_bots ?? [];
+  return bots.find((b) => String(b.self_id) === sid) ?? null;
+});
+
+const selectedConnAnchorUnix = computed((): number | null => {
+  const ts = selectedNonebotRuntimeBot.value?.connected_at_unix;
+  if (ts == null || !Number.isFinite(Number(ts))) return null;
+  return Math.floor(Number(ts));
+});
+
+const connectionClockTick = ref(0);
+let homeConnDurationPollId: number | null = null;
+
+function bumpConnectionClock() {
+  connectionClockTick.value = Date.now();
+}
+
+function formatZhConnDuration(totalSec: number): string {
+  if (!Number.isFinite(totalSec) || totalSec < 0) return "—";
+  const sec = Math.floor(totalSec);
+  if (sec < 60) return `${sec} 秒`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m} 分钟`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h < 48) return mm ? `${h} 小时 ${mm} 分` : `${h} 小时`;
+  const d = Math.floor(h / 24);
+  const hh = h % 24;
+  return hh ? `${d} 天 ${hh} 小时` : `${d} 天`;
+}
+
+const selectedConnDurationDisplay = computed(() => {
+  if (!selectedConnected.value) return "—";
+  const anchor = selectedConnAnchorUnix.value;
+  if (anchor == null) return "—";
+  const elapsedSec = Math.max(0, Math.floor(connectionClockTick.value / 1000) - anchor);
+  return formatZhConnDuration(elapsedSec);
+});
+
+const selectedConnDateDisplay = computed(() => {
+  if (!selectedConnected.value) return "—";
+  const anchor = selectedConnAnchorUnix.value;
+  if (anchor == null) return "—";
+  try {
+    return new Date(anchor * 1000).toLocaleString();
+  } catch {
+    return "—";
+  }
+});
+
+function startHomeConnDurationTick() {
+  if (typeof window === "undefined") return;
+  if (homeConnDurationPollId != null) return;
+  bumpConnectionClock();
+  homeConnDurationPollId = window.setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    bumpConnectionClock();
+  }, HOME_CONN_DURATION_TICK_MS);
+}
+
+function stopHomeConnDurationTick() {
+  if (homeConnDurationPollId == null) return;
+  window.clearInterval(homeConnDurationPollId);
+  homeConnDurationPollId = null;
+}
 
 async function load() {
   if (overviewBusy.value) return;
@@ -780,12 +900,14 @@ onMounted(async () => {
   await load();
   startHomeSystemPolling();
   startHomeThroughputPolling();
+  startHomeConnDurationTick();
   document.addEventListener("visibilitychange", onHomeSystemVisibility);
 });
 
 onUnmounted(() => {
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
+  stopHomeConnDurationTick();
   document.removeEventListener("visibilitychange", onHomeSystemVisibility);
 });
 </script>
@@ -849,18 +971,13 @@ onUnmounted(() => {
               <div
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
+                :style="accountUnifiedHeroLockStyle"
               >
                 <div
-                  class="home-account-unified"
-                  :style="accountUnifiedHeroLockStyle"
+                  ref="accountCardRef"
+                  class="home-account-split-bd__col home-account-split-bd__col--hero home-account-card home-account-hero--color"
                 >
-                  <div
-                    ref="accountUnifiedColHeroRef"
-                    class="home-account-unified__col home-account-unified__col--hero"
-                  >
-                    <div class="home-account-card">
-                      <div class="home-account-hero home-account-hero--unified home-account-hero--color">
-                      <div class="home-account-hero__lead">
+                  <div class="home-account-hero__lead">
                         <div class="home-account-hero__avatar">
                           <img
                             :src="qqAvatarUrl(selectedAccount)"
@@ -880,6 +997,16 @@ onUnmounted(() => {
                             <div class="home-account-hero__title home-account-hero__title--picker">
                               <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
                               <button
+                                v-if="selectedAccount != null"
+                                type="button"
+                                class="home-account-hero__fav-star"
+                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
+                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
+                                @click.stop="toggleFavoriteBot(selectedAccount)"
+                              >
+                                ★
+                              </button>
+                              <button
                                 v-if="sortedDbBots.length > 1"
                                 type="button"
                                 class="home-account-hero__picker-toggle"
@@ -894,9 +1021,23 @@ onUnmounted(() => {
                                 />
                               </button>
                               <span
-                                class="home-account-conn"
-                                :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                              >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                                v-if="selectedConnected"
+                                class="home-account-conn-pill home-account-conn-pill--on"
+                                aria-label="已连接"
+                              >
+                                <span class="home-account-conn-pill__txt">已连接</span>
+                                <span
+                                  class="home-account-conn-pill__dot"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                              <span
+                                v-else
+                                class="home-account-conn-pill home-account-conn-pill--off"
+                                aria-label="未连接"
+                              >
+                                <span class="home-account-conn-pill__txt">未连接</span>
+                              </span>
                             </div>
                             <div
                               v-if="accountPickerOpen && sortedDbBots.length > 1"
@@ -904,30 +1045,47 @@ onUnmounted(() => {
                               role="listbox"
                               aria-label="选择 Bot 账号"
                             >
-                              <button
+                              <div
                                 v-for="c in sortedDbBots"
                                 :key="c.account"
-                                type="button"
                                 class="home-account-hero__picker-item"
                                 :class="{ 'is-active': c.account === selectedAccount }"
                                 role="option"
                                 :aria-selected="c.account === selectedAccount"
-                                @click="pickAccountFromList(c.account)"
                               >
-                                <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
-                                <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  class="home-account-hero__picker-item-hit"
+                                  @click="pickAccountFromList(c.account)"
+                                >
+                                  <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
+                                  <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  class="home-account-hero__fav-star home-account-hero__fav-star--sm"
+                                  :aria-pressed="botFavoriteAccounts.has(c.account)"
+                                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                                  @click.stop="toggleFavoriteBot(c.account)"
+                                >
+                                  ★
+                                </button>
+                              </div>
                             </div>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                          <p class="home-account-hero__proto muted">
-                            <template v-if="!accountProtocolIsUnknown">
-                              协议 · {{ accountAdapterDisplay }}
-                            </template>
-                            <template v-else>
-                              协议 · <span class="home-account-hero__proto-hint">未上报</span>
-                              <span class="home-account-hero__proto-sub muted">可在「实例与连接」核对适配器</span>
-                            </template>
+                          <p class="home-account-hero__proto">
+                            <RouterLink
+                              class="home-account-hero__proto-link"
+                              :to="{ name: 'protocol' }"
+                            >
+                              <template v-if="!accountProtocolIsUnknown">
+                                协议 · {{ accountAdapterDisplay }}
+                              </template>
+                              <template v-else>
+                                协议 · <span class="home-account-hero__proto-hint">未上报</span>
+                              </template>
+                            </RouterLink>
                           </p>
                           <p class="home-account-hero__admin home-account-hero__admin--under-proto">
                             <span class="home-account-hero__admin-label">管理员</span>
@@ -996,8 +1154,7 @@ onUnmounted(() => {
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div class="home-account-hero__matcher-stack">
+                  <div class="home-account-hero__matcher-stack">
                       <div
                         class="home-account-hero__matcher-foot"
                         :class="{
@@ -1033,10 +1190,22 @@ onUnmounted(() => {
                           </li>
                         </ul>
                       </details>
-                    </div>
-                    </div>
+                      <div
+                        class="home-account-hero__session-meta muted"
+                        aria-label="协议会话接入信息"
+                      >
+                        <div class="home-account-hero__session-meta-row">
+                          <span class="home-account-hero__session-meta-k">连接时长</span>
+                          <span class="home-account-hero__session-meta-v">{{ selectedConnDurationDisplay }}</span>
+                        </div>
+                        <div class="home-account-hero__session-meta-row">
+                          <span class="home-account-hero__session-meta-k">连接日期</span>
+                          <span class="home-account-hero__session-meta-v">{{ selectedConnDateDisplay }}</span>
+                        </div>
+                      </div>
                   </div>
-                  <div class="home-account-unified__col home-account-unified__col--charts">
+                </div>
+                <div class="home-account-split-bd__col home-account-split-bd__col--charts">
                     <div class="home-account-charts-shell home-account-charts-shell--hero-side">
                       <HomePluginRunCharts
                         :plugins="scopedPluginPlugins"
@@ -1054,7 +1223,6 @@ onUnmounted(() => {
                         :toolbar-summary-plugin="chartToolbarSummaryPlugin"
                       />
                     </div>
-                  </div>
                 </div>
               </div>
             </template>
@@ -1313,3 +1481,59 @@ onUnmounted(() => {
     </Transition>
   </div>
 </template>
+
+<style scoped>
+.home-account-hero__picker-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.home-account-hero__picker-item-hit {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px 6px 8px 10px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.home-account-hero__picker-item-hit:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.home-account-hero__fav-star {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 16px;
+  line-height: 1;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.38;
+}
+.home-account-hero__fav-star:hover,
+.home-account-hero__fav-star:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.55;
+}
+.home-account-hero__fav-star--sm {
+  padding: 4px 8px;
+  font-size: 15px;
+}
+.home-account-hero__fav-star[aria-pressed="true"] {
+  opacity: 1;
+  color: #fbbf24;
+}
+</style>

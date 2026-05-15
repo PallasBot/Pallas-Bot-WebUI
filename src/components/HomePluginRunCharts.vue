@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type {
   ApiCallNamedSeries,
   ConsoleDailyStatRow,
@@ -122,9 +122,9 @@ const props = defineProps<{
   dailyStatRows?: ConsoleDailyStatRow[] | null;
   /** 非空时将说明与勾选区传送至该选择器（如 #home-account-chart-config-outlet），用于压缩账户卡高度 */
   chartFilterTeleport?: string | null;
-  /** 图表标题旁小字：今日 API 摘要片段（如「今日 API 22」） */
+  /** 图表标题旁小字：API 片段（如「API 22」） */
   toolbarSummaryApi?: string | null;
-  /** 插件今日调用摘要片段（如「插件 145」） */
+  /** 插件 Matcher 片段（如「插件 145」） */
   toolbarSummaryPlugin?: string | null;
 }>();
 
@@ -133,8 +133,8 @@ const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?
 const toolbarSummaryText = computed(() => {
   const a = props.toolbarSummaryApi?.trim() ?? "";
   const p = props.toolbarSummaryPlugin?.trim() ?? "";
-  if (a && p) return `${a} · ${p}`;
-  return a || p;
+  if (!a && !p) return "";
+  return `今日调用: ${a || "API —"} ${p || "插件 —"}`;
 });
 
 const selectedApiKeys = ref<string[]>([]);
@@ -275,14 +275,11 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
   });
 });
 
-/** 总览账户卡右侧：仅展示前 N 条，避免插件多时令图表区纵向膨胀 */
-const HERO_CHART_TOP_PLUGIN_ROWS = 7;
-
+/** 今日插件横向条：不截断条数，在账户卡右列等高容器内由 flex 铺满（过多时可滚动） */
 const topPlugins = computed(() =>
   [...props.plugins]
     .sort((a, b) => b.runs_today - a.runs_today)
-    .filter((p) => p.runs_today > 0)
-    .slice(0, HERO_CHART_TOP_PLUGIN_ROWS),
+    .filter((p) => p.runs_today > 0),
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
@@ -326,8 +323,30 @@ function fmtBucketAxisTime(sec: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
+/** 压低极少数极高桶对纵轴的拉扯：刻度按 scaleMax，超过部分柱顶截断至顶格（刻度带「+」提示）。 */
+function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number } {
+  let rawMax = 1;
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n)) rawMax = Math.max(rawMax, n);
+  }
+  const positives = vals.filter((v) => Number(v) > 0).sort((a, b) => a - b);
+  if (positives.length < 4 || rawMax <= 8) return { rawMax, scaleMax: rawMax };
+  const idx88 = Math.floor(0.88 * (positives.length - 1));
+  const idx95 = Math.floor(0.95 * (positives.length - 1));
+  const p88 = positives[idx88]!;
+  const p95 = positives[idx95]!;
+  if (rawMax <= p95 * 3) return { rawMax, scaleMax: rawMax };
+  const soft = Math.max(Math.ceil(p88 * 2.15), Math.ceil(p95 * 1.85), Math.ceil(rawMax * 0.18), 8);
+  const scaleMax = Math.min(rawMax, soft);
+  if (scaleMax >= rawMax * 0.97) return { rawMax, scaleMax: rawMax };
+  return { rawMax, scaleMax };
+}
+
+/** 窄视口下略增厚柱宽、收紧桶内边距，避免 SVG 缩放后柱子过细 */
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
+  narrowViewport: boolean,
 ): BucketBarPack | null {
   if (!rows.length) return null;
   const timeSet = new Set<number>();
@@ -351,10 +370,10 @@ function buildBucketBarPack(
     vals: timesSec.map((t) => valAt(row.points, t)),
   }));
 
-  let maxV = 1;
-  for (const s of series) {
-    for (const v of s.vals) maxV = Math.max(maxV, v);
-  }
+  const flatVals = series.flatMap((s) => s.vals);
+  const { rawMax, scaleMax } = softBucketAxisMax(flatVals);
+  const axisMax = scaleMax;
+  const axisTopPlus = rawMax > scaleMax;
 
   const W = 440;
   const H = 212;
@@ -373,16 +392,21 @@ function buildBucketBarPack(
   const slotW = innerW / Math.max(1, nT);
   const bars: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 
+  const marginT = nT <= 3 ? 0.05 : narrowViewport ? 0.055 : 0.08;
+  const barFill = narrowViewport ? 0.96 : 0.9;
+  const barPad = narrowViewport ? 0.02 : 0.05;
+  const minBarW = narrowViewport ? 3.6 : 1.5;
+
   for (let i = 0; i < nT; i++) {
     const colL = left + i * slotW;
-    const groupMargin = slotW * (nT <= 3 ? 0.05 : 0.08);
+    const groupMargin = slotW * marginT;
     const innerCol = Math.max(0, slotW - 2 * groupMargin);
     const bw = nS > 0 ? innerCol / nS : 0;
     for (let s = 0; s < nS; s++) {
       const v = series[s]!.vals[i] ?? 0;
-      const bh = (v / maxV) * innerH;
-      const bx = colL + groupMargin + s * bw + bw * 0.05;
-      const barW = Math.max(1.5, bw * 0.9);
+      const bh = Math.min(1, v / axisMax) * innerH;
+      const bx = colL + groupMargin + s * bw + bw * barPad;
+      const barW = Math.min(innerCol / Math.max(1, nS) - 0.25, Math.max(minBarW, bw * barFill));
       const by = bottom - bh;
       bars.push({ x: bx, y: by, w: barW, h: bh, fill: series[s]!.color });
     }
@@ -393,8 +417,8 @@ function buildBucketBarPack(
     Number.isInteger(x) ? String(x) : x >= 10 ? String(Math.round(x)) : x.toFixed(1);
   const yTicks = [
     { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtTick(maxV / 2) },
-    { y: top, t: fmtTick(maxV) },
+    { y: bottom - innerH / 2, t: fmtTick(axisMax / 2) },
+    { y: top, t: axisTopPlus ? `${fmtTick(axisMax)}+` : fmtTick(axisMax) },
   ];
   const xi = pickTickIndices(nT, 9);
   const xTicks = xi.map((idx) => ({
@@ -414,7 +438,7 @@ function buildBucketBarPack(
     left,
     top,
     bottom,
-    maxV,
+    maxV: rawMax,
     timesSec,
     series,
     gridYs,
@@ -428,7 +452,9 @@ type HourlyLayerLine = { label: string; color: string; poly: string };
 
 function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLayerLine[] | null {
   if (!rows.length) return null;
-  const maxV = Math.max(1, ...rows.flatMap((r) => r.hours));
+  const flat = rows.flatMap((r) => r.hours);
+  const { scaleMax } = softBucketAxisMax(flat);
+  const axisMax = scaleMax;
   const w = 100;
   const xInset = 1.5;
   const xSpan = w - 2 * xInset;
@@ -439,7 +465,7 @@ function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLa
     poly: row.hours
       .map((v, h) => {
         const x = xInset + (h / 23) * xSpan;
-        const y = hb - (v / maxV) * (hb - 8) - 4;
+        const y = hb - Math.min(1, v / axisMax) * (hb - 8) - 4;
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       })
       .join(" "),
@@ -450,7 +476,7 @@ const apiBucketPack = computed(() => {
   const rows = (props.apiHistoryByApi ?? [])
     .filter((s) => selectedApiKeys.value.includes(s.api) && (s.points?.length ?? 0) > 0)
     .map((s) => ({ label: s.api, points: s.points }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyApiLayers = computed(() => {
@@ -468,7 +494,7 @@ const matcherBucketPack = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyMatcherLayers = computed(() => {
@@ -490,7 +516,7 @@ const matcherErrBucketPack = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyMatcherErrLayers = computed(() => {
@@ -554,6 +580,24 @@ const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
 
+/** 与首页账户卡断点一致：用于时间桶柱状图加粗柱子 */
+const bucketViewportNarrow = ref(false);
+
+function refreshBucketViewportNarrow() {
+  if (typeof window === "undefined") return;
+  bucketViewportNarrow.value = window.matchMedia("(max-width: 560px)").matches;
+}
+
+onMounted(() => {
+  refreshBucketViewportNarrow();
+  window.addEventListener("resize", refreshBucketViewportNarrow, { passive: true });
+});
+
+onUnmounted(() => {
+  if (typeof window === "undefined") return;
+  window.removeEventListener("resize", refreshBucketViewportNarrow);
+});
+
 /** 展开且存在 Teleport 目标时显示卡底配置条；local_spark 仅在可展示时显示（避免空块） */
 const chartFilterStripVisible = computed(
   () =>
@@ -581,7 +625,7 @@ const panelAvailability = computed(() => ({
 
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
-    plugins_top: "插件今日次数（Top）",
+    plugins_top: "插件今日次数",
     daily_msg_matcher: "消息 / Matcher（按日）",
     api_hourly: "协议 API · 今日各小时",
     api_bucket: "协议 API · 按时间桶（柱状）",
@@ -774,26 +818,29 @@ const dailyChartPack = computed(() => {
 </script>
 
 <template>
-  <div class="home-plugin-charts">
+  <div
+    class="home-plugin-charts"
+    :class="{ 'home-plugin-charts--draw-collapsed': !chartsDrawExpanded }"
+  >
     <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
       <div class="home-plugin-charts__toolbar-line">
-        <div class="home-plugin-charts__toolbar-main">
-          <div class="home-plugin-charts__toolbar-head">
-            <label
-              class="home-plugin-charts__toolbar-label muted"
-              for="home-chart-panel-sel"
-              title="图表视图"
-            ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
-            <span
-              v-if="toolbarSummaryText"
-              class="home-plugin-charts__toolbar-summary muted"
-            >{{ toolbarSummaryText }}</span>
-          </div>
+        <div class="home-plugin-charts__toolbar-head">
+          <label
+            class="home-plugin-charts__toolbar-label muted"
+            for="home-chart-panel-sel"
+            title="图表视图"
+          ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
+          <span
+            v-if="toolbarSummaryText"
+            class="home-plugin-charts__toolbar-summary muted"
+          >{{ toolbarSummaryText }}</span>
+        </div>
+        <div class="home-plugin-charts__toolbar-controls">
           <select
             id="home-chart-panel-sel"
             v-model="chartPanel"
             class="sel home-plugin-charts__pick home-plugin-charts__pick--compact"
-            title="切换要查看的图表类型（如插件 Top、按日汇总、协议 API 等）"
+            title="切换要查看的图表类型（如插件今日次数、按日汇总、协议 API 等）"
           >
             <option
               v-for="o in panelOptions"
@@ -804,21 +851,21 @@ const dailyChartPack = computed(() => {
               {{ o.label }}
             </option>
           </select>
+          <button
+            type="button"
+            class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
+            :aria-expanded="chartsDrawExpanded"
+            :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
+            aria-controls="home-plugin-charts-draw"
+            @click="toggleChartsDraw"
+          >
+            <span
+              class="home-plugin-charts__draw-toggle-ico"
+              aria-hidden="true"
+            >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
+            <span class="home-plugin-charts__draw-toggle-txt">{{ chartsDrawExpanded ? "收起" : "展开" }}</span>
+          </button>
         </div>
-        <button
-          type="button"
-          class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
-          :aria-expanded="chartsDrawExpanded"
-          :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
-          aria-controls="home-plugin-charts-draw"
-          @click="toggleChartsDraw"
-        >
-          <span
-            class="home-plugin-charts__draw-toggle-ico"
-            aria-hidden="true"
-          >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
-          <span class="home-plugin-charts__draw-toggle-txt">{{ chartsDrawExpanded ? "收起" : "展开" }}</span>
-        </button>
       </div>
       <p
         v-if="chartFilterTeleportTo && !chartsDrawExpanded"
@@ -2033,6 +2080,7 @@ const dailyChartPack = computed(() => {
   flex-direction: column;
   gap: 8px;
   flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   width: 100%;
@@ -2048,22 +2096,34 @@ const dailyChartPack = computed(() => {
   padding: 2px 0 4px;
 }
 .home-plugin-charts__toolbar--compact {
+  flex-shrink: 0;
   flex-wrap: nowrap;
   padding: 0 0 2px;
   gap: 6px 8px;
 }
 .home-plugin-charts__toolbar-line {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.home-plugin-charts__toolbar-controls {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
   gap: 6px 8px;
   min-width: 0;
   width: 100%;
 }
-.home-plugin-charts__toolbar--compact .home-plugin-charts__toolbar-main {
-  flex-wrap: wrap;
-  gap: 6px 8px;
+.home-plugin-charts__toolbar-controls .home-plugin-charts__pick {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.home-plugin-charts__toolbar-controls .home-plugin-charts__draw-toggle {
+  flex: 0 0 auto;
 }
 .home-plugin-charts__toolbar-head {
   display: inline-flex;
@@ -2090,14 +2150,6 @@ const dailyChartPack = computed(() => {
   padding: 0 0 2px;
   font-size: 11px;
   line-height: 1.35;
-}
-.home-plugin-charts__toolbar-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .home-plugin-charts__draw-toggle {
   flex-shrink: 0;
@@ -2140,6 +2192,11 @@ const dailyChartPack = computed(() => {
   line-height: 1;
   opacity: 0.85;
 }
+.home-plugin-charts--draw-collapsed {
+  flex: 0 0 auto;
+  height: auto;
+}
+
 .home-plugin-charts__draw {
   display: flex;
   flex-direction: column;
@@ -2453,29 +2510,9 @@ const dailyChartPack = computed(() => {
     align-items: stretch;
   }
 
-  .home-plugin-charts__toolbar-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
-  }
-
   .home-plugin-charts__toolbar-head {
     flex-wrap: wrap;
     max-width: 100%;
-  }
-
-  .home-plugin-charts__pick {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-  }
-
-  .home-plugin-charts__draw-toggle {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
   }
 }
 
@@ -2492,29 +2529,9 @@ const dailyChartPack = computed(() => {
     align-items: stretch;
   }
 
-  .home-plugin-charts__toolbar-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
-  }
-
   .home-plugin-charts__toolbar-head {
     flex-wrap: wrap;
     max-width: 100%;
-  }
-
-  .home-plugin-charts__pick {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-  }
-
-  .home-plugin-charts__draw-toggle {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
   }
 }
 

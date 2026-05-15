@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -11,6 +11,9 @@ const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const loading = ref(false);
+/** 运行中轮询间隔（毫秒）；隐藏标签页时跳过请求 */
+const LOG_POLL_MS = 3000;
+let logPollTimer: number | null = null;
 const scope = ref<LogScope>("all");
 const n = ref(200);
 const payload = ref<LogsData | null>(null);
@@ -45,8 +48,24 @@ async function scrollActiveLogToBottom() {
   el.scrollTop = el.scrollHeight;
 }
 
-async function load() {
-  loading.value = true;
+function startLogPolling() {
+  if (typeof window === "undefined") return;
+  if (logPollTimer != null) return;
+  logPollTimer = window.setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    void load({ silent: true });
+  }, LOG_POLL_MS);
+}
+
+function stopLogPolling() {
+  if (logPollTimer == null) return;
+  window.clearInterval(logPollTimer);
+  logPollTimer = null;
+}
+
+async function load(opts?: { silent?: boolean }) {
+  const silent = Boolean(opts?.silent);
+  if (!silent) loading.value = true;
   err.value = "";
   try {
     payload.value = await fetchLogs(n.value, scope.value);
@@ -54,7 +73,7 @@ async function load() {
     err.value = e instanceof Error ? e.message : String(e);
     payload.value = null;
   } finally {
-    loading.value = false;
+    if (!silent) loading.value = false;
     pageReady.value = true;
   }
 }
@@ -86,7 +105,14 @@ watch(
   { flush: "post" },
 );
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  startLogPolling();
+});
+
+onUnmounted(() => {
+  stopLogPolling();
+});
 
 function lineClass(lv: LogEntry["level"]): string {
   if (lv === "debug") return "log-line log-line--debug";
