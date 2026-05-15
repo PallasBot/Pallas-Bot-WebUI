@@ -299,6 +299,8 @@ export interface GroupConfigPublic {
   banned: boolean;
   sing_progress: unknown;
   disabled_plugins: string[];
+  /** 本群拉黑 QQ（牛牛黑名单·群聊维度） */
+  blocked_user_ids: number[];
 }
 
 export interface UserConfigPublic {

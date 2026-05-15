@@ -52,9 +52,12 @@ const groupDraft = ref<{
   roulette_mode: number;
   banned: boolean;
   disabled_plugins: string[];
+  blocked_user_ids: number[];
 } | null>(null);
 const groupSaveBusy = ref(false);
 const groupSaveErr = ref("");
+const addBlockedUserInput = ref("");
+const blockedUserAddHint = ref("");
 
 const userIdInput = ref("");
 const userCfg = ref<UserConfigPublic | null>(null);
@@ -167,14 +170,24 @@ async function loadGroupList() {
   }
 }
 
+function normalizeBlockedUserIdsForSave(ids: number[]): number[] {
+  const next = [...new Set(ids.map((n) => Math.floor(Number(n))))].filter((n) => Number.isFinite(n) && n > 0);
+  next.sort((a, b) => a - b);
+  return next;
+}
+
 function syncGroupDraftFromConfig(g: GroupConfigPublic) {
   groupCfg.value = g;
+  const blocked = normalizeBlockedUserIdsForSave(g.blocked_user_ids ?? []);
   groupDraft.value = {
     roulette_mode: g.roulette_mode,
     banned: g.banned,
     disabled_plugins: [...(g.disabled_plugins ?? [])].sort((a, b) => a.localeCompare(b)),
+    blocked_user_ids: blocked,
   };
   groupSaveErr.value = "";
+  addBlockedUserInput.value = "";
+  blockedUserAddHint.value = "";
 }
 
 function cancelGroupModal() {
@@ -182,6 +195,8 @@ function cancelGroupModal() {
   groupDraft.value = null;
   groupCfg.value = null;
   groupSaveErr.value = "";
+  addBlockedUserInput.value = "";
+  blockedUserAddHint.value = "";
 }
 
 function boolSelectVal(v: boolean): string {
@@ -191,6 +206,29 @@ function boolSelectVal(v: boolean): string {
 function onGroupBannedSelect(raw: string) {
   if (!groupDraft.value) return;
   groupDraft.value.banned = raw === "1";
+}
+
+function addBlockedUserFromInput() {
+  if (!groupDraft.value) return;
+  blockedUserAddHint.value = "";
+  const raw = addBlockedUserInput.value.trim();
+  if (!raw) return;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    blockedUserAddHint.value = "请输入有效的 QQ 号。";
+    return;
+  }
+  if (groupDraft.value.blocked_user_ids.includes(n)) {
+    blockedUserAddHint.value = "该号码已在列表中。";
+    return;
+  }
+  groupDraft.value.blocked_user_ids = [...groupDraft.value.blocked_user_ids, n].sort((a, b) => a - b);
+  addBlockedUserInput.value = "";
+}
+
+function removeBlockedUserFromDraft(id: number) {
+  if (!groupDraft.value) return;
+  groupDraft.value.blocked_user_ids = groupDraft.value.blocked_user_ids.filter((x) => x !== id);
 }
 
 function toggleGroupPluginDisabled(name: string, checked: boolean) {
@@ -240,6 +278,7 @@ async function saveGroupModal() {
       roulette_mode: groupDraft.value.roulette_mode,
       banned: groupDraft.value.banned,
       disabled_plugins: groupDraft.value.disabled_plugins,
+      blocked_user_ids: normalizeBlockedUserIdsForSave(groupDraft.value.blocked_user_ids),
     });
     syncGroupDraftFromConfig(g);
     ok.value = "群配置已保存。";
@@ -433,6 +472,7 @@ onMounted(async () => {
                   <th>群号</th>
                   <th>禁言/封禁</th>
                   <th>轮盘模式</th>
+                  <th>本群拉黑</th>
                   <th>禁用插件数</th>
                   <th style="width: 100px">操作</th>
                 </tr>
@@ -445,6 +485,7 @@ onMounted(async () => {
                   <td style="font-weight: 600">{{ g.group_id }}</td>
                   <td>{{ g.banned ? "是" : "否" }}</td>
                   <td>{{ g.roulette_mode }}</td>
+                  <td class="muted">{{ g.blocked_user_ids?.length ?? 0 }}</td>
                   <td class="muted">{{ g.disabled_plugins?.length ?? 0 }}</td>
                   <td>
                     <button
@@ -547,7 +588,7 @@ onMounted(async () => {
               </h2>
               <p class="console-modal__subtitle">
                 <span class="console-modal__subtitle-strong">群 {{ groupCfg.group_id }}</span>
-                <span class="muted"> · roulette / banned / 禁用插件</span>
+                <span class="muted"> · roulette / banned / 本群拉黑 / 禁用插件</span>
               </p>
             </div>
             <button
@@ -590,6 +631,72 @@ onMounted(async () => {
                     <option value="0">否</option>
                   </select>
                 </div>
+              </div>
+              <div class="bot-config-edit__field">
+                <label>本群拉黑 QQ（<code>blocked_user_ids</code>）</label>
+                <p
+                  class="muted"
+                  style="margin: 0 0 8px; font-size: 12px"
+                >
+                  与群内「牛牛拉黑」写入同一字段。输入号码后点击添加；每个号码右上角 × 可移除。保存时会去重、排序。
+                </p>
+                <div
+                  class="row-actions"
+                  style="margin-bottom: 4px; flex-wrap: wrap; gap: 8px"
+                >
+                  <input
+                    v-model="addBlockedUserInput"
+                    class="inp"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    placeholder="QQ 号"
+                    style="max-width: 200px; min-width: 0; flex: 1 1 140px"
+                    @keydown.enter.prevent="addBlockedUserFromInput"
+                  >
+                  <button
+                    type="button"
+                    class="btn"
+                    @click="addBlockedUserFromInput"
+                  >
+                    添加
+                  </button>
+                </div>
+                <p
+                  v-if="blockedUserAddHint"
+                  class="alert alert--err"
+                  style="margin: 0 0 8px; padding: 8px 10px; font-size: 12px"
+                >
+                  {{ blockedUserAddHint }}
+                </p>
+                <div
+                  v-if="groupDraft.blocked_user_ids.length"
+                  class="admin-chip-list"
+                >
+                  <div
+                    v-for="id in groupDraft.blocked_user_ids"
+                    :key="`blk-${groupCfg.group_id}-${id}`"
+                    class="admin-chip"
+                  >
+                    <span class="admin-chip__id">{{ id }}</span>
+                    <button
+                      type="button"
+                      class="admin-chip__rm"
+                      :aria-label="`移除拉黑 ${id}`"
+                      title="移除"
+                      @click="removeBlockedUserFromDraft(id)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+                <p
+                  v-else
+                  class="muted"
+                  style="margin: 4px 0 0; font-size: 12px"
+                >
+                  尚未添加本群拉黑号码。
+                </p>
               </div>
               <div class="bot-config-edit__field">
                 <label>禁用插件（勾选表示禁用）</label>
