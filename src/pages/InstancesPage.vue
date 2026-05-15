@@ -282,66 +282,14 @@ onMounted(async () => {
     />
     <template v-else-if="data">
       <div class="panel">
-        <div class="panel__hd panel__hd--split">
+        <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的实例
             <RefreshIconButton
               :busy="reloadBusy"
               label="刷新实例数据"
               @click="reloadFromUser"
             />
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/instances" />
-            <button
-              type="button"
-              class="btn panel-hd-collapse-btn"
-              @click="expNonebot = !expNonebot"
-            >
-              {{ expNonebot ? "收起" : "展开" }}
-            </button>
-          </div>
-        </div>
-        <div
-          v-show="expNonebot"
-          class="panel__bd"
-        >
-          <div class="table-wrap">
-            <table class="data console-data-table">
-              <thead>
-                <tr>
-                  <th>昵称</th>
-                  <th>self_id</th>
-                  <th>适配器</th>
-                  <th>连接键</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(b, i) in pagedNonebotBots"
-                  :key="i"
-                >
-                  <td style="font-weight: 600">{{ nonebotRowNick(b.self_id) || "—" }}</td>
-                  <td>{{ b.self_id }}</td>
-                  <td class="muted">{{ b.adapter }}</td>
-                  <td class="muted">{{ b.connection_key }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <ConsolePagerBar
-            v-if="sortedNonebotBots.length > 0"
-            v-model:page="instNbPage"
-            v-model:page-size="tablePageSize"
-            :total="sortedNonebotBots.length"
-          />
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel__hd panel__hd--split inst-db-panel__hd">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据中的实例
           </h2>
           <button
             type="button"
@@ -569,6 +517,58 @@ onMounted(async () => {
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
             :total="sortedDbBotConfigs.length"
+          />
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__hd panel__hd--split">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/instances" />
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expNonebot = !expNonebot"
+            >
+              {{ expNonebot ? "收起" : "展开" }}
+            </button>
+          </div>
+        </div>
+        <div
+          v-show="expNonebot"
+          class="panel__bd"
+        >
+          <div class="table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th>昵称</th>
+                  <th>self_id</th>
+                  <th>适配器</th>
+                  <th>连接键</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(b, i) in pagedNonebotBots"
+                  :key="i"
+                >
+                  <td style="font-weight: 600">{{ nonebotRowNick(b.self_id) || "—" }}</td>
+                  <td>{{ b.self_id }}</td>
+                  <td class="muted">{{ b.adapter }}</td>
+                  <td class="muted">{{ b.connection_key }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ConsolePagerBar
+            v-if="sortedNonebotBots.length > 0"
+            v-model:page="instNbPage"
+            v-model:page-size="tablePageSize"
+            :total="sortedNonebotBots.length"
           />
         </div>
       </div>
