@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type {
   ApiCallNamedSeries,
   ConsoleDailyStatRow,
@@ -343,8 +343,10 @@ function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number }
   return { rawMax, scaleMax };
 }
 
+/** 窄视口下略增厚柱宽、收紧桶内边距，避免 SVG 缩放后柱子过细 */
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
+  narrowViewport: boolean,
 ): BucketBarPack | null {
   if (!rows.length) return null;
   const timeSet = new Set<number>();
@@ -390,16 +392,21 @@ function buildBucketBarPack(
   const slotW = innerW / Math.max(1, nT);
   const bars: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 
+  const marginT = nT <= 3 ? 0.05 : narrowViewport ? 0.055 : 0.08;
+  const barFill = narrowViewport ? 0.96 : 0.9;
+  const barPad = narrowViewport ? 0.02 : 0.05;
+  const minBarW = narrowViewport ? 3.6 : 1.5;
+
   for (let i = 0; i < nT; i++) {
     const colL = left + i * slotW;
-    const groupMargin = slotW * (nT <= 3 ? 0.05 : 0.08);
+    const groupMargin = slotW * marginT;
     const innerCol = Math.max(0, slotW - 2 * groupMargin);
     const bw = nS > 0 ? innerCol / nS : 0;
     for (let s = 0; s < nS; s++) {
       const v = series[s]!.vals[i] ?? 0;
       const bh = Math.min(1, v / axisMax) * innerH;
-      const bx = colL + groupMargin + s * bw + bw * 0.05;
-      const barW = Math.max(1.5, bw * 0.9);
+      const bx = colL + groupMargin + s * bw + bw * barPad;
+      const barW = Math.min(innerCol / Math.max(1, nS) - 0.25, Math.max(minBarW, bw * barFill));
       const by = bottom - bh;
       bars.push({ x: bx, y: by, w: barW, h: bh, fill: series[s]!.color });
     }
@@ -469,7 +476,7 @@ const apiBucketPack = computed(() => {
   const rows = (props.apiHistoryByApi ?? [])
     .filter((s) => selectedApiKeys.value.includes(s.api) && (s.points?.length ?? 0) > 0)
     .map((s) => ({ label: s.api, points: s.points }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyApiLayers = computed(() => {
@@ -487,7 +494,7 @@ const matcherBucketPack = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyMatcherLayers = computed(() => {
@@ -509,7 +516,7 @@ const matcherErrBucketPack = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildBucketBarPack(rows);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
 const hourlyMatcherErrLayers = computed(() => {
@@ -572,6 +579,24 @@ const matcherErrCandidates = computed(() =>
 const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
+
+/** 与首页账户卡断点一致：用于时间桶柱状图加粗柱子 */
+const bucketViewportNarrow = ref(false);
+
+function refreshBucketViewportNarrow() {
+  if (typeof window === "undefined") return;
+  bucketViewportNarrow.value = window.matchMedia("(max-width: 560px)").matches;
+}
+
+onMounted(() => {
+  refreshBucketViewportNarrow();
+  window.addEventListener("resize", refreshBucketViewportNarrow, { passive: true });
+});
+
+onUnmounted(() => {
+  if (typeof window === "undefined") return;
+  window.removeEventListener("resize", refreshBucketViewportNarrow);
+});
 
 /** 展开且存在 Teleport 目标时显示卡底配置条；local_spark 仅在可展示时显示（避免空块） */
 const chartFilterStripVisible = computed(
@@ -2320,8 +2345,6 @@ const dailyChartPack = computed(() => {
   gap: 8px;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-y: auto;
-  min-height: 0;
 }
 .home-plugin-bars__row {
   display: grid;
