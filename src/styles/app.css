@@ -236,7 +236,7 @@ a:hover {
 
 .shell {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: 184px minmax(0, 1fr);
   grid-template-rows: var(--shell-chrome-h) minmax(0, 1fr);
   grid-template-areas:
     "shell-side shell-top"
@@ -268,7 +268,7 @@ a:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0 10px 12px;
+  padding: 0 8px 12px;
   border-right: 1px solid var(--border);
   background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
@@ -1962,11 +1962,11 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 
   .shell--sidebar-collapsed {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
   .shell--sidebar-collapsed .shell__sidebar {
-    padding: 5px 6px 12px;
+    padding: 5px 4px 12px;
   }
 
   .shell--sidebar-collapsed .shell__sidebar-top {

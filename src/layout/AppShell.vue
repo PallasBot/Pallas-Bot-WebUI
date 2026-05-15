@@ -609,7 +609,7 @@ onUnmounted(() => {
       <nav class="shell__nav" aria-label="主导航">
         <template v-for="row in sidebarNavRows" :key="row.token">
           <div
-            v-if="row.showSection"
+            v-if="row.showSection && !consolePrefs.sidebarCollapsed"
             class="shell__nav-section"
             role="presentation"
           >
