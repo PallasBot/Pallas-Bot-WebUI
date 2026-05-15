@@ -2819,10 +2819,24 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
+}
+
+/* 主内容区与底部 Matcher 条同款通栏（宽、边距、底色一致） */
+.home-account-card > .home-account-hero--unified {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-muted) 12%);
 }
 
 .home-account-split-bd__col--charts {
@@ -2988,7 +3002,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: auto;
+  margin-top: 0;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3111,9 +3125,6 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
 }
 
 .home-account-hero--unified {
-  border: none;
-  border-radius: 0;
-  background: transparent;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -3123,7 +3134,6 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   max-width: 100%;
   margin: 0;
   min-height: 0;
-  flex: 1 1 auto;
 }
 
 .home-account-hero__lead {
@@ -3223,7 +3233,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 }
 
 .home-account-hero__detail--social-usage {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -3238,25 +3251,32 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__social-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  gap: 10px;
   min-width: 0;
-  min-height: 0;
+  min-height: 5.5rem;
   box-sizing: border-box;
-  padding: 7px 8px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   text-align: left;
 }
 
 .home-account-hero__social-pending-wrap {
   box-sizing: border-box;
-  padding: 8px 0 0;
-  margin: 8px 0 0;
+  padding: 10px 0 0;
+  margin: 0;
   border: none;
   background: transparent;
   border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
 }
 
 .home-account-hero__social-pending {
@@ -3270,16 +3290,17 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__pending-shell {
   box-sizing: border-box;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  background: color-mix(in srgb, var(--bg-card) 58%, transparent);
+  background: color-mix(in srgb, var(--bg-deep) 22%, var(--bg-card) 78%);
 }
 
 .home-account-hero__counts-chips--social {
   padding-top: 0;
   margin-top: 0;
   border-top: none;
+  flex-shrink: 0;
 }
 
 .home-account-hero__social-pending .home-account-hero__pending-count-link--single-line {
@@ -3479,13 +3500,13 @@ html[data-theme="light"] .home-account-hero__admin-values {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: baseline;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 6px;
   min-width: 0;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--bg-deep) 22%, var(--bg-card) 78%);
   box-sizing: border-box;
   writing-mode: horizontal-tb;
 }
