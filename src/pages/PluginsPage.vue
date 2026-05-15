@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { fetchPluginConfig, fetchPlugins } from "@/api/consoleApi";
+import { fetchPluginConfig, fetchPlugins, peekPluginsCache } from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -8,8 +8,12 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const pageReady = ref(false);
+const pageReady = ref(true);
 const list = ref<PluginRow[]>([]);
+{
+  const warm = peekPluginsCache();
+  if (warm?.length) list.value = warm;
+}
 const open = ref<string | null>(null);
 const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
 

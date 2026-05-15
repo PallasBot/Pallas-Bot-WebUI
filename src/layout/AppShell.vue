@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
+import { fetchBots, fetchInstances, fetchPlugins } from "@/api/consoleApi";
 import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -274,6 +275,7 @@ onMounted(() => {
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
   void refreshHealth();
+  void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
   healthPollTimer = setInterval(() => {
     void refreshHealth();
   }, 45000);

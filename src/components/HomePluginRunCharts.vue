@@ -275,14 +275,11 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
   });
 });
 
-/** 总览账户卡右侧：仅展示前 N 条，避免插件多时令图表区纵向膨胀 */
-const HERO_CHART_TOP_PLUGIN_ROWS = 7;
-
+/** 今日插件横向条：不截断条数，在账户卡右列等高容器内由 flex 铺满（过多时可滚动） */
 const topPlugins = computed(() =>
   [...props.plugins]
     .sort((a, b) => b.runs_today - a.runs_today)
-    .filter((p) => p.runs_today > 0)
-    .slice(0, HERO_CHART_TOP_PLUGIN_ROWS),
+    .filter((p) => p.runs_today > 0),
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
@@ -603,7 +600,7 @@ const panelAvailability = computed(() => ({
 
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
-    plugins_top: "插件今日次数（Top）",
+    plugins_top: "插件今日次数",
     daily_msg_matcher: "消息 / Matcher（按日）",
     api_hourly: "协议 API · 今日各小时",
     api_bucket: "协议 API · 按时间桶（柱状）",
@@ -818,7 +815,7 @@ const dailyChartPack = computed(() => {
             id="home-chart-panel-sel"
             v-model="chartPanel"
             class="sel home-plugin-charts__pick home-plugin-charts__pick--compact"
-            title="切换要查看的图表类型（如插件 Top、按日汇总、协议 API 等）"
+            title="切换要查看的图表类型（如插件今日次数、按日汇总、协议 API 等）"
           >
             <option
               v-for="o in panelOptions"
@@ -2323,6 +2320,8 @@ const dailyChartPack = computed(() => {
   gap: 8px;
   max-width: 100%;
   box-sizing: border-box;
+  overflow-y: auto;
+  min-height: 0;
 }
 .home-plugin-bars__row {
   display: grid;

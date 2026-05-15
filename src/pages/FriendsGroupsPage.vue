@@ -6,6 +6,7 @@ import {
   fetchGroupList,
   fetchInstances,
   fetchRequestOverview,
+  peekInstancesCache,
   postRequestAction,
   postRequestActionsBatch,
 } from "@/api/consoleApi";
@@ -18,7 +19,6 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -34,10 +34,13 @@ import {
   requestOverviewToFriendOverview,
 } from "@/utils/consoleSocialCache";
 
+const FG_LIST_SKEL_ROWS = 8;
+
 const panelNavIcon = usePanelNavIcon();
 const route = useRoute();
 const err = ref("");
-const pageReady = ref(false);
+/** 未选 Bot 时无需等网络即可展示布局；仅依赖实例列表填充下拉框 */
+const pageReady = ref(true);
 const busy = ref(false);
 const listsBusy = ref(false);
 const reqsBusy = ref(false);
@@ -49,6 +52,15 @@ const requests = ref<FriendOverviewData | null>(null);
 const groups = ref<GroupListData | null>(null);
 const overview = ref<RequestOverviewData | null>(null);
 const instances = ref<InstancesData | null>(null);
+{
+  const warmInst = peekInstancesCache();
+  if (warmInst) instances.value = warmInst;
+}
+
+let fgListsLoadGen = 0;
+
+/** 好友/群表格区域：切换 Bot 或刷新列表时用骨架过渡（加载中与缓存占位不同时铺开） */
+const fgListsSkeleton = computed(() => Boolean(selfIdStr.value.trim()) && listsBusy.value);
 
 const tablePageSize = computed({
   get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
@@ -155,9 +167,9 @@ function offlineGroupPayload(selfId: string): GroupListData {
   };
 }
 
-async function loadBots() {
+async function loadBots(opts?: { bypassInstancesCache?: boolean }) {
   try {
-    const inst = await fetchInstances();
+    const inst = await fetchInstances({ bypassCache: Boolean(opts?.bypassInstancesCache) });
     instances.value = inst;
     applySelfIdFromRouteQuery();
   } catch (e) {
@@ -167,8 +179,12 @@ async function loadBots() {
 
 async function loadListsOnly() {
   const sid = selfIdNum();
-  if (sid == null) return;
+  if (sid == null) {
+    listsBusy.value = false;
+    return;
+  }
   const sidKey = String(sid);
+  const gen = ++fgListsLoadGen;
   listsBusy.value = true;
   err.value = "";
   try {
@@ -180,18 +196,20 @@ async function loadListsOnly() {
     const connected = accountHasNonebotBot(instances.value?.nonebot_bots, sid);
     if (connected) {
       const [fl, gl] = await Promise.all([fetchFriendList(sid), fetchGroupList(sid)]);
+      if (gen !== fgListsLoadGen) return;
       friends.value = fl;
       groups.value = gl;
       cachePutFriendGroupLists(sidKey, fl, gl);
     } else {
       const sidStr = String(sid);
+      if (gen !== fgListsLoadGen) return;
       friends.value = offlineFriendPayload(sidStr);
       groups.value = offlineGroupPayload(sidStr);
     }
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    if (gen === fgListsLoadGen) err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    listsBusy.value = false;
+    if (gen === fgListsLoadGen) listsBusy.value = false;
   }
 }
 
@@ -224,7 +242,7 @@ watch(botsVisible, (list) => {
 });
 
 async function refreshPage() {
-  await loadBots();
+  await loadBots({ bypassInstancesCache: true });
   const tasks: Promise<void>[] = [loadRequestsOnly()];
   if (selfIdStr.value.trim()) tasks.push(loadListsOnly());
   await Promise.all(tasks);
@@ -595,11 +613,13 @@ watch(
 onMounted(async () => {
   try {
     await loadBots();
-    const tasks: Promise<void>[] = [loadRequestsOnly()];
-    if (selfIdStr.value.trim()) tasks.push(loadListsOnly());
+    const tasks: Promise<void>[] = [];
+    if (selfIdStr.value.trim()) {
+      tasks.push(loadRequestsOnly());
+      tasks.push(loadListsOnly());
+    }
     await Promise.all(tasks);
   } finally {
-    pageReady.value = true;
     skipSelfIdWatch.value = false;
     scrollFriendsGroupsHashIntoView();
   }
@@ -623,11 +643,7 @@ function toggleGroupsListPanel() {
       {{ err }}
     </div>
 
-    <ConsolePageSkeleton
-      v-if="!pageReady"
-      :panels="5"
-    />
-    <div v-else>
+    <div>
     <div
       id="fg-account"
       class="panel friends-groups-account-panel"
@@ -705,6 +721,40 @@ function toggleGroupsListPanel() {
         >
           请选择 Bot 后加载好友列表。
         </p>
+        <div
+          v-else-if="fgListsSkeleton"
+          class="fg-table-skel"
+          aria-busy="true"
+          aria-label="好友列表加载中"
+        >
+          <div class="table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th>QQ</th>
+                  <th>昵称</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="n in FG_LIST_SKEL_ROWS"
+                  :key="'fs-' + n"
+                >
+                  <td>
+                    <div class="fg-table-skel__bar skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--mid skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--short skel-pulse" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <p
           v-else-if="friends?.error"
           class="alert alert--err"
@@ -742,7 +792,7 @@ function toggleGroupsListPanel() {
           </table>
         </div>
         <ConsolePagerBar
-          v-if="(friends?.friends?.length ?? 0) > 0"
+          v-if="!fgListsSkeleton && (friends?.friends?.length ?? 0) > 0"
           v-model:page="pageFriends"
           v-model:page-size="tablePageSize"
           :total="friends?.friends?.length ?? 0"
@@ -793,6 +843,44 @@ function toggleGroupsListPanel() {
         >
           请选择 Bot 后加载群聊列表。
         </p>
+        <div
+          v-else-if="fgListsSkeleton"
+          class="fg-table-skel"
+          aria-busy="true"
+          aria-label="群聊列表加载中"
+        >
+          <div class="table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th>群号</th>
+                  <th>群名</th>
+                  <th>成员</th>
+                  <th>上限</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="n in FG_LIST_SKEL_ROWS"
+                  :key="'gs-' + n"
+                >
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--narrow skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--mid skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <p
           v-else-if="groups?.error"
           class="alert alert--err"
@@ -832,7 +920,7 @@ function toggleGroupsListPanel() {
           </table>
         </div>
         <ConsolePagerBar
-          v-if="(groups?.groups?.length ?? 0) > 0"
+          v-if="!fgListsSkeleton && (groups?.groups?.length ?? 0) > 0"
           v-model:page="pageGroups"
           v-model:page-size="tablePageSize"
           :total="groups?.groups?.length ?? 0"
@@ -1139,3 +1227,24 @@ function toggleGroupsListPanel() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fg-table-skel__bar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--border-strong);
+  max-width: 100%;
+}
+.fg-table-skel__bar--mid {
+  width: 72%;
+}
+.fg-table-skel__bar--short {
+  width: 46%;
+}
+.fg-table-skel__bar--narrow {
+  width: 58%;
+}
+.fg-table-skel__bar--tiny {
+  width: 36%;
+}
+</style>
