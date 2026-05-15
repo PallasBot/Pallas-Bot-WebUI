@@ -2860,6 +2860,20 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   overflow: hidden;
 }
 
+/* 宽屏双列：右侧图表区不高于左侧资料列（--home-account-hero-lock-px 由 HomePage 测量写入） */
+@media (min-width: 561px) {
+  .home-account-unified {
+    align-items: start;
+  }
+
+  .home-account-charts-shell--hero-side {
+    max-height: var(--home-account-hero-lock-px, min(440px, 52vh));
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 .home-account-charts-shell--hero-side > .home-plugin-charts {
   flex: 1 1 auto;
   min-height: 0;
@@ -2911,21 +2925,22 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly {
   min-height: 120px;
-  max-height: none;
+  /* 宽屏右列更宽时 SVG 随宽度等比变高；用 vh/px 上限避免整卡被图表撑得高于左侧资料区 */
+  max-height: min(220px, 34vh);
   height: auto;
   flex: 1 1 auto;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
   min-height: 96px;
-  max-height: none;
+  max-height: min(180px, 30vh);
   height: auto;
   flex: 1 1 auto;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
   min-height: 160px;
-  max-height: none;
+  max-height: min(260px, 40vh);
   max-width: 100%;
 }
 
@@ -2947,7 +2962,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-daily__svg {
   min-height: 160px;
-  max-height: none;
+  max-height: min(260px, 40vh);
   max-width: 100%;
   flex: 1 1 auto;
   height: auto;
@@ -2963,7 +2978,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-spark-wrap .home-plugin-spark {
   flex: 1 1 auto;
   min-height: 100px;
-  max-height: none;
+  max-height: min(200px, 32vh);
   height: auto;
   width: 100%;
 }
@@ -5048,7 +5063,7 @@ table.data th {
   letter-spacing: 0.06em;
 }
 
-/* 控制台数据表：表头与单元格居中（与「数据中的实例」表格一致） */
+/* 控制台数据表：表头与单元格居中（与「数据库中的实例」表格一致） */
 table.data.console-data-table thead th,
 table.data.console-data-table tbody td {
   text-align: center;

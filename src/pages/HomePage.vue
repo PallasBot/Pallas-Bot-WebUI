@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -98,6 +98,63 @@ const pluginsList = ref<PluginRow[]>([]);
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
+/** 双列布局下左侧整列（资料卡 + Matcher），用于宽屏限制右侧图表区高度 */
+const accountUnifiedColHeroRef = ref<HTMLElement | null>(null);
+const accountHeroLockHeightPx = ref(0);
+
+const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  if (!window.matchMedia("(min-width: 561px)").matches) return {};
+  const h = accountHeroLockHeightPx.value;
+  if (h < 120) return {};
+  return { "--home-account-hero-lock-px": `${h}px` };
+});
+
+function measureAccountHeroLockHeight() {
+  if (typeof window === "undefined") return;
+  if (!window.matchMedia("(min-width: 561px)").matches) {
+    accountHeroLockHeightPx.value = 0;
+    return;
+  }
+  const el = accountUnifiedColHeroRef.value;
+  if (!el) {
+    accountHeroLockHeightPx.value = 0;
+    return;
+  }
+  accountHeroLockHeightPx.value = Math.round(el.getBoundingClientRect().height);
+}
+
+watchEffect((onCleanup) => {
+  if (typeof window === "undefined") return;
+  if (selectedAccount.value == null || !pageReady.value) {
+    accountHeroLockHeightPx.value = 0;
+    return;
+  }
+  const el = accountUnifiedColHeroRef.value;
+  if (!el) {
+    accountHeroLockHeightPx.value = 0;
+    return;
+  }
+  const mql = window.matchMedia("(min-width: 561px)");
+  const onMql = () => {
+    measureAccountHeroLockHeight();
+  };
+  mql.addEventListener("change", onMql);
+  const ro = new ResizeObserver(() => {
+    measureAccountHeroLockHeight();
+  });
+  ro.observe(el);
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      measureAccountHeroLockHeight();
+    });
+  });
+  onCleanup(() => {
+    ro.disconnect();
+    mql.removeEventListener("change", onMql);
+    accountHeroLockHeightPx.value = 0;
+  });
+});
 
 function onAccountPickerDocDown(ev: MouseEvent) {
   if (!accountPickerOpen.value) return;
@@ -793,8 +850,14 @@ onUnmounted(() => {
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
               >
-                <div class="home-account-unified">
-                  <div class="home-account-unified__col home-account-unified__col--hero">
+                <div
+                  class="home-account-unified"
+                  :style="accountUnifiedHeroLockStyle"
+                >
+                  <div
+                    ref="accountUnifiedColHeroRef"
+                    class="home-account-unified__col home-account-unified__col--hero"
+                  >
                     <div class="home-account-card">
                       <div class="home-account-hero home-account-hero--unified home-account-hero--color">
                       <div class="home-account-hero__lead">
