@@ -98,8 +98,8 @@ const pluginsList = ref<PluginRow[]>([]);
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
-/** 双列布局下左侧整列（资料卡 + Matcher），用于宽屏限制右侧图表区高度 */
-const accountUnifiedColHeroRef = ref<HTMLElement | null>(null);
+/** 双列布局下账号信息卡，用于宽屏锁定右侧图表区高度与之对齐 */
+const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
 
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
@@ -116,7 +116,7 @@ function measureAccountHeroLockHeight() {
     accountHeroLockHeightPx.value = 0;
     return;
   }
-  const el = accountUnifiedColHeroRef.value;
+  const el = accountCardRef.value;
   if (!el) {
     accountHeroLockHeightPx.value = 0;
     return;
@@ -130,7 +130,7 @@ watchEffect((onCleanup) => {
     accountHeroLockHeightPx.value = 0;
     return;
   }
-  const el = accountUnifiedColHeroRef.value;
+  const el = accountCardRef.value;
   if (!el) {
     accountHeroLockHeightPx.value = 0;
     return;
@@ -854,11 +854,11 @@ onUnmounted(() => {
                   class="home-account-unified"
                   :style="accountUnifiedHeroLockStyle"
                 >
-                  <div
-                    ref="accountUnifiedColHeroRef"
-                    class="home-account-unified__col home-account-unified__col--hero"
-                  >
-                    <div class="home-account-card">
+                  <div class="home-account-unified__col home-account-unified__col--hero">
+                    <div
+                      ref="accountCardRef"
+                      class="home-account-card"
+                    >
                       <div class="home-account-hero home-account-hero--unified home-account-hero--color">
                       <div class="home-account-hero__lead">
                         <div class="home-account-hero__avatar">

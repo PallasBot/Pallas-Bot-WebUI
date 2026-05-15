@@ -777,18 +777,18 @@ const dailyChartPack = computed(() => {
   <div class="home-plugin-charts">
     <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
       <div class="home-plugin-charts__toolbar-line">
-        <div class="home-plugin-charts__toolbar-main">
-          <div class="home-plugin-charts__toolbar-head">
-            <label
-              class="home-plugin-charts__toolbar-label muted"
-              for="home-chart-panel-sel"
-              title="图表视图"
-            ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
-            <span
-              v-if="toolbarSummaryText"
-              class="home-plugin-charts__toolbar-summary muted"
-            >{{ toolbarSummaryText }}</span>
-          </div>
+        <div class="home-plugin-charts__toolbar-head">
+          <label
+            class="home-plugin-charts__toolbar-label muted"
+            for="home-chart-panel-sel"
+            title="图表视图"
+          ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
+          <span
+            v-if="toolbarSummaryText"
+            class="home-plugin-charts__toolbar-summary muted"
+          >{{ toolbarSummaryText }}</span>
+        </div>
+        <div class="home-plugin-charts__toolbar-controls">
           <select
             id="home-chart-panel-sel"
             v-model="chartPanel"
@@ -804,21 +804,21 @@ const dailyChartPack = computed(() => {
               {{ o.label }}
             </option>
           </select>
+          <button
+            type="button"
+            class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
+            :aria-expanded="chartsDrawExpanded"
+            :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
+            aria-controls="home-plugin-charts-draw"
+            @click="toggleChartsDraw"
+          >
+            <span
+              class="home-plugin-charts__draw-toggle-ico"
+              aria-hidden="true"
+            >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
+            <span class="home-plugin-charts__draw-toggle-txt">{{ chartsDrawExpanded ? "收起" : "展开" }}</span>
+          </button>
         </div>
-        <button
-          type="button"
-          class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
-          :aria-expanded="chartsDrawExpanded"
-          :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
-          aria-controls="home-plugin-charts-draw"
-          @click="toggleChartsDraw"
-        >
-          <span
-            class="home-plugin-charts__draw-toggle-ico"
-            aria-hidden="true"
-          >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
-          <span class="home-plugin-charts__draw-toggle-txt">{{ chartsDrawExpanded ? "收起" : "展开" }}</span>
-        </button>
       </div>
       <p
         v-if="chartFilterTeleportTo && !chartsDrawExpanded"
@@ -2033,6 +2033,7 @@ const dailyChartPack = computed(() => {
   flex-direction: column;
   gap: 8px;
   flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   width: 100%;
@@ -2048,22 +2049,34 @@ const dailyChartPack = computed(() => {
   padding: 2px 0 4px;
 }
 .home-plugin-charts__toolbar--compact {
+  flex-shrink: 0;
   flex-wrap: nowrap;
   padding: 0 0 2px;
   gap: 6px 8px;
 }
 .home-plugin-charts__toolbar-line {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.home-plugin-charts__toolbar-controls {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
   gap: 6px 8px;
   min-width: 0;
   width: 100%;
 }
-.home-plugin-charts__toolbar--compact .home-plugin-charts__toolbar-main {
-  flex-wrap: wrap;
-  gap: 6px 8px;
+.home-plugin-charts__toolbar-controls .home-plugin-charts__pick {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.home-plugin-charts__toolbar-controls .home-plugin-charts__draw-toggle {
+  flex: 0 0 auto;
 }
 .home-plugin-charts__toolbar-head {
   display: inline-flex;
@@ -2090,14 +2103,6 @@ const dailyChartPack = computed(() => {
   padding: 0 0 2px;
   font-size: 11px;
   line-height: 1.35;
-}
-.home-plugin-charts__toolbar-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 .home-plugin-charts__draw-toggle {
   flex-shrink: 0;
@@ -2453,29 +2458,9 @@ const dailyChartPack = computed(() => {
     align-items: stretch;
   }
 
-  .home-plugin-charts__toolbar-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
-  }
-
   .home-plugin-charts__toolbar-head {
     flex-wrap: wrap;
     max-width: 100%;
-  }
-
-  .home-plugin-charts__pick {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-  }
-
-  .home-plugin-charts__draw-toggle {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
   }
 }
 
@@ -2492,29 +2477,9 @@ const dailyChartPack = computed(() => {
     align-items: stretch;
   }
 
-  .home-plugin-charts__toolbar-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
-  }
-
   .home-plugin-charts__toolbar-head {
     flex-wrap: wrap;
     max-width: 100%;
-  }
-
-  .home-plugin-charts__pick {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-    box-sizing: border-box;
-  }
-
-  .home-plugin-charts__draw-toggle {
-    width: 100%;
-    justify-content: center;
-    box-sizing: border-box;
   }
 }
 
