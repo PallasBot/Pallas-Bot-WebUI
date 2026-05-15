@@ -131,6 +131,25 @@ export interface MatcherErrorLogEntry {
   traceback: string;
 }
 
+/** GET /console-daily-stats 单日一行（自然日，无时间桶） */
+export interface ConsoleDailyStatRow {
+  date: string;
+  self_id: string;
+  received: number;
+  sent: number;
+  matcher_runs: number;
+}
+
+export interface ConsoleDailyStatsData {
+  start: string;
+  end: string;
+  query_start: string;
+  query_end: string;
+  rows: ConsoleDailyStatRow[];
+  live_today: Record<string, { received: number; sent: number; matcher_runs: number }>;
+  server_date: string;
+}
+
 export interface PluginRunStatsData {
   total_runs: number;
   total_errors: number;
