@@ -3026,6 +3026,45 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   flex-shrink: 0;
 }
 
+.home-account-hero__session-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-muted) 12%);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.home-account-hero__session-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-account-hero__session-meta-k {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.home-account-hero__session-meta-v {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-align: right;
+  min-width: 0;
+}
+
 .home-account-hero__matcher-foot__v {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
