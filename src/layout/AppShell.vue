@@ -18,6 +18,10 @@ const route = useRoute();
 const dragPath = ref<string | null>(null);
 const dragOverPath = ref<string | null>(null);
 
+const gripMenu = ref<{ path: string; top: number; left: number; minWidth: number } | null>(null);
+const gripPointerDown = ref<{ path: string; x: number; y: number } | null>(null);
+let gripMenuDocRevoke: (() => void) | null = null;
+
 const { sidebarNavRows, sidebarPoolRows } = useSidebarNavLists();
 
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
@@ -184,8 +188,88 @@ async function refreshHealth() {
   }
 }
 
+function clearGripMenuDocListeners() {
+  gripMenuDocRevoke?.();
+  gripMenuDocRevoke = null;
+}
+
+function closeNavGripMenu() {
+  clearGripMenuDocListeners();
+  gripMenu.value = null;
+  gripPointerDown.value = null;
+}
+
+function armNavGripMenuDismiss() {
+  clearGripMenuDocListeners();
+  const onDocClick = (e: MouseEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (!t) return;
+    if (t.closest(".shell__nav-grip-dropdown")) return;
+    if (t.closest(".shell__nav-grip")) return;
+    closeNavGripMenu();
+  };
+  const onScrollResize = () => closeNavGripMenu();
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") closeNavGripMenu();
+  };
+  document.addEventListener("click", onDocClick, true);
+  document.addEventListener("keydown", onKey, true);
+  window.addEventListener("scroll", onScrollResize, true);
+  window.addEventListener("resize", onScrollResize);
+  gripMenuDocRevoke = () => {
+    document.removeEventListener("click", onDocClick, true);
+    document.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("scroll", onScrollResize, true);
+    window.removeEventListener("resize", onScrollResize);
+  };
+}
+
+function onNavGripPointerDown(path: string, e: PointerEvent) {
+  gripPointerDown.value = { path, x: e.clientX, y: e.clientY };
+}
+
+function onNavGripClick(path: string, e: MouseEvent) {
+  const anchor = e.currentTarget as HTMLElement | null;
+  if (!anchor) return;
+  const p = gripPointerDown.value;
+  gripPointerDown.value = null;
+  if (p != null) {
+    if (p.path !== path) return;
+    const dx = e.clientX - p.x;
+    const dy = e.clientY - p.y;
+    if (dx * dx + dy * dy > 100) return;
+  }
+  e.stopPropagation();
+  if (gripMenu.value?.path === path) {
+    closeNavGripMenu();
+    return;
+  }
+  closeNavGripMenu();
+  const r = anchor.getBoundingClientRect();
+  const minWidth = Math.max(160, Math.round(r.width));
+  const vw = window.innerWidth;
+  const left = Math.min(Math.round(r.left), Math.max(8, vw - minWidth - 8));
+  gripMenu.value = {
+    path,
+    top: Math.round(r.bottom + 4),
+    left,
+    minWidth,
+  };
+  void nextTick(() => {
+    armNavGripMenuDismiss();
+  });
+}
+
+function removeFromOpenGripMenu() {
+  const path = gripMenu.value?.path;
+  if (!path) return;
+  removeNavTokenFromSidebar(path);
+  closeNavGripMenu();
+}
+
 function updateNarrow() {
   isNarrow.value = window.matchMedia("(max-width: 860px)").matches;
+  if (isNarrow.value) closeNavGripMenu();
 }
 
 function closeMobileNav() {
@@ -233,6 +317,7 @@ function reorderNavPaths(fromPath: string, toPath: string) {
 }
 
 function onGripDragStart(path: string, e: DragEvent) {
+  closeNavGripMenu();
   dragPath.value = path;
   e.dataTransfer?.setData("text/plain", path);
   if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
@@ -310,6 +395,7 @@ watch(mobileNavOpen, (open) => {
 watch(
   () => route.fullPath,
   () => {
+    closeNavGripMenu();
     closeMobileNav();
     detachLogsScrollListener();
     backTopVisible.value = false;
@@ -328,6 +414,7 @@ watch(pageLoadingVisible, async (vis) => {
 });
 
 onUnmounted(() => {
+  closeNavGripMenu();
   window.removeEventListener("resize", updateNarrow);
   if (healthPollTimer != null) {
     clearInterval(healthPollTimer);
@@ -538,15 +625,23 @@ onUnmounted(() => {
             @dragleave="onNavDragLeave(row.token)"
             @drop="onNavDrop(row.token, $event)"
           >
-            <span
+            <button
               v-if="!isNarrow && !consolePrefs.sidebarCollapsed"
+              type="button"
               class="shell__nav-grip"
               draggable="true"
-              aria-label="拖动调整顺序"
-              title="拖动排序"
+              aria-label="侧栏项菜单（拖动排序、从侧栏移除）"
+              aria-haspopup="menu"
+              :aria-expanded="gripMenu?.path === row.token ? 'true' : 'false'"
+              aria-controls="shell-nav-grip-menu-dropdown"
+              title="点击菜单 · 拖动排序"
+              @pointerdown="onNavGripPointerDown(row.token, $event)"
+              @click="onNavGripClick(row.token, $event)"
               @dragstart="onGripDragStart(row.token, $event)"
               @dragend="onGripDragEnd"
-            >⋮</span>
+            >
+              ⋮
+            </button>
             <RouterLink
               v-if="row.kind === 'main'"
               v-slot="{ navigate }"
@@ -594,16 +689,6 @@ onUnmounted(() => {
                 </span>
               </button>
             </RouterLink>
-            <button
-              v-if="!isNarrow && !consolePrefs.sidebarCollapsed && sidebarNavRows.length > 1"
-              type="button"
-              class="shell__nav-remove"
-              :aria-label="`从侧栏移除「${row.kind === 'main' ? row.item.label : row.pin.label}」`"
-              title="从侧栏移除"
-              @click.stop="removeNavTokenFromSidebar(row.token)"
-            >
-              ×
-            </button>
           </div>
         </template>
         <details
@@ -772,6 +857,37 @@ onUnmounted(() => {
           aria-hidden="true"
           @click="closeMobileNav"
         />
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="gripMenu != null"
+        id="shell-nav-grip-menu-dropdown"
+        class="shell__nav-grip-dropdown shell__nav-grip-dropdown--floating"
+        role="menu"
+        :style="{
+          top: `${gripMenu.top}px`,
+          left: `${gripMenu.left}px`,
+          minWidth: `${gripMenu.minWidth}px`,
+        }"
+        @click.stop
+      >
+        <button
+          v-if="sidebarNavRows.length > 1"
+          type="button"
+          class="shell__nav-grip-dropdown__item shell__nav-grip-dropdown__item--danger"
+          role="menuitem"
+          @click="removeFromOpenGripMenu"
+        >
+          从侧栏移除
+        </button>
+        <p
+          v-else
+          class="shell__nav-grip-dropdown__hint muted"
+        >
+          侧栏至少保留一项。
+        </p>
       </div>
     </Teleport>
 
