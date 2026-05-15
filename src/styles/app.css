@@ -4507,6 +4507,21 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 85%, transparent);
 }
 
+/* 插件配置页：字段卡标题栏吸顶（与通用配置一致，圆角保留在顶边） */
+.shell__main-inner:not(.shell__main-inner--logs) .plugin-config-page > .plugin-config-page__fields-panel {
+  overflow: visible;
+}
+
+.shell__main-inner:not(.shell__main-inner--logs) .plugin-config-page > .plugin-config-page__fields-panel > .panel__hd {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--bg-card);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 85%, transparent);
+}
+
 .panel__hd {
   display: flex;
   flex-wrap: wrap;
@@ -5521,6 +5536,33 @@ table.data tbody tr:hover td {
   padding: 0 14px 10px;
   margin-top: auto;
   flex-shrink: 0;
+}
+
+.plugin-card__actions--pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.plugin-card__actions--pair .plugin-card__action-btn {
+  min-height: 36px;
+  font-size: max(12px, 0.8rem);
+  line-height: 1.25;
+  padding-inline: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .plugins-page__plugin-grid .plugin-card__actions--pair {
+    grid-template-columns: 1fr;
+  }
+
+  .plugins-page__plugin-grid .plugin-card__actions--pair .plugin-card__action-btn {
+    width: 100%;
+    min-height: 40px;
+  }
 }
 .plugin-preview {
   border-top: 1px solid var(--border);

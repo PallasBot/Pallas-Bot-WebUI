@@ -158,7 +158,7 @@ async function save() {
 </script>
 
 <template>
-  <div>
+  <div class="plugin-config-page">
     <p
       v-if="pluginName"
       class="muted"
@@ -262,7 +262,7 @@ async function save() {
 
     <div
       v-if="data"
-      class="panel"
+      class="panel plugin-config-page__fields-panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
