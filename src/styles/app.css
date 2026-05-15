@@ -2598,8 +2598,8 @@ html[data-theme="light"] .bot-config-edit {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.home-account-hero__title--picker .home-account-conn {
-  margin-left: 2px;
+.home-account-hero__title--picker .home-account-conn-pill {
+  margin-left: 6px;
 }
 /* 原生 <select>：弱化成标题行内联，避免像多叠一块卡片 */
 .home-account-hero__acct-sel-native {
@@ -3143,38 +3143,21 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   min-width: 0;
 }
 
-/* 账户信息栏顶部：昵称 / 连接徽标 / 账号与协议（与吞吐区同系配色） */
+/* 账户信息栏顶部：昵称与协议为正文色；连接状态为胶囊 + 荧光点 */
 .home-account-hero--color .home-account-hero__title-name {
-  background-image: linear-gradient(100deg, #f8fafc 0%, #7dd3fc 32%, #a5b4fc 62%, #f9a8d4 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  background-image: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  color: var(--text);
 }
 
-.home-account-hero--color .home-account-conn--on {
-  color: #86efac;
-  text-shadow: 0 0 14px rgba(52, 211, 153, 0.35);
-}
-
-.home-account-hero--color .home-account-conn--off {
-  color: #fcd34d;
-}
-
-.home-account-hero--color .home-account-hero__sub {
-  color: color-mix(in srgb, #94a3b8 42%, #38bdf8 58%);
-}
-
-.home-account-hero--color .home-account-hero__proto {
-  color: color-mix(in srgb, #cbd5e1 55%, #a5b4fc 45%);
+.home-account-hero--color .home-account-hero__proto,
+.home-account-hero--color .home-account-hero__proto-link {
+  color: var(--text);
 }
 
 .home-account-hero--color .home-account-hero__proto-hint {
-  color: #fdba74;
-  font-weight: 700;
-}
-
-.home-account-hero--color .home-account-hero__proto-sub {
-  color: color-mix(in srgb, var(--text-muted) 78%, #94a3b8 22%);
+  color: var(--text-muted);
   font-weight: 650;
 }
 
@@ -3183,31 +3166,6 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   box-shadow:
     0 0 0 1px color-mix(in srgb, #818cf8 22%, transparent),
     0 10px 28px color-mix(in srgb, #0f172a 45%, transparent);
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__title-name {
-  background-image: linear-gradient(100deg, #0f172a 0%, #0369a1 30%, #4f46e5 62%, #a21caf 100%);
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-conn--on {
-  color: #15803d;
-  text-shadow: none;
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-conn--off {
-  color: #b45309;
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__sub {
-  color: color-mix(in srgb, #64748b 45%, #0284c7 55%);
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__proto {
-  color: color-mix(in srgb, #475569 55%, #4f46e5 45%);
-}
-
-html[data-theme="light"] .home-account-hero--color .home-account-hero__proto-hint {
-  color: #c2410c;
 }
 
 html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
@@ -3606,23 +3564,66 @@ html[data-theme="light"] .home-account-hero__counts-num--pending {
   padding: 8px 10px 10px;
 }
 
-.home-account-conn {
+.home-account-conn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 650;
+  line-height: 1.35;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
+  color: var(--text-muted);
   vertical-align: middle;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
-.home-account-conn--on {
-  color: #4ade80;
+
+.home-account-conn-pill--on {
+  border-color: color-mix(in srgb, #22c55e 38%, var(--border));
+  color: var(--text);
 }
-.home-account-conn--off {
-  color: var(--text-dim);
+
+.home-account-conn-pill--off {
+  border-color: color-mix(in srgb, var(--border) 92%, transparent);
+  color: var(--text-muted);
 }
+
+.home-account-conn-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow:
+    0 0 4px #22c55e,
+    0 0 10px rgba(34, 197, 94, 0.65);
+  flex-shrink: 0;
+}
+
 .home-account-hero__proto {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.home-account-hero__proto-link {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.home-account-hero__proto-link:hover {
+  text-decoration: underline;
+}
+
+.home-account-hero__proto-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .home-account-hero__proto-hint {

@@ -891,9 +891,23 @@ onUnmounted(() => {
                                 />
                               </button>
                               <span
-                                class="home-account-conn"
-                                :class="selectedConnected ? 'home-account-conn--on' : 'home-account-conn--off'"
-                              >{{ selectedConnected ? "已连接" : "未连接" }}</span>
+                                v-if="selectedConnected"
+                                class="home-account-conn-pill home-account-conn-pill--on"
+                                aria-label="已连接"
+                              >
+                                <span class="home-account-conn-pill__txt">已连接</span>
+                                <span
+                                  class="home-account-conn-pill__dot"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                              <span
+                                v-else
+                                class="home-account-conn-pill home-account-conn-pill--off"
+                                aria-label="未连接"
+                              >
+                                <span class="home-account-conn-pill__txt">未连接</span>
+                              </span>
                             </div>
                             <div
                               v-if="accountPickerOpen && sortedDbBots.length > 1"
@@ -917,14 +931,18 @@ onUnmounted(() => {
                             </div>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                          <p class="home-account-hero__proto muted">
-                            <template v-if="!accountProtocolIsUnknown">
-                              协议 · {{ accountAdapterDisplay }}
-                            </template>
-                            <template v-else>
-                              协议 · <span class="home-account-hero__proto-hint">未上报</span>
-                              <span class="home-account-hero__proto-sub muted">可在「实例与连接」核对适配器</span>
-                            </template>
+                          <p class="home-account-hero__proto">
+                            <RouterLink
+                              class="home-account-hero__proto-link"
+                              :to="{ name: 'protocol' }"
+                            >
+                              <template v-if="!accountProtocolIsUnknown">
+                                协议 · {{ accountAdapterDisplay }}
+                              </template>
+                              <template v-else>
+                                协议 · <span class="home-account-hero__proto-hint">未上报</span>
+                              </template>
+                            </RouterLink>
                           </p>
                           <p class="home-account-hero__admin home-account-hero__admin--under-proto">
                             <span class="home-account-hero__admin-label">管理员</span>
