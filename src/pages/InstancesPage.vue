@@ -138,9 +138,9 @@ function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
 }
 
-function formatBotAdminsDisplay(admins: number[] | undefined | null): string {
-  if (!admins?.length) return "—";
-  return [...admins].sort((a, b) => a - b).join("、");
+function sortedAdminsList(admins: number[] | undefined | null): number[] {
+  if (!admins?.length) return [];
+  return [...admins].sort((a, b) => a - b);
 }
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
@@ -282,67 +282,14 @@ onMounted(async () => {
     />
     <template v-else-if="data">
       <div class="panel">
-        <div class="panel__hd panel__hd--split">
+        <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的实例
             <RefreshIconButton
               :busy="reloadBusy"
-              :disabled="reloadBusy"
               label="刷新实例数据"
               @click="reloadFromUser"
             />
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/instances" />
-            <button
-              type="button"
-              class="btn panel-hd-collapse-btn"
-              @click="expNonebot = !expNonebot"
-            >
-              {{ expNonebot ? "收起" : "展开" }}
-            </button>
-          </div>
-        </div>
-        <div
-          v-show="expNonebot"
-          class="panel__bd"
-        >
-          <div class="table-wrap">
-            <table class="data console-data-table">
-              <thead>
-                <tr>
-                  <th>昵称</th>
-                  <th>self_id</th>
-                  <th>适配器</th>
-                  <th>连接键</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(b, i) in pagedNonebotBots"
-                  :key="i"
-                >
-                  <td style="font-weight: 600">{{ nonebotRowNick(b.self_id) || "—" }}</td>
-                  <td>{{ b.self_id }}</td>
-                  <td class="muted">{{ b.adapter }}</td>
-                  <td class="muted">{{ b.connection_key }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <ConsolePagerBar
-            v-if="sortedNonebotBots.length > 0"
-            v-model:page="instNbPage"
-            v-model:page-size="tablePageSize"
-            :total="sortedNonebotBots.length"
-          />
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel__hd panel__hd--split inst-db-panel__hd">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据中的实例
           </h2>
           <button
             type="button"
@@ -440,7 +387,19 @@ onMounted(async () => {
                       c.auto_accept_group ? "开启" : "关闭"
                     }}</span>
                   </td>
-                  <td class="muted inst-db-admins-cell">{{ formatBotAdminsDisplay(c.admins) }}</td>
+                  <td class="muted inst-db-admins-cell">
+                    <template v-if="!sortedAdminsList(c.admins).length">—</template>
+                    <span
+                      v-else
+                      class="inst-db-admins-wrap inst-db-admins-wrap--table"
+                    >
+                      <span
+                        v-for="(id, idx) in sortedAdminsList(c.admins)"
+                        :key="`${c.account}-adm-${id}`"
+                        class="inst-db-admin-item"
+                      ><template v-if="idx > 0">、</template>{{ id }}</span>
+                    </span>
+                  </td>
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <div class="inst-actions">
@@ -510,7 +469,19 @@ onMounted(async () => {
               </div>
               <div class="data-summary-card__row data-summary-card__row--admins">
                 <span class="data-summary-card__label">管理员</span>
-                <span class="muted data-summary-card__admins-text">{{ formatBotAdminsDisplay(c.admins) }}</span>
+                <span class="muted data-summary-card__admins-text">
+                  <template v-if="!sortedAdminsList(c.admins).length">—</template>
+                  <span
+                    v-else
+                    class="inst-db-admins-wrap inst-db-admins-wrap--card"
+                  >
+                    <span
+                      v-for="id in sortedAdminsList(c.admins)"
+                      :key="`card-${c.account}-adm-${id}`"
+                      class="inst-db-admin-item"
+                    >{{ id }}</span>
+                  </span>
+                </span>
               </div>
               <div class="data-summary-card__plugins">
                 <span class="data-summary-card__plugins-label">禁用插件</span>
@@ -546,6 +517,58 @@ onMounted(async () => {
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
             :total="sortedDbBotConfigs.length"
+          />
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__hd panel__hd--split">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/instances" />
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expNonebot = !expNonebot"
+            >
+              {{ expNonebot ? "收起" : "展开" }}
+            </button>
+          </div>
+        </div>
+        <div
+          v-show="expNonebot"
+          class="panel__bd"
+        >
+          <div class="table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th>昵称</th>
+                  <th>self_id</th>
+                  <th>适配器</th>
+                  <th>连接键</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(b, i) in pagedNonebotBots"
+                  :key="i"
+                >
+                  <td style="font-weight: 600">{{ nonebotRowNick(b.self_id) || "—" }}</td>
+                  <td>{{ b.self_id }}</td>
+                  <td class="muted">{{ b.adapter }}</td>
+                  <td class="muted">{{ b.connection_key }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ConsolePagerBar
+            v-if="sortedNonebotBots.length > 0"
+            v-model:page="instNbPage"
+            v-model:page-size="tablePageSize"
+            :total="sortedNonebotBots.length"
           />
         </div>
       </div>
@@ -792,8 +815,27 @@ onMounted(async () => {
 .inst-db-admins-cell {
   font-size: 12px;
   line-height: 1.45;
-  word-break: break-all;
   max-width: 12rem;
+}
+
+.inst-db-admins-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  align-items: baseline;
+}
+
+.inst-db-admins-wrap--table {
+  justify-content: flex-start;
+}
+
+.inst-db-admins-wrap--card {
+  justify-content: flex-end;
+  gap: 0 0.35em;
+}
+
+.inst-db-admin-item {
+  white-space: nowrap;
 }
 
 .data-summary-card__row--admins {
@@ -806,6 +848,7 @@ onMounted(async () => {
   text-align: right;
   font-size: 12px;
   line-height: 1.45;
-  word-break: break-all;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

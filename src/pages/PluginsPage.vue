@@ -93,10 +93,17 @@ async function togglePreview(name: string) {
               </div>
             </RouterLink>
           </div>
-          <div class="plugin-card__actions">
+          <div class="plugin-card__actions plugin-card__actions--pair">
+            <RouterLink
+              class="btn btn--primary plugin-card__action-btn"
+              :to="{ name: 'plugin-config', params: { name: p.name } }"
+              @click.stop
+            >
+              编辑配置
+            </RouterLink>
             <button
               type="button"
-              class="btn"
+              class="btn plugin-card__action-btn"
               @click.stop="togglePreview(p.name)"
             >
               {{ open === p.name ? "收起预览" : "预览配置项" }}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchPluginConfig,
@@ -26,6 +26,7 @@ const helpMenuHiddenList = ref<string[]>([]);
 const helpMenuIgnoredList = ref<string[]>([]);
 const helpMenuBusy = ref(false);
 const helpMenuErr = ref("");
+const saveFeedbackRef = ref<HTMLElement | null>(null);
 
 const showInHelpMenu = computed(() => {
   if (!pluginRow.value) return false;
@@ -143,9 +144,13 @@ async function save() {
       }
     }
     data.value = await putPluginConfig(pluginName.value, values);
-    ok.value = "已保存。";
+    ok.value = "已保存，表单已与服务端返回的值对齐。";
+    await nextTick();
+    saveFeedbackRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+    await nextTick();
+    saveFeedbackRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } finally {
     saving.value = false;
   }
@@ -153,7 +158,7 @@ async function save() {
 </script>
 
 <template>
-  <div>
+  <div class="plugin-config-page">
     <p
       v-if="pluginName"
       class="muted"
@@ -167,16 +172,10 @@ async function save() {
     </p>
 
     <div
-      v-if="err"
+      v-if="err && !data"
       class="alert alert--err"
     >
       {{ err }}
-    </div>
-    <div
-      v-if="ok"
-      class="alert alert--ok"
-    >
-      {{ ok }}
     </div>
 
     <ConsolePageSkeleton
@@ -263,7 +262,7 @@ async function save() {
 
     <div
       v-if="data"
-      class="panel"
+      class="panel plugin-config-page__fields-panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
@@ -275,6 +274,7 @@ async function save() {
             type="button"
             class="btn btn--primary"
             :disabled="saving"
+            :aria-busy="saving || undefined"
             @click="save"
           >
             {{ saving ? "保存中…" : "保存" }}
@@ -282,6 +282,27 @@ async function save() {
         </div>
       </div>
       <div class="panel__bd">
+        <div
+          v-if="ok || err"
+          ref="saveFeedbackRef"
+          class="plugin-config-page__save-feedback"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div
+            v-if="err"
+            class="alert alert--err"
+          >
+            {{ err }}
+          </div>
+          <div
+            v-else-if="ok"
+            class="alert alert--ok"
+          >
+            {{ ok }}
+          </div>
+        </div>
         <div
           v-for="f in data.fields"
           :key="f.name"
@@ -337,5 +358,13 @@ async function save() {
 .plugin-help-menu-label--disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.plugin-config-page__save-feedback {
+  margin-bottom: 16px;
+}
+
+.plugin-config-page__save-feedback .alert {
+  margin: 0;
 }
 </style>

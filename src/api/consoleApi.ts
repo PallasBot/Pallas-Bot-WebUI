@@ -27,6 +27,7 @@ import type {
   PluginConfigData,
   CommonConfigSectionMeta,
   MessageStatsData,
+  ConsoleDailyStatsData,
   PluginRunStatsData,
 } from "./pallasTypes";
 
@@ -125,6 +126,21 @@ export async function fetchPluginRunStats(selfId?: number): Promise<PluginRunSta
     params: selfId ? { self_id: selfId } : {},
   });
   return unwrap(data, "/plugin-run-stats");
+}
+
+export async function fetchConsoleDailyStats(params?: {
+  selfId?: number;
+  start?: string;
+  end?: string;
+}): Promise<ConsoleDailyStatsData> {
+  const { data } = await http.get<ApiOk<ConsoleDailyStatsData>>("/console-daily-stats", {
+    params: {
+      ...(params?.selfId ? { self_id: params.selfId } : {}),
+      ...(params?.start ? { start: params.start } : {}),
+      ...(params?.end ? { end: params.end } : {}),
+    },
+  });
+  return unwrap(data, "/console-daily-stats");
 }
 
 export async function fetchPluginConfigHint(): Promise<string> {
@@ -293,6 +309,7 @@ export async function putGroupConfig(
     disabled_plugins: string[];
     roulette_mode: number;
     banned: boolean;
+    blocked_user_ids: number[];
   }>,
 ): Promise<GroupConfigPublic> {
   const { data } = await http.put<ApiOk<GroupConfigPublic>>(`/group-configs/${groupId}`, body);

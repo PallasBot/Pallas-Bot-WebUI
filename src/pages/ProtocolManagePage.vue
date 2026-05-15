@@ -122,7 +122,6 @@ onMounted(async () => {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入口
           <RefreshIconButton
             :busy="loadBusy"
-            :disabled="loadBusy"
             label="刷新协议端数据"
             @click="load"
           />

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { ApiCallNamedSeries, PluginMatcherNamedSeries, PluginRunStatsRow, PluginRow } from "@/api/pallasTypes";
+import type {
+  ApiCallNamedSeries,
+  ConsoleDailyStatRow,
+  PluginMatcherNamedSeries,
+  PluginRunStatsRow,
+  PluginRow,
+} from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 
@@ -14,6 +20,7 @@ const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
 type ChartPanelId =
   | "plugins_top"
+  | "daily_msg_matcher"
   | "api_hourly"
   | "api_bucket"
   | "matcher_hourly"
@@ -24,6 +31,7 @@ type ChartPanelId =
 
 const PANEL_ORDER: ChartPanelId[] = [
   "plugins_top",
+  "daily_msg_matcher",
   "api_hourly",
   "api_bucket",
   "matcher_hourly",
@@ -110,7 +118,24 @@ const props = defineProps<{
   matcherRunsByPlugin?: PluginMatcherNamedSeries[];
   matcherErrorsByPlugin?: PluginMatcherNamedSeries[];
   matcherHistoryBucketSec?: number;
+  /** GET /console-daily-stats 的 rows（当前选中账号） */
+  dailyStatRows?: ConsoleDailyStatRow[] | null;
+  /** 非空时将说明与勾选区传送至该选择器（如 #home-account-chart-config-outlet），用于压缩账户卡高度 */
+  chartFilterTeleport?: string | null;
+  /** 图表标题旁小字：今日 API 摘要片段（如「今日 API 22」） */
+  toolbarSummaryApi?: string | null;
+  /** 插件今日调用摘要片段（如「插件 145」） */
+  toolbarSummaryPlugin?: string | null;
 }>();
+
+const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?? "");
+
+const toolbarSummaryText = computed(() => {
+  const a = props.toolbarSummaryApi?.trim() ?? "";
+  const p = props.toolbarSummaryPlugin?.trim() ?? "";
+  if (a && p) return `${a} · ${p}`;
+  return a || p;
+});
 
 const selectedApiKeys = ref<string[]>([]);
 const selectedMatcherKeys = ref<string[]>([]);
@@ -250,8 +275,14 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
   });
 });
 
+/** 总览账户卡右侧：仅展示前 N 条，避免插件多时令图表区纵向膨胀 */
+const HERO_CHART_TOP_PLUGIN_ROWS = 7;
+
 const topPlugins = computed(() =>
-  [...props.plugins].sort((a, b) => b.runs_today - a.runs_today).filter((p) => p.runs_today > 0).slice(0, 8),
+  [...props.plugins]
+    .sort((a, b) => b.runs_today - a.runs_today)
+    .filter((p) => p.runs_today > 0)
+    .slice(0, HERO_CHART_TOP_PLUGIN_ROWS),
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
@@ -263,42 +294,139 @@ function fmtBucketSec(sec: number | undefined): string {
   return `${s} 秒`;
 }
 
-type Layer = { label: string; color: string; poly: string };
+type BucketBarSeries = { label: string; color: string; vals: number[] };
 
-function buildLayers(
-  rows: { label: string; points: { at: number; total: number }[] }[],
-): Layer[] | null {
-  if (!rows.length) return null;
-  let minT = Infinity;
-  let maxT = -Infinity;
-  let maxV = 0;
-  for (const row of rows) {
-    for (const p of row.points) {
-      const t = p.at * 1000;
-      minT = Math.min(minT, t);
-      maxT = Math.max(maxT, t);
-      maxV = Math.max(maxV, p.total);
-    }
-  }
-  if (!Number.isFinite(minT) || maxT <= minT) return null;
-  maxV = Math.max(maxV, 1);
-  const dr = maxT - minT;
-  const w = 100;
-  const h = 44;
-  return rows.map((row, i) => ({
-    label: row.label,
-    color: COLORS[i % COLORS.length]!,
-    poly: row.points
-      .map((p) => {
-        const x = ((p.at * 1000 - minT) / dr) * w;
-        const y = h - (p.total / maxV) * (h - 8) - 4;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
-      })
-      .join(" "),
-  }));
+type BucketBarPack = {
+  W: number;
+  H: number;
+  padL: number;
+  padR: number;
+  padT: number;
+  padB: number;
+  innerW: number;
+  innerH: number;
+  left: number;
+  top: number;
+  bottom: number;
+  maxV: number;
+  timesSec: number[];
+  series: BucketBarSeries[];
+  gridYs: number[];
+  yTicks: { y: number; t: string }[];
+  xTicks: { x: number; t: string }[];
+  bars: { x: number; y: number; w: number; h: number; fill: string }[];
+};
+
+function fmtBucketAxisTime(sec: number): string {
+  const d = new Date(sec * 1000);
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  const day0 = localDayStartSec();
+  if (sec >= day0 && sec < day0 + 86400) return `${hh}:${mm}`;
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
-function buildHourlyLayers(rows: { label: string; hours: number[] }[]): Layer[] | null {
+function buildBucketBarPack(
+  rows: { label: string; points: { at: number; total: number }[] }[],
+): BucketBarPack | null {
+  if (!rows.length) return null;
+  const timeSet = new Set<number>();
+  for (const row of rows) {
+    for (const p of row.points) {
+      const t = Math.floor(Number(p.at));
+      if (Number.isFinite(t)) timeSet.add(t);
+    }
+  }
+  const timesSec = [...timeSet].sort((a, b) => a - b);
+  if (!timesSec.length) return null;
+
+  const valAt = (points: { at: number; total: number }[], t: number) => {
+    const hit = points.find((p) => Math.floor(Number(p.at)) === t);
+    return hit ? Number(hit.total) || 0 : 0;
+  };
+
+  const series: BucketBarSeries[] = rows.map((row, i) => ({
+    label: row.label,
+    color: COLORS[i % COLORS.length]!,
+    vals: timesSec.map((t) => valAt(row.points, t)),
+  }));
+
+  let maxV = 1;
+  for (const s of series) {
+    for (const v of s.vals) maxV = Math.max(maxV, v);
+  }
+
+  const W = 440;
+  const H = 212;
+  const padL = 42;
+  const padR = 10;
+  const padT = 10;
+  const padB = 34;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const top = padT;
+  const bottom = padT + innerH;
+
+  const nT = timesSec.length;
+  const nS = series.length;
+  const slotW = innerW / Math.max(1, nT);
+  const bars: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+
+  for (let i = 0; i < nT; i++) {
+    const colL = left + i * slotW;
+    const groupMargin = slotW * (nT <= 3 ? 0.05 : 0.08);
+    const innerCol = Math.max(0, slotW - 2 * groupMargin);
+    const bw = nS > 0 ? innerCol / nS : 0;
+    for (let s = 0; s < nS; s++) {
+      const v = series[s]!.vals[i] ?? 0;
+      const bh = (v / maxV) * innerH;
+      const bx = colL + groupMargin + s * bw + bw * 0.05;
+      const barW = Math.max(1.5, bw * 0.9);
+      const by = bottom - bh;
+      bars.push({ x: bx, y: by, w: barW, h: bh, fill: series[s]!.color });
+    }
+  }
+
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
+  const fmtTick = (x: number) =>
+    Number.isInteger(x) ? String(x) : x >= 10 ? String(Math.round(x)) : x.toFixed(1);
+  const yTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: fmtTick(maxV / 2) },
+    { y: top, t: fmtTick(maxV) },
+  ];
+  const xi = pickTickIndices(nT, 9);
+  const xTicks = xi.map((idx) => ({
+    x: left + (idx + 0.5) * slotW,
+    t: fmtBucketAxisTime(timesSec[idx]!),
+  }));
+
+  return {
+    W,
+    H,
+    padL,
+    padR,
+    padT,
+    padB,
+    innerW,
+    innerH,
+    left,
+    top,
+    bottom,
+    maxV,
+    timesSec,
+    series,
+    gridYs,
+    yTicks,
+    xTicks,
+    bars,
+  };
+}
+
+type HourlyLayerLine = { label: string; color: string; poly: string };
+
+function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLayerLine[] | null {
   if (!rows.length) return null;
   const maxV = Math.max(1, ...rows.flatMap((r) => r.hours));
   const w = 100;
@@ -318,11 +446,11 @@ function buildHourlyLayers(rows: { label: string; hours: number[] }[]): Layer[] 
   }));
 }
 
-const apiLayers = computed(() => {
+const apiBucketPack = computed(() => {
   const rows = (props.apiHistoryByApi ?? [])
     .filter((s) => selectedApiKeys.value.includes(s.api) && (s.points?.length ?? 0) > 0)
     .map((s) => ({ label: s.api, points: s.points }));
-  return buildLayers(rows);
+  return buildBucketBarPack(rows);
 });
 
 const hourlyApiLayers = computed(() => {
@@ -332,7 +460,7 @@ const hourlyApiLayers = computed(() => {
   return buildHourlyLayers(rows);
 });
 
-const matcherRunLayers = computed(() => {
+const matcherBucketPack = computed(() => {
   const meta = props.pluginsMeta ?? undefined;
   const rows = (props.matcherRunsByPlugin ?? [])
     .filter((s) => selectedMatcherKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
@@ -340,7 +468,7 @@ const matcherRunLayers = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildLayers(rows);
+  return buildBucketBarPack(rows);
 });
 
 const hourlyMatcherLayers = computed(() => {
@@ -354,7 +482,7 @@ const hourlyMatcherLayers = computed(() => {
   return buildHourlyLayers(rows);
 });
 
-const matcherErrLayers = computed(() => {
+const matcherErrBucketPack = computed(() => {
   const meta = props.pluginsMeta ?? undefined;
   const rows = (props.matcherErrorsByPlugin ?? [])
     .filter((s) => selectedMatcherErrKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
@@ -362,7 +490,7 @@ const matcherErrLayers = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       points: s.points,
     }));
-  return buildLayers(rows);
+  return buildBucketBarPack(rows);
 });
 
 const hourlyMatcherErrLayers = computed(() => {
@@ -409,7 +537,7 @@ const lastLabel = computed(() => {
 });
 
 const showLocalSpark = computed(
-  () => !matcherRunLayers.value?.length && !!sparkPoly.value,
+  () => matcherRunCandidates.value.length === 0 && !!sparkPoly.value,
 );
 
 const apiCandidates = computed(() =>
@@ -426,6 +554,14 @@ const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
 
+/** 展开且存在 Teleport 目标时显示卡底配置条；local_spark 仅在可展示时显示（避免空块） */
+const chartFilterStripVisible = computed(
+  () =>
+    !!chartFilterTeleportTo.value &&
+    chartsDrawExpanded.value &&
+    (chartPanel.value !== "local_spark" || showLocalSpark.value),
+);
+
 function toggleChartsDraw() {
   chartsDrawExpanded.value = !chartsDrawExpanded.value;
   saveChartsDrawExpanded(chartsDrawExpanded.value);
@@ -433,6 +569,7 @@ function toggleChartsDraw() {
 
 const panelAvailability = computed(() => ({
   plugins_top: true,
+  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 2,
   api_hourly: apiCandidates.value.length > 0,
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
@@ -445,12 +582,13 @@ const panelAvailability = computed(() => ({
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
     plugins_top: "插件今日次数（Top）",
+    daily_msg_matcher: "消息 / Matcher（按日）",
     api_hourly: "协议 API · 今日各小时",
-    api_bucket: "协议 API · 按时间桶",
+    api_bucket: "协议 API · 按时间桶（柱状）",
     matcher_hourly: "Matcher · 今日各小时",
-    matcher_bucket: "Matcher · 按时间桶",
+    matcher_bucket: "Matcher · 按时间桶（柱状）",
     matcher_err_hourly: "Matcher 异常 · 今日各小时",
-    matcher_err_bucket: "Matcher 异常 · 按时间桶",
+    matcher_err_bucket: "Matcher 异常 · 按时间桶（柱状）",
     local_spark: "Matcher 累计（本机采样）",
   };
   return PANEL_ORDER.map((id) => ({
@@ -521,44 +659,173 @@ function toggleAllMatcherErr(on: boolean) {
 function pluginBarLabel(name: string): string {
   return matcherPluginDisplayName(name, props.pluginsMeta ?? undefined);
 }
+
+function catmullStrokePath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0]!.x} ${pts[0]!.y}`;
+  let d = `M ${pts[0]!.x} ${pts[0]!.y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = i > 0 ? pts[i - 1]! : pts[0]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = i + 2 < pts.length ? pts[i + 2]! : p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+function linearAreaPath(pts: { x: number; y: number }[], bottomY: number): string {
+  if (!pts.length) return "";
+  const first = pts[0]!;
+  const last = pts[pts.length - 1]!;
+  let d = `M ${first.x} ${bottomY} L ${first.x} ${first.y}`;
+  for (let i = 1; i < pts.length; i++) {
+    d += ` L ${pts[i]!.x} ${pts[i]!.y}`;
+  }
+  d += ` L ${last.x} ${bottomY} Z`;
+  return d;
+}
+
+function pickTickIndices(n: number, maxTicks: number): number[] {
+  if (n <= 0) return [];
+  if (n <= maxTicks) return Array.from({ length: n }, (_, i) => i);
+  const out: number[] = [0];
+  const step = (n - 1) / (maxTicks - 1);
+  for (let k = 1; k < maxTicks - 1; k++) {
+    out.push(Math.min(n - 1, Math.round(k * step)));
+  }
+  out.push(n - 1);
+  return [...new Set(out)].sort((a, b) => a - b);
+}
+
+const dailyChartPack = computed(() => {
+  const raw = [...(props.dailyStatRows ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  if (raw.length < 2) return null;
+  const W = 400;
+  const H = 200;
+  const padL = 44;
+  const padR = 44;
+  const padT = 36;
+  const padB = 40;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const top = padT;
+  const bottom = padT + innerH;
+  const msgSums = raw.map((r) => (Number(r.received) || 0) + (Number(r.sent) || 0));
+  const mats = raw.map((r) => Number(r.matcher_runs) || 0);
+  const maxM = Math.max(...msgSums, 1);
+  const maxMat = Math.max(...mats, 1);
+  const n = raw.length;
+  const xAt = (i: number) => left + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const yMsg = (v: number) => bottom - (v / maxM) * innerH;
+  const yMat = (v: number) => bottom - (v / maxMat) * innerH;
+  const msgPts = msgSums.map((v, i) => ({ x: xAt(i), y: yMsg(v) }));
+  const matPts = mats.map((v, i) => ({ x: xAt(i), y: yMat(v) }));
+  const msgPathD = catmullStrokePath(msgPts);
+  const matPathD = catmullStrokePath(matPts);
+  const msgAreaD = linearAreaPath(msgPts, bottom);
+  const matAreaD = linearAreaPath(matPts, bottom);
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
+  const fmtTick = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+  const leftTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
+    { y: top, t: fmtTick(maxM) },
+  ];
+  const rightTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
+    { y: top, t: fmtTick(maxMat) },
+  ];
+  const xi = pickTickIndices(n, 10);
+  const xTicks = xi.map((i) => ({
+    x: xAt(i),
+    t: raw[i]!.date.length >= 10 ? raw[i]!.date.slice(5) : raw[i]!.date,
+  }));
+  return {
+    W,
+    H,
+    padL,
+    padR,
+    padT,
+    padB,
+    innerW,
+    innerH,
+    left,
+    top,
+    bottom,
+    gridYs,
+    msgPathD,
+    matPathD,
+    msgAreaD,
+    matAreaD,
+    msgDots: msgPts,
+    matDots: matPts,
+    leftTicks,
+    rightTicks,
+    xTicks,
+  };
+});
 </script>
 
 <template>
   <div class="home-plugin-charts">
-    <div class="home-plugin-charts__toolbar">
-      <div class="home-plugin-charts__toolbar-main">
-        <label
-          class="home-plugin-charts__toolbar-label muted"
-          for="home-chart-panel-sel"
-        ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表视图</label>
-        <select
-          id="home-chart-panel-sel"
-          v-model="chartPanel"
-          class="sel home-plugin-charts__pick"
-        >
-          <option
-            v-for="o in panelOptions"
-            :key="o.id"
-            :value="o.id"
-            :disabled="!o.available"
+    <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
+      <div class="home-plugin-charts__toolbar-line">
+        <div class="home-plugin-charts__toolbar-main">
+          <div class="home-plugin-charts__toolbar-head">
+            <label
+              class="home-plugin-charts__toolbar-label muted"
+              for="home-chart-panel-sel"
+              title="图表视图"
+            ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
+            <span
+              v-if="toolbarSummaryText"
+              class="home-plugin-charts__toolbar-summary muted"
+            >{{ toolbarSummaryText }}</span>
+          </div>
+          <select
+            id="home-chart-panel-sel"
+            v-model="chartPanel"
+            class="sel home-plugin-charts__pick home-plugin-charts__pick--compact"
+            title="切换要查看的图表类型（如插件 Top、按日汇总、协议 API 等）"
           >
-            {{ o.label }}
-          </option>
-        </select>
+            <option
+              v-for="o in panelOptions"
+              :key="o.id"
+              :value="o.id"
+              :disabled="!o.available"
+            >
+              {{ o.label }}
+            </option>
+          </select>
+        </div>
+        <button
+          type="button"
+          class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
+          :aria-expanded="chartsDrawExpanded"
+          :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
+          aria-controls="home-plugin-charts-draw"
+          @click="toggleChartsDraw"
+        >
+          <span
+            class="home-plugin-charts__draw-toggle-ico"
+            aria-hidden="true"
+          >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
+          <span class="home-plugin-charts__draw-toggle-txt">{{ chartsDrawExpanded ? "收起" : "展开" }}</span>
+        </button>
       </div>
-      <button
-        type="button"
-        class="home-plugin-charts__draw-toggle"
-        :aria-expanded="chartsDrawExpanded"
-        aria-controls="home-plugin-charts-draw"
-        @click="toggleChartsDraw"
+      <p
+        v-if="chartFilterTeleportTo && !chartsDrawExpanded"
+        class="home-plugin-charts__toolbar-hint muted"
       >
-        <span
-          class="home-plugin-charts__draw-toggle-ico"
-          aria-hidden="true"
-        >{{ chartsDrawExpanded ? "▼" : "▶" }}</span>
-        <span>{{ chartsDrawExpanded ? "收起绘图" : "展开绘图" }}</span>
-      </button>
+        点「展开」后，在本账户卡最底部可勾选要绘制的协议 / Matcher 等。
+      </p>
     </div>
 
     <div
@@ -570,11 +837,9 @@ function pluginBarLabel(name: string): string {
       v-if="chartPanel === 'plugins_top'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        插件今日次数（Top）
-      </div>
+      <div class="home-plugin-charts__flip">
       <p
-        v-if="busy"
+        v-if="busy && !topPlugins.length"
         class="muted home-plugin-charts__empty"
       >
         加载中…
@@ -587,7 +852,7 @@ function pluginBarLabel(name: string): string {
       </p>
       <div
         v-else
-        class="home-plugin-bars"
+        class="home-plugin-bars home-plugin-charts__viz"
       >
         <div
           v-for="p in topPlugins"
@@ -607,61 +872,224 @@ function pluginBarLabel(name: string): string {
           <span class="home-plugin-bars__val">{{ p.runs_today }}</span>
         </div>
       </div>
+      </div>
+    </div>
+
+    <div
+      v-if="chartPanel === 'daily_msg_matcher'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
+          按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
+        </p>
+      </template>
+      <p
+        v-if="busy && !dailyChartPack"
+        class="muted home-plugin-charts__empty"
+      >
+        加载中…
+      </p>
+      <p
+        v-else-if="!dailyChartPack"
+        class="muted home-plugin-charts__empty"
+      >
+        至少需要 2 个自然日的记录才能绘制折线。请保持 Bot 运行并隔日查看。
+      </p>
+      <div
+        v-else
+        class="home-plugin-daily home-plugin-charts__viz"
+      >
+        <div class="home-plugin-daily__legend muted">
+          <span class="home-plugin-daily__leg-item">
+            <i
+              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--msg"
+              aria-hidden="true"
+            />
+            消息收+发
+          </span>
+          <span class="home-plugin-daily__leg-item">
+            <i
+              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--mat"
+              aria-hidden="true"
+            />
+            Matcher
+          </span>
+        </div>
+        <div class="home-plugin-daily__svg-wrap">
+          <svg
+            class="home-plugin-daily__svg"
+            :viewBox="`0 0 ${dailyChartPack.W} ${dailyChartPack.H}`"
+            preserveAspectRatio="xMidYMid meet"
+            overflow="visible"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient
+                id="home-daily-msg-area"
+                gradientUnits="userSpaceOnUse"
+                :x1="dailyChartPack.left"
+                :y1="dailyChartPack.bottom"
+                :x2="dailyChartPack.left"
+                :y2="dailyChartPack.top"
+              >
+                <stop
+                  offset="0%"
+                  stop-color="#f472b6"
+                  stop-opacity="0"
+                />
+                <stop
+                  offset="100%"
+                  stop-color="#f472b6"
+                  stop-opacity="0.2"
+                />
+              </linearGradient>
+              <linearGradient
+                id="home-daily-mat-area"
+                gradientUnits="userSpaceOnUse"
+                :x1="dailyChartPack.left"
+                :y1="dailyChartPack.bottom"
+                :x2="dailyChartPack.left"
+                :y2="dailyChartPack.top"
+              >
+                <stop
+                  offset="0%"
+                  stop-color="#d946ef"
+                  stop-opacity="0"
+                />
+                <stop
+                  offset="100%"
+                  stop-color="#d946ef"
+                  stop-opacity="0.18"
+                />
+              </linearGradient>
+            </defs>
+            <line
+              v-for="(gy, gi) in dailyChartPack.gridYs"
+              :key="`g-${gi}`"
+              class="home-plugin-daily__grid"
+              :x1="dailyChartPack.left"
+              :y1="gy"
+              :x2="dailyChartPack.left + dailyChartPack.innerW"
+              :y2="gy"
+            />
+            <text
+              v-for="(tk, ti) in dailyChartPack.leftTicks"
+              :key="`lt-${ti}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--left"
+              :x="6"
+              :y="tk.y + 4"
+            >{{ tk.t }}</text>
+            <text
+              v-for="(tk, ti) in dailyChartPack.rightTicks"
+              :key="`rt-${ti}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--right"
+              :x="dailyChartPack.W - 6"
+              :y="tk.y + 4"
+            >{{ tk.t }}</text>
+            <text
+              v-for="(xt, xi) in dailyChartPack.xTicks"
+              :key="`xt-${xi}`"
+              class="home-plugin-daily__axis home-plugin-daily__axis--x"
+              :x="xt.x"
+              :y="dailyChartPack.H - 8"
+            >{{ xt.t }}</text>
+            <path
+              class="home-plugin-daily__area home-plugin-daily__area--mat"
+              :d="dailyChartPack.matAreaD"
+              fill="url(#home-daily-mat-area)"
+            />
+            <path
+              class="home-plugin-daily__area home-plugin-daily__area--msg"
+              :d="dailyChartPack.msgAreaD"
+              fill="url(#home-daily-msg-area)"
+            />
+            <path
+              class="home-plugin-daily__line home-plugin-daily__line--mat"
+              :d="dailyChartPack.matPathD"
+              fill="none"
+            />
+            <path
+              class="home-plugin-daily__line home-plugin-daily__line--msg"
+              :d="dailyChartPack.msgPathD"
+              fill="none"
+            />
+            <circle
+              v-for="(p, di) in dailyChartPack.matDots"
+              :key="`md-${di}`"
+              class="home-plugin-daily__dot home-plugin-daily__dot--mat"
+              :cx="p.x"
+              :cy="p.y"
+              r="3.2"
+            />
+            <circle
+              v-for="(p, di) in dailyChartPack.msgDots"
+              :key="`mg-${di}`"
+              class="home-plugin-daily__dot home-plugin-daily__dot--msg"
+              :cx="p.x"
+              :cy="p.y"
+              r="3.2"
+            />
+          </svg>
+        </div>
+      </div>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'api_hourly'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        协议 API · 今日各小时（本地日）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
-      </p>
-      <div
-        v-if="apiCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllApis(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllApis(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in apiCandidates"
-            :key="s.api"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedApiKeys"
-              type="checkbox"
-              :value="s.api"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
+        </p>
+        <div
+          v-if="apiCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllApis(true)"
             >
-            <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllApis(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in apiCandidates"
+              :key="s.api"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedApiKeys"
+                type="checkbox"
+                :value="s.api"
+              >
+              <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
         v-if="hourlyApiLayers?.length"
-        class="home-plugin-multi"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           overflow="hidden"
           aria-hidden="true"
         >
@@ -707,84 +1135,119 @@ function pluginBarLabel(name: string): string {
       >
         暂无协议 API 时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'api_bucket'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        协议 API（服务端 · 按时间桶）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}；纵轴为所选曲线在窗内的峰值归一。勾选下方接口名。
-      </p>
-      <div
-        v-if="apiCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllApis(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllApis(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in apiCandidates"
-            :key="`bucket-${s.api}`"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedApiKeys"
-              type="checkbox"
-              :value="s.api"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          服务端按固定桶宽累计；柱状图纵轴为<strong>该桶内真实次数</strong>（多曲线共用同一纵轴刻度）。横轴为桶起点时刻（本地显示）。当前桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}。
+        </p>
+        <div
+          v-if="apiCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllApis(true)"
             >
-            <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllApis(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in apiCandidates"
+              :key="`bucket-${s.api}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedApiKeys"
+                type="checkbox"
+                :value="s.api"
+              >
+              <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
-        v-if="apiLayers?.length"
-        class="home-plugin-multi"
+        v-if="apiBucketPack"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
-          class="home-plugin-spark"
-          viewBox="0 0 100 48"
-          preserveAspectRatio="none"
+          class="home-plugin-bucket__svg"
+          :viewBox="`0 0 ${apiBucketPack.W} ${apiBucketPack.H}`"
+          preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
           aria-hidden="true"
         >
-          <polyline
-            v-for="(ly, idx) in apiLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
+          <line
+            v-for="(gy, gi) in apiBucketPack.gridYs"
+            :key="`ag-${gi}`"
+            class="home-plugin-bucket__grid"
+            :x1="apiBucketPack.left"
+            :y1="gy"
+            :x2="apiBucketPack.left + apiBucketPack.innerW"
+            :y2="gy"
+          />
+          <line
+            class="home-plugin-bucket__axis"
+            :x1="apiBucketPack.left"
+            :y1="apiBucketPack.bottom"
+            :x2="apiBucketPack.left + apiBucketPack.innerW"
+            :y2="apiBucketPack.bottom"
+          />
+          <text
+            v-for="(tk, ti) in apiBucketPack.yTicks"
+            :key="`ayt-${ti}`"
+            class="home-plugin-bucket__ytick"
+            :x="4"
+            :y="tk.y + 4"
+          >{{ tk.t }}</text>
+          <text
+            v-for="(xk, xi) in apiBucketPack.xTicks"
+            :key="`axt-${xi}`"
+            class="home-plugin-bucket__xtick"
+            text-anchor="middle"
+            :x="xk.x"
+            :y="apiBucketPack.H - 6"
+          >{{ xk.t }}</text>
+          <rect
+            v-for="(b, bi) in apiBucketPack.bars"
+            :key="`ab-${bi}`"
+            class="home-plugin-bucket__bar"
+            :x="b.x"
+            :y="b.y"
+            :width="b.w"
+            :height="b.h"
+            :fill="b.fill"
+            rx="1.5"
           />
         </svg>
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in apiLayers"
+            v-for="(s, idx) in apiBucketPack.series"
             :key="idx"
             class="home-plugin-legend__item"
           >
             <i
               class="home-plugin-legend__sw"
-              :style="{ background: ly.color }"
+              :style="{ background: s.color }"
             />
-            <span :title="ly.label">{{ ly.label }}</span>
+            <span :title="s.label">{{ s.label }}</span>
           </span>
         </div>
       </div>
@@ -800,61 +1263,62 @@ function pluginBarLabel(name: string): string {
       >
         暂无协议 API 时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'matcher_hourly'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        Matcher · 今日各小时（本地日）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
-      </p>
-      <div
-        v-if="matcherRunCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatchers(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatchers(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in matcherRunCandidates"
-            :key="s.plugin"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedMatcherKeys"
-              type="checkbox"
-              :value="s.plugin"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
+        </p>
+        <div
+          v-if="matcherRunCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(true)"
             >
-            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherRunCandidates"
+              :key="s.plugin"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
         v-if="hourlyMatcherLayers?.length"
-        class="home-plugin-multi"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           overflow="hidden"
           aria-hidden="true"
         >
@@ -900,84 +1364,119 @@ function pluginBarLabel(name: string): string {
       >
         暂无 Matcher 时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'matcher_bucket'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        Matcher 执行（服务端 · 按时间桶）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；每曲线为该插件 Matcher 每桶执行次数。勾选见上类视图或下方。
-      </p>
-      <div
-        v-if="matcherRunCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatchers(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatchers(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in matcherRunCandidates"
-            :key="`mb-${s.plugin}`"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedMatcherKeys"
-              type="checkbox"
-              :value="s.plugin"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          每柱为该插件 Matcher 在对应时间桶内的<strong>执行次数</strong>；多插件共用纵轴。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
+        </p>
+        <div
+          v-if="matcherRunCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(true)"
             >
-            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherRunCandidates"
+              :key="`mb-${s.plugin}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
-        v-if="matcherRunLayers?.length"
-        class="home-plugin-multi"
+        v-if="matcherBucketPack"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
-          class="home-plugin-spark"
-          viewBox="0 0 100 48"
-          preserveAspectRatio="none"
+          class="home-plugin-bucket__svg"
+          :viewBox="`0 0 ${matcherBucketPack.W} ${matcherBucketPack.H}`"
+          preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
           aria-hidden="true"
         >
-          <polyline
-            v-for="(ly, idx) in matcherRunLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
+          <line
+            v-for="(gy, gi) in matcherBucketPack.gridYs"
+            :key="`mg-${gi}`"
+            class="home-plugin-bucket__grid"
+            :x1="matcherBucketPack.left"
+            :y1="gy"
+            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
+            :y2="gy"
+          />
+          <line
+            class="home-plugin-bucket__axis"
+            :x1="matcherBucketPack.left"
+            :y1="matcherBucketPack.bottom"
+            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
+            :y2="matcherBucketPack.bottom"
+          />
+          <text
+            v-for="(tk, ti) in matcherBucketPack.yTicks"
+            :key="`myt-${ti}`"
+            class="home-plugin-bucket__ytick"
+            :x="4"
+            :y="tk.y + 4"
+          >{{ tk.t }}</text>
+          <text
+            v-for="(xk, xi) in matcherBucketPack.xTicks"
+            :key="`mxt-${xi}`"
+            class="home-plugin-bucket__xtick"
+            text-anchor="middle"
+            :x="xk.x"
+            :y="matcherBucketPack.H - 6"
+          >{{ xk.t }}</text>
+          <rect
+            v-for="(b, bi) in matcherBucketPack.bars"
+            :key="`mb-${bi}`"
+            class="home-plugin-bucket__bar"
+            :x="b.x"
+            :y="b.y"
+            :width="b.w"
+            :height="b.h"
+            :fill="b.fill"
+            rx="1.5"
           />
         </svg>
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in matcherRunLayers"
+            v-for="(s, idx) in matcherBucketPack.series"
             :key="idx"
             class="home-plugin-legend__item"
           >
             <i
               class="home-plugin-legend__sw"
-              :style="{ background: ly.color }"
+              :style="{ background: s.color }"
             />
-            <span :title="ly.label">{{ ly.label }}</span>
+            <span :title="s.label">{{ s.label }}</span>
           </span>
         </div>
       </div>
@@ -993,61 +1492,62 @@ function pluginBarLabel(name: string): string {
       >
         暂无 Matcher 时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'matcher_err_hourly'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        Matcher 异常 · 今日各小时（本地日）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
-      </p>
-      <div
-        v-if="matcherErrCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatcherErr(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatcherErr(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in matcherErrCandidates"
-            :key="`errh-${s.plugin}`"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedMatcherErrKeys"
-              type="checkbox"
-              :value="s.plugin"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
+        </p>
+        <div
+          v-if="matcherErrCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatcherErr(true)"
             >
-            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatcherErr(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherErrCandidates"
+              :key="`errh-${s.plugin}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherErrKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
         v-if="hourlyMatcherErrLayers?.length"
-        class="home-plugin-multi"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
           class="home-plugin-spark home-plugin-spark--hourly"
           viewBox="0 0 100 52"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           overflow="hidden"
           aria-hidden="true"
         >
@@ -1093,84 +1593,119 @@ function pluginBarLabel(name: string): string {
       >
         暂无 Matcher 异常时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'matcher_err_bucket'"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        Matcher 异常（服务端 · 按时间桶）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        与上同桶；勾选下方插件名。
-      </p>
-      <div
-        v-if="matcherErrCandidates.length"
-        class="home-plugin-sel"
-      >
-        <span class="home-plugin-sel__actions">
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatcherErr(true)"
-          >
-            全选
-          </button>
-          <button
-            type="button"
-            class="home-plugin-sel__btn"
-            @click="toggleAllMatcherErr(false)"
-          >
-            全不选
-          </button>
-        </span>
-        <div class="home-plugin-sel__grid">
-          <label
-            v-for="s in matcherErrCandidates"
-            :key="`meb-${s.plugin}`"
-            class="home-plugin-sel__item"
-          >
-            <input
-              v-model="selectedMatcherErrKeys"
-              type="checkbox"
-              :value="s.plugin"
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          每柱为该插件在桶内的<strong>异常次数</strong>；与成功执行共用同一桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。横轴为桶起点（本地显示）。
+        </p>
+        <div
+          v-if="matcherErrCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatcherErr(true)"
             >
-            <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
-          </label>
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatcherErr(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherErrCandidates"
+              :key="`meb-${s.plugin}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherErrKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </template>
       <div
-        v-if="matcherErrLayers?.length"
-        class="home-plugin-multi"
+        v-if="matcherErrBucketPack"
+        class="home-plugin-multi home-plugin-charts__viz"
       >
         <svg
-          class="home-plugin-spark"
-          viewBox="0 0 100 48"
-          preserveAspectRatio="none"
+          class="home-plugin-bucket__svg"
+          :viewBox="`0 0 ${matcherErrBucketPack.W} ${matcherErrBucketPack.H}`"
+          preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
           aria-hidden="true"
         >
-          <polyline
-            v-for="(ly, idx) in matcherErrLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
+          <line
+            v-for="(gy, gi) in matcherErrBucketPack.gridYs"
+            :key="`eg-${gi}`"
+            class="home-plugin-bucket__grid"
+            :x1="matcherErrBucketPack.left"
+            :y1="gy"
+            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
+            :y2="gy"
+          />
+          <line
+            class="home-plugin-bucket__axis"
+            :x1="matcherErrBucketPack.left"
+            :y1="matcherErrBucketPack.bottom"
+            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
+            :y2="matcherErrBucketPack.bottom"
+          />
+          <text
+            v-for="(tk, ti) in matcherErrBucketPack.yTicks"
+            :key="`eyt-${ti}`"
+            class="home-plugin-bucket__ytick"
+            :x="4"
+            :y="tk.y + 4"
+          >{{ tk.t }}</text>
+          <text
+            v-for="(xk, xi) in matcherErrBucketPack.xTicks"
+            :key="`ext-${xi}`"
+            class="home-plugin-bucket__xtick"
+            text-anchor="middle"
+            :x="xk.x"
+            :y="matcherErrBucketPack.H - 6"
+          >{{ xk.t }}</text>
+          <rect
+            v-for="(b, bi) in matcherErrBucketPack.bars"
+            :key="`eb-${bi}`"
+            class="home-plugin-bucket__bar"
+            :x="b.x"
+            :y="b.y"
+            :width="b.w"
+            :height="b.h"
+            :fill="b.fill"
+            rx="1.5"
           />
         </svg>
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in matcherErrLayers"
+            v-for="(s, idx) in matcherErrBucketPack.series"
             :key="idx"
             class="home-plugin-legend__item"
           >
             <i
               class="home-plugin-legend__sw"
-              :style="{ background: ly.color }"
+              :style="{ background: s.color }"
             />
-            <span :title="ly.label">{{ ly.label }}</span>
+            <span :title="s.label">{{ s.label }}</span>
           </span>
         </div>
       </div>
@@ -1186,23 +1721,24 @@ function pluginBarLabel(name: string): string {
       >
         暂无 Matcher 异常时序数据。
       </p>
+      </div>
     </div>
 
     <div
       v-if="chartPanel === 'local_spark' && showLocalSpark"
       class="home-plugin-charts__block"
     >
-      <div class="home-plugin-charts__caption">
-        Matcher 今日累计（本机刷新采样）
-      </div>
-      <p class="muted home-plugin-charts__hint">
-        无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
-      </p>
-      <div class="home-plugin-spark-wrap">
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
+        </p>
+      </template>
+      <div class="home-plugin-spark-wrap home-plugin-charts__viz">
         <svg
           class="home-plugin-spark"
           viewBox="0 0 100 48"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           aria-hidden="true"
         >
           <polyline
@@ -1216,8 +1752,277 @@ function pluginBarLabel(name: string): string {
           <span v-if="series.length">末次 {{ lastLabel }}</span>
         </div>
       </div>
+      </div>
     </div>
     </div>
+
+    <Teleport
+      v-if="chartFilterTeleportTo"
+      :to="chartFilterTeleportTo"
+      defer
+    >
+      <div
+        v-show="chartFilterStripVisible"
+        class="home-plugin-charts__filter-external"
+      >
+        <template v-if="chartPanel === 'plugins_top'">
+          <p class="muted home-plugin-charts__hint">
+            当前为「插件今日次数」排行，无序列勾选。要勾选协议 API 或 Matcher 曲线，请在上方下拉切换到对应视图。
+          </p>
+        </template>
+        <template v-else-if="chartPanel === 'daily_msg_matcher'">
+          <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
+            按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
+          </p>
+        </template>
+        <template v-else-if="chartPanel === 'api_hourly'">
+          <p class="muted home-plugin-charts__hint">
+            横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
+          </p>
+          <div
+            v-if="apiCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllApis(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllApis(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in apiCandidates"
+                :key="`ext-apih-${s.api}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedApiKeys"
+                  type="checkbox"
+                  :value="s.api"
+                >
+                <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'api_bucket'">
+          <p class="muted home-plugin-charts__hint">
+            服务端按固定桶宽累计；柱状图纵轴为<strong>该桶内真实次数</strong>（多曲线共用同一纵轴刻度）。横轴为桶起点时刻（本地显示）。当前桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}。
+          </p>
+          <div
+            v-if="apiCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllApis(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllApis(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in apiCandidates"
+                :key="`ext-apib-${s.api}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedApiKeys"
+                  type="checkbox"
+                  :value="s.api"
+                >
+                <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_hourly'">
+          <p class="muted home-plugin-charts__hint">
+            插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
+          </p>
+          <div
+            v-if="matcherRunCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherRunCandidates"
+                :key="`ext-mh-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_bucket'">
+          <p class="muted home-plugin-charts__hint">
+            每柱为该插件 Matcher 在对应时间桶内的<strong>执行次数</strong>；多插件共用纵轴。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
+          </p>
+          <div
+            v-if="matcherRunCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherRunCandidates"
+                :key="`ext-mb-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_err_hourly'">
+          <p class="muted home-plugin-charts__hint">
+            与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
+          </p>
+          <div
+            v-if="matcherErrCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatcherErr(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatcherErr(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherErrCandidates"
+                :key="`ext-meh-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherErrKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_err_bucket'">
+          <p class="muted home-plugin-charts__hint">
+            每柱为该插件在桶内的<strong>异常次数</strong>；与成功执行共用同一桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。横轴为桶起点（本地显示）。
+          </p>
+          <div
+            v-if="matcherErrCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatcherErr(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatcherErr(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherErrCandidates"
+                :key="`ext-meb-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherErrKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'local_spark' && showLocalSpark">
+          <p class="muted home-plugin-charts__hint">
+            无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
+          </p>
+        </template>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -1226,7 +2031,13 @@ function pluginBarLabel(name: string): string {
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .home-plugin-charts__toolbar {
   display: flex;
@@ -1236,12 +2047,56 @@ function pluginBarLabel(name: string): string {
   gap: 10px 14px;
   padding: 2px 0 4px;
 }
+.home-plugin-charts__toolbar--compact {
+  flex-wrap: nowrap;
+  padding: 0 0 2px;
+  gap: 6px 8px;
+}
+.home-plugin-charts__toolbar-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 8px;
+  min-width: 0;
+  width: 100%;
+}
+.home-plugin-charts__toolbar--compact .home-plugin-charts__toolbar-main {
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.home-plugin-charts__toolbar-head {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: 6px 10px;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.home-plugin-charts__toolbar-summary {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: min(22rem, 100%);
+}
+.home-plugin-charts__toolbar-hint {
+  margin: 0;
+  padding: 0 0 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
 .home-plugin-charts__toolbar-main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 .home-plugin-charts__draw-toggle {
@@ -1263,6 +2118,15 @@ function pluginBarLabel(name: string): string {
     color 0.15s var(--ease),
     background 0.15s var(--ease);
 }
+.home-plugin-charts__draw-toggle--compact {
+  padding: 3px 8px;
+  font-size: 11px;
+  gap: 3px;
+  line-height: 1.2;
+}
+.home-plugin-charts__draw-toggle-txt {
+  font-weight: 650;
+}
 .home-plugin-charts__draw-toggle:hover {
   border-color: var(--border-strong);
   color: var(--text);
@@ -1279,35 +2143,81 @@ function pluginBarLabel(name: string): string {
 .home-plugin-charts__draw {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .home-plugin-charts__toolbar-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 650;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .home-plugin-charts__pick {
-  min-width: min(100%, 320px);
+  min-width: 0;
   max-width: 100%;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: var(--ui-sel-min-h);
   padding: var(--ui-ctrl-pad-y) var(--ui-sel-arrow-pad) var(--ui-ctrl-pad-y) var(--ui-ctrl-pad-x);
   font-size: var(--ui-ctrl-font);
 }
+.home-plugin-charts__pick--compact {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
 .home-plugin-charts__block {
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.home-plugin-charts__caption {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+.home-plugin-charts__flip {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.home-plugin-charts__flip > .home-plugin-charts__hint {
+  margin: 0;
+}
+.home-plugin-charts__flip > .home-plugin-sel {
+  margin: 0;
+}
+.home-plugin-charts__viz {
+  flex: 1 1 auto;
+  min-height: 120px;
+  min-width: 0;
+}
+.home-plugin-charts__viz.home-plugin-multi {
+  display: flex;
+  flex-direction: column;
+}
+.home-plugin-charts__viz .home-plugin-spark--hourly {
+  height: auto;
+  min-height: 120px;
+  flex: 1 1 auto;
+}
+.home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
+  height: auto;
+  min-height: 108px;
+  flex: 1 1 auto;
+}
+.home-plugin-charts__viz .home-plugin-bucket__svg {
+  min-height: 200px;
+  max-height: min(360px, 52vh);
+  max-width: 100%;
 }
 .home-plugin-charts__hint {
   margin: 0 0 10px;
@@ -1376,6 +2286,8 @@ function pluginBarLabel(name: string): string {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .home-plugin-bars__row {
   display: grid;
@@ -1417,11 +2329,15 @@ function pluginBarLabel(name: string): string {
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 8px 10px 6px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .home-plugin-spark {
   width: 100%;
+  max-width: 100%;
   height: 72px;
   display: block;
+  box-sizing: border-box;
 }
 .home-plugin-spark--hourly {
   height: 80px;
@@ -1473,6 +2389,8 @@ function pluginBarLabel(name: string): string {
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 8px 10px 6px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .home-plugin-spark-meta {
   font-size: 11px;
@@ -1484,12 +2402,55 @@ function pluginBarLabel(name: string): string {
   vector-effect: non-scaling-stroke;
 }
 
+.home-plugin-bucket__svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 172px;
+  max-height: 260px;
+  display: block;
+  box-sizing: border-box;
+}
+
+.home-plugin-bucket__grid {
+  stroke: color-mix(in srgb, var(--border) 88%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-bucket__axis {
+  stroke: color-mix(in srgb, var(--border-strong) 92%, var(--border) 8%);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-bucket__ytick {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+
+.home-plugin-bucket__xtick {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+
+.home-plugin-bucket__bar {
+  opacity: 0.9;
+}
+
 /* 按「图表区块实际宽度」断行，避免宽视口 + 窄内容列时仍横向挤压 */
 @container (max-width: 640px) {
   .home-plugin-charts__toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
+  }
+
+  .home-plugin-charts__toolbar-line {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .home-plugin-charts__toolbar-main {
@@ -1499,8 +2460,9 @@ function pluginBarLabel(name: string): string {
     width: 100%;
   }
 
-  .home-plugin-charts__toolbar-label {
-    width: 100%;
+  .home-plugin-charts__toolbar-head {
+    flex-wrap: wrap;
+    max-width: 100%;
   }
 
   .home-plugin-charts__pick {
@@ -1525,6 +2487,11 @@ function pluginBarLabel(name: string): string {
     gap: 10px;
   }
 
+  .home-plugin-charts__toolbar-line {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .home-plugin-charts__toolbar-main {
     flex-direction: column;
     align-items: stretch;
@@ -1532,8 +2499,9 @@ function pluginBarLabel(name: string): string {
     width: 100%;
   }
 
-  .home-plugin-charts__toolbar-label {
-    width: 100%;
+  .home-plugin-charts__toolbar-head {
+    flex-wrap: wrap;
+    max-width: 100%;
   }
 
   .home-plugin-charts__pick {
@@ -1548,5 +2516,150 @@ function pluginBarLabel(name: string): string {
     justify-content: center;
     box-sizing: border-box;
   }
+}
+
+.home-plugin-daily__hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.home-plugin-daily {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  background: var(--bg-elev);
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.home-plugin-daily__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 22px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.home-plugin-daily__leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-plugin-daily__leg-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.home-plugin-daily__leg-swatch--msg {
+  background: linear-gradient(90deg, #f472b6, #fb7185);
+}
+
+.home-plugin-daily__leg-swatch--mat {
+  background: linear-gradient(90deg, #d946ef, #e879f9);
+}
+
+.home-plugin-daily__svg-wrap {
+  width: 100%;
+  max-width: min(720px, 100%);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.home-plugin-daily__svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 200px;
+  box-sizing: border-box;
+}
+
+.home-plugin-daily__grid {
+  stroke: color-mix(in srgb, var(--border) 70%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-daily__axis {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-sans, system-ui);
+}
+
+.home-plugin-daily__axis--left {
+  text-anchor: start;
+}
+
+.home-plugin-daily__axis--right {
+  text-anchor: end;
+}
+
+.home-plugin-daily__axis--x {
+  text-anchor: middle;
+}
+
+.home-plugin-daily__line {
+  stroke-width: 2.25px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-daily__line--msg {
+  stroke: #f472b6;
+}
+
+.home-plugin-daily__line--mat {
+  stroke: #d946ef;
+}
+
+.home-plugin-daily__dot {
+  stroke: color-mix(in srgb, var(--panel) 82%, #1f2937 18%);
+  stroke-width: 1px;
+}
+
+.home-plugin-daily__dot--msg {
+  fill: #fdf2f8;
+}
+
+.home-plugin-daily__dot--mat {
+  fill: #faf5ff;
+}
+
+html[data-theme="light"] .home-plugin-daily__line--msg {
+  stroke: #db2777;
+}
+
+html[data-theme="light"] .home-plugin-daily__line--mat {
+  stroke: #a21caf;
+}
+
+html[data-theme="light"] .home-plugin-daily__dot--msg {
+  fill: #fff1f2;
+  stroke: #fce7f3;
+}
+
+html[data-theme="light"] .home-plugin-daily__dot--mat {
+  fill: #fdf4ff;
+  stroke: #fae8ff;
+}
+
+.home-plugin-charts__filter-external {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-sizing: border-box;
 }
 </style>

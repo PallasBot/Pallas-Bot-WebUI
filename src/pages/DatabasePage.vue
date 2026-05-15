@@ -103,7 +103,6 @@ async function runAggregate() {
         <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库总览
         <RefreshIconButton
           :busy="dbRefreshBusy"
-          :disabled="dbRefreshBusy"
           label="刷新数据库总览"
           @click="loadAll"
         />
