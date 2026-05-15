@@ -1,21 +1,31 @@
 <script setup lang="ts">
-defineProps<{
-  busy?: boolean;
-  disabled?: boolean;
-  /** 无障碍名称，默认「刷新」 */
-  label?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    busy?: boolean;
+    disabled?: boolean;
+    /** 无障碍名称，默认「刷新」 */
+    label?: string;
+  }>(),
+  { busy: false, disabled: false },
+);
 const emit = defineEmits<{ click: [] }>();
+
+function onClick() {
+  if (props.busy || props.disabled) return;
+  emit("click");
+}
 </script>
 
 <template>
   <button
     type="button"
     class="btn-refresh-icon"
-    :disabled="disabled || busy"
+    :class="{ 'btn-refresh-icon--busy': busy }"
+    :disabled="disabled"
+    :aria-busy="busy || undefined"
     :aria-label="label ?? '刷新'"
     :title="label ?? '刷新'"
-    @click="emit('click')"
+    @click="onClick"
   >
     <svg
       class="btn-refresh-icon__svg"

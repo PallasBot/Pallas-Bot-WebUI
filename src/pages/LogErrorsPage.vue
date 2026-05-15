@@ -63,7 +63,6 @@ function formatAt(sec: number): string {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>日志报错
             <RefreshIconButton
               :busy="loading"
-              :disabled="loading"
               label="刷新"
               @click="load"
             />

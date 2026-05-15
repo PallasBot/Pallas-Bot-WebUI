@@ -121,7 +121,6 @@ function lineClass(lv: LogEntry["level"]): string {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>筛选与视图
             <RefreshIconButton
               :busy="loading"
-              :disabled="loading"
               label="刷新日志"
               @click="load"
             />

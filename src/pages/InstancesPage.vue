@@ -287,7 +287,6 @@ onMounted(async () => {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
             <RefreshIconButton
               :busy="reloadBusy"
-              :disabled="reloadBusy"
               label="刷新实例数据"
               @click="reloadFromUser"
             />

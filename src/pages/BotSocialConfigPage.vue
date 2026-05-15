@@ -359,7 +359,6 @@ onMounted(async () => {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
           <RefreshIconButton
             :busy="busy"
-            :disabled="busy"
             label="刷新群配置列表"
             @click="loadGroupList"
           />
