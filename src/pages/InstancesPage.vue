@@ -138,9 +138,9 @@ function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
 }
 
-function formatBotAdminsDisplay(admins: number[] | undefined | null): string {
-  if (!admins?.length) return "—";
-  return [...admins].sort((a, b) => a - b).join("、");
+function sortedAdminsList(admins: number[] | undefined | null): number[] {
+  if (!admins?.length) return [];
+  return [...admins].sort((a, b) => a - b);
 }
 
 const pluginPickList = computed(() => pluginPickListFromRows(plugins.value));
@@ -439,7 +439,19 @@ onMounted(async () => {
                       c.auto_accept_group ? "开启" : "关闭"
                     }}</span>
                   </td>
-                  <td class="muted inst-db-admins-cell">{{ formatBotAdminsDisplay(c.admins) }}</td>
+                  <td class="muted inst-db-admins-cell">
+                    <template v-if="!sortedAdminsList(c.admins).length">—</template>
+                    <span
+                      v-else
+                      class="inst-db-admins-wrap inst-db-admins-wrap--table"
+                    >
+                      <span
+                        v-for="(id, idx) in sortedAdminsList(c.admins)"
+                        :key="`${c.account}-adm-${id}`"
+                        class="inst-db-admin-item"
+                      ><template v-if="idx > 0">、</template>{{ id }}</span>
+                    </span>
+                  </td>
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <div class="inst-actions">
@@ -509,7 +521,19 @@ onMounted(async () => {
               </div>
               <div class="data-summary-card__row data-summary-card__row--admins">
                 <span class="data-summary-card__label">管理员</span>
-                <span class="muted data-summary-card__admins-text">{{ formatBotAdminsDisplay(c.admins) }}</span>
+                <span class="muted data-summary-card__admins-text">
+                  <template v-if="!sortedAdminsList(c.admins).length">—</template>
+                  <span
+                    v-else
+                    class="inst-db-admins-wrap inst-db-admins-wrap--card"
+                  >
+                    <span
+                      v-for="(id, idx) in sortedAdminsList(c.admins)"
+                      :key="`card-${c.account}-adm-${id}`"
+                      class="inst-db-admin-item"
+                    ><template v-if="idx > 0">、</template>{{ id }}</span>
+                  </span>
+                </span>
               </div>
               <div class="data-summary-card__plugins">
                 <span class="data-summary-card__plugins-label">禁用插件</span>
@@ -791,8 +815,26 @@ onMounted(async () => {
 .inst-db-admins-cell {
   font-size: 12px;
   line-height: 1.45;
-  word-break: break-all;
   max-width: 12rem;
+}
+
+.inst-db-admins-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  align-items: baseline;
+}
+
+.inst-db-admins-wrap--table {
+  justify-content: flex-start;
+}
+
+.inst-db-admins-wrap--card {
+  justify-content: flex-end;
+}
+
+.inst-db-admin-item {
+  white-space: nowrap;
 }
 
 .data-summary-card__row--admins {
@@ -805,6 +847,7 @@ onMounted(async () => {
   text-align: right;
   font-size: 12px;
   line-height: 1.45;
-  word-break: break-all;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
