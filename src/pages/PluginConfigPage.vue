@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchPluginConfig,
@@ -17,7 +17,6 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const ok = ref("");
 const loading = ref(false);
 const saving = ref(false);
 const data = ref<PluginConfigData | null>(null);
@@ -27,6 +26,22 @@ const helpMenuIgnoredList = ref<string[]>([]);
 const helpMenuBusy = ref(false);
 const helpMenuErr = ref("");
 const saveFeedbackRef = ref<HTMLElement | null>(null);
+const saveSuccessOpen = ref(false);
+
+watch(saveSuccessOpen, (open) => {
+  if (typeof document === "undefined") return;
+  document.body.style.overflow = open ? "hidden" : "";
+});
+
+onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
+  }
+});
+
+function closeSaveSuccessModal() {
+  saveSuccessOpen.value = false;
+}
 
 const showInHelpMenu = computed(() => {
   if (!pluginRow.value) return false;
@@ -78,7 +93,6 @@ const pluginName = computed(() => String(route.params.name || ""));
 async function load() {
   loading.value = true;
   err.value = "";
-  ok.value = "";
   try {
     data.value = await fetchPluginConfig(pluginName.value);
   } catch (e) {
@@ -132,7 +146,6 @@ async function save() {
   if (!data.value) return;
   saving.value = true;
   err.value = "";
-  ok.value = "";
   const values: Record<string, unknown> = {};
   try {
     for (const f of data.value.fields) {
@@ -144,9 +157,7 @@ async function save() {
       }
     }
     data.value = await putPluginConfig(pluginName.value, values);
-    ok.value = "已保存，表单已与服务端返回的值对齐。";
-    await nextTick();
-    saveFeedbackRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    saveSuccessOpen.value = true;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     await nextTick();
@@ -283,24 +294,14 @@ async function save() {
       </div>
       <div class="panel__bd">
         <div
-          v-if="ok || err"
+          v-if="err"
           ref="saveFeedbackRef"
           class="plugin-config-page__save-feedback"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
+          role="alert"
+          aria-live="assertive"
         >
-          <div
-            v-if="err"
-            class="alert alert--err"
-          >
+          <div class="alert alert--err">
             {{ err }}
-          </div>
-          <div
-            v-else-if="ok"
-            class="alert alert--ok"
-          >
-            {{ ok }}
           </div>
         </div>
         <div
@@ -344,6 +345,62 @@ async function save() {
       </div>
     </div>
     </template>
+
+    <Teleport to="body">
+      <div
+        v-if="saveSuccessOpen"
+        class="console-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plugin-save-success-title"
+      >
+        <div
+          class="console-modal__backdrop"
+          aria-hidden="true"
+          @click="closeSaveSuccessModal"
+        />
+        <div
+          class="console-modal__dialog"
+          @click.stop
+        >
+          <div class="console-modal__hd">
+            <div class="console-modal__head-text">
+              <h2
+                id="plugin-save-success-title"
+                class="console-modal__title"
+              >
+                保存成功
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="console-modal__close"
+              aria-label="关闭"
+              @click="closeSaveSuccessModal"
+            >
+              ×
+            </button>
+          </div>
+          <div
+            class="console-modal__bd"
+            style="padding-top: 0"
+          >
+            <div
+              class="row-actions"
+              style="margin: 0; justify-content: flex-end"
+            >
+              <button
+                type="button"
+                class="btn btn--primary"
+                @click="closeSaveSuccessModal"
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
