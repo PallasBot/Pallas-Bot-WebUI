@@ -109,7 +109,7 @@ function scrollPageToTop() {
 
 const webuiVersion = __WEBUI_VERSION__;
 
-/** 与首屏「控制台资源」一致：展示服务端上报版本（去掉哈希片段），缺失时回退构建号 */
+/** 控制台静态资源版本（与首页「控制台资源」一致） */
 const brandVersionDisplay = computed(() => {
   const c = health.value?.console;
   const ver = (c?.version || "").trim();
@@ -117,6 +117,13 @@ const brandVersionDisplay = computed(() => {
   if (cleaned) return cleaned;
   if (ver) return ver;
   return `v${webuiVersion}`;
+});
+
+/** 当前 API 所在 Pallas-Bot 进程版本（/health.pallas_bot） */
+const brandBotVersionDisplay = computed(() => {
+  const pb = (health.value?.pallas_bot ?? "").trim();
+  const x = displayVersionWithoutSha(pb);
+  return x || pb || "—";
 });
 
 const mainInnerClass = computed(() => ({
@@ -602,7 +609,23 @@ onUnmounted(() => {
           >
           <div class="shell__brand-main">
             <div class="shell__title">Pallas-Bot</div>
-            <div class="shell__version">{{ brandVersionDisplay }}</div>
+            <div
+              class="shell__brand-versions"
+              aria-label="控制台与 Bot 版本"
+            >
+              <div
+                class="shell__version"
+                title="控制台资源版本"
+              >
+                控制台 {{ brandVersionDisplay }}
+              </div>
+              <div
+                class="shell__version"
+                title="当前 Bot 进程版本"
+              >
+                Bot {{ brandBotVersionDisplay }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -760,7 +783,14 @@ onUnmounted(() => {
               >
               <div class="shell-mobile-nav__brand-text">
                 <span class="shell-mobile-nav__brand">Pallas-Bot</span>
-                <span class="shell-mobile-nav__ver">{{ brandVersionDisplay }}</span>
+                <span
+                  class="shell-mobile-nav__ver"
+                  title="控制台资源版本"
+                >控制台 {{ brandVersionDisplay }}</span>
+                <span
+                  class="shell-mobile-nav__ver"
+                  title="当前 Bot 进程版本"
+                >Bot {{ brandBotVersionDisplay }}</span>
               </div>
             </div>
             <button
