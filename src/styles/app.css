@@ -2790,35 +2790,22 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-split-bd {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: stretch;
-}
-
-.home-account-unified {
-  display: grid;
   /* 账户列略加宽并略多 fr，减轻统计区折行 */
   grid-template-columns: minmax(322px, 1.42fr) minmax(0, 2.9fr);
-  /* 与左侧账户列等高，图表列可纵向吃满 */
   align-items: stretch;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
-  padding: 8px;
   box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-muted);
-  overflow: hidden;
 }
 
-.home-account-unified__col {
+.home-account-split-bd__col {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.home-account-unified__col--hero {
+.home-account-split-bd__col--hero {
   align-items: stretch;
   justify-content: flex-start;
   min-height: 0;
@@ -2838,12 +2825,11 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   background: var(--bg-card);
 }
 
-.home-account-unified__col--charts {
+.home-account-split-bd__col--charts {
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: transparent;
 }
 
 .home-account-charts-shell--hero-side {
@@ -2862,7 +2848,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 /* 宽屏双列：右侧图表区高度与账号信息卡对齐（--home-account-hero-lock-px 由 HomePage 测量写入） */
 @media (min-width: 561px) {
-  .home-account-unified__col--charts {
+  .home-account-split-bd__col--charts {
     align-self: start;
   }
 
@@ -4268,17 +4254,16 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 
 @media (max-width: 560px) {
-  .home-account-unified {
+  .home-account-split-bd {
     grid-template-columns: 1fr;
     gap: 8px;
-    padding: 8px;
   }
 
-  .home-account-unified__col {
+  .home-account-split-bd__col {
     width: 100%;
   }
 
-  .home-account-unified__col--charts {
+  .home-account-split-bd__col--charts {
     min-height: 220px;
   }
 
