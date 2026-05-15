@@ -275,8 +275,14 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
   });
 });
 
+/** 总览账户卡右侧：仅展示前 N 条，避免插件多时令图表区纵向膨胀 */
+const HERO_CHART_TOP_PLUGIN_ROWS = 7;
+
 const topPlugins = computed(() =>
-  [...props.plugins].sort((a, b) => b.runs_today - a.runs_today).filter((p) => p.runs_today > 0).slice(0, 8),
+  [...props.plugins]
+    .sort((a, b) => b.runs_today - a.runs_today)
+    .filter((p) => p.runs_today > 0)
+    .slice(0, HERO_CHART_TOP_PLUGIN_ROWS),
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
@@ -832,9 +838,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        插件今日次数（Top）
-      </div>
       <p
         v-if="busy && !topPlugins.length"
         class="muted home-plugin-charts__empty"
@@ -877,9 +880,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption home-plugin-daily__title">
-        消息 / Matcher 统计
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
           按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
@@ -1042,9 +1042,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        协议 API · 今日各小时（本地日）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
@@ -1146,9 +1143,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        协议 API（服务端 · 按时间桶）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           服务端按固定桶宽累计；柱状图纵轴为<strong>该桶内真实次数</strong>（多曲线共用同一纵轴刻度）。横轴为桶起点时刻（本地显示）。当前桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}。
@@ -1277,9 +1271,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        Matcher · 今日各小时（本地日）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
@@ -1381,9 +1372,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        Matcher 执行（服务端 · 按时间桶）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           每柱为该插件 Matcher 在对应时间桶内的<strong>执行次数</strong>；多插件共用纵轴。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
@@ -1512,9 +1500,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        Matcher 异常 · 今日各小时（本地日）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
@@ -1616,9 +1601,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        Matcher 异常（服务端 · 按时间桶）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           每柱为该插件在桶内的<strong>异常次数</strong>；与成功执行共用同一桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。横轴为桶起点（本地显示）。
@@ -1747,9 +1729,6 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <div class="home-plugin-charts__caption">
-        Matcher 今日累计（本机刷新采样）
-      </div>
       <template v-if="!chartFilterTeleportTo">
         <p class="muted home-plugin-charts__hint">
           无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
@@ -2056,6 +2035,9 @@ const dailyChartPack = computed(() => {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .home-plugin-charts__toolbar {
   display: flex;
@@ -2165,6 +2147,7 @@ const dailyChartPack = computed(() => {
   min-width: 0;
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
 }
 .home-plugin-charts__toolbar-label {
   display: inline-flex;
@@ -2206,12 +2189,6 @@ const dailyChartPack = computed(() => {
   min-height: 0;
   min-width: 0;
 }
-.home-plugin-charts__flip > .home-plugin-charts__caption {
-  margin-top: 6px;
-  margin-bottom: 0;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-}
 .home-plugin-charts__flip > .home-plugin-charts__hint {
   margin: 0;
 }
@@ -2240,14 +2217,7 @@ const dailyChartPack = computed(() => {
 .home-plugin-charts__viz .home-plugin-bucket__svg {
   min-height: 200px;
   max-height: min(360px, 52vh);
-}
-.home-plugin-charts__caption {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+  max-width: 100%;
 }
 .home-plugin-charts__hint {
   margin: 0 0 10px;
@@ -2316,6 +2286,8 @@ const dailyChartPack = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .home-plugin-bars__row {
   display: grid;
@@ -2357,11 +2329,15 @@ const dailyChartPack = computed(() => {
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 8px 10px 6px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .home-plugin-spark {
   width: 100%;
+  max-width: 100%;
   height: 72px;
   display: block;
+  box-sizing: border-box;
 }
 .home-plugin-spark--hourly {
   height: 80px;
@@ -2413,6 +2389,8 @@ const dailyChartPack = computed(() => {
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 8px 10px 6px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .home-plugin-spark-meta {
   font-size: 11px;
@@ -2426,10 +2404,12 @@ const dailyChartPack = computed(() => {
 
 .home-plugin-bucket__svg {
   width: 100%;
+  max-width: 100%;
   height: auto;
   min-height: 172px;
   max-height: 260px;
   display: block;
+  box-sizing: border-box;
 }
 
 .home-plugin-bucket__grid {
@@ -2538,10 +2518,6 @@ const dailyChartPack = computed(() => {
   }
 }
 
-.home-plugin-daily__title {
-  font-weight: 700;
-}
-
 .home-plugin-daily__hint {
   margin: 0 0 8px;
   font-size: 11px;
@@ -2553,6 +2529,8 @@ const dailyChartPack = computed(() => {
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 10px 12px 12px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .home-plugin-daily__legend {
@@ -2588,15 +2566,18 @@ const dailyChartPack = computed(() => {
 
 .home-plugin-daily__svg-wrap {
   width: 100%;
-  max-width: 720px;
+  max-width: min(720px, 100%);
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .home-plugin-daily__svg {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: auto;
   min-height: 200px;
+  box-sizing: border-box;
 }
 
 .home-plugin-daily__grid {

@@ -309,6 +309,7 @@ export async function putGroupConfig(
     disabled_plugins: string[];
     roulette_mode: number;
     banned: boolean;
+    blocked_user_ids: number[];
   }>,
 ): Promise<GroupConfigPublic> {
   const { data } = await http.put<ApiOk<GroupConfigPublic>>(`/group-configs/${groupId}`, body);

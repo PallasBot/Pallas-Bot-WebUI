@@ -2799,9 +2799,11 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   display: grid;
   /* 账户列略加宽并略多 fr，减轻统计区折行 */
   grid-template-columns: minmax(322px, 1.42fr) minmax(0, 2.9fr);
+  /* 与左侧账户列等高，图表列可纵向吃满 */
   align-items: stretch;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
   padding: 8px;
   box-sizing: border-box;
   border: 1px solid var(--border);
@@ -2848,8 +2850,39 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-height: 200px;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-height: 160px;
   min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* 图表绘制区不超出账户信息卡内容宽度（窄列 + 长文案勾选区） */
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__toolbar,
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__draw,
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__block,
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__flip {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__draw {
+  overflow-x: auto;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts svg {
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -2858,29 +2891,81 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-width: 0;
 }
 
-/* 总览账户卡内：压缩图表占位高度（说明与勾选已 teleport 至面板外） */
-.home-account-charts-shell--hero-side .home-plugin-charts__viz {
-  min-height: 88px;
+/* 总览账户卡内：说明与勾选已 teleport；图表区随右列等高伸展（> .home-plugin-charts 提高优先级以覆盖组件 scoped） */
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-bars.home-plugin-charts__viz {
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: space-evenly;
 }
 
-.home-account-charts-shell--hero-side .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly {
-  min-height: 72px;
-  max-height: 110px;
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz {
+  min-height: 96px;
 }
 
-.home-account-charts-shell--hero-side .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
-  min-height: 80px;
-  max-height: 100px;
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-multi.home-plugin-charts__viz {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.home-account-charts-shell--hero-side .home-plugin-charts__viz .home-plugin-bucket__svg {
-  min-height: 140px;
-  max-height: min(240px, 36vh);
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly {
+  min-height: 120px;
+  max-height: none;
+  height: auto;
+  flex: 1 1 auto;
 }
 
-.home-account-charts-shell--hero-side .home-plugin-daily__svg {
-  min-height: 140px;
-  max-height: 220px;
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
+  min-height: 96px;
+  max-height: none;
+  height: auto;
+  flex: 1 1 auto;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
+  min-height: 160px;
+  max-height: none;
+  max-width: 100%;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-daily.home-plugin-charts__viz {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-daily__svg-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-daily__svg {
+  min-height: 160px;
+  max-height: none;
+  max-width: 100%;
+  flex: 1 1 auto;
+  height: auto;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-spark-wrap.home-plugin-charts__viz {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-spark-wrap .home-plugin-spark {
+  flex: 1 1 auto;
+  min-height: 100px;
+  max-height: none;
+  height: auto;
+  width: 100%;
 }
 
 /* 账户卡同列底部：Matcher 条 + 可展开异常列表，整栈顶到列底吃余高 */
@@ -3023,8 +3108,7 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   max-width: 100%;
   margin: 0;
   min-height: 0;
-  height: auto;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
 }
 
 .home-account-hero__lead {
@@ -5597,6 +5681,7 @@ html[data-theme="light"] .home-page__hd-capsule--warn {
 
 .home-dashboard__accounts > .home-page__panel .panel__bd {
   padding: 8px 10px;
+  min-width: 0;
 }
 .home-page .card:hover {
   transform: none;
