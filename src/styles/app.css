@@ -2826,17 +2826,9 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   background: var(--bg-card);
 }
 
-/* 主内容区与底部 Matcher 条同款通栏（宽、边距、底色一致） */
-.home-account-card > .home-account-hero--unified {
+.home-account-split-bd__col--hero.home-account-card > .home-account-hero__detail--social-usage {
   flex: 1 1 auto;
   min-height: 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-card) 88%, var(--bg-muted) 12%);
 }
 
 .home-account-split-bd__col--charts {
@@ -2949,6 +2941,12 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   max-height: none;
   height: 100%;
   flex: 1 1 auto;
+}
+
+.home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-multi.home-plugin-charts__viz .home-plugin-legend {
+  max-height: min(120px, 26vh);
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
@@ -3124,18 +3122,6 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   word-break: break-word;
 }
 
-.home-account-hero--unified {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  min-height: 0;
-}
-
 .home-account-hero__lead {
   display: flex;
   gap: 14px;
@@ -3183,11 +3169,6 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
   width: 100%;
   padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-}
-
-.home-account-hero--unified .home-account-hero__detail:not(.home-account-hero__detail--social-usage) {
-  padding-left: calc(76px + 14px);
-  box-sizing: border-box;
 }
 
 .home-account-hero__detail--social-usage {
@@ -4270,7 +4251,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 
 @media (max-width: 720px) {
-  .home-account-hero--unified .home-account-hero__detail {
+  .home-account-card .home-account-hero__detail {
     padding-left: 0;
   }
 }
@@ -4286,7 +4267,26 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   .home-account-split-bd__col--charts {
-    min-height: 220px;
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side {
+    height: auto;
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts {
+    height: auto;
+    flex: 0 0 auto;
+  }
+
+  /* 图表收起时仅占工具栏高度，避免大块留白 */
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts--draw-collapsed) {
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts:not(.home-plugin-charts--draw-collapsed)) {
+    min-height: min(240px, 52vh);
   }
 
   .home-account-hero__proto-sub {

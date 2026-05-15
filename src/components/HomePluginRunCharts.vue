@@ -122,9 +122,9 @@ const props = defineProps<{
   dailyStatRows?: ConsoleDailyStatRow[] | null;
   /** 非空时将说明与勾选区传送至该选择器（如 #home-account-chart-config-outlet），用于压缩账户卡高度 */
   chartFilterTeleport?: string | null;
-  /** 图表标题旁小字：今日 API 摘要片段（如「今日 API 22」） */
+  /** 图表标题旁小字：API 片段（如「API 22」） */
   toolbarSummaryApi?: string | null;
-  /** 插件今日调用摘要片段（如「插件 145」） */
+  /** 插件 Matcher 片段（如「插件 145」） */
   toolbarSummaryPlugin?: string | null;
 }>();
 
@@ -133,8 +133,8 @@ const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?
 const toolbarSummaryText = computed(() => {
   const a = props.toolbarSummaryApi?.trim() ?? "";
   const p = props.toolbarSummaryPlugin?.trim() ?? "";
-  if (a && p) return `${a} · ${p}`;
-  return a || p;
+  if (!a && !p) return "";
+  return `今日调用: ${a || "API —"} ${p || "插件 —"}`;
 });
 
 const selectedApiKeys = ref<string[]>([]);
@@ -326,6 +326,26 @@ function fmtBucketAxisTime(sec: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
 }
 
+/** 压低极少数极高桶对纵轴的拉扯：刻度按 scaleMax，超过部分柱顶截断至顶格（刻度带「+」提示）。 */
+function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number } {
+  let rawMax = 1;
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n)) rawMax = Math.max(rawMax, n);
+  }
+  const positives = vals.filter((v) => Number(v) > 0).sort((a, b) => a - b);
+  if (positives.length < 4 || rawMax <= 8) return { rawMax, scaleMax: rawMax };
+  const idx88 = Math.floor(0.88 * (positives.length - 1));
+  const idx95 = Math.floor(0.95 * (positives.length - 1));
+  const p88 = positives[idx88]!;
+  const p95 = positives[idx95]!;
+  if (rawMax <= p95 * 3) return { rawMax, scaleMax: rawMax };
+  const soft = Math.max(Math.ceil(p88 * 2.15), Math.ceil(p95 * 1.85), Math.ceil(rawMax * 0.18), 8);
+  const scaleMax = Math.min(rawMax, soft);
+  if (scaleMax >= rawMax * 0.97) return { rawMax, scaleMax: rawMax };
+  return { rawMax, scaleMax };
+}
+
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
 ): BucketBarPack | null {
@@ -351,10 +371,10 @@ function buildBucketBarPack(
     vals: timesSec.map((t) => valAt(row.points, t)),
   }));
 
-  let maxV = 1;
-  for (const s of series) {
-    for (const v of s.vals) maxV = Math.max(maxV, v);
-  }
+  const flatVals = series.flatMap((s) => s.vals);
+  const { rawMax, scaleMax } = softBucketAxisMax(flatVals);
+  const axisMax = scaleMax;
+  const axisTopPlus = rawMax > scaleMax;
 
   const W = 440;
   const H = 212;
@@ -380,7 +400,7 @@ function buildBucketBarPack(
     const bw = nS > 0 ? innerCol / nS : 0;
     for (let s = 0; s < nS; s++) {
       const v = series[s]!.vals[i] ?? 0;
-      const bh = (v / maxV) * innerH;
+      const bh = Math.min(1, v / axisMax) * innerH;
       const bx = colL + groupMargin + s * bw + bw * 0.05;
       const barW = Math.max(1.5, bw * 0.9);
       const by = bottom - bh;
@@ -393,8 +413,8 @@ function buildBucketBarPack(
     Number.isInteger(x) ? String(x) : x >= 10 ? String(Math.round(x)) : x.toFixed(1);
   const yTicks = [
     { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtTick(maxV / 2) },
-    { y: top, t: fmtTick(maxV) },
+    { y: bottom - innerH / 2, t: fmtTick(axisMax / 2) },
+    { y: top, t: axisTopPlus ? `${fmtTick(axisMax)}+` : fmtTick(axisMax) },
   ];
   const xi = pickTickIndices(nT, 9);
   const xTicks = xi.map((idx) => ({
@@ -414,7 +434,7 @@ function buildBucketBarPack(
     left,
     top,
     bottom,
-    maxV,
+    maxV: rawMax,
     timesSec,
     series,
     gridYs,
@@ -428,7 +448,9 @@ type HourlyLayerLine = { label: string; color: string; poly: string };
 
 function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLayerLine[] | null {
   if (!rows.length) return null;
-  const maxV = Math.max(1, ...rows.flatMap((r) => r.hours));
+  const flat = rows.flatMap((r) => r.hours);
+  const { scaleMax } = softBucketAxisMax(flat);
+  const axisMax = scaleMax;
   const w = 100;
   const xInset = 1.5;
   const xSpan = w - 2 * xInset;
@@ -439,7 +461,7 @@ function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLa
     poly: row.hours
       .map((v, h) => {
         const x = xInset + (h / 23) * xSpan;
-        const y = hb - (v / maxV) * (hb - 8) - 4;
+        const y = hb - Math.min(1, v / axisMax) * (hb - 8) - 4;
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       })
       .join(" "),
@@ -774,7 +796,10 @@ const dailyChartPack = computed(() => {
 </script>
 
 <template>
-  <div class="home-plugin-charts">
+  <div
+    class="home-plugin-charts"
+    :class="{ 'home-plugin-charts--draw-collapsed': !chartsDrawExpanded }"
+  >
     <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
       <div class="home-plugin-charts__toolbar-line">
         <div class="home-plugin-charts__toolbar-head">
@@ -2145,6 +2170,11 @@ const dailyChartPack = computed(() => {
   line-height: 1;
   opacity: 0.85;
 }
+.home-plugin-charts--draw-collapsed {
+  flex: 0 0 auto;
+  height: auto;
+}
+
 .home-plugin-charts__draw {
   display: flex;
   flex-direction: column;
