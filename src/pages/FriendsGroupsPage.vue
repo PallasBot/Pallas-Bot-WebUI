@@ -26,6 +26,13 @@ import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import {
+  cachePutFriendGroupLists,
+  cachePutRequestOverview,
+  cacheTryGetFriendGroupLists,
+  cacheTryGetRequestOverview,
+  requestOverviewToFriendOverview,
+} from "@/utils/consoleSocialCache";
 
 const panelNavIcon = usePanelNavIcon();
 const route = useRoute();
@@ -161,14 +168,21 @@ async function loadBots() {
 async function loadListsOnly() {
   const sid = selfIdNum();
   if (sid == null) return;
+  const sidKey = String(sid);
   listsBusy.value = true;
   err.value = "";
   try {
+    const cachedLists = cacheTryGetFriendGroupLists(sidKey);
+    if (cachedLists) {
+      friends.value = cachedLists.friends;
+      groups.value = cachedLists.groups;
+    }
     const connected = accountHasNonebotBot(instances.value?.nonebot_bots, sid);
     if (connected) {
       const [fl, gl] = await Promise.all([fetchFriendList(sid), fetchGroupList(sid)]);
       friends.value = fl;
       groups.value = gl;
+      cachePutFriendGroupLists(sidKey, fl, gl);
     } else {
       const sidStr = String(sid);
       friends.value = offlineFriendPayload(sidStr);
@@ -185,20 +199,15 @@ async function loadRequestsOnly() {
   reqsBusy.value = true;
   err.value = "";
   try {
-    // 仅拉 /request-overview：与 /friend-requests 在后端重复执行 _friend_requests_overview，
-    // 并行会加倍协议调用，易导致「好友列表已 200 但审批区仍卡在加载」。
+    const cachedOv = cacheTryGetRequestOverview();
+    if (cachedOv) {
+      overview.value = cachedOv;
+      requests.value = requestOverviewToFriendOverview(cachedOv);
+    }
     const ov = await fetchRequestOverview();
     overview.value = ov;
-    requests.value = {
-      bots: ov.bots.map((b) => ({
-        self_id: b.self_id,
-        connection_key: b.connection_key,
-        adapter: b.adapter,
-        online: b.online,
-        pending_friend_requests: b.pending_friend_requests,
-        doubt_friend_requests: b.doubt_friend_requests,
-      })),
-    };
+    requests.value = requestOverviewToFriendOverview(ov);
+    cachePutRequestOverview(ov);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -229,9 +238,23 @@ watch(selfIdStr, () => {
     groups.value = null;
     return;
   }
+  const cachedLists = cacheTryGetFriendGroupLists(sid);
+  if (cachedLists) {
+    friends.value = cachedLists.friends;
+    groups.value = cachedLists.groups;
+  } else {
+    friends.value = null;
+    groups.value = null;
+  }
+  const cachedOv = cacheTryGetRequestOverview();
   reqsBusy.value = true;
-  requests.value = null;
-  overview.value = null;
+  if (cachedOv) {
+    overview.value = cachedOv;
+    requests.value = requestOverviewToFriendOverview(cachedOv);
+  } else {
+    requests.value = null;
+    overview.value = null;
+  }
   void loadListsOnly().finally(() => {
     void loadRequestsOnly().finally(() => {
       scrollFriendsGroupsHashIntoView();

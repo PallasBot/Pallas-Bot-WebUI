@@ -38,6 +38,7 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
+import { cachePutFriendGroupLists, cachePutRequestOverview } from "@/utils/consoleSocialCache";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
@@ -563,26 +564,26 @@ const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.mat
 
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
 
-/** 图表工具栏旁小字：今日 API（与 message-stats 账户行一致） */
+/** 图表工具栏旁小字：API 今日调用次数片段（与 message-stats 账户行一致） */
 const chartToolbarSummaryApi = computed(() => {
   const row = scopedBotStatsRow.value;
   if (row == null) return "";
   const n = row.today_api_calls;
-  if (n == null) return "今日 API —";
+  if (n == null) return "API —";
   const num = Number(n);
-  if (!Number.isFinite(num)) return "今日 API —";
-  return `今日 API ${Math.floor(num)}`;
+  if (!Number.isFinite(num)) return "API —";
+  return `API ${Math.floor(num)}`;
 });
 
-/** 图表工具栏旁小字：插件今日调用（与 plugin-run-stats 账户行一致） */
+/** 图表工具栏旁小字：插件 Matcher 今日次数片段（与 plugin-run-stats 账户行一致） */
 const chartToolbarSummaryPlugin = computed(() => {
   const row = scopedPluginRunRow.value;
   if (row == null) return "";
   const n = row.runs_today;
-  if (n == null) return "插件今日 —";
+  if (n == null) return "插件 —";
   const num = Number(n);
-  if (!Number.isFinite(num)) return "插件今日 —";
-  return `插件今日 ${Math.floor(num)}`;
+  if (!Number.isFinite(num)) return "插件 —";
+  return `插件 ${Math.floor(num)}`;
 });
 
 function formatMatcherErrorAt(sec: number): string {
@@ -638,6 +639,13 @@ async function refreshSelectedBotDetails() {
     friendSnap.value = take<FriendListData>(3);
     groupSnap.value = take<GroupListData>(4);
     requestOverviewSnap.value = take<RequestOverviewData>(5);
+    const sidKey = acc != null ? String(acc) : "";
+    if (sidKey && friendSnap.value && groupSnap.value) {
+      cachePutFriendGroupLists(sidKey, friendSnap.value, groupSnap.value);
+    }
+    if (requestOverviewSnap.value) {
+      cachePutRequestOverview(requestOverviewSnap.value);
+    }
   } finally {
     socialBusy.value = false;
   }
@@ -851,13 +859,11 @@ onUnmounted(() => {
                 class="home-account-split-bd"
                 :style="accountUnifiedHeroLockStyle"
               >
-                <div class="home-account-split-bd__col home-account-split-bd__col--hero">
-                    <div
-                      ref="accountCardRef"
-                      class="home-account-card"
-                    >
-                      <div class="home-account-hero home-account-hero--unified home-account-hero--color">
-                      <div class="home-account-hero__lead">
+                <div
+                  ref="accountCardRef"
+                  class="home-account-split-bd__col home-account-split-bd__col--hero home-account-card home-account-hero--color"
+                >
+                  <div class="home-account-hero__lead">
                         <div class="home-account-hero__avatar">
                           <img
                             :src="qqAvatarUrl(selectedAccount)"
@@ -1011,8 +1017,7 @@ onUnmounted(() => {
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div class="home-account-hero__matcher-stack">
+                  <div class="home-account-hero__matcher-stack">
                       <div
                         class="home-account-hero__matcher-foot"
                         :class="{
@@ -1048,9 +1053,8 @@ onUnmounted(() => {
                           </li>
                         </ul>
                       </details>
-                    </div>
-                    </div>
                   </div>
+                </div>
                 <div class="home-account-split-bd__col home-account-split-bd__col--charts">
                     <div class="home-account-charts-shell home-account-charts-shell--hero-side">
                       <HomePluginRunCharts
