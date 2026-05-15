@@ -678,6 +678,79 @@ watch(sortedDbBots, () => {
   ensureSelectedAccount();
 });
 
+const HOME_CONN_DURATION_TICK_MS = 30_000;
+
+/** NoneBot 在线会话中与当前选中账号对应的条目（含接入时刻） */
+const selectedNonebotRuntimeBot = computed(() => {
+  const acc = selectedAccount.value;
+  if (acc == null) return null;
+  const sid = String(acc);
+  const bots = instances.value?.nonebot_bots ?? [];
+  return bots.find((b) => String(b.self_id) === sid) ?? null;
+});
+
+const selectedConnAnchorUnix = computed((): number | null => {
+  const ts = selectedNonebotRuntimeBot.value?.connected_at_unix;
+  if (ts == null || !Number.isFinite(Number(ts))) return null;
+  return Math.floor(Number(ts));
+});
+
+const connectionClockTick = ref(0);
+let homeConnDurationPollId: number | null = null;
+
+function bumpConnectionClock() {
+  connectionClockTick.value = Date.now();
+}
+
+function formatZhConnDuration(totalSec: number): string {
+  if (!Number.isFinite(totalSec) || totalSec < 0) return "—";
+  const sec = Math.floor(totalSec);
+  if (sec < 60) return `${sec} 秒`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m} 分钟`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h < 48) return mm ? `${h} 小时 ${mm} 分` : `${h} 小时`;
+  const d = Math.floor(h / 24);
+  const hh = h % 24;
+  return hh ? `${d} 天 ${hh} 小时` : `${d} 天`;
+}
+
+const selectedConnDurationDisplay = computed(() => {
+  if (!selectedConnected.value) return "—";
+  const anchor = selectedConnAnchorUnix.value;
+  if (anchor == null) return "—";
+  const elapsedSec = Math.max(0, Math.floor(connectionClockTick.value / 1000) - anchor);
+  return formatZhConnDuration(elapsedSec);
+});
+
+const selectedConnDateDisplay = computed(() => {
+  if (!selectedConnected.value) return "—";
+  const anchor = selectedConnAnchorUnix.value;
+  if (anchor == null) return "—";
+  try {
+    return new Date(anchor * 1000).toLocaleString();
+  } catch {
+    return "—";
+  }
+});
+
+function startHomeConnDurationTick() {
+  if (typeof window === "undefined") return;
+  if (homeConnDurationPollId != null) return;
+  bumpConnectionClock();
+  homeConnDurationPollId = window.setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    bumpConnectionClock();
+  }, HOME_CONN_DURATION_TICK_MS);
+}
+
+function stopHomeConnDurationTick() {
+  if (homeConnDurationPollId == null) return;
+  window.clearInterval(homeConnDurationPollId);
+  homeConnDurationPollId = null;
+}
+
 async function load() {
   if (overviewBusy.value) return;
   err.value = "";
@@ -788,12 +861,14 @@ onMounted(async () => {
   await load();
   startHomeSystemPolling();
   startHomeThroughputPolling();
+  startHomeConnDurationTick();
   document.addEventListener("visibilitychange", onHomeSystemVisibility);
 });
 
 onUnmounted(() => {
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
+  stopHomeConnDurationTick();
   document.removeEventListener("visibilitychange", onHomeSystemVisibility);
 });
 </script>
@@ -1053,6 +1128,19 @@ onUnmounted(() => {
                           </li>
                         </ul>
                       </details>
+                      <div
+                        class="home-account-hero__session-meta muted"
+                        aria-label="协议会话接入信息"
+                      >
+                        <div class="home-account-hero__session-meta-row">
+                          <span class="home-account-hero__session-meta-k">连接时长</span>
+                          <span class="home-account-hero__session-meta-v">{{ selectedConnDurationDisplay }}</span>
+                        </div>
+                        <div class="home-account-hero__session-meta-row">
+                          <span class="home-account-hero__session-meta-k">连接日期</span>
+                          <span class="home-account-hero__session-meta-v">{{ selectedConnDateDisplay }}</span>
+                        </div>
+                      </div>
                   </div>
                 </div>
                 <div class="home-account-split-bd__col home-account-split-bd__col--charts">
