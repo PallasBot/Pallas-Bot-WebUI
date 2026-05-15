@@ -678,7 +678,7 @@ watch(sortedDbBots, () => {
   ensureSelectedAccount();
 });
 
-const HOME_CONN_DURATION_TICK_MS = 30_000;
+const HOME_CONN_DURATION_TICK_MS = 1_000;
 
 /** NoneBot 在线会话中与当前选中账号对应的条目（含接入时刻） */
 const selectedNonebotRuntimeBot = computed(() => {
