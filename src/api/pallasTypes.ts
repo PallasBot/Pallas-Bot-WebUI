@@ -247,6 +247,8 @@ export interface BotRow {
   connection_key: string;
   self_id: string;
   adapter: string;
+  /** 当前进程内最近一次接入 Unix 秒（仅在线 Bot；来自控制台扩展 API） */
+  connected_at_unix?: number | null;
 }
 
 /** GET /logs?scope= 与后端一致 */

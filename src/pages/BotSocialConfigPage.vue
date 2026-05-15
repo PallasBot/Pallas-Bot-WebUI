@@ -7,6 +7,8 @@ import {
   fetchInstances,
   fetchPlugins,
   fetchUserConfigById,
+  peekInstancesCache,
+  peekPluginsCache,
   putGroupConfig,
   putUserConfig,
 } from "@/api/consoleApi";
@@ -29,6 +31,11 @@ const ok = ref("");
 const busy = ref(false);
 
 const instances = ref<InstancesData | null>(null);
+{
+  const warmInst = peekInstancesCache();
+  if (warmInst) instances.value = warmInst;
+}
+
 const filterSelfId = ref("");
 
 const tablePageSize = computed({
@@ -42,6 +49,10 @@ const tablePageSize = computed({
 const groupPage = ref(1);
 
 const plugins = ref<PluginRow[]>([]);
+{
+  const warmPl = peekPluginsCache();
+  if (warmPl?.length) plugins.value = warmPl;
+}
 const pluginLoadErr = ref("");
 
 const groupList = ref<GroupConfigPublic[]>([]);
@@ -138,6 +149,10 @@ watch(
     document.body.style.overflow = open ? "hidden" : "";
   },
 );
+
+watch(filterSelfId, () => {
+  void loadGroupList();
+});
 
 onUnmounted(() => {
   if (typeof document !== "undefined") {

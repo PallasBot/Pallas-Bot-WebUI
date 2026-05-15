@@ -41,3 +41,13 @@ export function toggleFavoriteBot(account: number): void {
   botFavoriteAccounts.value = s;
   writeSet(s);
 }
+
+/** 其它标签页 / 窗口写入同一 localStorage 键时同步（同 origin） */
+function syncFavoritesFromStorage(ev: StorageEvent) {
+  if (ev.key !== STORAGE_KEY) return;
+  botFavoriteAccounts.value = readSet();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", syncFavoritesFromStorage);
+}
