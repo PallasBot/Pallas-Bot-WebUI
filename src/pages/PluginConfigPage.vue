@@ -64,7 +64,7 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
     else set.add(name);
     const out = await putPluginsHelpMenuVisibility([...set]);
     helpMenuHiddenList.value = [...out.hidden_plugins];
-    const rows = await fetchPlugins();
+    const rows = await fetchPlugins({ bypassCache: true });
     pluginRow.value = rows.find((r) => r.name === name) ?? null;
   } catch (e) {
     helpMenuErr.value = e instanceof Error ? e.message : String(e);

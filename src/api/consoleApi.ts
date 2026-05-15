@@ -31,6 +31,44 @@ import type {
   PluginRunStatsData,
 } from "./pallasTypes";
 
+/**
+ * 控制台只读资源跨页策略（内存级）：
+ * - `/instances`、`/plugins`、`/bots`：新鲜期内直接返回；过期先返回旧快照并单飞刷新；写操作后对应 invalidate*。
+ * - `/system`：不做 TTL 缓存（首页 5s 轮询需实时），仅合并并发请求。
+ */
+const CATALOG_FRESH_MS = 45_000;
+
+let instancesCache: { data: InstancesData; ts: number } | null = null;
+let instancesInflight: Promise<InstancesData> | null = null;
+/** 写操作或强制刷新后递增，丢弃过期的在途响应写回 */
+let instancesFetchGen = 0;
+
+function touchInstancesCache(data: InstancesData) {
+  instancesCache = { data, ts: Date.now() };
+}
+
+/** 同步读取上次成功的实例快照（供首屏立即铺 UI，不等网络） */
+export function peekInstancesCache(): InstancesData | null {
+  return instancesCache?.data ?? null;
+}
+
+/** 数据库 Bot 配置等变更后调用，避免旧 /instances 缓存误导 */
+export function invalidateInstancesCache() {
+  instancesCache = null;
+  instancesInflight = null;
+  instancesFetchGen++;
+}
+
+async function fetchInstancesFromNetwork(): Promise<InstancesData> {
+  const { data } = await http.get<ApiOk<InstancesData>>("/instances");
+  return unwrap(data, "/instances");
+}
+
+export type FetchInstancesOptions = {
+  /** 跳过内存缓存并强制请求（用户刷新、写操作后等） */
+  bypassCache?: boolean;
+};
+
 function unwrap<T>(body: ApiOk<T> | (ApiOk<T> & Record<string, unknown>), path: string): T {
   if (!body || typeof body !== "object" || !("ok" in body) || !body.ok) {
     throw new Error(`${path}: 响应异常`);
@@ -38,14 +76,162 @@ function unwrap<T>(body: ApiOk<T> | (ApiOk<T> & Record<string, unknown>), path: 
   return body.data;
 }
 
+let systemInflight: Promise<SystemData> | null = null;
+
 export async function fetchSystem(): Promise<SystemData> {
-  const { data } = await http.get<ApiOk<SystemData>>("/system");
-  return unwrap(data, "/system");
+  if (!systemInflight) {
+    systemInflight = (async () => {
+      const { data } = await http.get<ApiOk<SystemData>>("/system");
+      return unwrap(data, "/system");
+    })().finally(() => {
+      systemInflight = null;
+    });
+  }
+  return systemInflight;
 }
 
-export async function fetchPlugins(): Promise<PluginRow[]> {
+let pluginsCache: { data: PluginRow[]; ts: number } | null = null;
+let pluginsInflight: Promise<PluginRow[]> | null = null;
+let pluginsFetchGen = 0;
+
+function touchPluginsCache(data: PluginRow[]) {
+  pluginsCache = { data, ts: Date.now() };
+}
+
+export function peekPluginsCache(): PluginRow[] | null {
+  return pluginsCache?.data ?? null;
+}
+
+export function invalidatePluginsCache() {
+  pluginsCache = null;
+  pluginsInflight = null;
+  pluginsFetchGen++;
+}
+
+async function fetchPluginsFromNetwork(): Promise<PluginRow[]> {
   const { data } = await http.get<ApiOk<PluginRow[]>>("/plugins");
   return unwrap(data, "/plugins");
+}
+
+export type FetchPluginsOptions = {
+  bypassCache?: boolean;
+};
+
+export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRow[]> {
+  const bypass = Boolean(opts?.bypassCache);
+  const now = Date.now();
+
+  if (bypass) {
+    const gen = pluginsFetchGen;
+    const d = await fetchPluginsFromNetwork();
+    if (gen === pluginsFetchGen) touchPluginsCache(d);
+    return d;
+  }
+
+  if (pluginsInflight) {
+    return pluginsInflight;
+  }
+
+  if (pluginsCache) {
+    const age = now - pluginsCache.ts;
+    if (age < CATALOG_FRESH_MS) {
+      return pluginsCache.data;
+    }
+    const snap = pluginsCache.data;
+    const gen = pluginsFetchGen;
+    pluginsInflight = fetchPluginsFromNetwork()
+      .then((d) => {
+        if (gen === pluginsFetchGen) touchPluginsCache(d);
+        return d;
+      })
+      .finally(() => {
+        pluginsInflight = null;
+      });
+    return snap;
+  }
+
+  const gen = pluginsFetchGen;
+  pluginsInflight = fetchPluginsFromNetwork()
+    .then((d) => {
+      if (gen === pluginsFetchGen) touchPluginsCache(d);
+      return d;
+    })
+    .finally(() => {
+      pluginsInflight = null;
+    });
+  return pluginsInflight;
+}
+
+let botsCache: { data: BotRow[]; ts: number } | null = null;
+let botsInflight: Promise<BotRow[]> | null = null;
+let botsFetchGen = 0;
+
+function touchBotsCache(data: BotRow[]) {
+  botsCache = { data, ts: Date.now() };
+}
+
+export function peekBotsCache(): BotRow[] | null {
+  return botsCache?.data ?? null;
+}
+
+export function invalidateBotsCache() {
+  botsCache = null;
+  botsInflight = null;
+  botsFetchGen++;
+}
+
+async function fetchBotsFromNetwork(): Promise<BotRow[]> {
+  const { data } = await http.get<ApiOk<BotRow[]>>("/bots");
+  return unwrap(data, "/bots");
+}
+
+export type FetchBotsOptions = {
+  bypassCache?: boolean;
+};
+
+export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
+  const bypass = Boolean(opts?.bypassCache);
+  const now = Date.now();
+
+  if (bypass) {
+    const gen = botsFetchGen;
+    const d = await fetchBotsFromNetwork();
+    if (gen === botsFetchGen) touchBotsCache(d);
+    return d;
+  }
+
+  if (botsInflight) {
+    return botsInflight;
+  }
+
+  if (botsCache) {
+    const age = now - botsCache.ts;
+    if (age < CATALOG_FRESH_MS) {
+      return botsCache.data;
+    }
+    const snap = botsCache.data;
+    const gen = botsFetchGen;
+    botsInflight = fetchBotsFromNetwork()
+      .then((d) => {
+        if (gen === botsFetchGen) touchBotsCache(d);
+        return d;
+      })
+      .finally(() => {
+        botsInflight = null;
+      });
+    return snap;
+  }
+
+  const gen = botsFetchGen;
+  botsInflight = fetchBotsFromNetwork()
+    .then((d) => {
+      if (gen === botsFetchGen) touchBotsCache(d);
+      return d;
+    })
+    .finally(() => {
+      botsInflight = null;
+    });
+  return botsInflight;
 }
 
 export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
@@ -57,7 +243,9 @@ export async function putPluginsHelpMenuVisibility(hiddenPlugins: string[]): Pro
   const { data } = await http.put<ApiOk<{ hidden_plugins: string[] }>>("/plugins/help-menu-visibility", {
     hidden_plugins: hiddenPlugins,
   });
-  return unwrap(data, "/plugins/help-menu-visibility");
+  const out = unwrap(data, "/plugins/help-menu-visibility");
+  invalidatePluginsCache();
+  return out;
 }
 
 export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
@@ -72,7 +260,9 @@ export async function putPluginConfig(
   const { data } = await http.put<ApiOk<PluginConfigData>>(`/plugins/${encodeURIComponent(pluginName)}/config`, {
     values,
   });
-  return unwrap(data, `/plugins/${pluginName}/config`);
+  const out = unwrap(data, `/plugins/${pluginName}/config`);
+  invalidatePluginsCache();
+  return out;
 }
 
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
@@ -102,11 +292,6 @@ export async function changeConsoleLogin(newPassword: string): Promise<{ message
     new_password: newPassword,
   });
   return unwrap(data, "/security/console-login");
-}
-
-export async function fetchBots(): Promise<BotRow[]> {
-  const { data } = await http.get<ApiOk<BotRow[]>>("/bots");
-  return unwrap(data, "/bots");
 }
 
 export async function fetchLogs(n: number, scope: LogScope = "all"): Promise<LogsData> {
@@ -189,9 +374,49 @@ export async function deleteDbTableRow(params: {
   return unwrap(data, "/db/table-row");
 }
 
-export async function fetchInstances(): Promise<InstancesData> {
-  const { data } = await http.get<ApiOk<InstancesData>>("/instances");
-  return unwrap(data, "/instances");
+export async function fetchInstances(opts?: FetchInstancesOptions): Promise<InstancesData> {
+  const bypass = Boolean(opts?.bypassCache);
+  const now = Date.now();
+
+  if (bypass) {
+    const gen = instancesFetchGen;
+    const d = await fetchInstancesFromNetwork();
+    if (gen === instancesFetchGen) touchInstancesCache(d);
+    return d;
+  }
+
+  if (instancesInflight) {
+    return instancesInflight;
+  }
+
+  if (instancesCache) {
+    const age = now - instancesCache.ts;
+    if (age < CATALOG_FRESH_MS) {
+      return instancesCache.data;
+    }
+    const snap = instancesCache.data;
+    const gen = instancesFetchGen;
+    instancesInflight = fetchInstancesFromNetwork()
+      .then((d) => {
+        if (gen === instancesFetchGen) touchInstancesCache(d);
+        return d;
+      })
+      .finally(() => {
+        instancesInflight = null;
+      });
+    return snap;
+  }
+
+  const gen = instancesFetchGen;
+  instancesInflight = fetchInstancesFromNetwork()
+    .then((d) => {
+      if (gen === instancesFetchGen) touchInstancesCache(d);
+      return d;
+    })
+    .finally(() => {
+      instancesInflight = null;
+    });
+  return instancesInflight;
 }
 
 /** 获取好友申请列表 */
@@ -279,11 +504,17 @@ export async function putBotConfig(
   }>,
 ): Promise<BotConfigPublic> {
   const { data } = await http.put<ApiOk<BotConfigPublic>>(`/bot-configs/${account}`, body);
-  return unwrap(data, `/bot-configs/${account}`);
+  const out = unwrap(data, `/bot-configs/${account}`);
+  invalidateInstancesCache();
+  invalidateBotsCache();
+  return out;
 }
 
 export async function deleteBotConfig(account: number): Promise<{ deleted: boolean }> {
-  return deleteDbTableRow({ table: "bot_config", row_id: account });
+  const r = await deleteDbTableRow({ table: "bot_config", row_id: account });
+  invalidateInstancesCache();
+  invalidateBotsCache();
+  return r;
 }
 
 export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {

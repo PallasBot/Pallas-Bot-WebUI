@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { fetchInstances, fetchSystem } from "@/api/consoleApi";
+import { fetchInstances, fetchSystem, peekInstancesCache } from "@/api/consoleApi";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -16,6 +16,10 @@ const err = ref("");
 const pageReady = ref(false);
 const system = ref<SystemData | null>(null);
 const instances = ref<InstancesData | null>(null);
+{
+  const warmInst = peekInstancesCache();
+  if (warmInst) instances.value = warmInst;
+}
 
 const snap = computed(() => protocolSnapshot(instances.value));
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));

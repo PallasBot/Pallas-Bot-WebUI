@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { fetchInstances, fetchPlugins, putBotConfig } from "@/api/consoleApi";
+import { fetchInstances, fetchPlugins, peekInstancesCache, peekPluginsCache, putBotConfig } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -17,7 +17,15 @@ const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const data = ref<InstancesData | null>(null);
+{
+  const warm = peekInstancesCache();
+  if (warm) data.value = warm;
+}
 const plugins = ref<PluginRow[]>([]);
+{
+  const warmPl = peekPluginsCache();
+  if (warmPl?.length) plugins.value = warmPl;
+}
 const pluginLoadErr = ref("");
 
 const botView = ref<"table" | "cards">(consolePrefs.instancesBotView);
@@ -218,10 +226,10 @@ function onBoolSelect(field: "security" | "auto_accept_friend" | "auto_accept_gr
   draft.value[field] = raw === "1";
 }
 
-async function reload() {
+async function reload(opts?: { bypassCache?: boolean }) {
   err.value = "";
   try {
-    data.value = await fetchInstances();
+    data.value = await fetchInstances({ bypassCache: Boolean(opts?.bypassCache) });
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   }
@@ -230,7 +238,7 @@ async function reload() {
 async function reloadFromUser() {
   reloadBusy.value = true;
   try {
-    await reload();
+    await reload({ bypassCache: true });
   } finally {
     reloadBusy.value = false;
   }

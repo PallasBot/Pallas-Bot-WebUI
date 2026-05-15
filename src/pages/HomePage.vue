@@ -15,6 +15,8 @@ import {
   fetchRequestOverview,
   fetchSystem,
   fetchUpdateCheck,
+  peekBotsCache,
+  peekPluginsCache,
 } from "@/api/consoleApi";
 import type {
   BotRow,
@@ -38,7 +40,12 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
-import { cachePutFriendGroupLists, cachePutRequestOverview } from "@/utils/consoleSocialCache";
+import {
+  cachePutFriendGroupLists,
+  cachePutRequestOverview,
+  cacheTryGetFriendGroupLists,
+  cacheTryGetRequestOverview,
+} from "@/utils/consoleSocialCache";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
@@ -84,6 +91,13 @@ const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
 const consoleDailyStats = ref<ConsoleDailyStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
+{
+  const warmBots = peekBotsCache();
+  if (warmBots?.length) {
+    bots.value = warmBots;
+    botCount.value = warmBots.length;
+  }
+}
 const instances = ref<InstancesData | null>(null);
 const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
@@ -96,6 +110,10 @@ const pageReady = ref(false);
 const overviewBusy = ref(false);
 
 const pluginsList = ref<PluginRow[]>([]);
+{
+  const warmPl = peekPluginsCache();
+  if (warmPl?.length) pluginsList.value = warmPl;
+}
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
@@ -619,8 +637,14 @@ async function refreshSelectedBotDetails() {
     requestOverviewSnap.value = null;
     return;
   }
+  const sidKey = String(acc);
   socialBusy.value = true;
   try {
+    const cachedListsWarm = cacheTryGetFriendGroupLists(sidKey);
+    if (cachedListsWarm) {
+      friendSnap.value = cachedListsWarm.friends;
+      groupSnap.value = cachedListsWarm.groups;
+    }
     const settled = await Promise.allSettled([
       fetchMessageStats(acc),
       fetchPluginRunStats(acc),
@@ -639,8 +663,14 @@ async function refreshSelectedBotDetails() {
     friendSnap.value = take<FriendListData>(3);
     groupSnap.value = take<GroupListData>(4);
     requestOverviewSnap.value = take<RequestOverviewData>(5);
-    const sidKey = acc != null ? String(acc) : "";
-    if (sidKey && friendSnap.value && groupSnap.value) {
+    if (!friendSnap.value || !groupSnap.value) {
+      const fb = cacheTryGetFriendGroupLists(sidKey);
+      if (fb) {
+        if (!friendSnap.value) friendSnap.value = fb.friends;
+        if (!groupSnap.value) groupSnap.value = fb.groups;
+      }
+    }
+    if (friendSnap.value && groupSnap.value) {
       cachePutFriendGroupLists(sidKey, friendSnap.value, groupSnap.value);
     }
     if (requestOverviewSnap.value) {
@@ -657,9 +687,18 @@ watch(selectedAccount, (acc, prev) => {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
     consoleDailyStats.value = null;
-    friendSnap.value = null;
-    groupSnap.value = null;
-    requestOverviewSnap.value = null;
+    const sidKey = String(acc);
+    const cachedLists = cacheTryGetFriendGroupLists(sidKey);
+    if (cachedLists) {
+      friendSnap.value = cachedLists.friends;
+      groupSnap.value = cachedLists.groups;
+    } else {
+      friendSnap.value = null;
+      groupSnap.value = null;
+    }
+    const cachedOv = cacheTryGetRequestOverview();
+    if (cachedOv) requestOverviewSnap.value = cachedOv;
+    else requestOverviewSnap.value = null;
   }
   syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
