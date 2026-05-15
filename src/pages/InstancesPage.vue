@@ -144,6 +144,12 @@ const selectedConnectedAccounts = computed(() =>
   sortedSelectedDbAccounts.value.filter((a) => isBotConnected(a)),
 );
 
+const dbCardsPageAllSelected = computed(() => {
+  const page = pagedDbBotConfigs.value;
+  if (!page.length) return false;
+  return page.every((c) => selectedDbAccounts.value.has(c.account));
+});
+
 function setDbCardSelected(account: number, selected: boolean) {
   const s = new Set(selectedDbAccounts.value);
   if (selected) s.add(account);
@@ -151,9 +157,16 @@ function setDbCardSelected(account: number, selected: boolean) {
   selectedDbAccounts.value = s;
 }
 
-function selectAllDbCardsOnPage() {
+function toggleSelectAllDbCardsOnPage() {
+  const page = pagedDbBotConfigs.value;
+  if (!page.length) return;
   const s = new Set(selectedDbAccounts.value);
-  for (const c of pagedDbBotConfigs.value) s.add(c.account);
+  const allOnPage = page.every((c) => s.has(c.account));
+  if (allOnPage) {
+    for (const c of page) s.delete(c.account);
+  } else {
+    for (const c of page) s.add(c.account);
+  }
   selectedDbAccounts.value = s;
 }
 
@@ -449,9 +462,9 @@ onMounted(async () => {
             <button
               type="button"
               class="btn"
-              @click="selectAllDbCardsOnPage"
+              @click="toggleSelectAllDbCardsOnPage"
             >
-              全选本页
+              {{ dbCardsPageAllSelected ? "取消全选" : "全选本页" }}
             </button>
             <button
               type="button"
