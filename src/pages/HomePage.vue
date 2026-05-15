@@ -849,12 +849,9 @@ onUnmounted(() => {
               <div
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
+                :style="accountUnifiedHeroLockStyle"
               >
-                <div
-                  class="home-account-unified"
-                  :style="accountUnifiedHeroLockStyle"
-                >
-                  <div class="home-account-unified__col home-account-unified__col--hero">
+                <div class="home-account-split-bd__col home-account-split-bd__col--hero">
                     <div
                       ref="accountCardRef"
                       class="home-account-card"
@@ -1036,7 +1033,7 @@ onUnmounted(() => {
                     </div>
                     </div>
                   </div>
-                  <div class="home-account-unified__col home-account-unified__col--charts">
+                <div class="home-account-split-bd__col home-account-split-bd__col--charts">
                     <div class="home-account-charts-shell home-account-charts-shell--hero-side">
                       <HomePluginRunCharts
                         :plugins="scopedPluginPlugins"
@@ -1054,7 +1051,6 @@ onUnmounted(() => {
                         :toolbar-summary-plugin="chartToolbarSummaryPlugin"
                       />
                     </div>
-                  </div>
                 </div>
               </div>
             </template>
