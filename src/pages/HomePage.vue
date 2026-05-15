@@ -38,7 +38,7 @@ import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
-import { botFavoriteAccounts } from "@/utils/botFavorites";
+import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
 import {
   cachePutFriendGroupLists,
@@ -475,12 +475,12 @@ const selectedAdminsDisplay = computed(() => {
 const accountProtocolIsUnknown = computed(() => accountAdapterDisplay.value === "—");
 
 const friendCountDisplay = computed(() => {
-  if (friendSnap.value == null) return "未拉取";
+  if (friendSnap.value == null) return "—";
   return String(friendSnap.value.friends?.length ?? 0);
 });
 
 const groupCountDisplay = computed(() => {
-  if (groupSnap.value == null) return "未拉取";
+  if (groupSnap.value == null) return "—";
   return String(groupSnap.value.groups?.length ?? 0);
 });
 
@@ -997,6 +997,16 @@ onUnmounted(() => {
                             <div class="home-account-hero__title home-account-hero__title--picker">
                               <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
                               <button
+                                v-if="selectedAccount != null"
+                                type="button"
+                                class="home-account-hero__fav-star"
+                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
+                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
+                                @click.stop="toggleFavoriteBot(selectedAccount)"
+                              >
+                                ★
+                              </button>
+                              <button
                                 v-if="sortedDbBots.length > 1"
                                 type="button"
                                 class="home-account-hero__picker-toggle"
@@ -1035,19 +1045,32 @@ onUnmounted(() => {
                               role="listbox"
                               aria-label="选择 Bot 账号"
                             >
-                              <button
+                              <div
                                 v-for="c in sortedDbBots"
                                 :key="c.account"
-                                type="button"
                                 class="home-account-hero__picker-item"
                                 :class="{ 'is-active': c.account === selectedAccount }"
                                 role="option"
                                 :aria-selected="c.account === selectedAccount"
-                                @click="pickAccountFromList(c.account)"
                               >
-                                <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
-                                <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  class="home-account-hero__picker-item-hit"
+                                  @click="pickAccountFromList(c.account)"
+                                >
+                                  <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
+                                  <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  class="home-account-hero__fav-star home-account-hero__fav-star--sm"
+                                  :aria-pressed="botFavoriteAccounts.has(c.account)"
+                                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                                  @click.stop="toggleFavoriteBot(c.account)"
+                                >
+                                  ★
+                                </button>
+                              </div>
                             </div>
                           </div>
                           <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
@@ -1458,3 +1481,59 @@ onUnmounted(() => {
     </Transition>
   </div>
 </template>
+
+<style scoped>
+.home-account-hero__picker-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.home-account-hero__picker-item-hit {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px 6px 8px 10px;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.home-account-hero__picker-item-hit:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.home-account-hero__fav-star {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 16px;
+  line-height: 1;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.38;
+}
+.home-account-hero__fav-star:hover,
+.home-account-hero__fav-star:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.55;
+}
+.home-account-hero__fav-star--sm {
+  padding: 4px 8px;
+  font-size: 15px;
+}
+.home-account-hero__fav-star[aria-pressed="true"] {
+  opacity: 1;
+  color: #fbbf24;
+}
+</style>

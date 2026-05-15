@@ -2909,6 +2909,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   flex: 1 1 auto;
   min-height: 0;
   justify-content: space-evenly;
+  overflow: hidden;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__block,
