@@ -4901,28 +4901,36 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: center;
   }
 
-  .friends-groups-list-hd-actions {
-    margin-left: 0;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+  /* 好友/群聊列表：搜索与「+」同一行，状态与收起在下一行（避免 + 单独占一行顶在右上） */
+  .panel__hd .row-actions.friends-groups-list-hd-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
     gap: 8px;
-  }
-
-  .friends-groups-list-hd-actions > .panel-sidebar-add {
-    align-self: flex-end;
-    order: -1;
+    width: 100%;
+    margin-left: 0;
   }
 
   .friends-groups-list-hd-actions > input[type="search"].inp {
+    grid-column: 1;
+    grid-row: 1;
     width: 100%;
     min-width: 0 !important;
     max-width: none !important;
-    flex: 0 0 auto;
-    order: 0;
+  }
+
+  .friends-groups-list-hd-actions > .panel-sidebar-add {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    justify-self: end;
+    order: unset;
   }
 
   .friends-groups-list-hd-actions__tail {
+    grid-column: 1 / -1;
+    grid-row: 2;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -4930,7 +4938,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: space-between;
     gap: 8px;
     width: 100%;
-    order: 1;
+    min-width: 0;
+    order: unset;
   }
 
   .friends-groups-list-hd-actions__tail > .btn {
