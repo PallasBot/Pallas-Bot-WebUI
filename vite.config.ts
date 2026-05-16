@@ -30,6 +30,10 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET || DEFAULT_TARGET,
         changeOrigin: true,
       },
+      "/protocol": {
+        target: process.env.VITE_PROXY_TARGET || DEFAULT_TARGET,
+        changeOrigin: true,
+      },
     },
   },
 });

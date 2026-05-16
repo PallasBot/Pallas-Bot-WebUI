@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import {
   deleteBotConfig,
   fetchInstances,
@@ -9,11 +9,14 @@ import {
   putBotConfig,
 } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
+import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
+import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
@@ -61,7 +64,7 @@ const adminAddHint = ref("");
 const saveBusy = ref(false);
 const saveErr = ref("");
 
-const selectedDbAccounts = ref<Set<number>>(new Set());
+const dbBulk = useCardBulkSelection<number>();
 const deleteModalOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteErr = ref("");
@@ -92,6 +95,7 @@ const instDbPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
 const reloadBusy = ref(false);
+const dbBotSearchQ = ref("");
 
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
@@ -129,54 +133,64 @@ const sortedDbBotConfigs = computed(() => {
   return rows;
 });
 
+function dbBotMatchesSearch(c: BotConfigPublic, q: string): boolean {
+  const hay = [
+    String(c.account),
+    botNickname(c.account) ?? "",
+    ...sortedAdminsList(c.admins).map(String),
+    formatDisabledPluginIds(c.disabled_plugins, plugins.value),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+const filteredDbBotConfigs = computed(() => {
+  const q = dbBotSearchQ.value.trim().toLowerCase();
+  if (!q) return sortedDbBotConfigs.value;
+  return sortedDbBotConfigs.value.filter((c) => dbBotMatchesSearch(c, q));
+});
+
 const dbBotsConnectedCount = computed(
   () => sortedDbBotConfigs.value.filter((c) => isBotConnected(c.account)).length,
 );
 const dbBotsTotalCount = computed(() => sortedDbBotConfigs.value.length);
 
 const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, tablePageSize.value));
-const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, tablePageSize.value));
-
-const selectedDbCount = computed(() => selectedDbAccounts.value.size);
-
-const sortedSelectedDbAccounts = computed(() => [...selectedDbAccounts.value].sort((a, b) => a - b));
-
-const selectedConnectedAccounts = computed(() =>
-  sortedSelectedDbAccounts.value.filter((a) => isBotConnected(a)),
+const pagedDbBotConfigs = computed(() =>
+  slicePage(filteredDbBotConfigs.value, instDbPage.value, tablePageSize.value),
 );
 
-const dbCardsPageAllSelected = computed(() => {
-  const page = pagedDbBotConfigs.value;
-  if (!page.length) return false;
-  return page.every((c) => selectedDbAccounts.value.has(c.account));
+const pagedDbAccountIds = computed(() => pagedDbBotConfigs.value.map((c) => c.account));
+
+const dbCardsPageAllSelected = computed(() => dbBulk.pageAllSelected(pagedDbAccountIds.value));
+
+const selectedConnectedAccounts = computed(() =>
+  dbBulk.sortedSelected.value.filter((a) => isBotConnected(a)),
+);
+
+const deleteModalItems = computed(() =>
+  dbBulk.sortedSelected.value.map((acc) => ({
+    key: String(acc),
+    label: `${botNickname(acc) || "BOT"} · ${acc}`,
+  })),
+);
+
+const deleteModalWarnings = computed(() => {
+  const connected = selectedConnectedAccounts.value;
+  if (!connected.length) return [];
+  return [
+    `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+  ];
 });
 
-function setDbCardSelected(account: number, selected: boolean) {
-  const s = new Set(selectedDbAccounts.value);
-  if (selected) s.add(account);
-  else s.delete(account);
-  selectedDbAccounts.value = s;
-}
-
-function toggleSelectAllDbCardsOnPage() {
-  const page = pagedDbBotConfigs.value;
-  if (!page.length) return;
-  const s = new Set(selectedDbAccounts.value);
-  const allOnPage = page.every((c) => s.has(c.account));
-  if (allOnPage) {
-    for (const c of page) s.delete(c.account);
-  } else {
-    for (const c of page) s.add(c.account);
-  }
-  selectedDbAccounts.value = s;
-}
-
-function clearDbCardSelection() {
-  selectedDbAccounts.value = new Set();
-}
+const instDeleteSubtitle = computed(
+  () =>
+    `将从数据库移除以下账号的 bot_config 行（共 ${dbBulk.sortedSelected.value.length} 个），操作不可撤销。`,
+);
 
 function openDeleteModal() {
-  if (selectedDbAccounts.value.size === 0) return;
+  if (dbBulk.selectedCount.value === 0) return;
   deleteErr.value = "";
   deleteModalOpen.value = true;
 }
@@ -188,7 +202,7 @@ function closeDeleteModal() {
 }
 
 async function confirmDeleteSelectedDb() {
-  const accounts = sortedSelectedDbAccounts.value;
+  const accounts = dbBulk.sortedSelected.value;
   if (!accounts.length) return;
   deleteBusy.value = true;
   deleteErr.value = "";
@@ -197,7 +211,7 @@ async function confirmDeleteSelectedDb() {
       await deleteBotConfig(account);
     }
     await reload();
-    selectedDbAccounts.value = new Set();
+    dbBulk.clearSelection();
     deleteModalOpen.value = false;
     if (
       editModalAccount.value != null &&
@@ -217,11 +231,7 @@ watch(data, () => {
   instNbPage.value = 1;
   instDbPage.value = 1;
   const known = new Set((data.value?.db_bot_configs ?? []).map((c) => c.account));
-  const next = new Set<number>();
-  for (const a of selectedDbAccounts.value) {
-    if (known.has(a)) next.add(a);
-  }
-  selectedDbAccounts.value = next;
+  dbBulk.pruneSelection(known);
 });
 
 watch(
@@ -231,6 +241,10 @@ watch(
     instDbPage.value = 1;
   },
 );
+
+watch(dbBotSearchQ, () => {
+  instDbPage.value = 1;
+});
 
 function setBotView(v: "table" | "cards") {
   botView.value = v;
@@ -403,45 +417,54 @@ onMounted(async () => {
               @click="reloadFromUser"
             />
           </h2>
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
-            @click="expDbBots = !expDbBots"
-          >
-            {{ expDbBots ? "收起" : "展开" }}
-          </button>
-          <div class="inst-db-panel__actions">
-            <PanelSidebarAdd main-path="/instances" />
-            <span
-              v-if="data"
-              class="inst-db-stat muted"
+          <div class="inst-db-panel__hd-side">
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expDbBots = !expDbBots"
             >
-              当前已连接
-              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
-              / {{ dbBotsTotalCount }} 账号
-            </span>
-            <div class="inst-db-panel__toolbar">
-              <div
-                class="console-view-toggle"
-                role="group"
-                aria-label="实例表格或卡片视图"
+              {{ expDbBots ? "收起" : "展开" }}
+            </button>
+            <div
+              class="console-view-toggle"
+              role="group"
+              aria-label="实例表格或卡片视图"
+            >
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'table' }"
+                @click="setBotView('table')"
               >
-                <button
-                  type="button"
-                  :class="{ 'is-on': botView === 'table' }"
-                  @click="setBotView('table')"
-                >
-                  表格
-                </button>
-                <button
-                  type="button"
-                  :class="{ 'is-on': botView === 'cards' }"
-                  @click="setBotView('cards')"
-                >
-                  卡片
-                </button>
-              </div>
+                表格
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'cards' }"
+                @click="setBotView('cards')"
+              >
+                卡片
+              </button>
             </div>
+          </div>
+          <div class="inst-db-panel__actions">
+            <div class="inst-db-panel__stat-search">
+              <span
+                v-if="data"
+                class="inst-db-stat muted"
+              >
+                当前已连接
+                <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+                / {{ dbBotsTotalCount }} 账号
+              </span>
+              <input
+                v-model="dbBotSearchQ"
+                class="inp inst-db-search"
+                type="search"
+                placeholder="搜索账号 / 昵称 / 管理员 / 插件"
+                title="按账号、昵称、管理员、禁用插件筛选"
+              >
+            </div>
+            <PanelSidebarAdd main-path="/instances" />
           </div>
         </div>
         <div
@@ -532,10 +555,10 @@ onMounted(async () => {
             </table>
           </div>
           <ConsolePagerBar
-            v-if="botView === 'table' && sortedDbBotConfigs.length > 0"
+            v-if="botView === 'table' && filteredDbBotConfigs.length > 0"
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
-            :total="sortedDbBotConfigs.length"
+            :total="filteredDbBotConfigs.length"
           />
 
           <div
@@ -554,14 +577,14 @@ onMounted(async () => {
                 >
                   <input
                     type="checkbox"
-                    :checked="selectedDbAccounts.has(c.account)"
+                    :checked="dbBulk.isSelected(c.account)"
                     :aria-label="`选择账号 ${c.account}`"
-                    @change="setDbCardSelected(c.account, ($event.target as HTMLInputElement).checked)"
+                    @change="dbBulk.setSelected(c.account, ($event.target as HTMLInputElement).checked)"
                   >
                 </label>
                 <div class="data-summary-card__head-main">
                   <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
-                  <div class="data-summary-card__secondary muted">账号 {{ c.account }}</div>
+                  <div class="data-summary-card__secondary muted">{{ c.account }}</div>
                 </div>
                 <span
                   :class="
@@ -571,7 +594,8 @@ onMounted(async () => {
                   "
                 >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
               </div>
-              <div class="data-summary-card__row">
+              <div class="data-summary-card__body">
+                <div class="data-summary-card__row">
                 <span class="data-summary-card__label">安全模式</span>
                 <span :class="boolPillClass(c.security)">{{ c.security ? "开启" : "关闭" }}</span>
               </div>
@@ -607,7 +631,8 @@ onMounted(async () => {
                     : "无"
                 }}
               </div>
-              <div class="data-summary-card__tags inst-card-actions">
+              </div>
+              <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
                 <ConsoleTableEdit @click="startEdit(c)" />
                 <button
                   type="button"
@@ -622,40 +647,21 @@ onMounted(async () => {
             </div>
           </div>
           <ConsolePagerBar
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
+            v-if="botView === 'cards' && filteredDbBotConfigs.length > 0"
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
-            :total="sortedDbBotConfigs.length"
+            :total="filteredDbBotConfigs.length"
           />
 
-          <div
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
-            class="inst-db-bulk-bar"
-          >
-            <button
-              type="button"
-              class="btn"
-              @click="toggleSelectAllDbCardsOnPage"
-            >
-              {{ dbCardsPageAllSelected ? "取消全选" : "全选本页" }}
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="selectedDbCount === 0"
-              @click="clearDbCardSelection"
-            >
-              清除选择
-            </button>
-            <button
-              type="button"
-              class="btn btn--danger"
-              :disabled="selectedDbCount === 0 || deleteBusy"
-              @click="openDeleteModal"
-            >
-              删除选中<span v-if="selectedDbCount > 0">（{{ selectedDbCount }}）</span>
-            </button>
-          </div>
+          <ConsoleCardBulkBar
+            v-if="botView === 'cards' && filteredDbBotConfigs.length > 0"
+            :page-all-selected="dbCardsPageAllSelected"
+            :selected-count="unref(dbBulk.selectedCount)"
+            :delete-busy="deleteBusy"
+            @toggle-select-all="dbBulk.toggleSelectAllOnPage(pagedDbAccountIds)"
+            @clear-selection="dbBulk.clearSelection()"
+            @delete="openDeleteModal"
+          />
         </div>
       </div>
 
@@ -922,99 +928,18 @@ onMounted(async () => {
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div
-        v-if="deleteModalOpen"
-        class="console-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="inst-delete-modal-title"
-      >
-        <div
-          class="console-modal__backdrop"
-          aria-hidden="true"
-          @click="closeDeleteModal"
-        />
-        <div
-          class="console-modal__dialog"
-          @click.stop
-        >
-          <div class="console-modal__hd">
-            <div class="console-modal__head-text">
-              <h2
-                id="inst-delete-modal-title"
-                class="console-modal__title"
-              >
-                删除实例配置
-              </h2>
-              <p class="console-modal__subtitle muted">
-                将从数据库移除以下账号的 bot_config 行（共 {{ sortedSelectedDbAccounts.length }} 个），操作不可撤销。
-              </p>
-            </div>
-            <button
-              type="button"
-              class="console-modal__close"
-              aria-label="关闭"
-              :disabled="deleteBusy"
-              @click="closeDeleteModal"
-            >
-              ×
-            </button>
-          </div>
-          <div class="console-modal__bd">
-            <p
-              v-if="deleteErr"
-              class="alert alert--err"
-              style="margin: 0 0 12px"
-            >
-              {{ deleteErr }}
-            </p>
-            <p
-              v-if="selectedConnectedAccounts.length"
-              class="alert alert--err"
-              style="margin: 0 0 12px"
-            >
-              其中以下账号当前仍与 NoneBot 连接：{{ selectedConnectedAccounts.join("、") }}。删除后可能导致运行期行为异常，请确认。
-            </p>
-            <p
-              class="muted"
-              style="margin: 0 0 8px; font-size: 13px"
-            >
-              账号列表
-            </p>
-            <ul class="inst-delete-account-list muted">
-              <li
-                v-for="acc in sortedSelectedDbAccounts"
-                :key="`del-${acc}`"
-              >
-                {{ botNickname(acc) || "BOT" }} · {{ acc }}
-              </li>
-            </ul>
-            <div
-              class="row-actions"
-              style="margin-top: 18px; flex-wrap: wrap; gap: 8px"
-            >
-              <button
-                type="button"
-                class="btn btn--danger"
-                :disabled="deleteBusy"
-                @click="confirmDeleteSelectedDb"
-              >
-                {{ deleteBusy ? "删除中…" : "确认删除" }}
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="deleteBusy"
-                @click="closeDeleteModal"
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <ConsoleDeleteConfirmModal
+      :open="deleteModalOpen"
+      title="删除实例配置"
+      :subtitle="instDeleteSubtitle"
+      :items="deleteModalItems"
+      :warnings="deleteModalWarnings"
+      :busy="deleteBusy"
+      :error="deleteErr"
+      title-id="inst-delete-modal-title"
+      @close="closeDeleteModal"
+      @confirm="confirmDeleteSelectedDb"
+    />
   </div>
 </template>
 
