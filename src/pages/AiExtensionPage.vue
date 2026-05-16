@@ -18,11 +18,11 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
-const ok = ref("");
 const saving = ref(false);
 const testOut = ref("");
 const logKind = ref<"uvicorn" | "celery">("uvicorn");
@@ -159,12 +159,11 @@ async function load() {
 
 async function save() {
   err.value = "";
-  ok.value = "";
   saving.value = true;
   try {
     const c = await putAiExtensionConfig(buildConfigPayload());
     hydrateFromConfig(c);
-    ok.value = "已保存。";
+    pushConsoleToast("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -201,11 +200,9 @@ async function refreshNcmStatus() {
   try {
     ncmStatus.value = await fetchAiNcmStatus();
     if (!ncmStatus.value.ok) {
-      ok.value = "";
       err.value = ncmStatus.value.error || `扩展服务返回异常（HTTP ${ncmStatus.value.status_code ?? "?"})`;
     }
   } catch (e) {
-    ok.value = "";
     err.value = e instanceof Error ? e.message : String(e);
     ncmStatus.value = null;
   } finally {
@@ -231,11 +228,9 @@ async function sendNcmSms() {
     if (r.ok && (code === 200 || code === "200")) {
       ncmLastNote.value = msg || "验证码已发送，请查收短信。";
     } else {
-      ok.value = "";
       err.value = msg || r.error || "发送验证码失败。";
     }
   } catch (e) {
-    ok.value = "";
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     ncmBusy.value = false;
@@ -258,15 +253,13 @@ async function verifyNcmSms() {
     const d = r.data as Record<string, unknown>;
     if (r.ok && d.success === true) {
       err.value = "";
-      ok.value = typeof d.message === "string" ? d.message : "登录成功。";
+      pushConsoleToast(typeof d.message === "string" && d.message.trim() ? d.message : "登录成功");
       ncmCaptcha.value = "";
       await refreshNcmStatus();
     } else {
-      ok.value = "";
       err.value = typeof d.message === "string" ? d.message : r.error || "登录失败。";
     }
   } catch (e) {
-    ok.value = "";
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     ncmBusy.value = false;
@@ -283,14 +276,12 @@ async function logoutNcm() {
     const d = r.data as Record<string, unknown>;
     if (r.ok && d.success === true) {
       err.value = "";
-      ok.value = typeof d.message === "string" ? d.message : "已登出。";
+      pushConsoleToast(typeof d.message === "string" && d.message.trim() ? d.message : "已登出");
       await refreshNcmStatus();
     } else {
-      ok.value = "";
       err.value = typeof d.message === "string" ? d.message : r.error || "登出失败。";
     }
   } catch (e) {
-    ok.value = "";
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     ncmBusy.value = false;
@@ -315,13 +306,6 @@ onMounted(async () => {
     >
       {{ err }}
     </div>
-    <div
-      v-if="ok"
-      class="alert alert--ok"
-    >
-      {{ ok }}
-    </div>
-
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="4"
