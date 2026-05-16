@@ -1491,6 +1491,26 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
 .friends-groups-list-hd-actions {
   margin-left: auto;
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.friends-groups-list-hd-actions > input[type="search"].inp {
+  flex: 1 1 140px;
+  min-width: 140px;
+  max-width: 220px;
+  width: auto;
+  box-sizing: border-box;
+}
+
+.friends-groups-list-hd-actions__tail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 /* 好友页「当前账号」：标题栏内原生 select 易被 .panel overflow 裁切，本卡允许溢出绘制 */
@@ -4929,6 +4949,41 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .friends-groups-list-hd-actions {
     margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .friends-groups-list-hd-actions > .panel-sidebar-add {
+    align-self: flex-end;
+    order: -1;
+  }
+
+  .friends-groups-list-hd-actions > input[type="search"].inp {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 0 0 auto;
+    order: 0;
+  }
+
+  .friends-groups-list-hd-actions__tail {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    order: 1;
+  }
+
+  .friends-groups-list-hd-actions__tail > .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto !important;
+    max-width: 100%;
   }
 
   .panel__hd .row-actions > .sel,

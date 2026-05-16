@@ -767,10 +767,7 @@ onUnmounted(() => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
         </h2>
-        <div
-          class="row-actions friends-groups-list-hd-actions"
-          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-        >
+        <div class="row-actions friends-groups-list-hd-actions">
           <PanelSidebarAdd pin-id="friends-groups-friends" />
           <input
             v-model="friendListQ"
@@ -779,25 +776,26 @@ onUnmounted(() => {
             placeholder="搜索 QQ / 昵称 / 备注"
             title="按 QQ、昵称、备注筛选当前列表"
             :disabled="!selfIdStr.trim() || fgListsSkeleton"
-            style="min-width: 140px; max-width: 220px"
           >
-          <span
-            v-if="selfIdStr && listsBusy"
-            class="muted"
-            style="font-size: 12px"
-          >列表加载中…</span>
-          <span
-            v-else-if="friends?.truncated"
-            class="badge badge--warn"
-          >已截断</span>
-          <button
-            type="button"
-            class="btn"
-            style="padding: 6px 12px; font-size: 12px"
-            @click="toggleFriendsListPanel"
-          >
-            {{ consolePrefs.friendsPageFriendsListOpen ? "收起" : "展开" }}
-          </button>
+          <div class="friends-groups-list-hd-actions__tail">
+            <span
+              v-if="selfIdStr && listsBusy"
+              class="muted"
+              style="font-size: 12px"
+            >列表加载中…</span>
+            <span
+              v-else-if="friends?.truncated"
+              class="badge badge--warn"
+            >已截断</span>
+            <button
+              type="button"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="toggleFriendsListPanel"
+            >
+              {{ consolePrefs.friendsPageFriendsListOpen ? "收起" : "展开" }}
+            </button>
+          </div>
         </div>
       </div>
       <div
@@ -907,10 +905,7 @@ onUnmounted(() => {
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
         </h2>
-        <div
-          class="row-actions friends-groups-list-hd-actions"
-          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-        >
+        <div class="row-actions friends-groups-list-hd-actions">
           <PanelSidebarAdd pin-id="friends-groups-groups" />
           <input
             v-model="groupListQ"
@@ -919,25 +914,26 @@ onUnmounted(() => {
             placeholder="搜索群号 / 群名"
             title="按群号、群名、成员数筛选当前列表"
             :disabled="!selfIdStr.trim() || fgListsSkeleton"
-            style="min-width: 140px; max-width: 220px"
           >
-          <span
-            v-if="selfIdStr && listsBusy"
-            class="muted"
-            style="font-size: 12px"
-          >列表加载中…</span>
-          <span
-            v-else-if="groups?.truncated"
-            class="badge badge--warn"
-          >已截断 · limit {{ groups?.limit }}</span>
-          <button
-            type="button"
-            class="btn"
-            style="padding: 6px 12px; font-size: 12px"
-            @click="toggleGroupsListPanel"
-          >
-            {{ consolePrefs.friendsPageGroupsListOpen ? "收起" : "展开" }}
-          </button>
+          <div class="friends-groups-list-hd-actions__tail">
+            <span
+              v-if="selfIdStr && listsBusy"
+              class="muted"
+              style="font-size: 12px"
+            >列表加载中…</span>
+            <span
+              v-else-if="groups?.truncated"
+              class="badge badge--warn"
+            >已截断 · limit {{ groups?.limit }}</span>
+            <button
+              type="button"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="toggleGroupsListPanel"
+            >
+              {{ consolePrefs.friendsPageGroupsListOpen ? "收起" : "展开" }}
+            </button>
+          </div>
         </div>
       </div>
       <div
