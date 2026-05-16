@@ -3035,9 +3035,14 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
     align-self: start;
   }
 
+  /* flex:0 + min-height:0：避免「插件今日次数」条数多时 min-height:auto 撑破 max-height */
   .home-account-charts-shell--hero-side {
+    flex: 0 0 auto;
+    align-self: start;
+    width: 100%;
     height: var(--home-account-hero-lock-px, auto);
     max-height: var(--home-account-hero-lock-px, none);
+    min-height: 0;
     overflow: hidden;
   }
 }
@@ -3084,8 +3089,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-bars.home-plugin-charts__viz {
   flex: 1 1 auto;
   min-height: 0;
-  justify-content: space-evenly;
-  overflow: hidden;
+  max-height: 100%;
+  justify-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__block,
@@ -4901,36 +4908,55 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: center;
   }
 
-  /* 好友/群聊列表：搜索与「+」同一行，状态与收起在下一行（避免 + 单独占一行顶在右上） */
-  .panel__hd .row-actions.friends-groups-list-hd-actions {
+  /* 好友/群聊列表：窄屏与「当前账号」一致——标题与 + 同行，搜索与状态各独占一行 */
+  #fg-friends .panel__hd.panel__hd--split,
+  #fg-groups .panel__hd.panel__hd--split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    margin-left: 0;
+    column-gap: 10px;
+    row-gap: 8px;
   }
 
-  .friends-groups-list-hd-actions > input[type="search"].inp {
+  #fg-friends .panel__hd.panel__hd--split > .panel__title,
+  #fg-groups .panel__hd.panel__hd--split > .panel__title {
     grid-column: 1;
     grid-row: 1;
-    width: 100%;
+    width: auto;
+    min-width: 0;
+    align-self: center;
+  }
+
+  #fg-friends .friends-groups-list-hd-actions,
+  #fg-groups .friends-groups-list-hd-actions {
+    display: contents;
+  }
+
+  #fg-friends .friends-groups-list-hd-actions > .panel-sidebar-add,
+  #fg-groups .friends-groups-list-hd-actions > .panel-sidebar-add {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    width: auto !important;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+
+  #fg-friends .friends-groups-list-hd-actions > input[type="search"].inp,
+  #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
   }
 
-  .friends-groups-list-hd-actions > .panel-sidebar-add {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-    justify-self: end;
-    order: unset;
-  }
-
-  .friends-groups-list-hd-actions__tail {
+  #fg-friends .friends-groups-list-hd-actions__tail,
+  #fg-groups .friends-groups-list-hd-actions__tail {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -4939,10 +4965,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     gap: 8px;
     width: 100%;
     min-width: 0;
-    order: unset;
   }
 
-  .friends-groups-list-hd-actions__tail > .btn {
+  #fg-friends .friends-groups-list-hd-actions__tail > .btn,
+  #fg-groups .friends-groups-list-hd-actions__tail > .btn {
     flex: 1 1 auto;
     min-width: 0;
     width: auto !important;

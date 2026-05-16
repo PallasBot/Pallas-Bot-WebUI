@@ -27,6 +27,7 @@ const EXTRACT_RANGES = [
   [1, 245],
   [247, 306],
   [308, 2131],
+  [2189, 2233],
   [1366, 1369],
   [1946, 2009],
   [4718, 4835],
@@ -51,17 +52,6 @@ const PROTOCOL_COMPAT = `
   --accent-subtle: var(--accent-soft);
 }
 
-.btn.danger {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  border-color: rgba(252, 165, 165, 0.55);
-  color: #fff;
-  box-shadow: 0 1px 6px rgba(220, 38, 38, 0.35);
-}
-.btn.danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border-color: rgba(254, 202, 202, 0.75);
-}
-
 .btn.linkish {
   background: transparent;
   border-color: transparent;
@@ -73,24 +63,8 @@ const PROTOCOL_COMPAT = `
   background: transparent;
 }
 
-/* 协议页：无 secondary 的 .btn 视为主按钮（WebUI 默认 .btn 为中性） */
-.proto-shell .btn:not(.secondary):not(.danger):not(.linkish):not(.active):not(.btn--primary) {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 78%, #ffffff 22%) 0%,
-    color-mix(in srgb, var(--accent) 92%, #000000 8%) 100%
-  );
-  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
-  color: #fff;
-  box-shadow: 0 0 24px var(--accent-glow);
-}
-.proto-shell .btn:not(.secondary):not(.danger):not(.linkish):not(.active):not(.btn--primary):hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 62%, #ffffff 38%) 0%,
-    color-mix(in srgb, var(--accent) 82%, #ffffff 18%) 100%
-  );
-  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+.shell__topbar-rail .btn-refresh-icon {
+  flex-shrink: 0;
 }
 
 .shell.proto-shell {
