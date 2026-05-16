@@ -95,6 +95,7 @@ const instDbPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
 const reloadBusy = ref(false);
+const dbBotSearchQ = ref("");
 
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
@@ -132,13 +133,33 @@ const sortedDbBotConfigs = computed(() => {
   return rows;
 });
 
+function dbBotMatchesSearch(c: BotConfigPublic, q: string): boolean {
+  const hay = [
+    String(c.account),
+    botNickname(c.account) ?? "",
+    ...sortedAdminsList(c.admins).map(String),
+    formatDisabledPluginIds(c.disabled_plugins, plugins.value),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+const filteredDbBotConfigs = computed(() => {
+  const q = dbBotSearchQ.value.trim().toLowerCase();
+  if (!q) return sortedDbBotConfigs.value;
+  return sortedDbBotConfigs.value.filter((c) => dbBotMatchesSearch(c, q));
+});
+
 const dbBotsConnectedCount = computed(
   () => sortedDbBotConfigs.value.filter((c) => isBotConnected(c.account)).length,
 );
 const dbBotsTotalCount = computed(() => sortedDbBotConfigs.value.length);
 
 const pagedNonebotBots = computed(() => slicePage(sortedNonebotBots.value, instNbPage.value, tablePageSize.value));
-const pagedDbBotConfigs = computed(() => slicePage(sortedDbBotConfigs.value, instDbPage.value, tablePageSize.value));
+const pagedDbBotConfigs = computed(() =>
+  slicePage(filteredDbBotConfigs.value, instDbPage.value, tablePageSize.value),
+);
 
 const pagedDbAccountIds = computed(() => pagedDbBotConfigs.value.map((c) => c.account));
 
@@ -220,6 +241,10 @@ watch(
     instDbPage.value = 1;
   },
 );
+
+watch(dbBotSearchQ, () => {
+  instDbPage.value = 1;
+});
 
 function setBotView(v: "table" | "cards") {
   botView.value = v;
@@ -392,45 +417,54 @@ onMounted(async () => {
               @click="reloadFromUser"
             />
           </h2>
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
-            @click="expDbBots = !expDbBots"
-          >
-            {{ expDbBots ? "收起" : "展开" }}
-          </button>
-          <div class="inst-db-panel__actions">
-            <PanelSidebarAdd main-path="/instances" />
-            <span
-              v-if="data"
-              class="inst-db-stat muted"
+          <div class="inst-db-panel__hd-side">
+            <button
+              type="button"
+              class="btn panel-hd-collapse-btn"
+              @click="expDbBots = !expDbBots"
             >
-              当前已连接
-              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
-              / {{ dbBotsTotalCount }} 账号
-            </span>
-            <div class="inst-db-panel__toolbar">
-              <div
-                class="console-view-toggle"
-                role="group"
-                aria-label="实例表格或卡片视图"
+              {{ expDbBots ? "收起" : "展开" }}
+            </button>
+            <div
+              class="console-view-toggle"
+              role="group"
+              aria-label="实例表格或卡片视图"
+            >
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'table' }"
+                @click="setBotView('table')"
               >
-                <button
-                  type="button"
-                  :class="{ 'is-on': botView === 'table' }"
-                  @click="setBotView('table')"
-                >
-                  表格
-                </button>
-                <button
-                  type="button"
-                  :class="{ 'is-on': botView === 'cards' }"
-                  @click="setBotView('cards')"
-                >
-                  卡片
-                </button>
-              </div>
+                表格
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': botView === 'cards' }"
+                @click="setBotView('cards')"
+              >
+                卡片
+              </button>
             </div>
+          </div>
+          <div class="inst-db-panel__actions">
+            <div class="inst-db-panel__stat-search">
+              <span
+                v-if="data"
+                class="inst-db-stat muted"
+              >
+                当前已连接
+                <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+                / {{ dbBotsTotalCount }} 账号
+              </span>
+              <input
+                v-model="dbBotSearchQ"
+                class="inp inst-db-search"
+                type="search"
+                placeholder="搜索账号 / 昵称 / 管理员 / 插件"
+                title="按账号、昵称、管理员、禁用插件筛选"
+              >
+            </div>
+            <PanelSidebarAdd main-path="/instances" />
           </div>
         </div>
         <div
@@ -521,10 +555,10 @@ onMounted(async () => {
             </table>
           </div>
           <ConsolePagerBar
-            v-if="botView === 'table' && sortedDbBotConfigs.length > 0"
+            v-if="botView === 'table' && filteredDbBotConfigs.length > 0"
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
-            :total="sortedDbBotConfigs.length"
+            :total="filteredDbBotConfigs.length"
           />
 
           <div
@@ -550,7 +584,7 @@ onMounted(async () => {
                 </label>
                 <div class="data-summary-card__head-main">
                   <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
-                  <div class="data-summary-card__secondary muted">账号 {{ c.account }}</div>
+                  <div class="data-summary-card__secondary muted">{{ c.account }}</div>
                 </div>
                 <span
                   :class="
@@ -560,7 +594,8 @@ onMounted(async () => {
                   "
                 >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
               </div>
-              <div class="data-summary-card__row">
+              <div class="data-summary-card__body">
+                <div class="data-summary-card__row">
                 <span class="data-summary-card__label">安全模式</span>
                 <span :class="boolPillClass(c.security)">{{ c.security ? "开启" : "关闭" }}</span>
               </div>
@@ -596,7 +631,8 @@ onMounted(async () => {
                     : "无"
                 }}
               </div>
-              <div class="data-summary-card__tags inst-card-actions">
+              </div>
+              <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
                 <ConsoleTableEdit @click="startEdit(c)" />
                 <button
                   type="button"
@@ -611,14 +647,14 @@ onMounted(async () => {
             </div>
           </div>
           <ConsolePagerBar
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
+            v-if="botView === 'cards' && filteredDbBotConfigs.length > 0"
             v-model:page="instDbPage"
             v-model:page-size="tablePageSize"
-            :total="sortedDbBotConfigs.length"
+            :total="filteredDbBotConfigs.length"
           />
 
           <ConsoleCardBulkBar
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
+            v-if="botView === 'cards' && filteredDbBotConfigs.length > 0"
             :page-all-selected="dbCardsPageAllSelected"
             :selected-count="unref(dbBulk.selectedCount)"
             :delete-busy="deleteBusy"
