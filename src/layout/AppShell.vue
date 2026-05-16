@@ -10,6 +10,7 @@ import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sid
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
 import { addNavTokenToSidebar, removeNavTokenFromSidebar } from "@/utils/sidebarNavActions";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import type { ThemeMode } from "@/utils/consolePrefs";
@@ -440,6 +441,7 @@ onUnmounted(() => {
 
 <template>
   <div :class="shellClass">
+    <ConsoleToastHost />
     <div class="shell__bg" aria-hidden="true" />
     <header
       class="shell__topbar"

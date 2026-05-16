@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchPluginConfig,
@@ -13,6 +13,7 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
@@ -26,22 +27,6 @@ const helpMenuIgnoredList = ref<string[]>([]);
 const helpMenuBusy = ref(false);
 const helpMenuErr = ref("");
 const saveFeedbackRef = ref<HTMLElement | null>(null);
-const saveSuccessOpen = ref(false);
-
-watch(saveSuccessOpen, (open) => {
-  if (typeof document === "undefined") return;
-  document.body.style.overflow = open ? "hidden" : "";
-});
-
-onUnmounted(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-  }
-});
-
-function closeSaveSuccessModal() {
-  saveSuccessOpen.value = false;
-}
 
 const showInHelpMenu = computed(() => {
   if (!pluginRow.value) return false;
@@ -157,7 +142,7 @@ async function save() {
       }
     }
     data.value = await putPluginConfig(pluginName.value, values);
-    saveSuccessOpen.value = true;
+    pushConsoleToast("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     await nextTick();
@@ -346,61 +331,6 @@ async function save() {
     </div>
     </template>
 
-    <Teleport to="body">
-      <div
-        v-if="saveSuccessOpen"
-        class="console-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="plugin-save-success-title"
-      >
-        <div
-          class="console-modal__backdrop"
-          aria-hidden="true"
-          @click="closeSaveSuccessModal"
-        />
-        <div
-          class="console-modal__dialog"
-          @click.stop
-        >
-          <div class="console-modal__hd">
-            <div class="console-modal__head-text">
-              <h2
-                id="plugin-save-success-title"
-                class="console-modal__title"
-              >
-                保存成功
-              </h2>
-            </div>
-            <button
-              type="button"
-              class="console-modal__close"
-              aria-label="关闭"
-              @click="closeSaveSuccessModal"
-            >
-              ×
-            </button>
-          </div>
-          <div
-            class="console-modal__bd"
-            style="padding-top: 0"
-          >
-            <div
-              class="row-actions"
-              style="margin: 0; justify-content: flex-end"
-            >
-              <button
-                type="button"
-                class="btn btn--primary"
-                @click="closeSaveSuccessModal"
-              >
-                确定
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
