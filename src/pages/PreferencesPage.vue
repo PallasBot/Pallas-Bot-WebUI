@@ -6,7 +6,8 @@ import { MAIN_NAV_ITEMS } from "@/config/mainNav";
 import { SIDEBAR_PIN_DEFINITIONS, sidebarPinToken } from "@/config/sidebarPins";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
-import type { DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
+import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
+import type { AccentPreset, DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import {
@@ -41,6 +42,9 @@ function setRadius(v: RadiusMode) {
 }
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
+}
+function setAccentPreset(v: AccentPreset) {
+  setConsolePrefs({ accentPreset: v });
 }
 
 const pwdErr = ref("");
@@ -387,6 +391,39 @@ loadSidebarSectionInputs();
     <div class="panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>主题色
+        </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/preferences" />
+        </div>
+      </div>
+      <div class="panel__bd">
+        <p class="muted" style="margin: 0 0 12px">
+          影响链接、主按钮、选中高亮与顶栏标题渐变等；与「颜色模式」独立，深/浅色下会自动选用合适色阶。
+        </p>
+        <div class="prefs-accent-grid row-actions">
+          <button
+            v-for="opt in ACCENT_PRESET_OPTIONS"
+            :key="opt.id"
+            type="button"
+            class="prefs-accent-opt btn"
+            :class="{ 'prefs-accent-opt--on': consolePrefs.accentPreset === opt.id }"
+            @click="setAccentPreset(opt.id)"
+          >
+            <span
+              class="prefs-accent-opt__swatch"
+              :style="{ background: opt.swatch }"
+              aria-hidden="true"
+            />
+            <span>{{ opt.label }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>圆角风格
         </h2>
         <div class="row-actions">
@@ -394,7 +431,15 @@ loadSidebarSectionInputs();
         </div>
       </div>
       <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">影响卡片、面板、按钮与下拉框等控件的圆角。</p>
+        <p class="muted" style="margin: 0 0 12px">
+          影响卡片、面板、按钮与下拉框等使用圆角变量的控件；切换后本页即可预览。
+        </p>
+        <div class="prefs-radius-preview row-actions" aria-hidden="true">
+          <span
+            class="prefs-radius-preview__chip"
+            title="当前圆角预览"
+          >预览</span>
+        </div>
         <div class="row-actions">
           <button
             type="button"
@@ -434,6 +479,9 @@ loadSidebarSectionInputs();
         </div>
       </div>
       <div class="panel__bd">
+        <p class="muted" style="margin: 0 0 12px">
+          紧凑模式会缩小面板内边距与部分控件高度；舒适为默认间距。
+        </p>
         <div class="row-actions">
           <button
             type="button"
