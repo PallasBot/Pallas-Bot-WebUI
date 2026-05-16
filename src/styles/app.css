@@ -1501,11 +1501,34 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   max-width: 100%;
 }
 
+.friends-groups-hd-pin-wrap,
 #fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
   align-self: center;
+}
+
+/* 好友申请 / 入群请求：宽屏与列表区一致横排 */
+.friends-groups-req-hd-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.friends-groups-req-hd-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.friends-groups-req-hd-meta__hint {
+  font-size: 12px;
 }
 
 #fg-account.friends-groups-account-panel .friends-groups-account-sel {
@@ -4908,9 +4931,11 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     justify-content: center;
   }
 
-  /* 好友/群聊列表：窄屏与「当前账号」一致——标题与 + 同行，搜索与状态各独占一行 */
+  /* 好友与群页：窄屏「添加到侧栏」与「当前账号」一致——标题与 + 同行右上 */
   #fg-friends .panel__hd.panel__hd--split,
-  #fg-groups .panel__hd.panel__hd--split {
+  #fg-groups .panel__hd.panel__hd--split,
+  #friends-groups-friend-requests .panel__hd.panel__hd--split,
+  #friends-groups-group-requests .panel__hd.panel__hd--split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto;
@@ -4920,7 +4945,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   #fg-friends .panel__hd.panel__hd--split > .panel__title,
-  #fg-groups .panel__hd.panel__hd--split > .panel__title {
+  #fg-groups .panel__hd.panel__hd--split > .panel__title,
+  #friends-groups-friend-requests .panel__hd.panel__hd--split > .panel__title,
+  #friends-groups-group-requests .panel__hd.panel__hd--split > .panel__title {
     grid-column: 1;
     grid-row: 1;
     width: auto;
@@ -4929,17 +4956,29 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   #fg-friends .friends-groups-list-hd-actions,
-  #fg-groups .friends-groups-list-hd-actions {
+  #fg-groups .friends-groups-list-hd-actions,
+  #friends-groups-friend-requests .friends-groups-req-hd-actions,
+  #friends-groups-group-requests .friends-groups-req-hd-actions {
     display: contents;
   }
 
-  #fg-friends .friends-groups-list-hd-actions > .panel-sidebar-add,
-  #fg-groups .friends-groups-list-hd-actions > .panel-sidebar-add {
+  #fg-friends .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
+  #fg-groups .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
+  #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap,
+  #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
     align-self: center;
-    width: auto !important;
+  }
+
+  #fg-friends .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #fg-groups .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #fg-account.friends-groups-account-panel .friends-groups-hd-pin-wrap .panel-sidebar-add {
+    width: 28px !important;
+    height: 28px !important;
     max-width: none;
     flex: 0 0 auto;
   }
@@ -4973,6 +5012,28 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     min-width: 0;
     width: auto !important;
     max-width: 100%;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-meta,
+  #friends-groups-group-requests .friends-groups-req-hd-meta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    min-width: 0;
   }
 
   .panel__hd .row-actions > .sel,
@@ -5113,7 +5174,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     display: contents;
   }
 
-  #fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap {
+  #fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap,
+  #fg-account.friends-groups-account-panel .friends-groups-hd-pin-wrap {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;

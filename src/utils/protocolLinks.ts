@@ -9,25 +9,71 @@ export function joinHttpPath(base: string, path: string): string {
   return `${b}${p2}`;
 }
 
-/** pallas_protocol 内置管理页 URL：``webui_path`` 在站点根下，勿与 ``console.http_base``（WebUI 前缀）拼接。 */
-export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
+/** 协议管理页挂载路径（站点根相对，如 ``/protocol/console``） */
+export function resolveProtocolMountPath(snap: NapcatManagerSnapshot | null): string | null {
   if (!snap?.webui_enabled) return null;
   const raw = snap.webui_path?.trim();
   if (!raw) return null;
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
-    return raw;
+    try {
+      const u = new URL(raw);
+      const p = u.pathname.replace(/\/$/, "") || "/";
+      return p;
+    } catch {
+      return null;
+    }
   }
   const path = raw.startsWith("/") ? raw : `/${raw}`;
+  return path.replace(/\/$/, "") || path;
+}
 
+/** 协议管理页绝对 URL（用于外链与协议 API 基址） */
+export function protocolMountAbsoluteUrl(
+  system: SystemData | null,
+  snap: NapcatManagerSnapshot | null,
+): string | null {
+  const mount = resolveProtocolMountPath(snap);
+  if (!mount) return null;
   const base = botHttpBaseFromSystem(system);
   if (base && /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(base)) {
-    return joinHttpPath(base, path);
+    return joinHttpPath(base, mount);
   }
+  if (typeof window === "undefined") return mount;
+  return `${window.location.origin}${mount}`;
+}
 
-  if (typeof window === "undefined") {
-    return path;
-  }
-  return `${window.location.origin}${path}`;
+/** pallas_protocol 内置管理页 URL：``webui_path`` 在站点根下，勿与 ``console.http_base``（WebUI 前缀）拼接。 */
+export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
+  return protocolMountAbsoluteUrl(system, snap);
+}
+
+/** 协议账号工作区（详情） */
+export function protocolAccountDetailUrl(
+  system: SystemData | null,
+  snap: NapcatManagerSnapshot | null,
+  accountId: string,
+): string | null {
+  const root = protocolMountAbsoluteUrl(system, snap);
+  const id = String(accountId ?? "").trim();
+  if (!root || !id) return null;
+  return `${root.replace(/\/$/, "")}/account/${encodeURIComponent(id)}`;
+}
+
+/** 协议账号设置（编辑） */
+export function protocolAccountEditUrl(
+  system: SystemData | null,
+  snap: NapcatManagerSnapshot | null,
+  accountId: string,
+): string | null {
+  const detail = protocolAccountDetailUrl(system, snap, accountId);
+  if (!detail) return null;
+  return `${detail}?tab=settings`;
+}
+
+/** 协议 API 与页面路由用的账号 id */
+export function accountProtocolId(account: NapcatAccountRow): string | null {
+  const id = String(account.id ?? account.qq ?? "").trim();
+  return id || null;
 }
 
 /** 当前浏览器下的控制台根路径（含 base），末尾无斜杠 */
