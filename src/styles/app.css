@@ -2764,12 +2764,25 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-me
 }
 .home-account-hero__picker-item {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
   width: 100%;
   margin: 0;
-  padding: 8px 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+}
+.home-account-hero__picker-item-hit {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 8px;
   border: none;
   border-radius: calc(var(--radius-md) - 3px);
   background: transparent;
@@ -2780,10 +2793,45 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-me
   line-height: 1.25;
   transition: background 0.1s ease;
 }
-.home-account-hero__picker-item:hover {
+.home-account-hero__picker-item-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-muted) 70%, transparent);
+}
+.home-account-hero__picker-item-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.home-account-hero__picker-item-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+.home-account-hero__picker-item-main {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-account-hero__picker-item-sub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-account-hero__picker-item-hit:hover {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
-.home-account-hero__picker-item.is-active {
+.home-account-hero__picker-item.is-active .home-account-hero__picker-item-hit {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .home-account-hero__picker-item-main {
@@ -2794,17 +2842,46 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-me
   font-size: 11px;
   font-weight: 600;
 }
-.home-account-hero--color .home-account-hero__picker-item {
+.home-account-hero--color .home-account-hero__picker-item-avatar {
+  border-color: color-mix(in srgb, #38bdf8 22%, var(--border));
+  background: color-mix(in srgb, #0f172a 55%, #1e293b 45%);
+}
+html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-item-avatar {
+  border-color: color-mix(in srgb, #0284c7 18%, var(--border));
+  background: color-mix(in srgb, #e2e8f0 65%, #fff 35%);
+}
+.home-account-hero--color .home-account-hero__picker-item-hit {
   color: #e2e8f0;
 }
-.home-account-hero--color .home-account-hero__picker-item:hover {
+.home-account-hero--color .home-account-hero__picker-item-hit:hover {
   background: color-mix(in srgb, #38bdf8 14%, transparent);
 }
-.home-account-hero--color .home-account-hero__picker-item.is-active {
+.home-account-hero--color .home-account-hero__picker-item.is-active .home-account-hero__picker-item-hit {
   background: color-mix(in srgb, #38bdf8 22%, transparent);
 }
-html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-item {
+html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-item-hit {
   color: #0f172a;
+}
+.home-account-hero__picker-menu .home-account-hero__fav-star--sm {
+  flex-shrink: 0;
+  margin: 0 6px 0 0;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 1;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.38;
+}
+.home-account-hero__picker-menu .home-account-hero__fav-star--sm:hover {
+  opacity: 0.72;
+}
+.home-account-hero__picker-menu .home-account-hero__fav-star--sm[aria-pressed="true"] {
+  opacity: 1;
+  color: var(--warn, #fbbf24);
 }
 .home-account-hero__sub {
   margin: 0;
@@ -4656,6 +4733,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   font-size: 0.95em;
 }
 
+.panel__title .update-page__status-pill {
+  flex-shrink: 0;
+}
+
 .btn-refresh-icon {
   display: inline-flex;
   align-items: center;
@@ -5191,6 +5272,54 @@ table.data.console-data-table tbody td {
 
 table.data.console-data-table .inst-actions {
   justify-content: center;
+}
+
+/* 数据表内「编辑」：文字链样式（见 ConsoleTableEdit.vue） */
+.console-table-edit {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.console-table-edit:hover:not(:disabled) {
+  color: color-mix(in srgb, var(--accent) 82%, var(--text) 18%);
+}
+.console-table-edit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.console-table-edit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 实例页 · 数据库 Bot 配置：卡片多选批量操作（右下角紧凑条） */
+.inst-db-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.inst-db-bulk-bar .btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  min-height: 0;
 }
 
 table.data tr:last-child td {

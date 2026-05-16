@@ -98,7 +98,7 @@ const router = createRouter({
           component: FriendsGroupsPage,
           meta: {
             title: "好友与群聊",
-            description: "好友/群聊列表、颗粒配置与好友/入群审批",
+            description: "列表、配置与审批",
           },
         },
         { path: "friends", redirect: "/friends-groups" },

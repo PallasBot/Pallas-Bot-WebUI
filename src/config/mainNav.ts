@@ -18,7 +18,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/protocol", label: "协议端", icon: "⎈", description: "协议控制台", section: "接入与实例" },
   { to: "/plugins", label: "插件", icon: "▣", description: "已启用模块", section: "模块与配置" },
   { to: "/common-config", label: "通用配置", icon: "⛭", description: "跨模块公共项", section: "模块与配置" },
-  { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表、颗粒配置与审批", section: "对话与对象" },
+  { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表、配置与审批", section: "对话与对象" },
   { to: "/database", label: "数据库", icon: "▤", description: "存储体量", section: "数据与扩展" },
   { to: "/ai", label: "AI 扩展", icon: "◇", description: "扩展服务", section: "数据与扩展" },
   { to: "/preferences", label: "偏好", icon: "✦", description: "外观与控制台口令", section: "本机与维护" },
