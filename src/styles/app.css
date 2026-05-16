@@ -5472,6 +5472,99 @@ table.data tbody tr:hover td {
   color: #bbf7d0;
 }
 
+.console-toast-host {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 280;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(460px, 92vw);
+  pointer-events: none;
+}
+
+.console-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+  animation: console-toast-in 0.22s var(--ease) both;
+}
+
+.console-toast--ok {
+  border-color: rgba(74, 222, 128, 0.45);
+  animation: console-toast-in 0.22s var(--ease) both, console-toast-success-pulse 0.9s ease 0.15s;
+}
+
+.console-toast--warn {
+  border-color: rgba(251, 191, 36, 0.45);
+}
+
+.console-toast--err {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.console-toast__msg {
+  flex: 1;
+  min-width: 0;
+}
+
+.console-toast__close {
+  flex-shrink: 0;
+  margin: -2px -4px -2px 0;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.console-toast__close:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+@keyframes console-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes console-toast-success-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+html[data-theme="light"] .console-toast {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
 .muted {
   color: var(--text-muted);
   font-size: 13px;

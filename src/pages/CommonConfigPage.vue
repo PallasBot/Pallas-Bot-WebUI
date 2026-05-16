@@ -6,11 +6,11 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
-const ok = ref("");
 const sections = ref<CommonConfigSectionMeta[]>([]);
 const currentId = ref("");
 const data = ref<PluginConfigData | null>(null);
@@ -129,7 +129,6 @@ async function save() {
   if (!data.value) return;
   saving.value = true;
   err.value = "";
-  ok.value = "";
   const values: Record<string, unknown> = {};
   try {
     for (const f of data.value.fields) {
@@ -145,7 +144,7 @@ async function save() {
       }
     }
     data.value = await putCommonConfig(currentId.value, values);
-    ok.value = "已写入 .env 对应项。";
+    pushConsoleToast("已保存到 .env");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -162,13 +161,6 @@ async function save() {
     >
       {{ err }}
     </div>
-    <div
-      v-if="ok"
-      class="alert alert--ok"
-    >
-      {{ ok }}
-    </div>
-
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="2"
