@@ -2626,23 +2626,30 @@ html[data-theme="light"] .bot-config-edit {
 }
 .home-account-hero__title--picker {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 2px 8px;
+  gap: 4px 6px;
   margin: 0;
   font-size: 1.02rem;
   font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.3;
+  min-width: 0;
 }
 .home-account-hero__title-name {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .home-account-hero__title--picker .home-account-conn-pill {
-  margin-left: 6px;
+  margin-left: 0;
+}
+.home-account-hero__title--picker .home-account-hero__fav-star {
+  flex-shrink: 0;
+  padding: 0 2px;
+  margin: 0;
 }
 /* 原生 <select>：弱化成标题行内联，避免像多叠一块卡片 */
 .home-account-hero__acct-sel-native {

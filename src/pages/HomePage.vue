@@ -997,16 +997,6 @@ onUnmounted(() => {
                             <div class="home-account-hero__title home-account-hero__title--picker">
                               <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
                               <button
-                                v-if="selectedAccount != null"
-                                type="button"
-                                class="home-account-hero__fav-star"
-                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
-                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
-                                @click.stop="toggleFavoriteBot(selectedAccount)"
-                              >
-                                ★
-                              </button>
-                              <button
                                 v-if="sortedDbBots.length > 1"
                                 type="button"
                                 class="home-account-hero__picker-toggle"
@@ -1019,6 +1009,16 @@ onUnmounted(() => {
                                   class="home-account-hero__picker-caret"
                                   aria-hidden="true"
                                 />
+                              </button>
+                              <button
+                                v-if="selectedAccount != null"
+                                type="button"
+                                class="home-account-hero__fav-star"
+                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
+                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
+                                @click.stop="toggleFavoriteBot(selectedAccount)"
+                              >
+                                ★
                               </button>
                               <span
                                 v-if="selectedConnected"
@@ -1499,6 +1499,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.home-account-hero__title--picker .home-account-hero__fav-star {
+  padding: 0 2px;
+}
 .home-account-hero__fav-star {
   flex-shrink: 0;
   margin: 0;
