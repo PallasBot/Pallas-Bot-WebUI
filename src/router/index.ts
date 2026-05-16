@@ -7,7 +7,6 @@ import PluginsPage from "@/pages/PluginsPage.vue";
 import PluginConfigPage from "@/pages/PluginConfigPage.vue";
 import CommonConfigPage from "@/pages/CommonConfigPage.vue";
 import InstancesPage from "@/pages/InstancesPage.vue";
-import BotSocialConfigPage from "@/pages/BotSocialConfigPage.vue";
 import ProtocolManagePage from "@/pages/ProtocolManagePage.vue";
 import DatabasePage from "@/pages/DatabasePage.vue";
 import UpdatePage from "@/pages/UpdatePage.vue";
@@ -99,20 +98,12 @@ const router = createRouter({
           component: FriendsGroupsPage,
           meta: {
             title: "好友与群聊",
-            description: "好友/群聊列表与好友、入群审批",
+            description: "好友/群聊列表、颗粒配置与好友/入群审批",
           },
         },
         { path: "friends", redirect: "/friends-groups" },
         { path: "groups", redirect: "/friends-groups" },
-        {
-          path: "bot-social-config",
-          name: "bot-social-config",
-          component: BotSocialConfigPage,
-          meta: {
-            title: "颗粒配置",
-            description: "群 / 用户级策略与列表",
-          },
-        },
+        { path: "bot-social-config", redirect: "/friends-groups" },
         {
           path: "database",
           name: "database",
