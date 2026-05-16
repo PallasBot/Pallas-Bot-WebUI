@@ -143,6 +143,15 @@ function measureAccountHeroLockHeight() {
   accountHeroLockHeightPx.value = Math.round(el.getBoundingClientRect().height);
 }
 
+/** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
+function onMatcherDetailsToggle() {
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      measureAccountHeroLockHeight();
+    });
+  });
+}
+
 watchEffect((onCleanup) => {
   if (typeof window === "undefined") return;
   if (selectedAccount.value == null || !pageReady.value) {
@@ -1188,6 +1197,7 @@ onUnmounted(() => {
                       <details
                         v-if="scopedMatcherErrorLog.length"
                         class="home-account-hero__matcher-details muted"
+                        @toggle="onMatcherDetailsToggle"
                       >
                         <summary class="home-account-hero__matcher-details-summary">最近异常（{{ scopedMatcherErrorLog.length }}）</summary>
                         <ul class="home-account-hero__matcher-details-list">

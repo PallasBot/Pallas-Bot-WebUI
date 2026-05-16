@@ -2990,7 +2990,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   display: grid;
   /* 账户列略加宽并略多 fr，减轻统计区折行 */
   grid-template-columns: minmax(322px, 1.42fr) minmax(0, 2.9fr);
-  align-items: stretch;
+  align-items: start;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
@@ -3052,13 +3052,17 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 /* 宽屏双列：右侧图表区高度与账号信息卡对齐（--home-account-hero-lock-px 由 HomePage 测量写入） */
 @media (min-width: 561px) {
+  .home-account-split-bd__col--hero.home-account-card {
+    flex: 0 1 auto;
+    align-self: start;
+  }
+
   .home-account-split-bd__col--charts {
     align-self: start;
   }
 
   .home-account-charts-shell--hero-side {
     height: var(--home-account-hero-lock-px, auto);
-    min-height: var(--home-account-hero-lock-px, auto);
     max-height: var(--home-account-hero-lock-px, none);
     overflow: hidden;
   }
