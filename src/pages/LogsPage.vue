@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
-import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
+import type { LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import {
+  formatLogDisplayTime,
+  logEntryLevelClass,
+  stripYearFromLogLine,
+} from "@/utils/logDisplay";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -85,6 +90,8 @@ watch([scope, n], () => {
 const entries = computed(() => payload.value?.entries ?? []);
 const lines = computed(() => payload.value?.lines ?? []);
 
+const displayLines = computed(() => lines.value.map(stripYearFromLogLine));
+
 const filtered = computed(() => {
   const needle = q.value.trim().toLowerCase();
   if (!needle) return entries.value;
@@ -114,14 +121,6 @@ onUnmounted(() => {
   stopLogPolling();
 });
 
-function lineClass(lv: LogEntry["level"]): string {
-  if (lv === "debug") return "log-line log-line--debug";
-  if (lv === "warn") return "log-line log-line--warn";
-  if (lv === "error") return "log-line log-line--err";
-  if (lv === "success") return "log-line log-line--success";
-  if (lv === "info") return "log-line log-line--info";
-  return "log-line log-line--okline";
-}
 </script>
 
 <template>
@@ -224,22 +223,12 @@ function lineClass(lv: LogEntry["level"]): string {
                 <div
                   v-for="row in filtered"
                   :key="row.id"
-                  :class="lineClass(row.level)"
+                  class="log-line"
                 >
-                  <div class="log-line__meta">
-                    <span class="log-line__time">{{ row.time }}</span>
-                    <span
-                      class="badge log-line__badge"
-                      :class="{
-                        'badge--ok':
-                          row.level === 'info' || row.level === 'success' || row.level === 'debug',
-                        'badge--warn': row.level === 'warn',
-                        'badge--err': row.level === 'error',
-                      }"
-                    >{{ row.level }}</span>
-                    <span class="log-line__scope">{{ row.scope }}</span>
-                  </div>
-                  <div class="log-line__msg">{{ row.message }}</div>
+                  <span class="log-line__time">{{ formatLogDisplayTime(row.time) }}</span>
+                  <span :class="logEntryLevelClass(row.level)">{{ row.level }}</span>
+                  <span class="log-line__scope">[{{ row.scope }}]</span>
+                  <span class="log-line__msg">{{ row.message }}</span>
                 </div>
               </div>
             </template>
@@ -255,7 +244,7 @@ function lineClass(lv: LogEntry["level"]): string {
                 ref="rawScrollEl"
                 class="pre-block pre-block--logs-tall"
                 @scroll.passive="onLogContainerScroll"
-              >{{ lines.join("\n") }}</pre>
+              >{{ displayLines.join("\n") }}</pre>
             </template>
           </div>
         </div>
