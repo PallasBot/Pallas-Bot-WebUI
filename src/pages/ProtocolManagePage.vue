@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import { fetchInstances, fetchSystem, invalidateInstancesCache, peekInstancesCache } from "@/api/consoleApi";
 import {
   protocolApiErrorMessage,
@@ -63,6 +63,11 @@ const protoSearchQ = ref("");
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 const actionBusy = ref(new Set<string>());
+/** 协议账号快照轮询（毫秒）；标签页隐藏时跳过 */
+const PROTO_POLL_MS = 5000;
+let protoPollTimer: ReturnType<typeof setInterval> | null = null;
+/** keep-alive 再次激活时拉取快照（首次进入仅 onMounted 加载） */
+let protoHadActivated = false;
 
 const webuiEnabledDisp = computed(() => protocolDisp(snap.value?.webui_enabled, "已启用", "未启用"));
 const consoleAuthDisp = computed(() =>
@@ -170,15 +175,25 @@ watch(protoSearchQ, () => {
   protoAccPage.value = 1;
 });
 
-watch([snap, () => snap.value?.accounts?.length], () => {
-  protoAccPage.value = 1;
-  const known = new Set<string>();
-  for (const a of snap.value?.accounts ?? []) {
-    const id = accountProtocolId(a);
-    if (id) known.add(id);
-  }
-  bulk.pruneSelection(known);
-});
+watch(
+  () => snap.value?.accounts?.length,
+  (len, prevLen) => {
+    if (len !== prevLen) protoAccPage.value = 1;
+  },
+);
+
+watch(
+  () => snap.value?.accounts,
+  (accounts) => {
+    const known = new Set<string>();
+    for (const a of accounts ?? []) {
+      const id = accountProtocolId(a);
+      if (id) known.add(id);
+    }
+    bulk.pruneSelection(known);
+  },
+  { deep: true },
+);
 
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
@@ -189,9 +204,6 @@ watch(deleteModalOpen, () => {
   syncBodyOverflow();
 });
 
-onUnmounted(() => {
-  if (typeof document !== "undefined") document.body.style.overflow = "";
-});
 
 function profileNick(a: NapcatAccountRow): string {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -276,17 +288,49 @@ function closeDeleteModal() {
   deleteErr.value = "";
 }
 
-async function load() {
-  err.value = "";
-  loadBusy.value = true;
+function shouldSkipProtoPoll(): boolean {
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return true;
+  if (deleteModalOpen.value || deleteBusy.value) return true;
+  if (actionBusy.value.size > 0) return true;
+  if (loadBusy.value) return true;
+  return false;
+}
+
+function startProtoPolling() {
+  if (typeof window === "undefined" || protoPollTimer != null) return;
+  protoPollTimer = setInterval(() => {
+    if (shouldSkipProtoPoll()) return;
+    void load({ silent: true });
+  }, PROTO_POLL_MS);
+}
+
+function stopProtoPolling() {
+  if (protoPollTimer == null) return;
+  clearInterval(protoPollTimer);
+  protoPollTimer = null;
+}
+
+function onProtoVisibilityChange() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible" && !shouldSkipProtoPoll()) {
+    void load({ silent: true });
+  }
+}
+
+async function load(opts?: { silent?: boolean }) {
+  const silent = Boolean(opts?.silent);
+  if (!silent) {
+    err.value = "";
+    loadBusy.value = true;
+  }
   try {
     const [s, i] = await Promise.all([fetchSystem(), fetchInstances({ bypassCache: true })]);
     system.value = s;
     instances.value = i;
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    if (!silent) err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    loadBusy.value = false;
+    if (!silent) loadBusy.value = false;
   }
 }
 
@@ -348,10 +392,36 @@ async function confirmDeleteSelected() {
 }
 
 onMounted(async () => {
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onProtoVisibilityChange);
+  }
   try {
     await load();
   } finally {
     pageReady.value = true;
+  }
+});
+
+onActivated(() => {
+  startProtoPolling();
+  if (!pageReady.value) {
+    if (!protoHadActivated) protoHadActivated = true;
+    return;
+  }
+  if (protoHadActivated) void load({ silent: true });
+  else protoHadActivated = true;
+});
+
+onDeactivated(() => {
+  stopProtoPolling();
+});
+
+onUnmounted(() => {
+  stopProtoPolling();
+  protoHadActivated = false;
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onProtoVisibilityChange);
+    document.body.style.overflow = "";
   }
 });
 </script>
@@ -662,7 +732,13 @@ onMounted(async () => {
   color: var(--accent);
 }
 .protocol-acc-card__actions {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+}
+.protocol-acc-card__actions > .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
 }
 </style>
