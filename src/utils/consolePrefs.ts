@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import { type AccentPreset, isAccentPreset } from "@/config/accentPresets";
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
   migrateSidebarOrderUpdateToEnd,
@@ -9,6 +10,7 @@ const STORAGE_KEY = "pallas_console_prefs_v1";
 export type ThemeMode = "dark" | "light" | "system";
 export type RadiusMode = "tight" | "default" | "round";
 export type DensityMode = "comfortable" | "compact";
+export type { AccentPreset };
 
 export type DataViewMode = "table" | "cards";
 
@@ -16,6 +18,8 @@ export interface ConsolePrefsState {
   theme: ThemeMode;
   radius: RadiusMode;
   density: DensityMode;
+  /** 强调色预设（链接、主按钮、高亮等） */
+  accentPreset: AccentPreset;
   /** 桌面宽度下是否收起左侧主导航（仅图标条） */
   sidebarCollapsed: boolean;
   /** 实例页：数据库中的实例表格/卡片默认视图 */
@@ -37,6 +41,7 @@ const defaults: ConsolePrefsState = {
   theme: "system",
   radius: "default",
   density: "comfortable",
+  accentPreset: "sky",
   sidebarCollapsed: false,
   instancesBotView: "table",
   tablePageSize: 12,
@@ -89,7 +94,17 @@ function load(): ConsolePrefsState {
       }
       merged.sidebarNavSectionByToken = cleaned;
     }
-    if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {      merged.theme = defaults.theme;
+    if (merged.theme !== "dark" && merged.theme !== "light" && merged.theme !== "system") {
+      merged.theme = defaults.theme;
+    }
+    if (merged.radius !== "tight" && merged.radius !== "default" && merged.radius !== "round") {
+      merged.radius = defaults.radius;
+    }
+    if (merged.density !== "comfortable" && merged.density !== "compact") {
+      merged.density = defaults.density;
+    }
+    if (!isAccentPreset(merged.accentPreset)) {
+      merged.accentPreset = defaults.accentPreset;
     }
     return merged;
   } catch {
@@ -112,6 +127,7 @@ export function applyConsolePrefsToDocument(): void {
   document.documentElement.dataset.theme = t;
   document.documentElement.dataset.radius = consolePrefs.radius;
   document.documentElement.dataset.density = consolePrefs.density;
+  document.documentElement.dataset.accent = consolePrefs.accentPreset;
   document.documentElement.style.colorScheme = t;
 }
 

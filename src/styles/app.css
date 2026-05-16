@@ -60,6 +60,69 @@ html[data-radius="round"] {
   --radius-shell: 12px;
 }
 
+/* 强调色预设（默认 sky 与 :root 一致，可不设 data-accent） */
+html[data-accent="indigo"] {
+  --accent: #818cf8;
+  --accent-soft: rgba(129, 140, 248, 0.16);
+  --accent-glow: rgba(129, 140, 248, 0.38);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #c7d2fe 42%, #818cf8 100%);
+}
+html[data-accent="emerald"] {
+  --accent: #34d399;
+  --accent-soft: rgba(52, 211, 153, 0.16);
+  --accent-glow: rgba(52, 211, 153, 0.35);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a7f3d0 42%, #34d399 100%);
+}
+html[data-accent="rose"] {
+  --accent: #fb7185;
+  --accent-soft: rgba(251, 113, 133, 0.16);
+  --accent-glow: rgba(251, 113, 133, 0.35);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #fecdd3 42%, #fb7185 100%);
+}
+html[data-accent="amber"] {
+  --accent: #fbbf24;
+  --accent-soft: rgba(251, 191, 36, 0.18);
+  --accent-glow: rgba(251, 191, 36, 0.35);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #fde68a 42%, #fbbf24 100%);
+}
+html[data-accent="violet"] {
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.16);
+  --accent-glow: rgba(167, 139, 250, 0.38);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #ddd6fe 42%, #a78bfa 100%);
+}
+
+html[data-theme="light"][data-accent="indigo"] {
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.12);
+  --accent-glow: rgba(79, 70, 229, 0.22);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #4338ca 55%, #4f46e5 100%);
+}
+html[data-theme="light"][data-accent="emerald"] {
+  --accent: #059669;
+  --accent-soft: rgba(5, 150, 105, 0.12);
+  --accent-glow: rgba(5, 150, 105, 0.2);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #047857 55%, #059669 100%);
+}
+html[data-theme="light"][data-accent="rose"] {
+  --accent: #e11d48;
+  --accent-soft: rgba(225, 29, 72, 0.12);
+  --accent-glow: rgba(225, 29, 72, 0.2);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #be123c 55%, #e11d48 100%);
+}
+html[data-theme="light"][data-accent="amber"] {
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.14);
+  --accent-glow: rgba(217, 119, 6, 0.22);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #b45309 55%, #d97706 100%);
+}
+html[data-theme="light"][data-accent="violet"] {
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --accent-glow: rgba(124, 58, 237, 0.22);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #6d28d9 55%, #7c3aed 100%);
+}
+
 /* 行内 code：与中文混排的变量名/路径/命令片段，用无衬线避免系统等宽偏细发虚 */
 code {
   font-family: var(--font-sans);
@@ -181,20 +244,28 @@ html[data-theme="light"] .alert--ok {
   background: rgba(74, 222, 128, 0.12);
 }
 
+html[data-density="compact"] {
+  --ui-btn-pad-y: 6px;
+  --ui-btn-pad-x: 11px;
+  --ui-ctrl-pad-y: 5px;
+  --ui-ctrl-pad-x: 9px;
+  --ui-sel-min-h: 30px;
+}
+
 html[data-density="compact"] .panel__bd {
-  padding: 14px 16px;
+  padding: 10px 12px;
 }
 
 html[data-density="compact"] .panel__hd {
-  padding: 14px 16px;
+  padding: 8px 12px;
 }
 
 html[data-density="compact"] .page-hero {
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 html[data-density="compact"] .card__body {
-  padding: 14px 16px;
+  padding: 10px 12px;
 }
 
 *,
@@ -2601,7 +2672,7 @@ html[data-theme="light"] .bot-config-edit {
   flex-shrink: 0;
   width: 76px;
   height: 76px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--bg-muted);
@@ -5157,14 +5228,22 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   cursor: not-allowed;
 }
 .btn--primary {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 78%, #ffffff 22%) 0%,
+    color-mix(in srgb, var(--accent) 92%, #000000 8%) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
   color: #fff;
   box-shadow: 0 0 24px var(--accent-glow);
 }
 .btn--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
-  border-color: rgba(125, 211, 252, 0.5);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 62%, #ffffff 38%) 0%,
+    color-mix(in srgb, var(--accent) 82%, #ffffff 18%) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
 }
 .btn--danger {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
@@ -5715,6 +5794,54 @@ table.data tbody tr:hover td {
     grid-template-columns: 1fr;
     align-items: stretch;
   }
+}
+
+.prefs-accent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.prefs-accent-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  min-height: 0;
+}
+
+.prefs-accent-opt__swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, #fff 20%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.prefs-accent-opt--on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+}
+
+.prefs-radius-preview {
+  margin: 0 0 10px;
+}
+
+.prefs-radius-preview__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent-soft) 12%);
 }
 
 .plugin-card__title-line {
