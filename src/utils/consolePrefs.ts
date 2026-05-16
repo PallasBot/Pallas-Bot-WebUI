@@ -32,8 +32,6 @@ export interface ConsolePrefsState {
   friendsPageFriendsListOpen: boolean;
   /** 好友与群页：群聊列表面板是否展开 */
   friendsPageGroupsListOpen: boolean;
-  /** 颗粒配置页：群配置下列表区域是否展开 */
-  botSocialPageGroupListOpen: boolean;
 }
 const defaults: ConsolePrefsState = {
   theme: "system",
@@ -47,7 +45,6 @@ const defaults: ConsolePrefsState = {
   sidebarNavLayoutVersion: 2,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
-  botSocialPageGroupListOpen: true,
 };
 function load(): ConsolePrefsState {
   try {
@@ -80,9 +77,6 @@ function load(): ConsolePrefsState {
     }
     if (typeof parsed.friendsPageGroupsListOpen === "boolean") {
       merged.friendsPageGroupsListOpen = parsed.friendsPageGroupsListOpen;
-    }
-    if (typeof (parsed as { botSocialPageGroupListOpen?: unknown }).botSocialPageGroupListOpen === "boolean") {
-      merged.botSocialPageGroupListOpen = (parsed as { botSocialPageGroupListOpen: boolean }).botSocialPageGroupListOpen;
     }
     const sectRaw = (parsed as { sidebarNavSectionByToken?: unknown }).sidebarNavSectionByToken;
     if (sectRaw && typeof sectRaw === "object" && !Array.isArray(sectRaw)) {

@@ -7,7 +7,7 @@ const props = withDefaults(
   defineProps<{
     /** 主导航 path，如 `/instances` */
     mainPath?: string;
-    /** `sidebarPins` 中的 id，如 `bot-social-groups` */
+    /** `sidebarPins` 中的 id，如 `friends-groups-friends` */
     pinId?: string;
   }>(),
   { mainPath: "", pinId: "" },
