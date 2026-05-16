@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchFriendList,
@@ -19,6 +19,9 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
+import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
+import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -39,6 +42,11 @@ const FG_LIST_SKEL_ROWS = 8;
 const panelNavIcon = usePanelNavIcon();
 const route = useRoute();
 const err = ref("");
+const ok = ref("");
+const groupConfigOpen = ref(false);
+const groupConfigId = ref<number | null>(null);
+const userConfigOpen = ref(false);
+const userConfigId = ref<number | null>(null);
 /** 未选 Bot 时无需等网络即可展示布局；仅依赖实例列表填充下拉框 */
 const pageReady = ref(true);
 const busy = ref(false);
@@ -632,6 +640,36 @@ function toggleFriendsListPanel() {
 function toggleGroupsListPanel() {
   setConsolePrefs({ friendsPageGroupsListOpen: !consolePrefs.friendsPageGroupsListOpen });
 }
+
+function openGroupConfig(groupId: number) {
+  ok.value = "";
+  groupConfigId.value = groupId;
+  groupConfigOpen.value = true;
+}
+
+function openUserConfig(userId: number) {
+  ok.value = "";
+  userConfigId.value = userId;
+  userConfigOpen.value = true;
+}
+
+function onSocialConfigSaved(kind: "group" | "user") {
+  ok.value = kind === "group" ? "群颗粒配置已保存。" : "用户颗粒配置已保存。";
+}
+
+watch(
+  () => groupConfigOpen.value || userConfigOpen.value,
+  (anyOpen) => {
+    if (typeof document === "undefined") return;
+    if (!anyOpen) document.body.style.overflow = "";
+  },
+);
+
+onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
+  }
+});
 </script>
 
 <template>
@@ -641,6 +679,12 @@ function toggleGroupsListPanel() {
       class="alert alert--err"
     >
       {{ err }}
+    </div>
+    <div
+      v-if="ok"
+      class="alert alert--ok"
+    >
+      {{ ok }}
     </div>
 
     <div>
@@ -734,6 +778,7 @@ function toggleGroupsListPanel() {
                   <th>QQ</th>
                   <th>昵称</th>
                   <th>备注</th>
+                  <th style="min-width: 88px; width: 1%">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -749,6 +794,9 @@ function toggleGroupsListPanel() {
                   </td>
                   <td>
                     <div class="fg-table-skel__bar fg-table-skel__bar--short skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
                   </td>
                 </tr>
               </tbody>
@@ -777,6 +825,7 @@ function toggleGroupsListPanel() {
                 <th>QQ</th>
                 <th>昵称</th>
                 <th>备注</th>
+                <th style="min-width: 88px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -787,6 +836,9 @@ function toggleGroupsListPanel() {
                 <td>{{ f.user_id }}</td>
                 <td>{{ f.nickname }}</td>
                 <td class="muted">{{ f.remark }}</td>
+                <td>
+                  <ConsoleTableEdit @click="openUserConfig(f.user_id)" />
+                </td>
               </tr>
             </tbody>
           </table>
@@ -857,6 +909,7 @@ function toggleGroupsListPanel() {
                   <th>群名</th>
                   <th>成员</th>
                   <th>上限</th>
+                  <th style="min-width: 88px; width: 1%">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -869,6 +922,9 @@ function toggleGroupsListPanel() {
                   </td>
                   <td>
                     <div class="fg-table-skel__bar fg-table-skel__bar--mid skel-pulse" />
+                  </td>
+                  <td>
+                    <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
                   </td>
                   <td>
                     <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
@@ -904,6 +960,7 @@ function toggleGroupsListPanel() {
                 <th>群名</th>
                 <th>成员</th>
                 <th>上限</th>
+                <th style="min-width: 88px; width: 1%">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -915,6 +972,9 @@ function toggleGroupsListPanel() {
                 <td>{{ g.group_name }}</td>
                 <td>{{ g.member_count }}</td>
                 <td class="muted">{{ g.max_member_count }}</td>
+                <td>
+                  <ConsoleTableEdit @click="openGroupConfig(g.group_id)" />
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1225,6 +1285,17 @@ function toggleGroupsListPanel() {
       </div>
     </div>
     </div>
+
+    <GroupSocialConfigModal
+      v-model:open="groupConfigOpen"
+      :group-id="groupConfigId"
+      @saved="onSocialConfigSaved('group')"
+    />
+    <UserSocialConfigModal
+      v-model:open="userConfigOpen"
+      :user-id="userConfigId"
+      @saved="onSocialConfigSaved('user')"
+    />
   </div>
 </template>
 

@@ -17,24 +17,6 @@ export interface SidebarPinDefinition {
 
 export const SIDEBAR_PIN_DEFINITIONS: SidebarPinDefinition[] = [
   {
-    id: "bot-social-groups",
-    path: "/bot-social-config",
-    hash: "#bsc-group-config",
-    label: "群颗粒列表",
-    description: "颗粒配置 · 群配置与列表",
-    icon: "✧",
-    section: "对话与对象",
-  },
-  {
-    id: "bot-social-users",
-    path: "/bot-social-config",
-    hash: "#bsc-user-config",
-    label: "用户颗粒",
-    description: "颗粒配置 · 好友（用户）策略",
-    icon: "✧",
-    section: "对话与对象",
-  },
-  {
     id: "friends-groups-account",
     path: "/friends-groups",
     hash: "#fg-account",
@@ -48,7 +30,7 @@ export const SIDEBAR_PIN_DEFINITIONS: SidebarPinDefinition[] = [
     path: "/friends-groups",
     hash: "#fg-friends",
     label: "好友与群 · 好友列表",
-    description: "好友列表与分页",
+    description: "好友列表与颗粒配置",
     icon: "⊞",
     section: "对话与对象",
   },
@@ -57,7 +39,7 @@ export const SIDEBAR_PIN_DEFINITIONS: SidebarPinDefinition[] = [
     path: "/friends-groups",
     hash: "#fg-groups",
     label: "好友与群 · 群聊列表",
-    description: "群列表与分页",
+    description: "群列表与颗粒配置",
     icon: "⊞",
     section: "对话与对象",
   },

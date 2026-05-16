@@ -997,16 +997,6 @@ onUnmounted(() => {
                             <div class="home-account-hero__title home-account-hero__title--picker">
                               <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
                               <button
-                                v-if="selectedAccount != null"
-                                type="button"
-                                class="home-account-hero__fav-star"
-                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
-                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
-                                @click.stop="toggleFavoriteBot(selectedAccount)"
-                              >
-                                ★
-                              </button>
-                              <button
                                 v-if="sortedDbBots.length > 1"
                                 type="button"
                                 class="home-account-hero__picker-toggle"
@@ -1019,6 +1009,16 @@ onUnmounted(() => {
                                   class="home-account-hero__picker-caret"
                                   aria-hidden="true"
                                 />
+                              </button>
+                              <button
+                                v-if="selectedAccount != null"
+                                type="button"
+                                class="home-account-hero__fav-star"
+                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
+                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
+                                @click.stop="toggleFavoriteBot(selectedAccount)"
+                              >
+                                ★
                               </button>
                               <span
                                 v-if="selectedConnected"
@@ -1058,8 +1058,24 @@ onUnmounted(() => {
                                   class="home-account-hero__picker-item-hit"
                                   @click="pickAccountFromList(c.account)"
                                 >
-                                  <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
-                                  <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                                  <span
+                                    class="home-account-hero__picker-item-avatar"
+                                    aria-hidden="true"
+                                  >
+                                    <img
+                                      :src="qqAvatarUrl(c.account)"
+                                      alt=""
+                                      width="32"
+                                      height="32"
+                                      decoding="async"
+                                      referrerpolicy="no-referrer"
+                                      @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
+                                    >
+                                  </span>
+                                  <span class="home-account-hero__picker-item-text">
+                                    <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
+                                    <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
+                                  </span>
                                 </button>
                                 <button
                                   type="button"
@@ -1483,30 +1499,8 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.home-account-hero__picker-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  box-sizing: border-box;
-}
-.home-account-hero__picker-item-hit {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  padding: 8px 6px 8px 10px;
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.home-account-hero__picker-item-hit:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+.home-account-hero__title--picker .home-account-hero__fav-star {
+  padding: 0 2px;
 }
 .home-account-hero__fav-star {
   flex-shrink: 0;
