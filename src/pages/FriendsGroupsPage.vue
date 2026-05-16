@@ -19,6 +19,7 @@ import type {
   RequestOverviewData,
 } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -836,13 +837,7 @@ onUnmounted(() => {
                 <td>{{ f.nickname }}</td>
                 <td class="muted">{{ f.remark }}</td>
                 <td>
-                  <button
-                    type="button"
-                    class="btn"
-                    @click="openUserConfig(f.user_id)"
-                  >
-                    颗粒配置
-                  </button>
+                  <ConsoleTableEdit @click="openUserConfig(f.user_id)" />
                 </td>
               </tr>
             </tbody>
@@ -978,13 +973,7 @@ onUnmounted(() => {
                 <td>{{ g.member_count }}</td>
                 <td class="muted">{{ g.max_member_count }}</td>
                 <td>
-                  <button
-                    type="button"
-                    class="btn"
-                    @click="openGroupConfig(g.group_id)"
-                  >
-                    颗粒配置
-                  </button>
+                  <ConsoleTableEdit @click="openGroupConfig(g.group_id)" />
                 </td>
               </tr>
             </tbody>

@@ -288,9 +288,6 @@ onMounted(() => {
         <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
           <h2 class="panel__title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
-          </h2>
-          <div class="update-page__hd-tail">
-            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshWebBusy"
               :disabled="busy"
@@ -304,7 +301,10 @@ onMounted(() => {
             <span
               v-else
               class="badge badge--ok update-page__status-pill"
-            >已是最新或不可比对</span>
+            >已是最新</span>
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/update" />
           </div>
         </div>
         <div class="panel__bd muted update-page__bd">
@@ -350,9 +350,6 @@ onMounted(() => {
         <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
           <h2 class="panel__title">
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
-          </h2>
-          <div class="update-page__hd-tail">
-            <PanelSidebarAdd main-path="/update" />
             <RefreshIconButton
               :busy="refreshBotBusy"
               :disabled="busy"
@@ -366,7 +363,10 @@ onMounted(() => {
             <span
               v-else
               class="badge badge--ok update-page__status-pill"
-            >已是最新或不可比对</span>
+            >已是最新</span>
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/update" />
           </div>
         </div>
         <div class="panel__bd muted update-page__bd">
@@ -432,14 +432,6 @@ onMounted(() => {
 <style scoped>
 .update-page__panel + .update-page__panel {
   margin-top: 14px;
-}
-
-.update-page__hd-tail {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  min-width: 0;
 }
 
 .update-page__status-pill {
