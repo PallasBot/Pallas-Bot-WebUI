@@ -82,6 +82,36 @@ const pageFriendReq = ref(1);
 const pageGroupReq = ref(1);
 const pageFriends = ref(1);
 const pageGroups = ref(1);
+const friendListQ = ref("");
+const groupListQ = ref("");
+
+function listNeedle(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function rowMatchesNeedle(
+  needle: string,
+  parts: Array<string | number | null | undefined>,
+): boolean {
+  if (!needle) return true;
+  return parts.some((p) => String(p ?? "").toLowerCase().includes(needle));
+}
+
+const filteredFriends = computed(() => {
+  const needle = listNeedle(friendListQ.value);
+  const rows = friends.value?.friends ?? [];
+  if (!needle) return rows;
+  return rows.filter((f) => rowMatchesNeedle(needle, [f.user_id, f.nickname, f.remark]));
+});
+
+const filteredGroups = computed(() => {
+  const needle = listNeedle(groupListQ.value);
+  const rows = groups.value?.groups ?? [];
+  if (!needle) return rows;
+  return rows.filter((g) =>
+    rowMatchesNeedle(needle, [g.group_id, g.group_name, g.member_count, g.max_member_count]),
+  );
+});
 
 function profileNick(selfId: string): string {
   const n = instances.value?.bot_profiles?.[selfId]?.nickname?.trim();
@@ -257,6 +287,8 @@ async function refreshPage() {
 }
 
 watch(selfIdStr, () => {
+  friendListQ.value = "";
+  groupListQ.value = "";
   if (skipSelfIdWatch.value) return;
   const sid = selfIdStr.value.trim();
   if (!sid) {
@@ -432,9 +464,9 @@ const pagedRequestRows = computed(() => slicePage(requestRows.value, pageFriendR
 
 const pagedGroupRequestRows = computed(() => slicePage(groupRequestRows.value, pageGroupReq.value, tablePageSize.value));
 
-const pagedFriends = computed(() => slicePage(friends.value?.friends ?? [], pageFriends.value, tablePageSize.value));
+const pagedFriends = computed(() => slicePage(filteredFriends.value, pageFriends.value, tablePageSize.value));
 
-const pagedGroups = computed(() => slicePage(groups.value?.groups ?? [], pageGroups.value, tablePageSize.value));
+const pagedGroups = computed(() => slicePage(filteredGroups.value, pageGroups.value, tablePageSize.value));
 
 const pageRefreshBusy = computed(() => busy.value || listsBusy.value || reqsBusy.value);
 
@@ -451,6 +483,11 @@ watch(
 watch([requestRows, groupRequestRows, () => friends.value?.friends?.length, () => groups.value?.groups?.length, selfIdStr], () => {
   pageFriendReq.value = 1;
   pageGroupReq.value = 1;
+  pageFriends.value = 1;
+  pageGroups.value = 1;
+});
+
+watch([friendListQ, groupListQ], () => {
   pageFriends.value = 1;
   pageGroups.value = 1;
 });
@@ -735,6 +772,15 @@ onUnmounted(() => {
           style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
         >
           <PanelSidebarAdd pin-id="friends-groups-friends" />
+          <input
+            v-model="friendListQ"
+            class="inp"
+            type="search"
+            placeholder="搜索 QQ / 昵称 / 备注"
+            title="按 QQ、昵称、备注筛选当前列表"
+            :disabled="!selfIdStr.trim() || fgListsSkeleton"
+            style="min-width: 140px; max-width: 220px"
+          >
           <span
             v-if="selfIdStr && listsBusy"
             class="muted"
@@ -810,10 +856,11 @@ onUnmounted(() => {
           {{ friends.error }}
         </p>
         <div
-          v-else-if="!friends?.friends?.length"
+          v-else-if="!filteredFriends.length"
           class="muted"
         >
-          暂无数据。
+          <template v-if="friendListQ.trim() && (friends?.friends?.length ?? 0) > 0">无匹配结果。</template>
+          <template v-else>暂无数据。</template>
         </div>
         <div
           v-else
@@ -844,10 +891,10 @@ onUnmounted(() => {
           </table>
         </div>
         <ConsolePagerBar
-          v-if="!fgListsSkeleton && (friends?.friends?.length ?? 0) > 0"
+          v-if="!fgListsSkeleton && filteredFriends.length > 0"
           v-model:page="pageFriends"
           v-model:page-size="tablePageSize"
-          :total="friends?.friends?.length ?? 0"
+          :total="filteredFriends.length"
         />
       </div>
     </div>
@@ -865,6 +912,15 @@ onUnmounted(() => {
           style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
         >
           <PanelSidebarAdd pin-id="friends-groups-groups" />
+          <input
+            v-model="groupListQ"
+            class="inp"
+            type="search"
+            placeholder="搜索群号 / 群名"
+            title="按群号、群名、成员数筛选当前列表"
+            :disabled="!selfIdStr.trim() || fgListsSkeleton"
+            style="min-width: 140px; max-width: 220px"
+          >
           <span
             v-if="selfIdStr && listsBusy"
             class="muted"
@@ -944,10 +1000,11 @@ onUnmounted(() => {
           {{ groups.error }}
         </p>
         <div
-          v-else-if="!groups?.groups?.length"
+          v-else-if="!filteredGroups.length"
           class="muted"
         >
-          暂无数据。
+          <template v-if="groupListQ.trim() && (groups?.groups?.length ?? 0) > 0">无匹配结果。</template>
+          <template v-else>暂无数据。</template>
         </div>
         <div
           v-else
@@ -980,10 +1037,10 @@ onUnmounted(() => {
           </table>
         </div>
         <ConsolePagerBar
-          v-if="!fgListsSkeleton && (groups?.groups?.length ?? 0) > 0"
+          v-if="!fgListsSkeleton && filteredGroups.length > 0"
           v-model:page="pageGroups"
           v-model:page-size="tablePageSize"
-          :total="groups?.groups?.length ?? 0"
+          :total="filteredGroups.length"
         />
       </div>
     </div>

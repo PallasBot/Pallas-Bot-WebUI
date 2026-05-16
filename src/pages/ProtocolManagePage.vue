@@ -4,7 +4,8 @@ import { fetchInstances, fetchSystem, peekInstancesCache } from "@/api/consoleAp
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
-import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot, yn } from "@/utils/protocolLinks";
+import { accountWebUiHref, protocolDashboardUrl, protocolSnapshot } from "@/utils/protocolLinks";
+import { protocolDisp, type ProtocolDisp } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -36,23 +37,10 @@ const protoAccPage = ref(1);
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 
-watch(
-  () => consolePrefs.tablePageSize,
-  () => {
-    protoAccPage.value = 1;
-  },
+const webuiEnabledDisp = computed(() => protocolDisp(snap.value?.webui_enabled, "已启用", "未启用"));
+const consoleAuthDisp = computed(() =>
+  protocolDisp(snap.value?.console_auth_configured, "已配置", "未配置"),
 );
-
-watch([snap, () => snap.value?.accounts?.length], () => {
-  protoAccPage.value = 1;
-});
-
-function profileNick(a: NapcatAccountRow): string {
-  const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
-  const nick = instances.value?.bot_profiles?.[String(q)]?.nickname?.trim();
-  if (Number.isFinite(q) && nick) return nick;
-  return String(a.display_name ?? "").trim();
-}
 
 const protocolAccountsSorted = computed(() => {
   const list = [...(snap.value?.accounts ?? [])];
@@ -73,6 +61,28 @@ const pagedProtocolAccounts = computed(() =>
   slicePage(protocolAccountsSorted.value, protoAccPage.value, tablePageSize.value),
 );
 
+const protocolConnectedCount = computed(
+  () => protocolAccountsSorted.value.filter((a) => a.connected === true).length,
+);
+
+watch(
+  () => consolePrefs.tablePageSize,
+  () => {
+    protoAccPage.value = 1;
+  },
+);
+
+watch([snap, () => snap.value?.accounts?.length], () => {
+  protoAccPage.value = 1;
+});
+
+function profileNick(a: NapcatAccountRow): string {
+  const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
+  const nick = instances.value?.bot_profiles?.[String(q)]?.nickname?.trim();
+  if (Number.isFinite(q) && nick) return nick;
+  return String(a.display_name ?? "").trim();
+}
+
 function webUiHref(a: NapcatAccountRow): string | null {
   return accountWebUiHref(a, system.value);
 }
@@ -81,6 +91,26 @@ function primaryTitle(a: NapcatAccountRow): string {
   const nick = profileNick(a);
   if (nick) return nick;
   return String(a.qq ?? a.id ?? "—");
+}
+
+function boolPillClass(on: boolean): string {
+  return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
+}
+
+function runningPill(a: NapcatAccountRow): ProtocolDisp {
+  return protocolDisp(a.process_running ?? a.running, "运行中", "未运行");
+}
+
+function connectedPill(a: NapcatAccountRow): ProtocolDisp {
+  return protocolDisp(a.connected, "已连接", "未连接");
+}
+
+function pillLabel(d: ProtocolDisp): string {
+  return d.kind === "pill" ? (d.on ? d.onLabel : d.offLabel) : d.text;
+}
+
+function pillOn(d: ProtocolDisp): boolean {
+  return d.kind === "pill" && d.on;
 }
 
 async function load() {
@@ -107,23 +137,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <div
-      v-if="err"
-      class="alert alert--err"
-    >
-      {{ err }}
-    </div>
+  <div
+    v-if="err"
+    class="alert alert--err"
+  >
+    {{ err }}
+  </div>
 
-    <ConsolePageSkeleton
-      v-if="!pageReady"
-      :panels="3"
-    />
-    <div v-else>
+  <ConsolePageSkeleton
+    v-if="!pageReady"
+    :panels="2"
+  />
+  <template v-else>
     <div class="panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入口
+          <span
+            class="panel__title-ico"
+            aria-hidden="true"
+          >{{ panelNavIcon }}</span>协议端入口
           <RefreshIconButton
             :busy="loadBusy"
             label="刷新协议端数据"
@@ -135,14 +167,37 @@ onMounted(async () => {
         </div>
       </div>
       <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 10px">
-          内置 WebUI：<strong style="color: var(--text)">{{ snap?.webui_enabled ? "已启用" : "未启用" }}</strong>
-          <span v-if="snap?.webui_path"> · 路径 <code>{{ snap.webui_path }}</code></span>
-        </p>
-        <p class="muted" style="margin: 0 0 14px">
-          控制台鉴权：<strong style="color: var(--text)">{{ snap?.console_auth_configured ? "已配置" : "未配置" }}</strong>
-        </p>
-        <div class="row-actions">
+        <div class="protocol-page__meta">
+          <div class="protocol-page__meta-row">
+            <span class="protocol-page__meta-label">内置 WebUI</span>
+            <span
+              v-if="webuiEnabledDisp.kind === 'pill'"
+              :class="boolPillClass(pillOn(webuiEnabledDisp))"
+            >{{ pillLabel(webuiEnabledDisp) }}</span>
+            <span
+              v-else
+              class="muted"
+            >{{ pillLabel(webuiEnabledDisp) }}</span>
+          </div>
+          <p
+            v-if="snap?.webui_path"
+            class="muted protocol-page__meta-path"
+          >
+            路径 <code>{{ snap.webui_path }}</code>
+          </p>
+          <div class="protocol-page__meta-row">
+            <span class="protocol-page__meta-label">控制台鉴权</span>
+            <span
+              v-if="consoleAuthDisp.kind === 'pill'"
+              :class="boolPillClass(pillOn(consoleAuthDisp))"
+            >{{ pillLabel(consoleAuthDisp) }}</span>
+            <span
+              v-else
+              class="muted"
+            >{{ pillLabel(consoleAuthDisp) }}</span>
+          </div>
+        </div>
+        <div class="row-actions protocol-page__actions">
           <a
             v-if="dashUrl"
             class="btn btn--primary"
@@ -170,20 +225,27 @@ onMounted(async () => {
       v-if="(snap?.accounts?.length ?? 0) > 0"
       class="panel"
     >
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>协议账号
+          <span
+            class="panel__title-ico"
+            aria-hidden="true"
+          >{{ panelNavIcon }}</span>协议账号
         </h2>
-        <div class="row-actions">
+        <button
+          type="button"
+          class="btn panel-hd-collapse-btn"
+          @click="expProtocolAccounts = !expProtocolAccounts"
+        >
+          {{ expProtocolAccounts ? "收起" : "展开" }}
+        </button>
+        <div class="inst-db-panel__actions">
           <PanelSidebarAdd main-path="/protocol" />
-          <button
-            type="button"
-            class="btn"
-            style="padding: 6px 12px; font-size: 12px"
-            @click="expProtocolAccounts = !expProtocolAccounts"
-          >
-            {{ expProtocolAccounts ? "收起" : "展开" }}
-          </button>
+          <span class="inst-db-stat muted">
+            已连接
+            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
+            / {{ protocolAccountsSorted.length }} 账号
+          </span>
         </div>
       </div>
       <div
@@ -208,8 +270,26 @@ onMounted(async () => {
               >
                 <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
                 <td class="muted">{{ a.qq ?? a.id ?? "—" }}</td>
-                <td>{{ yn(a.process_running ?? a.running) }}</td>
-                <td>{{ yn(a.connected) }}</td>
+                <td>
+                  <span
+                    v-if="runningPill(a).kind === 'pill'"
+                    :class="boolPillClass(pillOn(runningPill(a)))"
+                  >{{ pillLabel(runningPill(a)) }}</span>
+                  <span
+                    v-else
+                    class="muted"
+                  >{{ pillLabel(runningPill(a)) }}</span>
+                </td>
+                <td>
+                  <span
+                    v-if="connectedPill(a).kind === 'pill'"
+                    :class="boolPillClass(pillOn(connectedPill(a)))"
+                  >{{ pillLabel(connectedPill(a)) }}</span>
+                  <span
+                    v-else
+                    class="muted"
+                  >{{ pillLabel(connectedPill(a)) }}</span>
+                </td>
                 <td>
                   <a
                     v-if="webUiHref(a)"
@@ -234,6 +314,32 @@ onMounted(async () => {
         />
       </div>
     </div>
-    </div>
-  </div>
+  </template>
 </template>
+
+<style scoped>
+.protocol-page__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.protocol-page__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.protocol-page__meta-label {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-dim);
+}
+.protocol-page__meta-path {
+  margin: 0;
+  font-size: 12px;
+}
+.protocol-page__actions {
+  margin-top: 4px;
+}
+</style>
