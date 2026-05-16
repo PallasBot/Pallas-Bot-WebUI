@@ -129,6 +129,19 @@ const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
   return { "--home-account-hero-lock-px": `${h}px` };
 });
 
+/** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
+const accountChartsShellLockStyle = computed((): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  if (!window.matchMedia("(min-width: 561px)").matches) return {};
+  const h = accountHeroLockHeightPx.value;
+  if (h < 120) return {};
+  return {
+    height: `${h}px`,
+    maxHeight: `${h}px`,
+    minHeight: "0",
+  };
+});
+
 function measureAccountHeroLockHeight() {
   if (typeof window === "undefined") return;
   if (!window.matchMedia("(min-width: 561px)").matches) {
@@ -143,13 +156,17 @@ function measureAccountHeroLockHeight() {
   accountHeroLockHeightPx.value = Math.round(el.getBoundingClientRect().height);
 }
 
-/** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
-function onMatcherDetailsToggle() {
+function scheduleAccountHeroLockMeasure() {
   void nextTick(() => {
     requestAnimationFrame(() => {
       measureAccountHeroLockHeight();
     });
   });
+}
+
+/** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
+function onMatcherDetailsToggle() {
+  scheduleAccountHeroLockMeasure();
 }
 
 watchEffect((onCleanup) => {
@@ -172,11 +189,7 @@ watchEffect((onCleanup) => {
     measureAccountHeroLockHeight();
   });
   ro.observe(el);
-  void nextTick(() => {
-    requestAnimationFrame(() => {
-      measureAccountHeroLockHeight();
-    });
-  });
+  scheduleAccountHeroLockMeasure();
   onCleanup(() => {
     ro.disconnect();
     mql.removeEventListener("change", onMql);
@@ -584,6 +597,17 @@ const scopedPluginRunRow = computed(() => {
 });
 
 const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
+
+watch(
+  () => scopedPluginPlugins.value.length,
+  () => {
+    scheduleAccountHeroLockMeasure();
+  },
+);
+
+watch(socialBusy, (busy, wasBusy) => {
+  if (wasBusy && !busy) scheduleAccountHeroLockMeasure();
+});
 
 const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
 
@@ -1232,7 +1256,10 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="home-account-split-bd__col home-account-split-bd__col--charts">
-                    <div class="home-account-charts-shell home-account-charts-shell--hero-side">
+                    <div
+                      class="home-account-charts-shell home-account-charts-shell--hero-side"
+                      :style="accountChartsShellLockStyle"
+                    >
                       <HomePluginRunCharts
                         :plugins="scopedPluginPlugins"
                         :plugins-meta="pluginsList"
