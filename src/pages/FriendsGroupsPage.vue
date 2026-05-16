@@ -739,7 +739,7 @@ onUnmounted(() => {
           />
         </h2>
         <div class="friends-groups-account-hd-tail">
-          <span class="friends-groups-account-hd-pin-wrap">
+          <span class="friends-groups-hd-pin-wrap friends-groups-account-hd-pin-wrap">
             <PanelSidebarAdd pin-id="friends-groups-account" />
           </span>
           <select
@@ -768,7 +768,9 @@ onUnmounted(() => {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
-          <PanelSidebarAdd pin-id="friends-groups-friends" />
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-friends" />
+          </span>
           <input
             v-model="friendListQ"
             class="inp"
@@ -906,7 +908,9 @@ onUnmounted(() => {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
-          <PanelSidebarAdd pin-id="friends-groups-groups" />
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-groups" />
+          </span>
           <input
             v-model="groupListQ"
             class="inp"
@@ -1055,20 +1059,20 @@ onUnmounted(() => {
             @click="loadRequestsOnly"
           />
         </h2>
-        <div
-          class="row-actions"
-          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-        >
-          <PanelSidebarAdd pin-id="friends-groups-friend-req" />
-          <span
-            v-if="reqsBusy"
-            class="muted"
-            style="font-size: 12px"
-          >审批数据加载中…</span>
-          <span
-            v-if="requestRows.length"
-            class="badge badge--warn"
-          >{{ requestRows.length }} 条</span>
+        <div class="row-actions friends-groups-req-hd-actions">
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-friend-req" />
+          </span>
+          <div class="friends-groups-req-hd-meta">
+            <span
+              v-if="reqsBusy"
+              class="muted friends-groups-req-hd-meta__hint"
+            >审批数据加载中…</span>
+            <span
+              v-if="requestRows.length"
+              class="badge badge--warn"
+            >{{ requestRows.length }} 条</span>
+          </div>
           <div class="friends-groups-req-hd-bulk-btns">
             <button
               type="button"
@@ -1203,20 +1207,20 @@ onUnmounted(() => {
             @click="loadRequestsOnly"
           />
         </h2>
-        <div
-          class="row-actions"
-          style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-        >
-          <PanelSidebarAdd pin-id="friends-groups-group-req" />
-          <span
-            v-if="reqsBusy"
-            class="muted"
-            style="font-size: 12px"
-          >审批数据加载中…</span>
-          <span
-            v-if="groupRequestRows.length"
-            class="badge badge--warn"
-          >{{ groupRequestRows.length }} 条</span>
+        <div class="row-actions friends-groups-req-hd-actions">
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="friends-groups-group-req" />
+          </span>
+          <div class="friends-groups-req-hd-meta">
+            <span
+              v-if="reqsBusy"
+              class="muted friends-groups-req-hd-meta__hint"
+            >审批数据加载中…</span>
+            <span
+              v-if="groupRequestRows.length"
+              class="badge badge--warn"
+            >{{ groupRequestRows.length }} 条</span>
+          </div>
           <div class="friends-groups-req-hd-bulk-btns">
             <button
               type="button"
