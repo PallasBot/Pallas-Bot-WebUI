@@ -10,6 +10,7 @@ import {
 } from "@/api/consoleApi";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -456,35 +457,6 @@ onMounted(async () => {
           </p>
 
           <div
-            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
-            class="inst-db-cards-toolbar"
-          >
-            <button
-              type="button"
-              class="btn"
-              @click="toggleSelectAllDbCardsOnPage"
-            >
-              {{ dbCardsPageAllSelected ? "取消全选" : "全选本页" }}
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="selectedDbCount === 0"
-              @click="clearDbCardSelection"
-            >
-              清除选择
-            </button>
-            <button
-              type="button"
-              class="btn btn--danger"
-              :disabled="selectedDbCount === 0 || deleteBusy"
-              @click="openDeleteModal"
-            >
-              删除选中<span v-if="selectedDbCount > 0">（{{ selectedDbCount }}）</span>
-            </button>
-          </div>
-
-          <div
             v-if="botView === 'table'"
             class="table-wrap"
           >
@@ -543,14 +515,7 @@ onMounted(async () => {
                   <td class="muted">{{ formatDisabledPluginIds(c.disabled_plugins, plugins) }}</td>
                   <td>
                     <div class="inst-actions">
-                      <button
-                        type="button"
-                        class="btn"
-                        style="padding: 6px 10px; font-size: 12px"
-                        @click="startEdit(c)"
-                      >
-                        编辑
-                      </button>
+                      <ConsoleTableEdit @click="startEdit(c)" />
                       <button
                         type="button"
                         class="btn inst-fav-star"
@@ -643,14 +608,7 @@ onMounted(async () => {
                 }}
               </div>
               <div class="data-summary-card__tags inst-card-actions">
-                <button
-                  type="button"
-                  class="btn btn--primary"
-                  style="padding: 6px 12px; font-size: 12px"
-                  @click="startEdit(c)"
-                >
-                  编辑
-                </button>
+                <ConsoleTableEdit @click="startEdit(c)" />
                 <button
                   type="button"
                   class="btn inst-fav-star"
@@ -669,6 +627,35 @@ onMounted(async () => {
             v-model:page-size="tablePageSize"
             :total="sortedDbBotConfigs.length"
           />
+
+          <div
+            v-if="botView === 'cards' && sortedDbBotConfigs.length > 0"
+            class="inst-db-bulk-bar"
+          >
+            <button
+              type="button"
+              class="btn"
+              @click="toggleSelectAllDbCardsOnPage"
+            >
+              {{ dbCardsPageAllSelected ? "取消全选" : "全选本页" }}
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="selectedDbCount === 0"
+              @click="clearDbCardSelection"
+            >
+              清除选择
+            </button>
+            <button
+              type="button"
+              class="btn btn--danger"
+              :disabled="selectedDbCount === 0 || deleteBusy"
+              @click="openDeleteModal"
+            >
+              删除选中<span v-if="selectedDbCount > 0">（{{ selectedDbCount }}）</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1032,14 +1019,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.inst-db-cards-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
 .inst-db-card-select {
   display: flex;
   align-items: flex-start;
