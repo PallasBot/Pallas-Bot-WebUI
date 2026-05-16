@@ -5334,7 +5334,12 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
 @media (max-width: 720px) {
   .data-card-grid--bots {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .data-card-grid--bots .data-summary-card--bot {
+    padding: 8px 10px;
   }
 
   .panel__hd.inst-db-panel__hd {
