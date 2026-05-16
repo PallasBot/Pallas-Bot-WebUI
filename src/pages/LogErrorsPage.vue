@@ -6,6 +6,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { formatLogDisplayTime } from "@/utils/logDisplay";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -29,15 +30,6 @@ async function load() {
 }
 
 onMounted(load);
-
-function formatAt(sec: number): string {
-  if (!Number.isFinite(sec) || sec <= 0) return "—";
-  try {
-    return new Date(sec * 1000).toLocaleString();
-  } catch {
-    return String(sec);
-  }
-}
 </script>
 
 <template>
@@ -90,27 +82,25 @@ function formatAt(sec: number): string {
             >
               暂无报错记录。
             </p>
-            <ul
+            <div
               v-else
-              class="log-errors-page__list"
+              class="log-feed log-feed--errors"
             >
-              <li
+              <div
                 v-for="(it, idx) in entries"
                 :key="`logerr-${it.at}-${idx}-${it.plugin}`"
-                class="log-errors-page__item"
+                class="log-line log-line--stacked"
               >
-                <div class="log-errors-page__head">
-                  <span>{{ formatAt(it.at) }}</span>
-                  <span class="log-errors-page__plugin">{{ it.plugin }}</span>
-                  <span>{{ it.exc_type }}</span>
-                </div>
-                <div class="log-errors-page__msg">{{ it.message }}</div>
+                <span class="log-line__time">{{ formatLogDisplayTime(it.at) }}</span>
+                <span class="log-line__lv log-line__lv--error">{{ it.exc_type }}</span>
+                <span class="log-line__scope">[{{ it.plugin }}]</span>
+                <span class="log-line__msg">{{ it.message }}</span>
                 <pre
                   v-if="it.traceback"
-                  class="log-errors-page__tb"
+                  class="log-line__tb"
                 >{{ it.traceback }}</pre>
-              </li>
-            </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>
