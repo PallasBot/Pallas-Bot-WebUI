@@ -59,6 +59,7 @@ const tablePageSize = computed({
 });
 
 const protoAccPage = ref(1);
+const protoSearchQ = ref("");
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 const actionBusy = ref(new Set<string>());
@@ -83,8 +84,25 @@ const protocolAccountsSorted = computed(() => {
   return list;
 });
 
+const filteredProtocolAccounts = computed(() => {
+  const q = protoSearchQ.value.trim().toLowerCase();
+  if (!q) return protocolAccountsSorted.value;
+  return protocolAccountsSorted.value.filter((a) => {
+    const hay = [
+      String(a.qq ?? ""),
+      String(a.id ?? ""),
+      profileNick(a),
+      primaryTitle(a),
+      accountProtocolId(a) ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  });
+});
+
 const pagedProtocolAccounts = computed(() =>
-  slicePage(protocolAccountsSorted.value, protoAccPage.value, tablePageSize.value),
+  slicePage(filteredProtocolAccounts.value, protoAccPage.value, tablePageSize.value),
 );
 
 const pagedProtocolIds = computed(() =>
@@ -147,6 +165,10 @@ watch(
     protoAccPage.value = 1;
   },
 );
+
+watch(protoSearchQ, () => {
+  protoAccPage.value = 1;
+});
 
 watch([snap, () => snap.value?.accounts?.length], () => {
   protoAccPage.value = 1;
@@ -347,6 +369,172 @@ onMounted(async () => {
     :panels="2"
   />
   <template v-else>
+    <div
+      v-if="(snap?.accounts?.length ?? 0) > 0"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split inst-db-panel__hd">
+        <h2 class="panel__title">
+          <span
+            class="panel__title-ico"
+            aria-hidden="true"
+          >{{ panelNavIcon }}</span>协议账号
+        </h2>
+        <div class="inst-db-panel__hd-side">
+          <button
+            type="button"
+            class="btn panel-hd-collapse-btn"
+            @click="expProtocolAccounts = !expProtocolAccounts"
+          >
+            {{ expProtocolAccounts ? "收起" : "展开" }}
+          </button>
+        </div>
+        <div class="inst-db-panel__actions">
+          <div class="inst-db-panel__stat-search">
+            <span class="inst-db-stat muted">
+              已连接
+              <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
+              / {{ protocolAccountsSorted.length }} 账号
+            </span>
+            <input
+              v-model="protoSearchQ"
+              class="inp inst-db-search"
+              type="search"
+              placeholder="搜索 QQ / 昵称 / 账号 ID"
+              title="按 QQ、昵称、协议账号 ID 筛选"
+            >
+          </div>
+          <PanelSidebarAdd main-path="/protocol" />
+        </div>
+      </div>
+      <div
+        v-show="expProtocolAccounts"
+        class="panel__bd"
+      >
+        <div class="data-card-grid data-card-grid--bots protocol-acc-grid">
+          <div
+            v-for="(a, i) in pagedProtocolAccounts"
+            :key="cardKey(a, i)"
+            class="data-summary-card data-summary-card--kv data-summary-card--bot protocol-acc-card"
+          >
+            <div class="data-summary-card__head data-summary-card__head--bot">
+              <label
+                v-if="accountProtocolId(a)"
+                class="inst-db-card-select"
+                @click.stop
+              >
+                <input
+                  type="checkbox"
+                  :checked="bulk.isSelected(accountProtocolId(a)!)"
+                  :aria-label="`选择协议账号 ${accountProtocolId(a)}`"
+                  @change="
+                    bulk.setSelected(
+                      accountProtocolId(a)!,
+                      ($event.target as HTMLInputElement).checked,
+                    )
+                  "
+                >
+              </label>
+              <div class="data-summary-card__head-main">
+                <div class="data-summary-card__primary">
+                  <a
+                    v-if="detailHref(a)"
+                    class="protocol-acc-card__title-link"
+                    :href="detailHref(a)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ primaryTitle(a) }}</a>
+                  <span v-else>{{ primaryTitle(a) }}</span>
+                </div>
+                <div class="data-summary-card__secondary muted">
+                  账号 {{ a.qq ?? a.id ?? "—" }}
+                </div>
+              </div>
+              <span
+                :class="
+                  a.connected === true
+                    ? 'data-conn-capsule data-conn-capsule--on'
+                    : 'data-conn-capsule data-conn-capsule--off'
+                "
+              >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+            </div>
+            <div class="data-summary-card__body">
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">进程</span>
+              <span
+                v-if="runningPill(a).kind === 'pill'"
+                :class="boolPillClass(pillOn(runningPill(a)))"
+              >{{ pillLabel(runningPill(a)) }}</span>
+              <span
+                v-else
+                class="muted"
+              >{{ pillLabel(runningPill(a)) }}</span>
+            </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">内置 WebUI</span>
+              <a
+                v-if="webUiHref(a)"
+                class="link-quiet"
+                :href="webUiHref(a)!"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ a.webui_port ?? "打开" }}</a>
+              <span
+                v-else
+                class="muted"
+              >{{ a.webui_port ?? "—" }}</span>
+            </div>
+            </div>
+            <div class="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card__actions">
+              <a
+                v-if="detailHref(a)"
+                class="btn"
+                :href="detailHref(a)!"
+                target="_blank"
+                rel="noopener noreferrer"
+              >详情</a>
+              <a
+                v-if="editHref(a)"
+                class="btn"
+                :href="editHref(a)!"
+                target="_blank"
+                rel="noopener noreferrer"
+              >编辑</a>
+              <button
+                type="button"
+                :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+                :disabled="!protoActionsEnabled || isActionBusy(a)"
+                @click="toggleAccountPower(a)"
+              >
+                {{ togglePowerLabel(a) }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <ConsolePagerBar
+          v-model:page="protoAccPage"
+          v-model:page-size="tablePageSize"
+          :total="filteredProtocolAccounts.length"
+        />
+        <ConsoleCardBulkBar
+          v-if="filteredProtocolAccounts.length > 0"
+          :page-all-selected="protoCardsPageAllSelected"
+          :selected-count="unref(bulk.selectedCount)"
+          :delete-busy="deleteBusy"
+          :delete-disabled="!protoActionsEnabled"
+          @toggle-select-all="bulk.toggleSelectAllOnPage(pagedProtocolIds)"
+          @clear-selection="bulk.clearSelection()"
+          @delete="openDeleteModal"
+        />
+        <p
+          v-if="!protoActionsEnabled"
+          class="muted protocol-page__hint"
+        >
+          协议内置页未启用时，无法在控制台内启停或删除；请使用下方「协议端入口」或检查主仓配置。
+        </p>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
@@ -416,159 +604,6 @@ onMounted(async () => {
             to="/"
           >返回总览</RouterLink>
         </div>
-        <p
-          v-if="!protoActionsEnabled && (snap?.accounts?.length ?? 0) > 0"
-          class="muted protocol-page__hint"
-        >
-          协议内置页未启用时，无法在控制台内启停或删除；请使用上方入口或检查主仓配置。
-        </p>
-      </div>
-    </div>
-
-    <div
-      v-if="(snap?.accounts?.length ?? 0) > 0"
-      class="panel"
-    >
-      <div class="panel__hd panel__hd--split inst-db-panel__hd">
-        <h2 class="panel__title">
-          <span
-            class="panel__title-ico"
-            aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议账号
-        </h2>
-        <button
-          type="button"
-          class="btn panel-hd-collapse-btn"
-          @click="expProtocolAccounts = !expProtocolAccounts"
-        >
-          {{ expProtocolAccounts ? "收起" : "展开" }}
-        </button>
-        <div class="inst-db-panel__actions">
-          <PanelSidebarAdd main-path="/protocol" />
-          <span class="inst-db-stat muted">
-            已连接
-            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
-            / {{ protocolAccountsSorted.length }} 账号
-          </span>
-        </div>
-      </div>
-      <div
-        v-show="expProtocolAccounts"
-        class="panel__bd"
-      >
-        <div class="data-card-grid data-card-grid--bots protocol-acc-grid">
-          <div
-            v-for="(a, i) in pagedProtocolAccounts"
-            :key="cardKey(a, i)"
-            class="data-summary-card data-summary-card--kv data-summary-card--bot protocol-acc-card"
-          >
-            <div class="data-summary-card__head data-summary-card__head--bot">
-              <label
-                v-if="accountProtocolId(a)"
-                class="inst-db-card-select"
-                @click.stop
-              >
-                <input
-                  type="checkbox"
-                  :checked="bulk.isSelected(accountProtocolId(a)!)"
-                  :aria-label="`选择协议账号 ${accountProtocolId(a)}`"
-                  @change="
-                    bulk.setSelected(
-                      accountProtocolId(a)!,
-                      ($event.target as HTMLInputElement).checked,
-                    )
-                  "
-                >
-              </label>
-              <div class="data-summary-card__head-main">
-                <div class="data-summary-card__primary">
-                  <a
-                    v-if="detailHref(a)"
-                    class="protocol-acc-card__title-link"
-                    :href="detailHref(a)!"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >{{ primaryTitle(a) }}</a>
-                  <span v-else>{{ primaryTitle(a) }}</span>
-                </div>
-                <div class="data-summary-card__secondary muted">
-                  账号 {{ a.qq ?? a.id ?? "—" }}
-                </div>
-              </div>
-              <span
-                :class="
-                  a.connected === true
-                    ? 'data-conn-capsule data-conn-capsule--on'
-                    : 'data-conn-capsule data-conn-capsule--off'
-                "
-              >{{ a.connected === true ? "已连接" : "未连接" }}</span>
-            </div>
-            <div class="data-summary-card__row">
-              <span class="data-summary-card__label">进程</span>
-              <span
-                v-if="runningPill(a).kind === 'pill'"
-                :class="boolPillClass(pillOn(runningPill(a)))"
-              >{{ pillLabel(runningPill(a)) }}</span>
-              <span
-                v-else
-                class="muted"
-              >{{ pillLabel(runningPill(a)) }}</span>
-            </div>
-            <div class="data-summary-card__row">
-              <span class="data-summary-card__label">内置 WebUI</span>
-              <a
-                v-if="webUiHref(a)"
-                class="link-quiet"
-                :href="webUiHref(a)!"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ a.webui_port ?? "打开" }}</a>
-              <span
-                v-else
-                class="muted"
-              >{{ a.webui_port ?? "—" }}</span>
-            </div>
-            <div class="data-summary-card__tags inst-card-actions protocol-acc-card__actions">
-              <a
-                v-if="detailHref(a)"
-                class="btn"
-                :href="detailHref(a)!"
-                target="_blank"
-                rel="noopener noreferrer"
-              >详情</a>
-              <a
-                v-if="editHref(a)"
-                class="btn"
-                :href="editHref(a)!"
-                target="_blank"
-                rel="noopener noreferrer"
-              >编辑</a>
-              <button
-                type="button"
-                :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
-                :disabled="!protoActionsEnabled || isActionBusy(a)"
-                @click="toggleAccountPower(a)"
-              >
-                {{ togglePowerLabel(a) }}
-              </button>
-            </div>
-          </div>
-        </div>
-        <ConsolePagerBar
-          v-model:page="protoAccPage"
-          v-model:page-size="tablePageSize"
-          :total="protocolAccountsSorted.length"
-        />
-        <ConsoleCardBulkBar
-          v-if="protocolAccountsSorted.length > 0"
-          :page-all-selected="protoCardsPageAllSelected"
-          :selected-count="unref(bulk.selectedCount)"
-          :delete-busy="deleteBusy"
-          :delete-disabled="!protoActionsEnabled"
-          @toggle-select-all="bulk.toggleSelectAllOnPage(pagedProtocolIds)"
-          @clear-selection="bulk.clearSelection()"
-          @delete="openDeleteModal"
-        />
       </div>
     </div>
 
