@@ -61,6 +61,24 @@ export const SIDEBAR_PIN_DEFINITIONS: SidebarPinDefinition[] = [
     icon: "⊞",
     section: "对话与对象",
   },
+  {
+    id: "database-group-configs",
+    path: "/database",
+    hash: "#db-group-configs",
+    label: "数据库 · 群配置",
+    description: "group_config 表记录",
+    icon: "▤",
+    section: "数据与扩展",
+  },
+  {
+    id: "database-user-configs",
+    path: "/database",
+    hash: "#db-user-configs",
+    label: "数据库 · 好友配置",
+    description: "user_config 表记录",
+    icon: "▤",
+    section: "数据与扩展",
+  },
 ];
 
 const byId = new Map(SIDEBAR_PIN_DEFINITIONS.map((p) => [p.id, p]));
