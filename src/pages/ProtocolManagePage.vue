@@ -29,7 +29,14 @@ import {
   protocolMountAbsoluteUrl,
   protocolSnapshot,
 } from "@/utils/protocolLinks";
-import { coerceBoolean, protocolDisp, type ProtocolDisp } from "@/utils/protocolUi";
+import {
+  coerceBoolean,
+  protocolBackendDisplayName,
+  protocolDisp,
+  protocolRuntimeModeLabel,
+  protocolRuntimeVersionText,
+  type ProtocolDisp,
+} from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -77,6 +84,7 @@ const tablePageSize = computed({
 
 const protoAccPage = ref(1);
 const protoSearchQ = ref("");
+const protoView = ref<"table" | "cards">(consolePrefs.protocolAccountsView);
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 const actionBusy = ref(new Set<string>());
@@ -196,6 +204,11 @@ watch(
 watch(protoSearchQ, () => {
   protoAccPage.value = 1;
 });
+
+function setProtoView(v: "table" | "cards") {
+  protoView.value = v;
+  setConsolePrefs({ protocolAccountsView: v });
+}
 
 watch([snap, () => snap.value?.accounts?.length], () => {
   protoAccPage.value = 1;
@@ -500,6 +513,11 @@ onUnmounted(() => {
             class="panel__title-ico"
             aria-hidden="true"
           >{{ panelNavIcon }}</span>协议账号
+          <RefreshIconButton
+            :busy="loadBusy"
+            label="刷新协议账号"
+            @click="load"
+          />
         </h2>
         <div class="inst-db-panel__hd-side">
           <button
@@ -509,6 +527,26 @@ onUnmounted(() => {
           >
             {{ expProtocolAccounts ? "收起" : "展开" }}
           </button>
+          <div
+            class="console-view-toggle"
+            role="group"
+            aria-label="协议账号表格或卡片视图"
+          >
+            <button
+              type="button"
+              :class="{ 'is-on': protoView === 'table' }"
+              @click="setProtoView('table')"
+            >
+              表格
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-on': protoView === 'cards' }"
+              @click="setProtoView('cards')"
+            >
+              卡片
+            </button>
+          </div>
         </div>
         <div class="inst-db-panel__actions">
           <div class="inst-db-panel__stat-search">
@@ -532,7 +570,102 @@ onUnmounted(() => {
         v-show="expProtocolAccounts"
         class="panel__bd"
       >
-        <div class="data-card-grid data-card-grid--bots protocol-acc-grid">
+        <div v-if="protoView === 'table'" class="table-wrap">
+          <table class="data console-data-table">
+            <thead>
+              <tr>
+                <th>昵称</th>
+                <th>账号</th>
+                <th>协议</th>
+                <th>运行方式</th>
+                <th>版本</th>
+                <th>进程</th>
+                <th>连接</th>
+                <th>WebUI</th>
+                <th style="width: 168px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(a, i) in pagedProtocolAccounts"
+                :key="'tbl-' + cardKey(a, i)"
+              >
+                <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
+                <td>{{ a.qq ?? a.id ?? "—" }}</td>
+                <td>{{ protocolBackendDisplayName(a) }}</td>
+                <td>{{ protocolRuntimeModeLabel(a) }}</td>
+                <td
+                  class="muted"
+                  :title="String(a.runtime_source ?? '').trim() || undefined"
+                >{{ protocolRuntimeVersionText(a) }}</td>
+                <td>
+                  <span :class="runningCapsuleClass(a)">{{
+                    isProcessRunning(a) ? "运行中" : "未运行"
+                  }}</span>
+                </td>
+                <td>
+                  <span
+                    :class="
+                      a.connected === true
+                        ? 'data-conn-capsule data-conn-capsule--on'
+                        : 'data-conn-capsule data-conn-capsule--off'
+                    "
+                  >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+                </td>
+                <td>
+                  <a
+                    v-if="webUiHref(a)"
+                    class="link-quiet"
+                    :href="webUiHref(a)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ a.webui_port ?? "打开" }}</a>
+                  <span
+                    v-else
+                    class="muted"
+                  >—</span>
+                </td>
+                <td>
+                  <div class="inst-actions protocol-acc-table-actions">
+                    <a
+                      v-if="detailHref(a)"
+                      class="btn"
+                      :href="detailHref(a)!"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >详情</a>
+                    <button
+                      v-if="protocolAccountNumber(a) != null"
+                      type="button"
+                      class="btn inst-fav-star"
+                      :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
+                      :title="
+                        botFavoriteAccounts.has(protocolAccountNumber(a)!)
+                          ? '取消收藏'
+                          : '收藏'
+                      "
+                      @click="toggleFavoriteBot(protocolAccountNumber(a)!)"
+                    >
+                      ★
+                    </button>
+                    <button
+                      type="button"
+                      :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+                      :disabled="!protoActionsEnabled || isActionBusy(a)"
+                      @click="toggleAccountPower(a)"
+                    >
+                      {{ togglePowerLabel(a) }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          v-else-if="protoView === 'cards'"
+          class="data-card-grid data-card-grid--bots protocol-acc-grid"
+        >
           <div
             v-for="(a, i) in pagedProtocolAccounts"
             :key="cardKey(a, i)"
@@ -602,17 +735,34 @@ onUnmounted(() => {
             </div>
             <div class="data-summary-card__body">
             <div class="data-summary-card__row">
+              <span class="data-summary-card__label">协议实现</span>
+              <span class="data-summary-card__val">{{ protocolBackendDisplayName(a) }}</span>
+            </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">运行方式</span>
+              <span class="data-summary-card__val data-summary-card__val--mode">{{
+                protocolRuntimeModeLabel(a)
+              }}</span>
+            </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">版本</span>
+              <span
+                class="data-summary-card__val data-summary-card__val--version"
+                :title="String(a.runtime_source ?? '').trim() || undefined"
+              >{{ protocolRuntimeVersionText(a) }}</span>
+            </div>
+            <div class="data-summary-card__row">
               <span class="data-summary-card__label">内置 WebUI</span>
               <a
                 v-if="webUiHref(a)"
-                class="link-quiet"
+                class="data-summary-card__val data-summary-card__val--link link-quiet"
                 :href="webUiHref(a)!"
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ a.webui_port ?? "打开" }}</a>
               <span
                 v-else
-                class="muted"
+                class="data-summary-card__val muted"
               >{{ a.webui_port ?? "—" }}</span>
             </div>
             </div>
@@ -643,12 +793,13 @@ onUnmounted(() => {
           </div>
         </div>
         <ConsolePagerBar
+          v-if="filteredProtocolAccounts.length > 0"
           v-model:page="protoAccPage"
           v-model:page-size="tablePageSize"
           :total="filteredProtocolAccounts.length"
         />
         <ConsoleCardBulkBar
-          v-if="filteredProtocolAccounts.length > 0"
+          v-if="protoView === 'cards' && filteredProtocolAccounts.length > 0"
           :page-all-selected="protoCardsPageAllSelected"
           :selected-count="unref(bulk.selectedCount)"
           :delete-busy="deleteBusy"
@@ -667,7 +818,7 @@ onUnmounted(() => {
     </div>
 
     <div class="panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
           <span
             class="panel__title-ico"
@@ -684,9 +835,9 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="panel__bd">
-        <div class="protocol-page__meta">
-          <div class="protocol-page__meta-row">
-            <span class="protocol-page__meta-label">内置 WebUI</span>
+        <div class="protocol-page__meta console-kv-block">
+          <div class="data-summary-card__row">
+            <span class="data-summary-card__label">内置 WebUI</span>
             <span
               v-if="webuiEnabledDisp.kind === 'pill'"
               :class="boolPillClass(pillOn(webuiEnabledDisp))"
@@ -702,8 +853,8 @@ onUnmounted(() => {
           >
             路径 <code>{{ snap.webui_path }}</code>
           </p>
-          <div class="protocol-page__meta-row">
-            <span class="protocol-page__meta-label">控制台鉴权</span>
+          <div class="data-summary-card__row">
+            <span class="data-summary-card__label">控制台鉴权</span>
             <span
               v-if="consoleAuthDisp.kind === 'pill'"
               :class="boolPillClass(pillOn(consoleAuthDisp))"
@@ -755,21 +906,14 @@ onUnmounted(() => {
 
 <style scoped>
 .protocol-page__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   margin-bottom: 14px;
 }
-.protocol-page__meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+
+.protocol-page__meta.console-kv-block {
+  gap: 2px;
 }
-.protocol-page__meta-label {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--text-dim);
+.console-kv-block .data-summary-card__row > :not(.data-summary-card__label) {
+  justify-self: end;
 }
 .protocol-page__meta-path {
   margin: 0;
@@ -795,5 +939,10 @@ onUnmounted(() => {
 .protocol-acc-card__actions {
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.protocol-acc-table-actions {
+  flex-wrap: wrap;
+  gap: 4px;
 }
 </style>
