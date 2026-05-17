@@ -44,38 +44,3 @@ function onClick() {
     <span aria-hidden="true">+</span>
   </button>
 </template>
-
-<style scoped>
-.panel-sidebar-add {
-  flex: 0 0 28px;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  max-width: 28px;
-  max-height: 28px;
-  padding: 0;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm, 6px);
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 40%, transparent);
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background 0.15s var(--ease, ease),
-    color 0.15s var(--ease, ease),
-    border-color 0.15s var(--ease, ease);
-}
-
-.panel-sidebar-add:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-}
-</style>

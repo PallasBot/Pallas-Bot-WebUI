@@ -21,6 +21,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
+import { rouletteModeLabel } from "@/utils/rouletteMode";
 
 /** 上次成功拉取的总览，用于再次进入页面时直接展示，减少骨架屏 */
 let dbOverviewCache: DbOverviewData | null = null;
@@ -109,10 +110,6 @@ function rowMatchesNeedle(
 ): boolean {
   if (!needle) return true;
   return parts.some((p) => String(p ?? "").toLowerCase().includes(needle));
-}
-
-function rouletteModeLabel(mode: number): string {
-  return mode === 0 ? "踢人" : "禁言";
 }
 
 const sortedGroupConfigs = computed(() =>
