@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import { computed, onActivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import {
   deleteBotConfig,
   fetchInstances,
@@ -84,18 +84,14 @@ watch(deleteModalOpen, () => {
   syncBodyOverflow();
 });
 
-onUnmounted(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-  }
-});
-
 const instNbPage = ref(1);
 const instDbPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
 const reloadBusy = ref(false);
 const dbBotSearchQ = ref("");
+/** keep-alive 再次进入时同步 /instances（如从协议端页返回） */
+let instHadActivated = false;
 
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
@@ -391,6 +387,24 @@ onMounted(async () => {
     pageReady.value = true;
   }
 });
+
+onActivated(() => {
+  const warm = peekInstancesCache();
+  if (warm) data.value = warm;
+  if (!pageReady.value) {
+    if (!instHadActivated) instHadActivated = true;
+    return;
+  }
+  if (instHadActivated) void reload();
+  else instHadActivated = true;
+});
+
+onUnmounted(() => {
+  instHadActivated = false;
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
+  }
+});
 </script>
 
 <template>
@@ -583,16 +597,29 @@ onMounted(async () => {
                   >
                 </label>
                 <div class="data-summary-card__head-main">
-                  <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                  <div class="data-summary-card__title-line">
+                    <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                    <button
+                      type="button"
+                      class="data-card-fav-star"
+                      :aria-pressed="botFavoriteAccounts.has(c.account)"
+                      :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                      @click.stop="toggleFavoriteBot(c.account)"
+                    >
+                      ★
+                    </button>
+                  </div>
                   <div class="data-summary-card__secondary muted">{{ c.account }}</div>
                 </div>
-                <span
-                  :class="
-                    isBotConnected(c.account)
-                      ? 'data-conn-capsule data-conn-capsule--on'
-                      : 'data-conn-capsule data-conn-capsule--off'
-                  "
-                >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
+                <div class="data-summary-card__head-badges">
+                  <span
+                    :class="
+                      isBotConnected(c.account)
+                        ? 'data-conn-capsule data-conn-capsule--on'
+                        : 'data-conn-capsule data-conn-capsule--off'
+                    "
+                  >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
+                </div>
               </div>
               <div class="data-summary-card__body">
                 <div class="data-summary-card__row">
@@ -634,15 +661,6 @@ onMounted(async () => {
               </div>
               <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
                 <ConsoleTableEdit @click="startEdit(c)" />
-                <button
-                  type="button"
-                  class="btn inst-fav-star"
-                  :aria-pressed="botFavoriteAccounts.has(c.account)"
-                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
-                  @click="toggleFavoriteBot(c.account)"
-                >
-                  ★
-                </button>
               </div>
             </div>
           </div>
