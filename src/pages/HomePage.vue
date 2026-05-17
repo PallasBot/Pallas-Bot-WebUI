@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -16,6 +16,7 @@ import {
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
+  peekInstancesCache,
   peekPluginsCache,
 } from "@/api/consoleApi";
 import type {
@@ -49,6 +50,8 @@ import {
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import { instancesCatalogEpoch } from "@/utils/catalogSync";
+import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
@@ -913,6 +916,28 @@ async function refreshMessageStatsOnly() {
   }
 }
 
+async function refreshHomeCatalogFromCache() {
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+  try {
+    const [inst, botList] = await Promise.all([fetchInstances({ bypassCache: true }), fetchBots()]);
+    instances.value = inst;
+    bots.value = botList;
+    botCount.value = botList.length;
+    ensureSelectedAccount();
+  } catch {
+    /* 保留当前目录快照 */
+  }
+}
+
+const homeRouteActive = ref(false);
+
+watch(instancesCatalogEpoch, () => {
+  if (!homeRouteActive.value) return;
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+});
+
 let homeThroughputPollId: ReturnType<typeof setInterval> | null = null;
 
 function startHomeThroughputPolling() {
@@ -931,17 +956,36 @@ function stopHomeThroughputPolling() {
 
 onMounted(async () => {
   await load();
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onHomeSystemVisibility);
+  }
+});
+
+onActivated(() => {
+  homeRouteActive.value = true;
+  if (pageReady.value) {
+    void refreshHomeCatalogFromCache();
+    void refreshInstancesCatalogGlobal().catch(() => {});
+  }
   startHomeSystemPolling();
   startHomeThroughputPolling();
   startHomeConnDurationTick();
-  document.addEventListener("visibilitychange", onHomeSystemVisibility);
+});
+
+onDeactivated(() => {
+  homeRouteActive.value = false;
+  stopHomeSystemPolling();
+  stopHomeThroughputPolling();
+  stopHomeConnDurationTick();
 });
 
 onUnmounted(() => {
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
   stopHomeConnDurationTick();
-  document.removeEventListener("visibilitychange", onHomeSystemVisibility);
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onHomeSystemVisibility);
+  }
 });
 </script>
 

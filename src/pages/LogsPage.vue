@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs } from "@/api/consoleApi";
 import type { LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -114,7 +114,15 @@ watch(
 
 onMounted(() => {
   void load();
+});
+
+onActivated(() => {
+  if (pageReady.value) void load({ silent: true });
   startLogPolling();
+});
+
+onDeactivated(() => {
+  stopLogPolling();
 });
 
 onUnmounted(() => {

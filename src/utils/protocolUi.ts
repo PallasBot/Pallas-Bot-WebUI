@@ -23,3 +23,48 @@ export function protocolDisp(v: unknown, onLabel: string, offLabel: string): Pro
   if (b !== null) return { kind: "pill", on: b, onLabel, offLabel };
   return { kind: "text", text: protocolScalarText(v) };
 }
+
+export type ProtocolBackendKey = "napcat" | "snowluma";
+
+export function protocolBackendKey(account: Record<string, unknown>): ProtocolBackendKey {
+  const raw = String(account.protocol_backend ?? "napcat")
+    .trim()
+    .toLowerCase();
+  return raw === "snowluma" ? "snowluma" : "napcat";
+}
+
+export function protocolBackendDisplayName(account: Record<string, unknown>): string {
+  return protocolBackendKey(account) === "snowluma" ? "SnowLuma" : "NapCat";
+}
+
+function coerceRuntimeModeToken(raw: unknown): string {
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "docker" || s === "appimage" || s === "shell") return s;
+  return "";
+}
+
+/** 账号实际运行方式（与协议内置页 docker / shell / appimage 一致） */
+export function protocolRuntimeModeLabel(account: Record<string, unknown>): string {
+  const bk = protocolBackendKey(account);
+  if (bk === "snowluma") {
+    if (coerceBoolean(account.snowluma_linux_docker) === true) return "Docker";
+    const mode =
+      coerceRuntimeModeToken(account.global_snowluma_runtime_mode) ||
+      coerceRuntimeModeToken(account.global_runtime_mode);
+    if (mode) return mode === "appimage" ? "AppImage" : mode.charAt(0).toUpperCase() + mode.slice(1);
+    return "Shell";
+  }
+  if (coerceBoolean(account.napcat_linux_docker) === true) return "Docker";
+  const mode =
+    coerceRuntimeModeToken(account.global_napcat_runtime_mode) ||
+    coerceRuntimeModeToken(account.global_runtime_mode);
+  if (mode) return mode === "appimage" ? "AppImage" : mode.charAt(0).toUpperCase() + mode.slice(1);
+  return "Shell";
+}
+
+export function protocolRuntimeVersionText(account: Record<string, unknown>): string {
+  const v = String(account.runtime_version ?? "").trim();
+  return v || "—";
+}

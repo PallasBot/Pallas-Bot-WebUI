@@ -39,6 +39,13 @@ export function protocolApiErrorMessage(err: unknown, fallback: string): string 
 }
 
 type AccountActionBody = { account?: NapcatAccountRow };
+type AccountsListBody = { accounts?: NapcatAccountRow[] };
+
+/** 协议内置页账号列表（运行态实时，与内置管理页 refreshAccounts 一致） */
+export async function protocolListAccounts(mountUrl: string): Promise<NapcatAccountRow[]> {
+  const { data } = await protocolHttp(mountUrl).get<AccountsListBody>("/api/accounts");
+  return Array.isArray(data?.accounts) ? data.accounts : [];
+}
 
 export async function protocolStartAccount(mountUrl: string, accountId: string): Promise<NapcatAccountRow | null> {
   const { data } = await protocolHttp(mountUrl).post<AccountActionBody>(
