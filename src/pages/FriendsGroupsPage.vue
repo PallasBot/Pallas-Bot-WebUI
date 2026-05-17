@@ -46,8 +46,10 @@ const err = ref("");
 const ok = ref("");
 const groupConfigOpen = ref(false);
 const groupConfigId = ref<number | null>(null);
+const groupConfigName = ref("");
 const userConfigOpen = ref(false);
 const userConfigId = ref<number | null>(null);
+const userConfigNickname = ref("");
 /** 未选 Bot 时无需等网络即可展示布局；仅依赖实例列表填充下拉框 */
 const pageReady = ref(true);
 const busy = ref(false);
@@ -683,15 +685,17 @@ function toggleGroupsListPanel() {
   setConsolePrefs({ friendsPageGroupsListOpen: !consolePrefs.friendsPageGroupsListOpen });
 }
 
-function openGroupConfig(groupId: number) {
+function openGroupConfig(groupId: number, groupName = "") {
   ok.value = "";
   groupConfigId.value = groupId;
+  groupConfigName.value = groupName.trim();
   groupConfigOpen.value = true;
 }
 
-function openUserConfig(userId: number) {
+function openUserConfig(userId: number, nickname = "", remark = "") {
   ok.value = "";
   userConfigId.value = userId;
+  userConfigNickname.value = nickname.trim() || remark.trim();
   userConfigOpen.value = true;
 }
 
@@ -889,7 +893,7 @@ onUnmounted(() => {
                 <td>{{ f.nickname }}</td>
                 <td class="muted">{{ f.remark }}</td>
                 <td>
-                  <ConsoleTableEdit @click="openUserConfig(f.user_id)" />
+                  <ConsoleTableEdit @click="openUserConfig(f.user_id, f.nickname, f.remark)" />
                 </td>
               </tr>
             </tbody>
@@ -969,7 +973,6 @@ onUnmounted(() => {
                   <th>群号</th>
                   <th>群名</th>
                   <th>成员</th>
-                  <th>上限</th>
                   <th style="min-width: 88px; width: 1%">操作</th>
                 </tr>
               </thead>
@@ -983,9 +986,6 @@ onUnmounted(() => {
                   </td>
                   <td>
                     <div class="fg-table-skel__bar fg-table-skel__bar--mid skel-pulse" />
-                  </td>
-                  <td>
-                    <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
                   </td>
                   <td>
                     <div class="fg-table-skel__bar fg-table-skel__bar--tiny skel-pulse" />
@@ -1021,7 +1021,6 @@ onUnmounted(() => {
                 <th>群号</th>
                 <th>群名</th>
                 <th>成员</th>
-                <th>上限</th>
                 <th style="min-width: 88px; width: 1%">操作</th>
               </tr>
             </thead>
@@ -1033,9 +1032,8 @@ onUnmounted(() => {
                 <td>{{ g.group_id }}</td>
                 <td>{{ g.group_name }}</td>
                 <td>{{ g.member_count }}</td>
-                <td class="muted">{{ g.max_member_count }}</td>
                 <td>
-                  <ConsoleTableEdit @click="openGroupConfig(g.group_id)" />
+                  <ConsoleTableEdit @click="openGroupConfig(g.group_id, g.group_name)" />
                 </td>
               </tr>
             </tbody>
@@ -1351,11 +1349,13 @@ onUnmounted(() => {
     <GroupSocialConfigModal
       v-model:open="groupConfigOpen"
       :group-id="groupConfigId"
+      :group-name="groupConfigName"
       @saved="onSocialConfigSaved('group')"
     />
     <UserSocialConfigModal
       v-model:open="userConfigOpen"
       :user-id="userConfigId"
+      :user-nickname="userConfigNickname"
       @saved="onSocialConfigSaved('user')"
     />
   </div>

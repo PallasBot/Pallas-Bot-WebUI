@@ -3,11 +3,20 @@ import { computed, ref, watch } from "vue";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/consoleApi";
 import type { GroupConfigPublic, PluginRow } from "@/api/pallasTypes";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
+import {
+  parseRouletteModeSelect,
+  rouletteModeSelectOptions,
+  rouletteModeSelectValue,
+} from "@/utils/rouletteMode";
 
 const open = defineModel<boolean>("open", { default: false });
 const props = defineProps<{
   groupId: number | null;
+  /** 群昵称（好友与群列表传入；数据库页无群名时可省略） */
+  groupName?: string;
 }>();
+
+const subtitleGroupName = computed(() => props.groupName?.trim() ?? "");
 
 const emit = defineEmits<{
   saved: [];
@@ -99,6 +108,15 @@ function boolSelectVal(v: boolean): string {
 function onGroupBannedSelect(raw: string) {
   if (!groupDraft.value) return;
   groupDraft.value.banned = raw === "1";
+}
+
+const rouletteModeOptions = computed(() =>
+  groupDraft.value ? rouletteModeSelectOptions(groupDraft.value.roulette_mode) : rouletteModeSelectOptions(),
+);
+
+function onRouletteModeSelect(raw: string) {
+  if (!groupDraft.value) return;
+  groupDraft.value.roulette_mode = parseRouletteModeSelect(raw, groupDraft.value.roulette_mode);
 }
 
 function addBlockedUserFromInput() {
@@ -240,7 +258,10 @@ watch(
                 v-else-if="groupId"
                 class="console-modal__subtitle-strong"
               >群 {{ groupId }}</span>
-              <span class="muted"> · roulette / banned / 本群拉黑 / 禁用插件</span>
+              <span
+                v-if="subtitleGroupName"
+                class="muted"
+              > · {{ subtitleGroupName }}</span>
             </p>
           </div>
           <button
@@ -284,18 +305,26 @@ watch(
             >
               {{ saveErr }}
             </p>
-            <div class="bot-config-edit__grid">
+            <div class="bot-config-edit__grid bot-config-edit__grid--pair">
               <div class="bot-config-edit__field">
                 <label>轮盘模式</label>
-                <input
-                  v-model.number="groupDraft.roulette_mode"
-                  class="inp"
-                  type="number"
+                <select
+                  class="sel"
                   style="width: 100%"
+                  :value="rouletteModeSelectValue(groupDraft.roulette_mode)"
+                  @change="onRouletteModeSelect(($event.target as HTMLSelectElement).value)"
                 >
+                  <option
+                    v-for="opt in rouletteModeOptions"
+                    :key="`roulette-${opt.value}`"
+                    :value="String(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </option>
+                </select>
               </div>
               <div class="bot-config-edit__field">
-                <label>封禁（banned）</label>
+                <label>封禁</label>
                 <select
                   class="sel"
                   style="width: 100%"

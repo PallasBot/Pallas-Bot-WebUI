@@ -38,6 +38,10 @@ export interface ConsolePrefsState {
   friendsPageFriendsListOpen: boolean;
   /** 好友与群页：群聊列表面板是否展开 */
   friendsPageGroupsListOpen: boolean;
+  /** 数据库页：群配置面板是否展开 */
+  databasePageGroupConfigsOpen: boolean;
+  /** 数据库页：好友配置面板是否展开 */
+  databasePageUserConfigsOpen: boolean;
 }
 const defaults: ConsolePrefsState = {
   theme: "system",
@@ -53,6 +57,8 @@ const defaults: ConsolePrefsState = {
   sidebarNavLayoutVersion: 2,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
+  databasePageGroupConfigsOpen: true,
+  databasePageUserConfigsOpen: true,
 };
 function load(): ConsolePrefsState {
   try {
@@ -88,6 +94,12 @@ function load(): ConsolePrefsState {
     }
     if (typeof parsed.friendsPageGroupsListOpen === "boolean") {
       merged.friendsPageGroupsListOpen = parsed.friendsPageGroupsListOpen;
+    }
+    if (typeof parsed.databasePageGroupConfigsOpen === "boolean") {
+      merged.databasePageGroupConfigsOpen = parsed.databasePageGroupConfigsOpen;
+    }
+    if (typeof parsed.databasePageUserConfigsOpen === "boolean") {
+      merged.databasePageUserConfigsOpen = parsed.databasePageUserConfigsOpen;
     }
     const sectRaw = (parsed as { sidebarNavSectionByToken?: unknown }).sidebarNavSectionByToken;
     if (sectRaw && typeof sectRaw === "object" && !Array.isArray(sectRaw)) {

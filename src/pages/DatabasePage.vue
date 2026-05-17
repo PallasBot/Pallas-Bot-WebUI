@@ -21,6 +21,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
+import { rouletteModeLabel } from "@/utils/rouletteMode";
 
 /** 上次成功拉取的总览，用于再次进入页面时直接展示，减少骨架屏 */
 let dbOverviewCache: DbOverviewData | null = null;
@@ -111,10 +112,6 @@ function rowMatchesNeedle(
   return parts.some((p) => String(p ?? "").toLowerCase().includes(needle));
 }
 
-function boolPillClass(on: boolean): string {
-  return on ? "bool-pill bool-pill--on" : "bool-pill bool-pill--off";
-}
-
 const sortedGroupConfigs = computed(() =>
   [...groupConfigs.value].sort((a, b) => a.group_id - b.group_id),
 );
@@ -129,7 +126,7 @@ const filteredGroupConfigs = computed(() => {
   return sortedGroupConfigs.value.filter((g) =>
     rowMatchesNeedle(needle, [
       g.group_id,
-      g.roulette_mode,
+      rouletteModeLabel(g.roulette_mode),
       g.banned ? "封禁" : "正常",
       formatDisabledPluginIds(g.disabled_plugins, plugins.value),
       (g.blocked_user_ids ?? []).length,
@@ -222,6 +219,18 @@ async function runAggregate() {
   } finally {
     aggLoading.value = false;
   }
+}
+
+function toggleGroupConfigsPanel() {
+  setConsolePrefs({
+    databasePageGroupConfigsOpen: !consolePrefs.databasePageGroupConfigsOpen,
+  });
+}
+
+function toggleUserConfigsPanel() {
+  setConsolePrefs({
+    databasePageUserConfigsOpen: !consolePrefs.databasePageUserConfigsOpen,
+  });
 }
 
 function openGroupConfig(groupId: number) {
@@ -354,14 +363,21 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <span
-              v-else-if="groupConfigs.length >= CONFIG_LIST_LIMIT"
-              class="badge badge--warn"
-            >已截断 · limit {{ CONFIG_LIST_LIMIT }}</span>
+            <button
+              type="button"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="toggleGroupConfigsPanel"
+            >
+              {{ consolePrefs.databasePageGroupConfigsOpen ? "收起" : "展开" }}
+            </button>
           </div>
         </div>
       </div>
-      <div class="panel__bd">
+      <div
+        v-show="consolePrefs.databasePageGroupConfigsOpen"
+        class="panel__bd"
+      >
         <p
           v-if="pluginLoadErr"
           class="muted"
@@ -405,9 +421,12 @@ onUnmounted(() => {
               >
                 <td>{{ g.group_id }}</td>
                 <td>
-                  <span :class="boolPillClass(g.banned)">{{ g.banned ? "是" : "否" }}</span>
+                  <span
+                    class="badge"
+                    :class="g.banned ? 'badge--warn' : 'badge--ok'"
+                  >{{ g.banned ? "是" : "否" }}</span>
                 </td>
-                <td>{{ g.roulette_mode }}</td>
+                <td>{{ rouletteModeLabel(g.roulette_mode) }}</td>
                 <td class="muted">{{ formatDisabledPluginIds(g.disabled_plugins, plugins) || "—" }}</td>
                 <td class="muted">{{ (g.blocked_user_ids ?? []).length ? `${(g.blocked_user_ids ?? []).length} 人` : "—" }}</td>
                 <td>
@@ -457,14 +476,21 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <span
-              v-else-if="userConfigs.length >= CONFIG_LIST_LIMIT"
-              class="badge badge--warn"
-            >已截断 · limit {{ CONFIG_LIST_LIMIT }}</span>
+            <button
+              type="button"
+              class="btn"
+              style="padding: 6px 12px; font-size: 12px"
+              @click="toggleUserConfigsPanel"
+            >
+              {{ consolePrefs.databasePageUserConfigsOpen ? "收起" : "展开" }}
+            </button>
           </div>
         </div>
       </div>
-      <div class="panel__bd">
+      <div
+        v-show="consolePrefs.databasePageUserConfigsOpen"
+        class="panel__bd"
+      >
         <p
           v-if="socialConfigsBusy && !userConfigs.length"
           class="muted"
@@ -498,7 +524,10 @@ onUnmounted(() => {
               >
                 <td>{{ u.user_id }}</td>
                 <td>
-                  <span :class="boolPillClass(u.banned)">{{ u.banned ? "是" : "否" }}</span>
+                  <span
+                    class="badge"
+                    :class="u.banned ? 'badge--warn' : 'badge--ok'"
+                  >{{ u.banned ? "是" : "否" }}</span>
                 </td>
                 <td>
                   <ConsoleTableEdit @click="openUserConfig(u.user_id)" />
