@@ -1437,6 +1437,41 @@ html[data-theme="light"] .shell-back-top {
   align-items: center;
 }
 
+/* 「添加到侧栏」：尺寸与外观统一在此维护 */
+button.panel-sidebar-add,
+.panel-sidebar-add {
+  flex: 0 0 28px;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  max-width: 28px;
+  max-height: 28px;
+  padding: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--bg-muted) 40%, transparent);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s var(--ease, ease),
+    color 0.15s var(--ease, ease),
+    border-color 0.15s var(--ease, ease);
+}
+
+.panel-sidebar-add:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
 .inst-db-panel__hd .inst-db-panel__actions > .panel-sidebar-add {
   flex-shrink: 0;
   margin-left: 8px;
@@ -1535,6 +1570,8 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   align-items: center;
   flex-shrink: 0;
   align-self: center;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 /* 好友申请 / 入群请求：宽屏与列表区一致横排 */
@@ -2683,6 +2720,10 @@ html[data-theme="light"] .bot-config-edit {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-items: end;
   margin-bottom: 14px;
+}
+
+.bot-config-edit__grid--pair {
+  grid-template-columns: 1fr 1fr;
 }
 
 .bot-config-edit__field label {
@@ -5188,19 +5229,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     align-self: center;
   }
 
-  #fg-friends .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #fg-groups .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #db-group-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #db-user-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
-  #fg-account.friends-groups-account-panel .friends-groups-hd-pin-wrap .panel-sidebar-add {
-    width: 28px !important;
-    height: 28px !important;
-    max-width: none;
-    flex: 0 0 auto;
-  }
-
   #fg-friends .friends-groups-list-hd-actions > input[type="search"].inp,
   #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp,
   #db-group-configs .friends-groups-list-hd-actions > input[type="search"].inp,
@@ -5281,13 +5309,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .panel__hd .row-actions > .panel-sidebar-add,
   .panel__hd .inst-db-panel__actions > .panel-sidebar-add {
     align-self: flex-end;
-    width: auto !important;
-    max-width: none;
-    flex: 0 0 auto;
-  }
-
-  .panel__hd .update-page__hd-tail > .panel-sidebar-add {
-    flex: 0 0 auto;
   }
 
   /* 首页「账户信息」：标题栏右侧勿纵向全宽拉伸（实例与连接胶囊） */
@@ -5472,7 +5493,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .logs-page .panel__hd .row-actions > .panel-sidebar-add {
     align-self: flex-end;
-    width: auto !important;
   }
 
   .panel__bd {

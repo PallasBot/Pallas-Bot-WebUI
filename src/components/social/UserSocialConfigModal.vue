@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { fetchUserConfigById, putUserConfig } from "@/api/consoleApi";
 import type { UserConfigPublic } from "@/api/pallasTypes";
 
 const open = defineModel<boolean>("open", { default: false });
 const props = defineProps<{
   userId: number | null;
+  /** 好友昵称（好友列表传入；数据库页无昵称时可省略） */
+  userNickname?: string;
 }>();
+
+const subtitleUserNickname = computed(() => props.userNickname?.trim() ?? "");
 
 const emit = defineEmits<{
   saved: [];
@@ -133,7 +137,10 @@ watch(
                 v-else-if="userId"
                 class="console-modal__subtitle-strong"
               >QQ {{ userId }}</span>
-              <span class="muted"> · banned</span>
+              <span
+                v-if="subtitleUserNickname"
+                class="muted"
+              > · {{ subtitleUserNickname }}</span>
             </p>
           </div>
           <button
@@ -171,7 +178,7 @@ watch(
               {{ saveErr }}
             </p>
             <div class="bot-config-edit__field">
-              <label>封禁（banned）</label>
+              <label>封禁</label>
               <select
                 class="sel"
                 style="width: 100%"
