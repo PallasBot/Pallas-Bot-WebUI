@@ -50,6 +50,8 @@ import {
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import { instancesCatalogEpoch } from "@/utils/catalogSync";
+import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
@@ -874,9 +876,6 @@ async function refreshSystemRuntimeOnly() {
   }
 }
 
-/** keep-alive 再次进入时同步实例目录（如从协议端页返回） */
-let homeHadActivated = false;
-
 let homeSystemPollId: ReturnType<typeof setInterval> | null = null;
 
 function startHomeSystemPolling() {
@@ -921,7 +920,7 @@ async function refreshHomeCatalogFromCache() {
   const warm = peekInstancesCache();
   if (warm) instances.value = warm;
   try {
-    const [inst, botList] = await Promise.all([fetchInstances(), fetchBots()]);
+    const [inst, botList] = await Promise.all([fetchInstances({ bypassCache: true }), fetchBots()]);
     instances.value = inst;
     bots.value = botList;
     botCount.value = botList.length;
@@ -930,6 +929,14 @@ async function refreshHomeCatalogFromCache() {
     /* 保留当前目录快照 */
   }
 }
+
+const homeRouteActive = ref(false);
+
+watch(instancesCatalogEpoch, () => {
+  if (!homeRouteActive.value) return;
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+});
 
 let homeThroughputPollId: ReturnType<typeof setInterval> | null = null;
 
@@ -953,11 +960,10 @@ onMounted(async () => {
 });
 
 onActivated(() => {
+  homeRouteActive.value = true;
   if (pageReady.value) {
-    if (homeHadActivated) void refreshHomeCatalogFromCache();
-    else homeHadActivated = true;
-  } else if (!homeHadActivated) {
-    homeHadActivated = true;
+    void refreshHomeCatalogFromCache();
+    void refreshInstancesCatalogGlobal().catch(() => {});
   }
   startHomeSystemPolling();
   startHomeThroughputPolling();
@@ -965,13 +971,13 @@ onActivated(() => {
 });
 
 onDeactivated(() => {
+  homeRouteActive.value = false;
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
   stopHomeConnDurationTick();
 });
 
 onUnmounted(() => {
-  homeHadActivated = false;
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
   stopHomeConnDurationTick();

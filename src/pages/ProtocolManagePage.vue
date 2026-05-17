@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
-import { fetchInstances, fetchSystem, invalidateInstancesCache, peekInstancesCache } from "@/api/consoleApi";
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import {
+  fetchInstances,
+  fetchSystem,
+  patchInstancesProtocolAccounts,
+  peekInstancesCache,
+} from "@/api/consoleApi";
 import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
+  protocolListAccounts,
   protocolStartAccount,
   protocolStopAccount,
 } from "@/api/protocolApi";
@@ -30,6 +36,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -41,7 +48,16 @@ const instances = ref<InstancesData | null>(null);
   if (warmInst) instances.value = warmInst;
 }
 
-const snap = computed(() => protocolSnapshot(instances.value));
+const protoAccountsLive = ref<NapcatAccountRow[] | null>(null);
+
+const snap = computed(() => {
+  const base = protocolSnapshot(instances.value);
+  if (!base) return null;
+  if (protoAccountsLive.value != null) {
+    return { ...base, accounts: protoAccountsLive.value };
+  }
+  return base;
+});
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
@@ -64,6 +80,11 @@ const protoSearchQ = ref("");
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 const actionBusy = ref(new Set<string>());
+/** 协议账号快照轮询（毫秒）；标签页隐藏时跳过 */
+const PROTO_POLL_MS = 5000;
+let protoPollTimer: ReturnType<typeof setInterval> | null = null;
+/** 路由离屏后忽略在途轮询写回，避免切换页时触发全局目录 epoch */
+const protoRouteActive = ref(false);
 
 const webuiEnabledDisp = computed(() => protocolDisp(snap.value?.webui_enabled, "已启用", "未启用"));
 const consoleAuthDisp = computed(() =>
@@ -195,9 +216,6 @@ watch(deleteModalOpen, () => {
   syncBodyOverflow();
 });
 
-onUnmounted(() => {
-  if (typeof document !== "undefined") document.body.style.overflow = "";
-});
 
 function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -290,24 +308,76 @@ function closeDeleteModal() {
   deleteErr.value = "";
 }
 
-async function load() {
-  err.value = "";
-  loadBusy.value = true;
+function shouldSkipProtoPoll(): boolean {
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return true;
+  if (deleteModalOpen.value || deleteBusy.value) return true;
+  if (actionBusy.value.size > 0) return true;
+  return false;
+}
+
+function applyProtocolAccounts(accounts: NapcatAccountRow[]) {
+  if (!protoRouteActive.value) return;
+  protoAccountsLive.value = accounts;
+  patchInstancesProtocolAccounts(accounts, instances.value);
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+}
+
+async function pollProtocolAccounts() {
+  if (!protoRouteActive.value) return;
+  const mount = protoMountUrl.value;
+  if (!mount) return;
+  try {
+    const accounts = await protocolListAccounts(mount);
+    applyProtocolAccounts(accounts);
+  } catch {
+    /* 保留上一轮账号快照 */
+  }
+}
+
+function startProtoPolling() {
+  if (typeof window === "undefined" || protoPollTimer != null) return;
+  protoPollTimer = setInterval(() => {
+    if (shouldSkipProtoPoll()) return;
+    void pollProtocolAccounts();
+  }, PROTO_POLL_MS);
+}
+
+function stopProtoPolling() {
+  if (protoPollTimer == null) return;
+  clearInterval(protoPollTimer);
+  protoPollTimer = null;
+}
+
+function onProtoVisibilityChange() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible" && !shouldSkipProtoPoll()) {
+    void pollProtocolAccounts();
+  }
+}
+
+async function load(opts?: { silent?: boolean }) {
+  const silent = Boolean(opts?.silent);
+  if (!silent) {
+    err.value = "";
+    loadBusy.value = true;
+  }
   try {
     const [s, i] = await Promise.all([fetchSystem(), fetchInstances({ bypassCache: true })]);
     system.value = s;
     instances.value = i;
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    if (!silent) err.value = e instanceof Error ? e.message : String(e);
   } finally {
-    loadBusy.value = false;
+    if (!silent) loadBusy.value = false;
   }
 }
 
 async function refreshAfterAction() {
-  invalidateInstancesCache();
+  protoAccountsLive.value = null;
   try {
     instances.value = await fetchInstances({ bypassCache: true });
+    await pollProtocolAccounts();
   } catch {
     /* 操作已成功，快照刷新失败不阻断 */
   }
@@ -361,11 +431,48 @@ async function confirmDeleteSelected() {
   }
 }
 
+useInstancesCatalogSync(instances, { pageReady });
+
 onMounted(async () => {
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onProtoVisibilityChange);
+  }
   try {
     await load();
+    await pollProtocolAccounts();
   } finally {
     pageReady.value = true;
+  }
+});
+
+onActivated(() => {
+  protoRouteActive.value = true;
+  startProtoPolling();
+  if (pageReady.value) {
+    void pollProtocolAccounts();
+    void fetchInstances({ bypassCache: true })
+      .then((i) => {
+        if (!protoRouteActive.value) return;
+        instances.value = i;
+      })
+      .catch(() => {});
+  }
+});
+
+onDeactivated(() => {
+  protoRouteActive.value = false;
+  stopProtoPolling();
+  deleteModalOpen.value = false;
+  deleteErr.value = "";
+  syncBodyOverflow();
+});
+
+onUnmounted(() => {
+  protoRouteActive.value = false;
+  stopProtoPolling();
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onProtoVisibilityChange);
+    document.body.style.overflow = "";
   }
 });
 </script>
