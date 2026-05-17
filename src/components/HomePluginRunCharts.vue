@@ -899,7 +899,7 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-charts__viz"
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-charts__viz"
       >
         <div
           v-for="p in topPlugins"
@@ -2345,6 +2345,19 @@ const dailyChartPack = computed(() => {
   gap: 8px;
   max-width: 100%;
   box-sizing: border-box;
+}
+.home-plugin-bars--fill.home-plugin-charts__viz {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  gap: clamp(2px, 0.4vh, 6px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
+  flex: 1 1 0;
+  min-height: 22px;
 }
 .home-plugin-bars__row {
   display: grid;

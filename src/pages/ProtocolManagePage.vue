@@ -29,6 +29,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -72,6 +73,11 @@ const consoleAuthDisp = computed(() =>
 const protocolAccountsSorted = computed(() => {
   const list = [...(snap.value?.accounts ?? [])];
   list.sort((a, b) => {
+    const fa = protocolAccountNumber(a);
+    const fb = protocolAccountNumber(b);
+    const favA = fa != null && botFavoriteAccounts.value.has(fa) ? 1 : 0;
+    const favB = fb != null && botFavoriteAccounts.value.has(fb) ? 1 : 0;
+    if (favA !== favB) return favB - favA;
     const ca = a.connected === true ? 1 : 0;
     const cb = b.connected === true ? 1 : 0;
     if (ca !== cb) return cb - ca;
@@ -193,10 +199,16 @@ onUnmounted(() => {
   if (typeof document !== "undefined") document.body.style.overflow = "";
 });
 
-function profileNick(a: NapcatAccountRow): string {
+function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
-  const nick = instances.value?.bot_profiles?.[String(q)]?.nickname?.trim();
-  if (Number.isFinite(q) && nick) return nick;
+  if (Number.isFinite(q) && q > 0) return Math.floor(q);
+  return null;
+}
+
+function profileNick(a: NapcatAccountRow): string {
+  const q = protocolAccountNumber(a);
+  const nick = q != null ? instances.value?.bot_profiles?.[String(q)]?.nickname?.trim() : "";
+  if (nick) return nick;
   return String(a.display_name ?? "").trim();
 }
 
@@ -226,10 +238,6 @@ function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
 }
 
-function runningPill(a: NapcatAccountRow): ProtocolDisp {
-  return protocolDisp(a.process_running ?? a.running, "运行中", "未运行");
-}
-
 function pillLabel(d: ProtocolDisp): string {
   return d.kind === "pill" ? (d.on ? d.onLabel : d.offLabel) : d.text;
 }
@@ -240,6 +248,12 @@ function pillOn(d: ProtocolDisp): boolean {
 
 function isProcessRunning(a: NapcatAccountRow): boolean {
   return coerceBoolean(a.process_running ?? a.running) === true;
+}
+
+function runningCapsuleClass(a: NapcatAccountRow): string {
+  return isProcessRunning(a)
+    ? "data-conn-capsule data-conn-capsule--run"
+    : "data-conn-capsule data-conn-capsule--off";
 }
 
 function cardKey(a: NapcatAccountRow, index: number): string {
@@ -436,40 +450,50 @@ onMounted(async () => {
                 >
               </label>
               <div class="data-summary-card__head-main">
-                <div class="data-summary-card__primary">
-                  <a
-                    v-if="detailHref(a)"
-                    class="protocol-acc-card__title-link"
-                    :href="detailHref(a)!"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >{{ primaryTitle(a) }}</a>
-                  <span v-else>{{ primaryTitle(a) }}</span>
+                <div class="data-summary-card__title-line">
+                  <div class="data-summary-card__primary">
+                    <a
+                      v-if="detailHref(a)"
+                      class="protocol-acc-card__title-link"
+                      :href="detailHref(a)!"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >{{ primaryTitle(a) }}</a>
+                    <span v-else>{{ primaryTitle(a) }}</span>
+                  </div>
+                  <button
+                    v-if="protocolAccountNumber(a) != null"
+                    type="button"
+                    class="data-card-fav-star"
+                    :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
+                    :title="
+                      botFavoriteAccounts.has(protocolAccountNumber(a)!)
+                        ? '取消收藏'
+                        : '收藏'
+                    "
+                    @click.stop="toggleFavoriteBot(protocolAccountNumber(a)!)"
+                  >
+                    ★
+                  </button>
                 </div>
                 <div class="data-summary-card__secondary muted">
                   账号 {{ a.qq ?? a.id ?? "—" }}
                 </div>
               </div>
-              <span
-                :class="
-                  a.connected === true
-                    ? 'data-conn-capsule data-conn-capsule--on'
-                    : 'data-conn-capsule data-conn-capsule--off'
-                "
-              >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+              <div class="data-summary-card__head-badges">
+                <span :class="runningCapsuleClass(a)">{{
+                  isProcessRunning(a) ? "运行中" : "未运行"
+                }}</span>
+                <span
+                  :class="
+                    a.connected === true
+                      ? 'data-conn-capsule data-conn-capsule--on'
+                      : 'data-conn-capsule data-conn-capsule--off'
+                  "
+                >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+              </div>
             </div>
             <div class="data-summary-card__body">
-            <div class="data-summary-card__row">
-              <span class="data-summary-card__label">进程</span>
-              <span
-                v-if="runningPill(a).kind === 'pill'"
-                :class="boolPillClass(pillOn(runningPill(a)))"
-              >{{ pillLabel(runningPill(a)) }}</span>
-              <span
-                v-else
-                class="muted"
-              >{{ pillLabel(runningPill(a)) }}</span>
-            </div>
             <div class="data-summary-card__row">
               <span class="data-summary-card__label">内置 WebUI</span>
               <a

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -16,6 +16,7 @@ import {
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
+  peekInstancesCache,
   peekPluginsCache,
 } from "@/api/consoleApi";
 import type {
@@ -873,6 +874,9 @@ async function refreshSystemRuntimeOnly() {
   }
 }
 
+/** keep-alive 再次进入时同步实例目录（如从协议端页返回） */
+let homeHadActivated = false;
+
 let homeSystemPollId: ReturnType<typeof setInterval> | null = null;
 
 function startHomeSystemPolling() {
@@ -913,6 +917,20 @@ async function refreshMessageStatsOnly() {
   }
 }
 
+async function refreshHomeCatalogFromCache() {
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+  try {
+    const [inst, botList] = await Promise.all([fetchInstances(), fetchBots()]);
+    instances.value = inst;
+    bots.value = botList;
+    botCount.value = botList.length;
+    ensureSelectedAccount();
+  } catch {
+    /* 保留当前目录快照 */
+  }
+}
+
 let homeThroughputPollId: ReturnType<typeof setInterval> | null = null;
 
 function startHomeThroughputPolling() {
@@ -931,13 +949,29 @@ function stopHomeThroughputPolling() {
 
 onMounted(async () => {
   await load();
-  startHomeSystemPolling();
-  startHomeThroughputPolling();
-  startHomeConnDurationTick();
   document.addEventListener("visibilitychange", onHomeSystemVisibility);
 });
 
+onActivated(() => {
+  if (pageReady.value) {
+    if (homeHadActivated) void refreshHomeCatalogFromCache();
+    else homeHadActivated = true;
+  } else if (!homeHadActivated) {
+    homeHadActivated = true;
+  }
+  startHomeSystemPolling();
+  startHomeThroughputPolling();
+  startHomeConnDurationTick();
+});
+
+onDeactivated(() => {
+  stopHomeSystemPolling();
+  stopHomeThroughputPolling();
+  stopHomeConnDurationTick();
+});
+
 onUnmounted(() => {
+  homeHadActivated = false;
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
   stopHomeConnDurationTick();
