@@ -78,11 +78,14 @@ export function patchInstancesProtocolAccounts(
 ): void {
   const cur = base ?? instancesCache?.data ?? null;
   if (!cur) return;
-  const next: InstancesData = {
-    ...cur,
-    pallas_protocol: patchProtocolSnapAccounts(cur.pallas_protocol, accounts),
-    napcat: patchProtocolSnapAccounts(cur.napcat ?? cur.pallas_protocol, accounts),
-  };
+  const next: InstancesData = { ...cur };
+  if (cur.pallas_protocol) {
+    next.pallas_protocol = patchProtocolSnapAccounts(cur.pallas_protocol, accounts);
+  } else if (cur.napcat) {
+    next.napcat = patchProtocolSnapAccounts(cur.napcat, accounts);
+  } else {
+    return;
+  }
   touchInstancesCache(next);
 }
 
@@ -419,8 +422,9 @@ export async function fetchInstances(opts?: FetchInstancesOptions): Promise<Inst
   const now = Date.now();
 
   if (bypass) {
+    const gen = instancesFetchGen;
     const d = await fetchInstancesFromNetwork();
-    touchInstancesCache(d);
+    if (gen === instancesFetchGen) touchInstancesCache(d);
     return d;
   }
 
