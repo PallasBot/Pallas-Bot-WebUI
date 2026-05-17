@@ -42,6 +42,13 @@
   --ui-sel-min-h: 34px;
   --ui-sel-arrow-pad: 28px;
   --ui-check-size: 14px;
+  /* 标题层级：顶栏（当前页）> 面板分区 > 卡片主标题 */
+  --console-page-title-size: clamp(0.95rem, 1.8vw, 1.08rem);
+  --console-page-title-weight: 680;
+  --console-panel-title-size: 0.92rem;
+  --console-panel-title-weight: 700;
+  --console-card-title-size: 14px;
+  --console-card-title-weight: 700;
 }
 
 html[data-radius="tight"] {
@@ -972,8 +979,8 @@ html[data-theme="light"] .shell__topbar-exit:hover {
   min-width: 0;
   flex: 0 1 auto;
   max-width: min(52%, 400px);
-  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
-  font-weight: 680;
+  font-size: var(--console-page-title-size);
+  font-weight: var(--console-page-title-weight);
   letter-spacing: -0.012em;
   line-height: 1.2;
 }
@@ -2304,7 +2311,89 @@ html[data-theme="light"] .console-view-toggle button:hover {
 }
 
 .data-summary-card--bot .data-summary-card__row {
-  min-height: 22px;
+  min-height: 21px;
+}
+
+.data-summary-card--bot .data-summary-card__primary {
+  letter-spacing: -0.01em;
+}
+
+.data-summary-card--bot .data-summary-card__secondary {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.data-summary-card--bot .data-summary-card__body {
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.data-summary-card--bot .data-summary-card__body .data-summary-card__row {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  justify-content: unset;
+}
+
+.data-summary-card--bot .data-summary-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.data-summary-card--bot .data-summary-card__body .data-summary-card__row > :not(.data-summary-card__label) {
+  justify-self: end;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.data-summary-card--bot .data-summary-card__val {
+  justify-self: end;
+  text-align: right;
+}
+
+.data-summary-card--bot .data-summary-card__val--mode {
+  font-variant-numeric: tabular-nums;
+}
+
+.data-summary-card--bot .data-summary-card__val--version {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.data-summary-card--bot .data-summary-card__val--link {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.data-summary-card--bot .data-summary-card__val.muted {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* 协议端入口等：与 Bot 卡片 KV 行一致 */
+.console-kv-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.console-kv-block .data-summary-card__row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 21px;
 }
 
 .data-summary-card__head--bot {
@@ -2418,11 +2507,11 @@ html[data-theme="light"] .data-conn-capsule--off {
 
 .data-summary-card__primary {
   margin: 0;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: var(--console-card-title-size);
+  font-weight: var(--console-card-title-weight);
   line-height: 1.25;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .data-summary-card__secondary {
@@ -4934,9 +5023,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: var(--console-panel-title-size);
+  font-weight: var(--console-panel-title-weight);
   letter-spacing: -0.02em;
+  line-height: 1.25;
 }
 .panel__title-ico {
   flex-shrink: 0;
@@ -5231,11 +5321,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     font-size: 10px;
     font-weight: 650;
     line-height: 1.3;
-  }
-
-  .home-dashboard__perf .panel__hd.home-page__panel-hd-nowrap .panel__title,
-  .home-page__version-panel .panel__hd.home-page__panel-hd-nowrap .panel__title {
-    font-size: 0.9rem;
   }
 
   .home-dashboard__perf .home-metric-grid {
@@ -6398,14 +6483,6 @@ html[data-theme="light"] .plugin-preview {
 .home-dashboard__accounts > .home-page__panel .panel__hd {
   padding: 10px 12px;
 }
-.home-page .panel__title {
-  font-size: 0.9rem;
-}
-
-.home-page__version-panel .panel__title {
-  font-weight: 500;
-}
-
 .home-page__version-panel .home-dl__pill--version {
   font-weight: 500;
 }

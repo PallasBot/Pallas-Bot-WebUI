@@ -24,6 +24,8 @@ export interface ConsolePrefsState {
   sidebarCollapsed: boolean;
   /** 实例页：数据库中的实例表格/卡片默认视图 */
   instancesBotView: DataViewMode;
+  /** 协议端页：协议账号表格/卡片默认视图 */
+  protocolAccountsView: DataViewMode;
   /** 控制台各列表默认每页条数（4–80） */
   tablePageSize: number;
   /** 侧栏 token 顺序（path 或 pin:id，见 mainNav / sidebarPins） */
@@ -44,6 +46,7 @@ const defaults: ConsolePrefsState = {
   accentPreset: "sky",
   sidebarCollapsed: false,
   instancesBotView: "table",
+  protocolAccountsView: "table",
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
@@ -59,6 +62,9 @@ function load(): ConsolePrefsState {
     const merged = { ...defaults, ...parsed };
     if (merged.instancesBotView !== "table" && merged.instancesBotView !== "cards") {
       merged.instancesBotView = defaults.instancesBotView;
+    }
+    if (merged.protocolAccountsView !== "table" && merged.protocolAccountsView !== "cards") {
+      merged.protocolAccountsView = defaults.protocolAccountsView;
     }
     const ps = Number(merged.tablePageSize);
     if (!Number.isFinite(ps)) merged.tablePageSize = defaults.tablePageSize;
