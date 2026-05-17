@@ -1,18 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { fetchDbOverview, postMongoAggregate } from "@/api/consoleApi";
-import type { DbOverviewData } from "@/api/pallasTypes";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import {
+  fetchDbOverview,
+  fetchGroupConfigs,
+  fetchPlugins,
+  fetchUserConfigs,
+  peekPluginsCache,
+  postMongoAggregate,
+} from "@/api/consoleApi";
+import type { DbOverviewData, GroupConfigPublic, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
+import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
+import { slicePage } from "@/utils/paginate";
 
 /** 上次成功拉取的总览，用于再次进入页面时直接展示，减少骨架屏 */
 let dbOverviewCache: DbOverviewData | null = null;
 
+const CONFIG_LIST_LIMIT = 10_000;
+
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
+const ok = ref("");
 /** 仅首次无缓存时阻塞展示（轻量骨架）；有缓存时只走 dbRefreshBusy */
 const blockingLoad = ref(false);
 const dbRefreshBusy = ref(false);
@@ -22,6 +39,34 @@ const collection = ref("");
 const pipelineText = ref("[\n  { \"$limit\": 20 }\n]");
 const aggResult = ref<string>("");
 const aggLoading = ref(false);
+
+const socialConfigsBusy = ref(false);
+const groupConfigs = ref<GroupConfigPublic[]>([]);
+const userConfigs = ref<UserConfigPublic[]>([]);
+const groupListQ = ref("");
+const userListQ = ref("");
+const pageGroups = ref(1);
+const pageUsers = ref(1);
+
+const groupConfigOpen = ref(false);
+const groupConfigId = ref<number | null>(null);
+const userConfigOpen = ref(false);
+const userConfigId = ref<number | null>(null);
+
+const plugins = ref<PluginRow[]>([]);
+{
+  const warmPl = peekPluginsCache();
+  if (warmPl?.length) plugins.value = warmPl;
+}
+const pluginLoadErr = ref("");
+
+const tablePageSize = computed({
+  get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
+  set(v: number) {
+    const n = Math.min(80, Math.max(4, Math.floor(Number(v)) || 12));
+    if (n !== consolePrefs.tablePageSize) setConsolePrefs({ tablePageSize: n });
+  },
+});
 
 const nf = new Intl.NumberFormat("zh-CN");
 
@@ -54,13 +99,101 @@ const totalRows = computed(() => {
   return overview.value.tables.reduce((s: number, t: { count: number }) => s + (t.count ?? 0), 0);
 });
 
+function listNeedle(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function rowMatchesNeedle(
+  needle: string,
+  parts: Array<string | number | null | undefined | boolean>,
+): boolean {
+  if (!needle) return true;
+  return parts.some((p) => String(p ?? "").toLowerCase().includes(needle));
+}
+
+function boolPillClass(on: boolean): string {
+  return on ? "bool-pill bool-pill--on" : "bool-pill bool-pill--off";
+}
+
+const sortedGroupConfigs = computed(() =>
+  [...groupConfigs.value].sort((a, b) => a.group_id - b.group_id),
+);
+
+const sortedUserConfigs = computed(() =>
+  [...userConfigs.value].sort((a, b) => a.user_id - b.user_id),
+);
+
+const filteredGroupConfigs = computed(() => {
+  const needle = listNeedle(groupListQ.value);
+  if (!needle) return sortedGroupConfigs.value;
+  return sortedGroupConfigs.value.filter((g) =>
+    rowMatchesNeedle(needle, [
+      g.group_id,
+      g.roulette_mode,
+      g.banned ? "封禁" : "正常",
+      formatDisabledPluginIds(g.disabled_plugins, plugins.value),
+      (g.blocked_user_ids ?? []).length,
+      ...(g.blocked_user_ids ?? []),
+    ]),
+  );
+});
+
+const filteredUserConfigs = computed(() => {
+  const needle = listNeedle(userListQ.value);
+  if (!needle) return sortedUserConfigs.value;
+  return sortedUserConfigs.value.filter((u) =>
+    rowMatchesNeedle(needle, [u.user_id, u.banned ? "封禁" : "正常"]),
+  );
+});
+
+const pagedGroupConfigs = computed(() =>
+  slicePage(filteredGroupConfigs.value, pageGroups.value, tablePageSize.value),
+);
+
+const pagedUserConfigs = computed(() =>
+  slicePage(filteredUserConfigs.value, pageUsers.value, tablePageSize.value),
+);
+
+watch(groupListQ, () => {
+  pageGroups.value = 1;
+});
+
+watch(userListQ, () => {
+  pageUsers.value = 1;
+});
+
+async function loadPluginsCatalog() {
+  pluginLoadErr.value = "";
+  try {
+    plugins.value = await fetchPlugins();
+  } catch (e) {
+    pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function loadSocialConfigs() {
+  socialConfigsBusy.value = true;
+  try {
+    const [groups, users] = await Promise.all([
+      fetchGroupConfigs(CONFIG_LIST_LIMIT),
+      fetchUserConfigs(CONFIG_LIST_LIMIT),
+    ]);
+    groupConfigs.value = groups;
+    userConfigs.value = users;
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    socialConfigsBusy.value = false;
+  }
+}
+
 async function loadAll() {
   err.value = "";
   const noDataYet = overview.value == null;
   if (noDataYet) blockingLoad.value = true;
   dbRefreshBusy.value = true;
   try {
-    const next = await fetchDbOverview();
+    const [next] = await Promise.all([fetchDbOverview(), loadSocialConfigs()]);
     overview.value = next;
     dbOverviewCache = next;
   } catch (e) {
@@ -71,7 +204,10 @@ async function loadAll() {
   }
 }
 
-onMounted(loadAll);
+onMounted(() => {
+  void loadPluginsCatalog();
+  void loadAll();
+});
 
 async function runAggregate() {
   aggLoading.value = true;
@@ -87,6 +223,35 @@ async function runAggregate() {
     aggLoading.value = false;
   }
 }
+
+function openGroupConfig(groupId: number) {
+  groupConfigId.value = groupId;
+  groupConfigOpen.value = true;
+}
+
+function openUserConfig(userId: number) {
+  userConfigId.value = userId;
+  userConfigOpen.value = true;
+}
+
+function onSocialConfigSaved(kind: "group" | "user") {
+  ok.value = kind === "group" ? "群配置已保存。" : "好友配置已保存。";
+  void loadSocialConfigs();
+}
+
+watch(
+  () => groupConfigOpen.value || userConfigOpen.value,
+  (anyOpen) => {
+    if (typeof document === "undefined") return;
+    if (!anyOpen) document.body.style.overflow = "";
+  },
+);
+
+onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
+  }
+});
 </script>
 
 <template>
@@ -96,6 +261,12 @@ async function runAggregate() {
       class="alert alert--err"
     >
       {{ err }}
+    </div>
+    <div
+      v-if="ok"
+      class="alert alert--ok"
+    >
+      {{ ok }}
     </div>
 
     <div class="plugins-page__hero database-page__hero">
@@ -149,6 +320,199 @@ async function runAggregate() {
           <div class="stat-card__value">{{ nf.format(totalRows) }}</div>
           <div class="stat-card__hint">{{ pgTables.length }} 张表</div>
         </div>
+      </div>
+    </div>
+
+    <div
+      id="db-group-configs"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
+          <RefreshIconButton
+            :busy="socialConfigsBusy"
+            label="刷新群配置列表"
+            @click="loadSocialConfigs"
+          />
+        </h2>
+        <div class="row-actions friends-groups-list-hd-actions">
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="database-group-configs" />
+          </span>
+          <input
+            v-model="groupListQ"
+            class="inp"
+            type="search"
+            placeholder="搜索群号 / 轮盘 / 封禁 / 插件 / 拉黑"
+            title="按群号、轮盘模式、封禁状态、禁用插件、拉黑 QQ 筛选"
+            :disabled="socialConfigsBusy"
+          >
+          <div class="friends-groups-list-hd-actions__tail">
+            <span
+              v-if="socialConfigsBusy"
+              class="muted"
+              style="font-size: 12px"
+            >加载中…</span>
+            <span
+              v-else-if="groupConfigs.length >= CONFIG_LIST_LIMIT"
+              class="badge badge--warn"
+            >已截断 · limit {{ CONFIG_LIST_LIMIT }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="pluginLoadErr"
+          class="muted"
+          style="margin: 0 0 10px"
+        >
+          插件列表加载失败，禁用插件列可能不完整：{{ pluginLoadErr }}
+        </p>
+        <p
+          v-if="socialConfigsBusy && !groupConfigs.length"
+          class="muted"
+          style="margin: 0"
+        >
+          正在加载群配置…
+        </p>
+        <div
+          v-else-if="!filteredGroupConfigs.length"
+          class="muted"
+        >
+          <template v-if="groupListQ.trim() && groupConfigs.length > 0">无匹配结果。</template>
+          <template v-else>数据库中暂无群配置记录。</template>
+        </div>
+        <div
+          v-else
+          class="table-wrap"
+        >
+          <table class="data console-data-table">
+            <thead>
+              <tr>
+                <th>群号</th>
+                <th>封禁</th>
+                <th>轮盘</th>
+                <th>禁用插件</th>
+                <th>拉黑</th>
+                <th style="min-width: 88px; width: 1%">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="g in pagedGroupConfigs"
+                :key="g.group_id"
+              >
+                <td>{{ g.group_id }}</td>
+                <td>
+                  <span :class="boolPillClass(g.banned)">{{ g.banned ? "是" : "否" }}</span>
+                </td>
+                <td>{{ g.roulette_mode }}</td>
+                <td class="muted">{{ formatDisabledPluginIds(g.disabled_plugins, plugins) || "—" }}</td>
+                <td class="muted">{{ (g.blocked_user_ids ?? []).length ? `${(g.blocked_user_ids ?? []).length} 人` : "—" }}</td>
+                <td>
+                  <ConsoleTableEdit @click="openGroupConfig(g.group_id)" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ConsolePagerBar
+          v-if="!socialConfigsBusy && filteredGroupConfigs.length > 0"
+          v-model:page="pageGroups"
+          v-model:page-size="tablePageSize"
+          :total="filteredGroupConfigs.length"
+        />
+      </div>
+    </div>
+
+    <div
+      id="db-user-configs"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友配置
+          <RefreshIconButton
+            :busy="socialConfigsBusy"
+            label="刷新好友配置列表"
+            @click="loadSocialConfigs"
+          />
+        </h2>
+        <div class="row-actions friends-groups-list-hd-actions">
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd pin-id="database-user-configs" />
+          </span>
+          <input
+            v-model="userListQ"
+            class="inp"
+            type="search"
+            placeholder="搜索 QQ / 封禁状态"
+            title="按 QQ、封禁状态筛选"
+            :disabled="socialConfigsBusy"
+          >
+          <div class="friends-groups-list-hd-actions__tail">
+            <span
+              v-if="socialConfigsBusy"
+              class="muted"
+              style="font-size: 12px"
+            >加载中…</span>
+            <span
+              v-else-if="userConfigs.length >= CONFIG_LIST_LIMIT"
+              class="badge badge--warn"
+            >已截断 · limit {{ CONFIG_LIST_LIMIT }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel__bd">
+        <p
+          v-if="socialConfigsBusy && !userConfigs.length"
+          class="muted"
+          style="margin: 0"
+        >
+          正在加载好友配置…
+        </p>
+        <div
+          v-else-if="!filteredUserConfigs.length"
+          class="muted"
+        >
+          <template v-if="userListQ.trim() && userConfigs.length > 0">无匹配结果。</template>
+          <template v-else>数据库中暂无好友配置记录。</template>
+        </div>
+        <div
+          v-else
+          class="table-wrap"
+        >
+          <table class="data console-data-table">
+            <thead>
+              <tr>
+                <th>QQ</th>
+                <th>封禁</th>
+                <th style="min-width: 88px; width: 1%">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="u in pagedUserConfigs"
+                :key="u.user_id"
+              >
+                <td>{{ u.user_id }}</td>
+                <td>
+                  <span :class="boolPillClass(u.banned)">{{ u.banned ? "是" : "否" }}</span>
+                </td>
+                <td>
+                  <ConsoleTableEdit @click="openUserConfig(u.user_id)" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ConsolePagerBar
+          v-if="!socialConfigsBusy && filteredUserConfigs.length > 0"
+          v-model:page="pageUsers"
+          v-model:page-size="tablePageSize"
+          :total="filteredUserConfigs.length"
+        />
       </div>
     </div>
 
@@ -310,5 +674,16 @@ async function runAggregate() {
         </div>
       </div>
     </div>
+
+    <GroupSocialConfigModal
+      v-model:open="groupConfigOpen"
+      :group-id="groupConfigId"
+      @saved="onSocialConfigSaved('group')"
+    />
+    <UserSocialConfigModal
+      v-model:open="userConfigOpen"
+      :user-id="userConfigId"
+      @saved="onSocialConfigSaved('user')"
+    />
   </div>
 </template>
