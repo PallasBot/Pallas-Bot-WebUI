@@ -47,10 +47,16 @@ function onClick() {
 
 <style scoped>
 .panel-sidebar-add {
+  flex: 0 0 28px;
   flex-shrink: 0;
   width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  max-width: 28px;
+  max-height: 28px;
   padding: 0;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;

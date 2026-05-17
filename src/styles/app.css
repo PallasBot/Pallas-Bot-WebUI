@@ -1535,6 +1535,24 @@ html[data-theme="light"] .panel-hd-collapse-btn.btn:hover:not(:disabled) {
   align-items: center;
   flex-shrink: 0;
   align-self: center;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+/* 「添加到侧栏」：各断点保持 28×28，避免窄屏栅格挤压变形 */
+.friends-groups-hd-pin-wrap .panel-sidebar-add,
+#fg-account.friends-groups-account-panel .friends-groups-account-hd-pin-wrap .panel-sidebar-add,
+#fg-account.friends-groups-account-panel .friends-groups-hd-pin-wrap .panel-sidebar-add {
+  flex: 0 0 28px !important;
+  flex-shrink: 0 !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  box-sizing: border-box;
 }
 
 /* 好友申请 / 入群请求：宽屏与列表区一致横排 */
@@ -2683,6 +2701,10 @@ html[data-theme="light"] .bot-config-edit {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   align-items: end;
   margin-bottom: 14px;
+}
+
+.bot-config-edit__grid--pair {
+  grid-template-columns: 1fr 1fr;
 }
 
 .bot-config-edit__field label {
@@ -5142,6 +5164,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   /* 好友与群页：窄屏「添加到侧栏」与「当前账号」一致——标题与 + 同行右上 */
   #fg-friends .panel__hd.panel__hd--split,
   #fg-groups .panel__hd.panel__hd--split,
+  #db-group-configs .panel__hd.panel__hd--split,
+  #db-user-configs .panel__hd.panel__hd--split,
   #friends-groups-friend-requests .panel__hd.panel__hd--split,
   #friends-groups-group-requests .panel__hd.panel__hd--split {
     display: grid;
@@ -5154,6 +5178,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   #fg-friends .panel__hd.panel__hd--split > .panel__title,
   #fg-groups .panel__hd.panel__hd--split > .panel__title,
+  #db-group-configs .panel__hd.panel__hd--split > .panel__title,
+  #db-user-configs .panel__hd.panel__hd--split > .panel__title,
   #friends-groups-friend-requests .panel__hd.panel__hd--split > .panel__title,
   #friends-groups-group-requests .panel__hd.panel__hd--split > .panel__title {
     grid-column: 1;
@@ -5165,6 +5191,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   #fg-friends .friends-groups-list-hd-actions,
   #fg-groups .friends-groups-list-hd-actions,
+  #db-group-configs .friends-groups-list-hd-actions,
+  #db-user-configs .friends-groups-list-hd-actions,
   #friends-groups-friend-requests .friends-groups-req-hd-actions,
   #friends-groups-group-requests .friends-groups-req-hd-actions {
     display: contents;
@@ -5172,6 +5200,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   #fg-friends .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
   #fg-groups .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
+  #db-group-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
+  #db-user-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap,
   #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap,
   #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap {
     grid-column: 2;
@@ -5182,17 +5212,26 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   #fg-friends .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
   #fg-groups .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #db-group-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
+  #db-user-configs .friends-groups-list-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
   #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
   #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap .panel-sidebar-add,
   #fg-account.friends-groups-account-panel .friends-groups-hd-pin-wrap .panel-sidebar-add {
+    flex: 0 0 28px !important;
+    flex-shrink: 0 !important;
     width: 28px !important;
     height: 28px !important;
-    max-width: none;
-    flex: 0 0 auto;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    padding: 0 !important;
   }
 
   #fg-friends .friends-groups-list-hd-actions > input[type="search"].inp,
-  #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp {
+  #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp,
+  #db-group-configs .friends-groups-list-hd-actions > input[type="search"].inp,
+  #db-user-configs .friends-groups-list-hd-actions > input[type="search"].inp {
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100% !important;
@@ -5201,7 +5240,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   #fg-friends .friends-groups-list-hd-actions__tail,
-  #fg-groups .friends-groups-list-hd-actions__tail {
+  #fg-groups .friends-groups-list-hd-actions__tail,
+  #db-group-configs .friends-groups-list-hd-actions__tail,
+  #db-user-configs .friends-groups-list-hd-actions__tail {
     grid-column: 1 / -1;
     grid-row: 3;
     display: flex;
@@ -5215,7 +5256,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   }
 
   #fg-friends .friends-groups-list-hd-actions__tail > .btn,
-  #fg-groups .friends-groups-list-hd-actions__tail > .btn {
+  #fg-groups .friends-groups-list-hd-actions__tail > .btn,
+  #db-group-configs .friends-groups-list-hd-actions__tail > .btn,
+  #db-user-configs .friends-groups-list-hd-actions__tail > .btn {
     flex: 1 1 auto;
     min-width: 0;
     width: auto !important;
@@ -5265,9 +5308,15 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .panel__hd .row-actions > .panel-sidebar-add,
   .panel__hd .inst-db-panel__actions > .panel-sidebar-add {
     align-self: flex-end;
-    width: auto !important;
-    max-width: none;
-    flex: 0 0 auto;
+    flex: 0 0 28px !important;
+    flex-shrink: 0 !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    padding: 0 !important;
   }
 
   .panel__hd .update-page__hd-tail > .panel-sidebar-add {
