@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchFriendList,
@@ -29,6 +29,7 @@ import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 import {
   cachePutFriendGroupLists,
   cachePutRequestOverview,
@@ -66,8 +67,6 @@ const instances = ref<InstancesData | null>(null);
 }
 
 let fgListsLoadGen = 0;
-/** keep-alive 再次进入时同步 /instances（如从协议端页返回） */
-let fgHadActivated = false;
 
 /** 好友/群表格区域：切换 Bot 或刷新列表时用骨架过渡（加载中与缓存占位不同时铺开） */
 const fgListsSkeleton = computed(() => Boolean(selfIdStr.value.trim()) && listsBusy.value);
@@ -657,6 +656,10 @@ watch(
   },
 );
 
+useInstancesCatalogSync(instances, {
+  reload: () => loadBots({ bypassInstancesCache: true }),
+});
+
 onMounted(async () => {
   try {
     await loadBots();
@@ -670,13 +673,6 @@ onMounted(async () => {
     skipSelfIdWatch.value = false;
     scrollFriendsGroupsHashIntoView();
   }
-});
-
-onActivated(() => {
-  const warm = peekInstancesCache();
-  if (warm) instances.value = warm;
-  if (fgHadActivated) void loadBots();
-  else fgHadActivated = true;
 });
 
 function toggleFriendsListPanel() {

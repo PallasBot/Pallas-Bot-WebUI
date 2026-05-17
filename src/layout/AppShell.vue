@@ -5,6 +5,7 @@ import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import { fetchBots, fetchInstances, fetchPlugins } from "@/api/consoleApi";
+import { scheduleInstancesCatalogRefreshOnRoute } from "@/composables/useInstancesCatalogSync";
 import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -400,6 +401,8 @@ watch(mobileNavOpen, (open) => {
   document.body.style.overflow = open ? "hidden" : "";
 });
 
+let catalogRouteTimer: ReturnType<typeof setTimeout> | null = null;
+
 watch(
   () => route.fullPath,
   () => {
@@ -411,6 +414,11 @@ watch(
       bindLogsScrollTarget();
       updateBackTopVisibility();
     });
+    if (catalogRouteTimer != null) clearTimeout(catalogRouteTimer);
+    catalogRouteTimer = setTimeout(() => {
+      catalogRouteTimer = null;
+      scheduleInstancesCatalogRefreshOnRoute();
+    }, 80);
   },
 );
 
@@ -424,6 +432,10 @@ watch(pageLoadingVisible, async (vis) => {
 onUnmounted(() => {
   closeNavGripMenu();
   window.removeEventListener("resize", updateNarrow);
+  if (catalogRouteTimer != null) {
+    clearTimeout(catalogRouteTimer);
+    catalogRouteTimer = null;
+  }
   if (healthPollTimer != null) {
     clearInterval(healthPollTimer);
     healthPollTimer = null;
@@ -949,17 +961,13 @@ onUnmounted(() => {
         @scroll.passive="onMainInnerScroll"
       >
         <router-view v-slot="{ Component, route: r }">
-          <transition
-            name="shell-page"
-            mode="out-in"
-          >
-            <keep-alive :max="24">
-              <component
-                :is="Component"
-                :key="r.path"
-              />
-            </keep-alive>
-          </transition>
+          <!-- keep-alive 为 transition 直接子节点时 out-in 易卡住（协议页轮询触发重绘后更明显） -->
+          <keep-alive :max="24">
+            <component
+              :is="Component"
+              :key="r.path"
+            />
+          </keep-alive>
         </router-view>
       </div>
       <Teleport to="body">

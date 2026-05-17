@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import {
   deleteBotConfig,
   fetchInstances,
@@ -23,6 +23,7 @@ import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -90,9 +91,6 @@ const expNonebot = ref(true);
 const expDbBots = ref(true);
 const reloadBusy = ref(false);
 const dbBotSearchQ = ref("");
-/** keep-alive 再次进入时同步 /instances（如从协议端页返回） */
-let instHadActivated = false;
-
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
   rows.sort((a, b) => {
@@ -374,6 +372,18 @@ async function saveBotConfig() {
   }
 }
 
+useInstancesCatalogSync(data, {
+  pageReady,
+  reload: async () => {
+    await reload({ bypassCache: true });
+    try {
+      plugins.value = await fetchPlugins({ bypassCache: true });
+    } catch (e) {
+      pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+    }
+  },
+});
+
 onMounted(async () => {
   try {
     await reload();
@@ -388,19 +398,7 @@ onMounted(async () => {
   }
 });
 
-onActivated(() => {
-  const warm = peekInstancesCache();
-  if (warm) data.value = warm;
-  if (!pageReady.value) {
-    if (!instHadActivated) instHadActivated = true;
-    return;
-  }
-  if (instHadActivated) void reload();
-  else instHadActivated = true;
-});
-
 onUnmounted(() => {
-  instHadActivated = false;
   if (typeof document !== "undefined") {
     document.body.style.overflow = "";
   }
@@ -735,6 +733,24 @@ onUnmounted(() => {
         </div>
       </div>
     </template>
+    <div
+      v-else
+      class="panel"
+    >
+      <div class="panel__bd">
+        <p class="muted">
+          实例数据未加载，可尝试重新拉取。
+        </p>
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="reloadBusy"
+          @click="reloadFromUser"
+        >
+          重新加载
+        </button>
+      </div>
+    </div>
 
     <Teleport to="body">
       <div
