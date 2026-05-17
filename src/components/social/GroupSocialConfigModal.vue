@@ -3,6 +3,11 @@ import { computed, ref, watch } from "vue";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/consoleApi";
 import type { GroupConfigPublic, PluginRow } from "@/api/pallasTypes";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
+import {
+  parseRouletteModeSelect,
+  rouletteModeSelectOptions,
+  rouletteModeSelectValue,
+} from "@/utils/rouletteMode";
 
 const open = defineModel<boolean>("open", { default: false });
 const props = defineProps<{
@@ -105,13 +110,13 @@ function onGroupBannedSelect(raw: string) {
   groupDraft.value.banned = raw === "1";
 }
 
-function rouletteSelectVal(mode: number): string {
-  return mode === 0 ? "0" : "1";
-}
+const rouletteModeOptions = computed(() =>
+  groupDraft.value ? rouletteModeSelectOptions(groupDraft.value.roulette_mode) : rouletteModeSelectOptions(),
+);
 
 function onRouletteModeSelect(raw: string) {
   if (!groupDraft.value) return;
-  groupDraft.value.roulette_mode = raw === "0" ? 0 : 1;
+  groupDraft.value.roulette_mode = parseRouletteModeSelect(raw, groupDraft.value.roulette_mode);
 }
 
 function addBlockedUserFromInput() {
@@ -306,11 +311,16 @@ watch(
                 <select
                   class="sel"
                   style="width: 100%"
-                  :value="rouletteSelectVal(groupDraft.roulette_mode)"
+                  :value="rouletteModeSelectValue(groupDraft.roulette_mode)"
                   @change="onRouletteModeSelect(($event.target as HTMLSelectElement).value)"
                 >
-                  <option value="0">踢人</option>
-                  <option value="1">禁言</option>
+                  <option
+                    v-for="opt in rouletteModeOptions"
+                    :key="`roulette-${opt.value}`"
+                    :value="String(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </option>
                 </select>
               </div>
               <div class="bot-config-edit__field">
