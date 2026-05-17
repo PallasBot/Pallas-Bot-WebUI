@@ -590,6 +590,11 @@ export async function putGroupConfig(
   return unwrap(data, `/group-configs/${groupId}`);
 }
 
+export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
+  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", { params: { limit } });
+  return unwrap(data, "/user-configs");
+}
+
 export async function fetchUserConfigById(userId: number): Promise<UserConfigPublic> {
   const { data } = await http.get<ApiOk<UserConfigPublic>>(`/user-configs/${userId}`);
   return unwrap(data, `/user-configs/${userId}`);
