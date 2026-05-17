@@ -29,6 +29,7 @@ import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 import {
   cachePutFriendGroupLists,
   cachePutRequestOverview,
@@ -654,6 +655,10 @@ watch(
     scrollFriendsGroupsHashIntoView();
   },
 );
+
+useInstancesCatalogSync(instances, {
+  reload: () => loadBots({ bypassInstancesCache: true }),
+});
 
 onMounted(async () => {
   try {

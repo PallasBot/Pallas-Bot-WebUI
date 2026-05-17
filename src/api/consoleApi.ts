@@ -1,4 +1,5 @@
 import { http } from "./http";
+import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import type {
   UpdateCheckData,
   UpdateApplyData,
@@ -14,6 +15,8 @@ import type {
   GroupConfigPublic,
   GroupListData,
   InstancesData,
+  NapcatAccountRow,
+  NapcatManagerSnapshot,
   LogScope,
   LogsData,
   PluginRow,
@@ -45,6 +48,7 @@ let instancesFetchGen = 0;
 
 function touchInstancesCache(data: InstancesData) {
   instancesCache = { data, ts: Date.now() };
+  notifyInstancesCatalogUpdated();
 }
 
 /** 同步读取上次成功的实例快照（供首屏立即铺 UI，不等网络） */
@@ -57,6 +61,45 @@ export function invalidateInstancesCache() {
   instancesCache = null;
   instancesInflight = null;
   instancesFetchGen++;
+}
+
+function patchProtocolSnapAccounts(
+  snap: NapcatManagerSnapshot | null | undefined,
+  accounts: NapcatAccountRow[],
+): NapcatManagerSnapshot | null {
+  if (!snap) return null;
+  return { ...snap, accounts };
+}
+
+/** 协议端 /api/accounts 轮询后合并进全局 /instances 缓存，供其它 keep-alive 页同步 */
+export function patchInstancesProtocolAccounts(
+  accounts: NapcatAccountRow[],
+  base?: InstancesData | null,
+): void {
+  const cur = base ?? instancesCache?.data ?? null;
+  if (!cur) return;
+  const next: InstancesData = { ...cur };
+  if (cur.pallas_protocol) {
+    next.pallas_protocol = patchProtocolSnapAccounts(cur.pallas_protocol, accounts);
+  } else if (cur.napcat) {
+    next.napcat = patchProtocolSnapAccounts(cur.napcat, accounts);
+  } else {
+    return;
+  }
+  touchInstancesCache(next);
+}
+
+let instancesCatalogRefreshInflight: Promise<InstancesData> | null = null;
+
+/** 路由切换等场景：单飞强制刷新 /instances */
+export function refreshInstancesCatalogGlobal(): Promise<InstancesData> {
+  if (instancesCatalogRefreshInflight) {
+    return instancesCatalogRefreshInflight;
+  }
+  instancesCatalogRefreshInflight = fetchInstances({ bypassCache: true }).finally(() => {
+    instancesCatalogRefreshInflight = null;
+  });
+  return instancesCatalogRefreshInflight;
 }
 
 async function fetchInstancesFromNetwork(): Promise<InstancesData> {

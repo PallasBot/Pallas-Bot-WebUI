@@ -23,6 +23,7 @@ import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -84,19 +85,12 @@ watch(deleteModalOpen, () => {
   syncBodyOverflow();
 });
 
-onUnmounted(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-  }
-});
-
 const instNbPage = ref(1);
 const instDbPage = ref(1);
 const expNonebot = ref(true);
 const expDbBots = ref(true);
 const reloadBusy = ref(false);
 const dbBotSearchQ = ref("");
-
 const sortedNonebotBots = computed(() => {
   const rows = [...(data.value?.nonebot_bots ?? [])];
   rows.sort((a, b) => {
@@ -378,6 +372,18 @@ async function saveBotConfig() {
   }
 }
 
+useInstancesCatalogSync(data, {
+  pageReady,
+  reload: async () => {
+    await reload({ bypassCache: true });
+    try {
+      plugins.value = await fetchPlugins({ bypassCache: true });
+    } catch (e) {
+      pluginLoadErr.value = e instanceof Error ? e.message : String(e);
+    }
+  },
+});
+
 onMounted(async () => {
   try {
     await reload();
@@ -389,6 +395,12 @@ onMounted(async () => {
     }
   } finally {
     pageReady.value = true;
+  }
+});
+
+onUnmounted(() => {
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = "";
   }
 });
 </script>
@@ -583,16 +595,29 @@ onMounted(async () => {
                   >
                 </label>
                 <div class="data-summary-card__head-main">
-                  <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                  <div class="data-summary-card__title-line">
+                    <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                    <button
+                      type="button"
+                      class="data-card-fav-star"
+                      :aria-pressed="botFavoriteAccounts.has(c.account)"
+                      :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
+                      @click.stop="toggleFavoriteBot(c.account)"
+                    >
+                      ★
+                    </button>
+                  </div>
                   <div class="data-summary-card__secondary muted">{{ c.account }}</div>
                 </div>
-                <span
-                  :class="
-                    isBotConnected(c.account)
-                      ? 'data-conn-capsule data-conn-capsule--on'
-                      : 'data-conn-capsule data-conn-capsule--off'
-                  "
-                >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
+                <div class="data-summary-card__head-badges">
+                  <span
+                    :class="
+                      isBotConnected(c.account)
+                        ? 'data-conn-capsule data-conn-capsule--on'
+                        : 'data-conn-capsule data-conn-capsule--off'
+                    "
+                  >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
+                </div>
               </div>
               <div class="data-summary-card__body">
                 <div class="data-summary-card__row">
@@ -634,15 +659,6 @@ onMounted(async () => {
               </div>
               <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
                 <ConsoleTableEdit @click="startEdit(c)" />
-                <button
-                  type="button"
-                  class="btn inst-fav-star"
-                  :aria-pressed="botFavoriteAccounts.has(c.account)"
-                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
-                  @click="toggleFavoriteBot(c.account)"
-                >
-                  ★
-                </button>
               </div>
             </div>
           </div>
@@ -717,6 +733,24 @@ onMounted(async () => {
         </div>
       </div>
     </template>
+    <div
+      v-else
+      class="panel"
+    >
+      <div class="panel__bd">
+        <p class="muted">
+          实例数据未加载，可尝试重新拉取。
+        </p>
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="reloadBusy"
+          @click="reloadFromUser"
+        >
+          重新加载
+        </button>
+      </div>
+    </div>
 
     <Teleport to="body">
       <div

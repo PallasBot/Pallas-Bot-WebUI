@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
-import { fetchInstances, fetchSystem, invalidateInstancesCache, peekInstancesCache } from "@/api/consoleApi";
+import {
+  fetchInstances,
+  fetchSystem,
+  patchInstancesProtocolAccounts,
+  peekInstancesCache,
+} from "@/api/consoleApi";
 import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
+  protocolListAccounts,
   protocolStartAccount,
   protocolStopAccount,
 } from "@/api/protocolApi";
@@ -23,12 +29,21 @@ import {
   protocolMountAbsoluteUrl,
   protocolSnapshot,
 } from "@/utils/protocolLinks";
-import { coerceBoolean, protocolDisp, type ProtocolDisp } from "@/utils/protocolUi";
+import {
+  coerceBoolean,
+  protocolBackendDisplayName,
+  protocolDisp,
+  protocolRuntimeModeLabel,
+  protocolRuntimeVersionText,
+  type ProtocolDisp,
+} from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
+import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -40,7 +55,16 @@ const instances = ref<InstancesData | null>(null);
   if (warmInst) instances.value = warmInst;
 }
 
-const snap = computed(() => protocolSnapshot(instances.value));
+const protoAccountsLive = ref<NapcatAccountRow[] | null>(null);
+
+const snap = computed(() => {
+  const base = protocolSnapshot(instances.value);
+  if (!base) return null;
+  if (protoAccountsLive.value != null) {
+    return { ...base, accounts: protoAccountsLive.value };
+  }
+  return base;
+});
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
@@ -60,14 +84,15 @@ const tablePageSize = computed({
 
 const protoAccPage = ref(1);
 const protoSearchQ = ref("");
+const protoView = ref<"table" | "cards">(consolePrefs.protocolAccountsView);
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
 const actionBusy = ref(new Set<string>());
 /** 协议账号快照轮询（毫秒）；标签页隐藏时跳过 */
 const PROTO_POLL_MS = 5000;
 let protoPollTimer: ReturnType<typeof setInterval> | null = null;
-/** keep-alive 再次激活时拉取快照（首次进入仅 onMounted 加载） */
-let protoHadActivated = false;
+/** 路由离屏后忽略在途轮询写回，避免切换页时触发全局目录 epoch */
+const protoRouteActive = ref(false);
 
 const webuiEnabledDisp = computed(() => protocolDisp(snap.value?.webui_enabled, "已启用", "未启用"));
 const consoleAuthDisp = computed(() =>
@@ -77,6 +102,11 @@ const consoleAuthDisp = computed(() =>
 const protocolAccountsSorted = computed(() => {
   const list = [...(snap.value?.accounts ?? [])];
   list.sort((a, b) => {
+    const fa = protocolAccountNumber(a);
+    const fb = protocolAccountNumber(b);
+    const favA = fa != null && botFavoriteAccounts.value.has(fa) ? 1 : 0;
+    const favB = fb != null && botFavoriteAccounts.value.has(fb) ? 1 : 0;
+    if (favA !== favB) return favB - favA;
     const ca = a.connected === true ? 1 : 0;
     const cb = b.connected === true ? 1 : 0;
     if (ca !== cb) return cb - ca;
@@ -175,25 +205,20 @@ watch(protoSearchQ, () => {
   protoAccPage.value = 1;
 });
 
-watch(
-  () => snap.value?.accounts?.length,
-  (len, prevLen) => {
-    if (len !== prevLen) protoAccPage.value = 1;
-  },
-);
+function setProtoView(v: "table" | "cards") {
+  protoView.value = v;
+  setConsolePrefs({ protocolAccountsView: v });
+}
 
-watch(
-  () => snap.value?.accounts,
-  (accounts) => {
-    const known = new Set<string>();
-    for (const a of accounts ?? []) {
-      const id = accountProtocolId(a);
-      if (id) known.add(id);
-    }
-    bulk.pruneSelection(known);
-  },
-  { deep: true },
-);
+watch([snap, () => snap.value?.accounts?.length], () => {
+  protoAccPage.value = 1;
+  const known = new Set<string>();
+  for (const a of snap.value?.accounts ?? []) {
+    const id = accountProtocolId(a);
+    if (id) known.add(id);
+  }
+  bulk.pruneSelection(known);
+});
 
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
@@ -205,10 +230,16 @@ watch(deleteModalOpen, () => {
 });
 
 
-function profileNick(a: NapcatAccountRow): string {
+function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
-  const nick = instances.value?.bot_profiles?.[String(q)]?.nickname?.trim();
-  if (Number.isFinite(q) && nick) return nick;
+  if (Number.isFinite(q) && q > 0) return Math.floor(q);
+  return null;
+}
+
+function profileNick(a: NapcatAccountRow): string {
+  const q = protocolAccountNumber(a);
+  const nick = q != null ? instances.value?.bot_profiles?.[String(q)]?.nickname?.trim() : "";
+  if (nick) return nick;
   return String(a.display_name ?? "").trim();
 }
 
@@ -238,10 +269,6 @@ function boolPillClass(on: boolean): string {
   return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
 }
 
-function runningPill(a: NapcatAccountRow): ProtocolDisp {
-  return protocolDisp(a.process_running ?? a.running, "运行中", "未运行");
-}
-
 function pillLabel(d: ProtocolDisp): string {
   return d.kind === "pill" ? (d.on ? d.onLabel : d.offLabel) : d.text;
 }
@@ -252,6 +279,12 @@ function pillOn(d: ProtocolDisp): boolean {
 
 function isProcessRunning(a: NapcatAccountRow): boolean {
   return coerceBoolean(a.process_running ?? a.running) === true;
+}
+
+function runningCapsuleClass(a: NapcatAccountRow): string {
+  return isProcessRunning(a)
+    ? "data-conn-capsule data-conn-capsule--run"
+    : "data-conn-capsule data-conn-capsule--off";
 }
 
 function cardKey(a: NapcatAccountRow, index: number): string {
@@ -292,15 +325,34 @@ function shouldSkipProtoPoll(): boolean {
   if (typeof document !== "undefined" && document.visibilityState === "hidden") return true;
   if (deleteModalOpen.value || deleteBusy.value) return true;
   if (actionBusy.value.size > 0) return true;
-  if (loadBusy.value) return true;
   return false;
+}
+
+function applyProtocolAccounts(accounts: NapcatAccountRow[]) {
+  if (!protoRouteActive.value) return;
+  protoAccountsLive.value = accounts;
+  patchInstancesProtocolAccounts(accounts, instances.value);
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+}
+
+async function pollProtocolAccounts() {
+  if (!protoRouteActive.value) return;
+  const mount = protoMountUrl.value;
+  if (!mount) return;
+  try {
+    const accounts = await protocolListAccounts(mount);
+    applyProtocolAccounts(accounts);
+  } catch {
+    /* 保留上一轮账号快照 */
+  }
 }
 
 function startProtoPolling() {
   if (typeof window === "undefined" || protoPollTimer != null) return;
   protoPollTimer = setInterval(() => {
     if (shouldSkipProtoPoll()) return;
-    void load({ silent: true });
+    void pollProtocolAccounts();
   }, PROTO_POLL_MS);
 }
 
@@ -313,7 +365,7 @@ function stopProtoPolling() {
 function onProtoVisibilityChange() {
   if (typeof document === "undefined") return;
   if (document.visibilityState === "visible" && !shouldSkipProtoPoll()) {
-    void load({ silent: true });
+    void pollProtocolAccounts();
   }
 }
 
@@ -335,9 +387,10 @@ async function load(opts?: { silent?: boolean }) {
 }
 
 async function refreshAfterAction() {
-  invalidateInstancesCache();
+  protoAccountsLive.value = null;
   try {
     instances.value = await fetchInstances({ bypassCache: true });
+    await pollProtocolAccounts();
   } catch {
     /* 操作已成功，快照刷新失败不阻断 */
   }
@@ -391,34 +444,45 @@ async function confirmDeleteSelected() {
   }
 }
 
+useInstancesCatalogSync(instances, { pageReady });
+
 onMounted(async () => {
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", onProtoVisibilityChange);
   }
   try {
     await load();
+    await pollProtocolAccounts();
   } finally {
     pageReady.value = true;
   }
 });
 
 onActivated(() => {
+  protoRouteActive.value = true;
   startProtoPolling();
-  if (!pageReady.value) {
-    if (!protoHadActivated) protoHadActivated = true;
-    return;
+  if (pageReady.value) {
+    void pollProtocolAccounts();
+    void fetchInstances({ bypassCache: true })
+      .then((i) => {
+        if (!protoRouteActive.value) return;
+        instances.value = i;
+      })
+      .catch(() => {});
   }
-  if (protoHadActivated) void load({ silent: true });
-  else protoHadActivated = true;
 });
 
 onDeactivated(() => {
+  protoRouteActive.value = false;
   stopProtoPolling();
+  deleteModalOpen.value = false;
+  deleteErr.value = "";
+  syncBodyOverflow();
 });
 
 onUnmounted(() => {
+  protoRouteActive.value = false;
   stopProtoPolling();
-  protoHadActivated = false;
   if (typeof document !== "undefined") {
     document.removeEventListener("visibilitychange", onProtoVisibilityChange);
     document.body.style.overflow = "";
@@ -449,6 +513,11 @@ onUnmounted(() => {
             class="panel__title-ico"
             aria-hidden="true"
           >{{ panelNavIcon }}</span>协议账号
+          <RefreshIconButton
+            :busy="loadBusy"
+            label="刷新协议账号"
+            @click="load"
+          />
         </h2>
         <div class="inst-db-panel__hd-side">
           <button
@@ -458,6 +527,26 @@ onUnmounted(() => {
           >
             {{ expProtocolAccounts ? "收起" : "展开" }}
           </button>
+          <div
+            class="console-view-toggle"
+            role="group"
+            aria-label="协议账号表格或卡片视图"
+          >
+            <button
+              type="button"
+              :class="{ 'is-on': protoView === 'table' }"
+              @click="setProtoView('table')"
+            >
+              表格
+            </button>
+            <button
+              type="button"
+              :class="{ 'is-on': protoView === 'cards' }"
+              @click="setProtoView('cards')"
+            >
+              卡片
+            </button>
+          </div>
         </div>
         <div class="inst-db-panel__actions">
           <div class="inst-db-panel__stat-search">
@@ -481,7 +570,102 @@ onUnmounted(() => {
         v-show="expProtocolAccounts"
         class="panel__bd"
       >
-        <div class="data-card-grid data-card-grid--bots protocol-acc-grid">
+        <div v-if="protoView === 'table'" class="table-wrap">
+          <table class="data console-data-table">
+            <thead>
+              <tr>
+                <th>昵称</th>
+                <th>账号</th>
+                <th>协议</th>
+                <th>运行方式</th>
+                <th>版本</th>
+                <th>进程</th>
+                <th>连接</th>
+                <th>WebUI</th>
+                <th style="width: 168px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(a, i) in pagedProtocolAccounts"
+                :key="'tbl-' + cardKey(a, i)"
+              >
+                <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
+                <td>{{ a.qq ?? a.id ?? "—" }}</td>
+                <td>{{ protocolBackendDisplayName(a) }}</td>
+                <td>{{ protocolRuntimeModeLabel(a) }}</td>
+                <td
+                  class="muted"
+                  :title="String(a.runtime_source ?? '').trim() || undefined"
+                >{{ protocolRuntimeVersionText(a) }}</td>
+                <td>
+                  <span :class="runningCapsuleClass(a)">{{
+                    isProcessRunning(a) ? "运行中" : "未运行"
+                  }}</span>
+                </td>
+                <td>
+                  <span
+                    :class="
+                      a.connected === true
+                        ? 'data-conn-capsule data-conn-capsule--on'
+                        : 'data-conn-capsule data-conn-capsule--off'
+                    "
+                  >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+                </td>
+                <td>
+                  <a
+                    v-if="webUiHref(a)"
+                    class="link-quiet"
+                    :href="webUiHref(a)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ a.webui_port ?? "打开" }}</a>
+                  <span
+                    v-else
+                    class="muted"
+                  >—</span>
+                </td>
+                <td>
+                  <div class="inst-actions protocol-acc-table-actions">
+                    <a
+                      v-if="detailHref(a)"
+                      class="btn"
+                      :href="detailHref(a)!"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >详情</a>
+                    <button
+                      v-if="protocolAccountNumber(a) != null"
+                      type="button"
+                      class="btn inst-fav-star"
+                      :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
+                      :title="
+                        botFavoriteAccounts.has(protocolAccountNumber(a)!)
+                          ? '取消收藏'
+                          : '收藏'
+                      "
+                      @click="toggleFavoriteBot(protocolAccountNumber(a)!)"
+                    >
+                      ★
+                    </button>
+                    <button
+                      type="button"
+                      :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+                      :disabled="!protoActionsEnabled || isActionBusy(a)"
+                      @click="toggleAccountPower(a)"
+                    >
+                      {{ togglePowerLabel(a) }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          v-else-if="protoView === 'cards'"
+          class="data-card-grid data-card-grid--bots protocol-acc-grid"
+        >
           <div
             v-for="(a, i) in pagedProtocolAccounts"
             :key="cardKey(a, i)"
@@ -506,52 +690,79 @@ onUnmounted(() => {
                 >
               </label>
               <div class="data-summary-card__head-main">
-                <div class="data-summary-card__primary">
-                  <a
-                    v-if="detailHref(a)"
-                    class="protocol-acc-card__title-link"
-                    :href="detailHref(a)!"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >{{ primaryTitle(a) }}</a>
-                  <span v-else>{{ primaryTitle(a) }}</span>
+                <div class="data-summary-card__title-line">
+                  <div class="data-summary-card__primary">
+                    <a
+                      v-if="detailHref(a)"
+                      class="protocol-acc-card__title-link"
+                      :href="detailHref(a)!"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >{{ primaryTitle(a) }}</a>
+                    <span v-else>{{ primaryTitle(a) }}</span>
+                  </div>
+                  <button
+                    v-if="protocolAccountNumber(a) != null"
+                    type="button"
+                    class="data-card-fav-star"
+                    :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
+                    :title="
+                      botFavoriteAccounts.has(protocolAccountNumber(a)!)
+                        ? '取消收藏'
+                        : '收藏'
+                    "
+                    @click.stop="toggleFavoriteBot(protocolAccountNumber(a)!)"
+                  >
+                    ★
+                  </button>
                 </div>
                 <div class="data-summary-card__secondary muted">
                   账号 {{ a.qq ?? a.id ?? "—" }}
                 </div>
               </div>
-              <span
-                :class="
-                  a.connected === true
-                    ? 'data-conn-capsule data-conn-capsule--on'
-                    : 'data-conn-capsule data-conn-capsule--off'
-                "
-              >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+              <div class="data-summary-card__head-badges">
+                <span :class="runningCapsuleClass(a)">{{
+                  isProcessRunning(a) ? "运行中" : "未运行"
+                }}</span>
+                <span
+                  :class="
+                    a.connected === true
+                      ? 'data-conn-capsule data-conn-capsule--on'
+                      : 'data-conn-capsule data-conn-capsule--off'
+                  "
+                >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+              </div>
             </div>
             <div class="data-summary-card__body">
             <div class="data-summary-card__row">
-              <span class="data-summary-card__label">进程</span>
+              <span class="data-summary-card__label">协议实现</span>
+              <span class="data-summary-card__val">{{ protocolBackendDisplayName(a) }}</span>
+            </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">运行方式</span>
+              <span class="data-summary-card__val data-summary-card__val--mode">{{
+                protocolRuntimeModeLabel(a)
+              }}</span>
+            </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">版本</span>
               <span
-                v-if="runningPill(a).kind === 'pill'"
-                :class="boolPillClass(pillOn(runningPill(a)))"
-              >{{ pillLabel(runningPill(a)) }}</span>
-              <span
-                v-else
-                class="muted"
-              >{{ pillLabel(runningPill(a)) }}</span>
+                class="data-summary-card__val data-summary-card__val--version"
+                :title="String(a.runtime_source ?? '').trim() || undefined"
+              >{{ protocolRuntimeVersionText(a) }}</span>
             </div>
             <div class="data-summary-card__row">
               <span class="data-summary-card__label">内置 WebUI</span>
               <a
                 v-if="webUiHref(a)"
-                class="link-quiet"
+                class="data-summary-card__val data-summary-card__val--link link-quiet"
                 :href="webUiHref(a)!"
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ a.webui_port ?? "打开" }}</a>
               <span
                 v-else
-                class="muted"
+                class="data-summary-card__val muted"
               >{{ a.webui_port ?? "—" }}</span>
             </div>
             </div>
@@ -582,12 +793,13 @@ onUnmounted(() => {
           </div>
         </div>
         <ConsolePagerBar
+          v-if="filteredProtocolAccounts.length > 0"
           v-model:page="protoAccPage"
           v-model:page-size="tablePageSize"
           :total="filteredProtocolAccounts.length"
         />
         <ConsoleCardBulkBar
-          v-if="filteredProtocolAccounts.length > 0"
+          v-if="protoView === 'cards' && filteredProtocolAccounts.length > 0"
           :page-all-selected="protoCardsPageAllSelected"
           :selected-count="unref(bulk.selectedCount)"
           :delete-busy="deleteBusy"
@@ -606,7 +818,7 @@ onUnmounted(() => {
     </div>
 
     <div class="panel">
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
           <span
             class="panel__title-ico"
@@ -623,9 +835,9 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="panel__bd">
-        <div class="protocol-page__meta">
-          <div class="protocol-page__meta-row">
-            <span class="protocol-page__meta-label">内置 WebUI</span>
+        <div class="protocol-page__meta console-kv-block">
+          <div class="data-summary-card__row">
+            <span class="data-summary-card__label">内置 WebUI</span>
             <span
               v-if="webuiEnabledDisp.kind === 'pill'"
               :class="boolPillClass(pillOn(webuiEnabledDisp))"
@@ -641,8 +853,8 @@ onUnmounted(() => {
           >
             路径 <code>{{ snap.webui_path }}</code>
           </p>
-          <div class="protocol-page__meta-row">
-            <span class="protocol-page__meta-label">控制台鉴权</span>
+          <div class="data-summary-card__row">
+            <span class="data-summary-card__label">控制台鉴权</span>
             <span
               v-if="consoleAuthDisp.kind === 'pill'"
               :class="boolPillClass(pillOn(consoleAuthDisp))"
@@ -694,21 +906,14 @@ onUnmounted(() => {
 
 <style scoped>
 .protocol-page__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   margin-bottom: 14px;
 }
-.protocol-page__meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+
+.protocol-page__meta.console-kv-block {
+  gap: 2px;
 }
-.protocol-page__meta-label {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--text-dim);
+.console-kv-block .data-summary-card__row > :not(.data-summary-card__label) {
+  justify-self: end;
 }
 .protocol-page__meta-path {
   margin: 0;
@@ -732,13 +937,12 @@ onUnmounted(() => {
   color: var(--accent);
 }
 .protocol-acc-card__actions {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
 }
-.protocol-acc-card__actions > .btn {
-  flex: 1 1 0;
-  min-width: 0;
-  justify-content: center;
-  white-space: nowrap;
+
+.protocol-acc-table-actions {
+  flex-wrap: wrap;
+  gap: 4px;
 }
 </style>
