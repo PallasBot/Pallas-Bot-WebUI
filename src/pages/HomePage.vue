@@ -956,7 +956,9 @@ function stopHomeThroughputPolling() {
 
 onMounted(async () => {
   await load();
-  document.addEventListener("visibilitychange", onHomeSystemVisibility);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onHomeSystemVisibility);
+  }
 });
 
 onActivated(() => {
@@ -981,7 +983,9 @@ onUnmounted(() => {
   stopHomeSystemPolling();
   stopHomeThroughputPolling();
   stopHomeConnDurationTick();
-  document.removeEventListener("visibilitychange", onHomeSystemVisibility);
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onHomeSystemVisibility);
+  }
 });
 </script>
 
