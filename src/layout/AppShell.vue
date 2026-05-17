@@ -293,26 +293,20 @@ function toggleSidebar() {
   setConsolePrefs({ sidebarCollapsed: !consolePrefs.sidebarCollapsed });
 }
 
-function exitConsole() {
-  if (typeof window === "undefined") return;
-  if (window.history.length > 1) {
-    window.history.back();
-    return;
-  }
-  try {
-    const ref = document.referrer;
-    if (ref) {
-      const u = new URL(ref);
-      if (u.origin === window.location.origin) {
-        window.location.assign(ref);
-        return;
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  window.close();
+function exitConsole(): void {
+  if (typeof document === "undefined") return;
+  
+  const baseUrl = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = `${baseUrl}/logout`;
+  form.style.display = "none";
+  
+  document.body.appendChild(form);
+  form.submit();
 }
+
 
 function reorderNavPaths(fromPath: string, toPath: string) {
   if (fromPath === toPath) return;
