@@ -28,6 +28,7 @@ import type {
   AiProxyResult,
   HelpMenuVisibilityData,
   PluginConfigData,
+  PluginConfigCheckResult,
   CommonConfigSectionMeta,
   MessageStatsData,
   ConsoleDailyStatsData,
@@ -306,6 +307,17 @@ export async function putPluginConfig(
   const out = unwrap(data, `/plugins/${pluginName}/config`);
   invalidatePluginsCache();
   return out;
+}
+
+export async function postPluginConfigCheck(
+  pluginName: string,
+  values?: Record<string, unknown>,
+): Promise<PluginConfigCheckResult> {
+  const { data } = await http.post<ApiOk<PluginConfigCheckResult>>(
+    `/plugins/${encodeURIComponent(pluginName)}/config-check`,
+    values ? { values } : {},
+  );
+  return unwrap(data, `/plugins/${pluginName}/config-check`);
 }
 
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {

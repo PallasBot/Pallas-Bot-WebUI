@@ -5,6 +5,7 @@ import {
   fetchPluginConfig,
   fetchPlugins,
   fetchPluginsHelpMenuVisibility,
+  postPluginConfigCheck,
   putPluginConfig,
   putPluginsHelpMenuVisibility,
 } from "@/api/consoleApi";
@@ -13,6 +14,7 @@ import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { axiosErrorDetail } from "@/api/http";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const route = useRoute();
@@ -20,6 +22,9 @@ const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const loading = ref(false);
 const saving = ref(false);
+const checking = ref(false);
+const checkLines = ref<string[]>([]);
+const checkErr = ref("");
 const data = ref<PluginConfigData | null>(null);
 const pluginRow = ref<PluginRow | null>(null);
 const helpMenuHiddenList = ref<string[]>([]);
@@ -74,6 +79,7 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
 }
 
 const pluginName = computed(() => String(route.params.name || ""));
+const supportsConfigCheck = computed(() => pluginName.value === "pallas_image");
 
 async function load() {
   loading.value = true;
@@ -81,7 +87,7 @@ async function load() {
   try {
     data.value = await fetchPluginConfig(pluginName.value);
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
     data.value = null;
   } finally {
     loading.value = false;
@@ -107,9 +113,31 @@ function fieldModel(f: PluginConfigField): string {
 
 function parseField(f: PluginConfigField, raw: string): unknown {
   if (f.kind === "bool") return raw === "true" || raw === "1";
-  if (f.kind === "int") return parseInt(raw, 10);
-  if (f.kind === "float") return parseFloat(raw);
-  if (f.kind === "json") return JSON.parse(raw) as unknown;
+  if (f.kind === "int") {
+    const t = raw.trim();
+    if (!t) return f.default ?? 0;
+    const n = parseInt(t, 10);
+    if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入整数`);
+    return n;
+  }
+  if (f.kind === "float") {
+    const t = raw.trim();
+    if (!t) return f.default ?? 0;
+    const n = parseFloat(t);
+    if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入数字`);
+    return n;
+  }
+  if (f.kind === "json") {
+    const t = raw.trim();
+    if (!t) {
+      if (Array.isArray(f.default)) return [];
+      if (f.default !== null && f.default !== undefined && typeof f.default === "object") {
+        return f.default;
+      }
+      return Array.isArray(f.current) ? [] : (f.current ?? []);
+    }
+    return JSON.parse(raw) as unknown;
+  }
   return raw;
 }
 
@@ -127,6 +155,26 @@ watch(
   { immediate: true },
 );
 
+async function runConfigCheck() {
+  if (!data.value || !supportsConfigCheck.value) return;
+  checking.value = true;
+  checkErr.value = "";
+  checkLines.value = [];
+  const values: Record<string, unknown> = {};
+  try {
+    for (const f of data.value.fields) {
+      const raw = fieldValues.value[f.name] ?? "";
+      values[f.name] = parseField(f, raw);
+    }
+    const r = await postPluginConfigCheck(pluginName.value, values);
+    checkLines.value = r.lines;
+  } catch (e) {
+    checkErr.value = axiosErrorDetail(e);
+  } finally {
+    checking.value = false;
+  }
+}
+
 async function save() {
   if (!data.value) return;
   saving.value = true;
@@ -135,16 +183,12 @@ async function save() {
   try {
     for (const f of data.value.fields) {
       const raw = fieldValues.value[f.name] ?? "";
-      if (f.kind === "json" && raw.trim() === "") {
-        values[f.name] = null;
-      } else {
-        values[f.name] = parseField(f, raw);
-      }
+      values[f.name] = parseField(f, raw);
     }
     data.value = await putPluginConfig(pluginName.value, values);
     pushConsoleToast("配置已保存");
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
     await nextTick();
     saveFeedbackRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } finally {
@@ -267,9 +311,19 @@ async function save() {
         <div class="row-actions">
           <PanelSidebarAdd main-path="/plugins" />
           <button
+            v-if="supportsConfigCheck"
+            type="button"
+            class="btn"
+            :disabled="checking || saving"
+            :aria-busy="checking || undefined"
+            @click="runConfigCheck"
+          >
+            {{ checking ? "检测中…" : "配置检测" }}
+          </button>
+          <button
             type="button"
             class="btn btn--primary"
-            :disabled="saving"
+            :disabled="saving || checking"
             :aria-busy="saving || undefined"
             @click="save"
           >
@@ -288,6 +342,23 @@ async function save() {
           <div class="alert alert--err">
             {{ err }}
           </div>
+        </div>
+        <div
+          v-if="supportsConfigCheck && (checkLines.length || checkErr)"
+          class="plugin-config-page__check-feedback"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            v-if="checkErr"
+            class="alert alert--err"
+          >
+            {{ checkErr }}
+          </div>
+          <pre
+            v-else-if="checkLines.length"
+            class="plugin-config-page__check-output"
+          >{{ checkLines.join("\n") }}</pre>
         </div>
         <div
           v-for="f in data.fields"
@@ -353,5 +424,22 @@ async function save() {
 
 .plugin-config-page__save-feedback .alert {
   margin: 0;
+}
+
+.plugin-config-page__check-feedback {
+  margin-bottom: 16px;
+}
+
+.plugin-config-page__check-output {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius, 8px);
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

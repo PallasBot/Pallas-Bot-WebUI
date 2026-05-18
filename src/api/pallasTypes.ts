@@ -408,6 +408,18 @@ export interface AiExtensionTestData {
   error: string | null;
 }
 
+export interface PluginConfigCheckResult {
+  lines: string[];
+  results: Array<{
+    site: string;
+    ok: boolean;
+    latency_ms: number | null;
+    status_code: number | null;
+    error: string | null;
+    label: string;
+  }>;
+}
+
 export interface AiExtensionLogsData {
   kind: "uvicorn" | "celery";
   path: string;
