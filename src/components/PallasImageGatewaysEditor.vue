@@ -3,6 +3,8 @@ import { computed, ref, watch } from "vue";
 import {
   applyGatewaysToFieldValues,
   defaultGatewayDisplayName,
+  gatewayFieldValuesEqual,
+  gatewayRowsEqual,
   maskApiKey,
   migrateLegacyGatewayFieldValues,
   parseGatewaysFromFieldValues,
@@ -33,20 +35,16 @@ const draftKeepApiKey = ref("");
 
 let syncingFromParent = false;
 
-function legacyGatewayFieldsDiffer(before: Record<string, string>, after: Record<string, string>): boolean {
-  return (
-    (before.pallas_image_base_url ?? "").trim() !== (after.pallas_image_base_url ?? "").trim() ||
-    (before.pallas_image_api_key ?? "").trim() !== (after.pallas_image_api_key ?? "").trim() ||
-    (before.pallas_image_api_backends ?? "").trim() !== (after.pallas_image_api_backends ?? "").trim()
-  );
-}
-
 function syncFromFieldValues(fv: Record<string, string>) {
   syncingFromParent = true;
   const migrated = migrateLegacyGatewayFieldValues(fv);
-  rows.value = parseGatewaysFromFieldValues(migrated);
-  if (legacyGatewayFieldsDiffer(fv, migrated)) {
-    emit("update:fieldValues", { ...fv, ...migrated });
+  const parsed = parseGatewaysFromFieldValues(migrated);
+  if (!gatewayRowsEqual(rows.value, parsed)) {
+    rows.value = parsed;
+  }
+  const merged = { ...fv, ...migrated };
+  if (!gatewayFieldValuesEqual(fv, merged)) {
+    emit("update:fieldValues", merged);
   }
   syncingFromParent = false;
 }
@@ -61,7 +59,10 @@ watch(
   rows,
   (list) => {
     if (syncingFromParent) return;
-    emit("update:fieldValues", applyGatewaysToFieldValues(props.fieldValues, list));
+    const next = applyGatewaysToFieldValues(props.fieldValues, list);
+    if (!gatewayFieldValuesEqual(props.fieldValues, next)) {
+      emit("update:fieldValues", next);
+    }
   },
   { deep: true },
 );
@@ -133,12 +134,12 @@ function saveModal() {
     omit_response_format: draftRole.value === "fallback" ? draft.value.omit_response_format : false,
   };
 
+  closeModal();
   if (editingId.value === null) {
     rows.value = [...rows.value, payload];
   } else {
     rows.value = rows.value.map((r) => (r.id === editingId.value ? payload : r));
   }
-  closeModal();
 }
 
 function removeRow(id: string) {
