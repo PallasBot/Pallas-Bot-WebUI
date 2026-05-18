@@ -131,6 +131,17 @@ export function gatewayFieldValuesEqual(
   return JSON.stringify(slice(a)) === JSON.stringify(slice(b));
 }
 
+/** 备线排序后重写 fallback-N id，与 parse 结果对齐，避免 watch 循环。 */
+export function renormalizeGatewayRows(list: PallasImageGatewayRow[]): PallasImageGatewayRow[] {
+  let fallbackIndex = 0;
+  return list.map((row) => {
+    if (row.role === "primary") return row;
+    const id = `fallback-${fallbackIndex}`;
+    fallbackIndex += 1;
+    return row.id === id ? row : { ...row, id };
+  });
+}
+
 export function gatewayRowsEqual(a: PallasImageGatewayRow[], b: PallasImageGatewayRow[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((row, index) => {

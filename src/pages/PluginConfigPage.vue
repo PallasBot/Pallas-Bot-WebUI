@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
   fetchPluginConfig,
@@ -116,7 +116,21 @@ watch(
   },
 );
 
-onMounted(load);
+function onSaveKeydown(e: KeyboardEvent) {
+  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s") return;
+  if (!data.value || loading.value || saving.value || checking.value) return;
+  e.preventDefault();
+  void save();
+}
+
+onMounted(() => {
+  void load();
+  document.addEventListener("keydown", onSaveKeydown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", onSaveKeydown);
+});
 
 function fieldModel(f: PluginConfigField): string {
   const v = f.current;
@@ -339,6 +353,7 @@ async function save() {
             class="btn btn--primary"
             :disabled="saving || checking"
             :aria-busy="saving || undefined"
+            title="Ctrl+S"
             @click="save"
           >
             {{ saving ? "保存中…" : "保存" }}
