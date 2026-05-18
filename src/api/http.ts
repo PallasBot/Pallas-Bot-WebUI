@@ -1,8 +1,21 @@
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 
 // API 基础路径
 const base = (import.meta.env.BASE_URL as string) || "/pallas/";
 const apiBase = `${base.replace(/\/$/, "")}/api`;
+
+/** 从 FastAPI 4xx/5xx 响应中提取 detail，供配置保存等场景展示。 */
+export function axiosErrorDetail(err: unknown): string {
+  if (isAxiosError(err)) {
+    const d = err.response?.data;
+    if (d && typeof d === "object" && "detail" in d) {
+      const detail = (d as { detail: unknown }).detail;
+      if (typeof detail === "string" && detail.trim()) return detail.trim();
+    }
+    return err.message;
+  }
+  return err instanceof Error ? err.message : String(err);
+}
 
 export const http = axios.create({
   baseURL: apiBase,
