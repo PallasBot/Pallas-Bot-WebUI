@@ -26,10 +26,6 @@ export type PallasImageBackendEntry = {
   omit_response_format?: boolean;
 };
 
-function newId(): string {
-  return `gw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function parseBackendsJson(raw: string): PallasImageBackendEntry[] {
   const t = raw.trim();
   if (!t) return [];
@@ -94,12 +90,13 @@ export function parseGatewaysFromFieldValues(fieldValues: Record<string, string>
   } catch {
     backends = [];
   }
+  let fallbackIndex = 0;
   for (const entry of backends) {
     const base_url = String(entry.base_url ?? "").trim();
     const api_key = String(entry.api_key ?? "").trim();
     if (!base_url && !api_key) continue;
     rows.push({
-      id: newId(),
+      id: `fallback-${fallbackIndex}`,
       role: "fallback",
       name: String(entry.name ?? "").trim(),
       base_url,
@@ -107,8 +104,46 @@ export function parseGatewaysFromFieldValues(fieldValues: Record<string, string>
       model: String(entry.model ?? "").trim(),
       omit_response_format: Boolean(entry.omit_response_format),
     });
+    fallbackIndex += 1;
   }
   return rows;
+}
+
+function normalizeBackendsJsonString(raw: string): string {
+  try {
+    return JSON.stringify(parseBackendsJson(raw));
+  } catch {
+    return raw.trim();
+  }
+}
+
+export function gatewayFieldValuesEqual(
+  a: Record<string, string>,
+  b: Record<string, string>,
+): boolean {
+  const slice = (fv: Record<string, string>) => ({
+    pallas_image_primary_name: (fv.pallas_image_primary_name ?? "").trim(),
+    pallas_image_base_url: (fv.pallas_image_base_url ?? "").trim(),
+    pallas_image_api_key: (fv.pallas_image_api_key ?? "").trim(),
+    pallas_image_model: (fv.pallas_image_model ?? "").trim(),
+    pallas_image_api_backends: normalizeBackendsJsonString(fv.pallas_image_api_backends ?? ""),
+  });
+  return JSON.stringify(slice(a)) === JSON.stringify(slice(b));
+}
+
+export function gatewayRowsEqual(a: PallasImageGatewayRow[], b: PallasImageGatewayRow[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((row, index) => {
+    const other = b[index];
+    if (!other || row.role !== other.role) return false;
+    return (
+      row.name.trim() === other.name.trim() &&
+      row.base_url.trim() === other.base_url.trim() &&
+      row.api_key.trim() === other.api_key.trim() &&
+      row.model.trim() === other.model.trim() &&
+      row.omit_response_format === other.omit_response_format
+    );
+  });
 }
 
 export function applyGatewaysToFieldValues(
