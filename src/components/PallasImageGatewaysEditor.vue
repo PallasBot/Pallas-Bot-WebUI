@@ -8,8 +8,10 @@ import {
   maskApiKey,
   migrateLegacyGatewayFieldValues,
   parseGatewaysFromFieldValues,
+  renormalizeGatewayRows,
   type PallasImageGatewayRow,
 } from "@/utils/pallasImageGateways";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 const props = defineProps<{
   fieldValues: Record<string, string>;
@@ -124,31 +126,53 @@ function saveModal() {
     return;
   }
 
+  const wasAdd = editingId.value === null;
+  const savedRole = draftRole.value;
+  const savedId = editingId.value;
+
   const payload: PallasImageGatewayRow = {
-    id: editingId.value ?? `gw-${Date.now().toString(36)}`,
-    role: draftRole.value,
+    id: savedId ?? `gw-${Date.now().toString(36)}`,
+    role: savedRole,
     name,
     base_url,
     api_key,
     model,
-    omit_response_format: draftRole.value === "fallback" ? draft.value.omit_response_format : false,
+    omit_response_format: savedRole === "fallback" ? draft.value.omit_response_format : false,
   };
 
   closeModal();
-  if (editingId.value === null) {
-    rows.value = [...rows.value, payload];
+  if (wasAdd) {
+    rows.value = renormalizeGatewayRows([...rows.value, payload]);
+    pushConsoleToast(savedRole === "primary" ? "已添加主网关" : "已添加备选网关");
   } else {
-    rows.value = rows.value.map((r) => (r.id === editingId.value ? payload : r));
+    rows.value = renormalizeGatewayRows(rows.value.map((r) => (r.id === savedId ? payload : r)));
+    pushConsoleToast(savedRole === "primary" ? "已更新主网关" : "已更新备选网关");
   }
 }
 
 function removeRow(id: string) {
   const row = rows.value.find((r) => r.id === id);
   if (!row || row.role === "primary") return;
-  rows.value = rows.value.filter((r) => r.id !== id);
+  rows.value = renormalizeGatewayRows(rows.value.filter((r) => r.id !== id));
+  pushConsoleToast("已删除备选网关", "warn");
+}
+
+function moveFallback(id: string, delta: number) {
+  const primary = rows.value.filter((r) => r.role === "primary");
+  const fallbacks = rows.value.filter((r) => r.role === "fallback");
+  const index = fallbacks.findIndex((r) => r.id === id);
+  if (index < 0) return;
+  const target = index + delta;
+  if (target < 0 || target >= fallbacks.length) return;
+  const next = [...fallbacks];
+  const tmp = next[index];
+  next[index] = next[target]!;
+  next[target] = tmp!;
+  rows.value = renormalizeGatewayRows([...primary, ...next]);
 }
 
 const listItems = computed(() => {
+  const fallbackCount = rows.value.filter((r) => r.role === "fallback").length;
   let fallbackIdx = 0;
   return rows.value.map((row) => {
     if (row.role === "fallback") fallbackIdx += 1;
@@ -165,6 +189,8 @@ const listItems = computed(() => {
       url: row.base_url.trim() || "未设置 URL",
       meta: metaParts.join(" · "),
       canDelete: row.role === "fallback",
+      canMoveUp: row.role === "fallback" && fbIndex > 1,
+      canMoveDown: row.role === "fallback" && fbIndex < fallbackCount,
     };
   });
 });
@@ -183,7 +209,7 @@ const editingKeyHint = computed(() => {
           画图网关
         </div>
         <p class="pallas-gw-editor__desc muted">
-          主网关与备选按顺序回退；密钥在列表中脱敏。修改后请点击页顶「保存」。
+          主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入 .env。
         </p>
       </div>
       <button
@@ -220,6 +246,31 @@ const editingKeyHint = computed(() => {
           </div>
         </div>
         <div class="pallas-gw-editor__item-actions">
+          <div
+            v-if="item.row.role === 'fallback'"
+            class="pallas-gw-editor__sort"
+          >
+            <button
+              type="button"
+              class="btn pallas-gw-editor__sort-btn"
+              :disabled="!item.canMoveUp"
+              aria-label="上移"
+              title="上移"
+              @click="moveFallback(item.row.id, -1)"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              class="btn pallas-gw-editor__sort-btn"
+              :disabled="!item.canMoveDown"
+              aria-label="下移"
+              title="下移"
+              @click="moveFallback(item.row.id, 1)"
+            >
+              ↓
+            </button>
+          </div>
           <button
             type="button"
             class="btn"
@@ -462,7 +513,21 @@ const editingKeyHint = computed(() => {
 .pallas-gw-editor__item-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.pallas-gw-editor__sort {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pallas-gw-editor__sort-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  line-height: 1;
+  font-size: 14px;
 }
 
 .pallas-gw-editor__badge {
