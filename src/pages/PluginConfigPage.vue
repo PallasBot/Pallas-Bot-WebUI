@@ -11,6 +11,8 @@ import {
 } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
+import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -80,6 +82,18 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
 
 const pluginName = computed(() => String(route.params.name || ""));
 const supportsConfigCheck = computed(() => pluginName.value === "pallas_image");
+const usesGatewayEditor = computed(() => pluginName.value === "pallas_image");
+
+const visibleFields = computed(() => {
+  if (!data.value) return [];
+  if (!usesGatewayEditor.value) return data.value.fields;
+  const hidden = new Set<string>(PALLAS_IMAGE_GATEWAY_FIELD_NAMES);
+  return data.value.fields.filter((f) => !hidden.has(f.name));
+});
+
+function onGatewayFieldValues(next: Record<string, string>) {
+  fieldValues.value = { ...fieldValues.value, ...next };
+}
 
 async function load() {
   loading.value = true;
@@ -360,8 +374,13 @@ async function save() {
             class="plugin-config-page__check-output"
           >{{ checkLines.join("\n") }}</pre>
         </div>
+        <PallasImageGatewaysEditor
+          v-if="usesGatewayEditor"
+          :field-values="fieldValues"
+          @update:field-values="onGatewayFieldValues"
+        />
         <div
-          v-for="f in data.fields"
+          v-for="f in visibleFields"
           :key="f.name"
           style="margin-bottom: 22px"
         >
