@@ -90,6 +90,7 @@ async function save() {
 useSaveHotkey(
   () => open.value && Boolean(userDraft.value) && !saveBusy.value && !loadBusy.value,
   () => save(),
+  { lifecycle: "mount" },
 );
 
 watch(
