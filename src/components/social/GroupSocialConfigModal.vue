@@ -211,6 +211,7 @@ async function save() {
 useSaveHotkey(
   () => open.value && Boolean(groupDraft.value) && !saveBusy.value && !loadBusy.value,
   () => save(),
+  { lifecycle: "mount" },
 );
 
 watch(
