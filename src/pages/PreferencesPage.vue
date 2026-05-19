@@ -9,6 +9,8 @@ import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/util
 import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
 import type { AccentPreset, DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import {
   addNavTokenToSidebar,
@@ -98,6 +100,7 @@ function saveSidebarSectionInputs() {
   }
   setConsolePrefs({ sidebarNavSectionByToken: out });
   loadSidebarSectionInputs();
+  toastSaveSuccess("侧栏分组已保存");
 }
 
 function clearSidebarSectionOverrides() {
@@ -120,14 +123,18 @@ async function submitPassword() {
   try {
     const r = await changeConsoleLogin(p1.value);
     pwdOk.value = r.message || "已更新。";
+    toastSaveSuccess("控制台口令已更新");
     p1.value = "";
     p2.value = "";
   } catch (e) {
     pwdErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "更新失败");
   } finally {
     pwdBusy.value = false;
   }
 }
+
+useSaveHotkey(() => !pwdBusy.value, () => saveSidebarSectionInputs());
 
 onMounted(() => {
   scrollToPasswordIfNeeded();

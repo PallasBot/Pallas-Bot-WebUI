@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchPluginConfig,
   fetchPlugins,
@@ -17,7 +18,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
-import { pushConsoleToast } from "@/utils/consoleToast";
+import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
@@ -116,21 +117,14 @@ watch(
   },
 );
 
-function onSaveKeydown(e: KeyboardEvent) {
-  if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s") return;
-  if (!data.value || loading.value || saving.value || checking.value) return;
-  e.preventDefault();
-  void save();
-}
-
 onMounted(() => {
   void load();
-  document.addEventListener("keydown", onSaveKeydown);
 });
 
-onUnmounted(() => {
-  document.removeEventListener("keydown", onSaveKeydown);
-});
+useSaveHotkey(
+  () => Boolean(data.value) && !loading.value && !saving.value && !checking.value,
+  () => save(),
+);
 
 function fieldModel(f: PluginConfigField): string {
   const v = f.current;
@@ -196,8 +190,10 @@ async function runConfigCheck() {
     }
     const r = await postPluginConfigCheck(pluginName.value, values);
     checkLines.value = r.lines;
+    toastProbeLines(r.lines);
   } catch (e) {
     checkErr.value = axiosErrorDetail(e);
+    toastApiError(e, "检测失败");
   } finally {
     checking.value = false;
   }
@@ -214,9 +210,10 @@ async function save() {
       values[f.name] = parseField(f, raw);
     }
     data.value = await putPluginConfig(pluginName.value, values);
-    pushConsoleToast("配置已保存");
+    toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = axiosErrorDetail(e);
+    toastApiError(e, "保存失败");
     await nextTick();
     saveFeedbackRef.value?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } finally {

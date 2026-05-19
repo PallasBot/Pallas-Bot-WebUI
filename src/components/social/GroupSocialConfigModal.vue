@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/consoleApi";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import type { GroupConfigPublic, PluginRow } from "@/api/pallasTypes";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import {
@@ -197,12 +199,19 @@ async function save() {
     syncGroupDraftFromConfig(g);
     emit("saved");
     close();
+    toastSaveSuccess("群配置已保存");
   } catch (e) {
     saveErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     saveBusy.value = false;
   }
 }
+
+useSaveHotkey(
+  () => open.value && Boolean(groupDraft.value) && !saveBusy.value && !loadBusy.value,
+  () => save(),
+);
 
 watch(
   () => open.value,
