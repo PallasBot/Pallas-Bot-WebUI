@@ -2,6 +2,8 @@
 import { computed, ref, watch } from "vue";
 import { fetchUserConfigById, putUserConfig } from "@/api/consoleApi";
 import type { UserConfigPublic } from "@/api/pallasTypes";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const open = defineModel<boolean>("open", { default: false });
 const props = defineProps<{
@@ -76,12 +78,19 @@ async function save() {
     userDraft.value = { banned: u.banned };
     emit("saved");
     close();
+    toastSaveSuccess("用户配置已保存");
   } catch (e) {
     saveErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     saveBusy.value = false;
   }
 }
+
+useSaveHotkey(
+  () => open.value && Boolean(userDraft.value) && !saveBusy.value && !loadBusy.value,
+  () => save(),
+);
 
 watch(
   () => open.value,

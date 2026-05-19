@@ -18,7 +18,9 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -163,13 +165,16 @@ async function save() {
   try {
     const c = await putAiExtensionConfig(buildConfigPayload());
     hydrateFromConfig(c);
-    pushConsoleToast("配置已保存");
+    toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     saving.value = false;
   }
 }
+
+useSaveHotkey(() => !saving.value, () => save());
 
 async function runTest() {
   err.value = "";
@@ -177,8 +182,10 @@ async function runTest() {
   try {
     const r = await postAiExtensionTest();
     testOut.value = JSON.stringify(r, null, 2);
+    pushConsoleToast("连通测试完成", "ok");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "连通测试失败");
   }
 }
 
@@ -533,6 +540,7 @@ onMounted(async () => {
               type="button"
               class="btn btn--primary"
               :disabled="saving"
+              title="Ctrl+S"
               @click="save"
             >
               {{ saving ? "保存中…" : "保存" }}

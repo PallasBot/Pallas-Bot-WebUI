@@ -14,7 +14,9 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const WEBUI_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
 const BOT_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot/releases";
@@ -73,12 +75,16 @@ async function saveGithubToken() {
     ghTokenHadValue.value = true;
     ghTokenInput.value = "";
     ghTokenOk.value = "已保存到 .env，重启 Bot 后生效。";
+    toastSaveSuccess("GitHub 令牌已保存");
   } catch (e) {
     ghTokenErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     ghTokenBusy.value = false;
   }
 }
+
+useSaveHotkey(() => !ghTokenBusy.value && ghTokenInput.value.trim().length > 0, () => saveGithubToken());
 
 async function clearGithubToken() {
   if (!confirm("确定清除已保存的 GitHub 令牌？")) return;
@@ -90,8 +96,10 @@ async function clearGithubToken() {
     ghTokenHadValue.value = false;
     ghTokenInput.value = "";
     ghTokenOk.value = "已清除；重启 Bot 后生效。";
+    toastSaveSuccess("GitHub 令牌已清除");
   } catch (e) {
     ghTokenErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "清除失败");
   } finally {
     ghTokenBusy.value = false;
   }

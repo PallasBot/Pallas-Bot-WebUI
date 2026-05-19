@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchCommonConfig,
   fetchCommonConfigSections,
@@ -21,7 +22,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
-import { pushConsoleToast } from "@/utils/consoleToast";
+import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
@@ -160,6 +161,11 @@ onMounted(async () => {
   }
 });
 
+useSaveHotkey(
+  () => Boolean(data.value) && !saving.value && !checking.value,
+  () => save(),
+);
+
 function parseField(f: PluginConfigField, raw: string): unknown {
   if (f.kind === "bool") return raw === "true" || raw === "1";
   if (f.kind === "int") return parseInt(raw, 10);
@@ -192,9 +198,10 @@ async function save() {
   err.value = "";
   try {
     data.value = await putCommonConfig(currentId.value, collectValues());
-    pushConsoleToast("已保存到 .env");
+    toastSaveSuccess("已保存到 .env");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     saving.value = false;
   }
@@ -208,8 +215,10 @@ async function runConnectivityCheck() {
   try {
     const r = await postServiceGatewaysConnectivityCheck(collectValues());
     checkLines.value = r.lines;
+    toastProbeLines(r.lines);
   } catch (e) {
     checkErr.value = axiosErrorDetail(e);
+    toastApiError(e, "检测失败");
   } finally {
     checking.value = false;
   }
@@ -270,6 +279,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               type="button"
               class="btn btn--primary"
               :disabled="saving || checking || !data"
+              title="Ctrl+S"
               @click="save"
             >
               {{ saving ? "保存中…" : "保存到 .env" }}
