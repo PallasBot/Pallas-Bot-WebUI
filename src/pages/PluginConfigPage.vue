@@ -389,6 +389,15 @@ async function save() {
             class="plugin-config-page__check-output"
           >{{ checkLines.join("\n") }}</pre>
         </div>
+        <p
+          v-if="usesGatewayEditor"
+          class="muted"
+          style="margin: 0 0 16px; line-height: 1.55; font-size: 13px"
+        >
+          网关与全链路连通检测亦可前往
+          <router-link to="/common-config?section=service_gateways">通用配置 → 服务网关</router-link>；
+          本页「配置检测」仅探测画画网关。
+        </p>
         <PallasImageGatewaysEditor
           v-if="usesGatewayEditor"
           :field-values="fieldValues"
