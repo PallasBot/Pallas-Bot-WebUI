@@ -230,12 +230,28 @@ export interface CommandPermUiData {
   plugins: CommandPermUiPlugin[];
 }
 
+export interface PluginConfigFieldGroup {
+  id: string;
+  title: string;
+  field_names: string[];
+  plugin_config_path: string;
+}
+
 export interface PluginConfigData {
   plugin: string;
   module: string;
   fields: PluginConfigField[];
   command_perm_ui?: CommandPermUiData;
+  /** 通用配置 service_gateways：分组展示与跳转插件页 */
+  field_groups?: PluginConfigFieldGroup[];
+  /** 使用 PallasImageGatewaysEditor 编辑画画网关 */
+  gateway_editor?: boolean;
+  /** 可调用全链路连通检测 API */
+  supports_connectivity_check?: boolean;
 }
+
+/** 通用配置 → 服务网关 / 连通性 */
+export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
 
 /** GET /common-config/sections */
 export interface CommonConfigSectionMeta {
@@ -411,12 +427,13 @@ export interface AiExtensionTestData {
 export interface PluginConfigCheckResult {
   lines: string[];
   results: Array<{
+    category?: string;
     site: string;
     ok: boolean;
     latency_ms: number | null;
     status_code: number | null;
     error: string | null;
-    label: string;
+    label?: string;
   }>;
 }
 

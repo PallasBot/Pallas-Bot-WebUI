@@ -342,6 +342,16 @@ export async function putCommonConfig(
   return unwrap(data, `/common-config/${sectionId}`);
 }
 
+export async function postServiceGatewaysConnectivityCheck(
+  values?: Record<string, unknown>,
+): Promise<PluginConfigCheckResult> {
+  const { data } = await http.post<ApiOk<PluginConfigCheckResult>>(
+    "/common-config/service_gateways/connectivity-check",
+    values ? { values } : {},
+  );
+  return unwrap(data, "/common-config/service_gateways/connectivity-check");
+}
+
 export async function changeConsoleLogin(newPassword: string): Promise<{ message: string }> {
   const { data } = await http.post<ApiOk<{ message: string }>>("/security/console-login", {
     new_password: newPassword,

@@ -23,6 +23,8 @@ import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { formatDisabledPluginIds, pluginPickListFromRows } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
 const panelNavIcon = usePanelNavIcon();
@@ -365,12 +367,19 @@ async function saveBotConfig() {
     await putBotConfig(account, { ...draft.value });
     await reload();
     cancelEdit();
+    toastSaveSuccess("Bot 配置已保存");
   } catch (e) {
     saveErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "保存失败");
   } finally {
     saveBusy.value = false;
   }
 }
+
+useSaveHotkey(
+  () => editModalAccount.value != null && Boolean(draft.value) && !saveBusy.value,
+  () => saveBotConfig(),
+);
 
 useInstancesCatalogSync(data, {
   pageReady,
@@ -943,6 +952,7 @@ onUnmounted(() => {
                   type="button"
                   class="btn btn--primary"
                   :disabled="saveBusy"
+                  title="Ctrl+S"
                   @click="saveBotConfig()"
                 >
                   {{ saveBusy ? "保存中…" : "保存" }}
