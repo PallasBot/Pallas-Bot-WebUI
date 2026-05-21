@@ -23,7 +23,10 @@
   --radius-shell: 10px;
   --font-sans: "Plus Jakarta Sans", "Noto Sans SC", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
-  --shadow-card: 0 0 0 1px var(--border), 0 18px 48px rgba(0, 0, 0, 0.45);
+  --shadow-ring: 0 0 0 1px var(--border);
+  --shadow-elev-sm: 0 1px 2px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(0, 0, 0, 0.2);
+  --shadow-elev-md: 0 1px 3px rgba(0, 0, 0, 0.26), 0 10px 28px rgba(0, 0, 0, 0.34);
+  --shadow-card: var(--shadow-ring), var(--shadow-elev-md);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
   /* 顶栏与侧栏共用 */
@@ -218,7 +221,9 @@ html[data-theme="light"] {
   --success: #15803d;
   --warn: #b45309;
   --danger: #b91c1c;
-  --shadow-card: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 23, 42, 0.08);
+  --shadow-elev-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-elev-md: 0 1px 2px rgba(15, 23, 42, 0.06), 0 6px 18px rgba(15, 23, 42, 0.07);
+  --shadow-card: var(--shadow-ring), var(--shadow-elev-md);
   --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
   --shell-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
   --control-bg: #ffffff;
@@ -3064,14 +3069,29 @@ html[data-theme="light"] .bot-config-edit {
   gap: 12px;
 }
 
-/* 总览：账户 → 容量卡片（整行）→ 系统性能（整行） */
+/* 总览：账户 + 侧栏（容量/版本）→ 系统性能（整行） */
 .home-dashboard {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   margin-bottom: 8px;
 }
+.home-dashboard__hero-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.home-dashboard__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  /* 勿 overflow:hidden，否则会裁切 StatCard / 版本面板的 box-shadow */
+  overflow: visible;
+}
 .home-dashboard__accounts {
-  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .home-account-panel__hd {
@@ -5130,23 +5150,51 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   margin-bottom: 0;
 }
 
-@media (min-width: 900px) {
-  .home-dashboard {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    align-items: stretch;
+@media (min-width: 1100px) {
+  .home-dashboard__hero-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(268px, 30%);
+    gap: 16px;
+    align-items: start;
   }
-  .home-dashboard__accounts {
-    grid-column: 1;
-    grid-row: 1;
+  .home-dashboard__side {
+    gap: 10px;
+    box-sizing: border-box;
+    overflow: visible;
   }
   .home-dashboard__capacity {
-    grid-column: 1;
-    grid-row: 2;
+    flex-shrink: 0;
+    min-width: 0;
   }
-  .home-dashboard__perf {
-    grid-column: 1;
-    grid-row: 3;
+  .home-dashboard__side .home-page__capacity-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .home-dashboard__side .stat-card--dense .card__body {
+    padding: 8px 6px;
+  }
+  .home-dashboard__side .stat-card--dense .stat-card__value {
+    font-size: 1.05rem;
+  }
+  .home-dashboard__side .stat-card--dense .stat-card__hint {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .home-dashboard__side .home-page__version-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+  .home-dashboard__side .home-page__version-panel .panel__bd {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 12px;
+  }
+  .home-dashboard__side .home-page__version-panel .home-dl--version-rows {
+    row-gap: 6px;
   }
   .home-dashboard__capacity .grid-stats {
     height: auto;
@@ -6738,7 +6786,7 @@ html[data-theme="light"] .plugin-preview {
 }
 .home-page__panel {
   margin-bottom: 0;
-  box-shadow: 0 0 0 1px var(--border), 0 8px 28px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-card);
 }
 .home-page .panel__hd {
   padding: 11px 16px;

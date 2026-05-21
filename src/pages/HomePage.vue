@@ -120,6 +120,44 @@ const pluginsList = ref<PluginRow[]>([]);
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
+/** 宽屏总览：容量 + 版本侧栏与账户面板并排时，侧栏高度不超过该面板 */
+const HOME_DASHBOARD_SIDE_LAYOUT_MQL = "(min-width: 1100px)";
+const accountPanelRef = ref<HTMLElement | null>(null);
+const accountPanelHeightPx = ref(0);
+
+const homeDashboardSideLockStyle = computed((): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  if (!window.matchMedia(HOME_DASHBOARD_SIDE_LAYOUT_MQL).matches) return {};
+  const h = accountPanelHeightPx.value;
+  if (h < 160) return {};
+  return {
+    maxHeight: `${h}px`,
+    minHeight: "0",
+  };
+});
+
+function measureAccountPanelHeight() {
+  if (typeof window === "undefined") return;
+  if (!window.matchMedia(HOME_DASHBOARD_SIDE_LAYOUT_MQL).matches) {
+    accountPanelHeightPx.value = 0;
+    return;
+  }
+  const el = accountPanelRef.value;
+  if (!el) {
+    accountPanelHeightPx.value = 0;
+    return;
+  }
+  accountPanelHeightPx.value = Math.round(el.getBoundingClientRect().height);
+}
+
+function scheduleAccountPanelHeightMeasure() {
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      measureAccountPanelHeight();
+    });
+  });
+}
+
 /** 双列布局下账号信息卡，用于宽屏锁定右侧图表区高度与之对齐 */
 const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
@@ -170,6 +208,7 @@ function scheduleAccountHeroLockMeasure() {
 /** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
 function onMatcherDetailsToggle() {
   scheduleAccountHeroLockMeasure();
+  scheduleAccountPanelHeightMeasure();
 }
 
 watchEffect((onCleanup) => {
@@ -197,6 +236,34 @@ watchEffect((onCleanup) => {
     ro.disconnect();
     mql.removeEventListener("change", onMql);
     accountHeroLockHeightPx.value = 0;
+  });
+});
+
+watchEffect((onCleanup) => {
+  if (typeof window === "undefined") return;
+  if (!pageReady.value) {
+    accountPanelHeightPx.value = 0;
+    return;
+  }
+  const el = accountPanelRef.value;
+  if (!el) {
+    accountPanelHeightPx.value = 0;
+    return;
+  }
+  const mql = window.matchMedia(HOME_DASHBOARD_SIDE_LAYOUT_MQL);
+  const onMql = () => {
+    measureAccountPanelHeight();
+  };
+  mql.addEventListener("change", onMql);
+  const ro = new ResizeObserver(() => {
+    measureAccountPanelHeight();
+  });
+  ro.observe(el);
+  scheduleAccountPanelHeightMeasure();
+  onCleanup(() => {
+    ro.disconnect();
+    mql.removeEventListener("change", onMql);
+    accountPanelHeightPx.value = 0;
   });
 });
 
@@ -1046,8 +1113,12 @@ onUnmounted(() => {
           role="status"
         >正在同步概况…</p>
     <div class="home-dashboard">
+      <div class="home-dashboard__hero-row">
       <section class="home-dashboard__accounts">
-        <div class="panel home-page__panel">
+        <div
+          ref="accountPanelRef"
+          class="panel home-page__panel"
+        >
           <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
               <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
@@ -1366,6 +1437,11 @@ onUnmounted(() => {
         />
       </section>
 
+      <aside
+        class="home-dashboard__side"
+        :style="homeDashboardSideLockStyle"
+        aria-label="概况侧栏"
+      >
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid">
           <StatCard
@@ -1388,6 +1464,72 @@ onUnmounted(() => {
           />
         </div>
       </section>
+
+    <div class="panel home-page__panel home-page__version-panel">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
+        </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/" />
+          <span
+            v-if="health?.ok"
+            class="home-page__hd-capsule home-page__hd-capsule--ok"
+          >API 连接</span>
+        </div>
+      </div>
+      <div class="panel__bd muted home-page__version home-page__version--grid">
+        <dl class="home-dl home-dl--version-rows home-version-dl">
+          <dt>NoneBot2</dt>
+          <dd>
+            <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
+            <span class="home-dl__sub muted">框架</span>
+          </dd>
+          <dt>Pallas-Bot</dt>
+          <dd>
+            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+            <RouterLink
+              v-if="botUpdateCheck?.has_update"
+              class="home-version-update-link"
+              to="/update#console-update-bot"
+            >
+              <span class="badge badge--warn">有更新</span>
+              <span
+                v-if="(botUpdateCheck?.latest_tag || '').trim()"
+                class="home-version-update-meta muted"
+              >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
+            </RouterLink>
+            <span class="home-dl__sub muted">业务</span>
+          </dd>
+          <dt>控制台资源</dt>
+          <dd>
+            <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
+            <RouterLink
+              v-if="webUpdateCheck?.has_update"
+              class="home-version-update-link"
+              to="/update#console-update-webui"
+            >
+              <span class="badge badge--warn">有更新</span>
+              <span
+                v-if="(webUpdateCheck?.latest_tag || '').trim()"
+                class="home-version-update-meta muted"
+              >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
+            </RouterLink>
+          </dd>
+          <dt>服务时间</dt>
+          <dd>
+            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
+          </dd>
+          <dt>主机 / Python</dt>
+          <dd>
+            <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
+            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+      </aside>
+      </div>
 
       <section class="home-dashboard__perf">
         <div class="panel home-page__panel">
@@ -1543,70 +1685,6 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-    </div>
-
-    <div class="panel home-page__panel home-page__version-panel">
-      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/" />
-          <span
-            v-if="health?.ok"
-            class="home-page__hd-capsule home-page__hd-capsule--ok"
-          >API 连接</span>
-        </div>
-      </div>
-      <div class="panel__bd muted home-page__version home-page__version--grid">
-        <dl class="home-dl home-dl--version-rows home-version-dl">
-          <dt>NoneBot2</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
-            <span class="home-dl__sub muted">框架</span>
-          </dd>
-          <dt>Pallas-Bot</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
-            <RouterLink
-              v-if="botUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-bot"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(botUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-            <span class="home-dl__sub muted">业务</span>
-          </dd>
-          <dt>控制台资源</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
-            <RouterLink
-              v-if="webUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-webui"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(webUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-          </dd>
-          <dt>服务时间</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
-          </dd>
-          <dt>主机 / Python</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
-          </dd>
-        </dl>
-      </div>
     </div>
     </div>
     </Transition>
