@@ -308,6 +308,8 @@ export interface LogsData {
   entries: LogEntry[];
   max: number;
   scope?: LogScope;
+  /** 分片 hub：已合并 data/pallas_shard/logs 下 hub/worker 落盘尾行 */
+  sharded_logs?: boolean;
 }
 
 /** 数据库概览 */

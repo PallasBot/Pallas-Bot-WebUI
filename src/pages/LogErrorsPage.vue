@@ -65,7 +65,7 @@ onMounted(load);
         </div>
         <div class="panel__bd">
           <p class="muted log-errors-page__hint">
-            进程内 ERROR / CRITICAL 快照；持久化与每日 4:00 清理策略与 Matcher 异常归档一致。与「运行日志」实时流相互独立。
+            hub 进程内 ERROR / CRITICAL 快照；分片模式下另从各 worker/hub 落盘日志解析 ERROR。持久化与每日 4:00 清理策略与 Matcher 异常归档一致。与「运行日志」实时流相互独立。
           </p>
           <div class="log-errors-page__scroll">
             <p

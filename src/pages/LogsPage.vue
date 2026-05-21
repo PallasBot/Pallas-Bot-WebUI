@@ -212,6 +212,9 @@ onUnmounted(() => {
             style="margin: 0 0 12px"
           >
             单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目 · 原始行 {{ lines.length }} 行
+            <template v-if="payload.sharded_logs">
+              · 分片模式：已合并 hub 与各 worker 落盘日志（建议保持轮询或增大条数）
+            </template>
           </p>
 
           <div class="logs-page__scroll">
