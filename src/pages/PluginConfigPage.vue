@@ -436,7 +436,8 @@ async function save() {
             v-model="fieldValues[f.name]"
             class="inp"
             style="max-width: 480px; width: 100%"
-            :type="f.kind === 'int' || f.kind === 'float' ? 'number' : 'text'"
+            type="text"
+            :inputmode="f.kind === 'int' ? 'numeric' : f.kind === 'float' ? 'decimal' : undefined"
           >
         </div>
       </div>
