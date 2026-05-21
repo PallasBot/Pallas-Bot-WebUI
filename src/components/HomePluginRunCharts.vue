@@ -210,9 +210,12 @@ function aggregateLocalTodayAvgDuration(
 
 function fmtDurationMs(ms: number | null | undefined): string {
   const n = Number(ms);
-  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n === 0) return "<1ms";
+  if (n < 1) return "<1ms";
   if (n >= 60_000) return `${(n / 1000).toFixed(1)}s`;
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
+  if (n < 10) return `${n.toFixed(1)}ms`;
   return `${Math.round(n)}ms`;
 }
 
@@ -1027,6 +1030,15 @@ const dailyChartPack = computed(() => {
           每条为一次 Matcher 墙钟耗时（新→旧）；最多保留 {{ matcherDurationLogCap }} 条并写入
           <code>matcher_durations.jsonl</code>。
         </p>
+        <div
+          class="home-matcher-dur-log__head muted"
+          aria-hidden="true"
+        >
+          <span>耗时</span>
+          <span>插件</span>
+          <span>时间</span>
+          <span />
+        </div>
         <ul class="home-matcher-dur-log__list">
           <li
             v-for="(it, idx) in recentDurationRows"
@@ -2946,6 +2958,13 @@ const dailyChartPack = computed(() => {
   font-size: 0.78rem;
   line-height: 1.35;
 }
+.home-matcher-dur-log__head {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto auto;
+  gap: 6px 8px;
+  padding: 0 8px 4px;
+  font-size: 0.72rem;
+}
 .home-matcher-dur-log__list {
   list-style: none;
   margin: 0;
@@ -2971,7 +2990,8 @@ const dailyChartPack = computed(() => {
 }
 .home-matcher-dur-log__ms {
   font-weight: 700;
-  color: var(--accent);
+  color: #fdba74;
+  min-width: 4.5rem;
 }
 .home-matcher-dur-log__plugin {
   overflow: hidden;
