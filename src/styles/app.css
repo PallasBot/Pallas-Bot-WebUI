@@ -1308,6 +1308,42 @@ html[data-theme="light"] .shell-back-top {
   gap: 8px;
 }
 
+.logs-page__levels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.logs-page__level-btn {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--bg1) 92%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.logs-page__level-btn--on {
+  border-color: color-mix(in srgb, currentColor 35%, var(--border));
+  background: color-mix(in srgb, var(--bg1) 94%, transparent);
+}
+
+.logs-page__level-btn--off {
+  opacity: 0.42;
+  text-decoration: line-through;
+  filter: grayscale(0.35);
+}
+
 /* 日志报错独立页 */
 .log-errors-page {
   flex: 1;

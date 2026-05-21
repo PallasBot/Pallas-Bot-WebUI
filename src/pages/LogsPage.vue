@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs, openLogsEventSource } from "@/api/consoleApi";
-import type { LogEntry, LogScope, LogsData } from "@/api/pallasTypes";
+import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import {
   formatLogDisplayTime,
+  loadLogsEnabledLevels,
+  LOG_ENTRY_LEVELS,
   logEntryLevelClass,
   normalizeLogEntryDisplay,
+  parseLogLineLevel,
+  persistLogsEnabledLevels,
   stripYearFromLogLine,
 } from "@/utils/logDisplay";
 
@@ -27,6 +31,7 @@ const n = ref(200);
 const payload = ref<LogsData | null>(null);
 const view = ref<"feed" | "raw">("feed");
 const q = ref("");
+const enabledLevels = ref<Set<LogEntryLevel>>(loadLogsEnabledLevels());
 /** SSE 追加的实时条目（分片 hub） */
 const liveEntries = ref<LogEntry[]>([]);
 const MAX_LIVE_ENTRIES = 600;
@@ -154,10 +159,27 @@ const sourceOptions = computed(() => {
 
 const displayEntries = computed(() => entries.value.map((e) => normalizeLogEntryDisplay(e)));
 
+function entryPassesLevel(level: LogEntryLevel): boolean {
+  return enabledLevels.value.has(level);
+}
+
+function toggleLogLevel(lv: LogEntryLevel) {
+  const next = new Set(enabledLevels.value);
+  if (next.has(lv)) next.delete(lv);
+  else next.add(lv);
+  enabledLevels.value = next;
+  persistLogsEnabledLevels(next);
+}
+
+const levelFilteredEntries = computed(() =>
+  displayEntries.value.filter((e) => entryPassesLevel(e.level)),
+);
+
 const filtered = computed(() => {
   const needle = q.value.trim().toLowerCase();
-  if (!needle) return displayEntries.value;
-  return displayEntries.value.filter(
+  const base = levelFilteredEntries.value;
+  if (!needle) return base;
+  return base.filter(
     (e) =>
       e.message.toLowerCase().includes(needle) ||
       e.scope.toLowerCase().includes(needle) ||
@@ -166,8 +188,14 @@ const filtered = computed(() => {
   );
 });
 
+const filteredRawLines = computed(() => {
+  const rows = displayLines.value;
+  if (enabledLevels.value.size >= LOG_ENTRY_LEVELS.length) return rows;
+  return rows.filter((line) => entryPassesLevel(parseLogLineLevel(line)));
+});
+
 watch(
-  [view, () => payload.value, () => filtered.value, () => lines.value],
+  [view, () => payload.value, () => filtered.value, () => filteredRawLines.value],
   async () => {
     await scrollActiveLogToBottom();
   },
@@ -289,6 +317,27 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
+          <div
+            class="logs-page__levels"
+            role="group"
+            aria-label="日志级别筛选"
+          >
+            <button
+              v-for="lv in LOG_ENTRY_LEVELS"
+              :key="lv"
+              type="button"
+              class="logs-page__level-btn"
+              :class="{
+                'logs-page__level-btn--on': enabledLevels.has(lv),
+                'logs-page__level-btn--off': !enabledLevels.has(lv),
+                [logEntryLevelClass(lv)]: true,
+              }"
+              :aria-pressed="enabledLevels.has(lv)"
+              @click="toggleLogLevel(lv)"
+            >
+              {{ lv.toUpperCase() }}
+            </button>
+          </div>
         </div>
         <div class="panel__bd">
           <p
@@ -296,7 +345,13 @@ onUnmounted(() => {
             class="muted"
             style="margin: 0 0 12px"
           >
-            单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目 · 原始行 {{ lines.length }} 行
+            单次上限 {{ payload.max }} 条 · 当前返回 {{ entries.length }} 条条目
+            <template v-if="view === 'feed'">
+              · 显示 {{ filtered.length }} / {{ levelFilteredEntries.length }} 条
+            </template>
+            <template v-else>
+              · 原始行 {{ lines.length }} 行 · 显示 {{ filteredRawLines.length }} 行
+            </template>
             <template v-if="payload.sharded_logs">
               · 分片：{{ logSource === "all" ? "已合并 hub/worker 主日志" : `仅 ${logSource}` }}
               · SSE 实时追加 worker 增量
@@ -342,12 +397,18 @@ onUnmounted(() => {
               >
                 无原始行数据（后端可能仅返回结构化 entries）。
               </div>
+              <div
+                v-else-if="!filteredRawLines.length && !loading"
+                class="muted"
+              >
+                暂无行（或级别/关键词筛选无结果）。
+              </div>
               <pre
                 v-else
                 ref="rawScrollEl"
                 class="pre-block pre-block--logs-tall"
                 @scroll.passive="onLogContainerScroll"
-              >{{ displayLines.join("\n") }}</pre>
+              >{{ filteredRawLines.join("\n") }}</pre>
             </template>
           </div>
         </div>
