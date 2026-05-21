@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type {
   ApiCallNamedSeries,
   ConsoleDailyStatRow,
+  MatcherDurationLogEntry,
   PluginMatcherNamedSeries,
   PluginRunStatsRow,
   PluginRow,
@@ -19,23 +20,31 @@ const CHART_SEL_KEY = "pallas_home_chart_sel_v1";
 const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
 type ChartPanelId =
+  | "matcher_duration_recent"
   | "plugins_top"
+  | "plugins_duration_top"
   | "daily_msg_matcher"
   | "api_hourly"
   | "api_bucket"
   | "matcher_hourly"
   | "matcher_bucket"
+  | "matcher_duration_hourly"
+  | "matcher_duration_bucket"
   | "matcher_err_hourly"
   | "matcher_err_bucket"
   | "local_spark";
 
 const PANEL_ORDER: ChartPanelId[] = [
+  "matcher_duration_recent",
   "plugins_top",
+  "plugins_duration_top",
   "daily_msg_matcher",
   "api_hourly",
   "api_bucket",
   "matcher_hourly",
   "matcher_bucket",
+  "matcher_duration_hourly",
+  "matcher_duration_bucket",
   "matcher_err_hourly",
   "matcher_err_bucket",
   "local_spark",
@@ -117,6 +126,10 @@ const props = defineProps<{
   apiHistoryBucketSec?: number;
   matcherRunsByPlugin?: PluginMatcherNamedSeries[];
   matcherErrorsByPlugin?: PluginMatcherNamedSeries[];
+  matcherAvgDurationMsByPlugin?: PluginMatcherNamedSeries[];
+  matcherDurationMsByPlugin?: PluginMatcherNamedSeries[];
+  matcherDurationLog?: MatcherDurationLogEntry[];
+  matcherDurationLogCap?: number;
   matcherHistoryBucketSec?: number;
   /** GET /console-daily-stats 的 rows（当前选中账号） */
   dailyStatRows?: ConsoleDailyStatRow[] | null;
@@ -126,6 +139,8 @@ const props = defineProps<{
   toolbarSummaryApi?: string | null;
   /** 插件 Matcher 片段（如「插件 145」） */
   toolbarSummaryPlugin?: string | null;
+  /** Matcher 平均耗时片段（如「均耗 320ms」） */
+  toolbarSummaryDuration?: string | null;
 }>();
 
 const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?? "");
@@ -133,8 +148,11 @@ const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?
 const toolbarSummaryText = computed(() => {
   const a = props.toolbarSummaryApi?.trim() ?? "";
   const p = props.toolbarSummaryPlugin?.trim() ?? "";
-  if (!a && !p) return "";
-  return `今日调用: ${a || "API —"} ${p || "插件 —"}`;
+  const d = props.toolbarSummaryDuration?.trim() ?? "";
+  if (!a && !p && !d) return "";
+  const parts = [`${a || "API —"}`, `${p || "插件 —"}`];
+  if (d) parts.push(d);
+  return `今日: ${parts.join(" · ")}`;
 });
 
 const selectedApiKeys = ref<string[]>([]);
@@ -169,6 +187,38 @@ function seriesSum(points: { at: number; total: number }[]): number {
   return points.reduce((s, p) => s + (Number(p.total) || 0), 0);
 }
 
+function aggregateLocalTodayAvgDuration(
+  durPoints: { at: number; total: number }[],
+  runPoints: { at: number; total: number }[],
+): number[] {
+  const durBins = Array.from({ length: 24 }, () => 0);
+  const runBins = Array.from({ length: 24 }, () => 0);
+  const t0 = localDayStartSec();
+  const t1 = localDayEndSec();
+  const bump = (points: { at: number; total: number }[], bins: number[]) => {
+    for (const p of points) {
+      const a = Number(p.at);
+      if (!Number.isFinite(a) || a < t0 || a >= t1) continue;
+      const h = new Date(a * 1000).getHours();
+      bins[h] += Number(p.total) || 0;
+    }
+  };
+  bump(durPoints, durBins);
+  bump(runPoints, runBins);
+  return durBins.map((d, h) => (runBins[h]! > 0 ? Math.round(d / runBins[h]!) : 0));
+}
+
+function fmtDurationMs(ms: number | null | undefined): string {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n === 0) return "<1ms";
+  if (n < 1) return "<1ms";
+  if (n >= 60_000) return `${(n / 1000).toFixed(1)}s`;
+  if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
+  if (n < 10) return `${n.toFixed(1)}ms`;
+  return `${Math.round(n)}ms`;
+}
+
 function defaultTopKeys(
   keys: string[],
   getPoints: (k: string) => { at: number; total: number }[],
@@ -201,7 +251,13 @@ function mergeApiSelection() {
 
 function mergeMatcherSelection() {
   const rows = props.matcherRunsByPlugin ?? [];
-  const keys = rows.filter((r) => (r.points?.length ?? 0) > 0).map((r) => r.plugin);
+  const durRows = props.matcherAvgDurationMsByPlugin ?? [];
+  const keys = [
+    ...new Set([
+      ...rows.filter((r) => (r.points?.length ?? 0) > 0).map((r) => r.plugin),
+      ...durRows.filter((r) => (r.points?.length ?? 0) > 0).map((r) => r.plugin),
+    ]),
+  ];
   const cur = selectedMatcherKeys.value.filter((k) => keys.includes(k));
   if (cur.length) {
     selectedMatcherKeys.value = cur;
@@ -282,7 +338,17 @@ const topPlugins = computed(() =>
     .filter((p) => p.runs_today > 0),
 );
 
+const topPluginsByDuration = computed(() =>
+  [...props.plugins]
+    .filter((p) => (p.avg_duration_ms_today ?? 0) > 0)
+    .sort((a, b) => (b.avg_duration_ms_today ?? 0) - (a.avg_duration_ms_today ?? 0)),
+);
+
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
+
+const maxDurationToday = computed(() =>
+  Math.max(1, ...topPluginsByDuration.value.map((p) => p.avg_duration_ms_today ?? 0)),
+);
 
 function fmtBucketSec(sec: number | undefined): string {
   const s = sec ?? 300;
@@ -530,6 +596,29 @@ const hourlyMatcherErrLayers = computed(() => {
   return buildHourlyLayers(rows);
 });
 
+const matcherDurationBucketPack = computed(() => {
+  const meta = props.pluginsMeta ?? undefined;
+  const rows = (props.matcherAvgDurationMsByPlugin ?? [])
+    .filter((s) => selectedMatcherKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
+    .map((s) => ({
+      label: `${matcherPluginDisplayName(s.plugin, meta)} · 均耗`,
+      points: s.points,
+    }));
+  return buildBucketBarPack(rows, bucketViewportNarrow.value);
+});
+
+const hourlyMatcherDurationLayers = computed(() => {
+  const meta = props.pluginsMeta ?? undefined;
+  const rows = (props.matcherAvgDurationMsByPlugin ?? [])
+    .filter((s) => selectedMatcherKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
+    .map((s) => ({
+      label: `${matcherPluginDisplayName(s.plugin, meta)} · 均耗`,
+      hours: aggregateLocalTodayAvgDuration(durationMsPoints(s.plugin), durationRunPoints(s.plugin)),
+    }))
+    .filter((r) => r.hours.some((v) => v > 0));
+  return buildHourlyLayers(rows);
+});
+
 const sparkPoly = computed((): string | undefined => {
   const s = props.series;
   if (s.length < 2) return undefined;
@@ -576,6 +665,18 @@ const matcherErrCandidates = computed(() =>
   (props.matcherErrorsByPlugin ?? []).filter((s) => (s.points?.length ?? 0) > 0),
 );
 
+const matcherDurationCandidates = computed(() =>
+  (props.matcherAvgDurationMsByPlugin ?? []).filter((s) => (s.points?.length ?? 0) > 0),
+);
+
+function durationRunPoints(plugin: string): { at: number; total: number }[] {
+  return props.matcherRunsByPlugin?.find((s) => s.plugin === plugin)?.points ?? [];
+}
+
+function durationMsPoints(plugin: string): { at: number; total: number }[] {
+  return props.matcherDurationMsByPlugin?.find((s) => s.plugin === plugin)?.points ?? [];
+}
+
 const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
@@ -611,13 +712,33 @@ function toggleChartsDraw() {
   saveChartsDrawExpanded(chartsDrawExpanded.value);
 }
 
+const matcherDurationLogCap = computed(() => {
+  const n = Number(props.matcherDurationLogCap);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 80;
+});
+
+const recentDurationRows = computed(() => props.matcherDurationLog ?? []);
+
+function formatDurationLogAt(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return "—";
+  try {
+    return new Date(sec * 1000).toLocaleString();
+  } catch {
+    return String(sec);
+  }
+}
+
 const panelAvailability = computed(() => ({
+  matcher_duration_recent: true,
   plugins_top: true,
+  plugins_duration_top: topPluginsByDuration.value.length > 0,
   daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 2,
   api_hourly: apiCandidates.value.length > 0,
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
   matcher_bucket: matcherRunCandidates.value.length > 0,
+  matcher_duration_hourly: matcherDurationCandidates.value.length > 0,
+  matcher_duration_bucket: matcherDurationCandidates.value.length > 0,
   matcher_err_hourly: matcherErrCandidates.value.length > 0,
   matcher_err_bucket: matcherErrCandidates.value.length > 0,
   local_spark: showLocalSpark.value,
@@ -625,12 +746,16 @@ const panelAvailability = computed(() => ({
 
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
+    matcher_duration_recent: "Matcher 单次耗时",
     plugins_top: "插件今日次数",
+    plugins_duration_top: "插件今日平均耗时",
     daily_msg_matcher: "消息 / Matcher（按日）",
     api_hourly: "协议 API · 今日各小时",
     api_bucket: "协议 API · 按时间桶（柱状）",
     matcher_hourly: "Matcher · 今日各小时",
     matcher_bucket: "Matcher · 按时间桶（柱状）",
+    matcher_duration_hourly: "Matcher 耗时 · 今日各小时",
+    matcher_duration_bucket: "Matcher 耗时 · 按时间桶",
     matcher_err_hourly: "Matcher 异常 · 今日各小时",
     matcher_err_bucket: "Matcher 异常 · 按时间桶（柱状）",
     local_spark: "Matcher 累计（本机采样）",
@@ -881,6 +1006,63 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__draw"
     >
     <div
+      v-if="chartPanel === 'matcher_duration_recent'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <p
+        v-if="busy && !recentDurationRows.length"
+        class="muted home-plugin-charts__empty"
+      >
+        加载中…
+      </p>
+      <p
+        v-else-if="!recentDurationRows.length"
+        class="muted home-plugin-charts__empty"
+      >
+        暂无单次耗时记录；触发命令后会在此列出最近 {{ matcherDurationLogCap }} 条（重启后仍可从磁盘恢复）。
+      </p>
+      <div
+        v-else
+        class="home-matcher-dur-log home-plugin-charts__viz"
+      >
+        <p class="muted home-matcher-dur-log__hint">
+          每条为一次 Matcher 墙钟耗时（新→旧）；最多保留 {{ matcherDurationLogCap }} 条并写入
+          <code>matcher_durations.jsonl</code>。
+        </p>
+        <div
+          class="home-matcher-dur-log__head muted"
+          aria-hidden="true"
+        >
+          <span>耗时</span>
+          <span>插件</span>
+          <span>时间</span>
+          <span />
+        </div>
+        <ul class="home-matcher-dur-log__list">
+          <li
+            v-for="(it, idx) in recentDurationRows"
+            :key="`${it.at}-${idx}-${it.plugin}`"
+            class="home-matcher-dur-log__row"
+            :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
+          >
+            <span class="home-matcher-dur-log__ms">{{ fmtDurationMs(it.duration_ms) }}</span>
+            <span
+              class="home-matcher-dur-log__plugin"
+              :title="it.plugin"
+            >{{ pluginBarLabel(it.plugin) }}</span>
+            <span class="home-matcher-dur-log__at muted">{{ formatDurationLogAt(it.at) }}</span>
+            <span
+              v-if="it.had_error"
+              class="home-matcher-dur-log__badge"
+            >异常</span>
+          </li>
+        </ul>
+      </div>
+      </div>
+    </div>
+
+    <div
       v-if="chartPanel === 'plugins_top'"
       class="home-plugin-charts__block"
     >
@@ -916,7 +1098,57 @@ const dailyChartPack = computed(() => {
               :style="{ width: `${Math.round((p.runs_today / maxRuns) * 100)}%` }"
             />
           </div>
-          <span class="home-plugin-bars__val">{{ p.runs_today }}</span>
+          <span class="home-plugin-bars__val">
+            {{ p.runs_today }}<template v-if="p.avg_duration_ms_today"> · {{ fmtDurationMs(p.avg_duration_ms_today) }}</template>
+          </span>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div
+      v-if="chartPanel === 'plugins_duration_top'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <p
+        v-if="busy && !topPluginsByDuration.length"
+        class="muted home-plugin-charts__empty"
+      >
+        加载中…
+      </p>
+      <p
+        v-else-if="!topPluginsByDuration.length"
+        class="muted home-plugin-charts__empty"
+      >
+        暂无今日 Matcher 耗时样本（需至少执行过一次命令）。
+      </p>
+      <div
+        v-else
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-charts__viz"
+      >
+        <div
+          v-for="p in topPluginsByDuration"
+          :key="`dur-${p.name}`"
+          class="home-plugin-bars__row"
+        >
+          <span
+            class="home-plugin-bars__name"
+            :title="p.name"
+          >{{ pluginBarLabel(p.name) }}</span>
+          <div class="home-plugin-bars__track">
+            <span
+              class="home-plugin-bars__fill home-plugin-bars__fill--duration"
+              :style="{ width: `${Math.round(((p.avg_duration_ms_today ?? 0) / maxDurationToday) * 100)}%` }"
+            />
+          </div>
+          <span class="home-plugin-bars__val">
+            {{ fmtDurationMs(p.avg_duration_ms_today) }}
+            <span
+              v-if="p.max_duration_ms_today"
+              class="muted"
+            > · 峰 {{ fmtDurationMs(p.max_duration_ms_today) }}</span>
+          </span>
         </div>
       </div>
       </div>
@@ -1543,6 +1775,236 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
+      v-if="chartPanel === 'matcher_duration_hourly'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          纵轴为<strong>该小时桶内累计耗时 ÷ 执行次数</strong>（毫秒）；与 Matcher 次数视图共用插件勾选。横轴 0–23 每小时一刻度。
+        </p>
+        <div
+          v-if="matcherDurationCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(true)"
+            >
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherDurationCandidates"
+              :key="`mdh-${s.plugin}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
+        </div>
+      </template>
+      <div
+        v-if="hourlyMatcherDurationLayers?.length"
+        class="home-plugin-multi home-plugin-charts__viz"
+      >
+        <svg
+          class="home-plugin-spark home-plugin-spark--hourly"
+          viewBox="0 0 100 52"
+          preserveAspectRatio="xMidYMid meet"
+          overflow="hidden"
+          aria-hidden="true"
+        >
+          <polyline
+            v-for="(ly, idx) in hourlyMatcherDurationLayers"
+            :key="idx"
+            class="home-plugin-chart-line"
+            fill="none"
+            :stroke="ly.color"
+            stroke-opacity="0.92"
+            :points="ly.poly"
+          />
+        </svg>
+        <div class="home-plugin-hour-ticks muted">
+          <span
+            v-for="hx in HOURLY_AXIS_HOURS"
+            :key="hx"
+          >{{ hx }}</span>
+        </div>
+        <div class="home-plugin-legend">
+          <span
+            v-for="(ly, idx) in hourlyMatcherDurationLayers"
+            :key="idx"
+            class="home-plugin-legend__item"
+          >
+            <i
+              class="home-plugin-legend__sw"
+              :style="{ background: ly.color }"
+            />
+            <span :title="ly.label">{{ ly.label }}</span>
+          </span>
+        </div>
+      </div>
+      <p
+        v-else-if="matcherDurationCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个 Matcher 插件。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 耗时时序数据。
+      </p>
+      </div>
+    </div>
+
+    <div
+      v-if="chartPanel === 'matcher_duration_bucket'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <template v-if="!chartFilterTeleportTo">
+        <p class="muted home-plugin-charts__hint">
+          每柱为该时间桶内<strong>平均 Matcher 墙钟耗时</strong>（毫秒）；桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。
+        </p>
+        <div
+          v-if="matcherDurationCandidates.length"
+          class="home-plugin-sel"
+        >
+          <span class="home-plugin-sel__actions">
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(true)"
+            >
+              全选
+            </button>
+            <button
+              type="button"
+              class="home-plugin-sel__btn"
+              @click="toggleAllMatchers(false)"
+            >
+              全不选
+            </button>
+          </span>
+          <div class="home-plugin-sel__grid">
+            <label
+              v-for="s in matcherDurationCandidates"
+              :key="`mdb-${s.plugin}`"
+              class="home-plugin-sel__item"
+            >
+              <input
+                v-model="selectedMatcherKeys"
+                type="checkbox"
+                :value="s.plugin"
+              >
+              <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+            </label>
+          </div>
+        </div>
+      </template>
+      <div
+        v-if="matcherDurationBucketPack"
+        class="home-plugin-multi home-plugin-charts__viz"
+      >
+        <svg
+          class="home-plugin-bucket__svg"
+          :viewBox="`0 0 ${matcherDurationBucketPack.W} ${matcherDurationBucketPack.H}`"
+          preserveAspectRatio="xMidYMid meet"
+          overflow="visible"
+          aria-hidden="true"
+        >
+          <line
+            v-for="(gy, gi) in matcherDurationBucketPack.gridYs"
+            :key="`mdg-${gi}`"
+            class="home-plugin-bucket__grid"
+            :x1="matcherDurationBucketPack.left"
+            :y1="gy"
+            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
+            :y2="gy"
+          />
+          <line
+            class="home-plugin-bucket__axis"
+            :x1="matcherDurationBucketPack.left"
+            :y1="matcherDurationBucketPack.bottom"
+            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
+            :y2="matcherDurationBucketPack.bottom"
+          />
+          <text
+            v-for="(tk, ti) in matcherDurationBucketPack.yTicks"
+            :key="`mdyt-${ti}`"
+            class="home-plugin-bucket__ylabel"
+            :x="matcherDurationBucketPack.padL - 4"
+            :y="tk.y + 4"
+            text-anchor="end"
+          >{{ tk.t }}</text>
+          <text
+            v-for="(xk, xi) in matcherDurationBucketPack.xTicks"
+            :key="`mdxt-${xi}`"
+            class="home-plugin-bucket__xlabel"
+            :x="xk.x"
+            :y="matcherDurationBucketPack.H - 6"
+            text-anchor="middle"
+          >{{ xk.t }}</text>
+          <rect
+            v-for="(b, bi) in matcherDurationBucketPack.bars"
+            :key="`mdb-${bi}`"
+            class="home-plugin-bucket__bar"
+            :x="b.x"
+            :y="b.y"
+            :width="b.w"
+            :height="b.h"
+            :fill="b.fill"
+            rx="1.5"
+          />
+        </svg>
+        <div class="home-plugin-legend">
+          <span
+            v-for="(s, idx) in matcherDurationBucketPack.series"
+            :key="idx"
+            class="home-plugin-legend__item"
+          >
+            <i
+              class="home-plugin-legend__sw"
+              :style="{ background: s.color }"
+            />
+            <span :title="s.label">{{ s.label }}</span>
+          </span>
+        </div>
+      </div>
+      <p
+        v-else-if="matcherDurationCandidates.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个 Matcher 插件。
+      </p>
+      <p
+        v-else
+        class="muted home-plugin-charts__empty"
+      >
+        暂无 Matcher 耗时时序数据。
+      </p>
+      </div>
+    </div>
+
+    <div
       v-if="chartPanel === 'matcher_err_hourly'"
       class="home-plugin-charts__block"
     >
@@ -1812,9 +2274,20 @@ const dailyChartPack = computed(() => {
         v-show="chartFilterStripVisible"
         class="home-plugin-charts__filter-external"
       >
-        <template v-if="chartPanel === 'plugins_top'">
+        <template v-if="chartPanel === 'matcher_duration_recent'">
           <p class="muted home-plugin-charts__hint">
-            当前为「插件今日次数」排行，无序列勾选。要勾选协议 API 或 Matcher 曲线，请在上方下拉切换到对应视图。
+            每条为<strong>单次</strong> Matcher 执行耗时（新→旧），非平均值；持久化在数据目录
+            <code>matcher_durations.jsonl</code>（每账号最多 {{ matcherDurationLogCap }} 条，与每日 4:00 清理策略一致）。
+          </p>
+        </template>
+        <template v-else-if="chartPanel === 'plugins_top'">
+          <p class="muted home-plugin-charts__hint">
+            当前为「插件今日次数」排行；右侧数字为次数，有耗时样本时附带今日平均 Matcher 墙钟耗时。单次明细请切到「Matcher 单次耗时」。
+          </p>
+        </template>
+        <template v-else-if="chartPanel === 'plugins_duration_top'">
+          <p class="muted home-plugin-charts__hint">
+            按今日平均 Matcher 墙钟耗时排序（preprocessor 至 postprocessor）；峰值见各行末尾。统计口径与控制台 plugin-run-stats 一致，重启清零。
           </p>
         </template>
         <template v-else-if="chartPanel === 'daily_msg_matcher'">
@@ -1970,6 +2443,86 @@ const dailyChartPack = computed(() => {
               <label
                 v-for="s in matcherRunCandidates"
                 :key="`ext-mb-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_duration_hourly'">
+          <p class="muted home-plugin-charts__hint">
+            纵轴为小时内<strong>累计耗时 ÷ 执行次数</strong>（毫秒）；与 Matcher 次数视图共用插件勾选。横轴 0–23 每小时一刻度。
+          </p>
+          <div
+            v-if="matcherDurationCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherDurationCandidates"
+                :key="`ext-mdh-${s.plugin}`"
+                class="home-plugin-sel__item"
+              >
+                <input
+                  v-model="selectedMatcherKeys"
+                  type="checkbox"
+                  :value="s.plugin"
+                >
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="chartPanel === 'matcher_duration_bucket'">
+          <p class="muted home-plugin-charts__hint">
+            每柱为时间桶内<strong>平均 Matcher 墙钟耗时</strong>（毫秒）。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
+          </p>
+          <div
+            v-if="matcherDurationCandidates.length"
+            class="home-plugin-sel"
+          >
+            <span class="home-plugin-sel__actions">
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(true)"
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="toggleAllMatchers(false)"
+              >
+                全不选
+              </button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label
+                v-for="s in matcherDurationCandidates"
+                :key="`ext-mdb-${s.plugin}`"
                 class="home-plugin-sel__item"
               >
                 <input
@@ -2387,6 +2940,74 @@ const dailyChartPack = computed(() => {
   background: linear-gradient(90deg, var(--accent), rgba(125, 211, 252, 0.75));
   min-width: 2px;
   transition: width 0.25s var(--ease, ease);
+}
+.home-plugin-bars__fill--duration {
+  background: linear-gradient(90deg, #c2410c, rgba(251, 146, 60, 0.85));
+}
+.home-matcher-dur-log {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  background: var(--bg-elev);
+  padding: 8px 10px;
+  max-height: min(420px, 52vh);
+  overflow: auto;
+  box-sizing: border-box;
+}
+.home-matcher-dur-log__hint {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.home-matcher-dur-log__head {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto auto;
+  gap: 6px 8px;
+  padding: 0 8px 4px;
+  font-size: 0.72rem;
+}
+.home-matcher-dur-log__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.home-matcher-dur-log__row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto auto;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.home-matcher-dur-log__row--err {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.home-matcher-dur-log__ms {
+  font-weight: 700;
+  color: #fdba74;
+  min-width: 4.5rem;
+}
+.home-matcher-dur-log__plugin {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-matcher-dur-log__at {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.home-matcher-dur-log__badge {
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fecaca;
 }
 .home-plugin-bars__val {
   text-align: right;

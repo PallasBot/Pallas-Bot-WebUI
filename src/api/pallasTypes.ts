@@ -114,6 +114,12 @@ export interface PluginRunStatsRow {
   runs_today: number;
   errors: number;
   errors_today: number;
+  /** 累计平均 Matcher 墙钟耗时（毫秒）；无样本时为 null */
+  avg_duration_ms?: number | null;
+  max_duration_ms?: number | null;
+  /** 今日平均 / 峰值耗时（毫秒） */
+  avg_duration_ms_today?: number | null;
+  max_duration_ms_today?: number | null;
 }
 
 /** Matcher 按插件名拆分的时间序列（与 matcher_calls_history_bucket_sec 对齐） */
@@ -129,6 +135,14 @@ export interface MatcherErrorLogEntry {
   exc_type: string;
   message: string;
   traceback: string;
+}
+
+/** 单次 Matcher 墙钟耗时（jsonl 持久化，每账号默认最多 80 条，重启可恢复） */
+export interface MatcherDurationLogEntry {
+  at: number;
+  plugin: string;
+  duration_ms: number;
+  had_error: boolean;
 }
 
 /** GET /console-daily-stats 单日一行（自然日，无时间桶） */
@@ -171,8 +185,15 @@ export interface PluginRunStatsData {
     matcher_runs_by_plugin?: PluginMatcherNamedSeries[];
     /** 各插件 Matcher 执行异常次数按桶 */
     matcher_errors_by_plugin?: PluginMatcherNamedSeries[];
+    /** 各插件 Matcher 耗时（毫秒）按桶累计 */
+    matcher_duration_ms_by_plugin?: PluginMatcherNamedSeries[];
+    /** 各插件 Matcher 桶内平均耗时（毫秒） */
+    matcher_avg_duration_ms_by_plugin?: PluginMatcherNamedSeries[];
     /** 最近若干次 Matcher 异常（含截断后的 traceback） */
     matcher_error_log?: MatcherErrorLogEntry[];
+    /** 最近若干次 Matcher 单次耗时（新→旧，条数上限见 matcher_duration_log_cap） */
+    matcher_duration_log?: MatcherDurationLogEntry[];
+    matcher_duration_log_cap?: number;
   }>;
 }
 
