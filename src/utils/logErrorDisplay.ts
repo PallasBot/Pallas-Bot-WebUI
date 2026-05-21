@@ -19,6 +19,10 @@ export function tracebackLineCount(tb: string): number {
   return tb.split("\n").filter((ln) => ln.trim()).length;
 }
 
+export function isTracebackTruncated(tb: string): boolean {
+  return /…\(truncated\)\s*$/.test((tb ?? "").trimEnd());
+}
+
 export type LogErrorCopyFields = {
   at: number;
   exc_type: string;

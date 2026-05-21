@@ -1,4 +1,10 @@
-import type { LogEntryLevel } from "@/api/pallasTypes";
+import type { LogEntry, LogEntryLevel } from "@/api/pallasTypes";
+
+const _embeddedShardPrefixRe = /^\[(?<tag>[^\]]+)\]\s+(?<rest>.+)$/;
+const _nonebotBracketBodyRe =
+  /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<lev>[A-Z]+)\]\s+(?<scope>[^|]+?)\s*\|\s*(?<msg>.*)$/;
+const _loguruBodyRe =
+  /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\|\s+(?<lev>\S+)\s+\|\s+(?<scope>[^:]+):(?<lineno>\d+)\s+-\s+(?<msg>.*)$/;
 
 /** 与 NoneBot loguru 行首一致：`MM-DD HH:mm:ss`（不含年份） */
 export function formatLogDisplayTime(raw: string | number): string {
@@ -48,4 +54,56 @@ export function logEntryLevelClass(lv: LogEntryLevel): string {
   if (lv === "success") return `${base} log-line__lv--success`;
   if (lv === "info") return `${base} log-line__lv--info`;
   return base;
+}
+
+function bucketLevel(raw: string): LogEntryLevel {
+  const u = raw.trim().toUpperCase();
+  if (u === "TRACE" || u === "DEBUG") return "debug";
+  if (u === "WARNING" || u === "WARN") return "warn";
+  if (u === "ERROR" || u === "CRITICAL") return "error";
+  if (u === "SUCCESS") return "success";
+  return "info";
+}
+
+/** 结构化视图：从 [raw] 正文里拆出时间/级别/来源，给消息留足横向空间 */
+export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
+  const scope = String(row.scope ?? "").trim();
+  const message = String(row.message ?? "");
+  if (scope !== "raw" && row.time) {
+    return row;
+  }
+  let body = message.trim();
+  let sourceTag = "";
+  for (let i = 0; i < 3; i += 1) {
+    const m = _embeddedShardPrefixRe.exec(body);
+    if (!m?.groups?.rest) break;
+    sourceTag = sourceTag ? `${sourceTag}/${m.groups.tag}` : String(m.groups.tag);
+    body = String(m.groups.rest).trim();
+  }
+  const nb = _nonebotBracketBodyRe.exec(body);
+  if (nb?.groups) {
+    const mod = String(nb.groups.scope ?? "").trim();
+    return {
+      ...row,
+      time: row.time || String(nb.groups.dt),
+      level: bucketLevel(String(nb.groups.lev)),
+      scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+      message: String(nb.groups.msg ?? ""),
+    };
+  }
+  const lg = _loguruBodyRe.exec(body);
+  if (lg?.groups) {
+    const mod = String(lg.groups.scope ?? "").trim();
+    return {
+      ...row,
+      time: row.time || String(lg.groups.dt),
+      level: bucketLevel(String(lg.groups.lev)),
+      scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+      message: String(lg.groups.msg ?? ""),
+    };
+  }
+  if (sourceTag) {
+    return { ...row, scope: sourceTag, message: body };
+  }
+  return row;
 }
