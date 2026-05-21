@@ -616,7 +616,17 @@ const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.match
 
 const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
 
+const scopedMatcherAvgDurationByPlugin = computed(
+  () => scopedPluginRunRow.value?.matcher_avg_duration_ms_by_plugin ?? [],
+);
+
+const scopedMatcherDurationMsByPlugin = computed(
+  () => scopedPluginRunRow.value?.matcher_duration_ms_by_plugin ?? [],
+);
+
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
+
+const scopedMatcherDurationLog = computed(() => scopedPluginRunRow.value?.matcher_duration_log ?? []);
 
 /** 图表工具栏旁小字：API 今日调用次数片段（与 message-stats 账户行一致） */
 const chartToolbarSummaryApi = computed(() => {
@@ -638,6 +648,25 @@ const chartToolbarSummaryPlugin = computed(() => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "插件 —";
   return `插件 ${Math.floor(num)}`;
+});
+
+/** 图表工具栏旁小字：今日有耗时样本的插件简单平均 Matcher 耗时 */
+const chartToolbarSummaryDuration = computed(() => {
+  const plugins = scopedPluginPlugins.value;
+  if (!plugins.length) return "";
+  let sum = 0;
+  let cnt = 0;
+  for (const p of plugins) {
+    const avg = p.avg_duration_ms_today;
+    if (avg != null && Number.isFinite(avg) && avg > 0) {
+      sum += avg;
+      cnt += 1;
+    }
+  }
+  if (cnt <= 0) return "";
+  const ms = Math.round(sum / cnt);
+  if (ms >= 1000) return `均耗 ${(ms / 1000).toFixed(1)}s`;
+  return `均耗 ${ms}ms`;
 });
 
 function formatMatcherErrorAt(sec: number): string {
@@ -1313,7 +1342,12 @@ onUnmounted(() => {
                         :api-history-bucket-sec="msgMainStats?.api_calls_history_bucket_sec"
                         :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
                         :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
+                        :matcher-avg-duration-ms-by-plugin="scopedMatcherAvgDurationByPlugin"
+                        :matcher-duration-ms-by-plugin="scopedMatcherDurationMsByPlugin"
+                        :matcher-duration-log="scopedMatcherDurationLog"
+                        :matcher-duration-log-cap="scopedPluginRunRow?.matcher_duration_log_cap ?? 80"
                         :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
+                        :toolbar-summary-duration="chartToolbarSummaryDuration"
                         :daily-stat-rows="consoleDailyStats?.rows ?? []"
                         chart-filter-teleport="#home-account-chart-config-outlet"
                         :toolbar-summary-api="chartToolbarSummaryApi"
