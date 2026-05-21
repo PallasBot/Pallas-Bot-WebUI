@@ -197,9 +197,15 @@ export interface PluginRunStatsData {
   }>;
 }
 
+export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
+
 export interface PluginRow {
   name: string;
   module: string;
+  nb_plugin_name?: string;
+  load_role?: PluginLoadRole;
+  loaded_in_process?: boolean;
+  has_config?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;
   help_hidden?: boolean;
@@ -308,8 +314,12 @@ export interface LogsData {
   entries: LogEntry[];
   max: number;
   scope?: LogScope;
+  /** 当前筛选来源：all | hub | worker-N */
+  source?: string;
   /** 分片 hub：已合并 data/pallas_shard/logs 下 hub/worker 落盘尾行 */
   sharded_logs?: boolean;
+  /** 分片时可选的日志来源列表 */
+  log_sources?: string[];
 }
 
 /** 数据库概览 */

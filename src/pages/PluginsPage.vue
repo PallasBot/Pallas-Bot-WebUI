@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { fetchPluginConfig, fetchPlugins, peekPluginsCache } from "@/api/consoleApi";
-import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
+import type { PluginConfigData, PluginLoadRole, PluginRow } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -33,6 +33,24 @@ const sortedPlugins = computed(() => {
 
 function isPluginFavorite(name: string): boolean {
   return pluginFavoriteNames.value.has(name);
+}
+
+const loadRoleLabel: Record<PluginLoadRole, string> = {
+  hub: "Hub",
+  worker: "Worker",
+  both: "双端",
+  infra: "基础设施",
+  internal: "内部",
+};
+
+function pluginRoleText(p: PluginRow): string {
+  const role = p.load_role;
+  if (!role) return "";
+  const base = loadRoleLabel[role] ?? role;
+  if (p.loaded_in_process) return `${base} · 本进程已加载`;
+  if (role === "worker") return `${base} · 仅 Worker`;
+  if (role === "hub") return `${base} · 仅 Hub`;
+  return base;
 }
 onMounted(async () => {
   try {
@@ -112,6 +130,12 @@ async function togglePreview(name: string) {
                   :title="(p.metadata?.description || p.module) || undefined"
                 >
                   {{ p.metadata?.description || p.module }}
+                </div>
+                <div
+                  v-if="pluginRoleText(p)"
+                  class="muted plugin-card__role-line"
+                >
+                  {{ pluginRoleText(p) }}
                 </div>
               </RouterLink>
               <button
