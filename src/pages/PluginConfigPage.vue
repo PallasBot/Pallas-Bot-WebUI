@@ -133,24 +133,25 @@ function fieldModel(f: PluginConfigField): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
-function parseField(f: PluginConfigField, raw: string): unknown {
-  if (f.kind === "bool") return raw === "true" || raw === "1";
+function parseField(f: PluginConfigField, raw: unknown): unknown {
+  const text = String(raw ?? "");
+  if (f.kind === "bool") return text === "true" || text === "1";
   if (f.kind === "int") {
-    const t = raw.trim();
+    const t = text.trim();
     if (!t) return f.default ?? 0;
     const n = parseInt(t, 10);
     if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入整数`);
     return n;
   }
   if (f.kind === "float") {
-    const t = raw.trim();
+    const t = text.trim();
     if (!t) return f.default ?? 0;
     const n = parseFloat(t);
     if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入数字`);
     return n;
   }
   if (f.kind === "json") {
-    const t = raw.trim();
+    const t = text.trim();
     if (!t) {
       if (Array.isArray(f.default)) return [];
       if (f.default !== null && f.default !== undefined && typeof f.default === "object") {
@@ -158,9 +159,9 @@ function parseField(f: PluginConfigField, raw: string): unknown {
       }
       return Array.isArray(f.current) ? [] : (f.current ?? []);
     }
-    return JSON.parse(raw) as unknown;
+    return JSON.parse(text) as unknown;
   }
-  return raw;
+  return text;
 }
 
 const fieldValues = ref<Record<string, string>>({});

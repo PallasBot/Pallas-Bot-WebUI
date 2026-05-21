@@ -166,12 +166,13 @@ useSaveHotkey(
   () => save(),
 );
 
-function parseField(f: PluginConfigField, raw: string): unknown {
-  if (f.kind === "bool") return raw === "true" || raw === "1";
-  if (f.kind === "int") return parseInt(raw, 10);
-  if (f.kind === "float") return parseFloat(raw);
-  if (f.kind === "json") return JSON.parse(raw) as unknown;
-  return raw;
+function parseField(f: PluginConfigField, raw: unknown): unknown {
+  const text = String(raw ?? "");
+  if (f.kind === "bool") return text === "true" || text === "1";
+  if (f.kind === "int") return parseInt(text.trim() || "0", 10);
+  if (f.kind === "float") return parseFloat(text.trim() || "0");
+  if (f.kind === "json") return JSON.parse(text) as unknown;
+  return text;
 }
 
 function collectValues(): Record<string, unknown> {
@@ -183,7 +184,7 @@ function collectValues(): Record<string, unknown> {
       continue;
     }
     const raw = fieldValues.value[f.name] ?? "";
-    if (f.kind === "json" && raw.trim() === "") {
+    if (f.kind === "json" && String(raw).trim() === "") {
       values[f.name] = null;
     } else {
       values[f.name] = parseField(f, raw);
