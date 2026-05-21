@@ -10,7 +10,6 @@ import {
   formatLogDisplayTime,
   loadLogsEnabledLevels,
   LOG_ENTRY_LEVELS,
-  logEntryLevelClass,
   normalizeLogEntryDisplay,
   parseLogLineLevel,
   persistLogsEnabledLevels,
@@ -322,20 +321,20 @@ onUnmounted(() => {
             role="group"
             aria-label="日志级别筛选"
           >
+            <span class="logs-page__levels-label">级别</span>
             <button
               v-for="lv in LOG_ENTRY_LEVELS"
               :key="lv"
               type="button"
               class="logs-page__level-btn"
-              :class="{
-                'logs-page__level-btn--on': enabledLevels.has(lv),
-                'logs-page__level-btn--off': !enabledLevels.has(lv),
-                [logEntryLevelClass(lv)]: true,
-              }"
+              :class="[
+                `logs-page__level-btn--${lv}`,
+                enabledLevels.has(lv) ? 'logs-page__level-btn--on' : 'logs-page__level-btn--off',
+              ]"
               :aria-pressed="enabledLevels.has(lv)"
               @click="toggleLogLevel(lv)"
             >
-              {{ lv.toUpperCase() }}
+              {{ lv }}
             </button>
           </div>
         </div>
@@ -379,7 +378,7 @@ onUnmounted(() => {
                 >
                   <div class="log-line__meta">
                     <span class="log-line__time">{{ formatLogDisplayTime(row.time) }}</span>
-                    <span :class="logEntryLevelClass(row.level)">{{ row.level }}</span>
+                    <span :class="['log-line__lv', `log-line__lv--${row.level}`]">{{ row.level }}</span>
                     <span
                       v-if="row.scope"
                       class="log-line__scope"
