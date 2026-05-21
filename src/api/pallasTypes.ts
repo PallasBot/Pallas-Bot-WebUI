@@ -219,12 +219,14 @@ export interface HelpMenuVisibilityData {
 
 export interface PluginConfigField {
   name: string;
-  kind: "bool" | "int" | "float" | "json" | "string";
+  kind: "bool" | "int" | "float" | "json" | "string" | "enum";
   required: boolean;
   description: string;
   env_key: string;
   default: unknown;
   current: unknown;
+  /** kind 为 enum 时由后端 Literal 推导 */
+  choices?: string[];
 }
 
 /** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
