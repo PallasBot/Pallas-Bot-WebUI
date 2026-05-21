@@ -392,10 +392,13 @@ export async function fetchMessageStats(selfId?: number): Promise<MessageStatsDa
 export async function fetchPluginRunStats(
   selfId?: number,
   logSource?: string,
+  options?: { tbLimit?: number },
 ): Promise<PluginRunStatsData> {
-  const params: { self_id?: number; log_source?: string } = {};
+  const params: { self_id?: number; log_source?: string; tb_limit?: number } = {};
   if (selfId) params.self_id = selfId;
   if (logSource && logSource !== "all") params.log_source = logSource;
+  const tbLimit = options?.tbLimit;
+  if (tbLimit !== undefined) params.tb_limit = tbLimit;
   const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", { params });
   return unwrap(data, "/plugin-run-stats");
 }

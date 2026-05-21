@@ -9,6 +9,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import {
   formatLogDisplayTime,
   logEntryLevelClass,
+  normalizeLogEntryDisplay,
   stripYearFromLogLine,
 } from "@/utils/logDisplay";
 
@@ -151,10 +152,12 @@ const sourceOptions = computed(() => {
   return ["all", ...opts.filter((s) => s !== "all")];
 });
 
+const displayEntries = computed(() => entries.value.map((e) => normalizeLogEntryDisplay(e)));
+
 const filtered = computed(() => {
   const needle = q.value.trim().toLowerCase();
-  if (!needle) return entries.value;
-  return entries.value.filter(
+  if (!needle) return displayEntries.value;
+  return displayEntries.value.filter(
     (e) =>
       e.message.toLowerCase().includes(needle) ||
       e.scope.toLowerCase().includes(needle) ||
@@ -319,9 +322,15 @@ onUnmounted(() => {
                   :key="row.id"
                   class="log-line"
                 >
-                  <span class="log-line__time">{{ formatLogDisplayTime(row.time) }}</span>
-                  <span :class="logEntryLevelClass(row.level)">{{ row.level }}</span>
-                  <span class="log-line__scope">[{{ row.scope }}]</span>
+                  <div class="log-line__meta">
+                    <span class="log-line__time">{{ formatLogDisplayTime(row.time) }}</span>
+                    <span :class="logEntryLevelClass(row.level)">{{ row.level }}</span>
+                    <span
+                      v-if="row.scope"
+                      class="log-line__scope"
+                      :title="row.scope"
+                    >[{{ row.scope }}]</span>
+                  </div>
                   <span class="log-line__msg">{{ row.message }}</span>
                 </div>
               </div>

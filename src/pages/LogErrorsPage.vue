@@ -12,6 +12,7 @@ import { formatLogDisplayTime } from "@/utils/logDisplay";
 import {
   formatLogErrorFull,
   formatLogErrorSummary,
+  isTracebackTruncated,
   parseLogErrorPlugin,
   tracebackLineCount,
 } from "@/utils/logErrorDisplay";
@@ -31,7 +32,7 @@ async function load() {
   loading.value = true;
   err.value = "";
   try {
-    const stats = await fetchPluginRunStats(undefined, logSource.value);
+    const stats = await fetchPluginRunStats(undefined, logSource.value, { tbLimit: 0 });
     entries.value = stats.log_error_log ?? [];
     shardedLogErrors.value = Boolean(stats.sharded_log_errors);
     if (stats.log_error_sources?.length) {
@@ -257,7 +258,7 @@ onMounted(load);
                   :open="expandAllTb"
                 >
                   <summary class="log-error-card__details-summary">
-                    堆栈跟踪（{{ it.tbLines }} 行）
+                    堆栈跟踪（{{ it.tbLines }} 行<template v-if="isTracebackTruncated(it.traceback)"> · 落盘时已截断</template>）
                   </summary>
                   <pre class="log-error-card__tb">{{ it.traceback }}</pre>
                 </details>
