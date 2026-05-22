@@ -61,6 +61,16 @@ export async function protocolStopAccount(mountUrl: string, accountId: string): 
   return data?.account ?? null;
 }
 
+export async function protocolRestartAccount(
+  mountUrl: string,
+  accountId: string,
+): Promise<NapcatAccountRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<AccountActionBody>(
+    `/api/accounts/${encodeURIComponent(accountId)}/restart`,
+  );
+  return data?.account ?? null;
+}
+
 export async function protocolDeleteAccount(mountUrl: string, accountId: string): Promise<void> {
   await protocolHttp(mountUrl).delete(`/api/accounts/${encodeURIComponent(accountId)}`);
 }

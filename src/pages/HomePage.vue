@@ -8,11 +8,13 @@ import {
   fetchFriendList,
   fetchGroupList,
   fetchInstances,
+  fetchCommunityStats,
   fetchConsoleDailyStats,
   fetchMessageStats,
   fetchPluginRunStats,
   fetchPlugins,
   fetchRequestOverview,
+  fetchShardObservability,
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
@@ -25,11 +27,14 @@ import type {
   FriendListData,
   GroupListData,
   InstancesData,
+  CommunityStatsData,
   ConsoleDailyStatsData,
   MessageStatsData,
   PluginRow,
   PluginRunStatsData,
   RequestOverviewData,
+  ShardObservabilityData,
+  ShardObservabilityWorker,
   SystemData,
   UpdateCheckData,
 } from "@/api/pallasTypes";
@@ -86,6 +91,8 @@ const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
+const shardObs = ref<ShardObservabilityData | null>(null);
+const communityStats = ref<CommunityStatsData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
@@ -124,27 +131,78 @@ const accountPickerRoot = ref<HTMLElement | null>(null);
 const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
 
+const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
+const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
+/** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
+const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
+
+function loadAccountChartsDrawExpanded(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    const v = localStorage.getItem(CHART_DRAW_EXPANDED_KEY);
+    if (v === "0") return false;
+    if (v === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+function loadAccountChartsFilterExpanded(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    if (localStorage.getItem(CHART_FILTER_EXPANDED_KEY) === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
+const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
+
+const accountHeroHeightCapActive = computed(
+  () => accountHeroLockHeightPx.value >= 120 && typeof window !== "undefined" && window.matchMedia("(min-width: 561px)").matches,
+);
+
+/** 硬上限：仅在图表收起时更新，值为左侧账户区高度（≈ 无图表展开时的整块高度） */
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
-  if (typeof window === "undefined") return {};
-  if (!window.matchMedia("(min-width: 561px)").matches) return {};
-  const h = accountHeroLockHeightPx.value;
-  if (h < 120) return {};
-  return { "--home-account-hero-lock-px": `${h}px` };
+  if (!accountHeroHeightCapActive.value) return {};
+  return { "--home-account-hero-lock-px": `${accountHeroLockHeightPx.value}px` };
 });
 
 /** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
 const accountChartsShellLockStyle = computed((): Record<string, string> => {
   if (typeof window === "undefined") return {};
   if (!window.matchMedia("(min-width: 561px)").matches) return {};
+  if (!accountChartsDrawExpanded.value) {
+    return { minHeight: "0", height: "auto", maxHeight: "none" };
+  }
   const h = accountHeroLockHeightPx.value;
   if (h < 120) return {};
-  return {
+  const style: Record<string, string> = {
     height: `${h}px`,
     maxHeight: `${h}px`,
     minHeight: "0",
+    overflow: "hidden",
   };
+  if (accountChartsFilterExpanded.value) {
+    style["--home-account-chart-filter-slot-px"] = `${ACCOUNT_CHART_FILTER_SLOT_PX}px`;
+  }
+  return style;
 });
 
+function onAccountChartsDrawToggle(expanded: boolean) {
+  accountChartsDrawExpanded.value = expanded;
+  scheduleAccountHeroLockMeasure();
+}
+
+function onAccountChartsFilterToggle(expanded: boolean) {
+  accountChartsFilterExpanded.value = expanded;
+  scheduleAccountHeroLockMeasure();
+}
+
+/** 硬上限取左侧账户区高度（与图表收起时整行高度一致，不受右侧图表撑高） */
 function measureAccountHeroLockHeight() {
   if (typeof window === "undefined") return;
   if (!window.matchMedia("(min-width: 561px)").matches) {
@@ -167,7 +225,7 @@ function scheduleAccountHeroLockMeasure() {
   });
 }
 
-/** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
+/** matcher 异常 details 开合会改变左侧卡高，需重测硬上限 */
 function onMatcherDetailsToggle() {
   scheduleAccountHeroLockMeasure();
 }
@@ -269,6 +327,87 @@ function uptimeFromBoot(boot: number | null | undefined): string {
 function pct(n: number | null | undefined, digits = 1): string {
   if (n == null || Number.isNaN(n)) return "—";
   return `${n.toFixed(digits)}%`;
+}
+
+/** API 返回 0–1 比率（如 claim_hit_rate），需乘 100 再显示为百分数。 */
+function ratioPct(ratio: number | null | undefined, digits = 1): string {
+  if (ratio == null || Number.isNaN(ratio)) return "—";
+  return `${(ratio * 100).toFixed(digits)}%`;
+}
+
+const shardObsVisible = computed(() => shardObs.value?.sharded === true);
+
+const shardIngressHitRate = computed(() =>
+  ratioPct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null),
+);
+
+const shardIngressEvents = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "—";
+  return String(ing.events ?? 0);
+});
+
+const shardIngressGateHint = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "代表牛 · won/(won+lost)";
+  const won = ing.claim_won ?? 0;
+  const lost = ing.claim_lost ?? 0;
+  return `won ${won} · lost ${lost} · 活跃 N 片约 1/N`;
+});
+
+const shardIngressEventsHint = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "—";
+  const early = (ing.early_fleet ?? 0) + (ing.early_not_at_target ?? 0);
+  return `fanout ${ing.fanout_bypass ?? 0} · 早丢弃 ${early}`;
+});
+
+const shardCoordValue = computed(() => {
+  const c = shardObs.value?.coord_pending_live;
+  if (!c) return "—";
+  return String(c.total_json ?? 0);
+});
+
+const shardCoordHint = computed(() => {
+  const c = shardObs.value?.coord_pending_live;
+  if (!c) return "data/pallas_shard/coord";
+  const stale = c.bot_action_stale_open ?? 0;
+  const parts = [`bot_action open ${c.bot_action_open ?? 0}`];
+  if (stale > 0) parts.push(`过期 open ${stale}`);
+  return parts.join(" · ");
+});
+
+const shardPgPeakValue = computed(() => {
+  const p = shardObs.value?.pg_pool;
+  if (p?.estimated_pg_connections_peak == null) return "—";
+  return `~${p.estimated_pg_connections_peak}`;
+});
+
+const shardPgHint = computed(() => {
+  const p = shardObs.value?.pg_pool;
+  if (!p) return "对照 PostgreSQL max_connections";
+  const warning = (p.warning || "").trim();
+  if (warning) return warning;
+  return `${p.estimated_processes ?? "?"} 进程 × ${p.per_process_max ?? "?"} per pool`;
+});
+
+const shardPgHintWarn = computed(() => Boolean((shardObs.value?.pg_pool?.warning || "").trim()));
+
+const shardWorkerRows = computed((): ShardObservabilityWorker[] => {
+  const rows = shardObs.value?.workers;
+  return Array.isArray(rows) ? rows : [];
+});
+
+function shardWorkerHitRate(row: ShardObservabilityWorker): string {
+  const ing = row.ingress;
+  if (!ing) return "无数据";
+  return ratioPct(ing.claim_hit_rate ?? null);
+}
+
+function shardWorkerCell(row: ShardObservabilityWorker, field: "claim_won" | "claim_lost"): string {
+  const ing = row.ingress;
+  if (!ing) return "—";
+  return String(ing[field] ?? 0);
 }
 
 const perfSampled = computed(() => {
@@ -584,6 +723,28 @@ const selectedConnected = computed(() => {
 
 const msgMainStats = computed(() => statsScoped.value ?? stats.value);
 
+function formatCommunityStatNum(n: number | undefined | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return Math.floor(n).toLocaleString();
+}
+
+const communityDeploymentsTotal = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_total),
+);
+const communityDeploymentsOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_online),
+);
+const communityBotsOnlineSum = computed(() =>
+  formatCommunityStatNum(communityStats.value?.bots_online_sum),
+);
+
+const communityOnlineHint = computed(() => {
+  const sec = communityStats.value?.online_ttl_sec;
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "有心跳窗口内";
+  const m = Math.max(1, Math.round(sec / 60));
+  return `近 ${m} 分钟有心跳`;
+});
+
 const msgTotalStr = computed(() => {
   const s = msgMainStats.value;
   if (!s) return "—";
@@ -727,7 +888,7 @@ async function refreshSelectedBotDetails() {
       fetchConsoleDailyStats({ selfId: acc }),
       fetchFriendList(acc),
       fetchGroupList(acc),
-      fetchRequestOverview(),
+      fetchRequestOverview({ selfId: acc }),
     ]);
     function take<T>(i: number): T | null {
       const r = settled[i];
@@ -750,7 +911,7 @@ async function refreshSelectedBotDetails() {
       cachePutFriendGroupLists(sidKey, friendSnap.value, groupSnap.value);
     }
     if (requestOverviewSnap.value) {
-      cachePutRequestOverview(requestOverviewSnap.value);
+      cachePutRequestOverview(requestOverviewSnap.value, acc);
     }
   } finally {
     socialBusy.value = false;
@@ -772,7 +933,7 @@ watch(selectedAccount, (acc, prev) => {
       friendSnap.value = null;
       groupSnap.value = null;
     }
-    const cachedOv = cacheTryGetRequestOverview();
+    const cachedOv = cacheTryGetRequestOverview(acc);
     if (cachedOv) requestOverviewSnap.value = cachedOv;
     else requestOverviewSnap.value = null;
   }
@@ -871,7 +1032,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -881,11 +1042,15 @@ async function load() {
       fetchPlugins(),
       fetchBotUpdateCheck().catch(() => null),
       fetchUpdateCheck().catch(() => null),
+      fetchCommunityStats().catch(() => null),
+      fetchShardObservability().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
+    communityStats.value = (comm as CommunityStatsData | null) ?? null;
+    shardObs.value = (shard as ShardObservabilityData | null) ?? null;
     stats.value = m;
     pluginRunStats.value = pr;
     bots.value = botList;
@@ -907,13 +1072,14 @@ async function load() {
   }
 }
 
+async function refreshHomeRuntimePanels() {
+  const [sys, obs] = await Promise.allSettled([fetchSystem(), fetchShardObservability()]);
+  if (sys.status === "fulfilled") system.value = sys.value;
+  if (obs.status === "fulfilled") shardObs.value = obs.value;
+}
+
 async function refreshSystemRuntimeOnly() {
-  try {
-    const s = await fetchSystem();
-    system.value = s;
-  } catch {
-    /* 保留上一次 system */
-  }
+  await refreshHomeRuntimePanels();
 }
 
 let homeSystemPollId: ReturnType<typeof setInterval> | null = null;
@@ -1057,6 +1223,7 @@ onUnmounted(() => {
           role="status"
         >正在同步概况…</p>
     <div class="home-dashboard">
+      <div class="home-dashboard__hero">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
           <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
@@ -1088,6 +1255,7 @@ onUnmounted(() => {
               <div
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
+                :class="{ 'home-account-split-bd--lock-h': accountHeroHeightCapActive }"
                 :style="accountUnifiedHeroLockStyle"
               >
                 <div
@@ -1345,6 +1513,8 @@ onUnmounted(() => {
                       :style="accountChartsShellLockStyle"
                     >
                       <HomePluginRunCharts
+                        @draw-toggle="onAccountChartsDrawToggle"
+                        @filter-toggle="onAccountChartsFilterToggle"
                         :plugins="scopedPluginPlugins"
                         :plugins-meta="pluginsList"
                         :series="pluginRunTimeSamples"
@@ -1364,18 +1534,116 @@ onUnmounted(() => {
                         :toolbar-summary-api="chartToolbarSummaryApi"
                         :toolbar-summary-plugin="chartToolbarSummaryPlugin"
                       />
+                      <div
+                        id="home-account-chart-config-outlet"
+                        class="home-account-chart-config-outlet"
+                        :class="{
+                          'home-account-chart-config-outlet--slot':
+                            accountChartsDrawExpanded && accountChartsFilterExpanded,
+                        }"
+                      />
                     </div>
                 </div>
               </div>
             </template>
           </div>
         </div>
-        <div
-          v-if="selectedAccount != null && sortedDbBots.length"
-          id="home-account-chart-config-outlet"
-          class="home-account-chart-config-outlet"
-        />
       </section>
+
+      <aside class="home-dashboard__aside">
+      <section class="home-dashboard__community">
+        <div class="grid-stats home-page__capacity-grid home-dashboard__aside-stats">
+          <StatCard
+            dense
+            label="社区部署总数"
+            :value="communityDeploymentsTotal"
+            hint="历史上报过的独立安装"
+          />
+          <StatCard
+            dense
+            label="在线部署数"
+            :value="communityDeploymentsOnline"
+            :hint="communityOnlineHint"
+          />
+          <StatCard
+            dense
+            label="在线牛总和"
+            :value="communityBotsOnlineSum"
+            hint="全社区各部署上报之和"
+          />
+        </div>
+      </section>
+
+      <div class="panel home-page__panel home-page__version-panel">
+        <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/" />
+            <span
+              v-if="health?.ok"
+              class="home-page__hd-capsule home-page__hd-capsule--ok"
+            >API 连接</span>
+          </div>
+        </div>
+        <div class="panel__bd muted home-page__version home-page__version--grid">
+          <dl class="home-dl home-dl--version-rows home-version-dl">
+            <dt>NoneBot2</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
+              <span class="home-dl__sub muted">框架</span>
+            </dd>
+            <dt>Pallas-Bot</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+              <RouterLink
+                v-if="botUpdateCheck?.has_update"
+                class="home-version-update-link"
+                to="/update#console-update-bot"
+              >
+                <span class="badge badge--warn">有更新</span>
+                <span
+                  v-if="(botUpdateCheck?.latest_tag || '').trim()"
+                  class="home-version-update-meta muted"
+                >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
+              </RouterLink>
+              <span
+                v-else-if="botUpdateCheck?.development_build"
+                class="badge badge--dev home-version-dev-badge"
+                :title="botDevelopmentBuildTitle"
+              >开发构建</span>
+              <span class="home-dl__sub muted">业务</span>
+            </dd>
+            <dt>控制台资源</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
+              <RouterLink
+                v-if="webUpdateCheck?.has_update"
+                class="home-version-update-link"
+                to="/update#console-update-webui"
+              >
+                <span class="badge badge--warn">有更新</span>
+                <span
+                  v-if="(webUpdateCheck?.latest_tag || '').trim()"
+                  class="home-version-update-meta muted"
+                >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
+              </RouterLink>
+            </dd>
+            <dt>服务时间</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
+            </dd>
+            <dt>主机 / Python</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
+              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
+            </dd>
+          </dl>
+        </div>
+      </div>
+      </aside>
+      </div>
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid">
@@ -1554,75 +1822,81 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-    </div>
 
-    <div class="panel home-page__panel home-page__version-panel">
-      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/" />
-          <span
-            v-if="health?.ok"
-            class="home-page__hd-capsule home-page__hd-capsule--ok"
-          >API 连接</span>
+      <section
+        v-if="shardObsVisible"
+        class="home-dashboard__shard-obs"
+      >
+        <div class="panel home-page__panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">⎇</span>分片可观测
+            </h2>
+            <div class="row-actions">
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">ingress / coord / PG</span>
+            </div>
+          </div>
+          <div class="panel__bd home-shard-obs__bd">
+            <div class="grid-stats home-shard-obs__kpis">
+              <StatCard
+                dense
+                label="Ingress 命中率"
+                :value="shardIngressHitRate"
+                :hint="shardIngressGateHint"
+              />
+              <StatCard
+                dense
+                label="Ingress 事件"
+                :value="shardIngressEvents"
+                :hint="shardIngressEventsHint"
+              />
+              <StatCard
+                dense
+                label="Coord 积压"
+                :value="shardCoordValue"
+                :hint="shardCoordHint"
+              />
+              <div :class="{ 'home-shard-obs__pg-warn': shardPgHintWarn }">
+                <StatCard
+                  dense
+                  label="PG 连接池"
+                  :value="shardPgPeakValue"
+                  :hint="shardPgHint"
+                />
+              </div>
+            </div>
+            <div
+              v-if="shardWorkerRows.length"
+              class="home-shard-obs__workers"
+            >
+              <p class="home-shard-obs__workers-title muted">各 worker 命中率（今日）</p>
+              <div class="home-shard-obs__table-wrap">
+                <table class="home-shard-obs__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Worker</th>
+                      <th scope="col">命中率</th>
+                      <th scope="col">won</th>
+                      <th scope="col">lost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in shardWorkerRows"
+                      :key="row.shard_id"
+                    >
+                      <td>worker-{{ row.shard_id }}</td>
+                      <td>{{ shardWorkerHitRate(row) }}</td>
+                      <td>{{ shardWorkerCell(row, 'claim_won') }}</td>
+                      <td>{{ shardWorkerCell(row, 'claim_lost') }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="panel__bd muted home-page__version home-page__version--grid">
-        <dl class="home-dl home-dl--version-rows home-version-dl">
-          <dt>NoneBot2</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
-            <span class="home-dl__sub muted">框架</span>
-          </dd>
-          <dt>Pallas-Bot</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
-            <RouterLink
-              v-if="botUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-bot"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(botUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-            <span
-              v-else-if="botUpdateCheck?.development_build"
-              class="badge badge--dev home-version-dev-badge"
-              :title="botDevelopmentBuildTitle"
-            >开发构建</span>
-            <span class="home-dl__sub muted">业务</span>
-          </dd>
-          <dt>控制台资源</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
-            <RouterLink
-              v-if="webUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-webui"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(webUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-          </dd>
-          <dt>服务时间</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
-          </dd>
-          <dt>主机 / Python</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
-          </dd>
-        </dl>
-      </div>
+      </section>
     </div>
     </div>
     </Transition>
