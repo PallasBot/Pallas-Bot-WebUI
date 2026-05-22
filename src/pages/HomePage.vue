@@ -888,7 +888,7 @@ async function refreshSelectedBotDetails() {
       fetchConsoleDailyStats({ selfId: acc }),
       fetchFriendList(acc),
       fetchGroupList(acc),
-      fetchRequestOverview(),
+      fetchRequestOverview({ selfId: acc }),
     ]);
     function take<T>(i: number): T | null {
       const r = settled[i];
@@ -911,7 +911,7 @@ async function refreshSelectedBotDetails() {
       cachePutFriendGroupLists(sidKey, friendSnap.value, groupSnap.value);
     }
     if (requestOverviewSnap.value) {
-      cachePutRequestOverview(requestOverviewSnap.value);
+      cachePutRequestOverview(requestOverviewSnap.value, acc);
     }
   } finally {
     socialBusy.value = false;
@@ -933,7 +933,7 @@ watch(selectedAccount, (acc, prev) => {
       friendSnap.value = null;
       groupSnap.value = null;
     }
-    const cachedOv = cacheTryGetRequestOverview();
+    const cachedOv = cacheTryGetRequestOverview(acc);
     if (cachedOv) requestOverviewSnap.value = cachedOv;
     else requestOverviewSnap.value = null;
   }

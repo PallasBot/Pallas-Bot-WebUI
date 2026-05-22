@@ -596,8 +596,16 @@ export async function fetchFriendList(selfId: number, limit = 800): Promise<Frie
   return unwrap(data, "/friend-list");
 }
 
-export async function fetchRequestOverview(): Promise<RequestOverviewData> {
-  const { data } = await http.get<ApiOk<RequestOverviewData>>("/request-overview");
+export async function fetchRequestOverview(params?: {
+  selfId?: number;
+  doubt?: boolean;
+}): Promise<RequestOverviewData> {
+  const { data } = await http.get<ApiOk<RequestOverviewData>>("/request-overview", {
+    params: {
+      ...(params?.selfId != null ? { self_id: params.selfId } : {}),
+      ...(params?.doubt != null ? { doubt: params.doubt } : {}),
+    },
+  });
   return unwrap(data, "/request-overview");
 }
 

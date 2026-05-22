@@ -8,8 +8,14 @@ const TTL_MS = 120_000;
 
 type ListsBundle = { friends: FriendListData; groups: GroupListData };
 
-let overviewEntry: { data: RequestOverviewData; ts: number } | null = null;
+const overviewAllKey = "__all__";
+const overviewByScope = new Map<string, { data: RequestOverviewData; ts: number }>();
 const listsByBot = new Map<string, ListsBundle & { ts: number }>();
+
+function overviewCacheKey(scope?: number | string | null): string {
+  if (scope == null || scope === "") return overviewAllKey;
+  return String(scope);
+}
 
 export function requestOverviewToFriendOverview(ov: RequestOverviewData): FriendOverviewData {
   return {
@@ -24,17 +30,18 @@ export function requestOverviewToFriendOverview(ov: RequestOverviewData): Friend
   };
 }
 
-export function cachePutRequestOverview(data: RequestOverviewData) {
-  overviewEntry = { data, ts: Date.now() };
+export function cachePutRequestOverview(data: RequestOverviewData, scope?: number | string | null) {
+  overviewByScope.set(overviewCacheKey(scope), { data, ts: Date.now() });
 }
 
 export function cachePutFriendGroupLists(selfId: number | string, friends: FriendListData, groups: GroupListData) {
   listsByBot.set(String(selfId), { friends, groups, ts: Date.now() });
 }
 
-export function cacheTryGetRequestOverview(): RequestOverviewData | null {
-  if (!overviewEntry || Date.now() - overviewEntry.ts > TTL_MS) return null;
-  return overviewEntry.data;
+export function cacheTryGetRequestOverview(scope?: number | string | null): RequestOverviewData | null {
+  const e = overviewByScope.get(overviewCacheKey(scope));
+  if (!e || Date.now() - e.ts > TTL_MS) return null;
+  return e.data;
 }
 
 export function cacheTryGetFriendGroupLists(selfId: string): ListsBundle | null {
