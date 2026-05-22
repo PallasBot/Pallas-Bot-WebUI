@@ -1,4 +1,4 @@
-import { http } from "./http";
+import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import type {
   UpdateCheckData,
@@ -33,8 +33,10 @@ import type {
   PluginConfigCheckResult,
   CommonConfigSectionMeta,
   MessageStatsData,
+  CommunityStatsData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
+  ShardObservabilityData,
 } from "./pallasTypes";
 
 /**
@@ -391,6 +393,35 @@ export async function fetchMessageStats(selfId?: number): Promise<MessageStatsDa
   return unwrap(data, "/message-stats");
 }
 
+const COMMUNITY_STATS_FRESH_MS = 60_000;
+
+let communityStatsCache: { data: CommunityStatsData; ts: number } | null = null;
+let communityStatsInflight: Promise<CommunityStatsData> | null = null;
+
+export async function fetchCommunityStats(options?: { bypassCache?: boolean }): Promise<CommunityStatsData> {
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  if (!bypass && communityStatsCache && now - communityStatsCache.ts < COMMUNITY_STATS_FRESH_MS) {
+    return communityStatsCache.data;
+  }
+  if (!communityStatsInflight) {
+    communityStatsInflight = (async () => {
+      const { data } = await http.get<ApiOk<CommunityStatsData>>("/community-stats");
+      const parsed = unwrap(data, "/community-stats");
+      communityStatsCache = { data: parsed, ts: Date.now() };
+      return parsed;
+    })().finally(() => {
+      communityStatsInflight = null;
+    });
+  }
+  return communityStatsInflight;
+}
+
+export async function fetchShardObservability(): Promise<ShardObservabilityData> {
+  const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
+  return unwrap(data, "/shard-observability");
+}
+
 export async function fetchPluginRunStats(
   selfId?: number,
   logSource?: string,
@@ -403,6 +434,16 @@ export async function fetchPluginRunStats(
   if (tbLimit !== undefined) params.tb_limit = tbLimit;
   const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", { params });
   return unwrap(data, "/plugin-run-stats");
+}
+
+export interface LogErrorsCleanupResult {
+  cleared: boolean;
+  sharded_errors?: boolean;
+}
+
+export async function postLogErrorsCleanup(): Promise<LogErrorsCleanupResult> {
+  const { data } = await http.post<ApiOk<LogErrorsCleanupResult>>("/log-errors/cleanup");
+  return unwrap(data, "/log-errors/cleanup");
 }
 
 export async function fetchConsoleDailyStats(params?: {
@@ -426,7 +467,9 @@ export async function fetchPluginConfigHint(): Promise<string> {
 }
 
 export async function fetchDbOverview(): Promise<DbOverviewData> {
-  const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview");
+  const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview", {
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/db/overview");
 }
 
@@ -441,7 +484,9 @@ export async function postDbBackup(body: {
   scope?: "full" | "important";
   pg_format?: "custom" | "plain" | "directory";
 }): Promise<DbBackupResult> {
-  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body);
+  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body, {
+    timeout: DB_BACKUP_TIMEOUT_MS,
+  });
   return unwrap(data, "/db/backup");
 }
 
@@ -551,8 +596,16 @@ export async function fetchFriendList(selfId: number, limit = 800): Promise<Frie
   return unwrap(data, "/friend-list");
 }
 
-export async function fetchRequestOverview(): Promise<RequestOverviewData> {
-  const { data } = await http.get<ApiOk<RequestOverviewData>>("/request-overview");
+export async function fetchRequestOverview(params?: {
+  selfId?: number;
+  doubt?: boolean;
+}): Promise<RequestOverviewData> {
+  const { data } = await http.get<ApiOk<RequestOverviewData>>("/request-overview", {
+    params: {
+      ...(params?.selfId != null ? { self_id: params.selfId } : {}),
+      ...(params?.doubt != null ? { doubt: params.doubt } : {}),
+    },
+  });
   return unwrap(data, "/request-overview");
 }
 
@@ -627,7 +680,10 @@ export async function deleteBotConfig(account: number): Promise<{ deleted: boole
 export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {
   const params: Record<string, unknown> = { limit };
   if (selfId !== undefined) params.self_id = selfId;
-  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", { params });
+  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", {
+    params,
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/group-configs");
 }
 
@@ -655,7 +711,10 @@ export async function putGroupConfig(
 }
 
 export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
-  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", { params: { limit } });
+  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", {
+    params: { limit },
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/user-configs");
 }
 

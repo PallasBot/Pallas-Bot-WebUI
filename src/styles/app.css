@@ -719,7 +719,7 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   align-items: center;
   gap: 8px 12px;
   padding: 8px 40px 10px;
-  max-width: 1240px;
+  max-width: 1350px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -1205,7 +1205,7 @@ html[data-theme="light"] .shell-page-loading {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  max-width: 1240px;
+  max-width: 1350px;
   margin: 0 auto;
   padding: 12px 40px 48px;
 }
@@ -1563,6 +1563,10 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   padding: 2px 4px 8px;
 }
 
+.log-errors-page__clear-btn {
+  flex-shrink: 0;
+}
+
 .log-errors-page__filter-row {
   display: flex;
   flex-wrap: wrap;
@@ -1630,6 +1634,7 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
 
 .log-error-card__type {
   flex: none;
+  max-width: min(12rem, 42vw);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   font-weight: 700;
@@ -1638,6 +1643,9 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .log-error-card__source {
@@ -1667,6 +1675,12 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   gap: 8px;
 }
 
+.log-error-card__trunc-badge {
+  flex: none;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .log-error-card__summary {
   margin: 0;
   font-size: 13px;
@@ -1689,39 +1703,9 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   min-height: 0;
 }
 
-.log-error-card__details {
-  margin: 0;
-  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  padding-top: 6px;
-}
-
-.log-error-card__details-summary {
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-muted);
-  user-select: none;
-  list-style: none;
-}
-
-.log-error-card__details-summary::-webkit-details-marker {
-  display: none;
-}
-
-.log-error-card__details-summary::before {
-  content: "▸ ";
-  display: inline-block;
-  transition: transform 0.15s ease;
-}
-
-.log-error-card__details[open] .log-error-card__details-summary::before {
-  transform: rotate(90deg);
-}
-
 .log-error-card__tb {
-  margin: 8px 0 0;
+  margin: 0;
   padding: 10px 12px;
-  max-height: min(320px, 45vh);
-  overflow: auto;
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.45;
@@ -1733,8 +1717,10 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   overflow-x: auto;
   word-break: normal;
 }
-.log-error-card__details[open] .log-error-card__tb {
-  max-height: min(75vh, 1200px);
+
+.log-error-card__tb--full {
+  max-height: none;
+  overflow: visible;
 }
 
 .panel__hd--split {
@@ -3226,8 +3212,29 @@ html[data-theme="light"] .bot-config-edit {
   gap: 16px;
   margin-bottom: 8px;
 }
-.home-dashboard__accounts {
+.home-dashboard__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   grid-column: 1 / -1;
+  min-width: 0;
+}
+.home-dashboard__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.home-dashboard__community {
+  min-width: 0;
+}
+.home-dashboard__aside-stats {
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+}
+.home-dashboard__aside-stats > .stat-card {
+  min-width: 0;
 }
 
 .home-account-panel__hd {
@@ -3595,13 +3602,37 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-split-bd {
   display: grid;
-  /* 账户列略加宽并略多 fr，减轻统计区折行 */
-  grid-template-columns: minmax(322px, 1.42fr) minmax(0, 2.9fr);
+  /* 左列固定下限 + fr；略收窄账户区、多留给图表 */
+  --home-account-hero-col-min: 300px;
+  --home-account-hero-col-fr: 1.32fr;
+  --home-account-charts-col-fr: 3fr;
+  grid-template-columns: minmax(var(--home-account-hero-col-min), var(--home-account-hero-col-fr))
+    minmax(0, var(--home-account-charts-col-fr));
   align-items: start;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* 硬上限：--home-account-hero-lock-px 在图表收起时写入，展开后图表在壳内滚动 */
+@media (min-width: 561px) {
+  .home-account-split-bd--lock-h {
+    max-height: var(--home-account-hero-lock-px);
+    overflow: hidden;
+  }
+
+  .home-account-split-bd--lock-h > .home-account-split-bd__col--hero.home-account-card {
+    max-height: var(--home-account-hero-lock-px);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .home-account-split-bd--lock-h > .home-account-split-bd__col--charts {
+    max-height: var(--home-account-hero-lock-px);
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .home-account-split-bd__col {
@@ -3624,8 +3655,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -3641,6 +3672,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .home-account-charts-shell--hero-side {
@@ -3662,14 +3694,18 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   .home-account-split-bd__col--hero.home-account-card {
     flex: 0 1 auto;
     align-self: start;
+    min-height: 0;
   }
 
   .home-account-split-bd__col--charts {
     align-self: start;
+    min-height: 0;
   }
 
-  /* flex:0 + min-height:0：避免「插件今日次数」条数多时 min-height:auto 撑破 max-height */
+  /* flex:0 + min-height:0：右侧图表壳高度锁为左侧账户卡实测高度，左侧不被拉高 */
   .home-account-charts-shell--hero-side {
+    display: flex;
+    flex-direction: column;
     flex: 0 0 auto;
     align-self: start;
     width: 100%;
@@ -3677,6 +3713,60 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
     max-height: var(--home-account-hero-lock-px, none);
     min-height: 0;
     overflow: hidden;
+  }
+
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts--draw-collapsed) {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot {
+    flex: 0 0 var(--home-account-chart-filter-slot-px, 132px);
+    height: var(--home-account-chart-filter-slot-px, 132px);
+    max-height: var(--home-account-chart-filter-slot-px, 132px);
+    min-height: var(--home-account-chart-filter-slot-px, 132px);
+    margin-top: 6px;
+    padding-top: 2px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot:empty {
+    display: block;
+  }
+
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts--draw-collapsed)
+    > .home-account-chart-config-outlet {
+    display: none;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot
+    .home-plugin-charts__filter-external {
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    padding: 4px 2px 6px;
+    background: transparent;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz,
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark,
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__flip {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 
@@ -3716,8 +3806,9 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 .home-account-chart-config-outlet {
-  margin-top: 10px;
+  flex: 0 0 auto;
   min-width: 0;
+  margin-top: 0;
 }
 
 /* 总览账户卡内：说明与勾选已 teleport；图表区随右列等高伸展（> .home-plugin-charts 提高优先级以覆盖组件 scoped） */
@@ -4001,7 +4092,7 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
 
 .home-account-hero__lead {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: flex-start;
   min-width: 0;
 }
@@ -4041,10 +4132,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__detail {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   width: 100%;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
@@ -5189,8 +5280,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 .home-account-skeleton__split {
   display: grid;
-  grid-template-columns: minmax(200px, 300px) minmax(240px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(200px, 300px) minmax(220px, 1fr);
+  gap: 10px;
   align-items: stretch;
 }
 @media (max-width: 560px) {
@@ -5289,10 +5380,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 900px) {
   .home-dashboard {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     align-items: stretch;
   }
-  .home-dashboard__accounts {
+  .home-dashboard__hero {
     grid-column: 1;
     grid-row: 1;
   }
@@ -5304,10 +5395,75 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-column: 1;
     grid-row: 3;
   }
-  .home-dashboard__capacity .grid-stats {
+  .home-dashboard__shard-obs {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  .home-dashboard__capacity .grid-stats,
+  .home-dashboard__community .grid-stats {
     height: auto;
     margin-bottom: 0;
     align-content: start;
+  }
+}
+
+@media (min-width: 1200px) {
+  /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
+  .home-dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(288px, 336px);
+    grid-template-rows: auto auto auto auto;
+    align-items: stretch;
+  }
+  .home-dashboard__hero {
+    display: contents;
+  }
+  .home-dashboard__accounts {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .home-dashboard__aside {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    min-height: 0;
+  }
+  .home-dashboard__capacity {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  .home-dashboard__perf {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .home-dashboard__shard-obs {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+  .home-dashboard__accounts > .home-page__panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    min-width: 0;
+  }
+  .home-dashboard__accounts > .home-page__panel .panel__bd {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .home-dashboard__aside-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .home-dashboard__aside .home-page__version-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .home-dashboard__aside .home-page__version-panel .panel__bd {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 
@@ -6882,8 +7038,9 @@ html[data-theme="light"] .plugin-preview {
 
 /* —— 总览页：紧凑仪表盘（不引入第三方组件库，避免双主题与包体膨胀） */
 .home-page {
-  max-width: 900px;
+  max-width: 100%;
   margin-inline: auto;
+  width: 100%;
 }
 
 .home-shell-fade-enter-active {
@@ -7123,6 +7280,19 @@ html[data-theme="light"] .home-instances-capsule {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+}
+.home-page__capacity-grid > .stat-card {
+  min-width: 0;
+}
+.home-dashboard__capacity .home-page__capacity-grid {
+  margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .home-page__capacity-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 @media (max-width: 560px) {
   .home-page__capacity-grid {
@@ -7265,6 +7435,74 @@ html[data-theme="light"] .home-cpu-core {
 }
 .home-metric__row--gpu-sub {
   margin-top: 8px;
+}
+
+/* 分片可观测：与容量行一致的 StatCard + worker 表格 */
+.home-shard-obs__bd {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.home-shard-obs__kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-bottom: 0;
+}
+.home-shard-obs__kpis > .stat-card,
+.home-shard-obs__kpis > div {
+  min-width: 0;
+}
+.home-shard-obs__pg-warn .stat-card__hint {
+  color: var(--warn, #f59e0b);
+}
+.home-shard-obs__workers {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.home-shard-obs__workers-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.home-shard-obs__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.home-shard-obs__table {
+  width: 100%;
+  min-width: 280px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.home-shard-obs__table th,
+.home-shard-obs__table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.home-shard-obs__table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.home-shard-obs__table th:nth-child(n + 2),
+.home-shard-obs__table td:nth-child(n + 2) {
+  text-align: right;
+}
+.home-shard-obs__table tbody tr:last-child td {
+  border-bottom: none;
+}
+@media (min-width: 768px) {
+  .home-shard-obs__kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .home-shard-obs__kpis {
+    gap: 8px;
+  }
 }
 
 .home-dl {
