@@ -131,6 +131,7 @@ const brandBotVersionDisplay = computed(() => {
 const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
   "shell__main-inner--logs": route.name === "logs",
+  "shell__main-inner--home": route.name === "home",
 }));
 
 const pageLoadingVisible = computed(() => initialShellLoading.value);
