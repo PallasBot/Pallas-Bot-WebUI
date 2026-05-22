@@ -5394,7 +5394,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 900px) {
   .home-dashboard {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     align-items: stretch;
   }
   .home-dashboard__hero {
@@ -5409,6 +5409,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-column: 1;
     grid-row: 3;
   }
+  .home-dashboard__shard-obs {
+    grid-column: 1;
+    grid-row: 4;
+  }
   .home-dashboard__capacity .grid-stats,
   .home-dashboard__community .grid-stats {
     height: auto;
@@ -5421,7 +5425,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
   .home-dashboard {
     grid-template-columns: minmax(0, 1fr) minmax(288px, 336px);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     align-items: stretch;
   }
   .home-dashboard__hero {
@@ -5446,6 +5450,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-dashboard__perf {
     grid-column: 1 / -1;
     grid-row: 3;
+  }
+  .home-dashboard__shard-obs {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
   .home-dashboard__accounts > .home-page__panel {
     display: flex;
@@ -7441,6 +7449,74 @@ html[data-theme="light"] .home-cpu-core {
 }
 .home-metric__row--gpu-sub {
   margin-top: 8px;
+}
+
+/* 分片可观测：与容量行一致的 StatCard + worker 表格 */
+.home-shard-obs__bd {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.home-shard-obs__kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-bottom: 0;
+}
+.home-shard-obs__kpis > .stat-card,
+.home-shard-obs__kpis > div {
+  min-width: 0;
+}
+.home-shard-obs__pg-warn .stat-card__hint {
+  color: var(--warn, #f59e0b);
+}
+.home-shard-obs__workers {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.home-shard-obs__workers-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.home-shard-obs__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.home-shard-obs__table {
+  width: 100%;
+  min-width: 280px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.home-shard-obs__table th,
+.home-shard-obs__table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.home-shard-obs__table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.home-shard-obs__table th:nth-child(n + 2),
+.home-shard-obs__table td:nth-child(n + 2) {
+  text-align: right;
+}
+.home-shard-obs__table tbody tr:last-child td {
+  border-bottom: none;
+}
+@media (min-width: 768px) {
+  .home-shard-obs__kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .home-shard-obs__kpis {
+    gap: 8px;
+  }
 }
 
 .home-dl {
