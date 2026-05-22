@@ -359,9 +359,27 @@ export async function changeConsoleLogin(newPassword: string): Promise<{ message
   return unwrap(data, "/security/console-login");
 }
 
-export async function fetchLogs(n: number, scope: LogScope = "all"): Promise<LogsData> {
-  const { data } = await http.get<ApiOk<LogsData>>("/logs", { params: { n, scope } });
+export async function fetchLogs(
+  n: number,
+  scope: LogScope = "all",
+  source?: string,
+): Promise<LogsData> {
+  const params: { n: number; scope: LogScope; source?: string } = { n, scope };
+  if (source && source !== "all") params.source = source;
+  const { data } = await http.get<ApiOk<LogsData>>("/logs", { params });
   return unwrap(data, "/logs");
+}
+
+/** 分片 hub 实时日志 SSE（合并 hub 环与各 worker 落盘增量） */
+export function openLogsEventSource(
+  scope: LogScope = "all",
+  source?: string,
+): EventSource {
+  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
+  const apiBase = `${root}/api`;
+  const qs = new URLSearchParams({ scope });
+  if (source && source !== "all") qs.set("source", source);
+  return new EventSource(`${apiBase}/logs/stream?${qs.toString()}`, { withCredentials: true });
 }
 
 export async function fetchMessageStats(selfId?: number): Promise<MessageStatsData> {
@@ -371,10 +389,17 @@ export async function fetchMessageStats(selfId?: number): Promise<MessageStatsDa
   return unwrap(data, "/message-stats");
 }
 
-export async function fetchPluginRunStats(selfId?: number): Promise<PluginRunStatsData> {
-  const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", {
-    params: selfId ? { self_id: selfId } : {},
-  });
+export async function fetchPluginRunStats(
+  selfId?: number,
+  logSource?: string,
+  options?: { tbLimit?: number },
+): Promise<PluginRunStatsData> {
+  const params: { self_id?: number; log_source?: string; tb_limit?: number } = {};
+  if (selfId) params.self_id = selfId;
+  if (logSource && logSource !== "all") params.log_source = logSource;
+  const tbLimit = options?.tbLimit;
+  if (tbLimit !== undefined) params.tb_limit = tbLimit;
+  const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", { params });
   return unwrap(data, "/plugin-run-stats");
 }
 

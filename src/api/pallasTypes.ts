@@ -173,6 +173,9 @@ export interface PluginRunStatsData {
   matcher_calls_history_max_buckets?: number;
   /** 最近若干条 ERROR/CRITICAL 日志（进程内环形缓冲 + jsonl；与 Matcher 异常清理策略一致） */
   log_error_log?: MatcherErrorLogEntry[];
+  /** 分片时可选报错来源（hub / worker-N） */
+  log_error_sources?: string[];
+  sharded_log_errors?: boolean;
   bots: Array<{
     self_id: string;
     connection_key: string;
@@ -197,9 +200,15 @@ export interface PluginRunStatsData {
   }>;
 }
 
+export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
+
 export interface PluginRow {
   name: string;
   module: string;
+  nb_plugin_name?: string;
+  load_role?: PluginLoadRole;
+  loaded_in_process?: boolean;
+  has_config?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;
   help_hidden?: boolean;
@@ -219,12 +228,14 @@ export interface HelpMenuVisibilityData {
 
 export interface PluginConfigField {
   name: string;
-  kind: "bool" | "int" | "float" | "json" | "string";
+  kind: "bool" | "int" | "float" | "json" | "string" | "enum";
   required: boolean;
   description: string;
   env_key: string;
   default: unknown;
   current: unknown;
+  /** kind 为 enum 时由后端 Literal 推导 */
+  choices?: string[];
 }
 
 /** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
@@ -306,6 +317,12 @@ export interface LogsData {
   entries: LogEntry[];
   max: number;
   scope?: LogScope;
+  /** 当前筛选来源：all | hub | worker-N */
+  source?: string;
+  /** 分片 hub：已合并 data/pallas_shard/logs 下 hub/worker 落盘尾行 */
+  sharded_logs?: boolean;
+  /** 分片时可选的日志来源列表 */
+  log_sources?: string[];
 }
 
 /** 数据库概览 */
@@ -500,6 +517,8 @@ export interface BotUpdateCheckData {
   current_commit: string;
   latest_tag: string | null;
   has_update: boolean;
+  /** 相对最新 release 超前或未打发行 tag，且无需更新 */
+  development_build?: boolean;
   release_url: string;
   /** GitHub Release 正文（Markdown），网页兜底拉 tag 时可能为空 */
   release_notes?: string | null;

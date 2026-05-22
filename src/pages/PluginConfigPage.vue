@@ -425,6 +425,19 @@ async function save() {
             <option value="true">true</option>
             <option value="false">false</option>
           </select>
+          <select
+            v-else-if="f.kind === 'enum' && f.choices?.length"
+            v-model="fieldValues[f.name]"
+            class="sel"
+          >
+            <option
+              v-for="opt in f.choices"
+              :key="opt"
+              :value="opt"
+            >
+              {{ opt }}
+            </option>
+          </select>
           <JsonTextareaField
             v-else-if="f.kind === 'json'"
             v-model="fieldValues[f.name]"
