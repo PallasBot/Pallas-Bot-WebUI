@@ -413,7 +413,7 @@ async function save() {
             {{ f.description }}
           </div>
           <div class="muted" style="font-size: 12px; margin-bottom: 8px">
-            env: <code>{{ f.env_key }}</code>
+            配置键: <code>{{ f.env_key }}</code>
             · 默认：{{ JSON.stringify(f.default) }}
           </div>
           <select

@@ -193,7 +193,7 @@ async function togglePreview(name: string) {
                       <th>字段</th>
                       <th>类型</th>
                       <th>必填</th>
-                      <th>env_key</th>
+                      <th>配置键</th>
                     </tr>
                   </thead>
                   <tbody>

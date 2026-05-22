@@ -10,7 +10,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 // 与 Pallas-Bot 插件 pallas_webui 的 pallas_webui_http_base 一致
 const BASE = "/pallas/";
 
-/** 开发代理目标：与 Bot .env 中 PORT 一致（默认 8088） */
+/** 开发代理目标：与 Bot 监听 PORT 一致（默认 8088，见 config/pallas.toml） */
 function resolveDevProxyTarget(): string {
   const explicit = (process.env.VITE_PROXY_TARGET ?? "").trim();
   if (explicit) return explicit;
