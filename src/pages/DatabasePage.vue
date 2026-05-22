@@ -227,7 +227,7 @@ async function loadAll() {
   if (noDataYet) blockingLoad.value = true;
   dbRefreshBusy.value = true;
   try {
-    const [next] = await Promise.all([fetchDbOverview(), loadSocialConfigs()]);
+    const next = await fetchDbOverview();
     overview.value = next;
     dbOverviewCache = next;
   } catch (e) {
@@ -236,6 +236,7 @@ async function loadAll() {
     blockingLoad.value = false;
     dbRefreshBusy.value = false;
   }
+  void loadSocialConfigs();
 }
 
 async function loadBackupInfo() {
@@ -782,7 +783,12 @@ onUnmounted(() => {
               >
                 <td style="font-weight: 600">{{ c.name }}</td>
                 <td class="muted">{{ c.document }}</td>
-                <td style="text-align: right; font-variant-numeric: tabular-nums">{{ nf.format(c.count) }}</td>
+                <td
+                  style="text-align: right; font-variant-numeric: tabular-nums"
+                  :title="c.count_estimated ? 'Mongo 估算行数（大表）' : undefined"
+                >
+                  {{ c.count_estimated ? "≈" : "" }}{{ nf.format(c.count) }}
+                </td>
               </tr>
             </tbody>
           </table>

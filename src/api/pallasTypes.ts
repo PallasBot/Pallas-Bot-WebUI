@@ -339,7 +339,12 @@ export interface LogsData {
 export type DbOverviewData =
   | {
       backend: "mongodb";
-      collections: { name: string; document: string; count: number }[];
+      collections: {
+        name: string;
+        document: string;
+        count: number;
+        count_estimated?: boolean;
+      }[];
     }
   | {
       backend: "postgres";
