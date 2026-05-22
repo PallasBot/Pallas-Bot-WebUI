@@ -8,6 +8,7 @@ import {
   fetchFriendList,
   fetchGroupList,
   fetchInstances,
+  fetchCommunityStats,
   fetchConsoleDailyStats,
   fetchMessageStats,
   fetchPluginRunStats,
@@ -25,6 +26,7 @@ import type {
   FriendListData,
   GroupListData,
   InstancesData,
+  CommunityStatsData,
   ConsoleDailyStatsData,
   MessageStatsData,
   PluginRow,
@@ -86,6 +88,7 @@ const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
+const communityStats = ref<CommunityStatsData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
@@ -584,6 +587,40 @@ const selectedConnected = computed(() => {
 
 const msgMainStats = computed(() => statsScoped.value ?? stats.value);
 
+function formatCommunityStatNum(n: number | undefined | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return Math.floor(n).toLocaleString();
+}
+
+const communityDeploymentsTotal = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_total),
+);
+const communityDeploymentsOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_online),
+);
+const communityBotsOnlineSum = computed(() =>
+  formatCommunityStatNum(communityStats.value?.bots_online_sum),
+);
+
+const communityOnlineHint = computed(() => {
+  const sec = communityStats.value?.online_ttl_sec;
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "有心跳窗口内";
+  const m = Math.max(1, Math.round(sec / 60));
+  return `近 ${m} 分钟有心跳`;
+});
+
+const communityStatsAsOf = computed(() => {
+  const raw = communityStats.value?.as_of;
+  if (!raw) return "";
+  try {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return "";
+    return `截至 ${d.toLocaleString()}`;
+  } catch {
+    return "";
+  }
+});
+
 const msgTotalStr = computed(() => {
   const s = msgMainStats.value;
   if (!s) return "—";
@@ -871,7 +908,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -881,11 +918,13 @@ async function load() {
       fetchPlugins(),
       fetchBotUpdateCheck().catch(() => null),
       fetchUpdateCheck().catch(() => null),
+      fetchCommunityStats().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
+    communityStats.value = (comm as CommunityStatsData | null) ?? null;
     stats.value = m;
     pluginRunStats.value = pr;
     bots.value = botList;
@@ -1396,6 +1435,36 @@ onUnmounted(() => {
             label="消息 收/发"
             :value="msgTotalStr"
             :hint="msgCapacityHint"
+          />
+        </div>
+      </section>
+
+      <section class="home-dashboard__community">
+        <div class="home-page__community-hd">
+          <h2 class="home-page__community-title">社区统计</h2>
+          <span
+            v-if="communityStatsAsOf"
+            class="muted home-page__community-asof"
+          >{{ communityStatsAsOf }}</span>
+        </div>
+        <div class="grid-stats home-page__capacity-grid home-page__community-grid">
+          <StatCard
+            dense
+            label="社区部署总数"
+            :value="communityDeploymentsTotal"
+            hint="历史上报过的独立安装"
+          />
+          <StatCard
+            dense
+            label="在线部署数"
+            :value="communityDeploymentsOnline"
+            :hint="communityOnlineHint"
+          />
+          <StatCard
+            dense
+            label="在线牛总和"
+            :value="communityBotsOnlineSum"
+            hint="各在线部署上报之和"
           />
         </div>
       </section>
