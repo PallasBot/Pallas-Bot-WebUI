@@ -14,6 +14,7 @@ import {
   fetchPluginRunStats,
   fetchPlugins,
   fetchRequestOverview,
+  fetchShardObservability,
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
@@ -32,6 +33,8 @@ import type {
   PluginRow,
   PluginRunStatsData,
   RequestOverviewData,
+  ShardObservabilityData,
+  ShardObservabilityWorker,
   SystemData,
   UpdateCheckData,
 } from "@/api/pallasTypes";
@@ -88,6 +91,7 @@ const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
+const shardObs = ref<ShardObservabilityData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
@@ -323,6 +327,41 @@ function uptimeFromBoot(boot: number | null | undefined): string {
 function pct(n: number | null | undefined, digits = 1): string {
   if (n == null || Number.isNaN(n)) return "—";
   return `${n.toFixed(digits)}%`;
+}
+
+const shardObsVisible = computed(() => shardObs.value?.sharded === true);
+
+const shardIngressHitRate = computed(() => pct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null));
+
+const shardIngressEvents = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "—";
+  return String(ing.events ?? 0);
+});
+
+const shardCoordLine = computed(() => {
+  const c = shardObs.value?.coord_pending_live;
+  if (!c) return "—";
+  const stale = c.bot_action_stale_open ?? 0;
+  const stalePart = stale > 0 ? ` · 过期 open ${stale}` : "";
+  return `共 ${c.total_json ?? 0} 个 JSON · bot_action open ${c.bot_action_open ?? 0}${stalePart}`;
+});
+
+const shardPgPeakLine = computed(() => {
+  const p = shardObs.value?.pg_pool;
+  if (!p) return "—";
+  return `峰值约 ${p.estimated_pg_connections_peak ?? "—"}（${p.estimated_processes ?? "?"} 进程 × ${p.per_process_max ?? "?"}）`;
+});
+
+const shardPgWarning = computed(() => (shardObs.value?.pg_pool?.warning || "").trim());
+
+const shardWorkerRows = computed((): ShardObservabilityWorker[] => {
+  const rows = shardObs.value?.workers;
+  return Array.isArray(rows) ? rows : [];
+});
+
+function shardWorkerHitRate(row: ShardObservabilityWorker): string {
+  return pct(row.ingress?.claim_hit_rate ?? null);
 }
 
 const perfSampled = computed(() => {
@@ -947,7 +986,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -958,12 +997,14 @@ async function load() {
       fetchBotUpdateCheck().catch(() => null),
       fetchUpdateCheck().catch(() => null),
       fetchCommunityStats().catch(() => null),
+      fetchShardObservability().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
     communityStats.value = (comm as CommunityStatsData | null) ?? null;
+    shardObs.value = (shard as ShardObservabilityData | null) ?? null;
     stats.value = m;
     pluginRunStats.value = pr;
     bots.value = botList;
@@ -985,13 +1026,14 @@ async function load() {
   }
 }
 
+async function refreshHomeRuntimePanels() {
+  const [sys, obs] = await Promise.allSettled([fetchSystem(), fetchShardObservability()]);
+  if (sys.status === "fulfilled") system.value = sys.value;
+  if (obs.status === "fulfilled") shardObs.value = obs.value;
+}
+
 async function refreshSystemRuntimeOnly() {
-  try {
-    const s = await fetchSystem();
-    system.value = s;
-  } catch {
-    /* 保留上一次 system */
-  }
+  await refreshHomeRuntimePanels();
 }
 
 let homeSystemPollId: ReturnType<typeof setInterval> | null = null;
@@ -1734,6 +1776,85 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
+
+      <section
+        v-if="shardObsVisible"
+        class="home-dashboard__perf home-dashboard__shard-obs"
+      >
+        <div class="panel home-page__panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">⎇</span>分片可观测
+            </h2>
+            <div class="row-actions">
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">ingress / coord / PG</span>
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="home-metric-grid">
+              <div class="home-metric">
+                <div class="home-metric__row">
+                  <span class="home-metric__label">ingress 命中率</span>
+                  <span class="home-metric__val">{{ shardIngressHitRate }}</span>
+                </div>
+                <p class="home-metric__hint">
+                  集群今日 claim won/(won+lost)；约 1/worker 数为正常
+                </p>
+              </div>
+              <div class="home-metric">
+                <div class="home-metric__row">
+                  <span class="home-metric__label">ingress 事件</span>
+                  <span class="home-metric__val">{{ shardIngressEvents }}</span>
+                </div>
+                <p class="home-metric__hint">
+                  won {{ shardObs?.ingress_cluster?.claim_won ?? 0 }} · lost
+                  {{ shardObs?.ingress_cluster?.claim_lost ?? 0 }}
+                </p>
+              </div>
+              <div class="home-metric">
+                <div class="home-metric__row">
+                  <span class="home-metric__label">coord 积压</span>
+                  <span class="home-metric__val home-metric__val--sm">{{ shardCoordLine }}</span>
+                </div>
+                <p class="home-metric__hint">实时扫描 data/pallas_shard/coord</p>
+              </div>
+              <div class="home-metric">
+                <div class="home-metric__row">
+                  <span class="home-metric__label">PG 连接池</span>
+                  <span class="home-metric__val home-metric__val--sm">{{ shardPgPeakLine }}</span>
+                </div>
+                <p
+                  v-if="shardPgWarning"
+                  class="home-metric__hint home-metric__hint--warn"
+                >
+                  {{ shardPgWarning }}
+                </p>
+                <p
+                  v-else
+                  class="home-metric__hint"
+                >
+                  对照 PostgreSQL max_connections
+                </p>
+              </div>
+            </div>
+            <div
+              v-if="shardWorkerRows.length"
+              class="home-shard-workers"
+            >
+              <p class="home-shard-workers__title muted">各 worker 命中率（今日）</p>
+              <ul class="home-shard-workers__list">
+                <li
+                  v-for="row in shardWorkerRows"
+                  :key="row.shard_id"
+                >
+                  <span>worker-{{ row.shard_id }}</span>
+                  <span>{{ shardWorkerHitRate(row) }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
     </div>
     </Transition>
@@ -1771,5 +1892,31 @@ onUnmounted(() => {
 .home-account-hero__fav-star[aria-pressed="true"] {
   opacity: 1;
   color: #fbbf24;
+}
+.home-metric__hint--warn {
+  color: var(--warn, #f59e0b);
+}
+.home-shard-workers {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+.home-shard-workers__title {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+.home-shard-workers__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px 12px;
+  font-size: 13px;
+}
+.home-shard-workers__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
 }
 </style>

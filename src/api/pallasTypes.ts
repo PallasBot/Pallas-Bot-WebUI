@@ -599,6 +599,52 @@ export interface FriendListRow {
   sex?: unknown;
 }
 
+export interface ShardIngressMetrics {
+  day_key?: string;
+  events?: number;
+  early_fleet?: number;
+  early_not_at_target?: number;
+  fanout_bypass?: number;
+  claim_won?: number;
+  claim_lost?: number;
+  claim_attempts?: number;
+  claim_hit_rate?: number | null;
+}
+
+export interface ShardCoordPendingSnapshot {
+  total_json?: number;
+  by_dir?: Record<string, number>;
+  bot_action_open?: number;
+  bot_action_stale_open?: number;
+}
+
+export interface ShardPgPoolEstimate {
+  pg_pool_size?: number;
+  pg_max_overflow?: number;
+  per_process_max?: number;
+  recommended_per_process_max?: number;
+  worker_shards?: number;
+  estimated_processes?: number;
+  estimated_pg_connections_peak?: number;
+  warning?: string | null;
+}
+
+export interface ShardObservabilityWorker {
+  shard_id: number;
+  updated_at?: number;
+  ingress?: ShardIngressMetrics;
+  coord_pending?: ShardCoordPendingSnapshot;
+}
+
+/** GET /shard-observability */
+export interface ShardObservabilityData {
+  sharded?: boolean;
+  ingress_cluster?: ShardIngressMetrics;
+  coord_pending_live?: ShardCoordPendingSnapshot;
+  workers?: ShardObservabilityWorker[];
+  pg_pool?: ShardPgPoolEstimate;
+}
+
 export interface FriendListData {
   self_id: string;
   connection_key: string;
