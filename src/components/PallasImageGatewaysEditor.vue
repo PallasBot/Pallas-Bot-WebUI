@@ -209,7 +209,7 @@ const editingKeyHint = computed(() => {
           画图网关
         </div>
         <p class="pallas-gw-editor__desc muted">
-          主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入 .env。
+          主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入运行配置。
         </p>
       </div>
       <button

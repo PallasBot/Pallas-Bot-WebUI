@@ -8,7 +8,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 
 // 与 Pallas-Bot 插件 pallas_webui 的 pallas_webui_http_base 一致
 const BASE = "/pallas/";
-// 与机器人 NoneBot 监听一致（.env 中 PORT，默认 8088）
+// 与 Bot 监听 PORT 一致（默认 8088，见 config/pallas.toml）
 const DEFAULT_TARGET = "http://127.0.0.1:8088";
 
 export default defineConfig({
