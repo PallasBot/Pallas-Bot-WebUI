@@ -30,6 +30,7 @@ export function excTypeFromTraceback(tb: string): string | null {
   for (const line of (tb ?? "").split("\n").reverse()) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("Traceback")) continue;
+    if (trimmed.includes("└") || trimmed.includes("│")) continue;
     const m = trimmed.match(EXC_TYPE_LINE_RE);
     if (m) return m[1];
   }
@@ -56,8 +57,9 @@ export type LogErrorCopyFields = {
 
 export function formatLogErrorSummary(it: LogErrorCopyFields, timeLabel: string): string {
   const meta = it.meta ?? parseLogErrorPlugin(it.plugin);
+  const excLabel = formatLogErrorExcType(it.exc_type, it.traceback);
   const lines = [
-    `[${timeLabel}] ${it.exc_type || "LogError"} @ ${meta.source}${meta.module && meta.module !== "log" ? `/${meta.module}` : ""}`,
+    `[${timeLabel}] ${excLabel} @ ${meta.source}${meta.module && meta.module !== "log" ? `/${meta.module}` : ""}`,
     it.message?.trim() || "（无摘要）",
   ];
   return lines.join("\n");
