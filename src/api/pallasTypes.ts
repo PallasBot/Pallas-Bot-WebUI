@@ -337,6 +337,38 @@ export type DbOverviewData =
     }
   | { backend: string; note?: string };
 
+export interface DbBackupConnectionInfo {
+  host: string;
+  port: number;
+  database: string;
+  user?: string | null;
+}
+
+export interface DbBackupInfo {
+  backend: "mongodb" | "postgres";
+  default_output_parent: string;
+  tool_name: string;
+  tool_available: boolean;
+  /** 未检测到 CLI 时供前端展示的安装包名称 */
+  tool_download_label?: string;
+  /** 官方下载页 */
+  tool_download_url?: string;
+  tool_install_hint?: string;
+  connection: DbBackupConnectionInfo;
+  mongo_scopes: string[];
+  postgres_formats: string[];
+}
+
+export interface DbBackupResult {
+  ok: boolean;
+  backend: string;
+  scope: string;
+  output_dir: string;
+  artifacts: string[];
+  size_bytes: number;
+  message: string;
+}
+
 /** Bot 配置 */
 export interface BotConfigPublic {
   account: number;
