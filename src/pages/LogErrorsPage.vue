@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { fetchPluginRunStats } from "@/api/consoleApi";
+import { fetchPluginRunStats, postLogErrorsCleanup } from "@/api/consoleApi";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -21,6 +21,7 @@ const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
 const loading = ref(false);
+const clearing = ref(false);
 const entries = ref<MatcherErrorLogEntry[]>([]);
 const logSources = ref<string[]>([]);
 const shardedLogErrors = ref(false);
@@ -115,6 +116,28 @@ async function copyFull(it: ErrorRow) {
   await runCopy("全部", formatLogErrorFull(it, timeLabel));
 }
 
+async function clearLogErrors() {
+  if (clearing.value || loading.value || !entries.value.length) return;
+  if (
+    typeof window !== "undefined" &&
+    !window.confirm("确定清空全部日志报错记录？将删除 log_errors.jsonl 与分片 errors 归档，不可恢复。")
+  ) {
+    return;
+  }
+  clearing.value = true;
+  err.value = "";
+  try {
+    await postLogErrorsCleanup();
+    pushConsoleToast("已清理日志报错记录", "ok");
+    await load();
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+    pushConsoleToast("清理失败", "err");
+  } finally {
+    clearing.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -147,6 +170,15 @@ onMounted(load);
           </h2>
           <div class="row-actions">
             <PanelSidebarAdd main-path="/log-errors" />
+            <button
+              type="button"
+              class="btn btn--danger log-errors-page__clear-btn"
+              :disabled="clearing || loading || !entries.length"
+              :title="entries.length ? '清空 log_errors 与分片 errors 归档' : '暂无记录可清理'"
+              @click="clearLogErrors"
+            >
+              {{ clearing ? "清理中…" : "清理全部" }}
+            </button>
             <div
               v-if="displayEntries.some((it) => it.traceback)"
               class="log-errors-page__toolbar"
@@ -185,7 +217,7 @@ onMounted(load);
         </div>
         <div class="panel__bd">
           <p class="muted log-errors-page__hint">
-            每条报错独立成卡：上方为时间与类型，正文为摘要；堆栈默认折叠。分片时按 hub / worker 筛选，数据来自 logs/errors/*.jsonl。
+            每条报错独立成卡：上方为时间与类型，正文为摘要；堆栈默认折叠。分片时按 hub / worker 筛选，数据来自 logs/errors/*.jsonl。「清理全部」与每日 4:00 自动清理中的日志报错部分一致（不含 Matcher 异常 jsonl）。
           </p>
           <div class="log-errors-page__scroll">
             <p

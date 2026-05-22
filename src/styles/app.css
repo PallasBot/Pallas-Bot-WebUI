@@ -1563,6 +1563,10 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   padding: 2px 4px 8px;
 }
 
+.log-errors-page__clear-btn {
+  flex-shrink: 0;
+}
+
 .log-errors-page__filter-row {
   display: flex;
   flex-wrap: wrap;
