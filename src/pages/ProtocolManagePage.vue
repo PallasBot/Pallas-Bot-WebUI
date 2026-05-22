@@ -10,6 +10,7 @@ import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
   protocolListAccounts,
+  protocolRestartAccount,
   protocolStartAccount,
   protocolStopAccount,
 } from "@/api/protocolApi";
@@ -24,7 +25,6 @@ import {
   accountProtocolId,
   accountWebUiHref,
   protocolAccountDetailUrl,
-  protocolAccountEditUrl,
   protocolDashboardUrl,
   protocolMountAbsoluteUrl,
   protocolSnapshot,
@@ -253,12 +253,6 @@ function detailHref(a: NapcatAccountRow): string | null {
   return protocolAccountDetailUrl(system.value, snap.value, id);
 }
 
-function editHref(a: NapcatAccountRow): string | null {
-  const id = accountProtocolId(a);
-  if (!id) return null;
-  return protocolAccountEditUrl(system.value, snap.value, id);
-}
-
 function primaryTitle(a: NapcatAccountRow): string {
   const nick = profileNick(a);
   if (nick) return nick;
@@ -307,6 +301,10 @@ function togglePowerLabel(a: NapcatAccountRow): string {
   const running = isProcessRunning(a);
   if (isActionBusy(a)) return running ? "停止中…" : "启动中…";
   return running ? "停止" : "启动";
+}
+
+function restartLabel(a: NapcatAccountRow): string {
+  return isActionBusy(a) ? "重启中…" : "重启";
 }
 
 function openDeleteModal() {
@@ -417,6 +415,26 @@ async function toggleAccountPower(a: NapcatAccountRow) {
     await refreshAfterAction();
   } catch (e) {
     pushConsoleToast(protocolApiErrorMessage(e, stop ? "停止失败" : "启动失败"), "err");
+  } finally {
+    setActionBusy(id, false);
+  }
+}
+
+async function restartAccount(a: NapcatAccountRow) {
+  const mount = protoMountUrl.value;
+  const id = accountProtocolId(a);
+  if (!mount || !id) {
+    pushConsoleToast("无法操作：协议端未启用或缺少账号 ID", "warn");
+    return;
+  }
+  if (isActionBusy(a)) return;
+  setActionBusy(id, true);
+  try {
+    await protocolRestartAccount(mount, id);
+    pushConsoleToast(`已重启 ${primaryTitle(a)}`, "ok");
+    await refreshAfterAction();
+  } catch (e) {
+    pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
   } finally {
     setActionBusy(id, false);
   }
@@ -650,6 +668,14 @@ onUnmounted(() => {
                     </button>
                     <button
                       type="button"
+                      class="btn"
+                      :disabled="!protoActionsEnabled || isActionBusy(a)"
+                      @click="restartAccount(a)"
+                    >
+                      {{ restartLabel(a) }}
+                    </button>
+                    <button
+                      type="button"
                       :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
                       :disabled="!protoActionsEnabled || isActionBusy(a)"
                       @click="toggleAccountPower(a)"
@@ -774,13 +800,14 @@ onUnmounted(() => {
                 target="_blank"
                 rel="noopener noreferrer"
               >详情</a>
-              <a
-                v-if="editHref(a)"
+              <button
+                type="button"
                 class="btn"
-                :href="editHref(a)!"
-                target="_blank"
-                rel="noopener noreferrer"
-              >编辑</a>
+                :disabled="!protoActionsEnabled || isActionBusy(a)"
+                @click="restartAccount(a)"
+              >
+                {{ restartLabel(a) }}
+              </button>
               <button
                 type="button"
                 :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
