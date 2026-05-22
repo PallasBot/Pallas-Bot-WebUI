@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
@@ -17,6 +18,7 @@ import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import type { ThemeMode } from "@/utils/consolePrefs";
 
 const route = useRoute();
+const router = useRouter();
 const dragPath = ref<string | null>(null);
 const dragOverPath = ref<string | null>(null);
 
@@ -165,6 +167,26 @@ const topBarDesc = computed(() => {
   const d = route.meta?.description;
   return typeof d === "string" && d.trim() ? d.trim() : "";
 });
+
+const pageBackVisible = computed(() => route.path !== "/" && route.name !== "home");
+
+function pageBackFallback(): RouteLocationRaw {
+  if (route.name === "plugin-config") return "/plugins";
+  const h = (route.hash || "").trim();
+  if (h) return { path: route.path, hash: "" };
+  const segs = route.path.split("/").filter(Boolean);
+  if (segs.length > 1) return `/${segs.slice(0, -1).join("/")}`;
+  return "/";
+}
+
+function goPageBack() {
+  const back = (window.history.state as { back?: string } | null)?.back;
+  if (typeof back === "string" && back.trim()) {
+    router.back();
+    return;
+  }
+  void router.push(pageBackFallback());
+}
 
 const health = ref<HealthResponse | null>(null);
 const healthErr = ref("");
@@ -464,7 +486,40 @@ onUnmounted(() => {
             :aria-label="consolePrefs.sidebarCollapsed ? '展开菜单栏' : '收起菜单栏'"
             @click="toggleSidebar"
           >
-            {{ consolePrefs.sidebarCollapsed ? "»" : "«" }}
+            <svg
+              v-if="consolePrefs.sidebarCollapsed"
+              class="shell__topbar-collapse-ico"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            >
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 5v14M10 8l4 4-4 4M19 5v14"
+              />
+            </svg>
+            <svg
+              v-else
+              class="shell__topbar-collapse-ico"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            >
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 5v14M14 8l-4 4 4 4M19 5v14"
+              />
+            </svg>
           </button>
           <button
             v-else
@@ -480,6 +535,17 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="shell__topbar-lead">
+        <button
+          v-if="pageBackVisible"
+          type="button"
+          class="shell__topbar-back"
+          aria-label="返回上一级"
+          title="返回上一级"
+          @click="goPageBack"
+        >
+          <span class="shell__topbar-back-ico" aria-hidden="true">‹</span>
+          <span class="shell__topbar-back-label">返回</span>
+        </button>
         <h1 class="shell__topbar-title">
           <span class="shell__topbar-ico" aria-hidden="true">{{ topBarIcon }}</span>
           <span class="shell__topbar-title-text">{{ topBarTitle }}</span>

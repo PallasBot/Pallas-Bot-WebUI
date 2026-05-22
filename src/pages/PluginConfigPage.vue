@@ -226,15 +226,11 @@ async function save() {
 <template>
   <div class="plugin-config-page">
     <p
-      v-if="pluginName"
+      v-if="pluginName && data?.module"
       class="muted"
       style="margin: 0 0 12px; font-size: 13px"
     >
-      <RouterLink
-        class="link-quiet"
-        to="/plugins"
-      >← 返回目录</RouterLink>
-      <span v-if="data?.module"> · {{ data.module }}</span>
+      {{ data.module }}
     </p>
 
     <div
