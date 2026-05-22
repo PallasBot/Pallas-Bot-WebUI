@@ -329,9 +329,17 @@ function pct(n: number | null | undefined, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
+/** API 返回 0–1 比率（如 claim_hit_rate），需乘 100 再显示为百分数。 */
+function ratioPct(ratio: number | null | undefined, digits = 1): string {
+  if (ratio == null || Number.isNaN(ratio)) return "—";
+  return `${(ratio * 100).toFixed(digits)}%`;
+}
+
 const shardObsVisible = computed(() => shardObs.value?.sharded === true);
 
-const shardIngressHitRate = computed(() => pct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null));
+const shardIngressHitRate = computed(() =>
+  ratioPct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null),
+);
 
 const shardIngressEvents = computed(() => {
   const ing = shardObs.value?.ingress_cluster;
@@ -339,21 +347,51 @@ const shardIngressEvents = computed(() => {
   return String(ing.events ?? 0);
 });
 
-const shardCoordLine = computed(() => {
+const shardIngressGateHint = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "代表牛 · won/(won+lost)";
+  const won = ing.claim_won ?? 0;
+  const lost = ing.claim_lost ?? 0;
+  return `won ${won} · lost ${lost} · 活跃 N 片约 1/N`;
+});
+
+const shardIngressEventsHint = computed(() => {
+  const ing = shardObs.value?.ingress_cluster;
+  if (!ing) return "—";
+  const early = (ing.early_fleet ?? 0) + (ing.early_not_at_target ?? 0);
+  return `fanout ${ing.fanout_bypass ?? 0} · 早丢弃 ${early}`;
+});
+
+const shardCoordValue = computed(() => {
   const c = shardObs.value?.coord_pending_live;
   if (!c) return "—";
+  return String(c.total_json ?? 0);
+});
+
+const shardCoordHint = computed(() => {
+  const c = shardObs.value?.coord_pending_live;
+  if (!c) return "data/pallas_shard/coord";
   const stale = c.bot_action_stale_open ?? 0;
-  const stalePart = stale > 0 ? ` · 过期 open ${stale}` : "";
-  return `共 ${c.total_json ?? 0} 个 JSON · bot_action open ${c.bot_action_open ?? 0}${stalePart}`;
+  const parts = [`bot_action open ${c.bot_action_open ?? 0}`];
+  if (stale > 0) parts.push(`过期 open ${stale}`);
+  return parts.join(" · ");
 });
 
-const shardPgPeakLine = computed(() => {
+const shardPgPeakValue = computed(() => {
   const p = shardObs.value?.pg_pool;
-  if (!p) return "—";
-  return `峰值约 ${p.estimated_pg_connections_peak ?? "—"}（${p.estimated_processes ?? "?"} 进程 × ${p.per_process_max ?? "?"}）`;
+  if (p?.estimated_pg_connections_peak == null) return "—";
+  return `~${p.estimated_pg_connections_peak}`;
 });
 
-const shardPgWarning = computed(() => (shardObs.value?.pg_pool?.warning || "").trim());
+const shardPgHint = computed(() => {
+  const p = shardObs.value?.pg_pool;
+  if (!p) return "对照 PostgreSQL max_connections";
+  const warning = (p.warning || "").trim();
+  if (warning) return warning;
+  return `${p.estimated_processes ?? "?"} 进程 × ${p.per_process_max ?? "?"} per pool`;
+});
+
+const shardPgHintWarn = computed(() => Boolean((shardObs.value?.pg_pool?.warning || "").trim()));
 
 const shardWorkerRows = computed((): ShardObservabilityWorker[] => {
   const rows = shardObs.value?.workers;
@@ -361,7 +399,15 @@ const shardWorkerRows = computed((): ShardObservabilityWorker[] => {
 });
 
 function shardWorkerHitRate(row: ShardObservabilityWorker): string {
-  return pct(row.ingress?.claim_hit_rate ?? null);
+  const ing = row.ingress;
+  if (!ing) return "无数据";
+  return ratioPct(ing.claim_hit_rate ?? null);
+}
+
+function shardWorkerCell(row: ShardObservabilityWorker, field: "claim_won" | "claim_lost"): string {
+  const ing = row.ingress;
+  if (!ing) return "—";
+  return String(ing[field] ?? 0);
 }
 
 const perfSampled = computed(() => {
@@ -1779,7 +1825,7 @@ onUnmounted(() => {
 
       <section
         v-if="shardObsVisible"
-        class="home-dashboard__perf home-dashboard__shard-obs"
+        class="home-dashboard__shard-obs"
       >
         <div class="panel home-page__panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
@@ -1790,67 +1836,63 @@ onUnmounted(() => {
               <span class="home-page__hd-capsule home-page__hd-capsule--muted">ingress / coord / PG</span>
             </div>
           </div>
-          <div class="panel__bd">
-            <div class="home-metric-grid">
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">ingress 命中率</span>
-                  <span class="home-metric__val">{{ shardIngressHitRate }}</span>
-                </div>
-                <p class="home-metric__hint">
-                  集群今日 claim won/(won+lost)；约 1/worker 数为正常
-                </p>
-              </div>
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">ingress 事件</span>
-                  <span class="home-metric__val">{{ shardIngressEvents }}</span>
-                </div>
-                <p class="home-metric__hint">
-                  won {{ shardObs?.ingress_cluster?.claim_won ?? 0 }} · lost
-                  {{ shardObs?.ingress_cluster?.claim_lost ?? 0 }}
-                </p>
-              </div>
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">coord 积压</span>
-                  <span class="home-metric__val home-metric__val--sm">{{ shardCoordLine }}</span>
-                </div>
-                <p class="home-metric__hint">实时扫描 data/pallas_shard/coord</p>
-              </div>
-              <div class="home-metric">
-                <div class="home-metric__row">
-                  <span class="home-metric__label">PG 连接池</span>
-                  <span class="home-metric__val home-metric__val--sm">{{ shardPgPeakLine }}</span>
-                </div>
-                <p
-                  v-if="shardPgWarning"
-                  class="home-metric__hint home-metric__hint--warn"
-                >
-                  {{ shardPgWarning }}
-                </p>
-                <p
-                  v-else
-                  class="home-metric__hint"
-                >
-                  对照 PostgreSQL max_connections
-                </p>
+          <div class="panel__bd home-shard-obs__bd">
+            <div class="grid-stats home-shard-obs__kpis">
+              <StatCard
+                dense
+                label="Ingress 命中率"
+                :value="shardIngressHitRate"
+                :hint="shardIngressGateHint"
+              />
+              <StatCard
+                dense
+                label="Ingress 事件"
+                :value="shardIngressEvents"
+                :hint="shardIngressEventsHint"
+              />
+              <StatCard
+                dense
+                label="Coord 积压"
+                :value="shardCoordValue"
+                :hint="shardCoordHint"
+              />
+              <div :class="{ 'home-shard-obs__pg-warn': shardPgHintWarn }">
+                <StatCard
+                  dense
+                  label="PG 连接池"
+                  :value="shardPgPeakValue"
+                  :hint="shardPgHint"
+                />
               </div>
             </div>
             <div
               v-if="shardWorkerRows.length"
-              class="home-shard-workers"
+              class="home-shard-obs__workers"
             >
-              <p class="home-shard-workers__title muted">各 worker 命中率（今日）</p>
-              <ul class="home-shard-workers__list">
-                <li
-                  v-for="row in shardWorkerRows"
-                  :key="row.shard_id"
-                >
-                  <span>worker-{{ row.shard_id }}</span>
-                  <span>{{ shardWorkerHitRate(row) }}</span>
-                </li>
-              </ul>
+              <p class="home-shard-obs__workers-title muted">各 worker 命中率（今日）</p>
+              <div class="home-shard-obs__table-wrap">
+                <table class="home-shard-obs__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Worker</th>
+                      <th scope="col">命中率</th>
+                      <th scope="col">won</th>
+                      <th scope="col">lost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in shardWorkerRows"
+                      :key="row.shard_id"
+                    >
+                      <td>worker-{{ row.shard_id }}</td>
+                      <td>{{ shardWorkerHitRate(row) }}</td>
+                      <td>{{ shardWorkerCell(row, 'claim_won') }}</td>
+                      <td>{{ shardWorkerCell(row, 'claim_lost') }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1892,31 +1934,5 @@ onUnmounted(() => {
 .home-account-hero__fav-star[aria-pressed="true"] {
   opacity: 1;
   color: #fbbf24;
-}
-.home-metric__hint--warn {
-  color: var(--warn, #f59e0b);
-}
-.home-shard-workers {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
-}
-.home-shard-workers__title {
-  margin: 0 0 8px;
-  font-size: 12px;
-}
-.home-shard-workers__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px 12px;
-  font-size: 13px;
-}
-.home-shard-workers__list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
 }
 </style>
