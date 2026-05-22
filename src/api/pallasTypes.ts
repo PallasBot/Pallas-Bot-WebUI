@@ -517,6 +517,8 @@ export interface BotUpdateCheckData {
   current_commit: string;
   latest_tag: string | null;
   has_update: boolean;
+  /** 相对最新 release 超前或未打发行 tag，且无需更新 */
+  development_build?: boolean;
   release_url: string;
   /** GitHub Release 正文（Markdown），网页兜底拉 tag 时可能为空 */
   release_notes?: string | null;
