@@ -232,8 +232,9 @@ onMounted(() => {
         </div>
         <div class="panel__bd muted update-page__bd">
           <p>
-            可选。用于 Release 检查与下载、协议端在线拉包等；对应运行配置项
-            <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>（经通用配置保存）。
+            可选。用于 Release 检查与下载、协议端在线拉包等。也可在侧边栏
+            <RouterLink to="/common-config/pallas_protocol">通用配置 → 协议端</RouterLink>
+            中填写，键名 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>；下方保存与此处等效。
           </p>
           <p>
             当前：<strong class="update-page__strong">{{ ghTokenHadValue ? "已配置" : "未配置" }}</strong>
