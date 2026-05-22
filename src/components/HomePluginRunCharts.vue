@@ -728,6 +728,18 @@ function formatDurationLogAt(sec: number): string {
   }
 }
 
+/** 列表内时间列：固定宽度横排，完整时刻放 title */
+function formatDurationLogAtCompact(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return "—";
+  try {
+    const d = new Date(sec * 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  } catch {
+    return String(sec);
+  }
+}
+
 const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
   plugins_top: true,
@@ -1030,34 +1042,53 @@ const dailyChartPack = computed(() => {
           每条为一次 Matcher 墙钟耗时（新→旧）；最多保留 {{ matcherDurationLogCap }} 条并写入
           <code>matcher_durations.jsonl</code>。
         </p>
-        <div
-          class="home-matcher-dur-log__head muted"
-          aria-hidden="true"
-        >
-          <span>耗时</span>
-          <span>插件</span>
-          <span>时间</span>
-          <span />
-        </div>
-        <ul class="home-matcher-dur-log__list">
-          <li
-            v-for="(it, idx) in recentDurationRows"
-            :key="`${it.at}-${idx}-${it.plugin}`"
-            class="home-matcher-dur-log__row"
-            :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
+        <div class="home-matcher-dur-log__scroll">
+          <div
+            class="home-matcher-dur-log__head muted"
+            aria-hidden="true"
           >
-            <span class="home-matcher-dur-log__ms">{{ fmtDurationMs(it.duration_ms) }}</span>
-            <span
-              class="home-matcher-dur-log__plugin"
-              :title="it.plugin"
-            >{{ pluginBarLabel(it.plugin) }}</span>
-            <span class="home-matcher-dur-log__at muted">{{ formatDurationLogAt(it.at) }}</span>
-            <span
-              v-if="it.had_error"
-              class="home-matcher-dur-log__badge"
-            >异常</span>
-          </li>
-        </ul>
+            <span>耗时</span>
+            <span>插件</span>
+            <span>时间</span>
+            <span />
+          </div>
+          <ul class="home-matcher-dur-log__list">
+            <li
+              v-for="(it, idx) in recentDurationRows"
+              :key="`${it.at}-${idx}-${it.plugin}`"
+              class="home-matcher-dur-log__row"
+              :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
+            >
+              <span class="home-matcher-dur-log__ms">{{ fmtDurationMs(it.duration_ms) }}</span>
+              <span
+                class="home-matcher-dur-log__plugin"
+                :title="it.plugin"
+              >{{ pluginBarLabel(it.plugin) }}</span>
+              <span
+                class="home-matcher-dur-log__at muted"
+                :title="formatDurationLogAt(it.at)"
+              >{{ formatDurationLogAtCompact(it.at) }}</span>
+              <span
+                v-if="it.had_error"
+                class="home-matcher-dur-log__badge"
+              >异常</span>
+            </li>
+          </ul>
+          <div
+            v-if="recentDurationRows.length >= 2"
+            class="home-matcher-dur-log__time-axis muted"
+            aria-hidden="true"
+          >
+            <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
+            <span />
+            <span class="home-matcher-dur-log__time-axis-range">
+              <span :title="formatDurationLogAt(recentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[0]!.at) }}</span>
+              <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧</span>
+              <span :title="formatDurationLogAt(recentDurationRows[recentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[recentDurationRows.length - 1]!.at) }}</span>
+            </span>
+            <span />
+          </div>
+        </div>
       </div>
       </div>
     </div>
@@ -2958,12 +2989,21 @@ const dailyChartPack = computed(() => {
   font-size: 0.78rem;
   line-height: 1.35;
 }
+.home-matcher-dur-log__scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -2px;
+  padding: 0 2px 2px;
+}
 .home-matcher-dur-log__head {
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto auto;
-  gap: 6px 8px;
+  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
+  gap: 6px 10px;
   padding: 0 8px 4px;
   font-size: 0.72rem;
+  min-width: 22rem;
+  box-sizing: border-box;
 }
 .home-matcher-dur-log__list {
   list-style: none;
@@ -2972,17 +3012,56 @@ const dailyChartPack = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 22rem;
+  box-sizing: border-box;
 }
 .home-matcher-dur-log__row {
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto auto;
-  gap: 6px 8px;
+  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
+  gap: 6px 10px;
   align-items: center;
   padding: 5px 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
+  min-width: 22rem;
+  box-sizing: border-box;
+}
+.home-matcher-dur-log__time-axis {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
+  gap: 6px 10px;
+  align-items: center;
+  margin-top: 6px;
+  padding: 6px 8px 2px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  min-width: 22rem;
+  box-sizing: border-box;
+}
+.home-matcher-dur-log__time-axis-label {
+  font-weight: 650;
+}
+.home-matcher-dur-log__time-axis-range {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.home-matcher-dur-log__time-axis-range > span:first-child,
+.home-matcher-dur-log__time-axis-range > span:last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.home-matcher-dur-log__time-axis-mid {
+  flex: 1 1 auto;
+  text-align: center;
+  opacity: 0.72;
+  white-space: nowrap;
 }
 .home-matcher-dur-log__row--err {
   background: rgba(239, 68, 68, 0.08);
@@ -2994,13 +3073,17 @@ const dailyChartPack = computed(() => {
   min-width: 4.5rem;
 }
 .home-matcher-dur-log__plugin {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .home-matcher-dur-log__at {
-  font-size: 0.75rem;
+  justify-self: end;
+  text-align: right;
+  font-size: 0.72rem;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .home-matcher-dur-log__badge {
   font-size: 0.7rem;
