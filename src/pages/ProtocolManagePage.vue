@@ -87,6 +87,7 @@ const protoSearchQ = ref("");
 const protoView = ref<"table" | "cards">(consolePrefs.protocolAccountsView);
 const expProtocolAccounts = ref(true);
 const loadBusy = ref(false);
+type ProtocolAccountAction = "power" | "restart";
 const actionBusy = ref(new Set<string>());
 /** 协议账号快照轮询（毫秒）；标签页隐藏时跳过 */
 const PROTO_POLL_MS = 5000;
@@ -285,26 +286,35 @@ function cardKey(a: NapcatAccountRow, index: number): string {
   return accountProtocolId(a) ?? `row-${index}`;
 }
 
-function isActionBusy(a: NapcatAccountRow): boolean {
-  const id = accountProtocolId(a);
-  return Boolean(id && actionBusy.value.has(id));
+function actionBusyKey(accountId: string, action: ProtocolAccountAction): string {
+  return `${action}:${accountId}`;
 }
 
-function setActionBusy(accountId: string, busy: boolean) {
+function isAccountActionBusy(a: NapcatAccountRow, action: ProtocolAccountAction): boolean {
+  const id = accountProtocolId(a);
+  return Boolean(id && actionBusy.value.has(actionBusyKey(id, action)));
+}
+
+function isAnyAccountActionBusy(a: NapcatAccountRow): boolean {
+  return isAccountActionBusy(a, "power") || isAccountActionBusy(a, "restart");
+}
+
+function setAccountActionBusy(accountId: string, action: ProtocolAccountAction, busy: boolean) {
+  const key = actionBusyKey(accountId, action);
   const next = new Set(actionBusy.value);
-  if (busy) next.add(accountId);
-  else next.delete(accountId);
+  if (busy) next.add(key);
+  else next.delete(key);
   actionBusy.value = next;
 }
 
 function togglePowerLabel(a: NapcatAccountRow): string {
   const running = isProcessRunning(a);
-  if (isActionBusy(a)) return running ? "停止中…" : "启动中…";
+  if (isAccountActionBusy(a, "power")) return running ? "停止中…" : "启动中…";
   return running ? "停止" : "启动";
 }
 
 function restartLabel(a: NapcatAccountRow): string {
-  return isActionBusy(a) ? "重启中…" : "重启";
+  return isAccountActionBusy(a, "restart") ? "重启中…" : "重启";
 }
 
 function openDeleteModal() {
@@ -401,9 +411,9 @@ async function toggleAccountPower(a: NapcatAccountRow) {
     pushConsoleToast("无法操作：协议端未启用或缺少账号 ID", "warn");
     return;
   }
-  if (isActionBusy(a)) return;
+  if (isAnyAccountActionBusy(a)) return;
   const stop = isProcessRunning(a);
-  setActionBusy(id, true);
+  setAccountActionBusy(id, "power", true);
   try {
     if (stop) {
       await protocolStopAccount(mount, id);
@@ -416,7 +426,7 @@ async function toggleAccountPower(a: NapcatAccountRow) {
   } catch (e) {
     pushConsoleToast(protocolApiErrorMessage(e, stop ? "停止失败" : "启动失败"), "err");
   } finally {
-    setActionBusy(id, false);
+    setAccountActionBusy(id, "power", false);
   }
 }
 
@@ -427,8 +437,8 @@ async function restartAccount(a: NapcatAccountRow) {
     pushConsoleToast("无法操作：协议端未启用或缺少账号 ID", "warn");
     return;
   }
-  if (isActionBusy(a)) return;
-  setActionBusy(id, true);
+  if (isAnyAccountActionBusy(a)) return;
+  setAccountActionBusy(id, "restart", true);
   try {
     await protocolRestartAccount(mount, id);
     pushConsoleToast(`已重启 ${primaryTitle(a)}`, "ok");
@@ -436,7 +446,7 @@ async function restartAccount(a: NapcatAccountRow) {
   } catch (e) {
     pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
   } finally {
-    setActionBusy(id, false);
+    setAccountActionBusy(id, "restart", false);
   }
 }
 
@@ -669,7 +679,7 @@ onUnmounted(() => {
                     <button
                       type="button"
                       class="btn"
-                      :disabled="!protoActionsEnabled || isActionBusy(a)"
+                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
                       @click="restartAccount(a)"
                     >
                       {{ restartLabel(a) }}
@@ -677,7 +687,7 @@ onUnmounted(() => {
                     <button
                       type="button"
                       :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
-                      :disabled="!protoActionsEnabled || isActionBusy(a)"
+                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
                       @click="toggleAccountPower(a)"
                     >
                       {{ togglePowerLabel(a) }}
@@ -793,17 +803,10 @@ onUnmounted(() => {
             </div>
             </div>
             <div class="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card__actions">
-              <a
-                v-if="detailHref(a)"
-                class="btn"
-                :href="detailHref(a)!"
-                target="_blank"
-                rel="noopener noreferrer"
-              >详情</a>
               <button
                 type="button"
                 class="btn"
-                :disabled="!protoActionsEnabled || isActionBusy(a)"
+                :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
                 @click="restartAccount(a)"
               >
                 {{ restartLabel(a) }}
@@ -811,7 +814,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
-                :disabled="!protoActionsEnabled || isActionBusy(a)"
+                :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
                 @click="toggleAccountPower(a)"
               >
                 {{ togglePowerLabel(a) }}
@@ -956,6 +959,80 @@ onUnmounted(() => {
 .protocol-acc-grid {
   margin-bottom: 12px;
 }
+
+/* 卡片内部：纵向 flex + clamp 间距，随宽度自适应边距 */
+.protocol-acc-card.data-summary-card--kv.data-summary-card--bot {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 2vw, 10px);
+  padding: clamp(8px, 2.4vw, 12px);
+  height: 100%;
+}
+
+.protocol-acc-card .data-summary-card__head--bot {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, max-content);
+  align-items: start;
+  column-gap: clamp(6px, 2vw, 10px);
+  row-gap: 4px;
+  padding-bottom: clamp(6px, 1.5vw, 8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.protocol-acc-card .inst-db-card-select {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-top: 2px;
+}
+
+.protocol-acc-card .data-summary-card__head-main {
+  min-width: 0;
+}
+
+.protocol-acc-card .data-summary-card__head-badges {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: clamp(3px, 1vw, 5px);
+  max-width: 100%;
+}
+
+.protocol-acc-card .data-summary-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3px, 1.2vw, 6px);
+  padding-top: 0;
+  min-height: 0;
+}
+
+.protocol-acc-card .data-summary-card__body .data-summary-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(8px, 4%, 12px);
+  min-height: 1.35rem;
+}
+
+.protocol-acc-card .data-summary-card__label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.protocol-acc-card .data-summary-card__body .data-summary-card__row > :not(.data-summary-card__label) {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-self: unset;
+  text-align: right;
+}
+
+.protocol-acc-card .data-summary-card__foot.protocol-acc-card__actions {
+  margin-top: auto;
+  padding-top: clamp(6px, 1.5vw, 8px);
+  border-top: 1px solid var(--border);
+}
+
 .protocol-acc-card__title-link {
   color: inherit;
   text-decoration: none;
@@ -964,12 +1041,21 @@ onUnmounted(() => {
   color: var(--accent);
 }
 .protocol-acc-card__actions {
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: clamp(4px, 1.5vw, 6px);
+}
+
+.protocol-acc-card__actions .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: clamp(6px, 2vw, 10px);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .protocol-acc-table-actions {
   flex-wrap: wrap;
   gap: 4px;
 }
+
 </style>
