@@ -143,6 +143,10 @@ const props = defineProps<{
   toolbarSummaryDuration?: string | null;
 }>();
 
+const emit = defineEmits<{
+  drawToggle: [expanded: boolean];
+}>();
+
 const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?? "");
 
 const toolbarSummaryText = computed(() => {
@@ -710,6 +714,7 @@ const chartFilterStripVisible = computed(
 function toggleChartsDraw() {
   chartsDrawExpanded.value = !chartsDrawExpanded.value;
   saveChartsDrawExpanded(chartsDrawExpanded.value);
+  emit("drawToggle", chartsDrawExpanded.value);
 }
 
 const matcherDurationLogCap = computed(() => {

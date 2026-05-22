@@ -127,6 +127,24 @@ const accountPickerRoot = ref<HTMLElement | null>(null);
 const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
 
+const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
+/** 宽屏展开时图表壳底部预留给 Teleport 选项条的固定高度（可滚动） */
+const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
+
+function loadAccountChartsDrawExpanded(): boolean {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    const v = localStorage.getItem(CHART_DRAW_EXPANDED_KEY);
+    if (v === "0") return false;
+    if (v === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
+
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
   if (typeof window === "undefined") return {};
   if (!window.matchMedia("(min-width: 561px)").matches) return {};
@@ -139,14 +157,24 @@ const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
 const accountChartsShellLockStyle = computed((): Record<string, string> => {
   if (typeof window === "undefined") return {};
   if (!window.matchMedia("(min-width: 561px)").matches) return {};
+  if (!accountChartsDrawExpanded.value) {
+    return { minHeight: "0", height: "auto", maxHeight: "none" };
+  }
   const h = accountHeroLockHeightPx.value;
   if (h < 120) return {};
   return {
     height: `${h}px`,
     maxHeight: `${h}px`,
     minHeight: "0",
+    overflow: "hidden",
+    "--home-account-chart-filter-slot-px": `${ACCOUNT_CHART_FILTER_SLOT_PX}px`,
   };
 });
+
+function onAccountChartsDrawToggle(expanded: boolean) {
+  accountChartsDrawExpanded.value = expanded;
+  scheduleAccountHeroLockMeasure();
+}
 
 function measureAccountHeroLockHeight() {
   if (typeof window === "undefined") return;
@@ -607,18 +635,6 @@ const communityOnlineHint = computed(() => {
   if (sec == null || !Number.isFinite(sec) || sec < 60) return "有心跳窗口内";
   const m = Math.max(1, Math.round(sec / 60));
   return `近 ${m} 分钟有心跳`;
-});
-
-const communityStatsAsOf = computed(() => {
-  const raw = communityStats.value?.as_of;
-  if (!raw) return "";
-  try {
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return "";
-    return `截至 ${d.toLocaleString()}`;
-  } catch {
-    return "";
-  }
 });
 
 const msgTotalStr = computed(() => {
@@ -1096,6 +1112,7 @@ onUnmounted(() => {
           role="status"
         >正在同步概况…</p>
     <div class="home-dashboard">
+      <div class="home-dashboard__hero">
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
           <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
@@ -1384,6 +1401,7 @@ onUnmounted(() => {
                       :style="accountChartsShellLockStyle"
                     >
                       <HomePluginRunCharts
+                        @draw-toggle="onAccountChartsDrawToggle"
                         :plugins="scopedPluginPlugins"
                         :plugins-meta="pluginsList"
                         :series="pluginRunTimeSamples"
@@ -1403,18 +1421,113 @@ onUnmounted(() => {
                         :toolbar-summary-api="chartToolbarSummaryApi"
                         :toolbar-summary-plugin="chartToolbarSummaryPlugin"
                       />
+                      <div
+                        id="home-account-chart-config-outlet"
+                        class="home-account-chart-config-outlet"
+                        :class="{ 'home-account-chart-config-outlet--slot': accountChartsDrawExpanded }"
+                      />
                     </div>
                 </div>
               </div>
             </template>
           </div>
         </div>
-        <div
-          v-if="selectedAccount != null && sortedDbBots.length"
-          id="home-account-chart-config-outlet"
-          class="home-account-chart-config-outlet"
-        />
       </section>
+
+      <aside class="home-dashboard__aside">
+      <section class="home-dashboard__community">
+        <div class="grid-stats home-page__capacity-grid home-dashboard__aside-stats">
+          <StatCard
+            dense
+            label="社区部署总数"
+            :value="communityDeploymentsTotal"
+            hint="历史上报过的独立安装"
+          />
+          <StatCard
+            dense
+            label="在线部署数"
+            :value="communityDeploymentsOnline"
+            :hint="communityOnlineHint"
+          />
+          <StatCard
+            dense
+            label="在线牛总和"
+            :value="communityBotsOnlineSum"
+            hint="各在线部署上报之和"
+          />
+        </div>
+      </section>
+
+      <div class="panel home-page__panel home-page__version-panel">
+        <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+          <h2 class="panel__title">
+            <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
+          </h2>
+          <div class="row-actions">
+            <PanelSidebarAdd main-path="/" />
+            <span
+              v-if="health?.ok"
+              class="home-page__hd-capsule home-page__hd-capsule--ok"
+            >API 连接</span>
+          </div>
+        </div>
+        <div class="panel__bd muted home-page__version home-page__version--grid">
+          <dl class="home-dl home-dl--version-rows home-version-dl">
+            <dt>NoneBot2</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
+              <span class="home-dl__sub muted">框架</span>
+            </dd>
+            <dt>Pallas-Bot</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+              <RouterLink
+                v-if="botUpdateCheck?.has_update"
+                class="home-version-update-link"
+                to="/update#console-update-bot"
+              >
+                <span class="badge badge--warn">有更新</span>
+                <span
+                  v-if="(botUpdateCheck?.latest_tag || '').trim()"
+                  class="home-version-update-meta muted"
+                >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
+              </RouterLink>
+              <span
+                v-else-if="botUpdateCheck?.development_build"
+                class="badge badge--dev home-version-dev-badge"
+                :title="botDevelopmentBuildTitle"
+              >开发构建</span>
+              <span class="home-dl__sub muted">业务</span>
+            </dd>
+            <dt>控制台资源</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
+              <RouterLink
+                v-if="webUpdateCheck?.has_update"
+                class="home-version-update-link"
+                to="/update#console-update-webui"
+              >
+                <span class="badge badge--warn">有更新</span>
+                <span
+                  v-if="(webUpdateCheck?.latest_tag || '').trim()"
+                  class="home-version-update-meta muted"
+                >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
+              </RouterLink>
+            </dd>
+            <dt>服务时间</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
+            </dd>
+            <dt>主机 / Python</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
+              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
+            </dd>
+          </dl>
+        </div>
+      </div>
+      </aside>
+      </div>
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid">
@@ -1435,36 +1548,6 @@ onUnmounted(() => {
             label="消息 收/发"
             :value="msgTotalStr"
             :hint="msgCapacityHint"
-          />
-        </div>
-      </section>
-
-      <section class="home-dashboard__community">
-        <div class="home-page__community-hd">
-          <h2 class="home-page__community-title">社区统计</h2>
-          <span
-            v-if="communityStatsAsOf"
-            class="muted home-page__community-asof"
-          >{{ communityStatsAsOf }}</span>
-        </div>
-        <div class="grid-stats home-page__capacity-grid home-page__community-grid">
-          <StatCard
-            dense
-            label="社区部署总数"
-            :value="communityDeploymentsTotal"
-            hint="历史上报过的独立安装"
-          />
-          <StatCard
-            dense
-            label="在线部署数"
-            :value="communityDeploymentsOnline"
-            :hint="communityOnlineHint"
-          />
-          <StatCard
-            dense
-            label="在线牛总和"
-            :value="communityBotsOnlineSum"
-            hint="各在线部署上报之和"
           />
         </div>
       </section>
@@ -1623,75 +1706,6 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
-    </div>
-
-    <div class="panel home-page__panel home-page__version-panel">
-      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/" />
-          <span
-            v-if="health?.ok"
-            class="home-page__hd-capsule home-page__hd-capsule--ok"
-          >API 连接</span>
-        </div>
-      </div>
-      <div class="panel__bd muted home-page__version home-page__version--grid">
-        <dl class="home-dl home-dl--version-rows home-version-dl">
-          <dt>NoneBot2</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
-            <span class="home-dl__sub muted">框架</span>
-          </dd>
-          <dt>Pallas-Bot</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
-            <RouterLink
-              v-if="botUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-bot"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(botUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-            <span
-              v-else-if="botUpdateCheck?.development_build"
-              class="badge badge--dev home-version-dev-badge"
-              :title="botDevelopmentBuildTitle"
-            >开发构建</span>
-            <span class="home-dl__sub muted">业务</span>
-          </dd>
-          <dt>控制台资源</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
-            <RouterLink
-              v-if="webUpdateCheck?.has_update"
-              class="home-version-update-link"
-              to="/update#console-update-webui"
-            >
-              <span class="badge badge--warn">有更新</span>
-              <span
-                v-if="(webUpdateCheck?.latest_tag || '').trim()"
-                class="home-version-update-meta muted"
-              >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
-            </RouterLink>
-          </dd>
-          <dt>服务时间</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
-          </dd>
-          <dt>主机 / Python</dt>
-          <dd>
-            <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
-            <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
-          </dd>
-        </dl>
-      </div>
     </div>
     </div>
     </Transition>
