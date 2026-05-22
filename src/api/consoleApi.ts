@@ -8,6 +8,8 @@ import type {
   ApiOk,
   BotConfigPublic,
   BotRow,
+  DbBackupInfo,
+  DbBackupResult,
   DbOverviewData,
   FriendListData,
   FriendOverviewData,
@@ -426,6 +428,21 @@ export async function fetchPluginConfigHint(): Promise<string> {
 export async function fetchDbOverview(): Promise<DbOverviewData> {
   const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview");
   return unwrap(data, "/db/overview");
+}
+
+export async function fetchDbBackupInfo(): Promise<DbBackupInfo> {
+  const { data } = await http.get<ApiOk<DbBackupInfo>>("/db/backup/info");
+  return unwrap(data, "/db/backup/info");
+}
+
+export async function postDbBackup(body: {
+  output_parent?: string | null;
+  label?: string;
+  scope?: "full" | "important";
+  pg_format?: "custom" | "plain" | "directory";
+}): Promise<DbBackupResult> {
+  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body);
+  return unwrap(data, "/db/backup");
 }
 
 export async function postMongoAggregate(body: {
