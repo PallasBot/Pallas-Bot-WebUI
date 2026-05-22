@@ -8,7 +8,7 @@
 | --- | --- |
 | **本仓库** | 前端源码与发版产物（如 `dist.zip`） |
 | **Pallas-Bot** | NoneBot2 运行时、`/pallas/api` 与静态资源托管 |
-| **典型访问** | `http://<主机>:<端口>/pallas/`（端口见主仓 `.env` 中 `PORT`，默认多为 `8088`） |
+| **典型访问** | `http://<主机>:<端口>/pallas/`（端口见主仓 `config/pallas.toml` 中 `[bootstrap] port`，默认多为 `8088`） |
 
 主仓文档入口：[控制台插件说明](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/plugins/pallas_webui/README.md)、[部署](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/Deployment.md)、[FAQ](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/FAQ.md)。
 
