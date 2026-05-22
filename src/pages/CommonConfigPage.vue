@@ -199,7 +199,7 @@ async function save() {
   err.value = "";
   try {
     data.value = await putCommonConfig(currentId.value, collectValues());
-    toastSaveSuccess("已保存到 .env");
+    toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     toastApiError(e, "保存失败");
@@ -283,7 +283,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               title="Ctrl+S"
               @click="save"
             >
-              {{ saving ? "保存中…" : "保存到 .env" }}
+              {{ saving ? "保存中…" : "保存配置" }}
             </button>
           </div>
         </div>
@@ -296,8 +296,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入各插件对应
-            <code>.env</code> 键并热重载。完整参数仍可在各
+            集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
             <router-link to="/plugins/pallas_image">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
           </p>
           <div

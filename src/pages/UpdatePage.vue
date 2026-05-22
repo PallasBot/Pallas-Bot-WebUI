@@ -21,7 +21,7 @@ import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 const WEBUI_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
 const BOT_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot/releases";
 
-/** 与 `common-config/pallas_protocol` 一致，写入根目录 `.env` */
+/** 与 `common-config/pallas_protocol` 一致，经通用配置落盘 */
 const PALLAS_PROTOCOL_SECTION_ID = "pallas_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 
@@ -74,7 +74,7 @@ async function saveGithubToken() {
     await putCommonConfig(PALLAS_PROTOCOL_SECTION_ID, { [GITHUB_TOKEN_FIELD]: next });
     ghTokenHadValue.value = true;
     ghTokenInput.value = "";
-    ghTokenOk.value = "已保存到 .env，重启 Bot 后生效。";
+    ghTokenOk.value = "配置已保存；若未立即生效可重启 Bot。";
     toastSaveSuccess("GitHub 令牌已保存");
   } catch (e) {
     ghTokenErr.value = e instanceof Error ? e.message : String(e);
@@ -232,8 +232,9 @@ onMounted(() => {
         </div>
         <div class="panel__bd muted update-page__bd">
           <p>
-            可选。用于 Release 检查与下载、协议端在线拉包等；写入根目录
-            <code>.env</code> 的 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+            可选。用于 Release 检查与下载、协议端在线拉包等。也可在侧边栏
+            <RouterLink to="/common-config/pallas_protocol">通用配置 → 协议端</RouterLink>
+            中填写，键名 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>；下方保存与此处等效。
           </p>
           <p>
             当前：<strong class="update-page__strong">{{ ghTokenHadValue ? "已配置" : "未配置" }}</strong>
@@ -423,7 +424,7 @@ onMounted(() => {
               <li>若未使用 <code>:latest</code>，请先把 compose 里 <code>image: pallasbot/pallas-bot:…</code> 的 tag 改成目标版本，再执行以上两条。</li>
             </ol>
             <p>
-              数据与配置一般通过卷挂载（如 <code>./pallas-bot/data</code>、<code>.env</code>）保留；完整变量与排障见主仓
+              数据与配置一般通过卷挂载（如 <code>./pallas-bot/data</code>、<code>config/pallas.toml</code>）保留；完整变量与排障见主仓
               <a
                 href="https://github.com/PallasBot/Pallas-Bot/blob/main/docs/DockerDeployment.md"
                 target="_blank"
