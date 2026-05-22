@@ -53,6 +53,16 @@ export interface SystemData {
   };
 }
 
+/** GET /community-stats：代理社区统计中心 /v1/stats */
+export interface CommunityStatsData {
+  deployments_total: number;
+  deployments_online: number;
+  bots_online_sum: number;
+  online_ttl_sec?: number;
+  as_of?: string;
+  stats_url?: string;
+}
+
 /** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */
 export interface MessageTrafficHistoryPoint {
   at: number;

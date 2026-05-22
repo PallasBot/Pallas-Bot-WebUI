@@ -33,6 +33,7 @@ import type {
   PluginConfigCheckResult,
   CommonConfigSectionMeta,
   MessageStatsData,
+  CommunityStatsData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
 } from "./pallasTypes";
@@ -389,6 +390,30 @@ export async function fetchMessageStats(selfId?: number): Promise<MessageStatsDa
     params: selfId ? { self_id: selfId } : {},
   });
   return unwrap(data, "/message-stats");
+}
+
+const COMMUNITY_STATS_FRESH_MS = 60_000;
+
+let communityStatsCache: { data: CommunityStatsData; ts: number } | null = null;
+let communityStatsInflight: Promise<CommunityStatsData> | null = null;
+
+export async function fetchCommunityStats(options?: { bypassCache?: boolean }): Promise<CommunityStatsData> {
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  if (!bypass && communityStatsCache && now - communityStatsCache.ts < COMMUNITY_STATS_FRESH_MS) {
+    return communityStatsCache.data;
+  }
+  if (!communityStatsInflight) {
+    communityStatsInflight = (async () => {
+      const { data } = await http.get<ApiOk<CommunityStatsData>>("/community-stats");
+      const parsed = unwrap(data, "/community-stats");
+      communityStatsCache = { data: parsed, ts: Date.now() };
+      return parsed;
+    })().finally(() => {
+      communityStatsInflight = null;
+    });
+  }
+  return communityStatsInflight;
 }
 
 export async function fetchPluginRunStats(
