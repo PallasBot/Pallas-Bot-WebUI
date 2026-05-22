@@ -36,6 +36,7 @@ import type {
   CommunityStatsData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
+  ShardObservabilityData,
 } from "./pallasTypes";
 
 /**
@@ -414,6 +415,11 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
     });
   }
   return communityStatsInflight;
+}
+
+export async function fetchShardObservability(): Promise<ShardObservabilityData> {
+  const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
+  return unwrap(data, "/shard-observability");
 }
 
 export async function fetchPluginRunStats(
