@@ -1026,9 +1026,15 @@ onUnmounted(() => {
           <keep-alive :max="24">
             <component
               :is="Component"
+              v-if="r.meta.keepAlive !== false"
               :key="r.path"
             />
           </keep-alive>
+          <component
+            :is="Component"
+            v-if="r.meta.keepAlive === false"
+            :key="r.path"
+          />
         </router-view>
       </div>
       <Teleport to="body">

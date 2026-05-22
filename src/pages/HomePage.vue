@@ -128,7 +128,8 @@ const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(0);
 
 const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
-/** 宽屏展开时图表壳底部预留给 Teleport 选项条的固定高度（可滚动） */
+const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
+/** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
 const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
 
 function loadAccountChartsDrawExpanded(): boolean {
@@ -143,14 +144,27 @@ function loadAccountChartsDrawExpanded(): boolean {
   return true;
 }
 
-const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
+function loadAccountChartsFilterExpanded(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    if (localStorage.getItem(CHART_FILTER_EXPANDED_KEY) === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
 
+const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
+const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
+
+const accountHeroHeightCapActive = computed(
+  () => accountHeroLockHeightPx.value >= 120 && typeof window !== "undefined" && window.matchMedia("(min-width: 561px)").matches,
+);
+
+/** 硬上限：仅在图表收起时更新，值为左侧账户区高度（≈ 无图表展开时的整块高度） */
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
-  if (typeof window === "undefined") return {};
-  if (!window.matchMedia("(min-width: 561px)").matches) return {};
-  const h = accountHeroLockHeightPx.value;
-  if (h < 120) return {};
-  return { "--home-account-hero-lock-px": `${h}px` };
+  if (!accountHeroHeightCapActive.value) return {};
+  return { "--home-account-hero-lock-px": `${accountHeroLockHeightPx.value}px` };
 });
 
 /** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
@@ -162,13 +176,16 @@ const accountChartsShellLockStyle = computed((): Record<string, string> => {
   }
   const h = accountHeroLockHeightPx.value;
   if (h < 120) return {};
-  return {
+  const style: Record<string, string> = {
     height: `${h}px`,
     maxHeight: `${h}px`,
     minHeight: "0",
     overflow: "hidden",
-    "--home-account-chart-filter-slot-px": `${ACCOUNT_CHART_FILTER_SLOT_PX}px`,
   };
+  if (accountChartsFilterExpanded.value) {
+    style["--home-account-chart-filter-slot-px"] = `${ACCOUNT_CHART_FILTER_SLOT_PX}px`;
+  }
+  return style;
 });
 
 function onAccountChartsDrawToggle(expanded: boolean) {
@@ -176,6 +193,12 @@ function onAccountChartsDrawToggle(expanded: boolean) {
   scheduleAccountHeroLockMeasure();
 }
 
+function onAccountChartsFilterToggle(expanded: boolean) {
+  accountChartsFilterExpanded.value = expanded;
+  scheduleAccountHeroLockMeasure();
+}
+
+/** 硬上限取左侧账户区高度（与图表收起时整行高度一致，不受右侧图表撑高） */
 function measureAccountHeroLockHeight() {
   if (typeof window === "undefined") return;
   if (!window.matchMedia("(min-width: 561px)").matches) {
@@ -198,7 +221,7 @@ function scheduleAccountHeroLockMeasure() {
   });
 }
 
-/** matcher 异常 details 开合会改变卡高，需在布局稳定后重测以免锁高滞留 */
+/** matcher 异常 details 开合会改变左侧卡高，需重测硬上限 */
 function onMatcherDetailsToggle() {
   scheduleAccountHeroLockMeasure();
 }
@@ -1144,6 +1167,7 @@ onUnmounted(() => {
               <div
                 v-if="selectedAccount != null"
                 class="home-account-split-bd"
+                :class="{ 'home-account-split-bd--lock-h': accountHeroHeightCapActive }"
                 :style="accountUnifiedHeroLockStyle"
               >
                 <div
@@ -1402,6 +1426,7 @@ onUnmounted(() => {
                     >
                       <HomePluginRunCharts
                         @draw-toggle="onAccountChartsDrawToggle"
+                        @filter-toggle="onAccountChartsFilterToggle"
                         :plugins="scopedPluginPlugins"
                         :plugins-meta="pluginsList"
                         :series="pluginRunTimeSamples"
@@ -1424,7 +1449,10 @@ onUnmounted(() => {
                       <div
                         id="home-account-chart-config-outlet"
                         class="home-account-chart-config-outlet"
-                        :class="{ 'home-account-chart-config-outlet--slot': accountChartsDrawExpanded }"
+                        :class="{
+                          'home-account-chart-config-outlet--slot':
+                            accountChartsDrawExpanded && accountChartsFilterExpanded,
+                        }"
                       />
                     </div>
                 </div>
