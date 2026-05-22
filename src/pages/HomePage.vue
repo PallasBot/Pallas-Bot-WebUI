@@ -1569,7 +1569,7 @@ onUnmounted(() => {
             dense
             label="在线牛总和"
             :value="communityBotsOnlineSum"
-            hint="各在线部署上报之和"
+            hint="全社区各部署上报之和；本机在线见「在线 Bot」"
           />
         </div>
       </section>
