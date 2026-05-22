@@ -1,4 +1,4 @@
-import { http } from "./http";
+import { DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import type {
   UpdateCheckData,
@@ -467,7 +467,9 @@ export async function fetchPluginConfigHint(): Promise<string> {
 }
 
 export async function fetchDbOverview(): Promise<DbOverviewData> {
-  const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview");
+  const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview", {
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/db/overview");
 }
 
@@ -668,7 +670,10 @@ export async function deleteBotConfig(account: number): Promise<{ deleted: boole
 export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {
   const params: Record<string, unknown> = { limit };
   if (selfId !== undefined) params.self_id = selfId;
-  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", { params });
+  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", {
+    params,
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/group-configs");
 }
 
@@ -696,7 +701,10 @@ export async function putGroupConfig(
 }
 
 export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
-  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", { params: { limit } });
+  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", {
+    params: { limit },
+    timeout: DB_HEAVY_READ_TIMEOUT_MS,
+  });
   return unwrap(data, "/user-configs");
 }
 

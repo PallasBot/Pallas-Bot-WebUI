@@ -23,6 +23,9 @@ export const http = axios.create({
   withCredentials: true,
 });
 
+/** 数据库概览/大批量配置列表首次拉取可能较慢（大表计数、万级行） */
+export const DB_HEAVY_READ_TIMEOUT_MS = 120_000;
+
 let authRedirectScheduled = false;
 
 /** 会话失效：回到后端登录页（整页），避免停在 SPA 内无效状态 */
