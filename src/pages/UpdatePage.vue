@@ -370,6 +370,11 @@ onMounted(() => {
               class="badge badge--warn update-page__status-pill"
             >有更新</span>
             <span
+              v-else-if="bot?.development_build"
+              class="badge badge--dev update-page__status-pill"
+              title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
+            >开发构建</span>
+            <span
               v-else
               class="badge badge--ok update-page__status-pill"
             >已是最新</span>

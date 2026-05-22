@@ -357,6 +357,17 @@ const pallasBotVersionDisplay = computed(() => {
   return x || pb || "—";
 });
 
+const botDevelopmentBuildTitle = computed(() => {
+  const b = botUpdateCheck.value;
+  if (!b?.development_build) return "";
+  const latest = (b.latest_tag || "").trim();
+  const commit = (b.current_commit || "").trim();
+  const parts = ["当前为开发构建，代码超前于最新发行版。"];
+  if (latest) parts.push(`最新发行：${latest}。`);
+  if (commit) parts.push(`commit：${commit}。`);
+  return parts.join("");
+});
+
 const consoleResourceVersionDisplay = computed(() => {
   const v = (health.value?.console?.version ?? "").trim();
   const x = displayVersionWithoutSha(v);
@@ -1579,6 +1590,11 @@ onUnmounted(() => {
                 class="home-version-update-meta muted"
               >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
             </RouterLink>
+            <span
+              v-else-if="botUpdateCheck?.development_build"
+              class="badge badge--dev home-version-dev-badge"
+              :title="botDevelopmentBuildTitle"
+            >开发构建</span>
             <span class="home-dl__sub muted">业务</span>
           </dd>
           <dt>控制台资源</dt>
