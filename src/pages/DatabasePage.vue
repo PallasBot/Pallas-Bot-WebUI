@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
+  fetchDbBackupInfo,
   fetchDbOverview,
   fetchGroupConfigs,
   fetchPlugins,
   fetchUserConfigs,
   peekPluginsCache,
+  postDbBackup,
   postMongoAggregate,
 } from "@/api/consoleApi";
-import type { DbOverviewData, GroupConfigPublic, PluginRow, UserConfigPublic } from "@/api/pallasTypes";
+import type {
+  DbBackupInfo,
+  DbBackupResult,
+  DbOverviewData,
+  GroupConfigPublic,
+  PluginRow,
+  UserConfigPublic,
+} from "@/api/pallasTypes";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
@@ -40,6 +49,14 @@ const collection = ref("");
 const pipelineText = ref("[\n  { \"$limit\": 20 }\n]");
 const aggResult = ref<string>("");
 const aggLoading = ref(false);
+
+const backupInfo = ref<DbBackupInfo | null>(null);
+const backupOutputParent = ref("");
+const backupLabel = ref("");
+const backupScope = ref<"full" | "important">("full");
+const backupPgFormat = ref<"custom" | "plain" | "directory">("custom");
+const backupBusy = ref(false);
+const backupResult = ref<DbBackupResult | null>(null);
 
 const socialConfigsBusy = ref(false);
 const groupConfigs = ref<GroupConfigPublic[]>([]);
@@ -89,6 +106,26 @@ const backendLabel = computed(() => {
   if (o.backend === "postgres") return "PostgreSQL";
   return o.backend;
 });
+
+const backupToolReady = computed(() => backupInfo.value?.tool_available === true);
+
+const backupScopeOptions = computed(() => {
+  if (backupInfo.value?.backend === "mongodb") {
+    return [
+      { value: "full" as const, label: "整库（mongodump）" },
+      { value: "important" as const, label: "关键集合（config / group_config / user_config 等）" },
+    ];
+  }
+  return [{ value: "full" as const, label: "整库（pg_dump）" }];
+});
+
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 const totalDocuments = computed(() => {
   if (!isMongo(overview.value)) return null;
@@ -201,9 +238,44 @@ async function loadAll() {
   }
 }
 
+async function loadBackupInfo() {
+  try {
+    const info = await fetchDbBackupInfo();
+    backupInfo.value = info;
+    if (!backupOutputParent.value.trim()) {
+      backupOutputParent.value = info.default_output_parent;
+    }
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function runDbBackup() {
+  backupBusy.value = true;
+  backupResult.value = null;
+  err.value = "";
+  ok.value = "";
+  try {
+    const parent = backupOutputParent.value.trim();
+    const result = await postDbBackup({
+      output_parent: parent || null,
+      label: backupLabel.value.trim(),
+      scope: backupScope.value,
+      pg_format: backupPgFormat.value,
+    });
+    backupResult.value = result;
+    ok.value = result.message || "备份已完成。";
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    backupBusy.value = false;
+  }
+}
+
 onMounted(() => {
   void loadPluginsCatalog();
   void loadAll();
+  void loadBackupInfo();
 });
 
 async function runAggregate() {
@@ -328,6 +400,142 @@ onUnmounted(() => {
           <div class="stat-card__label">表行数（合计）</div>
           <div class="stat-card__value">{{ nf.format(totalRows) }}</div>
           <div class="stat-card__hint">{{ pgTables.length }} 张表</div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="overview && (overview.backend === 'mongodb' || overview.backend === 'postgres')"
+      id="db-backup"
+      class="panel"
+    >
+      <div class="panel__hd panel__hd--split">
+        <h2 class="panel__title">
+          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库备份
+        </h2>
+        <div class="row-actions">
+          <PanelSidebarAdd main-path="/database" />
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="backupBusy || !backupToolReady"
+            @click="runDbBackup"
+          >
+            {{ backupBusy ? "备份中…" : "开始备份" }}
+          </button>
+        </div>
+      </div>
+      <div class="panel__bd">
+        <div
+          v-if="backupInfo && !backupInfo.tool_available"
+          class="alert alert--err"
+          style="margin: 0 0 12px"
+        >
+          <p style="margin: 0 0 8px">
+            未在运行 Bot 的环境中检测到 <strong>{{ backupInfo.tool_name }}</strong>，无法从 WebUI 发起备份。
+            请先安装
+            <template v-if="backupInfo.tool_download_url">
+              <a
+                :href="backupInfo.tool_download_url"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ backupInfo.tool_download_label || backupInfo.tool_name }}</a>
+            </template>
+            <template v-else>
+              {{ backupInfo.tool_download_label || backupInfo.tool_name }}
+            </template>
+            并加入 PATH。
+          </p>
+          <p
+            v-if="backupInfo.tool_install_hint"
+            class="muted"
+            style="margin: 0; font-size: 0.92em"
+          >
+            {{ backupInfo.tool_install_hint }}
+          </p>
+        </div>
+        <p
+          v-else-if="backupInfo"
+          class="muted"
+          style="margin: 0 0 12px"
+        >
+          当前后端：<strong style="color: var(--text)">{{ backendLabel }}</strong>
+          · {{ backupInfo.connection.host }}:{{ backupInfo.connection.port }}
+          · 库 <strong style="color: var(--text)">{{ backupInfo.connection.database }}</strong>
+          · 工具 {{ backupInfo.tool_name }}
+        </p>
+        <div
+          class="database-backup-form"
+          style="display: grid; gap: 12px; max-width: 720px"
+        >
+          <div>
+            <label class="muted" style="display: block; margin-bottom: 6px">备份父目录</label>
+            <input
+              v-model="backupOutputParent"
+              class="inp"
+              style="width: 100%; max-width: 100%"
+              placeholder="例如 D:/Pallas/backups 或留空使用默认"
+            >
+            <p class="muted" style="margin: 6px 0 0; font-size: 0.9em">
+              将在该目录下创建带时间戳的子文件夹；相对路径相对于 Bot 仓库根目录。
+            </p>
+          </div>
+          <div>
+            <label class="muted" style="display: block; margin-bottom: 6px">目录后缀（可选）</label>
+            <input
+              v-model="backupLabel"
+              class="inp"
+              style="width: 100%; max-width: 360px"
+              placeholder="例如 before_upgrade"
+            >
+          </div>
+          <div>
+            <label class="muted" style="display: block; margin-bottom: 6px">备份范围</label>
+            <select
+              v-model="backupScope"
+              class="sel"
+              style="max-width: 420px; width: 100%"
+              :disabled="backupInfo?.backend === 'postgres'"
+            >
+              <option
+                v-for="opt in backupScopeOptions"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div v-if="backupInfo?.backend === 'postgres'">
+            <label class="muted" style="display: block; margin-bottom: 6px">PostgreSQL 格式</label>
+            <select
+              v-model="backupPgFormat"
+              class="sel"
+              style="max-width: 420px; width: 100%"
+            >
+              <option value="custom">custom（.dump，推荐）</option>
+              <option value="plain">plain SQL（.sql）</option>
+              <option value="directory">directory（目录格式）</option>
+            </select>
+          </div>
+        </div>
+        <div
+          v-if="backupResult"
+          class="panel panel--nested"
+          style="margin-top: 16px"
+        >
+          <div class="panel__bd">
+            <p style="margin: 0 0 8px"><strong>输出目录</strong> {{ backupResult.output_dir }}</p>
+            <p
+              v-for="(art, i) in backupResult.artifacts"
+              :key="i"
+              class="muted"
+              style="margin: 0 0 4px; word-break: break-all"
+            >
+              产物：{{ art }}
+            </p>
+            <p class="muted" style="margin: 8px 0 0">大小：{{ formatBytes(backupResult.size_bytes) }}</p>
+          </div>
         </div>
       </div>
     </div>
