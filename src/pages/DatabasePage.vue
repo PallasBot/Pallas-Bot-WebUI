@@ -10,6 +10,7 @@ import {
   postDbBackup,
   postMongoAggregate,
 } from "@/api/consoleApi";
+import { axiosErrorDetail } from "@/api/http";
 import type {
   DbBackupInfo,
   DbBackupResult,
@@ -247,7 +248,7 @@ async function loadBackupInfo() {
       backupOutputParent.value = info.default_output_parent;
     }
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
   }
 }
 
@@ -267,7 +268,7 @@ async function runDbBackup() {
     backupResult.value = result;
     ok.value = result.message || "备份已完成。";
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
   } finally {
     backupBusy.value = false;
   }
