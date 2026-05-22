@@ -719,7 +719,7 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   align-items: center;
   gap: 8px 12px;
   padding: 8px 40px 10px;
-  max-width: 1240px;
+  max-width: 1350px;
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -1205,7 +1205,7 @@ html[data-theme="light"] .shell-page-loading {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  max-width: 1240px;
+  max-width: 1350px;
   margin: 0 auto;
   padding: 12px 40px 48px;
 }
@@ -3226,8 +3226,29 @@ html[data-theme="light"] .bot-config-edit {
   gap: 16px;
   margin-bottom: 8px;
 }
-.home-dashboard__accounts {
+.home-dashboard__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   grid-column: 1 / -1;
+  min-width: 0;
+}
+.home-dashboard__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.home-dashboard__community {
+  min-width: 0;
+}
+.home-dashboard__aside-stats {
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+}
+.home-dashboard__aside-stats > .stat-card {
+  min-width: 0;
 }
 
 .home-account-panel__hd {
@@ -3597,7 +3618,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   display: grid;
   /* 账户列略加宽并略多 fr，减轻统计区折行 */
   grid-template-columns: minmax(322px, 1.42fr) minmax(0, 2.9fr);
-  align-items: start;
+  align-items: stretch;
   gap: 8px;
   min-width: 0;
   max-width: 100%;
@@ -3641,6 +3662,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .home-account-charts-shell--hero-side {
@@ -3661,22 +3683,85 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 @media (min-width: 561px) {
   .home-account-split-bd__col--hero.home-account-card {
     flex: 0 1 auto;
-    align-self: start;
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
   }
 
   .home-account-split-bd__col--charts {
     align-self: start;
+    min-height: 0;
+  }
+
+  .home-account-split-bd__col--charts:has(.home-plugin-charts:not(.home-plugin-charts--draw-collapsed)) {
+    align-self: stretch;
   }
 
   /* flex:0 + min-height:0：避免「插件今日次数」条数多时 min-height:auto 撑破 max-height */
   .home-account-charts-shell--hero-side {
-    flex: 0 0 auto;
-    align-self: start;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    align-self: stretch;
     width: 100%;
     height: var(--home-account-hero-lock-px, auto);
     max-height: var(--home-account-hero-lock-px, none);
     min-height: 0;
     overflow: hidden;
+  }
+
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts--draw-collapsed) {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot {
+    flex: 0 0 var(--home-account-chart-filter-slot-px, 132px);
+    height: var(--home-account-chart-filter-slot-px, 132px);
+    max-height: var(--home-account-chart-filter-slot-px, 132px);
+    min-height: var(--home-account-chart-filter-slot-px, 132px);
+    margin-top: 6px;
+    padding-top: 2px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot:empty {
+    display: block;
+  }
+
+  .home-account-charts-shell--hero-side:has(.home-plugin-charts--draw-collapsed)
+    > .home-account-chart-config-outlet {
+    display: none;
+  }
+
+  .home-account-charts-shell--hero-side > .home-account-chart-config-outlet--slot
+    .home-plugin-charts__filter-external {
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    padding: 4px 2px 6px;
+    background: transparent;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz,
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark,
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
+    min-height: 0;
+  }
+
+  .home-account-charts-shell--hero-side > .home-plugin-charts .home-plugin-charts__flip {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 
@@ -3716,8 +3801,9 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 .home-account-chart-config-outlet {
-  margin-top: 10px;
+  flex: 0 0 auto;
   min-width: 0;
+  margin-top: 0;
 }
 
 /* 总览账户卡内：说明与勾选已 teleport；图表区随右列等高伸展（> .home-plugin-charts 提高优先级以覆盖组件 scoped） */
@@ -5289,10 +5375,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 900px) {
   .home-dashboard {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto;
     align-items: stretch;
   }
-  .home-dashboard__accounts {
+  .home-dashboard__hero {
     grid-column: 1;
     grid-row: 1;
   }
@@ -5300,19 +5386,71 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-column: 1;
     grid-row: 2;
   }
-  .home-dashboard__community {
-    grid-column: 1;
-    grid-row: 3;
-  }
   .home-dashboard__perf {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 3;
   }
   .home-dashboard__capacity .grid-stats,
   .home-dashboard__community .grid-stats {
     height: auto;
     margin-bottom: 0;
     align-content: start;
+  }
+}
+
+@media (min-width: 1200px) {
+  /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
+  .home-dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(288px, 336px);
+    grid-template-rows: auto auto auto;
+    align-items: stretch;
+  }
+  .home-dashboard__hero {
+    display: contents;
+  }
+  .home-dashboard__accounts {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .home-dashboard__aside {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+    min-height: 0;
+  }
+  .home-dashboard__capacity {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  .home-dashboard__perf {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .home-dashboard__accounts > .home-page__panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    min-width: 0;
+  }
+  .home-dashboard__accounts > .home-page__panel .panel__bd {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .home-dashboard__aside-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .home-dashboard__aside .home-page__version-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .home-dashboard__aside .home-page__version-panel .panel__bd {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 
@@ -6887,8 +7025,9 @@ html[data-theme="light"] .plugin-preview {
 
 /* —— 总览页：紧凑仪表盘（不引入第三方组件库，避免双主题与包体膨胀） */
 .home-page {
-  max-width: 900px;
+  max-width: 100%;
   margin-inline: auto;
+  width: 100%;
 }
 
 .home-shell-fade-enter-active {
@@ -7128,26 +7267,19 @@ html[data-theme="light"] .home-instances-capsule {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
 }
-.home-page__community-hd {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 12px;
-  margin-bottom: 10px;
+.home-page__capacity-grid > .stat-card {
+  min-width: 0;
 }
-.home-page__community-title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-muted, var(--text));
-}
-.home-page__community-asof {
-  font-size: 11px;
-}
-.home-page__community-grid {
+.home-dashboard__capacity .home-page__capacity-grid {
   margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .home-page__capacity-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 @media (max-width: 560px) {
   .home-page__capacity-grid {
