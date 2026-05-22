@@ -436,6 +436,16 @@ export async function fetchPluginRunStats(
   return unwrap(data, "/plugin-run-stats");
 }
 
+export interface LogErrorsCleanupResult {
+  cleared: boolean;
+  sharded_errors?: boolean;
+}
+
+export async function postLogErrorsCleanup(): Promise<LogErrorsCleanupResult> {
+  const { data } = await http.post<ApiOk<LogErrorsCleanupResult>>("/log-errors/cleanup");
+  return unwrap(data, "/log-errors/cleanup");
+}
+
 export async function fetchConsoleDailyStats(params?: {
   selfId?: number;
   start?: string;
