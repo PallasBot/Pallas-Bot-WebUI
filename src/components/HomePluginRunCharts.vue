@@ -93,6 +93,26 @@ function saveChartsDrawExpanded(open: boolean) {
   }
 }
 
+const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
+
+function loadChartsFilterExpanded(): boolean {
+  try {
+    const v = localStorage.getItem(CHART_FILTER_EXPANDED_KEY);
+    if (v === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+function saveChartsFilterExpanded(open: boolean) {
+  try {
+    localStorage.setItem(CHART_FILTER_EXPANDED_KEY, open ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 type SelState = { api: string[]; matcher: string[]; matcherErr: string[] };
 
 function loadSel(): SelState {
@@ -145,6 +165,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   drawToggle: [expanded: boolean];
+  filterToggle: [expanded: boolean];
 }>();
 
 const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?? "");
@@ -156,7 +177,7 @@ const toolbarSummaryText = computed(() => {
   if (!a && !p && !d) return "";
   const parts = [`${a || "API —"}`, `${p || "插件 —"}`];
   if (d) parts.push(d);
-  return `今日: ${parts.join(" · ")}`;
+  return parts.join(" · ");
 });
 
 const selectedApiKeys = ref<string[]>([]);
@@ -684,6 +705,7 @@ function durationMsPoints(plugin: string): { at: number; total: number }[] {
 const chartPanel = ref<ChartPanelId>("plugins_top");
 const panelPickReady = ref(false);
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
+const chartsFilterExpanded = ref(loadChartsFilterExpanded());
 
 /** 与首页账户卡断点一致：用于时间桶柱状图加粗柱子 */
 const bucketViewportNarrow = ref(false);
@@ -703,8 +725,16 @@ onUnmounted(() => {
   window.removeEventListener("resize", refreshBucketViewportNarrow);
 });
 
-/** 展开且存在 Teleport 目标时显示卡底配置条；local_spark 仅在可展示时显示（避免空块） */
+/** Teleport 选项条：图表已展开且用户点「选项」后才显示 */
 const chartFilterStripVisible = computed(
+  () =>
+    !!chartFilterTeleportTo.value &&
+    chartsDrawExpanded.value &&
+    chartsFilterExpanded.value &&
+    (chartPanel.value !== "local_spark" || showLocalSpark.value),
+);
+
+const chartFilterToggleVisible = computed(
   () =>
     !!chartFilterTeleportTo.value &&
     chartsDrawExpanded.value &&
@@ -712,9 +742,22 @@ const chartFilterStripVisible = computed(
 );
 
 function toggleChartsDraw() {
-  chartsDrawExpanded.value = !chartsDrawExpanded.value;
-  saveChartsDrawExpanded(chartsDrawExpanded.value);
-  emit("drawToggle", chartsDrawExpanded.value);
+  const next = !chartsDrawExpanded.value;
+  chartsDrawExpanded.value = next;
+  saveChartsDrawExpanded(next);
+  if (!next && chartsFilterExpanded.value) {
+    chartsFilterExpanded.value = false;
+    saveChartsFilterExpanded(false);
+    emit("filterToggle", false);
+  }
+  emit("drawToggle", next);
+}
+
+function toggleChartsFilter() {
+  const next = !chartsFilterExpanded.value;
+  chartsFilterExpanded.value = next;
+  saveChartsFilterExpanded(next);
+  emit("filterToggle", next);
 }
 
 const matcherDurationLogCap = computed(() => {
@@ -965,23 +1008,13 @@ const dailyChartPack = computed(() => {
     :class="{ 'home-plugin-charts--draw-collapsed': !chartsDrawExpanded }"
   >
     <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
-      <div class="home-plugin-charts__toolbar-line">
-        <div class="home-plugin-charts__toolbar-head">
-          <label
-            class="home-plugin-charts__toolbar-label muted"
-            for="home-chart-panel-sel"
-            title="图表视图"
-          ><span class="panel__title-ico panel__title-ico--sm" aria-hidden="true">◧</span>图表</label>
-          <span
-            v-if="toolbarSummaryText"
-            class="home-plugin-charts__toolbar-summary muted"
-          >{{ toolbarSummaryText }}</span>
-        </div>
+      <div class="home-plugin-charts__toolbar-line home-plugin-charts__toolbar-line--compact">
         <div class="home-plugin-charts__toolbar-controls">
           <select
             id="home-chart-panel-sel"
             v-model="chartPanel"
             class="sel home-plugin-charts__pick home-plugin-charts__pick--compact"
+            aria-label="图表类型"
             title="切换要查看的图表类型（如插件今日次数、按日汇总、协议 API 等）"
           >
             <option
@@ -993,11 +1026,30 @@ const dailyChartPack = computed(() => {
               {{ o.label }}
             </option>
           </select>
+          <span
+            v-if="toolbarSummaryText"
+            class="home-plugin-charts__toolbar-summary muted"
+          >{{ toolbarSummaryText }}</span>
+          <button
+            v-if="chartFilterToggleVisible"
+            type="button"
+            class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact home-plugin-charts__filter-toggle"
+            :aria-expanded="chartsFilterExpanded"
+            :aria-label="chartsFilterExpanded ? '收起绘制选项' : '展开绘制选项'"
+            aria-controls="home-account-chart-config-outlet"
+            @click="toggleChartsFilter"
+          >
+            <span
+              class="home-plugin-charts__draw-toggle-ico"
+              aria-hidden="true"
+            >{{ chartsFilterExpanded ? "▼" : "▶" }}</span>
+            <span class="home-plugin-charts__draw-toggle-txt">{{ chartsFilterExpanded ? "收起选项" : "选项" }}</span>
+          </button>
           <button
             type="button"
             class="home-plugin-charts__draw-toggle home-plugin-charts__draw-toggle--compact"
             :aria-expanded="chartsDrawExpanded"
-            :aria-label="chartsDrawExpanded ? '收起图表与下方选项' : '展开图表与下方选项'"
+            :aria-label="chartsDrawExpanded ? '收起图表' : '展开图表'"
             aria-controls="home-plugin-charts-draw"
             @click="toggleChartsDraw"
           >
@@ -1010,10 +1062,16 @@ const dailyChartPack = computed(() => {
         </div>
       </div>
       <p
-        v-if="chartFilterTeleportTo && !chartsDrawExpanded"
+        v-if="chartFilterToggleVisible && !chartsFilterExpanded"
         class="home-plugin-charts__toolbar-hint muted"
       >
-        点「展开」后，在本账户卡最底部可勾选要绘制的协议 / Matcher 等。
+        点「选项」可勾选要绘制的协议 / Matcher 等。
+      </p>
+      <p
+        v-else-if="chartFilterTeleportTo && !chartsDrawExpanded"
+        class="home-plugin-charts__toolbar-hint muted"
+      >
+        点「展开」后显示图表；需要筛选时再点「选项」。
       </p>
     </div>
 
@@ -2698,6 +2756,11 @@ const dailyChartPack = computed(() => {
   min-width: 0;
   width: 100%;
 }
+.home-plugin-charts__toolbar-line--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
 .home-plugin-charts__toolbar-controls {
   display: flex;
   flex-direction: row;
@@ -2714,17 +2777,8 @@ const dailyChartPack = computed(() => {
 .home-plugin-charts__toolbar-controls .home-plugin-charts__draw-toggle {
   flex: 0 0 auto;
 }
-.home-plugin-charts__toolbar-head {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: nowrap;
-  gap: 6px 10px;
-  flex: 0 0 auto;
-  min-width: 0;
-  max-width: 100%;
-}
 .home-plugin-charts__toolbar-summary {
-  margin: 0;
+  margin: 0 0 0 6px;
   font-size: 11px;
   line-height: 1.35;
   letter-spacing: 0.02em;
@@ -2732,7 +2786,8 @@ const dailyChartPack = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  max-width: min(22rem, 100%);
+  flex: 0 1 auto;
+  max-width: min(14rem, 42%);
 }
 .home-plugin-charts__toolbar-hint {
   margin: 0;
@@ -2765,6 +2820,14 @@ const dailyChartPack = computed(() => {
   gap: 3px;
   line-height: 1.2;
 }
+.home-plugin-charts__filter-toggle {
+  color: color-mix(in srgb, var(--accent) 72%, var(--text-muted));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+.home-plugin-charts__filter-toggle:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong));
+}
 .home-plugin-charts__draw-toggle-txt {
   font-weight: 650;
 }
@@ -2794,15 +2857,6 @@ const dailyChartPack = computed(() => {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-.home-plugin-charts__toolbar-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 650;
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 .home-plugin-charts__pick {
   min-width: 0;
@@ -3227,14 +3281,9 @@ const dailyChartPack = computed(() => {
     gap: 10px;
   }
 
-  .home-plugin-charts__toolbar-line {
+  .home-plugin-charts__toolbar-line--compact {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .home-plugin-charts__toolbar-head {
-    flex-wrap: wrap;
-    max-width: 100%;
   }
 }
 
@@ -3246,14 +3295,9 @@ const dailyChartPack = computed(() => {
     gap: 10px;
   }
 
-  .home-plugin-charts__toolbar-line {
+  .home-plugin-charts__toolbar-line--compact {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .home-plugin-charts__toolbar-head {
-    flex-wrap: wrap;
-    max-width: 100%;
   }
 }
 

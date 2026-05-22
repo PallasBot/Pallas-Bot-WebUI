@@ -39,6 +39,7 @@ const router = createRouter({
           meta: {
             title: "运行日志",
             description: "结构化或原始行视图",
+            keepAlive: false,
           },
         },
         {

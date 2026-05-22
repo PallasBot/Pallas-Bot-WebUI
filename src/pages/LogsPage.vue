@@ -1,3 +1,7 @@
+<script lang="ts">
+export default { name: "LogsPage" };
+</script>
+
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs, openLogsEventSource } from "@/api/consoleApi";
@@ -23,6 +27,8 @@ const loading = ref(false);
 /** 运行中轮询间隔（毫秒）；隐藏标签页时跳过请求 */
 const LOG_POLL_MS = 8000;
 let logPollTimer: number | null = null;
+let logBootRaf = 0;
+let logScrollBottomRaf = 0;
 const scope = ref<LogScope>("all");
 const logSource = ref("all");
 const logSources = ref<string[]>([]);
@@ -64,6 +70,38 @@ async function scrollActiveLogToBottom() {
   el.scrollTop = el.scrollHeight;
 }
 
+function scheduleScrollActiveLogToBottom() {
+  if (typeof window === "undefined") return;
+  if (logScrollBottomRaf) window.cancelAnimationFrame(logScrollBottomRaf);
+  logScrollBottomRaf = window.requestAnimationFrame(() => {
+    logScrollBottomRaf = 0;
+    void scrollActiveLogToBottom();
+  });
+}
+
+function cancelLogBoot() {
+  if (logBootRaf && typeof window !== "undefined") {
+    window.cancelAnimationFrame(logBootRaf);
+    logBootRaf = 0;
+  }
+}
+
+async function bootLogsPage() {
+  if (document.visibilityState === "hidden") return;
+  await load({ silent: pageReady.value });
+  startLogPolling();
+  startLogStream();
+}
+
+function scheduleBootLogsPage() {
+  if (typeof window === "undefined") return;
+  cancelLogBoot();
+  logBootRaf = window.requestAnimationFrame(() => {
+    logBootRaf = 0;
+    void bootLogsPage();
+  });
+}
+
 function stopLogPolling() {
   if (logPollTimer == null) return;
   window.clearInterval(logPollTimer);
@@ -89,7 +127,12 @@ function closeLogStream() {
 
 function pushLiveEntry(raw: LogEntry) {
   const id = Date.now() + Math.floor(Math.random() * 1000);
-  liveEntries.value = [...liveEntries.value, { ...raw, id }].slice(-MAX_LIVE_ENTRIES);
+  const row = { ...raw, id };
+  const buf = liveEntries.value;
+  buf.push(row);
+  if (buf.length > MAX_LIVE_ENTRIES) {
+    buf.splice(0, buf.length - MAX_LIVE_ENTRIES);
+  }
 }
 
 function startLogStream() {
@@ -194,9 +237,9 @@ const filteredRawLines = computed(() => {
 });
 
 watch(
-  [view, () => payload.value, () => filtered.value, () => filteredRawLines.value],
-  async () => {
-    await scrollActiveLogToBottom();
+  [view, () => payload.value?.entries?.length, () => filtered.value.length, () => filteredRawLines.value.length],
+  () => {
+    scheduleScrollActiveLogToBottom();
   },
   { flush: "post" },
 );
@@ -209,23 +252,29 @@ watch(
 );
 
 onMounted(() => {
-  void load();
+  scheduleBootLogsPage();
 });
 
 onActivated(() => {
-  if (pageReady.value) void load({ silent: true });
-  startLogPolling();
-  startLogStream();
+  scheduleBootLogsPage();
 });
 
-onDeactivated(() => {
+function teardownLogsPage() {
+  cancelLogBoot();
+  if (logScrollBottomRaf && typeof window !== "undefined") {
+    window.cancelAnimationFrame(logScrollBottomRaf);
+    logScrollBottomRaf = 0;
+  }
   stopLogPolling();
   closeLogStream();
+}
+
+onDeactivated(() => {
+  teardownLogsPage();
 });
 
 onUnmounted(() => {
-  stopLogPolling();
-  closeLogStream();
+  teardownLogsPage();
 });
 </script>
 
