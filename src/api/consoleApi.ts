@@ -1,4 +1,4 @@
-import { DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
+import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import type {
   UpdateCheckData,
@@ -484,7 +484,9 @@ export async function postDbBackup(body: {
   scope?: "full" | "important";
   pg_format?: "custom" | "plain" | "directory";
 }): Promise<DbBackupResult> {
-  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body);
+  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body, {
+    timeout: DB_BACKUP_TIMEOUT_MS,
+  });
   return unwrap(data, "/db/backup");
 }
 

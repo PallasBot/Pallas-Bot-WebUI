@@ -11,6 +11,18 @@ export function axiosErrorDetail(err: unknown): string {
     if (d && typeof d === "object" && "detail" in d) {
       const detail = (d as { detail: unknown }).detail;
       if (typeof detail === "string" && detail.trim()) return detail.trim();
+      if (Array.isArray(detail)) {
+        const parts = detail
+          .map((item) => {
+            if (item && typeof item === "object" && "msg" in item) {
+              const msg = (item as { msg: unknown }).msg;
+              return typeof msg === "string" ? msg.trim() : "";
+            }
+            return "";
+          })
+          .filter(Boolean);
+        if (parts.length) return parts.join("；");
+      }
     }
     return err.message;
   }
@@ -25,6 +37,9 @@ export const http = axios.create({
 
 /** 数据库概览/大批量配置列表首次拉取可能较慢（大表计数、万级行） */
 export const DB_HEAVY_READ_TIMEOUT_MS = 120_000;
+
+/** 逻辑备份与后端 subprocess 上限对齐（秒级大库可能较慢） */
+export const DB_BACKUP_TIMEOUT_MS = 3_600_000;
 
 let authRedirectScheduled = false;
 
