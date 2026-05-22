@@ -10,11 +10,11 @@ import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatLogDisplayTime } from "@/utils/logDisplay";
 import {
+  formatLogErrorExcType,
   formatLogErrorFull,
   formatLogErrorSummary,
   isTracebackTruncated,
   parseLogErrorPlugin,
-  tracebackLineCount,
 } from "@/utils/logErrorDisplay";
 
 const panelNavIcon = usePanelNavIcon();
@@ -27,7 +27,6 @@ const logSources = ref<string[]>([]);
 const shardedLogErrors = ref(false);
 const logSource = ref("all");
 const q = ref("");
-const expandAllTb = ref(false);
 
 async function load() {
   loading.value = true;
@@ -59,7 +58,7 @@ const sourceOptions = computed(() => {
 
 type ErrorRow = MatcherErrorLogEntry & {
   meta: ReturnType<typeof parseLogErrorPlugin>;
-  tbLines: number;
+  displayExcType: string;
 };
 
 const displayEntries = computed((): ErrorRow[] => {
@@ -67,7 +66,7 @@ const displayEntries = computed((): ErrorRow[] => {
   const rows: ErrorRow[] = [...entries.value].reverse().map((it) => ({
     ...it,
     meta: parseLogErrorPlugin(it.plugin),
-    tbLines: tracebackLineCount(it.traceback ?? ""),
+    displayExcType: formatLogErrorExcType(it.exc_type, it.traceback),
   }));
   if (!needle) return rows;
   return rows.filter((it) => {
@@ -179,18 +178,6 @@ onMounted(load);
             >
               {{ clearing ? "清理中…" : "清理全部" }}
             </button>
-            <div
-              v-if="displayEntries.some((it) => it.traceback)"
-              class="log-errors-page__toolbar"
-            >
-              <label class="log-errors-page__expand-all">
-                <input
-                  v-model="expandAllTb"
-                  type="checkbox"
-                >
-                展开全部堆栈
-              </label>
-            </div>
             <div class="log-errors-page__filter-row">
               <input
                 v-model="q"
@@ -217,7 +204,7 @@ onMounted(load);
         </div>
         <div class="panel__bd">
           <p class="muted log-errors-page__hint">
-            每条报错独立成卡：上方为时间与类型，正文为摘要；堆栈默认折叠。分片时按 hub / worker 筛选，数据来自 logs/errors/*.jsonl。「清理全部」与每日 4:00 自动清理中的日志报错部分一致（不含 Matcher 异常 jsonl）。
+            每条报错独立成卡：上方为时间与类型，正文为完整堆栈（无堆栈时显示摘要）。分片时按 hub / worker 筛选，数据来自 logs/errors/*.jsonl。「清理全部」与每日 4:00 自动清理中的日志报错部分一致（不含 Matcher 异常 jsonl）。
           </p>
           <div class="log-errors-page__scroll">
             <p
@@ -243,7 +230,10 @@ onMounted(load);
               >
                 <header class="log-error-card__hd">
                   <time class="log-error-card__time">{{ formatLogDisplayTime(it.at) }}</time>
-                  <span class="log-error-card__type">{{ it.exc_type || "LogError" }}</span>
+                  <span
+                    class="log-error-card__type"
+                    :title="it.exc_type !== it.displayExcType ? it.exc_type : undefined"
+                  >{{ it.displayExcType }}</span>
                   <span class="log-error-card__source">
                     <span class="log-error-card__source-tag">{{ it.meta.source }}</span>
                     <span
@@ -251,49 +241,48 @@ onMounted(load);
                       class="log-error-card__module"
                     >{{ it.meta.module }}</span>
                   </span>
+                  <span
+                    v-if="it.traceback?.trim() && isTracebackTruncated(it.traceback)"
+                    class="log-error-card__trunc-badge muted"
+                  >落盘时已截断</span>
                 </header>
-                <div class="log-error-card__summary-row">
-                  <p class="log-error-card__summary">
-                    {{ it.message || "（无摘要）" }}
-                  </p>
-                  <div class="log-error-card__actions">
-                    <button
-                      type="button"
-                      class="btn log-error-card__copy-btn"
-                      title="复制时间与摘要"
-                      @click="copySummary(it)"
-                    >
-                      复制摘要
-                    </button>
-                    <button
-                      v-if="it.traceback?.trim()"
-                      type="button"
-                      class="btn log-error-card__copy-btn"
-                      title="复制堆栈文本"
-                      @click="copyTraceback(it)"
-                    >
-                      复制堆栈
-                    </button>
-                    <button
-                      type="button"
-                      class="btn log-error-card__copy-btn"
-                      title="复制摘要与堆栈"
-                      @click="copyFull(it)"
-                    >
-                      复制全部
-                    </button>
-                  </div>
-                </div>
-                <details
+                <pre
                   v-if="it.traceback?.trim()"
-                  class="log-error-card__details"
-                  :open="expandAllTb"
+                  class="log-error-card__tb log-error-card__tb--full"
+                >{{ it.traceback }}</pre>
+                <p
+                  v-else
+                  class="log-error-card__summary"
                 >
-                  <summary class="log-error-card__details-summary">
-                    堆栈跟踪（{{ it.tbLines }} 行<template v-if="isTracebackTruncated(it.traceback)"> · 落盘时已截断</template>）
-                  </summary>
-                  <pre class="log-error-card__tb">{{ it.traceback }}</pre>
-                </details>
+                  {{ it.message || "（无摘要）" }}
+                </p>
+                <div class="log-error-card__actions">
+                  <button
+                    type="button"
+                    class="btn log-error-card__copy-btn"
+                    title="复制时间与摘要"
+                    @click="copySummary(it)"
+                  >
+                    复制摘要
+                  </button>
+                  <button
+                    v-if="it.traceback?.trim()"
+                    type="button"
+                    class="btn log-error-card__copy-btn"
+                    title="复制堆栈文本"
+                    @click="copyTraceback(it)"
+                  >
+                    复制堆栈
+                  </button>
+                  <button
+                    type="button"
+                    class="btn log-error-card__copy-btn"
+                    title="复制时间与完整堆栈"
+                    @click="copyFull(it)"
+                  >
+                    复制全部
+                  </button>
+                </div>
               </article>
             </div>
           </div>

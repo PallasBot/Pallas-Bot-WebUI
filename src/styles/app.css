@@ -1634,6 +1634,7 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
 
 .log-error-card__type {
   flex: none;
+  max-width: min(12rem, 42vw);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   font-weight: 700;
@@ -1642,6 +1643,9 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .log-error-card__source {
@@ -1671,6 +1675,12 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   gap: 8px;
 }
 
+.log-error-card__trunc-badge {
+  flex: none;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .log-error-card__summary {
   margin: 0;
   font-size: 13px;
@@ -1693,39 +1703,9 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   min-height: 0;
 }
 
-.log-error-card__details {
-  margin: 0;
-  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  padding-top: 6px;
-}
-
-.log-error-card__details-summary {
-  cursor: pointer;
-  font-size: 12px;
-  color: var(--text-muted);
-  user-select: none;
-  list-style: none;
-}
-
-.log-error-card__details-summary::-webkit-details-marker {
-  display: none;
-}
-
-.log-error-card__details-summary::before {
-  content: "▸ ";
-  display: inline-block;
-  transition: transform 0.15s ease;
-}
-
-.log-error-card__details[open] .log-error-card__details-summary::before {
-  transform: rotate(90deg);
-}
-
 .log-error-card__tb {
-  margin: 8px 0 0;
+  margin: 0;
   padding: 10px 12px;
-  max-height: min(320px, 45vh);
-  overflow: auto;
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.45;
@@ -1737,8 +1717,10 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   overflow-x: auto;
   word-break: normal;
 }
-.log-error-card__details[open] .log-error-card__tb {
-  max-height: min(75vh, 1200px);
+
+.log-error-card__tb--full {
+  max-height: none;
+  overflow: visible;
 }
 
 .panel__hd--split {
