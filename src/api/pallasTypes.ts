@@ -618,6 +618,8 @@ export interface ShardIngressMetrics {
 
 export interface ShardCoordPendingSnapshot {
   total_json?: number;
+  actionable_total?: number;
+  historical_retained?: number;
   by_dir?: Record<string, number>;
   bot_action_open?: number;
   bot_action_stale_open?: number;

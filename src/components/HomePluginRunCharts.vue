@@ -236,8 +236,9 @@ function aggregateLocalTodayAvgDuration(
 function fmtDurationMs(ms: number | null | undefined): string {
   const n = Number(ms);
   if (!Number.isFinite(n) || n < 0) return "—";
-  if (n === 0) return "<1ms";
-  if (n < 1) return "<1ms";
+  if (n === 0) return "<0.01ms";
+  if (n < 0.01) return "<0.01ms";
+  if (n < 1) return `${n.toFixed(2)}ms`;
   if (n >= 60_000) return `${(n / 1000).toFixed(1)}s`;
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
   if (n < 10) return `${n.toFixed(1)}ms`;
@@ -3057,11 +3058,12 @@ const dailyChartPack = computed(() => {
 }
 .home-matcher-dur-log__head {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
-  gap: 6px 10px;
+  grid-template-columns: 4.25rem minmax(4rem, 9rem) max-content minmax(2rem, max-content);
+  gap: 6px 12px;
   padding: 0 8px 4px;
   font-size: 0.72rem;
-  min-width: 22rem;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__list {
@@ -3071,25 +3073,27 @@ const dailyChartPack = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 22rem;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__row {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
-  gap: 6px 10px;
+  grid-template-columns: 4.25rem minmax(4rem, 9rem) max-content minmax(2rem, max-content);
+  gap: 6px 12px;
   align-items: center;
   padding: 5px 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
-  min-width: 22rem;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__time-axis {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
+  grid-template-columns: 4.25rem minmax(4rem, 9rem) minmax(12rem, max-content) minmax(2rem, max-content);
   gap: 6px 10px;
   align-items: center;
   margin-top: 6px;
@@ -3097,7 +3101,8 @@ const dailyChartPack = computed(() => {
   border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   font-size: 0.68rem;
   line-height: 1.3;
-  min-width: 22rem;
+  width: fit-content;
+  max-width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__time-axis-label {
@@ -3138,8 +3143,6 @@ const dailyChartPack = computed(() => {
   white-space: nowrap;
 }
 .home-matcher-dur-log__at {
-  justify-self: end;
-  text-align: right;
   font-size: 0.72rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

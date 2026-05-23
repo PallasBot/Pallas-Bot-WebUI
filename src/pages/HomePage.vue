@@ -365,6 +365,8 @@ const shardIngressEventsHint = computed(() => {
 const shardCoordValue = computed(() => {
   const c = shardObs.value?.coord_pending_live;
   if (!c) return "—";
+  const actionable = c.actionable_total ?? c.bot_action_open;
+  if (actionable != null) return String(actionable);
   return String(c.total_json ?? 0);
 });
 
@@ -372,8 +374,10 @@ const shardCoordHint = computed(() => {
   const c = shardObs.value?.coord_pending_live;
   if (!c) return "data/pallas_shard/coord";
   const stale = c.bot_action_stale_open ?? 0;
+  const hist = c.historical_retained;
   const parts = [`bot_action open ${c.bot_action_open ?? 0}`];
   if (stale > 0) parts.push(`过期 open ${stale}`);
+  if (hist != null && hist > 0) parts.push(`历史残留 ${hist}`);
   return parts.join(" · ");
 });
 
