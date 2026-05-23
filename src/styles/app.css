@@ -3769,7 +3769,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
   .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz,
   .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark,
-  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
+  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg,
+  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-hourly-chart {
     min-height: 0;
   }
 
@@ -3874,7 +3875,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   flex-direction: column;
 }
 
-.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly {
+.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly,
+.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-hourly-chart {
   min-height: 0;
   max-height: none;
   height: 100%;
