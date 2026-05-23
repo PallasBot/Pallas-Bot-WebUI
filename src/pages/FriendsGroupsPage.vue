@@ -254,19 +254,33 @@ async function loadListsOnly() {
   }
 }
 
+function requestOverviewScope(): number | null {
+  const sid = selfIdStr.value.trim();
+  if (!sid) return null;
+  const n = parseInt(sid, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function loadRequestsOnly() {
+  const scope = requestOverviewScope();
+  if (scope == null) {
+    overview.value = null;
+    requests.value = null;
+    reqsBusy.value = false;
+    return;
+  }
   reqsBusy.value = true;
   err.value = "";
   try {
-    const cachedOv = cacheTryGetRequestOverview();
+    const cachedOv = cacheTryGetRequestOverview(scope);
     if (cachedOv) {
       overview.value = cachedOv;
       requests.value = requestOverviewToFriendOverview(cachedOv);
     }
-    const ov = await fetchRequestOverview();
+    const ov = await fetchRequestOverview({ selfId: scope });
     overview.value = ov;
     requests.value = requestOverviewToFriendOverview(ov);
-    cachePutRequestOverview(ov);
+    cachePutRequestOverview(ov, scope);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -297,6 +311,9 @@ watch(selfIdStr, () => {
   if (!sid) {
     friends.value = null;
     groups.value = null;
+    overview.value = null;
+    requests.value = null;
+    reqsBusy.value = false;
     return;
   }
   const cachedLists = cacheTryGetFriendGroupLists(sid);
@@ -307,8 +324,9 @@ watch(selfIdStr, () => {
     friends.value = null;
     groups.value = null;
   }
-  const cachedOv = cacheTryGetRequestOverview();
-  reqsBusy.value = true;
+  const scope = requestOverviewScope();
+  const cachedOv = scope != null ? cacheTryGetRequestOverview(scope) : null;
+  reqsBusy.value = scope != null;
   if (cachedOv) {
     overview.value = cachedOv;
     requests.value = requestOverviewToFriendOverview(cachedOv);
