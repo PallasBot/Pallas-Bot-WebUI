@@ -15,6 +15,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { axiosErrorDetail } from "@/api/http";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
@@ -34,6 +35,24 @@ const bot = ref<BotUpdateCheckData | null>(null);
 
 const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
 const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
+
+const botDeployLabel = computed(() => {
+  const mode = bot.value?.deployment_mode;
+  if (mode === "docker") return "Docker / 非 git 工作副本";
+  if (mode === "release_tag") return "发布 tag（工作区干净）";
+  if (mode === "release_tag_dirty") return "发布 tag（含本地改动）";
+  if (mode === "dev_clone") return "开发克隆 / 分支";
+  return "—";
+});
+
+const botApplyDisabled = computed(
+  () =>
+    busy.value
+    || !bot.value?.has_update
+    || !bot.value?.latest_tag
+    || bot.value?.deployment_mode === "docker",
+);
+
 const busy = ref(false);
 const msg = ref("");
 const refreshWebBusy = ref(false);
@@ -165,7 +184,7 @@ async function applyWeb() {
     await nextTick();
     window.location.reload();
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
   } finally {
     busy.value = false;
   }
@@ -180,7 +199,7 @@ async function applyBot() {
     msg.value = r.message || "已触发。";
     await load();
   } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
+    err.value = axiosErrorDetail(e);
   } finally {
     busy.value = false;
   }
@@ -384,7 +403,14 @@ onMounted(() => {
           </div>
         </div>
         <div class="panel__bd muted update-page__bd">
-          <p>当前 tag：<strong class="update-page__strong">{{ bot?.current_tag }}</strong> · commit {{ bot?.current_commit }}</p>
+          <p>
+            部署形态：<strong class="update-page__strong">{{ botDeployLabel }}</strong>
+            <span v-if="bot?.git_available && bot?.current_branch"> · 分支 {{ bot.current_branch }}</span>
+            <span v-if="bot?.dirty && (bot?.dirty_file_count ?? 0) > 0">
+              · 本地改动 {{ bot.dirty_file_count }} 项
+            </span>
+          </p>
+          <p>当前 tag：<strong class="update-page__strong">{{ bot?.current_tag || "—" }}</strong> · commit {{ bot?.current_commit }}</p>
           <p>远端 tag：<strong class="update-page__strong">{{ bot?.latest_tag ?? "—" }}</strong></p>
           <p class="update-page__changelog-row">
             <a
@@ -408,19 +434,52 @@ onMounted(() => {
             />
           </details>
           <p v-if="bot?.error">错误：{{ bot.error }}</p>
+          <p
+            v-if="bot?.deployment_mode === 'docker'"
+            class="update-page__deploy-hint alert alert--warn"
+          >
+            当前为 Docker / 非 git 工作副本，无法在此页执行 git 更新。请使用下方「Docker 部署时更新 Bot」步骤（<code>docker compose pull</code>）。
+          </p>
+          <p
+            v-else-if="bot?.deployment_mode === 'release_tag_dirty'"
+            class="update-page__deploy-hint"
+          >
+            检测到 {{ bot?.dirty_file_count ?? 0 }} 项本地改动。更新时将自动 stash 并在切换 tag 后尝试恢复；若与新版冲突，请在仓库根目录执行
+            <code>git stash pop</code>。建议长期将站点插件迁至 <code>local/plugins/</code>（见主仓
+            <a
+              href="https://github.com/PallasBot/Pallas-Bot/blob/main/docs/architecture/site-customization-and-updates.md"
+              target="_blank"
+              rel="noopener noreferrer"
+            >站点定制与更新</a>）。
+          </p>
+          <p
+            v-else-if="bot?.deployment_mode === 'dev_clone'"
+            class="update-page__deploy-hint"
+          >
+            当前为开发克隆（非精确 release tag），更新时将执行 <code>git pull --ff-only --autostash</code>。
+          </p>
+          <p
+            v-else-if="bot?.deployment_mode === 'release_tag'"
+            class="update-page__deploy-hint"
+          >
+            当前处于 release tag 且工作区干净，可直接应用 Bot 更新。
+          </p>
           <p class="update-page__bot-note">
             说明：「应用 Bot 更新」在<strong>运行中的 Bot 源码根目录</strong>执行 <code>git fetch</code> / <code>checkout</code> 或 <code>pull --ff-only</code>。
-            使用官方 Docker 镜像时，容器内通常没有 git 工作副本，该操作会失败；请改用下方镜像方式更新。
+            站点定制请优先使用 <code>local/plugins/</code> 与 <code>pallas.toml</code> 的 <code>extra_plugin_dirs</code>。
           </p>
           <button
             type="button"
             class="btn btn--primary update-page__apply"
-            :disabled="busy || !bot?.has_update || !bot?.latest_tag"
+            :disabled="botApplyDisabled"
             @click="applyBot"
           >
             应用 Bot 更新
           </button>
-          <div class="update-page__docker-hint muted">
+          <div
+            v-if="bot?.deployment_mode === 'docker' || bot?.git_available === false"
+            class="update-page__docker-hint muted"
+          >
             <h3 class="update-page__docker-hint-title">Docker 部署时更新 Bot</h3>
             <p>在存放 <code>docker-compose.yml</code> 的目录执行（服务名以 compose 为准，仓库默认服务名为 <code>pallasbot</code>）：</p>
             <ol class="update-page__docker-steps">
@@ -463,6 +522,17 @@ onMounted(() => {
 
 .update-page__bd p {
   margin: 0 0 6px;
+}
+
+.update-page__deploy-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.update-page__deploy-hint.alert--warn {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
 }
 
 .update-page__bd p:last-of-type {
