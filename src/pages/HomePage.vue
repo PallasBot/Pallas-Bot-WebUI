@@ -349,17 +349,21 @@ const shardIngressEvents = computed(() => {
 
 const shardIngressGateHint = computed(() => {
   const ing = shardObs.value?.ingress_cluster;
-  if (!ing) return "代表牛 · won/(won+lost)";
+  if (!ing) return "代表牛 claim 成功 ÷（成功+失败）";
   const won = ing.claim_won ?? 0;
   const lost = ing.claim_lost ?? 0;
-  return `won ${won} · lost ${lost} · 活跃 N 片约 1/N`;
+  return `成功 ${won} · 失败 ${lost}`;
 });
 
 const shardIngressEventsHint = computed(() => {
   const ing = shardObs.value?.ingress_cluster;
-  if (!ing) return "—";
+  if (!ing) return "今日进入门控的入站消息";
   const early = (ing.early_fleet ?? 0) + (ing.early_not_at_target ?? 0);
-  return `fanout ${ing.fanout_bypass ?? 0} · 早丢弃 ${early}`;
+  const parts: string[] = [];
+  const fanout = ing.fanout_bypass ?? 0;
+  if (fanout > 0) parts.push(`全员同响 ${fanout}`);
+  if (early > 0) parts.push(`提前丢弃 ${early}`);
+  return parts.length ? parts.join(" · ") : "无 fanout / 提前丢弃";
 });
 
 const shardCoordValue = computed(() => {
@@ -372,11 +376,11 @@ const shardCoordValue = computed(() => {
 
 const shardCoordHint = computed(() => {
   const c = shardObs.value?.coord_pending_live;
-  if (!c) return "data/pallas_shard/coord";
+  if (!c) return "扫描 data/pallas_shard/coord";
+  const parts = [`bot_action 待办 ${c.bot_action_open ?? 0}`];
   const stale = c.bot_action_stale_open ?? 0;
+  if (stale > 0) parts.push(`超时 ${stale}`);
   const hist = c.historical_retained;
-  const parts = [`bot_action open ${c.bot_action_open ?? 0}`];
-  if (stale > 0) parts.push(`过期 open ${stale}`);
   if (hist != null && hist > 0) parts.push(`历史残留 ${hist}`);
   return parts.join(" · ");
 });
@@ -389,10 +393,15 @@ const shardPgPeakValue = computed(() => {
 
 const shardPgHint = computed(() => {
   const p = shardObs.value?.pg_pool;
-  if (!p) return "对照 PostgreSQL max_connections";
+  if (!p) return "宜低于 PostgreSQL max_connections";
   const warning = (p.warning || "").trim();
   if (warning) return warning;
-  return `${p.estimated_processes ?? "?"} 进程 × ${p.per_process_max ?? "?"} per pool`;
+  return `${p.estimated_processes ?? "?"} 进程 · 单进程上限 ${p.per_process_max ?? "?"}`;
+});
+
+const shardPgHintTitle = computed(() => {
+  if (!shardPgHintWarn.value) return undefined;
+  return shardPgHint.value;
 });
 
 const shardPgHintWarn = computed(() => Boolean((shardObs.value?.pg_pool?.warning || "").trim()));
@@ -1534,17 +1543,8 @@ onUnmounted(() => {
                         :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                         :toolbar-summary-duration="chartToolbarSummaryDuration"
                         :daily-stat-rows="consoleDailyStats?.rows ?? []"
-                        chart-filter-teleport="#home-account-chart-config-outlet"
                         :toolbar-summary-api="chartToolbarSummaryApi"
                         :toolbar-summary-plugin="chartToolbarSummaryPlugin"
-                      />
-                      <div
-                        id="home-account-chart-config-outlet"
-                        class="home-account-chart-config-outlet"
-                        :class="{
-                          'home-account-chart-config-outlet--slot':
-                            accountChartsDrawExpanded && accountChartsFilterExpanded,
-                        }"
                       />
                     </div>
                 </div>
@@ -1841,6 +1841,29 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="panel__bd home-shard-obs__bd">
+            <div class="home-shard-obs__explain">
+              <p class="home-shard-obs__explain-lede muted">
+                分片模式下 hub 汇总各 worker 今日指标；ingress 仅代表牛计数，避免多牛重复放大。
+              </p>
+              <dl class="home-shard-obs__glossary">
+                <div class="home-shard-obs__glossary-item">
+                  <dt>Ingress 命中率</dt>
+                  <dd>入站消息进 matcher 前，本片代表牛抢到处理权的比例；多 worker 时理想约 1÷活跃片数。</dd>
+                </div>
+                <div class="home-shard-obs__glossary-item">
+                  <dt>Ingress 事件</dt>
+                  <dd>今日进入 ingress 门控的消息总数；含全员同响放行与提前丢弃（非目标片 / fleet 过滤）。</dd>
+                </div>
+                <div class="home-shard-obs__glossary-item">
+                  <dt>Coord 积压</dt>
+                  <dd>跨 worker 协同目录 <code>coord/</code> 中的待办 JSON，如 bot_action 代发；含超时未完结与历史残留。</dd>
+                </div>
+                <div class="home-shard-obs__glossary-item">
+                  <dt>PG 连接池</dt>
+                  <dd>hub + worker 各进程 SQLAlchemy 连接池峰值粗算，应低于数据库 <code>max_connections</code>。</dd>
+                </div>
+              </dl>
+            </div>
             <div class="grid-stats home-shard-obs__kpis">
               <StatCard
                 dense
@@ -1866,6 +1889,7 @@ onUnmounted(() => {
                   label="PG 连接池"
                   :value="shardPgPeakValue"
                   :hint="shardPgHint"
+                  :hint-title="shardPgHintTitle"
                 />
               </div>
             </div>
@@ -1873,15 +1897,18 @@ onUnmounted(() => {
               v-if="shardWorkerRows.length"
               class="home-shard-obs__workers"
             >
-              <p class="home-shard-obs__workers-title muted">各 worker 命中率（今日）</p>
+              <p class="home-shard-obs__workers-title">各 worker 命中率（今日）</p>
+              <p class="home-shard-obs__workers-desc muted">
+                按 worker 汇总 ingress；「成功 / 失败」为该片代表牛 claim 次数。
+              </p>
               <div class="home-shard-obs__table-wrap">
                 <table class="home-shard-obs__table">
                   <thead>
                     <tr>
                       <th scope="col">Worker</th>
                       <th scope="col">命中率</th>
-                      <th scope="col">won</th>
-                      <th scope="col">lost</th>
+                      <th scope="col">成功</th>
+                      <th scope="col">失败</th>
                     </tr>
                   </thead>
                   <tbody>
