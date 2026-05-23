@@ -6,6 +6,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames, toggleFavoritePlugin } from "@/utils/pluginFavorites";
+import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -130,6 +131,20 @@ async function togglePreview(name: string) {
                   :title="(p.metadata?.description || p.module) || undefined"
                 >
                   {{ p.metadata?.description || p.module }}
+                </div>
+                <div
+                  v-if="hasPluginSource(p)"
+                  class="plugin-card__source-block"
+                >
+                  <div class="plugin-card__source-kind">
+                    来源：{{ pluginSourceLabel(p.plugin_source) }}
+                  </div>
+                  <div
+                    v-if="pluginSourceDir(p)"
+                    class="plugin-card__source-path muted"
+                  >
+                    {{ pluginSourceDir(p) }}
+                  </div>
                 </div>
                 <div
                   v-if="pluginRoleText(p)"

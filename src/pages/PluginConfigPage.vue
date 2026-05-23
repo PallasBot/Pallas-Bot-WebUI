@@ -19,6 +19,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
@@ -225,13 +226,23 @@ async function save() {
 
 <template>
   <div class="plugin-config-page">
-    <p
+    <div
       v-if="pluginName && data?.module"
-      class="muted"
-      style="margin: 0 0 12px; font-size: 13px"
+      class="muted plugin-config-page__module"
     >
-      {{ data.module }}
-    </p>
+      <div>{{ data.module }}</div>
+      <template v-if="pluginRow && hasPluginSource(pluginRow)">
+        <div class="plugin-config-page__source-kind">
+          来源：{{ pluginSourceLabel(pluginRow.plugin_source) }}
+        </div>
+        <div
+          v-if="pluginSourceDir(pluginRow)"
+          class="plugin-config-page__source-path"
+        >
+          {{ pluginSourceDir(pluginRow) }}
+        </div>
+      </template>
+    </div>
 
     <div
       v-if="err && !data"
@@ -467,6 +478,24 @@ async function save() {
 .plugin-help-menu-label--disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.plugin-config-page__module {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.plugin-config-page__source-kind {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--accent);
+}
+.plugin-config-page__source-path {
+  margin-top: 2px;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  word-break: break-all;
+  opacity: 0.88;
 }
 
 .plugin-config-page__save-feedback {
