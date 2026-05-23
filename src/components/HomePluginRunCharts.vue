@@ -1340,16 +1340,14 @@ const dailyChartPack = computed(() => {
       >
         暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 <code>console_daily_stats.json</code>。
       </p>
+      <template v-else-if="dailyChartPack">
       <p
-        v-if="dailyChartPack?.singleDay"
+        v-if="dailyChartPack.singleDay"
         class="muted home-plugin-charts__hint home-plugin-daily__hint"
       >
         当前仅有 1 个自然日记录，以柱状图展示；跨日后将自动切换为折线趋势。
       </p>
-      <div
-        v-else
-        class="home-plugin-daily home-plugin-charts__viz"
-      >
+      <div class="home-plugin-daily home-plugin-charts__viz">
         <div class="home-plugin-daily__legend muted">
           <span class="home-plugin-daily__leg-item">
             <i
@@ -1514,6 +1512,7 @@ const dailyChartPack = computed(() => {
           </svg>
         </div>
       </div>
+      </template>
       </div>
     </div>
 
