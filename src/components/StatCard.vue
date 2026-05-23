@@ -3,6 +3,8 @@ defineProps<{
   label: string;
   value: string | number;
   hint?: string;
+  /** 悬停提示（hint 较长或被截断时使用） */
+  hintTitle?: string;
   /** 更小的内边距与数值，用于仪表盘等密集布局 */
   dense?: boolean;
 }>();
@@ -19,6 +21,7 @@ defineProps<{
       <div
         v-if="hint"
         class="stat-card__hint"
+        :title="hintTitle || undefined"
       >
         {{ hint }}
       </div>

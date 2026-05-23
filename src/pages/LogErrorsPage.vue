@@ -127,6 +127,7 @@ async function clearLogErrors() {
   err.value = "";
   try {
     await postLogErrorsCleanup();
+    entries.value = [];
     pushConsoleToast("已清理日志报错记录", "ok");
     await load();
   } catch (e) {
