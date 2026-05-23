@@ -624,6 +624,30 @@ export interface BotUpdateApplyData {
   message: string;
 }
 
+/** Bot .env → pallas.toml / webui.json 迁移检查 */
+export interface BotConfigMigrationCheckData {
+  show: boolean;
+  legacy_env_files: string[];
+  legacy_env_key_count: number;
+  pallas_toml_exists: boolean;
+  webui_json_exists: boolean;
+  can_migrate: boolean;
+  needs_force: boolean;
+  suggest_cleanup_legacy_env: boolean;
+}
+
+export interface BotConfigMigrationApplyData {
+  config_path: string;
+  webui_path: string;
+  bootstrap_field_groups: number;
+  webui_env_key_count: number;
+  legacy_env_key_count: number;
+  legacy_env_files: string[];
+  overwritten: boolean;
+  message: string;
+  migration?: BotConfigMigrationCheckData;
+}
+
 /** 群列表（按账号实时拉取） */
 export interface GroupListRow {
   group_id: number;
