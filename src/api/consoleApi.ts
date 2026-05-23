@@ -1,5 +1,6 @@
 import { DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
+import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type {
   UpdateCheckData,
   UpdateApplyData,
@@ -52,6 +53,7 @@ let instancesCache: { data: InstancesData; ts: number } | null = null;
 let instancesInflight: Promise<InstancesData> | null = null;
 /** 写操作或强制刷新后递增，丢弃过期的在途响应写回 */
 let instancesFetchGen = 0;
+let lastPatchedProtocolAccountsSig = "";
 
 function touchInstancesCache(data: InstancesData) {
   instancesCache = { data, ts: Date.now() };
@@ -68,6 +70,7 @@ export function invalidateInstancesCache() {
   instancesCache = null;
   instancesInflight = null;
   instancesFetchGen++;
+  lastPatchedProtocolAccountsSig = "";
 }
 
 function patchProtocolSnapAccounts(
@@ -83,6 +86,9 @@ export function patchInstancesProtocolAccounts(
   accounts: NapcatAccountRow[],
   base?: InstancesData | null,
 ): void {
+  const sig = protocolAccountsSignature(accounts);
+  if (sig === lastPatchedProtocolAccountsSig) return;
+  lastPatchedProtocolAccountsSig = sig;
   const cur = base ?? instancesCache?.data ?? null;
   if (!cur) return;
   const next: InstancesData = { ...cur };
