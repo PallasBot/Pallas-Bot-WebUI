@@ -35,6 +35,7 @@ import {
   protocolDisp,
   protocolRuntimeModeLabel,
   protocolRuntimeVersionText,
+  protocolAccountsSignature,
   type ProtocolDisp,
 } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
@@ -94,6 +95,7 @@ const PROTO_POLL_MS = 5000;
 let protoPollTimer: ReturnType<typeof setInterval> | null = null;
 /** 路由离屏后忽略在途轮询写回，避免切换页时触发全局目录 epoch */
 const protoRouteActive = ref(false);
+let lastLiveProtocolAccountsSig = "";
 
 const webuiEnabledDisp = computed(() => protocolDisp(snap.value?.webui_enabled, "已启用", "未启用"));
 const consoleAuthDisp = computed(() =>
@@ -211,15 +213,19 @@ function setProtoView(v: "table" | "cards") {
   setConsolePrefs({ protocolAccountsView: v });
 }
 
-watch([snap, () => snap.value?.accounts?.length], () => {
-  protoAccPage.value = 1;
-  const known = new Set<string>();
-  for (const a of snap.value?.accounts ?? []) {
-    const id = accountProtocolId(a);
-    if (id) known.add(id);
-  }
-  bulk.pruneSelection(known);
-});
+watch(
+  () =>
+    (snap.value?.accounts ?? [])
+      .map((a) => accountProtocolId(a))
+      .filter((id): id is string => Boolean(id))
+      .join("\0"),
+  (next, prev) => {
+    if (next === prev) return;
+    protoAccPage.value = 1;
+    const known = new Set(next ? next.split("\0") : []);
+    bulk.pruneSelection(known);
+  },
+);
 
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
@@ -338,6 +344,9 @@ function shouldSkipProtoPoll(): boolean {
 
 function applyProtocolAccounts(accounts: NapcatAccountRow[]) {
   if (!protoRouteActive.value) return;
+  const sig = protocolAccountsSignature(accounts);
+  if (sig === lastLiveProtocolAccountsSig && protoAccountsLive.value != null) return;
+  lastLiveProtocolAccountsSig = sig;
   protoAccountsLive.value = accounts;
   patchInstancesProtocolAccounts(accounts, instances.value);
   const warm = peekInstancesCache();
@@ -396,6 +405,7 @@ async function load(opts?: { silent?: boolean }) {
 
 async function refreshAfterAction() {
   protoAccountsLive.value = null;
+  lastLiveProtocolAccountsSig = "";
   try {
     instances.value = await fetchInstances({ bypassCache: true });
     await pollProtocolAccounts();
@@ -502,6 +512,7 @@ onActivated(() => {
 
 onDeactivated(() => {
   protoRouteActive.value = false;
+  lastLiveProtocolAccountsSig = "";
   stopProtoPolling();
   deleteModalOpen.value = false;
   deleteErr.value = "";

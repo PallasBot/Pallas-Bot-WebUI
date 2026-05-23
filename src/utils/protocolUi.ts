@@ -68,3 +68,17 @@ export function protocolRuntimeVersionText(account: Record<string, unknown>): st
   const v = String(account.runtime_version ?? "").trim();
   return v || "—";
 }
+
+/** 协议账号轮询：状态未变时不触发全局 /instances epoch */
+export function protocolAccountsSignature(accounts: readonly Record<string, unknown>[]): string {
+  return accounts
+    .map((a) => {
+      const id = String(a.id ?? a.qq ?? "").trim();
+      const qq = String(a.qq ?? "").trim();
+      const connected = a.connected === true ? "1" : "0";
+      const running =
+        coerceBoolean(a.process_running ?? a.running) === true ? "1" : "0";
+      return `${id}:${qq}:${connected}:${running}`;
+    })
+    .join("|");
+}
