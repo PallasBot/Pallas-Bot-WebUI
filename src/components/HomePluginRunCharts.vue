@@ -793,7 +793,7 @@ const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
   plugins_top: true,
   plugins_duration_top: topPluginsByDuration.value.length > 0,
-  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 2,
+  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 1,
   api_hourly: apiCandidates.value.length > 0,
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
@@ -934,7 +934,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
 
 const dailyChartPack = computed(() => {
   const raw = [...(props.dailyStatRows ?? [])].sort((a, b) => a.date.localeCompare(b.date));
-  if (raw.length < 2) return null;
+  if (raw.length < 1) return null;
   const W = 400;
   const H = 200;
   const padL = 44;
@@ -946,12 +946,81 @@ const dailyChartPack = computed(() => {
   const left = padL;
   const top = padT;
   const bottom = padT + innerH;
+  const fmtTick = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
+
+  if (raw.length === 1) {
+    const row = raw[0]!;
+    const msgSum = (Number(row.received) || 0) + (Number(row.sent) || 0);
+    const mat = Number(row.matcher_runs) || 0;
+    const maxM = Math.max(msgSum, 1);
+    const maxMat = Math.max(mat, 1);
+    const barW = 52;
+    const gap = 28;
+    const cx = left + innerW / 2;
+    const msgX = cx - gap / 2 - barW;
+    const matX = cx + gap / 2;
+    const msgH = (msgSum / maxM) * innerH;
+    const matH = (mat / maxMat) * innerH;
+    const dateLabel = row.date.length >= 10 ? row.date.slice(5) : row.date;
+    return {
+      mode: "bars" as const,
+      W,
+      H,
+      left,
+      top,
+      bottom,
+      innerW,
+      innerH,
+      gridYs,
+      dateLabel,
+      singleDay: true,
+      leftTicks: [
+        { y: bottom, t: "0" },
+        { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
+        { y: top, t: fmtTick(maxM) },
+      ],
+      rightTicks: [
+        { y: bottom, t: "0" },
+        { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
+        { y: top, t: fmtTick(maxMat) },
+      ],
+      bars: [
+        {
+          x: msgX,
+          y: bottom - msgH,
+          w: barW,
+          h: msgH,
+          cls: "msg",
+          value: msgSum,
+          label: "消息",
+        },
+        {
+          x: matX,
+          y: bottom - matH,
+          w: barW,
+          h: matH,
+          cls: "mat",
+          value: mat,
+          label: "Matcher",
+        },
+      ],
+      xTicks: [{ x: cx, t: dateLabel }],
+      msgPathD: "",
+      matPathD: "",
+      msgAreaD: "",
+      matAreaD: "",
+      msgDots: [] as { x: number; y: number }[],
+      matDots: [] as { x: number; y: number }[],
+    };
+  }
+
   const msgSums = raw.map((r) => (Number(r.received) || 0) + (Number(r.sent) || 0));
   const mats = raw.map((r) => Number(r.matcher_runs) || 0);
   const maxM = Math.max(...msgSums, 1);
   const maxMat = Math.max(...mats, 1);
   const n = raw.length;
-  const xAt = (i: number) => left + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const xAt = (i: number) => left + (i / (n - 1)) * innerW;
   const yMsg = (v: number) => bottom - (v / maxM) * innerH;
   const yMat = (v: number) => bottom - (v / maxMat) * innerH;
   const msgPts = msgSums.map((v, i) => ({ x: xAt(i), y: yMsg(v) }));
@@ -960,8 +1029,6 @@ const dailyChartPack = computed(() => {
   const matPathD = catmullStrokePath(matPts);
   const msgAreaD = linearAreaPath(msgPts, bottom);
   const matAreaD = linearAreaPath(matPts, bottom);
-  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
-  const fmtTick = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
   const leftTicks = [
     { y: bottom, t: "0" },
     { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
@@ -978,6 +1045,7 @@ const dailyChartPack = computed(() => {
     t: raw[i]!.date.length >= 10 ? raw[i]!.date.slice(5) : raw[i]!.date,
   }));
   return {
+    mode: "line" as const,
     W,
     H,
     padL,
@@ -999,6 +1067,7 @@ const dailyChartPack = computed(() => {
     leftTicks,
     rightTicks,
     xTicks,
+    singleDay: false,
   };
 });
 </script>
@@ -1269,7 +1338,13 @@ const dailyChartPack = computed(() => {
         v-else-if="!dailyChartPack"
         class="muted home-plugin-charts__empty"
       >
-        至少需要 2 个自然日的记录才能绘制折线。请保持 Bot 运行并隔日查看。
+        暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 <code>console_daily_stats.json</code>。
+      </p>
+      <p
+        v-if="dailyChartPack?.singleDay"
+        class="muted home-plugin-charts__hint home-plugin-daily__hint"
+      >
+        当前仅有 1 个自然日记录，以柱状图展示；跨日后将自动切换为折线趋势。
       </p>
       <div
         v-else
@@ -1369,42 +1444,73 @@ const dailyChartPack = computed(() => {
               :x="xt.x"
               :y="dailyChartPack.H - 8"
             >{{ xt.t }}</text>
-            <path
-              class="home-plugin-daily__area home-plugin-daily__area--mat"
-              :d="dailyChartPack.matAreaD"
-              fill="url(#home-daily-mat-area)"
-            />
-            <path
-              class="home-plugin-daily__area home-plugin-daily__area--msg"
-              :d="dailyChartPack.msgAreaD"
-              fill="url(#home-daily-msg-area)"
-            />
-            <path
-              class="home-plugin-daily__line home-plugin-daily__line--mat"
-              :d="dailyChartPack.matPathD"
-              fill="none"
-            />
-            <path
-              class="home-plugin-daily__line home-plugin-daily__line--msg"
-              :d="dailyChartPack.msgPathD"
-              fill="none"
-            />
-            <circle
-              v-for="(p, di) in dailyChartPack.matDots"
-              :key="`md-${di}`"
-              class="home-plugin-daily__dot home-plugin-daily__dot--mat"
-              :cx="p.x"
-              :cy="p.y"
-              r="3.2"
-            />
-            <circle
-              v-for="(p, di) in dailyChartPack.msgDots"
-              :key="`mg-${di}`"
-              class="home-plugin-daily__dot home-plugin-daily__dot--msg"
-              :cx="p.x"
-              :cy="p.y"
-              r="3.2"
-            />
+            <template v-if="dailyChartPack.mode === 'bars'">
+              <rect
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`db-${bi}`"
+                class="home-plugin-daily__bar"
+                :class="bar.cls === 'msg' ? 'home-plugin-daily__bar--msg' : 'home-plugin-daily__bar--mat'"
+                :x="bar.x"
+                :y="bar.y"
+                :width="bar.w"
+                :height="Math.max(bar.h, 0)"
+                rx="3"
+              />
+              <text
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`dbv-${bi}`"
+                class="home-plugin-daily__bar-val"
+                :x="bar.x + bar.w / 2"
+                :y="bar.y - 6"
+                text-anchor="middle"
+              >{{ bar.value }}</text>
+              <text
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`dbl-${bi}`"
+                class="home-plugin-daily__bar-lbl muted"
+                :x="bar.x + bar.w / 2"
+                :y="dailyChartPack.bottom + 18"
+                text-anchor="middle"
+              >{{ bar.label }}</text>
+            </template>
+            <template v-else>
+              <path
+                class="home-plugin-daily__area home-plugin-daily__area--mat"
+                :d="dailyChartPack.matAreaD"
+                fill="url(#home-daily-mat-area)"
+              />
+              <path
+                class="home-plugin-daily__area home-plugin-daily__area--msg"
+                :d="dailyChartPack.msgAreaD"
+                fill="url(#home-daily-msg-area)"
+              />
+              <path
+                class="home-plugin-daily__line home-plugin-daily__line--mat"
+                :d="dailyChartPack.matPathD"
+                fill="none"
+              />
+              <path
+                class="home-plugin-daily__line home-plugin-daily__line--msg"
+                :d="dailyChartPack.msgPathD"
+                fill="none"
+              />
+              <circle
+                v-for="(p, di) in dailyChartPack.matDots"
+                :key="`md-${di}`"
+                class="home-plugin-daily__dot home-plugin-daily__dot--mat"
+                :cx="p.x"
+                :cy="p.y"
+                r="3.2"
+              />
+              <circle
+                v-for="(p, di) in dailyChartPack.msgDots"
+                :key="`mg-${di}`"
+                class="home-plugin-daily__dot home-plugin-daily__dot--msg"
+                :cx="p.x"
+                :cy="p.y"
+                r="3.2"
+              />
+            </template>
           </svg>
         </div>
       </div>
@@ -3435,6 +3541,33 @@ html[data-theme="light"] .home-plugin-daily__dot--msg {
 html[data-theme="light"] .home-plugin-daily__dot--mat {
   fill: #fdf4ff;
   stroke: #fae8ff;
+}
+
+.home-plugin-daily__bar--msg {
+  fill: #f472b6;
+}
+
+.home-plugin-daily__bar--mat {
+  fill: #d946ef;
+}
+
+.home-plugin-daily__bar-val {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.home-plugin-daily__bar-lbl {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+html[data-theme="light"] .home-plugin-daily__bar--msg {
+  fill: #db2777;
+}
+
+html[data-theme="light"] .home-plugin-daily__bar--mat {
+  fill: #a21caf;
 }
 
 .home-plugin-charts__filter-external {
