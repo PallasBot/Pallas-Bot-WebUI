@@ -1,4 +1,4 @@
-import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
+import { DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import type {
   UpdateCheckData,
@@ -9,7 +9,9 @@ import type {
   BotConfigPublic,
   BotRow,
   DbBackupInfo,
-  DbBackupResult,
+  DbBackupJobData,
+  DbBackupDeleteResult,
+  DbBackupRunsData,
   DbOverviewData,
   FriendListData,
   FriendOverviewData,
@@ -483,11 +485,33 @@ export async function postDbBackup(body: {
   label?: string;
   scope?: "full" | "important";
   pg_format?: "custom" | "plain" | "directory";
-}): Promise<DbBackupResult> {
-  const { data } = await http.post<ApiOk<DbBackupResult>>("/db/backup", body, {
-    timeout: DB_BACKUP_TIMEOUT_MS,
-  });
+}): Promise<DbBackupJobData> {
+  const { data } = await http.post<ApiOk<DbBackupJobData>>("/db/backup", body);
   return unwrap(data, "/db/backup");
+}
+
+export async function fetchDbBackupJob(jobId: string): Promise<DbBackupJobData> {
+  const { data } = await http.get<ApiOk<DbBackupJobData>>(`/db/backup/jobs/${encodeURIComponent(jobId)}`);
+  return unwrap(data, `/db/backup/jobs/${jobId}`);
+}
+
+export async function fetchActiveDbBackupJob(): Promise<DbBackupJobData | null> {
+  const { data } = await http.get<ApiOk<DbBackupJobData | null>>("/db/backup/jobs/active");
+  return unwrap(data, "/db/backup/jobs/active");
+}
+
+export async function fetchDbBackupRuns(outputParent?: string | null): Promise<DbBackupRunsData> {
+  const params = outputParent?.trim() ? { output_parent: outputParent.trim() } : undefined;
+  const { data } = await http.get<ApiOk<DbBackupRunsData>>("/db/backup/runs", { params });
+  return unwrap(data, "/db/backup/runs");
+}
+
+export async function postDbBackupRunsDelete(body: {
+  paths: string[];
+  output_parent?: string | null;
+}): Promise<DbBackupDeleteResult> {
+  const { data } = await http.post<ApiOk<DbBackupDeleteResult>>("/db/backup/runs/delete", body);
+  return unwrap(data, "/db/backup/runs/delete");
 }
 
 export async function postMongoAggregate(body: {

@@ -153,8 +153,6 @@ const props = defineProps<{
   matcherHistoryBucketSec?: number;
   /** GET /console-daily-stats 的 rows（当前选中账号） */
   dailyStatRows?: ConsoleDailyStatRow[] | null;
-  /** 非空时将说明与勾选区传送至该选择器（如 #home-account-chart-config-outlet），用于压缩账户卡高度 */
-  chartFilterTeleport?: string | null;
   /** 图表标题旁小字：API 片段（如「API 22」） */
   toolbarSummaryApi?: string | null;
   /** 插件 Matcher 片段（如「插件 145」） */
@@ -167,8 +165,6 @@ const emit = defineEmits<{
   drawToggle: [expanded: boolean];
   filterToggle: [expanded: boolean];
 }>();
-
-const chartFilterTeleportTo = computed(() => props.chartFilterTeleport?.trim() ?? "");
 
 const toolbarSummaryText = computed(() => {
   const a = props.toolbarSummaryApi?.trim() ?? "";
@@ -236,8 +232,9 @@ function aggregateLocalTodayAvgDuration(
 function fmtDurationMs(ms: number | null | undefined): string {
   const n = Number(ms);
   if (!Number.isFinite(n) || n < 0) return "—";
-  if (n === 0) return "<1ms";
-  if (n < 1) return "<1ms";
+  if (n === 0) return "<0.01ms";
+  if (n < 0.01) return "<0.01ms";
+  if (n < 1) return `${n.toFixed(2)}ms`;
   if (n >= 60_000) return `${(n / 1000).toFixed(1)}s`;
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
   if (n < 10) return `${n.toFixed(1)}ms`;
@@ -725,10 +722,9 @@ onUnmounted(() => {
   window.removeEventListener("resize", refreshBucketViewportNarrow);
 });
 
-/** Teleport 选项条：图表已展开且用户点「选项」后才显示 */
+/** 图表区底部选项条：图表已展开且用户点「选项」后才显示 */
 const chartFilterStripVisible = computed(
   () =>
-    !!chartFilterTeleportTo.value &&
     chartsDrawExpanded.value &&
     chartsFilterExpanded.value &&
     (chartPanel.value !== "local_spark" || showLocalSpark.value),
@@ -736,7 +732,6 @@ const chartFilterStripVisible = computed(
 
 const chartFilterToggleVisible = computed(
   () =>
-    !!chartFilterTeleportTo.value &&
     chartsDrawExpanded.value &&
     (chartPanel.value !== "local_spark" || showLocalSpark.value),
 );
@@ -792,7 +787,7 @@ const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
   plugins_top: true,
   plugins_duration_top: topPluginsByDuration.value.length > 0,
-  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 2,
+  daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 1,
   api_hourly: apiCandidates.value.length > 0,
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
@@ -825,6 +820,132 @@ const panelOptions = computed(() => {
     label: labels[id],
     available: panelAvailability.value[id],
   }));
+});
+
+type ChartExplainItem = { dt: string; dd: string };
+type ChartPanelExplain = { lede: string; items: ChartExplainItem[] };
+
+function fmtAxisCount(n: number): string {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (x >= 1_000_000) return `${(x / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (x >= 10_000) return `${(x / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  if (x >= 1000) return `${(x / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return Number.isInteger(x) ? String(x) : x.toFixed(1);
+}
+
+const chartPanelExplain = computed((): ChartPanelExplain | null => {
+  const cap = matcherDurationLogCap.value;
+  const apiBucket = fmtBucketSec(props.apiHistoryBucketSec);
+  const matBucket = fmtBucketSec(props.matcherHistoryBucketSec);
+  switch (chartPanel.value) {
+    case "matcher_duration_recent":
+      return {
+        lede: "当前账号 · 单次 Matcher 墙钟耗时（新→旧）。",
+        items: [
+          { dt: "数据含义", dd: "每条为一次执行耗时，不是今日平均。" },
+          { dt: "持久化", dd: `写入 matcher_durations.jsonl，每账号最多 ${cap} 条。` },
+        ],
+      };
+    case "plugins_top":
+      return {
+        lede: "当前账号 · 插件今日 Matcher 次数排行。",
+        items: [
+          { dt: "读图方式", dd: "条形长度为次数；有样本时末尾附带今日平均耗时。" },
+          { dt: "相关视图", dd: "单次明细见「Matcher 单次耗时」；耗时排行见「插件今日平均耗时」。" },
+        ],
+      };
+    case "plugins_duration_top":
+      return {
+        lede: "当前账号 · 按今日平均 Matcher 耗时排序。",
+        items: [
+          { dt: "统计口径", dd: "preprocessor 至 postprocessor 墙钟耗时；与 plugin-run-stats 一致。" },
+          { dt: "读图方式", dd: "条形长度为平均毫秒数；行末「峰」为今日最大单次样本。" },
+        ],
+      };
+    case "daily_msg_matcher":
+      return {
+        lede: "当前账号 · 按自然日汇总（console_daily_stats.json）。",
+        items: [
+          { dt: "读图方式", dd: "左轴消息收+发合计，右轴 Matcher 次数；仅 1 天时为柱状图。" },
+          { dt: "数据来源", dd: "分片下由 hub 合并 worker 快照与磁盘刷盘；跨自然日写入持久化。" },
+        ],
+      };
+    case "api_hourly":
+      return {
+        lede: "当前账号 · 协议 API 今日各小时累计。",
+        items: [
+          { dt: "读图方式", dd: "横轴 0–23 为本地自然日各小时；纵轴为该小时累计调用次数。" },
+          { dt: "勾选", dd: "下方勾选要绘制的 OneBot 接口；可切换「按时间桶」对照原始曲线。" },
+        ],
+      };
+    case "api_bucket":
+      return {
+        lede: `当前账号 · 协议 API 按时间桶（${apiBucket}）。`,
+        items: [
+          { dt: "读图方式", dd: "纵轴为桶内真实次数；多接口共用同一刻度。" },
+          { dt: "勾选", dd: "勾选要对比的接口；横轴为桶起点本地时刻。" },
+        ],
+      };
+    case "matcher_hourly":
+      return {
+        lede: "当前账号 · 插件 Matcher 今日各小时累计。",
+        items: [
+          { dt: "读图方式", dd: "横轴 0–23 每小时一刻度；纵轴为该小时执行次数。" },
+          { dt: "勾选", dd: "插件名优先 metadata.name；勾选控制曲线显示。" },
+        ],
+      };
+    case "matcher_bucket":
+      return {
+        lede: `当前账号 · Matcher 按时间桶（${matBucket}）。`,
+        items: [
+          { dt: "读图方式", dd: "每柱为插件在该桶内的执行次数；多插件共用纵轴。" },
+          { dt: "勾选", dd: "勾选要对比的插件；横轴为桶起点本地时刻。" },
+        ],
+      };
+    case "matcher_duration_hourly":
+      return {
+        lede: "当前账号 · Matcher 平均耗时（今日各小时）。",
+        items: [
+          { dt: "读图方式", dd: "纵轴为小时内累计耗时 ÷ 执行次数（毫秒）。" },
+          { dt: "勾选", dd: "与 Matcher 次数视图共用插件勾选。" },
+        ],
+      };
+    case "matcher_duration_bucket":
+      return {
+        lede: `当前账号 · Matcher 平均耗时按桶（${matBucket}）。`,
+        items: [
+          { dt: "读图方式", dd: "每柱为桶内平均 Matcher 墙钟耗时（毫秒）。" },
+          { dt: "勾选", dd: "勾选要对比的插件。" },
+        ],
+      };
+    case "matcher_err_hourly":
+      return {
+        lede: "当前账号 · Matcher 异常今日各小时。",
+        items: [
+          { dt: "读图方式", dd: "仅统计 run 结束时带 exception 的次数；与成功执行分开勾选。" },
+          { dt: "勾选", dd: "横轴 0–23 每小时一刻度。" },
+        ],
+      };
+    case "matcher_err_bucket":
+      return {
+        lede: `当前账号 · Matcher 异常按桶（${matBucket}）。`,
+        items: [
+          { dt: "读图方式", dd: "每柱为桶内异常次数；与成功执行共用桶宽。" },
+          { dt: "勾选", dd: "勾选要对比的插件。" },
+        ],
+      };
+    case "local_spark":
+      if (!showLocalSpark.value) return null;
+      return {
+        lede: "本机浏览器快照 · 无服务端时间序列时的累计曲线。",
+        items: [
+          { dt: "数据来源", dd: "在总览点击「刷新」或切换 Bot 时写入 localStorage。" },
+        ],
+      };
+    default:
+      return null;
+  }
 });
 
 watch(
@@ -933,7 +1054,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
 
 const dailyChartPack = computed(() => {
   const raw = [...(props.dailyStatRows ?? [])].sort((a, b) => a.date.localeCompare(b.date));
-  if (raw.length < 2) return null;
+  if (raw.length < 1) return null;
   const W = 400;
   const H = 200;
   const padL = 44;
@@ -945,12 +1066,81 @@ const dailyChartPack = computed(() => {
   const left = padL;
   const top = padT;
   const bottom = padT + innerH;
+  const fmtTick = (x: number) => fmtAxisCount(x);
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
+
+  if (raw.length === 1) {
+    const row = raw[0]!;
+    const msgSum = (Number(row.received) || 0) + (Number(row.sent) || 0);
+    const mat = Number(row.matcher_runs) || 0;
+    const maxM = Math.max(msgSum, 1);
+    const maxMat = Math.max(mat, 1);
+    const barW = 52;
+    const gap = 28;
+    const cx = left + innerW / 2;
+    const msgX = cx - gap / 2 - barW;
+    const matX = cx + gap / 2;
+    const msgH = (msgSum / maxM) * innerH;
+    const matH = (mat / maxMat) * innerH;
+    const dateLabel = row.date.length >= 10 ? row.date.slice(5) : row.date;
+    return {
+      mode: "bars" as const,
+      W,
+      H,
+      left,
+      top,
+      bottom,
+      innerW,
+      innerH,
+      gridYs,
+      dateLabel,
+      singleDay: true,
+      leftTicks: [
+        { y: bottom, t: "0" },
+        { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
+        { y: top, t: fmtTick(maxM) },
+      ],
+      rightTicks: [
+        { y: bottom, t: "0" },
+        { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
+        { y: top, t: fmtTick(maxMat) },
+      ],
+      bars: [
+        {
+          x: msgX,
+          y: bottom - msgH,
+          w: barW,
+          h: msgH,
+          cls: "msg",
+          value: msgSum,
+          label: "消息",
+        },
+        {
+          x: matX,
+          y: bottom - matH,
+          w: barW,
+          h: matH,
+          cls: "mat",
+          value: mat,
+          label: "Matcher",
+        },
+      ],
+      xTicks: [{ x: cx, t: dateLabel }],
+      msgPathD: "",
+      matPathD: "",
+      msgAreaD: "",
+      matAreaD: "",
+      msgDots: [] as { x: number; y: number }[],
+      matDots: [] as { x: number; y: number }[],
+    };
+  }
+
   const msgSums = raw.map((r) => (Number(r.received) || 0) + (Number(r.sent) || 0));
   const mats = raw.map((r) => Number(r.matcher_runs) || 0);
   const maxM = Math.max(...msgSums, 1);
   const maxMat = Math.max(...mats, 1);
   const n = raw.length;
-  const xAt = (i: number) => left + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const xAt = (i: number) => left + (i / (n - 1)) * innerW;
   const yMsg = (v: number) => bottom - (v / maxM) * innerH;
   const yMat = (v: number) => bottom - (v / maxMat) * innerH;
   const msgPts = msgSums.map((v, i) => ({ x: xAt(i), y: yMsg(v) }));
@@ -959,8 +1149,6 @@ const dailyChartPack = computed(() => {
   const matPathD = catmullStrokePath(matPts);
   const msgAreaD = linearAreaPath(msgPts, bottom);
   const matAreaD = linearAreaPath(matPts, bottom);
-  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
-  const fmtTick = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
   const leftTicks = [
     { y: bottom, t: "0" },
     { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
@@ -977,6 +1165,7 @@ const dailyChartPack = computed(() => {
     t: raw[i]!.date.length >= 10 ? raw[i]!.date.slice(5) : raw[i]!.date,
   }));
   return {
+    mode: "line" as const,
     W,
     H,
     padL,
@@ -998,11 +1187,13 @@ const dailyChartPack = computed(() => {
     leftTicks,
     rightTicks,
     xTicks,
+    singleDay: false,
   };
 });
 </script>
 
 <template>
+  <div class="home-plugin-charts-wrap">
   <div
     class="home-plugin-charts"
     :class="{ 'home-plugin-charts--draw-collapsed': !chartsDrawExpanded }"
@@ -1061,19 +1252,19 @@ const dailyChartPack = computed(() => {
           </button>
         </div>
       </div>
+      </div>
       <p
         v-if="chartFilterToggleVisible && !chartsFilterExpanded"
         class="home-plugin-charts__toolbar-hint muted"
       >
-        点「选项」可勾选要绘制的协议 / Matcher 等。
+        展开「选项」查看说明与勾选。
       </p>
       <p
-        v-else-if="chartFilterTeleportTo && !chartsDrawExpanded"
+        v-else-if="!chartsDrawExpanded"
         class="home-plugin-charts__toolbar-hint muted"
       >
         点「展开」后显示图表；需要筛选时再点「选项」。
       </p>
-    </div>
 
     <div
       id="home-plugin-charts-draw"
@@ -1101,10 +1292,6 @@ const dailyChartPack = computed(() => {
         v-else
         class="home-matcher-dur-log home-plugin-charts__viz"
       >
-        <p class="muted home-matcher-dur-log__hint">
-          每条为一次 Matcher 墙钟耗时（新→旧）；最多保留 {{ matcherDurationLogCap }} 条并写入
-          <code>matcher_durations.jsonl</code>。
-        </p>
         <div class="home-matcher-dur-log__scroll">
           <div
             class="home-matcher-dur-log__head muted"
@@ -1143,13 +1330,11 @@ const dailyChartPack = computed(() => {
             aria-hidden="true"
           >
             <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
-            <span />
             <span class="home-matcher-dur-log__time-axis-range">
               <span :title="formatDurationLogAt(recentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[0]!.at) }}</span>
               <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧</span>
               <span :title="formatDurationLogAt(recentDurationRows[recentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[recentDurationRows.length - 1]!.at) }}</span>
             </span>
-            <span />
           </div>
         </div>
       </div>
@@ -1253,7 +1438,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
           按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
         </p>
@@ -1268,12 +1453,16 @@ const dailyChartPack = computed(() => {
         v-else-if="!dailyChartPack"
         class="muted home-plugin-charts__empty"
       >
-        至少需要 2 个自然日的记录才能绘制折线。请保持 Bot 运行并隔日查看。
+        暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 <code>console_daily_stats.json</code>。
       </p>
-      <div
-        v-else
-        class="home-plugin-daily home-plugin-charts__viz"
+      <template v-else-if="dailyChartPack">
+      <p
+        v-if="dailyChartPack.singleDay"
+        class="muted home-plugin-charts__hint home-plugin-daily__hint"
       >
+        当前仅有 1 个自然日记录，以柱状图展示；跨日后将自动切换为折线趋势。
+      </p>
+      <div class="home-plugin-daily home-plugin-charts__viz">
         <div class="home-plugin-daily__legend muted">
           <span class="home-plugin-daily__leg-item">
             <i
@@ -1368,45 +1557,77 @@ const dailyChartPack = computed(() => {
               :x="xt.x"
               :y="dailyChartPack.H - 8"
             >{{ xt.t }}</text>
-            <path
-              class="home-plugin-daily__area home-plugin-daily__area--mat"
-              :d="dailyChartPack.matAreaD"
-              fill="url(#home-daily-mat-area)"
-            />
-            <path
-              class="home-plugin-daily__area home-plugin-daily__area--msg"
-              :d="dailyChartPack.msgAreaD"
-              fill="url(#home-daily-msg-area)"
-            />
-            <path
-              class="home-plugin-daily__line home-plugin-daily__line--mat"
-              :d="dailyChartPack.matPathD"
-              fill="none"
-            />
-            <path
-              class="home-plugin-daily__line home-plugin-daily__line--msg"
-              :d="dailyChartPack.msgPathD"
-              fill="none"
-            />
-            <circle
-              v-for="(p, di) in dailyChartPack.matDots"
-              :key="`md-${di}`"
-              class="home-plugin-daily__dot home-plugin-daily__dot--mat"
-              :cx="p.x"
-              :cy="p.y"
-              r="3.2"
-            />
-            <circle
-              v-for="(p, di) in dailyChartPack.msgDots"
-              :key="`mg-${di}`"
-              class="home-plugin-daily__dot home-plugin-daily__dot--msg"
-              :cx="p.x"
-              :cy="p.y"
-              r="3.2"
-            />
+            <template v-if="dailyChartPack.mode === 'bars'">
+              <rect
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`db-${bi}`"
+                class="home-plugin-daily__bar"
+                :class="bar.cls === 'msg' ? 'home-plugin-daily__bar--msg' : 'home-plugin-daily__bar--mat'"
+                :x="bar.x"
+                :y="bar.y"
+                :width="bar.w"
+                :height="Math.max(bar.h, 0)"
+                rx="3"
+              />
+              <text
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`dbv-${bi}`"
+                class="home-plugin-daily__bar-val"
+                :x="bar.x + bar.w / 2"
+                :y="bar.y - 6"
+                text-anchor="middle"
+              >{{ fmtAxisCount(bar.value) }}</text>
+              <text
+                v-for="(bar, bi) in dailyChartPack.bars"
+                :key="`dbl-${bi}`"
+                class="home-plugin-daily__bar-lbl muted"
+                :x="bar.x + bar.w / 2"
+                :y="dailyChartPack.bottom + 18"
+                text-anchor="middle"
+              >{{ bar.label }}</text>
+            </template>
+            <template v-else>
+              <path
+                class="home-plugin-daily__area home-plugin-daily__area--mat"
+                :d="dailyChartPack.matAreaD"
+                fill="url(#home-daily-mat-area)"
+              />
+              <path
+                class="home-plugin-daily__area home-plugin-daily__area--msg"
+                :d="dailyChartPack.msgAreaD"
+                fill="url(#home-daily-msg-area)"
+              />
+              <path
+                class="home-plugin-daily__line home-plugin-daily__line--mat"
+                :d="dailyChartPack.matPathD"
+                fill="none"
+              />
+              <path
+                class="home-plugin-daily__line home-plugin-daily__line--msg"
+                :d="dailyChartPack.msgPathD"
+                fill="none"
+              />
+              <circle
+                v-for="(p, di) in dailyChartPack.matDots"
+                :key="`md-${di}`"
+                class="home-plugin-daily__dot home-plugin-daily__dot--mat"
+                :cx="p.x"
+                :cy="p.y"
+                r="3.2"
+              />
+              <circle
+                v-for="(p, di) in dailyChartPack.msgDots"
+                :key="`mg-${di}`"
+                class="home-plugin-daily__dot home-plugin-daily__dot--msg"
+                :cx="p.x"
+                :cy="p.y"
+                r="3.2"
+              />
+            </template>
           </svg>
         </div>
       </div>
+      </template>
       </div>
     </div>
 
@@ -1415,7 +1636,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
         </p>
@@ -1516,7 +1737,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           服务端按固定桶宽累计；柱状图纵轴为<strong>该桶内真实次数</strong>（多曲线共用同一纵轴刻度）。横轴为桶起点时刻（本地显示）。当前桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}。
         </p>
@@ -1644,7 +1865,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
         </p>
@@ -1745,7 +1966,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           每柱为该插件 Matcher 在对应时间桶内的<strong>执行次数</strong>；多插件共用纵轴。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
         </p>
@@ -1873,7 +2094,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           纵轴为<strong>该小时桶内累计耗时 ÷ 执行次数</strong>（毫秒）；与 Matcher 次数视图共用插件勾选。横轴 0–23 每小时一刻度。
         </p>
@@ -1974,7 +2195,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           每柱为该时间桶内<strong>平均 Matcher 墙钟耗时</strong>（毫秒）；桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。
         </p>
@@ -2103,7 +2324,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
         </p>
@@ -2204,7 +2425,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           每柱为该插件在桶内的<strong>异常次数</strong>；与成功执行共用同一桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。横轴为桶起点（本地显示）。
         </p>
@@ -2332,7 +2553,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <template v-if="!chartFilterTeleportTo">
+      <template v-if="false">
         <p class="muted home-plugin-charts__hint">
           无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
         </p>
@@ -2358,369 +2579,149 @@ const dailyChartPack = computed(() => {
       </div>
     </div>
     </div>
+    </div>
 
-    <Teleport
-      v-if="chartFilterTeleportTo"
-      :to="chartFilterTeleportTo"
-      defer
+    <div
+      id="home-account-chart-config-outlet"
+      v-show="chartFilterStripVisible"
+      class="home-account-chart-config-outlet"
+      :class="{
+        'home-account-chart-config-outlet--slot':
+          chartsDrawExpanded && chartsFilterExpanded,
+      }"
     >
-      <div
-        v-show="chartFilterStripVisible"
-        class="home-plugin-charts__filter-external"
-      >
-        <template v-if="chartPanel === 'matcher_duration_recent'">
-          <p class="muted home-plugin-charts__hint">
-            每条为<strong>单次</strong> Matcher 执行耗时（新→旧），非平均值；持久化在数据目录
-            <code>matcher_durations.jsonl</code>（每账号最多 {{ matcherDurationLogCap }} 条，与每日 4:00 清理策略一致）。
-          </p>
-        </template>
-        <template v-else-if="chartPanel === 'plugins_top'">
-          <p class="muted home-plugin-charts__hint">
-            当前为「插件今日次数」排行；右侧数字为次数，有耗时样本时附带今日平均 Matcher 墙钟耗时。单次明细请切到「Matcher 单次耗时」。
-          </p>
-        </template>
-        <template v-else-if="chartPanel === 'plugins_duration_top'">
-          <p class="muted home-plugin-charts__hint">
-            按今日平均 Matcher 墙钟耗时排序（preprocessor 至 postprocessor）；峰值见各行末尾。统计口径与控制台 plugin-run-stats 一致，重启清零。
-          </p>
-        </template>
-        <template v-else-if="chartPanel === 'daily_msg_matcher'">
-          <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
-            按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
-          </p>
-        </template>
-        <template v-else-if="chartPanel === 'api_hourly'">
-          <p class="muted home-plugin-charts__hint">
-            横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
-          </p>
-          <div
-            v-if="apiCandidates.length"
-            class="home-plugin-sel"
-          >
+      <div class="home-plugin-charts__filter-external">
+        <div
+          v-if="chartPanelExplain"
+          class="home-panel-explain"
+        >
+          <p class="home-panel-explain__lede muted">{{ chartPanelExplain.lede }}</p>
+          <dl class="home-panel-explain__glossary">
+            <div
+              v-for="(item, explainIdx) in chartPanelExplain.items"
+              :key="`explain-${explainIdx}`"
+              class="home-panel-explain__item"
+            >
+              <dt>{{ item.dt }}</dt>
+              <dd>{{ item.dd }}</dd>
+            </div>
+          </dl>
+        </div>
+        <div
+          v-if="chartPanel === 'api_hourly' && apiCandidates.length"
+          class="home-plugin-sel"
+        >
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllApis(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllApis(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllApis(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllApis(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in apiCandidates"
-                :key="`ext-apih-${s.api}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedApiKeys"
-                  type="checkbox"
-                  :value="s.api"
-                >
+              <label v-for="s in apiCandidates" :key="`ext-apih-${s.api}`" class="home-plugin-sel__item">
+                <input v-model="selectedApiKeys" type="checkbox" :value="s.api">
                 <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'api_bucket'">
-          <p class="muted home-plugin-charts__hint">
-            服务端按固定桶宽累计；柱状图纵轴为<strong>该桶内真实次数</strong>（多曲线共用同一纵轴刻度）。横轴为桶起点时刻（本地显示）。当前桶宽 {{ fmtBucketSec(apiHistoryBucketSec) }}。
-          </p>
-          <div
-            v-if="apiCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'api_bucket' && apiCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllApis(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllApis(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllApis(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllApis(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in apiCandidates"
-                :key="`ext-apib-${s.api}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedApiKeys"
-                  type="checkbox"
-                  :value="s.api"
-                >
+              <label v-for="s in apiCandidates" :key="`ext-apib-${s.api}`" class="home-plugin-sel__item">
+                <input v-model="selectedApiKeys" type="checkbox" :value="s.api">
                 <span :title="s.api">{{ s.api.length > 26 ? `${s.api.slice(0, 24)}…` : s.api }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_hourly'">
-          <p class="muted home-plugin-charts__hint">
-            插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
-          </p>
-          <div
-            v-if="matcherRunCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_hourly' && matcherRunCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherRunCandidates"
-                :key="`ext-mh-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherRunCandidates" :key="`ext-mh-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_bucket'">
-          <p class="muted home-plugin-charts__hint">
-            每柱为该插件 Matcher 在对应时间桶内的<strong>执行次数</strong>；多插件共用纵轴。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
-          </p>
-          <div
-            v-if="matcherRunCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_bucket' && matcherRunCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherRunCandidates"
-                :key="`ext-mb-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherRunCandidates" :key="`ext-mb-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_duration_hourly'">
-          <p class="muted home-plugin-charts__hint">
-            纵轴为小时内<strong>累计耗时 ÷ 执行次数</strong>（毫秒）；与 Matcher 次数视图共用插件勾选。横轴 0–23 每小时一刻度。
-          </p>
-          <div
-            v-if="matcherDurationCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_duration_hourly' && matcherDurationCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherDurationCandidates"
-                :key="`ext-mdh-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherDurationCandidates" :key="`ext-mdh-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_duration_bucket'">
-          <p class="muted home-plugin-charts__hint">
-            每柱为时间桶内<strong>平均 Matcher 墙钟耗时</strong>（毫秒）。桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}；横轴为桶起点（本地显示）。
-          </p>
-          <div
-            v-if="matcherDurationCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_duration_bucket' && matcherDurationCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatchers(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatchers(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherDurationCandidates"
-                :key="`ext-mdb-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherDurationCandidates" :key="`ext-mdb-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_err_hourly'">
-          <p class="muted home-plugin-charts__hint">
-            与成功执行分开勾选；仅统计 run 结束时带 exception 的次数。横轴 0–23 每小时一刻度。
-          </p>
-          <div
-            v-if="matcherErrCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_err_hourly' && matcherErrCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatcherErr(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatcherErr(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatcherErr(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatcherErr(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherErrCandidates"
-                :key="`ext-meh-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherErrKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherErrCandidates" :key="`ext-meh-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherErrKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'matcher_err_bucket'">
-          <p class="muted home-plugin-charts__hint">
-            每柱为该插件在桶内的<strong>异常次数</strong>；与成功执行共用同一桶宽 {{ fmtBucketSec(matcherHistoryBucketSec) }}。横轴为桶起点（本地显示）。
-          </p>
-          <div
-            v-if="matcherErrCandidates.length"
-            class="home-plugin-sel"
-          >
+        <div v-if="chartPanel === 'matcher_err_bucket' && matcherErrCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatcherErr(true)"
-              >
-                全选
-              </button>
-              <button
-                type="button"
-                class="home-plugin-sel__btn"
-                @click="toggleAllMatcherErr(false)"
-              >
-                全不选
-              </button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatcherErr(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllMatcherErr(false)">全不选</button>
             </span>
             <div class="home-plugin-sel__grid">
-              <label
-                v-for="s in matcherErrCandidates"
-                :key="`ext-meb-${s.plugin}`"
-                class="home-plugin-sel__item"
-              >
-                <input
-                  v-model="selectedMatcherErrKeys"
-                  type="checkbox"
-                  :value="s.plugin"
-                >
+              <label v-for="s in matcherErrCandidates" :key="`ext-meb-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedMatcherErrKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
           </div>
-        </template>
-        <template v-else-if="chartPanel === 'local_spark' && showLocalSpark">
-          <p class="muted home-plugin-charts__hint">
-            无服务端时间序列时显示：在总览点击「刷新」或切换 Bot 时写入浏览器本地快照。
-          </p>
-        </template>
       </div>
-    </Teleport>
-
+    </div>
   </div>
 </template>
 
 <style scoped>
+.home-plugin-charts-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 .home-plugin-charts {
   container-type: inline-size;
   display: flex;
@@ -3038,30 +3039,24 @@ const dailyChartPack = computed(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
-  padding: 8px 10px;
+  padding: 6px 8px;
   max-height: min(420px, 52vh);
   overflow: auto;
   box-sizing: border-box;
-}
-.home-matcher-dur-log__hint {
-  margin: 0 0 8px;
-  font-size: 0.78rem;
-  line-height: 1.35;
 }
 .home-matcher-dur-log__scroll {
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  margin: 0 -2px;
-  padding: 0 2px 2px;
+  width: 100%;
 }
 .home-matcher-dur-log__head {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
-  gap: 6px 10px;
-  padding: 0 8px 4px;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  gap: 4px 10px;
+  padding: 0 6px 4px;
   font-size: 0.72rem;
-  min-width: 22rem;
+  width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__list {
@@ -3070,40 +3065,41 @@ const dailyChartPack = computed(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 22rem;
+  gap: 3px;
+  width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__row {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
-  gap: 6px 10px;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  gap: 4px 10px;
   align-items: center;
-  padding: 5px 8px;
+  padding: 4px 6px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  min-width: 22rem;
+  width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__time-axis {
   display: grid;
-  grid-template-columns: 4.25rem minmax(6.5rem, 1.35fr) 9.75rem minmax(2.25rem, max-content);
-  gap: 6px 10px;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  gap: 4px 10px;
   align-items: center;
   margin-top: 6px;
-  padding: 6px 8px 2px;
+  padding: 6px 6px 2px;
   border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   font-size: 0.68rem;
   line-height: 1.3;
-  min-width: 22rem;
+  width: 100%;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__time-axis-label {
   font-weight: 650;
 }
 .home-matcher-dur-log__time-axis-range {
+  grid-column: 2 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3129,7 +3125,7 @@ const dailyChartPack = computed(() => {
 .home-matcher-dur-log__ms {
   font-weight: 700;
   color: #fdba74;
-  min-width: 4.5rem;
+  white-space: nowrap;
 }
 .home-matcher-dur-log__plugin {
   min-width: 0;
@@ -3138,11 +3134,10 @@ const dailyChartPack = computed(() => {
   white-space: nowrap;
 }
 .home-matcher-dur-log__at {
-  justify-self: end;
-  text-align: right;
   font-size: 0.72rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .home-matcher-dur-log__badge {
   font-size: 0.7rem;
@@ -3434,15 +3429,51 @@ html[data-theme="light"] .home-plugin-daily__dot--mat {
   stroke: #fae8ff;
 }
 
+.home-plugin-daily__bar--msg {
+  fill: #f472b6;
+}
+
+.home-plugin-daily__bar--mat {
+  fill: #d946ef;
+}
+
+.home-plugin-daily__bar-val {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.home-plugin-daily__bar-lbl {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+html[data-theme="light"] .home-plugin-daily__bar--msg {
+  fill: #db2777;
+}
+
+html[data-theme="light"] .home-plugin-daily__bar--mat {
+  fill: #a21caf;
+}
+
 .home-plugin-charts__filter-external {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-card);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
+}
+.home-plugin-charts__filter-external .home-panel-explain {
+  padding: 8px 10px;
+}
+.home-plugin-charts__filter-external .home-panel-explain__glossary {
+  grid-template-columns: 1fr;
+}
+.home-plugin-charts__filter-external .home-plugin-sel {
+  margin-top: 0;
 }
 </style>

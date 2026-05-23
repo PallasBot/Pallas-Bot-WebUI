@@ -9,6 +9,7 @@ import CommonConfigPage from "@/pages/CommonConfigPage.vue";
 import InstancesPage from "@/pages/InstancesPage.vue";
 import ProtocolManagePage from "@/pages/ProtocolManagePage.vue";
 import DatabasePage from "@/pages/DatabasePage.vue";
+import DatabaseBackupsPage from "@/pages/DatabaseBackupsPage.vue";
 import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
@@ -112,6 +113,15 @@ const router = createRouter({
           meta: {
             title: "数据库",
             description: "存储类型与体量明细",
+          },
+        },
+        {
+          path: "database/backups",
+          name: "database-backups",
+          component: DatabaseBackupsPage,
+          meta: {
+            title: "备份清理",
+            description: "浏览并删除历史逻辑备份",
           },
         },
         {
