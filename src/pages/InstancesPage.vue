@@ -182,7 +182,7 @@ const deleteModalWarnings = computed(() => {
 
 const instDeleteSubtitle = computed(
   () =>
-    `将从数据库移除以下账号的 bot_config 行（共 ${dbBulk.sortedSelected.value.length} 个），操作不可撤销。`,
+    `将删除以下账号（共 ${dbBulk.sortedSelected.value.length} 个），数据库 bot_config 行将被移除，操作不可撤销。`,
 );
 
 function openDeleteModal() {
@@ -526,9 +526,13 @@ onUnmounted(() => {
                   <td style="font-weight: 600">{{ botNickname(c.account) || "BOT" }}</td>
                   <td>{{ c.account }}</td>
                   <td>
-                    <span :class="boolPillClass(isBotConnected(c.account))">{{
-                      isBotConnected(c.account) ? "已连接" : "未连接"
-                    }}</span>
+                    <span
+                      :class="
+                        isBotConnected(c.account)
+                          ? 'data-conn-capsule data-conn-capsule--on'
+                          : 'data-conn-capsule data-conn-capsule--off'
+                      "
+                    >{{ isBotConnected(c.account) ? "已连接" : "未连接" }}</span>
                   </td>
                   <td>
                     <span :class="boolPillClass(c.security)">{{ c.security ? "开启" : "关闭" }}</span>
@@ -974,7 +978,7 @@ onUnmounted(() => {
 
     <ConsoleDeleteConfirmModal
       :open="deleteModalOpen"
-      title="删除实例配置"
+      title="删除账号"
       :subtitle="instDeleteSubtitle"
       :items="deleteModalItems"
       :warnings="deleteModalWarnings"
@@ -988,22 +992,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.inst-db-card-select {
-  display: flex;
-  align-items: flex-start;
-  flex-shrink: 0;
-  padding-top: 2px;
-  margin-right: 2px;
-  cursor: pointer;
-}
-
-.inst-db-card-select input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  cursor: pointer;
-}
-
 .inst-delete-account-list {
   margin: 0;
   padding-left: 1.2em;

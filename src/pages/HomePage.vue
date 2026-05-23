@@ -1253,7 +1253,7 @@ onUnmounted(() => {
               <RouterLink
                 class="home-instances-capsule"
                 to="/instances"
-              >实例与连接</RouterLink>
+              >数据库实例</RouterLink>
             </div>
           </div>
           <div class="panel__bd">

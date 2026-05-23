@@ -191,7 +191,7 @@ function offlineFriendPayload(selfId: string): FriendListData {
     truncated: false,
     limit: 800,
     error:
-      "当前账号未在 NoneBot 上线，无法拉取好友列表。请在「实例与连接」确认协议端已接入框架后再试。",
+      "当前账号未在 NoneBot 上线，无法拉取好友列表。请在「数据库实例」确认协议端已接入框架后再试。",
   };
 }
 
@@ -204,7 +204,7 @@ function offlineGroupPayload(selfId: string): GroupListData {
     truncated: false,
     limit: 1000,
     error:
-      "当前账号未在 NoneBot 上线，无法拉取群列表。请在「实例与连接」确认协议端已接入框架后再试。",
+      "当前账号未在 NoneBot 上线，无法拉取群列表。请在「数据库实例」确认协议端已接入框架后再试。",
   };
 }
 

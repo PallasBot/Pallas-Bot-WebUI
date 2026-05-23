@@ -83,15 +83,15 @@ const router = createRouter({
           path: "instances",
           name: "instances",
           component: InstancesPage,
-          meta: { title: "实例与连接", description: "在线与协议快照" },
+          meta: { title: "数据库实例", description: "库内 Bot 与 NoneBot 连接" },
         },
         {
           path: "protocol",
           name: "protocol",
           component: ProtocolManagePage,
           meta: {
-            title: "协议端管理",
-            description: "协议内置页与运维入口",
+            title: "协议端实例",
+            description: "协议账号与运维入口",
           },
         },
         {
