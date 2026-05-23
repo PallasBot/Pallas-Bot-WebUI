@@ -384,6 +384,38 @@ export interface DbBackupResult {
   message: string;
 }
 
+export type DbBackupJobStatus = "queued" | "running" | "completed" | "failed";
+
+export interface DbBackupJobData {
+  job_id: string;
+  status: DbBackupJobStatus;
+  output_dir: string;
+  size_bytes: number;
+  elapsed_sec?: number | null;
+  created_at?: number;
+  started_at?: number | null;
+  finished_at?: number | null;
+  result?: DbBackupResult;
+  error?: string;
+}
+
+export interface DbBackupRunRow {
+  name: string;
+  path: string;
+  backend: "mongodb" | "postgres" | string;
+  size_bytes: number;
+  modified_at: string;
+}
+
+export interface DbBackupRunsData {
+  runs: DbBackupRunRow[];
+}
+
+export interface DbBackupDeleteResult {
+  deleted: string[];
+  count: number;
+}
+
 /** Bot 配置 */
 export interface BotConfigPublic {
   account: number;

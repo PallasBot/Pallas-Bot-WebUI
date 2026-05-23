@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   fetchDbBackupInfo,
   fetchDbOverview,
+  fetchActiveDbBackupJob,
+  fetchDbBackupJob,
   fetchGroupConfigs,
   fetchPlugins,
   fetchUserConfigs,
@@ -13,6 +15,7 @@ import {
 import { axiosErrorDetail } from "@/api/http";
 import type {
   DbBackupInfo,
+  DbBackupJobData,
   DbBackupResult,
   DbOverviewData,
   GroupConfigPublic,
@@ -58,6 +61,13 @@ const backupScope = ref<"full" | "important">("full");
 const backupPgFormat = ref<"custom" | "plain" | "directory">("custom");
 const backupBusy = ref(false);
 const backupResult = ref<DbBackupResult | null>(null);
+const backupJob = ref<DbBackupJobData | null>(null);
+const backupJobSizeBytes = ref(0);
+const backupElapsedSec = ref(0);
+let backupElapsedTimer: ReturnType<typeof setInterval> | null = null;
+let backupPollTimer: ReturnType<typeof setInterval> | null = null;
+
+const BACKUP_POLL_MS = 1500;
 
 const socialConfigsBusy = ref(false);
 const groupConfigs = ref<GroupConfigPublic[]>([]);
@@ -252,25 +262,120 @@ async function loadBackupInfo() {
   }
 }
 
+function formatElapsed(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function backupProgressHint(): string {
+  const tool = backupInfo.value?.tool_name ?? "备份工具";
+  const job = backupJob.value;
+  const size = formatBytes(backupJobSizeBytes.value);
+  if (job?.status === "queued") return `任务排队中，等待启动 ${tool}…`;
+  const sec = backupElapsedSec.value;
+  if (job?.status === "running" && backupJobSizeBytes.value > 0) {
+    return `正在写入备份文件，已落盘 ${size}。`;
+  }
+  if (sec >= 120) return `大库导出可能较久，${tool} 仍在运行，请勿关闭页面。`;
+  if (sec >= 30) return `正在写入备份文件，请稍候…`;
+  return `正在启动 ${tool} 并连接数据库…`;
+}
+
+const backupProgressComplete = computed(() => backupJob.value?.status === "completed");
+
+function stopBackupPollTimer() {
+  if (backupPollTimer == null) return;
+  clearInterval(backupPollTimer);
+  backupPollTimer = null;
+}
+
+async function pollBackupJobOnce(jobId: string) {
+  const next = await fetchDbBackupJob(jobId);
+  backupJob.value = next;
+  backupJobSizeBytes.value = next.size_bytes ?? 0;
+  if (next.status === "completed" && next.result) {
+    backupResult.value = next.result;
+    ok.value = next.result.message || "备份已完成。";
+    backupBusy.value = false;
+    stopBackupPollTimer();
+    stopBackupProgressTimer();
+  } else if (next.status === "failed") {
+    err.value = next.error || "备份失败。";
+    backupBusy.value = false;
+    stopBackupPollTimer();
+    stopBackupProgressTimer();
+  }
+}
+
+function startBackupPollTimer(jobId: string) {
+  stopBackupPollTimer();
+  backupPollTimer = setInterval(() => {
+    void pollBackupJobOnce(jobId).catch((e) => {
+      err.value = e instanceof Error ? e.message : String(e);
+      backupBusy.value = false;
+      stopBackupPollTimer();
+      stopBackupProgressTimer();
+    });
+  }, BACKUP_POLL_MS);
+}
+
+async function resumeActiveBackupJob() {
+  try {
+    const active = await fetchActiveDbBackupJob();
+    if (!active?.job_id) return;
+    backupJob.value = active;
+    backupJobSizeBytes.value = active.size_bytes ?? 0;
+    if (active.status === "queued" || active.status === "running") {
+      backupBusy.value = true;
+      startBackupProgressTimer();
+      startBackupPollTimer(active.job_id);
+      void pollBackupJobOnce(active.job_id);
+    }
+  } catch {
+    /* 忽略恢复失败 */
+  }
+}
+
+function startBackupProgressTimer() {
+  backupElapsedSec.value = 0;
+  stopBackupProgressTimer();
+  backupElapsedTimer = setInterval(() => {
+    backupElapsedSec.value += 1;
+  }, 1000);
+}
+
+function stopBackupProgressTimer() {
+  if (backupElapsedTimer == null) return;
+  clearInterval(backupElapsedTimer);
+  backupElapsedTimer = null;
+}
+
 async function runDbBackup() {
   backupBusy.value = true;
   backupResult.value = null;
+  backupJob.value = null;
+  backupJobSizeBytes.value = 0;
   err.value = "";
   ok.value = "";
+  startBackupProgressTimer();
   try {
     const parent = backupOutputParent.value.trim();
-    const result = await postDbBackup({
+    const started = await postDbBackup({
       output_parent: parent || null,
       label: backupLabel.value.trim(),
       scope: backupScope.value,
       pg_format: backupPgFormat.value,
     });
-    backupResult.value = result;
-    ok.value = result.message || "备份已完成。";
+    backupJob.value = started;
+    backupJobSizeBytes.value = started.size_bytes ?? 0;
+    startBackupPollTimer(started.job_id);
+    await pollBackupJobOnce(started.job_id);
   } catch (e) {
     err.value = axiosErrorDetail(e);
-  } finally {
     backupBusy.value = false;
+    stopBackupProgressTimer();
+    stopBackupPollTimer();
   }
 }
 
@@ -278,6 +383,7 @@ onMounted(() => {
   void loadPluginsCatalog();
   void loadAll();
   void loadBackupInfo();
+  void resumeActiveBackupJob();
 });
 
 async function runAggregate() {
@@ -331,6 +437,8 @@ watch(
 );
 
 onUnmounted(() => {
+  stopBackupProgressTimer();
+  stopBackupPollTimer();
   if (typeof document !== "undefined") {
     document.body.style.overflow = "";
   }
@@ -364,12 +472,12 @@ onUnmounted(() => {
     </div>
 
     <ConsolePageSkeleton
-      v-if="blockingLoad && !overview"
+      v-if="(blockingLoad && !overview) || dbRefreshBusy"
       :panels="1"
     />
 
     <div
-      v-if="overview"
+      v-if="overview && !dbRefreshBusy"
       class="grid-stats"
     >
       <div class="card stat-card">
@@ -416,6 +524,13 @@ onUnmounted(() => {
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库备份
         </h2>
         <div class="row-actions">
+          <RouterLink
+            class="btn"
+            to="/database/backups"
+            style="padding: 6px 12px; font-size: 12px"
+          >
+            管理备份
+          </RouterLink>
           <PanelSidebarAdd main-path="/database" />
           <button
             type="button"
@@ -520,6 +635,38 @@ onUnmounted(() => {
               <option value="directory">directory（目录格式）</option>
             </select>
           </div>
+        </div>
+        <div
+          v-if="backupBusy"
+          class="database-backup-progress"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="database-backup-progress__head">
+            <span class="database-backup-progress__label">
+              {{ backupProgressComplete ? "备份完成" : "备份进行中" }}
+            </span>
+            <span class="database-backup-progress__elapsed muted">
+              已用时 {{ formatElapsed(backupElapsedSec) }}
+              · 已写入 {{ formatBytes(backupJobSizeBytes) }}
+            </span>
+          </div>
+          <div
+            class="database-backup-progress__bar"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="backupProgressComplete ? 100 : undefined"
+            :aria-valuetext="backupProgressComplete ? '已完成' : `已写入 ${formatBytes(backupJobSizeBytes)}`"
+          >
+            <span
+              class="database-backup-progress__fill"
+              :class="{ 'database-backup-progress__fill--done': backupProgressComplete }"
+            />
+          </div>
+          <p class="muted database-backup-progress__hint">
+            {{ backupProgressHint() }}
+          </p>
         </div>
         <div
           v-if="backupResult"
@@ -931,3 +1078,60 @@ onUnmounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.database-backup-progress {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+.database-backup-progress__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.database-backup-progress__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.database-backup-progress__elapsed {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.database-backup-progress__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  overflow: hidden;
+}
+.database-backup-progress__fill {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: database-backup-progress-slide 1.35s ease-in-out infinite;
+}
+.database-backup-progress__fill--done {
+  width: 100%;
+  animation: none;
+}
+.database-backup-progress__hint {
+  margin: 10px 0 0;
+  font-size: 0.9em;
+  line-height: 1.45;
+}
+@keyframes database-backup-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+</style>
