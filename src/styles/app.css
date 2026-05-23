@@ -6990,6 +6990,31 @@ html[data-theme="light"] .console-toast {
   white-space: pre-wrap;
   word-break: break-word;
 }
+.plugin-card__source-block {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.plugin-card__source-kind {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--accent);
+  opacity: 0.92;
+}
+.plugin-card__source-path {
+  font-size: 10px;
+  line-height: 1.35;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  word-break: break-all;
+  opacity: 0.88;
+}
+.plugin-card__role-line {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
 .plugin-card {
   position: relative;
   background: var(--bg-card);
