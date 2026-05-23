@@ -38,6 +38,8 @@ withDefaults(
   flex-direction: column;
   gap: 14px;
   min-height: 120px;
+  /* 与 .grid-stats 下边距对齐，避免骨架与下方 panel 贴太紧 */
+  margin-bottom: 28px;
 }
 .console-page-skel__panel {
   border: 1px solid var(--border);
