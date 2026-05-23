@@ -24,7 +24,7 @@ export interface ConsolePrefsState {
   sidebarCollapsed: boolean;
   /** 实例页：数据库中的实例表格/卡片默认视图 */
   instancesBotView: DataViewMode;
-  /** 协议端页：协议账号表格/卡片默认视图 */
+  /** 协议端页：协议端中的实例表格/卡片默认视图 */
   protocolAccountsView: DataViewMode;
   /** 控制台各列表默认每页条数（4–80） */
   tablePageSize: number;

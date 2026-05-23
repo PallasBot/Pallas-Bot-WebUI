@@ -155,6 +155,8 @@ const protocolConnectedCount = computed(
   () => protocolAccountsSorted.value.filter((a) => a.connected === true).length,
 );
 
+const protocolAccountsTotalCount = computed(() => protocolAccountsSorted.value.length);
+
 const accountById = computed(() => {
   const map = new Map<string, NapcatAccountRow>();
   for (const a of protocolAccountsSorted.value) {
@@ -175,7 +177,7 @@ const deleteModalItems = computed(() =>
 
 const protoDeleteSubtitle = computed(
   () =>
-    `将从协议端移除以下账号（共 ${bulk.sortedSelected.value.length} 个），相关数据目录是否保留取决于主仓配置，操作不可撤销。`,
+    `将删除以下账号（共 ${bulk.sortedSelected.value.length} 个），协议端账号将被移除，数据目录是否保留取决于主仓配置，操作不可撤销。`,
 );
 
 const deleteModalWarnings = computed(() => {
@@ -192,7 +194,9 @@ const deleteModalWarnings = computed(() => {
     out.push(`以下账号进程仍在运行：${running.join("、")}。删除前将尝试停止，请确认。`);
   }
   if (connected.length) {
-    out.push(`以下账号当前仍显示为已连接：${connected.join("、")}。删除后请检查 NoneBot 连接配置。`);
+    out.push(
+      `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+    );
   }
   return out;
 });
@@ -263,7 +267,7 @@ function detailHref(a: NapcatAccountRow): string | null {
 function primaryTitle(a: NapcatAccountRow): string {
   const nick = profileNick(a);
   if (nick) return nick;
-  return String(a.qq ?? a.id ?? "—");
+  return "BOT";
 }
 
 function boolPillClass(on: boolean): string {
@@ -470,7 +474,7 @@ async function confirmDeleteSelected() {
     for (const id of ids) {
       await protocolDeleteAccount(mount, id);
     }
-    pushConsoleToast(`已删除 ${ids.length} 个协议账号`, "warn");
+    pushConsoleToast(`已删除 ${ids.length} 个账号`, "warn");
     bulk.clearSelection();
     deleteModalOpen.value = false;
     await refreshAfterAction();
@@ -542,19 +546,16 @@ onUnmounted(() => {
     :panels="2"
   />
   <template v-else>
-    <div
-      v-if="(snap?.accounts?.length ?? 0) > 0"
-      class="panel"
-    >
+    <div class="panel">
       <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
           <span
             class="panel__title-ico"
             aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议账号
+          >{{ panelNavIcon }}</span>协议端中的实例
           <RefreshIconButton
             :busy="loadBusy"
-            label="刷新协议账号"
+            label="刷新实例数据"
             @click="load"
           />
         </h2>
@@ -569,7 +570,7 @@ onUnmounted(() => {
           <div
             class="console-view-toggle"
             role="group"
-            aria-label="协议账号表格或卡片视图"
+            aria-label="实例表格或卡片视图"
           >
             <button
               type="button"
@@ -590,16 +591,16 @@ onUnmounted(() => {
         <div class="inst-db-panel__actions">
           <div class="inst-db-panel__stat-search">
             <span class="inst-db-stat muted">
-              已连接
+              当前已连接
               <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
-              / {{ protocolAccountsSorted.length }} 账号
+              / {{ protocolAccountsTotalCount }} 账号
             </span>
             <input
               v-model="protoSearchQ"
               class="inp inst-db-search"
               type="search"
-              placeholder="搜索 QQ / 昵称 / 账号 ID"
-              title="按 QQ、昵称、协议账号 ID 筛选"
+              placeholder="搜索账号 / 昵称 / 协议 / ID"
+              title="按账号、昵称、协议、ID 筛选"
             >
           </div>
           <PanelSidebarAdd main-path="/protocol" />
@@ -618,8 +619,8 @@ onUnmounted(() => {
                 <th>协议</th>
                 <th>运行方式</th>
                 <th>版本</th>
-                <th>进程</th>
                 <th>连接</th>
+                <th>进程</th>
                 <th>WebUI</th>
                 <th style="width: 168px">操作</th>
               </tr>
@@ -638,11 +639,6 @@ onUnmounted(() => {
                   :title="String(a.runtime_source ?? '').trim() || undefined"
                 >{{ protocolRuntimeVersionText(a) }}</td>
                 <td>
-                  <span :class="runningCapsuleClass(a)">{{
-                    isProcessRunning(a) ? "运行中" : "未运行"
-                  }}</span>
-                </td>
-                <td>
                   <span
                     :class="
                       a.connected === true
@@ -650,6 +646,11 @@ onUnmounted(() => {
                         : 'data-conn-capsule data-conn-capsule--off'
                     "
                   >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+                </td>
+                <td>
+                  <span :class="runningCapsuleClass(a)">{{
+                    isProcessRunning(a) ? "运行中" : "未运行"
+                  }}</span>
                 </td>
                 <td>
                   <a
@@ -709,14 +710,20 @@ onUnmounted(() => {
             </tbody>
           </table>
         </div>
+        <ConsolePagerBar
+          v-if="protoView === 'table' && filteredProtocolAccounts.length > 0"
+          v-model:page="protoAccPage"
+          v-model:page-size="tablePageSize"
+          :total="filteredProtocolAccounts.length"
+        />
         <div
           v-else-if="protoView === 'cards'"
-          class="data-card-grid data-card-grid--bots protocol-acc-grid"
+          class="data-card-grid data-card-grid--bots"
         >
           <div
             v-for="(a, i) in pagedProtocolAccounts"
             :key="cardKey(a, i)"
-            class="data-summary-card data-summary-card--kv data-summary-card--bot protocol-acc-card"
+            class="data-summary-card data-summary-card--kv data-summary-card--bot"
           >
             <div class="data-summary-card__head data-summary-card__head--bot">
               <label
@@ -727,7 +734,7 @@ onUnmounted(() => {
                 <input
                   type="checkbox"
                   :checked="bulk.isSelected(accountProtocolId(a)!)"
-                  :aria-label="`选择协议账号 ${accountProtocolId(a)}`"
+                  :aria-label="`选择账号 ${accountProtocolId(a)}`"
                   @change="
                     bulk.setSelected(
                       accountProtocolId(a)!,
@@ -741,7 +748,7 @@ onUnmounted(() => {
                   <div class="data-summary-card__primary">
                     <a
                       v-if="detailHref(a)"
-                      class="protocol-acc-card__title-link"
+                      class="data-summary-card__title-link"
                       :href="detailHref(a)!"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -764,13 +771,10 @@ onUnmounted(() => {
                   </button>
                 </div>
                 <div class="data-summary-card__secondary muted">
-                  账号 {{ a.qq ?? a.id ?? "—" }}
+                  {{ a.qq ?? a.id ?? "—" }}
                 </div>
               </div>
               <div class="data-summary-card__head-badges">
-                <span :class="runningCapsuleClass(a)">{{
-                  isProcessRunning(a) ? "运行中" : "未运行"
-                }}</span>
                 <span
                   :class="
                     a.connected === true
@@ -778,6 +782,9 @@ onUnmounted(() => {
                       : 'data-conn-capsule data-conn-capsule--off'
                   "
                 >{{ a.connected === true ? "已连接" : "未连接" }}</span>
+                <span :class="runningCapsuleClass(a)">{{
+                  isProcessRunning(a) ? "运行中" : "未运行"
+                }}</span>
               </div>
             </div>
             <div class="data-summary-card__body">
@@ -813,7 +820,7 @@ onUnmounted(() => {
               >{{ a.webui_port ?? "—" }}</span>
             </div>
             </div>
-            <div class="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card__actions">
+            <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
               <button
                 type="button"
                 class="btn"
@@ -834,7 +841,7 @@ onUnmounted(() => {
           </div>
         </div>
         <ConsolePagerBar
-          v-if="filteredProtocolAccounts.length > 0"
+          v-if="protoView === 'cards' && filteredProtocolAccounts.length > 0"
           v-model:page="protoAccPage"
           v-model:page-size="tablePageSize"
           :total="filteredProtocolAccounts.length"
@@ -921,7 +928,7 @@ onUnmounted(() => {
           <RouterLink
             class="btn"
             to="/instances"
-          >实例与连接</RouterLink>
+          >数据库实例</RouterLink>
           <RouterLink
             class="btn"
             to="/"
@@ -932,7 +939,7 @@ onUnmounted(() => {
 
     <ConsoleDeleteConfirmModal
       :open="deleteModalOpen"
-      title="删除协议账号"
+      title="删除账号"
       :subtitle="protoDeleteSubtitle"
       :items="deleteModalItems"
       :warnings="deleteModalWarnings"
@@ -966,102 +973,6 @@ onUnmounted(() => {
 .protocol-page__hint {
   margin: 12px 0 0;
   font-size: 12px;
-}
-.protocol-acc-grid {
-  margin-bottom: 12px;
-}
-
-/* 卡片内部：纵向 flex + clamp 间距，随宽度自适应边距 */
-.protocol-acc-card.data-summary-card--kv.data-summary-card--bot {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(6px, 2vw, 10px);
-  padding: clamp(8px, 2.4vw, 12px);
-  height: 100%;
-}
-
-.protocol-acc-card .data-summary-card__head--bot {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, max-content);
-  align-items: start;
-  column-gap: clamp(6px, 2vw, 10px);
-  row-gap: 4px;
-  padding-bottom: clamp(6px, 1.5vw, 8px);
-  border-bottom: 1px solid var(--border);
-}
-
-.protocol-acc-card .inst-db-card-select {
-  grid-row: 1 / span 2;
-  align-self: start;
-  margin-top: 2px;
-}
-
-.protocol-acc-card .data-summary-card__head-main {
-  min-width: 0;
-}
-
-.protocol-acc-card .data-summary-card__head-badges {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: clamp(3px, 1vw, 5px);
-  max-width: 100%;
-}
-
-.protocol-acc-card .data-summary-card__body {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(3px, 1.2vw, 6px);
-  padding-top: 0;
-  min-height: 0;
-}
-
-.protocol-acc-card .data-summary-card__body .data-summary-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: clamp(8px, 4%, 12px);
-  min-height: 1.35rem;
-}
-
-.protocol-acc-card .data-summary-card__label {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.protocol-acc-card .data-summary-card__body .data-summary-card__row > :not(.data-summary-card__label) {
-  flex: 1 1 0;
-  min-width: 0;
-  justify-self: unset;
-  text-align: right;
-}
-
-.protocol-acc-card .data-summary-card__foot.protocol-acc-card__actions {
-  margin-top: auto;
-  padding-top: clamp(6px, 1.5vw, 8px);
-  border-top: 1px solid var(--border);
-}
-
-.protocol-acc-card__title-link {
-  color: inherit;
-  text-decoration: none;
-}
-.protocol-acc-card__title-link:hover {
-  color: var(--accent);
-}
-.protocol-acc-card__actions {
-  flex-wrap: nowrap;
-  gap: clamp(4px, 1.5vw, 6px);
-}
-
-.protocol-acc-card__actions .btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding-inline: clamp(6px, 2vw, 10px);
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .protocol-acc-table-actions {
