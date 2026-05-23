@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import os from "node:os";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
@@ -11,10 +11,10 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 const BASE = "/pallas/";
 
 /** 开发代理目标：与 Bot 监听 PORT 一致（默认 8088，见 config/pallas.toml） */
-function resolveDevProxyTarget(): string {
-  const explicit = (process.env.VITE_PROXY_TARGET ?? "").trim();
+function resolveDevProxyTarget(env: Record<string, string>): string {
+  const explicit = (env.VITE_PROXY_TARGET ?? process.env.VITE_PROXY_TARGET ?? "").trim();
   if (explicit) return explicit;
-  const port = (process.env.VITE_PROXY_PORT ?? "8088").trim() || "8088";
+  const port = (env.VITE_PROXY_PORT ?? process.env.VITE_PROXY_PORT ?? "8088").trim() || "8088";
   // Cursor 等 IDE 常在 127.0.0.1:PORT 做转发，loopback 会 Empty reply → Vite proxy socket hang up；
   // Bot 监听 0.0.0.0 时改走本机局域网 IPv4 可连到真实进程。
   for (const infos of Object.values(os.networkInterfaces())) {
@@ -29,9 +29,11 @@ function resolveDevProxyTarget(): string {
   return `http://127.0.0.1:${port}`;
 }
 
-const DEV_PROXY_TARGET = resolveDevProxyTarget();
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const devProxyTarget = resolveDevProxyTarget(env);
 
-export default defineConfig({
+  return {
   base: BASE,
   define: {
     __WEBUI_VERSION__: JSON.stringify(pkg.version),
@@ -47,21 +49,22 @@ export default defineConfig({
     // 开发时 /pallas/api 转发到机器人，避免跨域
     proxy: {
       "/pallas/api": {
-        target: DEV_PROXY_TARGET,
+        target: devProxyTarget,
         changeOrigin: true,
       },
       "/pallas/login": {
-        target: DEV_PROXY_TARGET,
+        target: devProxyTarget,
         changeOrigin: true,
       },
       "/pallas/logout": {
-        target: DEV_PROXY_TARGET,
+        target: devProxyTarget,
         changeOrigin: true,
       },
       "/protocol": {
-        target: DEV_PROXY_TARGET,
+        target: devProxyTarget,
         changeOrigin: true,
       },
     },
   },
+  };
 });

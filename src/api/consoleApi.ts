@@ -6,6 +6,8 @@ import type {
   UpdateApplyData,
   BotUpdateCheckData,
   BotUpdateApplyData,
+  BotConfigMigrationCheckData,
+  BotConfigMigrationApplyData,
   ApiOk,
   BotConfigPublic,
   BotRow,
@@ -830,4 +832,18 @@ export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
 export async function postBotUpdateApply(): Promise<BotUpdateApplyData> {
   const { data } = await http.post<ApiOk<BotUpdateApplyData>>("/update/bot/apply");
   return unwrap(data, "/update/bot/apply");
+}
+
+export async function fetchBotConfigMigrationCheck(): Promise<BotConfigMigrationCheckData> {
+  const { data } = await http.get<ApiOk<BotConfigMigrationCheckData>>("/update/bot/config-migration/check");
+  return unwrap(data, "/update/bot/config-migration/check");
+}
+
+export async function postBotConfigMigrationApply(force = false): Promise<BotConfigMigrationApplyData> {
+  const { data } = await http.post<ApiOk<BotConfigMigrationApplyData>>(
+    "/update/bot/config-migration/apply",
+    null,
+    { params: { force: force ? "true" : "false" } },
+  );
+  return unwrap(data, "/update/bot/config-migration/apply");
 }
