@@ -591,6 +591,8 @@ export interface UpdateApplyData {
 }
 
 /** Bot 本体更新检查 */
+export type BotDeploymentMode = "docker" | "release_tag" | "release_tag_dirty" | "dev_clone";
+
 export interface BotUpdateCheckData {
   current_tag: string;
   current_commit: string;
@@ -603,6 +605,12 @@ export interface BotUpdateCheckData {
   release_notes?: string | null;
   error: string | null;
   checked_at: number;
+  /** 运行目录部署形态（控制台 git 更新策略） */
+  deployment_mode?: BotDeploymentMode;
+  git_available?: boolean;
+  dirty?: boolean;
+  dirty_file_count?: number;
+  current_branch?: string;
 }
 
 export interface BotUpdateApplyData {
