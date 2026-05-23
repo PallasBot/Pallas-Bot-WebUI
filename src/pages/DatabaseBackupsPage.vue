@@ -172,19 +172,24 @@ onMounted(() => {
       v-if="pageReady || runs.length"
       class="panel"
     >
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>备份目录
         </h2>
-        <div class="row-actions">
+        <div class="row-actions inst-db-panel__actions database-backups-page__hd-actions">
           <PanelSidebarAdd main-path="/database/backups" />
           <button
             type="button"
-            class="btn btn--danger"
+            class="btn btn--danger database-backups-page__delete-btn"
             :disabled="deleting || selectedCount === 0"
+            :aria-label="deleting ? '删除中' : `删除所选 ${selectedCount} 个备份`"
             @click="deleteSelected"
           >
-            {{ deleting ? "删除中…" : `删除所选（${selectedCount}）` }}
+            <span class="database-backups-page__delete-label">{{ deleting ? "删除中…" : "删除所选" }}</span>
+            <span
+              v-if="!deleting && selectedCount > 0"
+              class="database-backups-page__delete-count"
+            >（{{ selectedCount }}）</span>
           </button>
         </div>
       </div>
@@ -304,6 +309,26 @@ onMounted(() => {
 <style scoped>
 .database-backups-page__filters code {
   font-size: 0.92em;
+}
+.database-backups-page__hd-actions {
+  flex-shrink: 0;
+}
+.database-backups-page__delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 5.75rem;
+  padding-inline: 12px 14px;
+}
+.database-backups-page__delete-label {
+  line-height: 1.2;
+}
+.database-backups-page__delete-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
 }
 .btn--danger {
   border-color: color-mix(in srgb, var(--danger, #f87171) 45%, var(--border));
