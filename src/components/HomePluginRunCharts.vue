@@ -10,12 +10,11 @@ import type {
 } from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
+import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
 
 const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
 
-/** 今日各小时图横轴刻度 0–23（本地自然日） */
-const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
-
+/** 今日各小时图横轴刻度 0–23（本地自然日） — 见 HomeHourlyChartSvg */
 const CHART_SEL_KEY = "pallas_home_chart_sel_v1";
 const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
@@ -538,26 +537,48 @@ function buildBucketBarPack(
 
 type HourlyLayerLine = { label: string; color: string; poly: string };
 
-function buildHourlyLayers(rows: { label: string; hours: number[] }[]): HourlyLayerLine[] | null {
+function buildHourlyChartPack(
+  rows: { label: string; hours: number[] }[],
+  fmtTick?: (n: number) => string,
+): HourlyChartPack | null {
   if (!rows.length) return null;
+  const formatTick = fmtTick ?? fmtAxisCount;
   const flat = rows.flatMap((r) => r.hours);
-  const { scaleMax } = softBucketAxisMax(flat);
+  const { rawMax, scaleMax } = softBucketAxisMax(flat);
   const axisMax = scaleMax;
-  const w = 100;
-  const xInset = 1.5;
-  const xSpan = w - 2 * xInset;
-  const hb = 48;
-  return rows.map((row, i) => ({
+  const axisTopPlus = rawMax > scaleMax;
+
+  const W = 440;
+  const H = 200;
+  const padL = 42;
+  const padR = 10;
+  const padT = 10;
+  const padB = 28;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const top = padT;
+  const bottom = padT + innerH;
+
+  const xAt = (h: number) => left + (h / 23) * innerW;
+  const yAt = (v: number) => bottom - Math.min(1, v / axisMax) * innerH;
+
+  const layers: HourlyLayerLine[] = rows.map((row, i) => ({
     label: row.label,
     color: COLORS[i % COLORS.length]!,
     poly: row.hours
-      .map((v, h) => {
-        const x = xInset + (h / 23) * xSpan;
-        const y = hb - Math.min(1, v / axisMax) * (hb - 8) - 4;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
-      })
+      .map((v, h) => `${xAt(h).toFixed(2)},${yAt(v).toFixed(2)}`)
       .join(" "),
   }));
+
+  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
+  const yTicks = [
+    { y: bottom, t: "0" },
+    { y: bottom - innerH / 2, t: formatTick(axisMax / 2) },
+    { y: top, t: axisTopPlus ? `${formatTick(axisMax)}+` : formatTick(axisMax) },
+  ];
+
+  return { W, H, left, bottom, innerW, gridYs, yTicks, layers };
 }
 
 const apiBucketPack = computed(() => {
@@ -567,11 +588,11 @@ const apiBucketPack = computed(() => {
   return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
-const hourlyApiLayers = computed(() => {
+const hourlyApiPack = computed(() => {
   const rows = (props.apiHistoryByApi ?? [])
     .filter((s) => selectedApiKeys.value.includes(s.api) && (s.points?.length ?? 0) > 0)
     .map((s) => ({ label: s.api, hours: aggregateLocalToday(s.points) }));
-  return buildHourlyLayers(rows);
+  return buildHourlyChartPack(rows);
 });
 
 const matcherBucketPack = computed(() => {
@@ -585,7 +606,7 @@ const matcherBucketPack = computed(() => {
   return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
-const hourlyMatcherLayers = computed(() => {
+const hourlyMatcherPack = computed(() => {
   const meta = props.pluginsMeta ?? undefined;
   const rows = (props.matcherRunsByPlugin ?? [])
     .filter((s) => selectedMatcherKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
@@ -593,7 +614,7 @@ const hourlyMatcherLayers = computed(() => {
       label: matcherPluginDisplayName(s.plugin, meta),
       hours: aggregateLocalToday(s.points),
     }));
-  return buildHourlyLayers(rows);
+  return buildHourlyChartPack(rows);
 });
 
 const matcherErrBucketPack = computed(() => {
@@ -607,7 +628,7 @@ const matcherErrBucketPack = computed(() => {
   return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
-const hourlyMatcherErrLayers = computed(() => {
+const hourlyMatcherErrPack = computed(() => {
   const meta = props.pluginsMeta ?? undefined;
   const rows = (props.matcherErrorsByPlugin ?? [])
     .filter((s) => selectedMatcherErrKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
@@ -615,7 +636,7 @@ const hourlyMatcherErrLayers = computed(() => {
       label: `${matcherPluginDisplayName(s.plugin, meta)} · 异常`,
       hours: aggregateLocalToday(s.points),
     }));
-  return buildHourlyLayers(rows);
+  return buildHourlyChartPack(rows);
 });
 
 const matcherDurationBucketPack = computed(() => {
@@ -629,7 +650,7 @@ const matcherDurationBucketPack = computed(() => {
   return buildBucketBarPack(rows, bucketViewportNarrow.value);
 });
 
-const hourlyMatcherDurationLayers = computed(() => {
+const hourlyMatcherDurationPack = computed(() => {
   const meta = props.pluginsMeta ?? undefined;
   const rows = (props.matcherAvgDurationMsByPlugin ?? [])
     .filter((s) => selectedMatcherKeys.value.includes(s.plugin) && (s.points?.length ?? 0) > 0)
@@ -638,7 +659,7 @@ const hourlyMatcherDurationLayers = computed(() => {
       hours: aggregateLocalTodayAvgDuration(durationMsPoints(s.plugin), durationRunPoints(s.plugin)),
     }))
     .filter((r) => r.hours.some((v) => v > 0));
-  return buildHourlyLayers(rows);
+  return buildHourlyChartPack(rows, fmtDurationMs);
 });
 
 const sparkPoly = computed((): string | undefined => {
@@ -1677,35 +1698,13 @@ const dailyChartPack = computed(() => {
         </div>
       </template>
       <div
-        v-if="hourlyApiLayers?.length"
+        v-if="hourlyApiPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-spark home-plugin-spark--hourly"
-          viewBox="0 0 100 52"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="hidden"
-          aria-hidden="true"
-        >
-          <polyline
-            v-for="(ly, idx) in hourlyApiLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
-          />
-        </svg>
-        <div class="home-plugin-hour-ticks muted">
-          <span
-            v-for="hx in HOURLY_AXIS_HOURS"
-            :key="hx"
-          >{{ hx }}</span>
-        </div>
+        <HomeHourlyChartSvg :pack="hourlyApiPack" />
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in hourlyApiLayers"
+            v-for="(ly, idx) in hourlyApiPack.layers"
             :key="idx"
             class="home-plugin-legend__item"
           >
@@ -1906,35 +1905,13 @@ const dailyChartPack = computed(() => {
         </div>
       </template>
       <div
-        v-if="hourlyMatcherLayers?.length"
+        v-if="hourlyMatcherPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-spark home-plugin-spark--hourly"
-          viewBox="0 0 100 52"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="hidden"
-          aria-hidden="true"
-        >
-          <polyline
-            v-for="(ly, idx) in hourlyMatcherLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
-          />
-        </svg>
-        <div class="home-plugin-hour-ticks muted">
-          <span
-            v-for="hx in HOURLY_AXIS_HOURS"
-            :key="hx"
-          >{{ hx }}</span>
-        </div>
+        <HomeHourlyChartSvg :pack="hourlyMatcherPack" />
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in hourlyMatcherLayers"
+            v-for="(ly, idx) in hourlyMatcherPack.layers"
             :key="idx"
             class="home-plugin-legend__item"
           >
@@ -2135,35 +2112,13 @@ const dailyChartPack = computed(() => {
         </div>
       </template>
       <div
-        v-if="hourlyMatcherDurationLayers?.length"
+        v-if="hourlyMatcherDurationPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-spark home-plugin-spark--hourly"
-          viewBox="0 0 100 52"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="hidden"
-          aria-hidden="true"
-        >
-          <polyline
-            v-for="(ly, idx) in hourlyMatcherDurationLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
-          />
-        </svg>
-        <div class="home-plugin-hour-ticks muted">
-          <span
-            v-for="hx in HOURLY_AXIS_HOURS"
-            :key="hx"
-          >{{ hx }}</span>
-        </div>
+        <HomeHourlyChartSvg :pack="hourlyMatcherDurationPack" />
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in hourlyMatcherDurationLayers"
+            v-for="(ly, idx) in hourlyMatcherDurationPack.layers"
             :key="idx"
             class="home-plugin-legend__item"
           >
@@ -2365,35 +2320,13 @@ const dailyChartPack = computed(() => {
         </div>
       </template>
       <div
-        v-if="hourlyMatcherErrLayers?.length"
+        v-if="hourlyMatcherErrPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-spark home-plugin-spark--hourly"
-          viewBox="0 0 100 52"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="hidden"
-          aria-hidden="true"
-        >
-          <polyline
-            v-for="(ly, idx) in hourlyMatcherErrLayers"
-            :key="idx"
-            class="home-plugin-chart-line"
-            fill="none"
-            :stroke="ly.color"
-            stroke-opacity="0.92"
-            :points="ly.poly"
-          />
-        </svg>
-        <div class="home-plugin-hour-ticks muted">
-          <span
-            v-for="hx in HOURLY_AXIS_HOURS"
-            :key="hx"
-          >{{ hx }}</span>
-        </div>
+        <HomeHourlyChartSvg :pack="hourlyMatcherErrPack" />
         <div class="home-plugin-legend">
           <span
-            v-for="(ly, idx) in hourlyMatcherErrLayers"
+            v-for="(ly, idx) in hourlyMatcherErrPack.layers"
             :key="idx"
             class="home-plugin-legend__item"
           >
@@ -2905,10 +2838,17 @@ const dailyChartPack = computed(() => {
   display: flex;
   flex-direction: column;
 }
-.home-plugin-charts__viz .home-plugin-spark--hourly {
+.home-plugin-charts__viz .home-plugin-spark--hourly,
+.home-plugin-charts__viz .home-plugin-hourly-chart__svg {
   height: auto;
   min-height: 120px;
   flex: 1 1 auto;
+}
+.home-plugin-charts__viz .home-plugin-hourly-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
   height: auto;
