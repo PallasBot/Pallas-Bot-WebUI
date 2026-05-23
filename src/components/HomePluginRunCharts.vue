@@ -757,6 +757,20 @@ const chartFilterToggleVisible = computed(
     (chartPanel.value !== "local_spark" || showLocalSpark.value),
 );
 
+const toolbarHintText = computed(() => {
+  if (chartFilterToggleVisible.value && !chartsFilterExpanded.value) {
+    return "展开「选项」查看说明与勾选。";
+  }
+  if (!chartsDrawExpanded.value) {
+    return "点「展开」后显示图表；需要筛选时再点「选项」。";
+  }
+  return "";
+});
+
+const toolbarHintRowVisible = computed(
+  () => Boolean(toolbarHintText.value || toolbarSummaryText.value),
+);
+
 function toggleChartsDraw() {
   const next = !chartsDrawExpanded.value;
   chartsDrawExpanded.value = next;
@@ -1238,10 +1252,6 @@ const dailyChartPack = computed(() => {
               {{ o.label }}
             </option>
           </select>
-          <span
-            v-if="toolbarSummaryText"
-            class="home-plugin-charts__toolbar-summary muted"
-          >{{ toolbarSummaryText }}</span>
           <button
             v-if="chartFilterToggleVisible"
             type="button"
@@ -1274,18 +1284,23 @@ const dailyChartPack = computed(() => {
         </div>
       </div>
       </div>
-      <p
-        v-if="chartFilterToggleVisible && !chartsFilterExpanded"
-        class="home-plugin-charts__toolbar-hint muted"
+      <div
+        v-if="toolbarHintRowVisible"
+        class="home-plugin-charts__toolbar-hint-row"
       >
-        展开「选项」查看说明与勾选。
-      </p>
-      <p
-        v-else-if="!chartsDrawExpanded"
-        class="home-plugin-charts__toolbar-hint muted"
-      >
-        点「展开」后显示图表；需要筛选时再点「选项」。
-      </p>
+        <p
+          v-if="toolbarHintText"
+          class="home-plugin-charts__toolbar-hint muted"
+        >
+          {{ toolbarHintText }}
+        </p>
+        <p
+          v-if="toolbarSummaryText"
+          class="home-plugin-charts__toolbar-summary muted"
+        >
+          今日：{{ toolbarSummaryText }}
+        </p>
+      </div>
 
     <div
       id="home-plugin-charts-draw"
@@ -2710,6 +2725,28 @@ const dailyChartPack = computed(() => {
 }
 .home-plugin-charts__toolbar-controls .home-plugin-charts__draw-toggle {
   flex: 0 0 auto;
+}
+.home-plugin-charts__toolbar-hint-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 14px;
+  min-width: 0;
+  width: 100%;
+  padding: 0 0 2px;
+}
+.home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+.home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-summary {
+  margin: 0;
+  flex: 0 0 auto;
+  max-width: none;
+  text-align: right;
 }
 .home-plugin-charts__toolbar-summary {
   margin: 0 0 0 6px;
