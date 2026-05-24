@@ -942,15 +942,18 @@ const chartToolbarSummaryDuration = computed(() => {
   let cnt = 0;
   for (const p of plugins) {
     const avg = p.avg_duration_ms_today;
-    if (avg != null && Number.isFinite(avg) && avg > 0) {
+    if (avg != null && Number.isFinite(avg)) {
       sum += avg;
       cnt += 1;
     }
   }
   if (cnt <= 0) return "";
-  const ms = Math.round(sum / cnt);
-  if (ms >= 1000) return `均耗 ${(ms / 1000).toFixed(1)}s`;
-  return `均耗 ${ms}ms`;
+  const avg = sum / cnt;
+  if (avg > 0 && avg < 1) return "<1ms";
+  const ms = Math.round(avg);
+  if (ms <= 0) return "<1ms";
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
 });
 
 function formatMatcherErrorAt(sec: number): string {
@@ -1664,7 +1667,10 @@ onUnmounted(() => {
                         :matcher-avg-duration-ms-by-plugin="scopedMatcherAvgDurationByPlugin"
                         :matcher-duration-ms-by-plugin="scopedMatcherDurationMsByPlugin"
                         :matcher-duration-log="scopedMatcherDurationLog"
-                        :matcher-duration-log-cap="scopedPluginRunRow?.matcher_duration_log_cap ?? 80"
+                        :matcher-duration-log-cap="scopedPluginRunRow?.matcher_duration_log_cap ?? 150"
+                        :matcher-duration-log-per-plugin-cap="
+                          scopedPluginRunRow?.matcher_duration_log_per_plugin_cap ?? 30
+                        "
                         :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                         :matcher-errors-today="scopedPluginRunRow?.errors_today ?? 0"
                         :matcher-error-log="scopedMatcherErrorLog"
