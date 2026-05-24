@@ -2369,6 +2369,52 @@ html[data-theme="light"] .console-modal__close:hover {
   max-height: min(75vh, calc(100dvh - 140px));
 }
 
+.protocol-qrcode-modal__dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.protocol-qrcode-modal__bd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.protocol-qrcode-modal__hint {
+  margin: 0;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.protocol-qrcode-modal__frame {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  border-radius: var(--radius-shell);
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.protocol-qrcode-modal__img {
+  display: block;
+  max-width: min(280px, calc(100vw - 80px));
+  height: auto;
+}
+
+.protocol-qrcode-modal__actions {
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .protocol-qrcode-modal__actions > .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+  }
+}
+
 .shell-page-enter-active,
 .shell-page-leave-active {
   transition:
