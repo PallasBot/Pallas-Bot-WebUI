@@ -296,10 +296,15 @@ export interface PluginConfigData {
   gateway_editor?: boolean;
   /** 可调用全链路连通检测 API */
   supports_connectivity_check?: boolean;
+  /** 控制台 dev_mode 等可热重载（保存后立即生效） */
+  dev_mode_hot_reload?: boolean;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */
 export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
+
+/** 通用配置 → 控制台 / Pallas WebUI */
+export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";
 
 /** GET /common-config/sections */
 export interface CommonConfigSectionMeta {
