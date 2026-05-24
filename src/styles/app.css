@@ -5883,6 +5883,43 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     min-width: 0;
   }
 
+  /* 备份清理：窄屏「添加到侧栏」与标题同行右上，删除按钮次行全宽 */
+  .database-backups-page .panel__hd.panel__hd--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 8px;
+  }
+
+  .database-backups-page .panel__hd.panel__hd--split > .panel__title {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    align-self: center;
+  }
+
+  .database-backups-page .database-backups-page__hd-actions {
+    display: contents;
+  }
+
+  .database-backups-page .database-backups-page__hd-actions > .friends-groups-hd-pin-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+
+  .database-backups-page .database-backups-page__hd-actions > .database-backups-page__delete-btn {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+  }
+
   .panel__hd .row-actions > .sel,
   .panel__hd .row-actions > .inp,
   .panel__hd .row-actions > .textarea,

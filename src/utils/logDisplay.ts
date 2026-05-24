@@ -163,3 +163,63 @@ export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
   }
   return row;
 }
+
+function logEntryLevelRank(lv: LogEntryLevel): number {
+  if (lv === "debug") return 0;
+  if (lv === "info") return 1;
+  if (lv === "success") return 2;
+  if (lv === "warn") return 3;
+  if (lv === "error") return 4;
+  return 1;
+}
+
+function stripShardPrefixBody(message: string): string {
+  let body = String(message ?? "").trim();
+  for (let i = 0; i < 3; i += 1) {
+    const m = _embeddedShardPrefixRe.exec(body);
+    if (!m?.groups?.rest) break;
+    body = String(m.groups.rest).trim();
+  }
+  return body;
+}
+
+function isLogHeaderBody(body: string): boolean {
+  const s = body.trim();
+  if (_loguruBodyRe.test(s) || _nonebotBracketBodyRe.test(s)) return true;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s)) return true;
+  return false;
+}
+
+/** 是否为多行日志块续行（traceback / pretty-print 树等） */
+export function isLogMessageContinuation(message: string): boolean {
+  const body = stripShardPrefixBody(message);
+  if (!body) return true;
+  if (isLogHeaderBody(body)) return false;
+  if (body.startsWith("Traceback")) return true;
+  if (body.startsWith("  File ") || body.startsWith("    ") || body.startsWith("\t")) return true;
+  if (/^[A-Z][a-zA-Z0-9_]*(?:Error|Exception):/.test(body)) return true;
+  if (body.startsWith("During handling of the above exception")) return true;
+  if (/^[\|└├╭╰─]/.test(body)) return true;
+  if (/^\|\s/.test(body) || body.includes(" L ") || body.startsWith("L ")) return true;
+  if (body.startsWith("...")) return true;
+  if (/^\s+\S/.test(body)) return true;
+  return false;
+}
+
+/** 合并结构化视图中的续行，与后端 merge_log_line_continuations 对齐 */
+export function mergeLogEntryContinuations(rows: LogEntry[]): LogEntry[] {
+  const out: LogEntry[] = [];
+  for (const row of rows) {
+    const cur = { ...row };
+    const prev = out[out.length - 1];
+    if (prev && isLogMessageContinuation(cur.message)) {
+      prev.message = prev.message ? `${prev.message}\n${cur.message}` : cur.message;
+      if (logEntryLevelRank(cur.level) > logEntryLevelRank(prev.level)) {
+        prev.level = cur.level;
+      }
+      continue;
+    }
+    out.push(cur);
+  }
+  return out;
+}
