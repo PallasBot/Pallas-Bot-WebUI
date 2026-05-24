@@ -6725,6 +6725,10 @@ html[data-theme="light"] .alert--warn {
 .home-version-dev-mode .console-dev-mode-panel__desc {
   max-width: none;
 }
+.home-page__version-panel .home-dl dd.home-version-dev-mode {
+  margin-top: 0;
+  padding-top: 6px;
+}
 
 .console-bool-switch {
   display: inline-flex;
@@ -7532,35 +7536,44 @@ html[data-theme="light"] .plugin-preview {
 .home-dashboard__accounts > .home-page__panel .panel__hd {
   padding: 10px 12px;
 }
-.home-page__version-panel .home-dl__pill--version {
-  font-weight: 500;
-}
-
 .home-page__version-panel .badge {
   font-weight: 500;
 }
 
 .home-page__version-panel .home-dl--version-rows {
-  row-gap: 8px;
-  column-gap: 10px;
+  row-gap: 12px;
+  column-gap: 8px;
+  grid-template-columns: minmax(0, 5.75rem) minmax(0, 1fr);
 }
 
 .home-page__version-panel .panel__hd .row-actions {
   margin-inline-end: 3px;
 }
 
+.home-page__version-panel > .panel__bd {
+  padding-top: 14px;
+  padding-inline-end: 12px;
+}
+
 .home-page__version-panel .home-page__version--grid .home-dl dd {
   flex-wrap: wrap;
   white-space: normal;
-  overflow: hidden;
+  overflow: visible;
   min-width: 0;
   word-break: normal;
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
 }
 
 .home-page__version-panel .home-page__version--grid .home-dl__pill {
   flex-shrink: 0;
   white-space: nowrap;
+  max-width: none;
+}
+
+.home-page__version-panel .home-dl__pill--version {
+  font-weight: 500;
+  font-size: 11px;
+  padding: 4px 10px;
 }
 
 .home-page__version-panel .home-page__version--grid .home-dl__sub {

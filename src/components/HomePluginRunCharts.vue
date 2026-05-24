@@ -237,9 +237,9 @@ function aggregateLocalTodayAvgDuration(
 function fmtDurationMs(ms: number | null | undefined): string {
   const n = Number(ms);
   if (!Number.isFinite(n) || n < 0) return "—";
-  if (n === 0) return "<0.01ms";
-  if (n < 0.01) return "<0.01ms";
-  if (n < 1) return `${n.toFixed(2)}ms`;
+  if (n === 0) return "<0.001ms";
+  if (n > 0 && n < 0.001) return "<0.001ms";
+  if (n < 1) return `${n.toFixed(3)}ms`;
   if (n >= 60_000) return `${(n / 1000).toFixed(1)}s`;
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
   if (n < 10) return `${n.toFixed(1)}ms`;
@@ -461,12 +461,24 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys, selectedDur
   });
 });
 
-/** 今日插件横向条：不截断条数，在账户卡右列等高容器内由 flex 铺满（过多时可滚动） */
+/** 与「平均耗时」排行条同比例下限，避免最高项条过长、其余过短 */
+const PLUGIN_RANK_BAR_MIN_PCT = 12;
+
 const topPlugins = computed(() =>
   [...props.plugins]
-    .sort((a, b) => b.runs_today - a.runs_today)
-    .filter((p) => p.runs_today > 0),
+    .filter((p) => p.runs_today > 0)
+    .sort((a, b) => b.runs_today - a.runs_today || a.name.localeCompare(b.name)),
 );
+
+const maxRunsToday = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
+
+function pluginRunsBarWidthPercent(p: PluginRunStatsRow): number {
+  if (p.runs_today <= 0) return 0;
+  return Math.max(
+    PLUGIN_RANK_BAR_MIN_PCT,
+    Math.round((p.runs_today / maxRunsToday.value) * 100),
+  );
+}
 
 /** 后端有今日耗时样本即非 null（四舍五入后平均可为 0，与单次列表「<0.01ms」一致） */
 function hasDurationSampleToday(p: PluginRunStatsRow): boolean {
@@ -479,6 +491,57 @@ function pluginTodayDurationBarMs(p: PluginRunStatsRow): number {
   return Math.max(avg, peak);
 }
 
+/** 条长按毫秒缩放；全体低于 1ms 时改用今日次数比例，避免条全空 */
+const DURATION_BAR_SUB_MS = 1;
+
+function maxDurationBarMs(list: PluginRunStatsRow[]): number {
+  if (!list.length) return 0;
+  return Math.max(...list.map(pluginTodayDurationBarMs));
+}
+
+const durationBarsSubMsMode = computed(
+  () => topPluginsByDuration.value.length > 0 && maxDurationBarMs(topPluginsByDuration.value) < DURATION_BAR_SUB_MS,
+);
+
+/** 仅 Matcher 耗时类视图显示账号均耗；API/次数/异常等与均耗无关 */
+function chartPanelShowsDurationSummary(panel: ChartPanelId): boolean {
+  switch (panel) {
+    case "plugins_duration_top":
+      return !durationBarsSubMsMode.value;
+    case "matcher_duration_hourly":
+    case "matcher_duration_bucket":
+      return true;
+    default:
+      return false;
+  }
+}
+
+const toolbarSummaryVisible = computed(
+  () => Boolean(toolbarSummaryText.value) && chartPanelShowsDurationSummary(chartPanel.value),
+);
+
+function pluginDurationBarWidthPercent(p: PluginRunStatsRow): number {
+  const list = topPluginsByDuration.value;
+  if (!list.length) return 0;
+  const maxMs = maxDurationBarMs(list);
+  if (maxMs >= DURATION_BAR_SUB_MS) {
+    return Math.round((pluginTodayDurationBarMs(p) / Math.max(maxMs, 0.01)) * 100);
+  }
+  const maxRun = Math.max(1, ...list.map((x) => x.runs_today));
+  if (p.runs_today <= 0) return 0;
+  return Math.max(
+    PLUGIN_RANK_BAR_MIN_PCT,
+    Math.round((p.runs_today / maxRun) * 100),
+  );
+}
+
+function showPeakDurationToday(p: PluginRunStatsRow): boolean {
+  const peak = p.max_duration_ms_today;
+  if (peak == null || !Number.isFinite(peak)) return false;
+  if (durationBarsSubMsMode.value) return peak >= DURATION_BAR_SUB_MS;
+  return peak > 0;
+}
+
 const topPluginsByDuration = computed(() =>
   [...props.plugins]
     .filter((p) => hasDurationSampleToday(p))
@@ -488,12 +551,6 @@ const topPluginsByDuration = computed(() =>
         b.runs_today - a.runs_today ||
         a.name.localeCompare(b.name),
     ),
-);
-
-const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
-
-const maxDurationToday = computed(() =>
-  Math.max(0.01, ...topPluginsByDuration.value.map((p) => pluginTodayDurationBarMs(p))),
 );
 
 function fmtBucketSec(sec: number | undefined): string {
@@ -901,9 +958,6 @@ const chartFilterToggleVisible = computed(
 );
 
 const toolbarHintText = computed(() => {
-  if (chartFilterToggleVisible.value && !chartsFilterExpanded.value) {
-    return "展开「选项」查看说明与勾选。";
-  }
   if (!chartsDrawExpanded.value) {
     return "点「展开」后显示图表；需要筛选时再点「选项」。";
   }
@@ -911,7 +965,7 @@ const toolbarHintText = computed(() => {
 });
 
 const toolbarHintRowVisible = computed(
-  () => Boolean(toolbarHintText.value || toolbarSummaryText.value),
+  () => Boolean(toolbarHintText.value || toolbarSummaryVisible.value),
 );
 
 function toggleChartsDraw() {
@@ -970,10 +1024,6 @@ const durationRecentDominant = computed(() =>
   durationRecentDominantPlugin(recentDurationRows.value, durationRecentCandidates.value),
 );
 
-const durationRecentDisplayTruncated = computed(
-  () => filteredRecentDurationRowsRaw.value.length > filteredRecentDurationRows.value.length,
-);
-
 function formatDurationLogAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
   try {
@@ -1010,7 +1060,7 @@ const hasMatcherDurationSignal = computed(
 
 const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
-  plugins_top: true,
+  plugins_top: topPlugins.value.length > 0,
   plugins_duration_top: topPluginsByDuration.value.length > 0,
   daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 1,
   api_hourly: apiCandidates.value.length > 0,
@@ -1083,19 +1133,31 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
       return {
         lede: "当前账号 · 插件今日 Matcher 次数排行。",
         items: [
-          { dt: "读图方式", dd: "条形长度为次数；有样本时末尾附带今日平均耗时。" },
-          { dt: "相关视图", dd: "单次明细见「Matcher 单次耗时」；耗时排行见「插件今日平均耗时」。" },
+          {
+            dt: "读图方式",
+            dd: "条形长度为今日次数相对比例（与「平均耗时」视图同宽）；右侧为次数，有样本时附带平均耗时。",
+          },
+          { dt: "相关视图", dd: "单次明细见「Matcher 单次耗时」；耗时见「插件今日平均耗时」。" },
         ],
       };
     case "plugins_duration_top":
       return {
-        lede: "当前账号 · 按今日平均 Matcher 耗时排序。",
+        lede: "当前账号 · 按今日平均 Matcher 耗时排序（含今日次数）。",
         items: [
           {
             dt: "统计口径",
-            dd: "preprocessor 至 postprocessor 墙钟耗时；极短执行四舍五入后可能显示为 <0.01ms。",
+            dd: "preprocessor 至 postprocessor 墙钟耗时；后端保留三位小数（0.001ms）。",
           },
-          { dt: "读图方式", dd: "条形长度为平均毫秒数；行末「峰」为今日最大单次样本。" },
+          durationBarsSubMsMode.value
+            ? {
+                dt: "读图方式",
+                dd: "耗时均 <1ms，条长按今日次数相对比例（与「今日次数」同宽）；右侧为墙钟耗时与今日次数。",
+              }
+            : {
+                dt: "读图方式",
+                dd: "条形长度为平均毫秒数；右侧为耗时、今日次数，「峰」为今日最大单次。",
+              },
+          { dt: "相关视图", dd: "仅次数无耗时样本的插件见「插件今日次数」。" },
         ],
       };
     case "daily_msg_matcher":
@@ -1458,7 +1520,7 @@ const dailyChartPack = computed(() => {
             v-model="chartPanel"
             class="sel home-plugin-charts__pick home-plugin-charts__pick--compact"
             aria-label="图表类型"
-            title="切换要查看的图表类型（如插件今日次数、按日汇总、协议 API 等）"
+            title="切换要查看的图表类型（如插件次数/耗时、按日汇总、协议 API 等）"
           >
             <option
               v-for="o in panelOptions"
@@ -1512,7 +1574,7 @@ const dailyChartPack = computed(() => {
           {{ toolbarHintText }}
         </p>
         <p
-          v-if="toolbarSummaryText"
+          v-if="toolbarSummaryVisible"
           class="home-plugin-charts__toolbar-summary muted"
         >
           均耗：{{ toolbarSummaryText }}
@@ -1551,12 +1613,6 @@ const dailyChartPack = computed(() => {
         v-else
         class="home-matcher-dur-log home-plugin-charts__viz"
       >
-        <p
-          v-if="durationRecentDisplayTruncated"
-          class="muted home-plugin-charts__hint home-matcher-dur-log__hint"
-        >
-          每插件最多显示 {{ matcherDurationLogPerPluginCap }} 条（较新优先）；括号内为缓冲中该插件总条数。
-        </p>
         <div class="home-matcher-dur-log__scroll">
           <div
             class="home-matcher-dur-log__head muted"
@@ -1625,12 +1681,12 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-bars--fill home-plugin-charts__viz"
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-charts__viz"
       >
         <div
           v-for="p in topPlugins"
-          :key="p.name"
-          class="home-plugin-bars__row"
+          :key="`runs-${p.name}`"
+          class="home-plugin-bars__row home-plugin-bars__row--plugin-rank"
         >
           <span
             class="home-plugin-bars__name"
@@ -1638,12 +1694,16 @@ const dailyChartPack = computed(() => {
           >{{ pluginBarLabel(p.name) }}</span>
           <div class="home-plugin-bars__track">
             <span
-              class="home-plugin-bars__fill"
-              :style="{ width: `${Math.round((p.runs_today / maxRuns) * 100)}%` }"
+              class="home-plugin-bars__fill home-plugin-bars__fill--runs"
+              :style="{ width: `${pluginRunsBarWidthPercent(p)}%` }"
             />
           </div>
-          <span class="home-plugin-bars__val">
-            {{ p.runs_today }}<template v-if="p.avg_duration_ms_today"> · {{ fmtDurationMs(p.avg_duration_ms_today) }}</template>
+          <span class="home-plugin-bars__val home-plugin-bars__val--stack">
+            <span class="home-plugin-bars__val-line">今日 {{ p.runs_today }} 次</span>
+            <span
+              v-if="hasDurationSampleToday(p)"
+              class="home-plugin-bars__val-line muted"
+            >均 {{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
           </span>
         </div>
       </div>
@@ -1669,12 +1729,12 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-bars--fill home-plugin-charts__viz"
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-charts__viz"
       >
         <div
           v-for="p in topPluginsByDuration"
           :key="`dur-${p.name}`"
-          class="home-plugin-bars__row"
+          class="home-plugin-bars__row home-plugin-bars__row--plugin-rank"
         >
           <span
             class="home-plugin-bars__name"
@@ -1683,15 +1743,19 @@ const dailyChartPack = computed(() => {
           <div class="home-plugin-bars__track">
             <span
               class="home-plugin-bars__fill home-plugin-bars__fill--duration"
-              :style="{ width: `${Math.round((pluginTodayDurationBarMs(p) / maxDurationToday) * 100)}%` }"
+              :style="{ width: `${pluginDurationBarWidthPercent(p)}%` }"
             />
           </div>
-          <span class="home-plugin-bars__val">
-            {{ fmtDurationMs(p.avg_duration_ms_today) }}
+          <span class="home-plugin-bars__val home-plugin-bars__val--stack">
+            <span class="home-plugin-bars__val-line">{{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
             <span
-              v-if="p.max_duration_ms_today"
-              class="muted"
-            > · 峰 {{ fmtDurationMs(p.max_duration_ms_today) }}</span>
+              v-if="showPeakDurationToday(p)"
+              class="home-plugin-bars__val-line muted"
+            >峰 {{ fmtDurationMs(p.max_duration_ms_today) }}</span>
+            <span
+              v-if="p.runs_today > 0"
+              class="home-plugin-bars__val-line muted"
+            >今日 {{ p.runs_today }} 次</span>
           </span>
         </div>
       </div>
@@ -3048,9 +3112,14 @@ const dailyChartPack = computed(() => {
   flex: 1 1 0;
   min-height: 22px;
 }
+.home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
+  grid-template-columns: minmax(0, 0.95fr) minmax(48px, 1.55fr) minmax(4.75rem, max-content);
+  min-height: 28px;
+  align-items: center;
+}
 .home-plugin-bars__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(80px, 2.2fr) 36px;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 2.2fr) minmax(3.25rem, max-content);
   align-items: center;
   gap: 8px;
   font-size: 12px;
@@ -3077,8 +3146,21 @@ const dailyChartPack = computed(() => {
   min-width: 2px;
   transition: width 0.25s var(--ease, ease);
 }
+.home-plugin-bars__fill--runs {
+  background: linear-gradient(90deg, var(--accent), rgba(125, 211, 252, 0.75));
+}
 .home-plugin-bars__fill--duration {
   background: linear-gradient(90deg, #c2410c, rgba(251, 146, 60, 0.85));
+}
+.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line.muted {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-dim);
 }
 .home-matcher-dur-log {
   border: 1px solid var(--border);
@@ -3190,6 +3272,36 @@ const dailyChartPack = computed(() => {
   border-radius: 4px;
   background: rgba(239, 68, 68, 0.2);
   color: #fecaca;
+}
+.home-plugin-bars__val--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.2;
+  min-width: 0;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child {
+  font-weight: 700;
+  color: var(--text);
+}
+.home-plugin-bars__val-line {
+  display: block;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-plugin-bars__val-line.muted {
+  font-size: 0.68rem;
+}
+.home-plugin-bars__subms-hint {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 .home-plugin-bars__val {
   text-align: right;
