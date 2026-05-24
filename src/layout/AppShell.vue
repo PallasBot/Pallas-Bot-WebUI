@@ -3,15 +3,21 @@ import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref, watch } fro
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import brandMarkUrl from "@/assets/pallas-priest.png?url";
-import { fetchHealth } from "@/api/health";
-import type { HealthResponse } from "@/api/health";
 import { fetchBots, fetchInstances, fetchPlugins } from "@/api/consoleApi";
 import { scheduleInstancesCatalogRefreshOnRoute } from "@/composables/useInstancesCatalogSync";
 import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
-import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import { displayVersionWithoutSha, pallasBotVersionLabel } from "@/utils/versionDisplay";
+import {
+  CONSOLE_META_POLL_MS,
+  consoleMetaBotUpdate,
+  consoleMetaErr,
+  consoleMetaHealth,
+  consoleMetaLoading,
+  refreshConsoleMeta,
+} from "@/state/consoleMeta";
 import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
 import { addNavTokenToSidebar, removeNavTokenFromSidebar } from "@/utils/sidebarNavActions";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
@@ -115,7 +121,7 @@ const webuiVersion = __WEBUI_VERSION__;
 
 /** 控制台静态资源版本（与首页「控制台资源」一致） */
 const brandVersionDisplay = computed(() => {
-  const c = health.value?.console;
+  const c = consoleMetaHealth.value?.console;
   const ver = (c?.version || "").trim();
   const cleaned = displayVersionWithoutSha(ver);
   if (cleaned) return cleaned;
@@ -123,12 +129,10 @@ const brandVersionDisplay = computed(() => {
   return `v${webuiVersion}`;
 });
 
-/** 当前 API 所在 Pallas-Bot 进程版本（/health.pallas_bot） */
-const brandBotVersionDisplay = computed(() => {
-  const pb = (health.value?.pallas_bot ?? "").trim();
-  const x = displayVersionWithoutSha(pb);
-  return x || pb || "—";
-});
+/** 当前 API 所在 Pallas-Bot 进程版本（与首页「Pallas-Bot」一致） */
+const brandBotVersionDisplay = computed(() =>
+  pallasBotVersionLabel(consoleMetaHealth.value, consoleMetaBotUpdate.value),
+);
 
 const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
@@ -188,18 +192,14 @@ function goPageBack() {
   void router.push(pageBackFallback());
 }
 
-const health = ref<HealthResponse | null>(null);
-const healthErr = ref("");
-const healthLoading = ref(true);
-
 const connectionBadge = computed(() => {
-  if (healthLoading.value) {
+  if (consoleMetaLoading.value) {
     return { text: "API …", cls: "shell__topbar-conn shell__topbar-conn--pending" as const };
   }
-  if (healthErr.value) {
+  if (consoleMetaErr.value) {
     return { text: "未连接", cls: "shell__topbar-conn shell__topbar-conn--err" as const };
   }
-  if (health.value?.ok) {
+  if (consoleMetaHealth.value?.ok) {
     return { text: "已连接", cls: "shell__topbar-conn shell__topbar-conn--ok" as const };
   }
   return { text: "API 异常", cls: "shell__topbar-conn shell__topbar-conn--warn" as const };
@@ -207,16 +207,10 @@ const connectionBadge = computed(() => {
 
 let healthPollTimer: ReturnType<typeof setInterval> | null = null;
 
-async function refreshHealth() {
-  healthLoading.value = true;
-  healthErr.value = "";
-  try {
-    health.value = await fetchHealth();
-  } catch (e) {
-    healthErr.value = e instanceof Error ? e.message : String(e);
-    health.value = null;
-  } finally {
-    healthLoading.value = false;
+function onConsoleMetaVisibility() {
+  if (typeof document === "undefined") return;
+  if (document.visibilityState === "visible") {
+    void refreshConsoleMeta({ silent: true });
   }
 }
 
@@ -385,11 +379,14 @@ function navCollapsedLabel(collapsed: boolean, label: string) {
 onMounted(() => {
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
-  void refreshHealth();
+  void refreshConsoleMeta();
   void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
   healthPollTimer = setInterval(() => {
-    void refreshHealth();
-  }, 45000);
+    void refreshConsoleMeta({ silent: true });
+  }, CONSOLE_META_POLL_MS);
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", onConsoleMetaVisibility);
+  }
   void nextTick(() => {
     bindLogsScrollTarget();
     updateBackTopVisibility();
@@ -449,6 +446,9 @@ watch(pageLoadingVisible, async (vis) => {
 onUnmounted(() => {
   closeNavGripMenu();
   window.removeEventListener("resize", updateNarrow);
+  if (typeof document !== "undefined") {
+    document.removeEventListener("visibilitychange", onConsoleMetaVisibility);
+  }
   if (catalogRouteTimer != null) {
     clearTimeout(catalogRouteTimer);
     catalogRouteTimer = null;
@@ -562,7 +562,7 @@ onUnmounted(() => {
       <div class="shell__topbar-end">
         <span
           :class="connectionBadge.cls"
-          :title="healthErr || (healthLoading ? '正在探测 API' : undefined)"
+          :title="consoleMetaErr || (consoleMetaLoading ? '正在探测 API' : undefined)"
         >{{ connectionBadge.text }}</span>
         <div
           class="shell-toolbar__seg shell-toolbar__seg--compact shell__topbar-theme"
