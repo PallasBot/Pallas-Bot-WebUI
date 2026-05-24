@@ -3128,6 +3128,28 @@ html[data-theme="light"] .data-pill--off {
   align-items: center;
 }
 
+.inst-card-actions {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inst-card-actions:has(> .btn:nth-child(2)) {
+  flex-wrap: nowrap;
+  gap: 5px;
+  width: 100%;
+  justify-content: stretch;
+}
+
+.inst-card-actions:has(> .btn:nth-child(2)) > .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
 .bot-config-edit {
   padding: 14px 16px;
   border-radius: var(--radius-shell);
