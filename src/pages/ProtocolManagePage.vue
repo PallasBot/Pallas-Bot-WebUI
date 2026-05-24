@@ -17,6 +17,7 @@ import {
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
+import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -74,6 +75,9 @@ const bulk = useCardBulkSelection<string>();
 const deleteModalOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteErr = ref("");
+const restartAllBusy = ref(false);
+const qrcodeModalOpen = ref(false);
+const qrcodeTarget = ref<{ id: string; title: string } | null>(null);
 
 const tablePageSize = computed({
   get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
@@ -233,10 +237,15 @@ watch(
 
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
-  document.body.style.overflow = deleteModalOpen.value ? "hidden" : "";
+  document.body.style.overflow =
+    deleteModalOpen.value || qrcodeModalOpen.value ? "hidden" : "";
 }
 
 watch(deleteModalOpen, () => {
+  syncBodyOverflow();
+});
+
+watch(qrcodeModalOpen, () => {
   syncBodyOverflow();
 });
 
@@ -339,9 +348,26 @@ function closeDeleteModal() {
   deleteErr.value = "";
 }
 
+function openQrcodeModal(a: NapcatAccountRow) {
+  const id = accountProtocolId(a);
+  if (!protoMountUrl.value || !id) {
+    pushConsoleToast("无法打开二维码：协议端未启用或缺少账号 ID", "warn");
+    return;
+  }
+  qrcodeTarget.value = { id, title: primaryTitle(a) };
+  qrcodeModalOpen.value = true;
+}
+
+function closeQrcodeModal() {
+  qrcodeModalOpen.value = false;
+  qrcodeTarget.value = null;
+}
+
 function shouldSkipProtoPoll(): boolean {
   if (typeof document !== "undefined" && document.visibilityState === "hidden") return true;
   if (deleteModalOpen.value || deleteBusy.value) return true;
+  if (qrcodeModalOpen.value) return true;
+  if (restartAllBusy.value) return true;
   if (actionBusy.value.size > 0) return true;
   return false;
 }
@@ -464,6 +490,35 @@ async function restartAccount(a: NapcatAccountRow) {
   }
 }
 
+async function restartAllAccounts() {
+  const mount = protoMountUrl.value;
+  const accounts = protocolAccountsSorted.value;
+  if (!mount) {
+    pushConsoleToast("无法操作：协议端未启用", "warn");
+    return;
+  }
+  if (!accounts.length) {
+    pushConsoleToast("当前没有可重启的账号", "warn");
+    return;
+  }
+  if (restartAllBusy.value) return;
+  const ids = accounts.map((a) => accountProtocolId(a)).filter((id): id is string => Boolean(id));
+  if (!ids.length) {
+    pushConsoleToast("无法操作：缺少账号 ID", "warn");
+    return;
+  }
+  restartAllBusy.value = true;
+  try {
+    await Promise.all(ids.map((id) => protocolRestartAccount(mount, id)));
+    pushConsoleToast(`已重启 ${ids.length} 个账号`, "ok");
+    await refreshAfterAction();
+  } catch (e) {
+    pushConsoleToast(protocolApiErrorMessage(e, "全部重启失败"), "err");
+  } finally {
+    restartAllBusy.value = false;
+  }
+}
+
 async function confirmDeleteSelected() {
   const mount = protoMountUrl.value;
   const ids = bulk.sortedSelected.value;
@@ -520,6 +575,8 @@ onDeactivated(() => {
   stopProtoPolling();
   deleteModalOpen.value = false;
   deleteErr.value = "";
+  qrcodeModalOpen.value = false;
+  qrcodeTarget.value = null;
   syncBodyOverflow();
 });
 
@@ -603,6 +660,19 @@ onUnmounted(() => {
               title="按账号、昵称、协议、ID 筛选"
             >
           </div>
+          <button
+            type="button"
+            class="btn"
+            :disabled="
+              !protoActionsEnabled ||
+              restartAllBusy ||
+              protocolAccountsTotalCount === 0 ||
+              actionBusy.size > 0
+            "
+            @click="restartAllAccounts"
+          >
+            {{ restartAllBusy ? "全部重启中…" : "全部重启" }}
+          </button>
           <PanelSidebarAdd main-path="/protocol" />
         </div>
       </div>
@@ -622,7 +692,7 @@ onUnmounted(() => {
                 <th>连接</th>
                 <th>进程</th>
                 <th>WebUI</th>
-                <th style="width: 168px">操作</th>
+                <th style="width: 220px">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -695,6 +765,14 @@ onUnmounted(() => {
                       @click="restartAccount(a)"
                     >
                       {{ restartLabel(a) }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn"
+                      :disabled="!protoMountUrl || !accountProtocolId(a)"
+                      @click="openQrcodeModal(a)"
+                    >
+                      二维码
                     </button>
                     <button
                       type="button"
@@ -831,6 +909,14 @@ onUnmounted(() => {
               </button>
               <button
                 type="button"
+                class="btn"
+                :disabled="!protoMountUrl || !accountProtocolId(a)"
+                @click="openQrcodeModal(a)"
+              >
+                二维码
+              </button>
+              <button
+                type="button"
                 :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
                 :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
                 @click="toggleAccountPower(a)"
@@ -948,6 +1034,13 @@ onUnmounted(() => {
       title-id="proto-delete-modal-title"
       @close="closeDeleteModal"
       @confirm="confirmDeleteSelected"
+    />
+    <ProtocolAccountQrcodeModal
+      :open="qrcodeModalOpen"
+      :mount-url="protoMountUrl"
+      :account-id="qrcodeTarget?.id ?? null"
+      :account-title="qrcodeTarget?.title ?? ''"
+      @close="closeQrcodeModal"
     />
   </template>
 </template>

@@ -40,6 +40,7 @@ export function protocolApiErrorMessage(err: unknown, fallback: string): string 
 
 type AccountActionBody = { account?: NapcatAccountRow };
 type AccountsListBody = { accounts?: NapcatAccountRow[] };
+export type ProtocolQrcodeMeta = { exists?: boolean; updated_at?: number };
 
 /** 协议内置页账号列表（运行态实时，与内置管理页 refreshAccounts 一致） */
 export async function protocolListAccounts(mountUrl: string): Promise<NapcatAccountRow[]> {
@@ -73,4 +74,24 @@ export async function protocolRestartAccount(
 
 export async function protocolDeleteAccount(mountUrl: string, accountId: string): Promise<void> {
   await protocolHttp(mountUrl).delete(`/api/accounts/${encodeURIComponent(accountId)}`);
+}
+
+export async function protocolFetchQrcodeMeta(
+  mountUrl: string,
+  accountId: string,
+): Promise<ProtocolQrcodeMeta> {
+  const { data } = await protocolHttp(mountUrl).get<ProtocolQrcodeMeta>(
+    `/api/accounts/${encodeURIComponent(accountId)}/qrcode/meta`,
+  );
+  return data ?? {};
+}
+
+export function protocolQrcodeImageUrl(
+  mountUrl: string,
+  accountId: string,
+  updatedAt?: number,
+): string {
+  const base = mountUrl.replace(/\/$/, "");
+  const q = updatedAt != null && updatedAt > 0 ? `?t=${updatedAt}` : "";
+  return `${base}/api/accounts/${encodeURIComponent(accountId)}/qrcode${q}`;
 }
