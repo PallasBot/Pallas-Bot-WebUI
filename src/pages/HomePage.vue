@@ -55,7 +55,8 @@ import {
 } from "@/utils/consoleSocialCache";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
-import { displayVersionWithoutSha } from "@/utils/versionDisplay";
+import { displayVersionWithoutSha, pallasBotVersionLabel } from "@/utils/versionDisplay";
+import { patchConsoleMeta } from "@/state/consoleMeta";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 
@@ -137,14 +138,21 @@ const accountHeroLockSealed = ref(accountHeroLockHeightPx.value >= 120);
 const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
 const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
 const ACCOUNT_HERO_LOCK_HEIGHT_KEY = "pallas_home_account_hero_lock_px_v1";
+/** 宽屏图表区与账户区对齐时的最小锁高（给图表更多纵向空间） */
+const ACCOUNT_HERO_LOCK_MIN_PX = 420;
 /** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
 const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
+
+function effectiveAccountHeroLockPx(raw: number): number {
+  if (!Number.isFinite(raw) || raw < 120) return 0;
+  return Math.max(Math.round(raw), ACCOUNT_HERO_LOCK_MIN_PX);
+}
 
 function loadStoredAccountHeroLockPx(): number {
   if (typeof localStorage === "undefined") return 0;
   try {
     const n = Number(localStorage.getItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY));
-    if (Number.isFinite(n) && n >= 120 && n <= 2400) return Math.round(n);
+    if (Number.isFinite(n) && n >= 120 && n <= 2400) return effectiveAccountHeroLockPx(n);
   } catch {
     /* ignore */
   }
@@ -154,7 +162,8 @@ function loadStoredAccountHeroLockPx(): number {
 function saveStoredAccountHeroLockPx(h: number) {
   if (typeof localStorage === "undefined") return;
   try {
-    if (h >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(h));
+    const eff = effectiveAccountHeroLockPx(h);
+    if (eff >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(eff));
   } catch {
     /* ignore */
   }
@@ -189,10 +198,14 @@ const accountHeroHeightCapActive = computed(
   () => accountHeroLockHeightPx.value >= 120 && typeof window !== "undefined" && window.matchMedia("(min-width: 561px)").matches,
 );
 
+const accountHeroLockHeightEffectivePx = computed(() =>
+  effectiveAccountHeroLockPx(accountHeroLockHeightPx.value),
+);
+
 /** 硬上限：仅在图表收起时更新，值为左侧账户区高度（≈ 无图表展开时的整块高度） */
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
   if (!accountHeroHeightCapActive.value) return {};
-  return { "--home-account-hero-lock-px": `${accountHeroLockHeightPx.value}px` };
+  return { "--home-account-hero-lock-px": `${accountHeroLockHeightEffectivePx.value}px` };
 });
 
 /** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
@@ -202,7 +215,7 @@ const accountChartsShellLockStyle = computed((): Record<string, string> => {
   if (!accountChartsDrawExpanded.value) {
     return { minHeight: "0", height: "auto", maxHeight: "none" };
   }
-  const h = accountHeroLockHeightPx.value;
+  const h = accountHeroLockHeightEffectivePx.value;
   if (h < 120) return {};
   const style: Record<string, string> = {
     height: `${h}px`,
@@ -251,8 +264,9 @@ function measureAccountHeroLockHeight(force = false) {
   }
   const h = Math.round(el.getBoundingClientRect().height);
   if (h < 120) return;
-  accountHeroLockHeightPx.value = h;
-  saveStoredAccountHeroLockPx(h);
+  const eff = effectiveAccountHeroLockPx(h);
+  accountHeroLockHeightPx.value = eff;
+  saveStoredAccountHeroLockPx(eff);
   accountHeroLockSealed.value = true;
 }
 
@@ -575,20 +589,23 @@ const diskHint = computed(() => {
 const uptimeDisplay = computed(() => uptimeFromBoot(runtime.value?.boot_time ?? null));
 const uptimeHint = computed(() => runtime.value?.platform || undefined);
 
+const nonebotListenDisplay = computed(() => {
+  const d = system.value?.nonebot2_driver;
+  if (!d?.host && d?.port == null) return "—";
+  const host = (d.host ?? "0.0.0.0").trim() || "0.0.0.0";
+  const port = d.port ?? "—";
+  return `${host}:${port}`;
+});
+
 const nonebot2VersionDisplay = computed(() => {
   const s = (health.value?.nonebot2 ?? "").trim();
   const x = displayVersionWithoutSha(s);
   return x || s || "—";
 });
 
-const pallasBotVersionDisplay = computed(() => {
-  const b = botUpdateCheck.value;
-  const tag = (b?.current_tag || "").trim();
-  if (tag) return tag;
-  const pb = (health.value?.pallas_bot ?? "").trim();
-  const x = displayVersionWithoutSha(pb);
-  return x || pb || "—";
-});
+const pallasBotVersionDisplay = computed(() =>
+  pallasBotVersionLabel(health.value, botUpdateCheck.value),
+);
 
 const botDevelopmentBuildTitle = computed(() => {
   const b = botUpdateCheck.value;
@@ -815,7 +832,45 @@ const selectedConnected = computed(() => {
   return accountHasNonebotBot(instances.value?.nonebot_bots, acc);
 });
 
-const msgMainStats = computed(() => statsScoped.value ?? stats.value);
+/** 全 Bot 合计（容量区）；始终用首屏/轮询的全量 message-stats */
+const clusterMessageStats = computed(() => stats.value);
+
+/** 当前账号 message-stats（账户卡、协议 API 时序）；优先 statsScoped */
+const accountMessageStats = computed(() => statsScoped.value ?? stats.value);
+
+const msgTotalStr = computed(() => {
+  const s = clusterMessageStats.value;
+  if (!s) return "—";
+  return `${s.total_received} / ${s.total_sent}`;
+});
+
+const clusterTodayApiCalls = computed(() => {
+  const bots = clusterMessageStats.value?.bots;
+  if (!bots?.length) return null;
+  let sum = 0;
+  let any = false;
+  for (const b of bots) {
+    const n = b.today_api_calls;
+    if (n == null || !Number.isFinite(Number(n))) continue;
+    sum += Number(n);
+    any = true;
+  }
+  return any ? sum : null;
+});
+
+const clusterTodayPluginRuns = computed(() => {
+  const bots = pluginRunStats.value?.bots;
+  if (!bots?.length) return null;
+  let sum = 0;
+  let any = false;
+  for (const b of bots) {
+    const n = b.runs_today;
+    if (n == null || !Number.isFinite(Number(n))) continue;
+    sum += Number(n);
+    any = true;
+  }
+  return any ? sum : null;
+});
 
 function formatCommunityStatNum(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -839,38 +894,27 @@ const communityOnlineHint = computed(() => {
   return `近 ${m} 分钟有心跳`;
 });
 
-const msgTotalStr = computed(() => {
-  const s = msgMainStats.value;
-  if (!s) return "—";
-  return `${s.total_received} / ${s.total_sent}`;
-});
+const communityDeploymentsTotalHint = computed(() => "历史独立安装累计上报");
 
-const clusterTodayApiCalls = computed(() => {
-  const bots = msgMainStats.value?.bots;
-  if (!bots?.length) return null;
-  let sum = 0;
-  let any = false;
-  for (const b of bots) {
-    const n = b.today_api_calls;
-    if (n == null || !Number.isFinite(Number(n))) continue;
-    sum += Number(n);
-    any = true;
-  }
-  return any ? sum : null;
-});
+const communityDeploymentsOnlineHint = computed(
+  () => `${communityOnlineHint.value}  活跃独立安装`,
+);
 
-const clusterTodayPluginRuns = computed(() => {
-  const bots = pluginRunMain.value?.bots;
-  if (!bots?.length) return null;
-  let sum = 0;
-  let any = false;
-  for (const b of bots) {
-    const n = b.runs_today;
-    if (n == null || !Number.isFinite(Number(n))) continue;
-    sum += Number(n);
-    any = true;
+const communityBotsOnlineHint = computed(() => {
+  const sum = communityStats.value?.bots_online_sum;
+  const onlineDep = communityStats.value?.deployments_online;
+  if (
+    sum != null &&
+    Number.isFinite(sum) &&
+    onlineDep != null &&
+    onlineDep > 0 &&
+    Number.isFinite(onlineDep)
+  ) {
+    const avg = sum / onlineDep;
+    const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
+    return `各部署在线合计  均约 ${avgText} 个/部署`;
   }
-  return any ? sum : null;
+  return "各部署在线 Bot 合计";
 });
 
 const todayCallsStatValue = computed(() => {
@@ -892,7 +936,7 @@ const todayCallsStatHint = computed(() => {
 
 const scopedBotStatsRow = computed(() => {
   const acc = selectedAccount.value;
-  const st = msgMainStats.value;
+  const st = accountMessageStats.value;
   if (acc == null || !st?.bots?.length) return null;
   const sid = String(acc);
   return st.bots.find((b) => b.self_id === sid) ?? null;
@@ -934,28 +978,6 @@ const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_e
 
 const scopedMatcherDurationLog = computed(() => scopedPluginRunRow.value?.matcher_duration_log ?? []);
 
-/** 图表工具栏旁小字：今日有耗时样本的插件简单平均 Matcher 耗时 */
-const chartToolbarSummaryDuration = computed(() => {
-  const plugins = scopedPluginPlugins.value;
-  if (!plugins.length) return "";
-  let sum = 0;
-  let cnt = 0;
-  for (const p of plugins) {
-    const avg = p.avg_duration_ms_today;
-    if (avg != null && Number.isFinite(avg)) {
-      sum += avg;
-      cnt += 1;
-    }
-  }
-  if (cnt <= 0) return "";
-  const avg = sum / cnt;
-  if (avg > 0 && avg < 1) return "<1ms";
-  const ms = Math.round(avg);
-  if (ms <= 0) return "<1ms";
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
-});
-
 function formatMatcherErrorAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
   try {
@@ -972,8 +994,32 @@ function syncPluginRunSeriesFromStorage() {
   pluginRunTimeSamples.value = acc != null ? readPluginRunSeries(String(acc)) : [];
 }
 
+const accountStatsBusy = computed(() => overviewBusy.value || socialBusy.value);
+
+const accountTodayMsgDisplay = computed(() => {
+  const b = scopedBotStatsRow.value;
+  if (!b) return accountStatsBusy.value ? "…" : "—";
+  const rx = b.today_received ?? "—";
+  const tx = b.today_sent ?? "—";
+  return `${rx} / ${tx}`;
+});
+
+const accountTodayApiCallsDisplay = computed(() => {
+  const n = scopedBotStatsRow.value?.today_api_calls;
+  if (n == null || !Number.isFinite(Number(n))) return accountStatsBusy.value ? "…" : "—";
+  return String(Math.floor(Number(n)));
+});
+
+const accountTodayTopApiTitle = computed(() => {
+  const b = scopedBotStatsRow.value;
+  if (!b?.today_top_api?.trim()) return "";
+  const cnt = b.today_top_api_count;
+  const cntLabel = cnt == null || !Number.isFinite(Number(cnt)) ? "?" : String(Math.floor(Number(cnt)));
+  return `今日最多：${b.today_top_api} · ${cntLabel} 次`;
+});
+
 const msgCapacityHint = computed(() => {
-  const s = msgMainStats.value;
+  const s = clusterMessageStats.value;
   if (!s || (s.today_received == null && s.today_sent == null)) return "全部账号合计";
   return `本日收 ${s.today_received ?? "—"} / 发 ${s.today_sent ?? "—"}（合计）`;
 });
@@ -1162,6 +1208,7 @@ async function load() {
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
+    patchConsoleMeta(h, botUpdateCheck.value);
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
     communityStats.value = (comm as CommunityStatsData | null) ?? null;
@@ -1389,8 +1436,8 @@ onUnmounted(() => {
                           <img
                             :src="qqAvatarUrl(selectedAccount)"
                             alt=""
-                            width="76"
-                            height="76"
+                            width="96"
+                            height="96"
                             decoding="async"
                             referrerpolicy="no-referrer"
                             @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
@@ -1543,6 +1590,30 @@ onUnmounted(() => {
                             </div>
                           </div>
                           <div
+                            class="home-account-hero__counts-chips home-account-hero__counts-chips--traffic"
+                            aria-label="今日协议与消息"
+                          >
+                            <div
+                              class="home-account-hero__counts-chip"
+                              :title="accountTodayTopApiTitle || undefined"
+                            >
+                              <span class="home-account-hero__counts-chip__k">协议 API</span>
+                              <strong class="home-account-hero__counts-num home-account-hero__counts-chip__v">{{
+                                accountTodayApiCallsDisplay
+                              }}</strong>
+                            </div>
+                            <div
+                              class="home-account-hero__counts-chip"
+                              :title="accountTodayMsgDisplay"
+                            >
+                              <span class="home-account-hero__counts-chip__k">消息</span>
+                              <strong class="home-account-hero__counts-num home-account-hero__counts-chip__v">{{
+                                accountTodayMsgDisplay
+                              }}</strong>
+                            </div>
+                          </div>
+
+                          <div
                             class="home-account-hero__social-pending-wrap"
                             aria-label="待处理请求"
                           >
@@ -1661,7 +1732,7 @@ onUnmounted(() => {
                         :series="pluginRunTimeSamples"
                         :busy="socialBusy"
                         :api-history-by-api="scopedApiCallsByApi"
-                        :api-history-bucket-sec="msgMainStats?.api_calls_history_bucket_sec"
+                        :api-history-bucket-sec="accountMessageStats?.api_calls_history_bucket_sec"
                         :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
                         :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
                         :matcher-avg-duration-ms-by-plugin="scopedMatcherAvgDurationByPlugin"
@@ -1674,7 +1745,6 @@ onUnmounted(() => {
                         :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
                         :matcher-errors-today="scopedPluginRunRow?.errors_today ?? 0"
                         :matcher-error-log="scopedMatcherErrorLog"
-                        :toolbar-summary-duration="chartToolbarSummaryDuration"
                         :daily-stat-rows="consoleDailyStats?.rows ?? []"
                       />
                     </div>
@@ -1692,19 +1762,21 @@ onUnmounted(() => {
             dense
             label="社区部署总数"
             :value="communityDeploymentsTotal"
-            hint="历史上报过的独立安装"
+            :hint="communityDeploymentsTotalHint"
           />
           <StatCard
             dense
             label="在线部署数"
             :value="communityDeploymentsOnline"
-            :hint="communityOnlineHint"
+            :hint="communityDeploymentsOnlineHint"
+            :hint-title="communityDeploymentsOnlineHint"
           />
           <StatCard
             dense
             label="在线牛总和"
             :value="communityBotsOnlineSum"
-            hint="全社区各部署上报之和"
+            :hint="communityBotsOnlineHint"
+            :hint-title="communityBotsOnlineHint"
           />
         </div>
       </section>
@@ -1768,6 +1840,10 @@ onUnmounted(() => {
             <dt>服务时间</dt>
             <dd>
               <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
+            </dd>
+            <dt>NoneBot 监听</dt>
+            <dd>
+              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ nonebotListenDisplay }}</span>
             </dd>
             <dt>主机 / Python</dt>
             <dd>
