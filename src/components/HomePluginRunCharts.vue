@@ -770,8 +770,14 @@ function durationMsPoints(plugin: string): { at: number; total: number }[] {
   return props.matcherDurationMsByPlugin?.find((s) => s.plugin === plugin)?.points ?? [];
 }
 
-const chartPanel = ref<ChartPanelId>("plugins_top");
-const panelPickReady = ref(false);
+function resolveInitialChartPanel(): ChartPanelId {
+  const saved = loadChartPanel();
+  if (saved) return saved;
+  return "matcher_duration_recent";
+}
+
+const chartPanel = ref<ChartPanelId>(resolveInitialChartPanel());
+const panelPickReady = ref(Boolean(loadChartPanel()));
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
 const chartsFilterExpanded = ref(loadChartsFilterExpanded());
 
@@ -1071,8 +1077,13 @@ watch(
     const a = panelAvailability.value;
 
     if (!panelPickReady.value) {
-      if (props.busy) return;
       const saved = loadChartPanel();
+      if (props.busy) {
+        if (saved && chartPanel.value !== saved) {
+          chartPanel.value = saved;
+        }
+        return;
+      }
       if (saved && a[saved]) {
         chartPanel.value = saved;
         panelPickReady.value = true;
