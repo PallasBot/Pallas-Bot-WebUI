@@ -154,6 +154,7 @@ const props = defineProps<{
   matcherDurationMsByPlugin?: PluginMatcherNamedSeries[];
   matcherDurationLog?: MatcherDurationLogEntry[];
   matcherDurationLogCap?: number;
+  matcherDurationLogPerPluginCap?: number;
   matcherHistoryBucketSec?: number;
   /** 今日 Matcher 异常次数（当前账号） */
   matcherErrorsToday?: number;
@@ -334,6 +335,73 @@ function durationRecentPluginScore(log: MatcherDurationLogEntry[], plugin: strin
   return n;
 }
 
+/** 日志中占比过半的插件（多为复读等高频 Matcher） */
+function durationRecentDominantPlugin(
+  log: MatcherDurationLogEntry[],
+  candidates: { plugin: string; count: number }[],
+): { plugin: string; count: number } | null {
+  const total = log.length;
+  if (total < 8 || !candidates.length) return null;
+  const top = candidates[0];
+  if (!top || top.count / total < 0.55) return null;
+  return top;
+}
+
+function defaultDurationRecentKeys(
+  log: MatcherDurationLogEntry[],
+  keys: string[],
+  max = 8,
+): string[] {
+  if (keys.length <= max) return [...keys];
+  const scored = keys
+    .map((k) => ({ k, n: durationRecentPluginScore(log, k) }))
+    .sort((a, b) => b.n - a.n);
+  const total = log.length;
+  const top = scored[0];
+  const dominated = top && total >= 8 && top.n / total >= 0.55;
+  const picked: string[] = [];
+  if (dominated) {
+    for (const { k } of scored.slice(1)) {
+      if (picked.length >= max) break;
+      picked.push(k);
+    }
+  }
+  for (const { k } of scored) {
+    if (picked.includes(k)) continue;
+    if (picked.length >= max) break;
+    picked.push(k);
+  }
+  return picked.length
+    ? picked
+    : defaultTopKeys(
+        keys,
+        (k) =>
+          Array.from({ length: durationRecentPluginScore(log, k) }, (_, i) => ({
+            at: i,
+            total: 1,
+          })),
+        max,
+      );
+}
+
+/** 列表展示：每插件最多保留若干条（较新优先，log 已为新→旧） */
+function capDurationLogPerPlugin(
+  rows: MatcherDurationLogEntry[],
+  perPlugin: number,
+): MatcherDurationLogEntry[] {
+  if (perPlugin <= 0 || !rows.length) return rows;
+  const counts = new Map<string, number>();
+  const out: MatcherDurationLogEntry[] = [];
+  for (const it of rows) {
+    const p = String(it.plugin ?? "").trim();
+    const n = counts.get(p) ?? 0;
+    if (n >= perPlugin) continue;
+    counts.set(p, n + 1);
+    out.push(it);
+  }
+  return out;
+}
+
 function mergeDurationRecentSelection() {
   const log = props.matcherDurationLog ?? [];
   const keys = durationRecentPluginKeys(log);
@@ -347,17 +415,7 @@ function mergeDurationRecentSelection() {
     selectedDurationRecentKeys.value = saved;
     return;
   }
-  selectedDurationRecentKeys.value = keys.length
-    ? defaultTopKeys(
-        keys,
-        (k) =>
-          Array.from({ length: durationRecentPluginScore(log, k) }, (_, i) => ({
-            at: i,
-            total: 1,
-          })),
-        8,
-      )
-    : [];
+  selectedDurationRecentKeys.value = keys.length ? defaultDurationRecentKeys(log, keys, 8) : [];
 }
 
 const chartSeriesSig = computed(() =>
@@ -410,16 +468,32 @@ const topPlugins = computed(() =>
     .filter((p) => p.runs_today > 0),
 );
 
+/** 后端有今日耗时样本即非 null（四舍五入后平均可为 0，与单次列表「<0.01ms」一致） */
+function hasDurationSampleToday(p: PluginRunStatsRow): boolean {
+  return p.avg_duration_ms_today != null && Number.isFinite(p.avg_duration_ms_today);
+}
+
+function pluginTodayDurationBarMs(p: PluginRunStatsRow): number {
+  const avg = p.avg_duration_ms_today ?? 0;
+  const peak = p.max_duration_ms_today ?? 0;
+  return Math.max(avg, peak);
+}
+
 const topPluginsByDuration = computed(() =>
   [...props.plugins]
-    .filter((p) => (p.avg_duration_ms_today ?? 0) > 0)
-    .sort((a, b) => (b.avg_duration_ms_today ?? 0) - (a.avg_duration_ms_today ?? 0)),
+    .filter((p) => hasDurationSampleToday(p))
+    .sort(
+      (a, b) =>
+        pluginTodayDurationBarMs(b) - pluginTodayDurationBarMs(a) ||
+        b.runs_today - a.runs_today ||
+        a.name.localeCompare(b.name),
+    ),
 );
 
 const maxRuns = computed(() => Math.max(1, ...topPlugins.value.map((p) => p.runs_today)));
 
 const maxDurationToday = computed(() =>
-  Math.max(1, ...topPluginsByDuration.value.map((p) => p.avg_duration_ms_today ?? 0)),
+  Math.max(0.01, ...topPluginsByDuration.value.map((p) => pluginTodayDurationBarMs(p))),
 );
 
 function fmtBucketSec(sec: number | undefined): string {
@@ -861,7 +935,12 @@ function toggleChartsFilter() {
 
 const matcherDurationLogCap = computed(() => {
   const n = Number(props.matcherDurationLogCap);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 80;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 150;
+});
+
+const matcherDurationLogPerPluginCap = computed(() => {
+  const n = Number(props.matcherDurationLogPerPluginCap);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 30;
 });
 
 const recentDurationRows = computed(() => props.matcherDurationLog ?? []);
@@ -874,7 +953,7 @@ const durationRecentCandidates = computed(() => {
     .sort((a, b) => b.count - a.count || a.plugin.localeCompare(b.plugin));
 });
 
-const filteredRecentDurationRows = computed(() => {
+const filteredRecentDurationRowsRaw = computed(() => {
   const rows = recentDurationRows.value;
   const sel = selectedDurationRecentKeys.value;
   if (!rows.length) return [];
@@ -882,6 +961,18 @@ const filteredRecentDurationRows = computed(() => {
   const allowed = new Set(sel);
   return rows.filter((it) => allowed.has(it.plugin));
 });
+
+const filteredRecentDurationRows = computed(() =>
+  capDurationLogPerPlugin(filteredRecentDurationRowsRaw.value, matcherDurationLogPerPluginCap.value),
+);
+
+const durationRecentDominant = computed(() =>
+  durationRecentDominantPlugin(recentDurationRows.value, durationRecentCandidates.value),
+);
+
+const durationRecentDisplayTruncated = computed(
+  () => filteredRecentDurationRowsRaw.value.length > filteredRecentDurationRows.value.length,
+);
 
 function formatDurationLogAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
@@ -978,8 +1069,14 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         lede: "当前账号 · 单次 Matcher 墙钟耗时（新→旧）。",
         items: [
           { dt: "数据含义", dd: "每条为一次执行耗时，不是今日平均。" },
-          { dt: "持久化", dd: `写入 matcher_durations.jsonl，每账号最多 ${cap} 条。` },
-          { dt: "勾选", dd: "展开「选项」后勾选要显示的插件；默认保留最近记录里次数最多的若干项。" },
+          {
+            dt: "持久化",
+            dd: `写入 matcher_durations.jsonl；每账号最多 ${cap} 条，单插件最多 ${matcherDurationLogPerPluginCap.value} 条，避免复读等高频占满。`,
+          },
+          {
+            dt: "勾选",
+            dd: "默认不勾选占记录过半的插件；列表内每插件再限显示条数（较新优先）。",
+          },
         ],
       };
     case "plugins_top":
@@ -994,7 +1091,10 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
       return {
         lede: "当前账号 · 按今日平均 Matcher 耗时排序。",
         items: [
-          { dt: "统计口径", dd: "preprocessor 至 postprocessor 墙钟耗时；与 plugin-run-stats 一致。" },
+          {
+            dt: "统计口径",
+            dd: "preprocessor 至 postprocessor 墙钟耗时；极短执行四舍五入后可能显示为 <0.01ms。",
+          },
           { dt: "读图方式", dd: "条形长度为平均毫秒数；行末「峰」为今日最大单次样本。" },
         ],
       };
@@ -1150,6 +1250,12 @@ function toggleAllDurationRecent(on: boolean) {
   selectedDurationRecentKeys.value = on
     ? durationRecentCandidates.value.map((s) => s.plugin)
     : [];
+}
+
+function deselectDominantDurationRecent() {
+  const dom = durationRecentDominant.value;
+  if (!dom) return;
+  selectedDurationRecentKeys.value = selectedDurationRecentKeys.value.filter((k) => k !== dom.plugin);
 }
 
 function pluginBarLabel(name: string): string {
@@ -1445,6 +1551,12 @@ const dailyChartPack = computed(() => {
         v-else
         class="home-matcher-dur-log home-plugin-charts__viz"
       >
+        <p
+          v-if="durationRecentDisplayTruncated"
+          class="muted home-plugin-charts__hint home-matcher-dur-log__hint"
+        >
+          每插件最多显示 {{ matcherDurationLogPerPluginCap }} 条（较新优先）；括号内为缓冲中该插件总条数。
+        </p>
         <div class="home-matcher-dur-log__scroll">
           <div
             class="home-matcher-dur-log__head muted"
@@ -1571,7 +1683,7 @@ const dailyChartPack = computed(() => {
           <div class="home-plugin-bars__track">
             <span
               class="home-plugin-bars__fill home-plugin-bars__fill--duration"
-              :style="{ width: `${Math.round(((p.avg_duration_ms_today ?? 0) / maxDurationToday) * 100)}%` }"
+              :style="{ width: `${Math.round((pluginTodayDurationBarMs(p) / maxDurationToday) * 100)}%` }"
             />
           </div>
           <span class="home-plugin-bars__val">
@@ -2530,11 +2642,21 @@ const dailyChartPack = computed(() => {
             <span class="home-plugin-sel__actions">
               <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(true)">全选</button>
               <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(false)">全不选</button>
+              <button
+                v-if="durationRecentDominant"
+                type="button"
+                class="home-plugin-sel__btn"
+                @click="deselectDominantDurationRecent"
+              >
+                取消占多数
+              </button>
             </span>
             <div class="home-plugin-sel__grid">
               <label v-for="s in durationRecentCandidates" :key="`ext-mdr-${s.plugin}`" class="home-plugin-sel__item">
                 <input v-model="selectedDurationRecentKeys" type="checkbox" :value="s.plugin">
-                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+                <span :title="`${s.plugin} · 缓冲 ${s.count} 条`">
+                  {{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }} ({{ s.count }})
+                </span>
               </label>
             </div>
           </div>
