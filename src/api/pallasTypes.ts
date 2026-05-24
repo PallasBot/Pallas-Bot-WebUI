@@ -212,6 +212,8 @@ export interface PluginRunStatsData {
 
 export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
 
+export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
+
 export type PluginSourceKind = "main" | "local" | "pip";
 
 export interface PluginRow {
@@ -220,6 +222,10 @@ export interface PluginRow {
   nb_plugin_name?: string;
   load_role?: PluginLoadRole;
   loaded_in_process?: boolean;
+  /** 提供插件目录 API 的进程（分片下 WebUI 为 hub） */
+  catalog_process_role?: PluginCatalogProcessRole;
+  /** 是否应在 catalog_process_role 进程中加载 */
+  expected_in_catalog_process?: boolean;
   has_config?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;

@@ -1560,6 +1560,7 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overflow-x: auto;
   padding: 2px 4px 8px;
 }
 
@@ -1719,8 +1720,9 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
 }
 
 .log-error-card__tb--full {
-  max-height: none;
-  overflow: visible;
+  max-height: min(70vh, 720px);
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .panel__hd--split {
@@ -3253,14 +3255,6 @@ html[data-theme="light"] .bot-config-edit {
 .home-dashboard__community {
   min-width: 0;
 }
-.home-dashboard__aside-stats {
-  margin-bottom: 0;
-  width: 100%;
-  min-width: 0;
-}
-.home-dashboard__aside-stats > .stat-card {
-  min-width: 0;
-}
 
 .home-account-panel__hd {
   display: flex;
@@ -3688,7 +3682,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 .home-account-split-bd__col--hero.home-account-card > .home-account-hero__detail--social-usage {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
 }
 
@@ -3707,8 +3701,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   align-self: stretch;
   width: 100%;
   max-width: 100%;
-  height: 100%;
-  min-height: 160px;
+  min-height: 0;
   min-width: 0;
   box-sizing: border-box;
   overflow: hidden;
@@ -3981,6 +3974,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 .home-account-hero__matcher-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
@@ -4043,6 +4037,13 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   color: var(--text);
 }
 
+.home-account-hero__matcher-foot__link {
+  flex: 1 1 100%;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 .home-account-hero__matcher-foot--bad {
   border-color: color-mix(in srgb, #fb7185 35%, var(--border));
   color: #fb7185;
@@ -4065,10 +4066,26 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
   line-height: 1.45;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: var(--radius-md);
-  padding: 6px 10px 8px;
+  padding: 0;
   background: color-mix(in srgb, var(--bg-card) 92%, var(--bg-muted) 8%);
   max-width: 100%;
   min-width: 0;
+}
+
+.home-account-hero__matcher-details > summary.home-account-hero__matcher-foot {
+  list-style: none;
+  cursor: pointer;
+  margin: 0;
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+.home-account-hero__matcher-details > summary.home-account-hero__matcher-foot::-webkit-details-marker {
+  display: none;
+}
+
+.home-account-hero__matcher-details > summary.home-account-hero__matcher-foot::marker {
+  content: "";
 }
 
 .home-account-hero__matcher-details-summary {
@@ -4078,8 +4095,8 @@ html[data-theme="light"] .home-account-hero__matcher-foot--bad .home-account-her
 }
 
 .home-account-hero__matcher-details-list {
-  margin: 8px 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 6px 10px 8px;
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -5478,7 +5495,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 1200px) {
   /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
   .home-dashboard {
-    grid-template-columns: minmax(0, 1fr) minmax(288px, 336px);
+    grid-template-columns: minmax(0, 1fr) minmax(272px, 312px);
     grid-template-rows: auto auto auto auto;
     align-items: stretch;
   }
@@ -5489,6 +5506,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
   .home-dashboard__aside {
     grid-column: 2;
@@ -5512,16 +5532,16 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-dashboard__accounts > .home-page__panel {
     display: flex;
     flex-direction: column;
-    min-height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
     min-width: 0;
   }
   .home-dashboard__accounts > .home-page__panel .panel__bd {
     flex: 1 1 auto;
     min-height: 0;
-  }
-  .home-dashboard__aside-stats {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
   }
   .home-dashboard__aside .home-page__version-panel {
     flex: 1 1 auto;
@@ -5541,6 +5561,32 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
+}
+
+/* 侧栏社区统计：固定三列横排（须覆盖 .grid-stats 的 200px 下限，否则窄侧栏会竖排） */
+.grid-stats.home-dashboard__aside-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+}
+.grid-stats.home-dashboard__aside-stats > .stat-card {
+  min-width: 0;
+}
+.grid-stats.home-dashboard__aside-stats > .stat-card .card__body {
+  padding: 10px 8px;
+}
+.grid-stats.home-dashboard__aside-stats > .stat-card .stat-card__label {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+}
+.grid-stats.home-dashboard__aside-stats > .stat-card .stat-card__value {
+  font-size: 1.05rem;
+}
+.grid-stats.home-dashboard__aside-stats > .stat-card .stat-card__hint {
+  display: none;
 }
 
 .card {
@@ -6469,6 +6515,10 @@ table.data tbody tr:hover td {
   font-size: 11px;
   line-height: 1.45;
   padding: 6px 10px 10px;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre;
+  word-break: normal;
 }
 
 .badge {
@@ -6886,6 +6936,55 @@ html[data-theme="light"] .console-toast {
   line-height: 1.45;
   max-width: 42rem;
 }
+.plugins-page__filters {
+  margin: 0 0 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+.plugins-page__filter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.plugins-page__filter-label .sel {
+  min-width: 10rem;
+}
+.plugins-page__filter-hint {
+  font-size: 12px;
+  align-self: center;
+}
+.plugins-page__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 0;
+}
+.plugins-page__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+.plugins-page__badge--muted {
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.plugins-page__badge--warn {
+  color: var(--warn, #e8a317);
+  border: 1px solid color-mix(in srgb, var(--warn, #e8a317) 55%, var(--border));
+}
+.plugins-page__hero-note--shard {
+  margin-top: 4px;
+}
+.plugin-card__id-line {
+  font-size: 11px;
+  margin-top: 2px;
+  word-break: break-all;
+}
 .plugins-page__plugin-grid {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   align-items: stretch;
@@ -7285,6 +7384,17 @@ html[data-theme="light"] .console-toast {
   white-space: nowrap;
 }
 
+@media (max-width: 560px) {
+  .plugins-page__filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .plugins-page__filter-label .sel {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 520px) {
   .plugins-page__plugin-grid .plugin-card__actions--pair {
     grid-template-columns: 1fr;
@@ -7351,6 +7461,11 @@ html[data-theme="light"] .plugin-preview {
 
 .home-page__version-panel .home-dl--version-rows {
   row-gap: 8px;
+  column-gap: 10px;
+}
+
+.home-page__version-panel .panel__hd .row-actions {
+  margin-inline-end: 3px;
 }
 
 .home-page__version-panel .home-page__version--grid .home-dl dd {
@@ -7544,8 +7659,26 @@ html[data-theme="light"] .home-instances-capsule {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+.home-page__capacity-grid--compact {
+  gap: 10px;
+}
+.home-page__capacity-grid--compact > .stat-card .card__body {
+  padding: 10px 12px;
+}
+.home-page__capacity-grid--compact > .stat-card .stat-card__value {
+  font-size: 1.1rem;
+}
+.home-page__capacity-grid--compact > .stat-card .stat-card__hint {
+  font-size: 10px;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+.home-page__capacity-grid--compact > .stat-card:last-child .stat-card__value {
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
 .home-page__capacity-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 0;
   width: 100%;
