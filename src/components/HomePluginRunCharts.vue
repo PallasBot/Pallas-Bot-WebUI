@@ -458,6 +458,35 @@ function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number }
   return { rawMax, scaleMax };
 }
 
+const BUCKET_CHART_MAX_SLOTS = 56;
+const BUCKET_CHART_MAX_SLOTS_NARROW = 40;
+
+/** 时间桶过多时合并相邻桶，避免 slot 过窄导致柱宽为负、SVG 不绘制 */
+function downsampleBucketTimeline(
+  timesSec: number[],
+  series: BucketBarSeries[],
+  maxSlots: number,
+): { timesSec: number[]; series: BucketBarSeries[] } {
+  if (timesSec.length <= maxSlots) return { timesSec, series };
+  const chunk = Math.ceil(timesSec.length / maxSlots);
+  const newTimes: number[] = [];
+  const newSeries: BucketBarSeries[] = series.map((s) => ({
+    label: s.label,
+    color: s.color,
+    vals: [] as number[],
+  }));
+  for (let i = 0; i < timesSec.length; i += chunk) {
+    newTimes.push(timesSec[i]!);
+    for (let si = 0; si < series.length; si++) {
+      let sum = 0;
+      const end = Math.min(i + chunk, timesSec.length);
+      for (let j = i; j < end; j++) sum += series[si]!.vals[j] ?? 0;
+      newSeries[si]!.vals.push(sum);
+    }
+  }
+  return { timesSec: newTimes, series: newSeries };
+}
+
 /** 窄视口下略增厚柱宽、收紧桶内边距，避免 SVG 缩放后柱子过细 */
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
@@ -479,11 +508,14 @@ function buildBucketBarPack(
     return hit ? Number(hit.total) || 0 : 0;
   };
 
-  const series: BucketBarSeries[] = rows.map((row, i) => ({
+  const seriesRaw: BucketBarSeries[] = rows.map((row, i) => ({
     label: row.label,
     color: COLORS[i % COLORS.length]!,
     vals: timesSec.map((t) => valAt(row.points, t)),
   }));
+
+  const maxSlots = narrowViewport ? BUCKET_CHART_MAX_SLOTS_NARROW : BUCKET_CHART_MAX_SLOTS;
+  const { timesSec: plotTimes, series } = downsampleBucketTimeline(timesSec, seriesRaw, maxSlots);
 
   const flatVals = series.flatMap((s) => s.vals);
   const { rawMax, scaleMax } = softBucketAxisMax(flatVals);
@@ -502,27 +534,30 @@ function buildBucketBarPack(
   const top = padT;
   const bottom = padT + innerH;
 
-  const nT = timesSec.length;
+  const nT = plotTimes.length;
   const nS = series.length;
   const slotW = innerW / Math.max(1, nT);
   const bars: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 
   const marginT = nT <= 3 ? 0.05 : narrowViewport ? 0.055 : 0.08;
-  const barFill = narrowViewport ? 0.96 : 0.9;
-  const barPad = narrowViewport ? 0.02 : 0.05;
-  const minBarW = narrowViewport ? 3.6 : 1.5;
+  const barFill = narrowViewport ? 0.92 : 0.88;
+  const barGapRatio = narrowViewport ? 0.04 : 0.06;
+  const minBarW = narrowViewport ? 2.2 : 1.1;
 
   for (let i = 0; i < nT; i++) {
     const colL = left + i * slotW;
     const groupMargin = slotW * marginT;
     const innerCol = Math.max(0, slotW - 2 * groupMargin);
-    const bw = nS > 0 ? innerCol / nS : 0;
+    const perSeries = nS > 0 ? innerCol / nS : innerCol;
     for (let s = 0; s < nS; s++) {
       const v = series[s]!.vals[i] ?? 0;
-      const bh = Math.min(1, v / axisMax) * innerH;
-      const bx = colL + groupMargin + s * bw + bw * barPad;
-      const barW = Math.min(innerCol / Math.max(1, nS) - 0.25, Math.max(minBarW, bw * barFill));
+      if (v <= 0) continue;
+      const bhRaw = Math.min(1, v / axisMax) * innerH;
+      const bh = Math.max(bhRaw, 1.2);
+      const barW = Math.max(minBarW, perSeries * barFill);
+      const bx = colL + groupMargin + s * perSeries + perSeries * barGapRatio;
       const by = bottom - bh;
+      if (barW <= 0 || bh <= 0) continue;
       bars.push({ x: bx, y: by, w: barW, h: bh, fill: series[s]!.color });
     }
   }
@@ -538,7 +573,7 @@ function buildBucketBarPack(
   const xi = pickTickIndices(nT, 9);
   const xTicks = xi.map((idx) => ({
     x: left + (idx + 0.5) * slotW,
-    t: fmtBucketAxisTime(timesSec[idx]!),
+    t: fmtBucketAxisTime(plotTimes[idx]!),
   }));
 
   return {
@@ -554,7 +589,7 @@ function buildBucketBarPack(
     top,
     bottom,
     maxV: rawMax,
-    timesSec,
+    timesSec: plotTimes,
     series,
     gridYs,
     yTicks,
@@ -2773,8 +2808,7 @@ const dailyChartPack = computed(() => {
   flex-direction: column;
 }
 .home-plugin-charts__viz .home-plugin-spark--hourly,
-.home-plugin-charts__viz .home-plugin-hourly-chart__svg,
-.home-plugin-charts__viz .home-plugin-bucket-chart {
+.home-plugin-charts__viz .home-plugin-hourly-chart__svg {
   height: auto;
   min-height: 120px;
   flex: 1 1 auto;
@@ -2787,19 +2821,27 @@ const dailyChartPack = computed(() => {
 }
 .home-plugin-charts__viz .home-plugin-bucket-chart {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
+}
+.home-plugin-charts__viz .home-plugin-bucket-chart__svg,
+.home-plugin-charts__viz .home-plugin-bucket__svg {
+  min-height: 140px;
+  max-height: min(360px, 52vh);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 440 / 212;
 }
 .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
   height: auto;
   min-height: 108px;
   flex: 1 1 auto;
 }
-.home-plugin-charts__viz .home-plugin-bucket__svg {
-  min-height: 200px;
-  max-height: min(360px, 52vh);
-  max-width: 100%;
+.home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
+  height: auto;
+  min-height: 108px;
+  flex: 1 1 auto;
 }
 .home-plugin-charts__hint {
   margin: 0 0 10px;
@@ -3115,8 +3157,9 @@ const dailyChartPack = computed(() => {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 172px;
-  max-height: 260px;
+  min-height: 140px;
+  max-height: min(360px, 52vh);
+  aspect-ratio: 440 / 212;
   display: block;
   box-sizing: border-box;
 }
