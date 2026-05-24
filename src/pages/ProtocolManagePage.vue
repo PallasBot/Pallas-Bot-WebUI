@@ -75,7 +75,7 @@ const bulk = useCardBulkSelection<string>();
 const deleteModalOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteErr = ref("");
-const restartAllBusy = ref(false);
+const restartSelectedBusy = ref(false);
 const qrcodeModalOpen = ref(false);
 const qrcodeTarget = ref<{ id: string; title: string } | null>(null);
 
@@ -367,7 +367,7 @@ function shouldSkipProtoPoll(): boolean {
   if (typeof document !== "undefined" && document.visibilityState === "hidden") return true;
   if (deleteModalOpen.value || deleteBusy.value) return true;
   if (qrcodeModalOpen.value) return true;
-  if (restartAllBusy.value) return true;
+  if (restartSelectedBusy.value) return true;
   if (actionBusy.value.size > 0) return true;
   return false;
 }
@@ -490,32 +490,27 @@ async function restartAccount(a: NapcatAccountRow) {
   }
 }
 
-async function restartAllAccounts() {
+async function restartSelectedAccounts() {
   const mount = protoMountUrl.value;
-  const accounts = protocolAccountsSorted.value;
+  const ids = bulk.sortedSelected.value;
   if (!mount) {
     pushConsoleToast("无法操作：协议端未启用", "warn");
     return;
   }
-  if (!accounts.length) {
-    pushConsoleToast("当前没有可重启的账号", "warn");
-    return;
-  }
-  if (restartAllBusy.value) return;
-  const ids = accounts.map((a) => accountProtocolId(a)).filter((id): id is string => Boolean(id));
   if (!ids.length) {
-    pushConsoleToast("无法操作：缺少账号 ID", "warn");
+    pushConsoleToast("请先勾选要重启的账号", "warn");
     return;
   }
-  restartAllBusy.value = true;
+  if (restartSelectedBusy.value) return;
+  restartSelectedBusy.value = true;
   try {
     await Promise.all(ids.map((id) => protocolRestartAccount(mount, id)));
     pushConsoleToast(`已重启 ${ids.length} 个账号`, "ok");
     await refreshAfterAction();
   } catch (e) {
-    pushConsoleToast(protocolApiErrorMessage(e, "全部重启失败"), "err");
+    pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
   } finally {
-    restartAllBusy.value = false;
+    restartSelectedBusy.value = false;
   }
 }
 
@@ -665,13 +660,13 @@ onUnmounted(() => {
             class="btn"
             :disabled="
               !protoActionsEnabled ||
-              restartAllBusy ||
-              protocolAccountsTotalCount === 0 ||
+              restartSelectedBusy ||
+              unref(bulk.selectedCount) === 0 ||
               actionBusy.size > 0
             "
-            @click="restartAllAccounts"
+            @click="restartSelectedAccounts"
           >
-            {{ restartAllBusy ? "全部重启中…" : "全部重启" }}
+            {{ restartSelectedBusy ? "重启中…" : "重启" }}
           </button>
           <PanelSidebarAdd main-path="/protocol" />
         </div>
