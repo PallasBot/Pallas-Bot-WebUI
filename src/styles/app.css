@@ -846,6 +846,49 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   text-align: center;
 }
 
+.shell__foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 4px;
+}
+
+.shell__foot-link,
+.shell-mobile-nav__external-link {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.shell__foot-link:hover,
+.shell-mobile-nav__external-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.shell__foot-sep {
+  margin: 0 4px;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.shell__foot-copy {
+  color: var(--text-dim);
+}
+
+.shell-mobile-nav__external {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 12px 16px 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
 .shell__main {
   grid-area: shell-main;
   position: relative;
