@@ -212,6 +212,8 @@ export interface PluginRunStatsData {
 
 export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
 
+export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
+
 export type PluginSourceKind = "main" | "local" | "pip";
 
 export interface PluginRow {
@@ -220,6 +222,10 @@ export interface PluginRow {
   nb_plugin_name?: string;
   load_role?: PluginLoadRole;
   loaded_in_process?: boolean;
+  /** 提供插件目录 API 的进程（分片下 WebUI 为 hub） */
+  catalog_process_role?: PluginCatalogProcessRole;
+  /** 是否应在 catalog_process_role 进程中加载 */
+  expected_in_catalog_process?: boolean;
   has_config?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;
@@ -296,10 +302,15 @@ export interface PluginConfigData {
   gateway_editor?: boolean;
   /** 可调用全链路连通检测 API */
   supports_connectivity_check?: boolean;
+  /** 控制台 dev_mode 等可热重载（保存后立即生效） */
+  dev_mode_hot_reload?: boolean;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */
 export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
+
+/** 通用配置 → 控制台 / Pallas WebUI */
+export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";
 
 /** GET /common-config/sections */
 export interface CommonConfigSectionMeta {

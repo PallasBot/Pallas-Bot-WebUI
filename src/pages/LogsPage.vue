@@ -15,6 +15,8 @@ import {
   loadLogsEnabledLevels,
   LOG_ENTRY_LEVELS,
   normalizeLogEntryDisplay,
+  mergeLogEntryContinuations,
+  isLogMessageContinuation,
   parseLogLineLevel,
   persistLogsEnabledLevels,
   stripYearFromLogLine,
@@ -126,9 +128,16 @@ function closeLogStream() {
 }
 
 function pushLiveEntry(raw: LogEntry) {
-  const id = Date.now() + Math.floor(Math.random() * 1000);
-  const row = { ...raw, id };
+  const row = normalizeLogEntryDisplay({
+    ...raw,
+    id: raw.id ?? Date.now() + Math.floor(Math.random() * 1000),
+  });
   const buf = liveEntries.value;
+  const prev = buf[buf.length - 1];
+  if (prev && isLogMessageContinuation(row.message)) {
+    prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+    return;
+  }
   buf.push(row);
   if (buf.length > MAX_LIVE_ENTRIES) {
     buf.splice(0, buf.length - MAX_LIVE_ENTRIES);
@@ -199,7 +208,9 @@ const sourceOptions = computed(() => {
   return ["all", ...opts.filter((s) => s !== "all")];
 });
 
-const displayEntries = computed(() => entries.value.map((e) => normalizeLogEntryDisplay(e)));
+const displayEntries = computed(() =>
+  mergeLogEntryContinuations(entries.value.map((e) => normalizeLogEntryDisplay(e))),
+);
 
 function entryPassesLevel(level: LogEntryLevel): boolean {
   return enabledLevels.value.has(level);

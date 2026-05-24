@@ -40,6 +40,7 @@ import type {
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -129,12 +130,35 @@ const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
 /** 双列布局下账号信息卡，用于宽屏锁定右侧图表区高度与之对齐 */
 const accountCardRef = ref<HTMLElement | null>(null);
-const accountHeroLockHeightPx = ref(0);
+const accountHeroLockHeightPx = ref(loadStoredAccountHeroLockPx());
+/** 锁高已稳定（刷新先用 localStorage，数据就绪后重测一次） */
+const accountHeroLockSealed = ref(accountHeroLockHeightPx.value >= 120);
 
 const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
 const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
+const ACCOUNT_HERO_LOCK_HEIGHT_KEY = "pallas_home_account_hero_lock_px_v1";
 /** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
 const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
+
+function loadStoredAccountHeroLockPx(): number {
+  if (typeof localStorage === "undefined") return 0;
+  try {
+    const n = Number(localStorage.getItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY));
+    if (Number.isFinite(n) && n >= 120 && n <= 2400) return Math.round(n);
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
+
+function saveStoredAccountHeroLockPx(h: number) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    if (h >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(h));
+  } catch {
+    /* ignore */
+  }
+}
 
 function loadAccountChartsDrawExpanded(): boolean {
   if (typeof localStorage === "undefined") return true;
@@ -194,68 +218,116 @@ const accountChartsShellLockStyle = computed((): Record<string, string> => {
 
 function onAccountChartsDrawToggle(expanded: boolean) {
   accountChartsDrawExpanded.value = expanded;
-  scheduleAccountHeroLockMeasure();
+  if (!expanded) {
+    accountHeroLockSealed.value = false;
+    scheduleAccountHeroLockMeasure(true);
+    return;
+  }
+  applyStoredAccountHeroLock();
 }
 
 function onAccountChartsFilterToggle(expanded: boolean) {
   accountChartsFilterExpanded.value = expanded;
-  scheduleAccountHeroLockMeasure();
 }
 
-/** 硬上限取左侧账户区高度（与图表收起时整行高度一致，不受右侧图表撑高） */
-function measureAccountHeroLockHeight() {
+/** 锁账户卡自然高度；有封存锁高时默认不重测，避免刷新后布局跳动 */
+function measureAccountHeroLockHeight(force = false) {
   if (typeof window === "undefined") return;
   if (!window.matchMedia("(min-width: 561px)").matches) {
     accountHeroLockHeightPx.value = 0;
+    accountHeroLockSealed.value = false;
     return;
   }
   const el = accountCardRef.value;
   if (!el) {
-    accountHeroLockHeightPx.value = 0;
+    if (force) {
+      accountHeroLockHeightPx.value = 0;
+      accountHeroLockSealed.value = false;
+    }
     return;
   }
-  accountHeroLockHeightPx.value = Math.round(el.getBoundingClientRect().height);
+  if (!force && accountHeroLockSealed.value && accountHeroLockHeightPx.value >= 120) {
+    return;
+  }
+  const h = Math.round(el.getBoundingClientRect().height);
+  if (h < 120) return;
+  accountHeroLockHeightPx.value = h;
+  saveStoredAccountHeroLockPx(h);
+  accountHeroLockSealed.value = true;
 }
 
-function scheduleAccountHeroLockMeasure() {
+function scheduleAccountHeroLockMeasure(force = false) {
   void nextTick(() => {
     requestAnimationFrame(() => {
-      measureAccountHeroLockHeight();
+      requestAnimationFrame(() => {
+        measureAccountHeroLockHeight(force);
+      });
     });
   });
 }
 
+function applyStoredAccountHeroLock() {
+  const stored = loadStoredAccountHeroLockPx();
+  if (stored >= 120) {
+    accountHeroLockHeightPx.value = stored;
+    accountHeroLockSealed.value = true;
+    return true;
+  }
+  accountHeroLockSealed.value = false;
+  return false;
+}
+
 /** matcher 异常 details 开合会改变左侧卡高，需重测硬上限 */
 function onMatcherDetailsToggle() {
-  scheduleAccountHeroLockMeasure();
+  accountHeroLockSealed.value = false;
+  scheduleAccountHeroLockMeasure(true);
 }
 
 watchEffect((onCleanup) => {
   if (typeof window === "undefined") return;
-  if (selectedAccount.value == null || !pageReady.value) {
+  if (selectedAccount.value == null) {
     accountHeroLockHeightPx.value = 0;
+    accountHeroLockSealed.value = false;
+    return;
+  }
+  if (!pageReady.value) {
+    applyStoredAccountHeroLock();
     return;
   }
   const el = accountCardRef.value;
-  if (!el) {
-    accountHeroLockHeightPx.value = 0;
-    return;
-  }
+  if (!el) return;
   const mql = window.matchMedia("(min-width: 561px)");
+  const mqlRow = window.matchMedia("(min-width: 1200px)");
   const onMql = () => {
-    measureAccountHeroLockHeight();
+    accountHeroLockSealed.value = false;
+    scheduleAccountHeroLockMeasure(true);
   };
   mql.addEventListener("change", onMql);
+  mqlRow.addEventListener("change", onMql);
   const ro = new ResizeObserver(() => {
-    measureAccountHeroLockHeight();
+    if (accountHeroLockSealed.value) return;
+    measureAccountHeroLockHeight(false);
   });
   ro.observe(el);
-  scheduleAccountHeroLockMeasure();
+  if (!applyStoredAccountHeroLock()) {
+    scheduleAccountHeroLockMeasure(false);
+  }
   onCleanup(() => {
     ro.disconnect();
     mql.removeEventListener("change", onMql);
-    accountHeroLockHeightPx.value = 0;
+    mqlRow.removeEventListener("change", onMql);
   });
+});
+
+watch(selectedAccount, (acc) => {
+  if (acc == null) {
+    accountHeroLockHeightPx.value = 0;
+    accountHeroLockSealed.value = false;
+    return;
+  }
+  if (!applyStoredAccountHeroLock()) {
+    scheduleAccountHeroLockMeasure(false);
+  }
 });
 
 function onAccountPickerDocDown(ev: MouseEvent) {
@@ -296,6 +368,15 @@ function pickAccountFromList(account: number) {
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
+const webuiDevModeActive = computed(() => Boolean(system.value?.console?.pallas_webui_dev_mode));
+
+function onWebuiDevModeUpdated(active: boolean) {
+  if (!system.value) return;
+  system.value = {
+    ...system.value,
+    console: { ...(system.value.console ?? {}), pallas_webui_dev_mode: active },
+  };
+}
 
 function fmtBytes(n: number | null | undefined): string {
   if (n == null || n <= 0) return "—";
@@ -764,6 +845,51 @@ const msgTotalStr = computed(() => {
   return `${s.total_received} / ${s.total_sent}`;
 });
 
+const clusterTodayApiCalls = computed(() => {
+  const bots = msgMainStats.value?.bots;
+  if (!bots?.length) return null;
+  let sum = 0;
+  let any = false;
+  for (const b of bots) {
+    const n = b.today_api_calls;
+    if (n == null || !Number.isFinite(Number(n))) continue;
+    sum += Number(n);
+    any = true;
+  }
+  return any ? sum : null;
+});
+
+const clusterTodayPluginRuns = computed(() => {
+  const bots = pluginRunMain.value?.bots;
+  if (!bots?.length) return null;
+  let sum = 0;
+  let any = false;
+  for (const b of bots) {
+    const n = b.runs_today;
+    if (n == null || !Number.isFinite(Number(n))) continue;
+    sum += Number(n);
+    any = true;
+  }
+  return any ? sum : null;
+});
+
+const todayCallsStatValue = computed(() => {
+  const api = clusterTodayApiCalls.value;
+  const plug = clusterTodayPluginRuns.value;
+  if (api == null && plug == null) return "—";
+  const apiStr = api == null ? "—" : String(Math.floor(api));
+  const plugStr = plug == null ? "—" : String(Math.floor(plug));
+  return `API ${apiStr} · 插件 ${plugStr}`;
+});
+
+const todayCallsStatHint = computed(() => {
+  const acc = selectedAccount.value;
+  if (acc != null && scopedBotStatsRow.value) {
+    return `全账号合计；${acc} 见账户卡`;
+  }
+  return "协议 API 与 Matcher（全账号今日）";
+});
+
 const scopedBotStatsRow = computed(() => {
   const acc = selectedAccount.value;
   const st = msgMainStats.value;
@@ -786,15 +912,10 @@ const scopedPluginRunRow = computed(() => {
 
 const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
 
-watch(
-  () => scopedPluginPlugins.value.length,
-  () => {
-    scheduleAccountHeroLockMeasure();
-  },
-);
-
 watch(socialBusy, (busy, wasBusy) => {
-  if (wasBusy && !busy) scheduleAccountHeroLockMeasure();
+  if (wasBusy && !busy && selectedAccount.value != null && !accountHeroLockSealed.value) {
+    scheduleAccountHeroLockMeasure(false);
+  }
 });
 
 const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
@@ -812,28 +933,6 @@ const scopedMatcherDurationMsByPlugin = computed(
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
 
 const scopedMatcherDurationLog = computed(() => scopedPluginRunRow.value?.matcher_duration_log ?? []);
-
-/** 图表工具栏旁小字：API 今日调用次数片段（与 message-stats 账户行一致） */
-const chartToolbarSummaryApi = computed(() => {
-  const row = scopedBotStatsRow.value;
-  if (row == null) return "";
-  const n = row.today_api_calls;
-  if (n == null) return "API —";
-  const num = Number(n);
-  if (!Number.isFinite(num)) return "API —";
-  return `API ${Math.floor(num)}`;
-});
-
-/** 图表工具栏旁小字：插件 Matcher 今日次数片段（与 plugin-run-stats 账户行一致） */
-const chartToolbarSummaryPlugin = computed(() => {
-  const row = scopedPluginRunRow.value;
-  if (row == null) return "";
-  const n = row.runs_today;
-  if (n == null) return "插件 —";
-  const num = Number(n);
-  if (!Number.isFinite(num)) return "插件 —";
-  return `插件 ${Math.floor(num)}`;
-});
 
 /** 图表工具栏旁小字：今日有耗时样本的插件简单平均 Matcher 耗时 */
 const chartToolbarSummaryDuration = computed(() => {
@@ -1220,6 +1319,13 @@ onUnmounted(() => {
       {{ err }}
     </div>
 
+    <ConsoleDevModePanel
+      v-if="pageReady && webuiDevModeActive"
+      :active="webuiDevModeActive"
+      :show-panel="false"
+      @updated="onWebuiDevModeUpdated"
+    />
+
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="4"
@@ -1469,26 +1575,26 @@ onUnmounted(() => {
                         </div>
                       </div>
                   <div class="home-account-hero__matcher-stack">
-                      <div
-                        class="home-account-hero__matcher-foot"
-                        :class="{
-                          'home-account-hero__matcher-foot--bad':
-                            (scopedPluginRunRow?.errors_today ?? 0) > 0,
-                        }"
-                      >
-                        <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
-                        <span class="home-account-hero__matcher-foot__v">{{
-                          scopedPluginRunRow == null
-                            ? "—"
-                            : String(scopedPluginRunRow.errors_today ?? 0)
-                        }}</span>
-                      </div>
                       <details
                         v-if="scopedMatcherErrorLog.length"
                         class="home-account-hero__matcher-details muted"
                         @toggle="onMatcherDetailsToggle"
                       >
-                        <summary class="home-account-hero__matcher-details-summary">最近异常（{{ scopedMatcherErrorLog.length }}）</summary>
+                        <summary
+                          class="home-account-hero__matcher-foot home-account-hero__matcher-details-summary"
+                          :class="{
+                            'home-account-hero__matcher-foot--bad':
+                              (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                          }"
+                        >
+                          <span class="home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
+                          <span class="home-account-hero__matcher-foot__v">{{
+                            scopedPluginRunRow == null
+                              ? "—"
+                              : String(scopedPluginRunRow.errors_today ?? 0)
+                          }}</span>
+                          <span class="home-account-hero__matcher-foot__link muted">点击展开 traceback</span>
+                        </summary>
                         <ul class="home-account-hero__matcher-details-list">
                           <li
                             v-for="(it, idx) in scopedMatcherErrorLog"
@@ -1505,6 +1611,25 @@ onUnmounted(() => {
                           </li>
                         </ul>
                       </details>
+                      <div
+                        v-else
+                        class="home-account-hero__matcher-foot"
+                        :class="{
+                          'home-account-hero__matcher-foot--bad':
+                            (scopedPluginRunRow?.errors_today ?? 0) > 0,
+                        }"
+                      >
+                        <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
+                        <span class="home-account-hero__matcher-foot__v">{{
+                          scopedPluginRunRow == null
+                            ? "—"
+                            : String(scopedPluginRunRow.errors_today ?? 0)
+                        }}</span>
+                        <span
+                          v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
+                          class="home-account-hero__matcher-foot__link muted"
+                        >仅有计数，暂无 traceback 快照</span>
+                      </div>
                       <div
                         class="home-account-hero__session-meta muted"
                         aria-label="协议会话接入信息"
@@ -1541,10 +1666,10 @@ onUnmounted(() => {
                         :matcher-duration-log="scopedMatcherDurationLog"
                         :matcher-duration-log-cap="scopedPluginRunRow?.matcher_duration_log_cap ?? 80"
                         :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
+                        :matcher-errors-today="scopedPluginRunRow?.errors_today ?? 0"
+                        :matcher-error-log="scopedMatcherErrorLog"
                         :toolbar-summary-duration="chartToolbarSummaryDuration"
                         :daily-stat-rows="consoleDailyStats?.rows ?? []"
-                        :toolbar-summary-api="chartToolbarSummaryApi"
-                        :toolbar-summary-plugin="chartToolbarSummaryPlugin"
                       />
                     </div>
                 </div>
@@ -1556,7 +1681,7 @@ onUnmounted(() => {
 
       <aside class="home-dashboard__aside">
       <section class="home-dashboard__community">
-        <div class="grid-stats home-page__capacity-grid home-dashboard__aside-stats">
+        <div class="grid-stats home-dashboard__aside-stats">
           <StatCard
             dense
             label="社区部署总数"
@@ -1643,6 +1768,15 @@ onUnmounted(() => {
               <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
               <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
             </dd>
+            <dt>控制台鉴权</dt>
+            <dd class="home-version-dev-mode">
+              <ConsoleDevModePanel
+                :active="webuiDevModeActive"
+                compact
+                :show-banner="false"
+                @updated="onWebuiDevModeUpdated"
+              />
+            </dd>
           </dl>
         </div>
       </div>
@@ -1650,7 +1784,7 @@ onUnmounted(() => {
       </div>
 
       <section class="home-dashboard__capacity">
-        <div class="grid-stats home-page__capacity-grid">
+        <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
           <StatCard
             dense
             label="已加载插件"
@@ -1668,6 +1802,12 @@ onUnmounted(() => {
             label="消息 收/发"
             :value="msgTotalStr"
             :hint="msgCapacityHint"
+          />
+          <StatCard
+            dense
+            label="今日调用"
+            :value="todayCallsStatValue"
+            :hint="todayCallsStatHint"
           />
         </div>
       </section>

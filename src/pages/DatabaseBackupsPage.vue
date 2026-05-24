@@ -172,12 +172,14 @@ onMounted(() => {
       v-if="pageReady || runs.length"
       class="panel"
     >
-      <div class="panel__hd panel__hd--split inst-db-panel__hd">
+      <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>备份目录
         </h2>
-        <div class="row-actions inst-db-panel__actions database-backups-page__hd-actions">
-          <PanelSidebarAdd main-path="/database/backups" />
+        <div class="row-actions database-backups-page__hd-actions">
+          <span class="friends-groups-hd-pin-wrap">
+            <PanelSidebarAdd main-path="/database/backups" />
+          </span>
           <button
             type="button"
             class="btn btn--danger database-backups-page__delete-btn"
@@ -250,56 +252,106 @@ onMounted(() => {
         </p>
         <div
           v-else
-          class="table-wrap"
+          class="database-backups-page__runs"
         >
-          <table class="data console-data-table">
-            <thead>
-              <tr>
-                <th style="width: 40px">
-                  <input
-                    type="checkbox"
-                    :checked="allSelected"
-                    aria-label="全选"
-                    :disabled="deleting"
-                    @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
-                  >
-                </th>
-                <th>名称</th>
-                <th>后端</th>
-                <th style="text-align: right">体积</th>
-                <th>修改时间</th>
-                <th>路径</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in runs"
-                :key="row.path"
+          <div class="database-backups-page__mobile-toolbar">
+            <label class="database-backups-page__mobile-select-all">
+              <input
+                type="checkbox"
+                :checked="allSelected"
+                aria-label="全选"
+                :disabled="deleting"
+                @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
               >
-                <td>
-                  <input
-                    type="checkbox"
-                    :checked="selected.has(row.path)"
-                    :aria-label="`选择 ${row.name}`"
-                    :disabled="deleting"
-                    @change="toggleRow(row.path, ($event.target as HTMLInputElement).checked)"
-                  >
-                </td>
-                <td style="font-weight: 600">{{ row.name }}</td>
-                <td class="muted">{{ row.backend }}</td>
-                <td style="text-align: right; font-variant-numeric: tabular-nums">
-                  {{ formatBytes(row.size_bytes) }}
-                </td>
-                <td class="muted">{{ formatModifiedAt(row.modified_at) }}</td>
-                <td
-                  class="muted"
-                  style="word-break: break-all; font-size: 12px"
+              全选
+            </label>
+            <span class="muted database-backups-page__mobile-count">{{ runs.length }} 项</span>
+          </div>
+          <ul
+            class="database-backups-page__cards"
+            aria-label="备份列表"
+          >
+            <li
+              v-for="row in runs"
+              :key="'card-' + row.path"
+              class="database-backups-page__card"
+              :class="{ 'is-selected': selected.has(row.path) }"
+            >
+              <div class="database-backups-page__card-hd">
+                <input
+                  type="checkbox"
+                  class="database-backups-page__card-check"
+                  :checked="selected.has(row.path)"
+                  :aria-label="`选择 ${row.name}`"
+                  :disabled="deleting"
+                  @change="toggleRow(row.path, ($event.target as HTMLInputElement).checked)"
                 >
-                  {{ row.path }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                <div class="database-backups-page__card-main">
+                  <div class="database-backups-page__card-name">{{ row.name }}</div>
+                  <div class="database-backups-page__card-meta">
+                    <span class="database-backups-page__card-backend">{{ row.backend }}</span>
+                    <span class="database-backups-page__card-time">{{ formatModifiedAt(row.modified_at) }}</span>
+                  </div>
+                </div>
+                <div class="database-backups-page__card-size">
+                  {{ formatBytes(row.size_bytes) }}
+                </div>
+              </div>
+              <div class="database-backups-page__card-path">
+                {{ row.path }}
+              </div>
+            </li>
+          </ul>
+          <div class="database-backups-page__table table-wrap">
+            <table class="data console-data-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px">
+                    <input
+                      type="checkbox"
+                      :checked="allSelected"
+                      aria-label="全选"
+                      :disabled="deleting"
+                      @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+                    >
+                  </th>
+                  <th>名称</th>
+                  <th>后端</th>
+                  <th style="text-align: right">体积</th>
+                  <th>修改时间</th>
+                  <th>路径</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in runs"
+                  :key="row.path"
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      :checked="selected.has(row.path)"
+                      :aria-label="`选择 ${row.name}`"
+                      :disabled="deleting"
+                      @change="toggleRow(row.path, ($event.target as HTMLInputElement).checked)"
+                    >
+                  </td>
+                  <td style="font-weight: 600">{{ row.name }}</td>
+                  <td class="muted">{{ row.backend }}</td>
+                  <td style="text-align: right; font-variant-numeric: tabular-nums">
+                    {{ formatBytes(row.size_bytes) }}
+                  </td>
+                  <td class="muted">{{ formatModifiedAt(row.modified_at) }}</td>
+                  <td
+                    class="muted"
+                    style="word-break: break-all; font-size: 12px"
+                  >
+                    {{ row.path }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -330,11 +382,140 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
   opacity: 0.92;
 }
-.btn--danger {
-  border-color: color-mix(in srgb, var(--danger, #f87171) 45%, var(--border));
-  color: var(--danger, #f87171);
+
+.database-backups-page__runs {
+  min-width: 0;
 }
-.btn--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger, #f87171) 12%, transparent);
+
+.database-backups-page__mobile-toolbar {
+  display: none;
+}
+
+.database-backups-page__cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.database-backups-page__mobile-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.database-backups-page__mobile-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .database-backups-page__mobile-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+  }
+
+  .database-backups-page__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .database-backups-page__table {
+    display: none;
+  }
+
+  .database-backups-page__card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-shell);
+    background: var(--bg-elev);
+  }
+
+  .database-backups-page__card.is-selected {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg-elev));
+  }
+
+  .database-backups-page__card-hd {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .database-backups-page__card-check {
+    margin-top: 3px;
+  }
+
+  .database-backups-page__card-name {
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+    word-break: break-all;
+    color: var(--text);
+  }
+
+  .database-backups-page__card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text-muted);
+  }
+
+  .database-backups-page__card-backend {
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--control-bg) 88%, transparent);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: lowercase;
+  }
+
+  .database-backups-page__card-time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .database-backups-page__card-size {
+    font-size: 13px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--text);
+    padding-top: 1px;
+  }
+
+  .database-backups-page__card-path {
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.45;
+    word-break: break-all;
+    color: var(--text-muted);
+  }
+
+  .database-backups-page__filters {
+    max-width: none !important;
+  }
 }
 </style>

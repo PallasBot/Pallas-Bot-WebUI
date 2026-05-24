@@ -1008,13 +1008,6 @@ onUnmounted(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
-.inst-card-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .inst-fav-star {
   padding: 6px 10px;
   font-size: 16px;

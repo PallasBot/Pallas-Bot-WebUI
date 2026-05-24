@@ -14,7 +14,7 @@ import type {
   PluginConfigField,
   PluginConfigFieldGroup,
 } from "@/api/pallasTypes";
-import { SERVICE_GATEWAYS_SECTION_ID } from "@/api/pallasTypes";
+import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -22,6 +22,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
+import { pluginConfigRouteFromPath } from "@/utils/pluginConfigRoute";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const route = useRoute();
@@ -41,6 +42,8 @@ const permSelections = ref<Record<string, string>>({});
 const CMD_PERM_SECTION_ID = "cmd_perm";
 
 const isServiceGateways = computed(() => currentId.value === SERVICE_GATEWAYS_SECTION_ID);
+const isPallasWebuiSection = computed(() => currentId.value === PALLAS_WEBUI_SECTION_ID);
+const showDevModeHotReloadHint = computed(() => Boolean(data.value?.dev_mode_hot_reload));
 const showGatewayEditor = computed(() => Boolean(data.value?.gateway_editor));
 const supportsConnectivityCheck = computed(() => Boolean(data.value?.supports_connectivity_check));
 const showCmdPermMatrix = computed(
@@ -75,6 +78,11 @@ function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
   if (!data.value) return [];
   const names = new Set(group.field_names);
   return data.value.fields.filter((f) => names.has(f.name));
+}
+
+function fieldGroupPluginRoute(group: PluginConfigFieldGroup) {
+  const sectionPlugin = isPallasWebuiSection.value ? PALLAS_WEBUI_SECTION_ID : undefined;
+  return pluginConfigRouteFromPath(group.plugin_config_path, sectionPlugin);
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -152,6 +160,17 @@ watch(currentId, () => {
   void loadSection();
 });
 
+watch(
+  () => route.query.section,
+  (q) => {
+    if (typeof q !== "string" || !q.trim()) return;
+    const sid = q.trim();
+    if (sid !== currentId.value && sections.value.some((s) => s.id === sid)) {
+      currentId.value = sid;
+    }
+  },
+);
+
 onMounted(async () => {
   try {
     await loadSections();
@@ -193,8 +212,21 @@ function collectValues(): Record<string, unknown> {
   return values;
 }
 
+function setBoolField(name: string, checked: boolean) {
+  fieldValues.value[name] = checked ? "true" : "false";
+}
+
+const DEV_MODE_ENABLE_CONFIRM =
+  "开启开发模式将跳过控制台 JSON API 与静态页登录鉴权，任何能访问该地址的人均可读写控制台。\n\n仅在受信任的本机/内网联调时使用，生产环境务必保持关闭。\n\n确定开启？";
+
 async function save() {
   if (!data.value) return;
+  if (isPallasWebuiSection.value) {
+    const values = collectValues();
+    const prev = data.value.fields.find((f) => f.name === "pallas_webui_dev_mode")?.current === true;
+    const next = values.pallas_webui_dev_mode === true;
+    if (!prev && next && !window.confirm(DEV_MODE_ENABLE_CONFIRM)) return;
+  }
   saving.value = true;
   err.value = "";
   try {
@@ -299,6 +331,14 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
             <router-link to="/plugins/pallas_image">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
           </p>
+          <p
+            v-if="showDevModeHotReloadHint"
+            class="muted"
+            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+          >
+            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启 Bot；首页亦提供快捷开关。
+            CORS（<code>pallas_webui_cors</code>）变更仍需重启 hub。
+          </p>
           <div
             v-if="supportsConnectivityCheck && (checkLines.length || checkErr)"
             class="plugin-config-page__check-feedback"
@@ -387,7 +427,16 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   {{ group.title }}
                 </h3>
                 <router-link
-                  :to="group.plugin_config_path"
+                  v-if="isPallasWebuiSection"
+                  :to="{ name: 'plugin-config', params: { name: PALLAS_WEBUI_SECTION_ID } }"
+                  class="muted"
+                  style="font-size: 13px"
+                >
+                  插件完整配置 →
+                </router-link>
+                <router-link
+                  v-else
+                  :to="fieldGroupPluginRoute(group)"
                   class="muted"
                   style="font-size: 13px"
                 >
@@ -412,14 +461,22 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                 <div class="muted" style="font-size: 13px; margin-bottom: 8px">
                   {{ f.description }}
                 </div>
-                <select
+                <label
                   v-if="f.kind === 'bool'"
-                  v-model="fieldValues[f.name]"
-                  class="sel"
+                  class="console-bool-switch"
+                  :class="{ 'console-bool-switch--on': fieldValues[f.name] === 'true' }"
                 >
-                  <option value="true">true</option>
-                  <option value="false">false</option>
-                </select>
+                  <input
+                    type="checkbox"
+                    class="console-bool-switch__input"
+                    :checked="fieldValues[f.name] === 'true'"
+                    @change="setBoolField(f.name, ($event.target as HTMLInputElement).checked)"
+                  >
+                  <span class="console-bool-switch__track" aria-hidden="true">
+                    <span class="console-bool-switch__thumb" />
+                  </span>
+                  <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
+                </label>
                 <JsonTextareaField
                   v-else-if="f.kind === 'json'"
                   v-model="fieldValues[f.name]"
@@ -450,14 +507,22 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             <div class="muted" style="font-size: 13px; margin-bottom: 8px">
               {{ f.description }}
             </div>
-            <select
+            <label
               v-if="f.kind === 'bool'"
-              v-model="fieldValues[f.name]"
-              class="sel"
+              class="console-bool-switch"
+              :class="{ 'console-bool-switch--on': fieldValues[f.name] === 'true' }"
             >
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
+              <input
+                type="checkbox"
+                class="console-bool-switch__input"
+                :checked="fieldValues[f.name] === 'true'"
+                @change="setBoolField(f.name, ($event.target as HTMLInputElement).checked)"
+              >
+              <span class="console-bool-switch__track" aria-hidden="true">
+                <span class="console-bool-switch__thumb" />
+              </span>
+              <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
+            </label>
             <JsonTextareaField
               v-else-if="f.kind === 'json'"
               v-model="fieldValues[f.name]"

@@ -31,7 +31,7 @@ const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 const BOT_DOC = PALLAS_BOT_DOC;
 
-/** 与 `common-config/pallas_protocol` 一致，经通用配置落盘 */
+/** 与通用配置 `?section=pallas_protocol` 一致，经通用配置落盘 */
 const PALLAS_PROTOCOL_SECTION_ID = "pallas_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 
@@ -365,7 +365,7 @@ onMounted(() => {
         <div class="panel__bd muted update-page__bd">
           <p>
             可选。用于 Release 检查与下载、协议端在线拉包等。也可在侧边栏
-            <RouterLink to="/common-config/pallas_protocol">通用配置 → 协议端</RouterLink>
+            <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_PROTOCOL_SECTION_ID } }">通用配置 → 协议端</RouterLink>
             中填写，键名 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>；下方保存与此处等效。
           </p>
           <p>

@@ -79,6 +79,17 @@ const router = createRouter({
             description: "跨模块公共项；保存后由后端生效",
           },
         },
+        /** 兼容旧链接 /common-config/{id}（API 或书签）；插件分区进插件配置，其余进 query */
+        {
+          path: "common-config/:sectionId",
+          redirect: (to) => {
+            const id = String(to.params.sectionId ?? "").trim();
+            if (id === "pallas_webui" || id === "pallas_protocol" || id === "help") {
+              return { name: "plugin-config", params: { name: id } };
+            }
+            return { name: "common-config", query: { section: id } };
+          },
+        },
         {
           path: "instances",
           name: "instances",

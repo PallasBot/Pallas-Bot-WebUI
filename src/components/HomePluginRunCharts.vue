@@ -4,12 +4,14 @@ import type {
   ApiCallNamedSeries,
   ConsoleDailyStatRow,
   MatcherDurationLogEntry,
+  MatcherErrorLogEntry,
   PluginMatcherNamedSeries,
   PluginRunStatsRow,
   PluginRow,
 } from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
+import HomeBucketChartSvg, { type BucketBarPack, type BucketBarSeries } from "@/components/HomeBucketChartSvg.vue";
 import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
 
 const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
@@ -112,7 +114,7 @@ function saveChartsFilterExpanded(open: boolean) {
   }
 }
 
-type SelState = { api: string[]; matcher: string[]; matcherErr: string[] };
+type SelState = { api: string[]; matcher: string[]; matcherErr: string[]; durationRecent: string[] };
 
 function loadSel(): SelState {
   try {
@@ -121,9 +123,12 @@ function loadSel(): SelState {
       api: Array.isArray(x.api) ? x.api.filter((s) => typeof s === "string") : [],
       matcher: Array.isArray(x.matcher) ? x.matcher.filter((s) => typeof s === "string") : [],
       matcherErr: Array.isArray(x.matcherErr) ? x.matcherErr.filter((s) => typeof s === "string") : [],
+      durationRecent: Array.isArray(x.durationRecent)
+        ? x.durationRecent.filter((s) => typeof s === "string")
+        : [],
     };
   } catch {
-    return { api: [], matcher: [], matcherErr: [] };
+    return { api: [], matcher: [], matcherErr: [], durationRecent: [] };
   }
 }
 
@@ -150,6 +155,10 @@ const props = defineProps<{
   matcherDurationLog?: MatcherDurationLogEntry[];
   matcherDurationLogCap?: number;
   matcherHistoryBucketSec?: number;
+  /** 今日 Matcher 异常次数（当前账号） */
+  matcherErrorsToday?: number;
+  /** 最近 Matcher 异常快照（含 traceback） */
+  matcherErrorLog?: MatcherErrorLogEntry[];
   /** GET /console-daily-stats 的 rows（当前选中账号） */
   dailyStatRows?: ConsoleDailyStatRow[] | null;
   /** 图表标题旁小字：API 片段（如「API 22」） */
@@ -166,18 +175,14 @@ const emit = defineEmits<{
 }>();
 
 const toolbarSummaryText = computed(() => {
-  const a = props.toolbarSummaryApi?.trim() ?? "";
-  const p = props.toolbarSummaryPlugin?.trim() ?? "";
   const d = props.toolbarSummaryDuration?.trim() ?? "";
-  if (!a && !p && !d) return "";
-  const parts = [`${a || "API —"}`, `${p || "插件 —"}`];
-  if (d) parts.push(d);
-  return parts.join(" · ");
+  return d || "";
 });
 
 const selectedApiKeys = ref<string[]>([]);
 const selectedMatcherKeys = ref<string[]>([]);
 const selectedMatcherErrKeys = ref<string[]>([]);
+const selectedDurationRecentKeys = ref<string[]>([]);
 const selHydrated = ref(false);
 
 function localDayStartSec(): number {
@@ -312,6 +317,49 @@ function mergeMatcherErrSelection() {
     : [];
 }
 
+function durationRecentPluginKeys(log: MatcherDurationLogEntry[]): string[] {
+  const seen = new Set<string>();
+  for (const it of log) {
+    const p = String(it.plugin ?? "").trim();
+    if (p) seen.add(p);
+  }
+  return [...seen];
+}
+
+function durationRecentPluginScore(log: MatcherDurationLogEntry[], plugin: string): number {
+  let n = 0;
+  for (const it of log) {
+    if (it.plugin === plugin) n += 1;
+  }
+  return n;
+}
+
+function mergeDurationRecentSelection() {
+  const log = props.matcherDurationLog ?? [];
+  const keys = durationRecentPluginKeys(log);
+  const cur = selectedDurationRecentKeys.value.filter((k) => keys.includes(k));
+  if (cur.length) {
+    selectedDurationRecentKeys.value = cur;
+    return;
+  }
+  const saved = loadSel().durationRecent.filter((k) => keys.includes(k));
+  if (saved.length) {
+    selectedDurationRecentKeys.value = saved;
+    return;
+  }
+  selectedDurationRecentKeys.value = keys.length
+    ? defaultTopKeys(
+        keys,
+        (k) =>
+          Array.from({ length: durationRecentPluginScore(log, k) }, (_, i) => ({
+            at: i,
+            total: 1,
+          })),
+        8,
+      )
+    : [];
+}
+
 const chartSeriesSig = computed(() =>
   [
     (props.apiHistoryByApi ?? [])
@@ -329,6 +377,7 @@ const chartSeriesSig = computed(() =>
       .map((s) => s.plugin)
       .sort()
       .join("\0"),
+    durationRecentPluginKeys(props.matcherDurationLog ?? []).sort().join("\0"),
   ].join("\x1e"),
 );
 
@@ -338,17 +387,19 @@ watch(
     mergeApiSelection();
     mergeMatcherSelection();
     mergeMatcherErrSelection();
+    mergeDurationRecentSelection();
     selHydrated.value = true;
   },
   { immediate: true },
 );
 
-watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
+watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys, selectedDurationRecentKeys], () => {
   if (!selHydrated.value) return;
   saveSel({
     api: [...selectedApiKeys.value],
     matcher: [...selectedMatcherKeys.value],
     matcherErr: [...selectedMatcherErrKeys.value],
+    durationRecent: [...selectedDurationRecentKeys.value],
   });
 });
 
@@ -377,29 +428,6 @@ function fmtBucketSec(sec: number | undefined): string {
   if (s >= 60 && s % 60 === 0) return `${s / 60} 分钟`;
   return `${s} 秒`;
 }
-
-type BucketBarSeries = { label: string; color: string; vals: number[] };
-
-type BucketBarPack = {
-  W: number;
-  H: number;
-  padL: number;
-  padR: number;
-  padT: number;
-  padB: number;
-  innerW: number;
-  innerH: number;
-  left: number;
-  top: number;
-  bottom: number;
-  maxV: number;
-  timesSec: number[];
-  series: BucketBarSeries[];
-  gridYs: number[];
-  yTicks: { y: number; t: string }[];
-  xTicks: { x: number; t: string }[];
-  bars: { x: number; y: number; w: number; h: number; fill: string }[];
-};
 
 function fmtBucketAxisTime(sec: number): string {
   const d = new Date(sec * 1000);
@@ -430,6 +458,35 @@ function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number }
   return { rawMax, scaleMax };
 }
 
+const BUCKET_CHART_MAX_SLOTS = 56;
+const BUCKET_CHART_MAX_SLOTS_NARROW = 40;
+
+/** 时间桶过多时合并相邻桶，避免 slot 过窄导致柱宽为负、SVG 不绘制 */
+function downsampleBucketTimeline(
+  timesSec: number[],
+  series: BucketBarSeries[],
+  maxSlots: number,
+): { timesSec: number[]; series: BucketBarSeries[] } {
+  if (timesSec.length <= maxSlots) return { timesSec, series };
+  const chunk = Math.ceil(timesSec.length / maxSlots);
+  const newTimes: number[] = [];
+  const newSeries: BucketBarSeries[] = series.map((s) => ({
+    label: s.label,
+    color: s.color,
+    vals: [] as number[],
+  }));
+  for (let i = 0; i < timesSec.length; i += chunk) {
+    newTimes.push(timesSec[i]!);
+    for (let si = 0; si < series.length; si++) {
+      let sum = 0;
+      const end = Math.min(i + chunk, timesSec.length);
+      for (let j = i; j < end; j++) sum += series[si]!.vals[j] ?? 0;
+      newSeries[si]!.vals.push(sum);
+    }
+  }
+  return { timesSec: newTimes, series: newSeries };
+}
+
 /** 窄视口下略增厚柱宽、收紧桶内边距，避免 SVG 缩放后柱子过细 */
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
@@ -451,11 +508,14 @@ function buildBucketBarPack(
     return hit ? Number(hit.total) || 0 : 0;
   };
 
-  const series: BucketBarSeries[] = rows.map((row, i) => ({
+  const seriesRaw: BucketBarSeries[] = rows.map((row, i) => ({
     label: row.label,
     color: COLORS[i % COLORS.length]!,
     vals: timesSec.map((t) => valAt(row.points, t)),
   }));
+
+  const maxSlots = narrowViewport ? BUCKET_CHART_MAX_SLOTS_NARROW : BUCKET_CHART_MAX_SLOTS;
+  const { timesSec: plotTimes, series } = downsampleBucketTimeline(timesSec, seriesRaw, maxSlots);
 
   const flatVals = series.flatMap((s) => s.vals);
   const { rawMax, scaleMax } = softBucketAxisMax(flatVals);
@@ -474,27 +534,30 @@ function buildBucketBarPack(
   const top = padT;
   const bottom = padT + innerH;
 
-  const nT = timesSec.length;
+  const nT = plotTimes.length;
   const nS = series.length;
   const slotW = innerW / Math.max(1, nT);
   const bars: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 
   const marginT = nT <= 3 ? 0.05 : narrowViewport ? 0.055 : 0.08;
-  const barFill = narrowViewport ? 0.96 : 0.9;
-  const barPad = narrowViewport ? 0.02 : 0.05;
-  const minBarW = narrowViewport ? 3.6 : 1.5;
+  const barFill = narrowViewport ? 0.92 : 0.88;
+  const barGapRatio = narrowViewport ? 0.04 : 0.06;
+  const minBarW = narrowViewport ? 2.2 : 1.1;
 
   for (let i = 0; i < nT; i++) {
     const colL = left + i * slotW;
     const groupMargin = slotW * marginT;
     const innerCol = Math.max(0, slotW - 2 * groupMargin);
-    const bw = nS > 0 ? innerCol / nS : 0;
+    const perSeries = nS > 0 ? innerCol / nS : innerCol;
     for (let s = 0; s < nS; s++) {
       const v = series[s]!.vals[i] ?? 0;
-      const bh = Math.min(1, v / axisMax) * innerH;
-      const bx = colL + groupMargin + s * bw + bw * barPad;
-      const barW = Math.min(innerCol / Math.max(1, nS) - 0.25, Math.max(minBarW, bw * barFill));
+      if (v <= 0) continue;
+      const bhRaw = Math.min(1, v / axisMax) * innerH;
+      const bh = Math.max(bhRaw, 1.2);
+      const barW = Math.max(minBarW, perSeries * barFill);
+      const bx = colL + groupMargin + s * perSeries + perSeries * barGapRatio;
       const by = bottom - bh;
+      if (barW <= 0 || bh <= 0) continue;
       bars.push({ x: bx, y: by, w: barW, h: bh, fill: series[s]!.color });
     }
   }
@@ -510,7 +573,7 @@ function buildBucketBarPack(
   const xi = pickTickIndices(nT, 9);
   const xTicks = xi.map((idx) => ({
     x: left + (idx + 0.5) * slotW,
-    t: fmtBucketAxisTime(timesSec[idx]!),
+    t: fmtBucketAxisTime(plotTimes[idx]!),
   }));
 
   return {
@@ -526,7 +589,7 @@ function buildBucketBarPack(
     top,
     bottom,
     maxV: rawMax,
-    timesSec,
+    timesSec: plotTimes,
     series,
     gridYs,
     yTicks,
@@ -720,8 +783,14 @@ function durationMsPoints(plugin: string): { at: number; total: number }[] {
   return props.matcherDurationMsByPlugin?.find((s) => s.plugin === plugin)?.points ?? [];
 }
 
-const chartPanel = ref<ChartPanelId>("plugins_top");
-const panelPickReady = ref(false);
+function resolveInitialChartPanel(): ChartPanelId {
+  const saved = loadChartPanel();
+  if (saved) return saved;
+  return "matcher_duration_recent";
+}
+
+const chartPanel = ref<ChartPanelId>(resolveInitialChartPanel());
+const panelPickReady = ref(Boolean(loadChartPanel()));
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
 const chartsFilterExpanded = ref(loadChartsFilterExpanded());
 
@@ -797,6 +866,23 @@ const matcherDurationLogCap = computed(() => {
 
 const recentDurationRows = computed(() => props.matcherDurationLog ?? []);
 
+const durationRecentCandidates = computed(() => {
+  const log = recentDurationRows.value;
+  const keys = durationRecentPluginKeys(log);
+  return keys
+    .map((plugin) => ({ plugin, count: durationRecentPluginScore(log, plugin) }))
+    .sort((a, b) => b.count - a.count || a.plugin.localeCompare(b.plugin));
+});
+
+const filteredRecentDurationRows = computed(() => {
+  const rows = recentDurationRows.value;
+  const sel = selectedDurationRecentKeys.value;
+  if (!rows.length) return [];
+  if (!sel.length) return [];
+  const allowed = new Set(sel);
+  return rows.filter((it) => allowed.has(it.plugin));
+});
+
 function formatDurationLogAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
   try {
@@ -818,6 +904,19 @@ function formatDurationLogAtCompact(sec: number): string {
   }
 }
 
+const hasMatcherErrSignal = computed(
+  () =>
+    matcherErrCandidates.value.length > 0 ||
+    (props.matcherErrorLog?.length ?? 0) > 0 ||
+    (props.matcherErrorsToday ?? 0) > 0,
+);
+
+const hasMatcherDurationSignal = computed(
+  () =>
+    matcherDurationCandidates.value.length > 0 ||
+    recentDurationRows.value.length > 0,
+);
+
 const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
   plugins_top: true,
@@ -827,10 +926,10 @@ const panelAvailability = computed(() => ({
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
   matcher_bucket: matcherRunCandidates.value.length > 0,
-  matcher_duration_hourly: matcherDurationCandidates.value.length > 0,
-  matcher_duration_bucket: matcherDurationCandidates.value.length > 0,
-  matcher_err_hourly: matcherErrCandidates.value.length > 0,
-  matcher_err_bucket: matcherErrCandidates.value.length > 0,
+  matcher_duration_hourly: hasMatcherDurationSignal.value,
+  matcher_duration_bucket: hasMatcherDurationSignal.value,
+  matcher_err_hourly: hasMatcherErrSignal.value,
+  matcher_err_bucket: hasMatcherErrSignal.value,
   local_spark: showLocalSpark.value,
 }));
 
@@ -880,6 +979,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         items: [
           { dt: "数据含义", dd: "每条为一次执行耗时，不是今日平均。" },
           { dt: "持久化", dd: `写入 matcher_durations.jsonl，每账号最多 ${cap} 条。` },
+          { dt: "勾选", dd: "展开「选项」后勾选要显示的插件；默认保留最近记录里次数最多的若干项。" },
         ],
       };
     case "plugins_top":
@@ -990,8 +1090,13 @@ watch(
     const a = panelAvailability.value;
 
     if (!panelPickReady.value) {
-      if (props.busy) return;
       const saved = loadChartPanel();
+      if (props.busy) {
+        if (saved && chartPanel.value !== saved) {
+          chartPanel.value = saved;
+        }
+        return;
+      }
       if (saved && a[saved]) {
         chartPanel.value = saved;
         panelPickReady.value = true;
@@ -1039,6 +1144,12 @@ function toggleAllMatchers(on: boolean) {
 
 function toggleAllMatcherErr(on: boolean) {
   selectedMatcherErrKeys.value = on ? matcherErrCandidates.value.map((s) => s.plugin) : [];
+}
+
+function toggleAllDurationRecent(on: boolean) {
+  selectedDurationRecentKeys.value = on
+    ? durationRecentCandidates.value.map((s) => s.plugin)
+    : [];
 }
 
 function pluginBarLabel(name: string): string {
@@ -1298,7 +1409,7 @@ const dailyChartPack = computed(() => {
           v-if="toolbarSummaryText"
           class="home-plugin-charts__toolbar-summary muted"
         >
-          今日：{{ toolbarSummaryText }}
+          均耗：{{ toolbarSummaryText }}
         </p>
       </div>
 
@@ -1324,6 +1435,12 @@ const dailyChartPack = computed(() => {
       >
         暂无单次耗时记录；触发命令后会在此列出最近 {{ matcherDurationLogCap }} 条（重启后仍可从磁盘恢复）。
       </p>
+      <p
+        v-else-if="!filteredRecentDurationRows.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个插件（展开「选项」）。
+      </p>
       <div
         v-else
         class="home-matcher-dur-log home-plugin-charts__viz"
@@ -1340,7 +1457,7 @@ const dailyChartPack = computed(() => {
           </div>
           <ul class="home-matcher-dur-log__list">
             <li
-              v-for="(it, idx) in recentDurationRows"
+              v-for="(it, idx) in filteredRecentDurationRows"
               :key="`${it.at}-${idx}-${it.plugin}`"
               class="home-matcher-dur-log__row"
               :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
@@ -1361,15 +1478,15 @@ const dailyChartPack = computed(() => {
             </li>
           </ul>
           <div
-            v-if="recentDurationRows.length >= 2"
+            v-if="filteredRecentDurationRows.length >= 2"
             class="home-matcher-dur-log__time-axis muted"
             aria-hidden="true"
           >
             <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
             <span class="home-matcher-dur-log__time-axis-range">
-              <span :title="formatDurationLogAt(recentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[0]!.at) }}</span>
+              <span :title="formatDurationLogAt(filteredRecentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[0]!.at) }}</span>
               <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧</span>
-              <span :title="formatDurationLogAt(recentDurationRows[recentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[recentDurationRows.length - 1]!.at) }}</span>
+              <span :title="formatDurationLogAt(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at) }}</span>
             </span>
           </div>
         </div>
@@ -1795,56 +1912,7 @@ const dailyChartPack = computed(() => {
         v-if="apiBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${apiBucketPack.W} ${apiBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in apiBucketPack.gridYs"
-            :key="`ag-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="apiBucketPack.left"
-            :y1="gy"
-            :x2="apiBucketPack.left + apiBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="apiBucketPack.left"
-            :y1="apiBucketPack.bottom"
-            :x2="apiBucketPack.left + apiBucketPack.innerW"
-            :y2="apiBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in apiBucketPack.yTicks"
-            :key="`ayt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in apiBucketPack.xTicks"
-            :key="`axt-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="apiBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in apiBucketPack.bars"
-            :key="`ab-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="apiBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in apiBucketPack.series"
@@ -2002,56 +2070,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherBucketPack.W} ${matcherBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherBucketPack.gridYs"
-            :key="`mg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherBucketPack.left"
-            :y1="gy"
-            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherBucketPack.left"
-            :y1="matcherBucketPack.bottom"
-            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
-            :y2="matcherBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherBucketPack.yTicks"
-            :key="`myt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherBucketPack.xTicks"
-            :key="`mxt-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="matcherBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherBucketPack.bars"
-            :key="`mb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherBucketPack.series"
@@ -2209,57 +2228,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherDurationBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherDurationBucketPack.W} ${matcherDurationBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherDurationBucketPack.gridYs"
-            :key="`mdg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherDurationBucketPack.left"
-            :y1="gy"
-            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherDurationBucketPack.left"
-            :y1="matcherDurationBucketPack.bottom"
-            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
-            :y2="matcherDurationBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherDurationBucketPack.yTicks"
-            :key="`mdyt-${ti}`"
-            class="home-plugin-bucket__ylabel"
-            :x="matcherDurationBucketPack.padL - 4"
-            :y="tk.y + 4"
-            text-anchor="end"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherDurationBucketPack.xTicks"
-            :key="`mdxt-${xi}`"
-            class="home-plugin-bucket__xlabel"
-            :x="xk.x"
-            :y="matcherDurationBucketPack.H - 6"
-            text-anchor="middle"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherDurationBucketPack.bars"
-            :key="`mdb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherDurationBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherDurationBucketPack.series"
@@ -2417,56 +2386,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherErrBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherErrBucketPack.W} ${matcherErrBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherErrBucketPack.gridYs"
-            :key="`eg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherErrBucketPack.left"
-            :y1="gy"
-            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherErrBucketPack.left"
-            :y1="matcherErrBucketPack.bottom"
-            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
-            :y2="matcherErrBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherErrBucketPack.yTicks"
-            :key="`eyt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherErrBucketPack.xTicks"
-            :key="`ext-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="matcherErrBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherErrBucketPack.bars"
-            :key="`eb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherErrBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherErrBucketPack.series"
@@ -2602,6 +2522,18 @@ const dailyChartPack = computed(() => {
             <div class="home-plugin-sel__grid">
               <label v-for="s in matcherRunCandidates" :key="`ext-mb-${s.plugin}`" class="home-plugin-sel__item">
                 <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        <div v-if="chartPanel === 'matcher_duration_recent' && durationRecentCandidates.length" class="home-plugin-sel">
+            <span class="home-plugin-sel__actions">
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(false)">全不选</button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label v-for="s in durationRecentCandidates" :key="`ext-mdr-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedDurationRecentKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
@@ -2887,15 +2819,29 @@ const dailyChartPack = computed(() => {
   display: flex;
   flex-direction: column;
 }
+.home-plugin-charts__viz .home-plugin-bucket-chart {
+  flex: 1 1 auto;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+.home-plugin-charts__viz .home-plugin-bucket-chart__svg,
+.home-plugin-charts__viz .home-plugin-bucket__svg {
+  min-height: 140px;
+  max-height: min(360px, 52vh);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 440 / 212;
+}
 .home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
   height: auto;
   min-height: 108px;
   flex: 1 1 auto;
 }
-.home-plugin-charts__viz .home-plugin-bucket__svg {
-  min-height: 200px;
-  max-height: min(360px, 52vh);
-  max-width: 100%;
+.home-plugin-charts__viz .home-plugin-spark:not(.home-plugin-spark--hourly) {
+  height: auto;
+  min-height: 108px;
+  flex: 1 1 auto;
 }
 .home-plugin-charts__hint {
   margin: 0 0 10px;
@@ -3211,8 +3157,9 @@ const dailyChartPack = computed(() => {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 172px;
-  max-height: 260px;
+  min-height: 140px;
+  max-height: min(360px, 52vh);
+  aspect-ratio: 440 / 212;
   display: block;
   box-sizing: border-box;
 }
