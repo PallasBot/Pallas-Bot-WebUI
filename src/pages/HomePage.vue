@@ -40,6 +40,7 @@ import type {
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -296,6 +297,15 @@ function pickAccountFromList(account: number) {
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
+const webuiDevModeActive = computed(() => Boolean(system.value?.console?.pallas_webui_dev_mode));
+
+function onWebuiDevModeUpdated(active: boolean) {
+  if (!system.value) return;
+  system.value = {
+    ...system.value,
+    console: { ...(system.value.console ?? {}), pallas_webui_dev_mode: active },
+  };
+}
 
 function fmtBytes(n: number | null | undefined): string {
   if (n == null || n <= 0) return "—";
@@ -1220,6 +1230,13 @@ onUnmounted(() => {
       {{ err }}
     </div>
 
+    <ConsoleDevModePanel
+      v-if="pageReady && webuiDevModeActive"
+      :active="webuiDevModeActive"
+      :show-panel="false"
+      @updated="onWebuiDevModeUpdated"
+    />
+
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="4"
@@ -1642,6 +1659,15 @@ onUnmounted(() => {
             <dd>
               <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
               <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
+            </dd>
+            <dt>控制台鉴权</dt>
+            <dd class="home-version-dev-mode">
+              <ConsoleDevModePanel
+                :active="webuiDevModeActive"
+                compact
+                :show-banner="false"
+                @updated="onWebuiDevModeUpdated"
+              />
             </dd>
           </dl>
         </div>
