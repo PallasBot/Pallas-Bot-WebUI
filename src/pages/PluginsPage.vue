@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { fetchPluginConfig, fetchPlugins, peekPluginsCache } from "@/api/consoleApi";
-import type { PluginConfigData, PluginRow } from "@/api/pallasTypes";
+import type { PluginConfigData, PluginRow, PluginSourceKind } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames, toggleFavoritePlugin } from "@/utils/pluginFavorites";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
-import { hasPluginLoadWhere, pluginLoadWhere } from "@/utils/pluginLoadRoleLabel";
+import {
+  catalogProcessHint,
+  hasPluginLoadWhere,
+  pluginCountsAsCatalogLoadProblem,
+  pluginCountsAsLoadedInCatalog,
+  pluginLoadBadgeText,
+  pluginLoadWhere,
+} from "@/utils/pluginLoadRoleLabel";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -19,6 +26,13 @@ const list = ref<PluginRow[]>([]);
 }
 const open = ref<string | null>(null);
 const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
+type SourceFilter = "all" | PluginSourceKind;
+const sourceFilter = ref<SourceFilter>("all");
+const loadFilter = ref<"all" | "loaded" | "problem">("all");
+
+const catalogProcessRole = computed(
+  () => list.value.find((p) => p.catalog_process_role)?.catalog_process_role,
+);
 
 const sortedPlugins = computed(() => {
   const rows = [...list.value];
@@ -31,6 +45,35 @@ const sortedPlugins = computed(() => {
     return na.localeCompare(nb, "zh-CN");
   });
   return rows;
+});
+
+const filteredPlugins = computed(() => {
+  let rows = sortedPlugins.value;
+  if (sourceFilter.value !== "all") {
+    rows = rows.filter((p) => p.plugin_source === sourceFilter.value);
+  }
+  if (loadFilter.value === "loaded") {
+    rows = rows.filter((p) => pluginCountsAsLoadedInCatalog(p));
+  } else if (loadFilter.value === "problem") {
+    rows = rows.filter((p) => pluginCountsAsCatalogLoadProblem(p));
+  }
+  return rows;
+});
+
+const sourceCounts = computed(() => {
+  const counts: Record<SourceFilter, number> = {
+    all: list.value.length,
+    main: 0,
+    local: 0,
+    pip: 0,
+  };
+  for (const p of list.value) {
+    const src = p.plugin_source;
+    if (src === "main" || src === "local" || src === "pip") {
+      counts[src] += 1;
+    }
+  }
+  return counts;
 });
 
 function isPluginFavorite(name: string): boolean {
@@ -90,14 +133,73 @@ async function togglePreview(name: string) {
           <p class="muted plugins-page__hero-note">
             是否在「牛牛帮助」总列表中展示该插件，请在进入对应插件后的配置页顶部「帮助菜单」中设置。
           </p>
+          <p
+            v-if="catalogProcessHint(catalogProcessRole)"
+            class="muted plugins-page__hero-note plugins-page__hero-note--shard"
+          >
+            {{ catalogProcessHint(catalogProcessRole) }}
+          </p>
         </div>
         <PanelSidebarAdd main-path="/plugins" />
+      </div>
+      <div class="plugins-page__filters row-actions">
+        <label class="plugins-page__filter-label">
+          <span class="muted">来源</span>
+          <select
+            v-model="sourceFilter"
+            class="sel"
+            aria-label="按插件来源筛选"
+          >
+            <option value="all">
+              全部（{{ sourceCounts.all }}）
+            </option>
+            <option value="main">
+              主仓（{{ sourceCounts.main }}）
+            </option>
+            <option value="local">
+              站点 local（{{ sourceCounts.local }}）
+            </option>
+            <option value="pip">
+              pip / 依赖（{{ sourceCounts.pip }}）
+            </option>
+          </select>
+        </label>
+        <label class="plugins-page__filter-label">
+          <span class="muted">加载</span>
+          <select
+            v-model="loadFilter"
+            class="sel"
+            aria-label="按应在当前目录进程中的加载状态筛选"
+          >
+            <option value="all">
+              全部
+            </option>
+            <option value="loaded">
+              已就绪
+            </option>
+            <option value="problem">
+              缺载异常
+            </option>
+          </select>
+        </label>
+        <span
+          v-if="filteredPlugins.length !== sortedPlugins.length"
+          class="muted plugins-page__filter-hint"
+        >
+          显示 {{ filteredPlugins.length }} / {{ sortedPlugins.length }}
+        </span>
       </div>
       <div
         class="grid-stats plugins-page__plugin-grid"
       >
+        <p
+          v-if="!filteredPlugins.length"
+          class="muted plugins-page__empty"
+        >
+          没有符合筛选条件的插件。
+        </p>
         <div
-          v-for="p in sortedPlugins"
+          v-for="p in filteredPlugins"
           :key="p.name"
           class="plugin-card"
         >
@@ -108,7 +210,18 @@ async function togglePreview(name: string) {
                 :to="{ name: 'plugin-config', params: { name: p.name } }"
               >
                 <div class="plugin-card__title-line">
-                  {{ p.metadata?.name || p.name }}
+                  {{ p.metadata?.name || p.nb_plugin_name || p.name }}
+                  <span
+                    v-if="pluginLoadBadgeText(p)"
+                    class="plugins-page__badge plugins-page__badge--warn"
+                    :title="pluginLoadWhere(p)"
+                  >{{ pluginLoadBadgeText(p) }}</span>
+                </div>
+                <div
+                  v-if="p.nb_plugin_name && p.nb_plugin_name !== p.name && (p.metadata?.name || p.name) !== p.nb_plugin_name"
+                  class="muted plugin-card__id-line"
+                >
+                  {{ p.nb_plugin_name }}
                 </div>
                 <div
                   class="muted plugin-card__desc-line"

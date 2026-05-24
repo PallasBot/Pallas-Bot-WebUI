@@ -4,6 +4,7 @@ import type {
   ApiCallNamedSeries,
   ConsoleDailyStatRow,
   MatcherDurationLogEntry,
+  MatcherErrorLogEntry,
   PluginMatcherNamedSeries,
   PluginRunStatsRow,
   PluginRow,
@@ -112,7 +113,7 @@ function saveChartsFilterExpanded(open: boolean) {
   }
 }
 
-type SelState = { api: string[]; matcher: string[]; matcherErr: string[] };
+type SelState = { api: string[]; matcher: string[]; matcherErr: string[]; durationRecent: string[] };
 
 function loadSel(): SelState {
   try {
@@ -121,9 +122,12 @@ function loadSel(): SelState {
       api: Array.isArray(x.api) ? x.api.filter((s) => typeof s === "string") : [],
       matcher: Array.isArray(x.matcher) ? x.matcher.filter((s) => typeof s === "string") : [],
       matcherErr: Array.isArray(x.matcherErr) ? x.matcherErr.filter((s) => typeof s === "string") : [],
+      durationRecent: Array.isArray(x.durationRecent)
+        ? x.durationRecent.filter((s) => typeof s === "string")
+        : [],
     };
   } catch {
-    return { api: [], matcher: [], matcherErr: [] };
+    return { api: [], matcher: [], matcherErr: [], durationRecent: [] };
   }
 }
 
@@ -150,6 +154,10 @@ const props = defineProps<{
   matcherDurationLog?: MatcherDurationLogEntry[];
   matcherDurationLogCap?: number;
   matcherHistoryBucketSec?: number;
+  /** 今日 Matcher 异常次数（当前账号） */
+  matcherErrorsToday?: number;
+  /** 最近 Matcher 异常快照（含 traceback） */
+  matcherErrorLog?: MatcherErrorLogEntry[];
   /** GET /console-daily-stats 的 rows（当前选中账号） */
   dailyStatRows?: ConsoleDailyStatRow[] | null;
   /** 图表标题旁小字：API 片段（如「API 22」） */
@@ -166,18 +174,14 @@ const emit = defineEmits<{
 }>();
 
 const toolbarSummaryText = computed(() => {
-  const a = props.toolbarSummaryApi?.trim() ?? "";
-  const p = props.toolbarSummaryPlugin?.trim() ?? "";
   const d = props.toolbarSummaryDuration?.trim() ?? "";
-  if (!a && !p && !d) return "";
-  const parts = [`${a || "API —"}`, `${p || "插件 —"}`];
-  if (d) parts.push(d);
-  return parts.join(" · ");
+  return d || "";
 });
 
 const selectedApiKeys = ref<string[]>([]);
 const selectedMatcherKeys = ref<string[]>([]);
 const selectedMatcherErrKeys = ref<string[]>([]);
+const selectedDurationRecentKeys = ref<string[]>([]);
 const selHydrated = ref(false);
 
 function localDayStartSec(): number {
@@ -312,6 +316,49 @@ function mergeMatcherErrSelection() {
     : [];
 }
 
+function durationRecentPluginKeys(log: MatcherDurationLogEntry[]): string[] {
+  const seen = new Set<string>();
+  for (const it of log) {
+    const p = String(it.plugin ?? "").trim();
+    if (p) seen.add(p);
+  }
+  return [...seen];
+}
+
+function durationRecentPluginScore(log: MatcherDurationLogEntry[], plugin: string): number {
+  let n = 0;
+  for (const it of log) {
+    if (it.plugin === plugin) n += 1;
+  }
+  return n;
+}
+
+function mergeDurationRecentSelection() {
+  const log = props.matcherDurationLog ?? [];
+  const keys = durationRecentPluginKeys(log);
+  const cur = selectedDurationRecentKeys.value.filter((k) => keys.includes(k));
+  if (cur.length) {
+    selectedDurationRecentKeys.value = cur;
+    return;
+  }
+  const saved = loadSel().durationRecent.filter((k) => keys.includes(k));
+  if (saved.length) {
+    selectedDurationRecentKeys.value = saved;
+    return;
+  }
+  selectedDurationRecentKeys.value = keys.length
+    ? defaultTopKeys(
+        keys,
+        (k) =>
+          Array.from({ length: durationRecentPluginScore(log, k) }, (_, i) => ({
+            at: i,
+            total: 1,
+          })),
+        8,
+      )
+    : [];
+}
+
 const chartSeriesSig = computed(() =>
   [
     (props.apiHistoryByApi ?? [])
@@ -329,6 +376,7 @@ const chartSeriesSig = computed(() =>
       .map((s) => s.plugin)
       .sort()
       .join("\0"),
+    durationRecentPluginKeys(props.matcherDurationLog ?? []).sort().join("\0"),
   ].join("\x1e"),
 );
 
@@ -338,17 +386,19 @@ watch(
     mergeApiSelection();
     mergeMatcherSelection();
     mergeMatcherErrSelection();
+    mergeDurationRecentSelection();
     selHydrated.value = true;
   },
   { immediate: true },
 );
 
-watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys], () => {
+watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys, selectedDurationRecentKeys], () => {
   if (!selHydrated.value) return;
   saveSel({
     api: [...selectedApiKeys.value],
     matcher: [...selectedMatcherKeys.value],
     matcherErr: [...selectedMatcherErrKeys.value],
+    durationRecent: [...selectedDurationRecentKeys.value],
   });
 });
 
@@ -797,6 +847,23 @@ const matcherDurationLogCap = computed(() => {
 
 const recentDurationRows = computed(() => props.matcherDurationLog ?? []);
 
+const durationRecentCandidates = computed(() => {
+  const log = recentDurationRows.value;
+  const keys = durationRecentPluginKeys(log);
+  return keys
+    .map((plugin) => ({ plugin, count: durationRecentPluginScore(log, plugin) }))
+    .sort((a, b) => b.count - a.count || a.plugin.localeCompare(b.plugin));
+});
+
+const filteredRecentDurationRows = computed(() => {
+  const rows = recentDurationRows.value;
+  const sel = selectedDurationRecentKeys.value;
+  if (!rows.length) return [];
+  if (!sel.length) return [];
+  const allowed = new Set(sel);
+  return rows.filter((it) => allowed.has(it.plugin));
+});
+
 function formatDurationLogAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
   try {
@@ -818,6 +885,19 @@ function formatDurationLogAtCompact(sec: number): string {
   }
 }
 
+const hasMatcherErrSignal = computed(
+  () =>
+    matcherErrCandidates.value.length > 0 ||
+    (props.matcherErrorLog?.length ?? 0) > 0 ||
+    (props.matcherErrorsToday ?? 0) > 0,
+);
+
+const hasMatcherDurationSignal = computed(
+  () =>
+    matcherDurationCandidates.value.length > 0 ||
+    recentDurationRows.value.length > 0,
+);
+
 const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
   plugins_top: true,
@@ -827,10 +907,10 @@ const panelAvailability = computed(() => ({
   api_bucket: apiCandidates.value.length > 0,
   matcher_hourly: matcherRunCandidates.value.length > 0,
   matcher_bucket: matcherRunCandidates.value.length > 0,
-  matcher_duration_hourly: matcherDurationCandidates.value.length > 0,
-  matcher_duration_bucket: matcherDurationCandidates.value.length > 0,
-  matcher_err_hourly: matcherErrCandidates.value.length > 0,
-  matcher_err_bucket: matcherErrCandidates.value.length > 0,
+  matcher_duration_hourly: hasMatcherDurationSignal.value,
+  matcher_duration_bucket: hasMatcherDurationSignal.value,
+  matcher_err_hourly: hasMatcherErrSignal.value,
+  matcher_err_bucket: hasMatcherErrSignal.value,
   local_spark: showLocalSpark.value,
 }));
 
@@ -880,6 +960,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         items: [
           { dt: "数据含义", dd: "每条为一次执行耗时，不是今日平均。" },
           { dt: "持久化", dd: `写入 matcher_durations.jsonl，每账号最多 ${cap} 条。` },
+          { dt: "勾选", dd: "展开「选项」后勾选要显示的插件；默认保留最近记录里次数最多的若干项。" },
         ],
       };
     case "plugins_top":
@@ -1039,6 +1120,12 @@ function toggleAllMatchers(on: boolean) {
 
 function toggleAllMatcherErr(on: boolean) {
   selectedMatcherErrKeys.value = on ? matcherErrCandidates.value.map((s) => s.plugin) : [];
+}
+
+function toggleAllDurationRecent(on: boolean) {
+  selectedDurationRecentKeys.value = on
+    ? durationRecentCandidates.value.map((s) => s.plugin)
+    : [];
 }
 
 function pluginBarLabel(name: string): string {
@@ -1298,7 +1385,7 @@ const dailyChartPack = computed(() => {
           v-if="toolbarSummaryText"
           class="home-plugin-charts__toolbar-summary muted"
         >
-          今日：{{ toolbarSummaryText }}
+          均耗：{{ toolbarSummaryText }}
         </p>
       </div>
 
@@ -1324,6 +1411,12 @@ const dailyChartPack = computed(() => {
       >
         暂无单次耗时记录；触发命令后会在此列出最近 {{ matcherDurationLogCap }} 条（重启后仍可从磁盘恢复）。
       </p>
+      <p
+        v-else-if="!filteredRecentDurationRows.length"
+        class="muted home-plugin-charts__empty"
+      >
+        请至少勾选一个插件（展开「选项」）。
+      </p>
       <div
         v-else
         class="home-matcher-dur-log home-plugin-charts__viz"
@@ -1340,7 +1433,7 @@ const dailyChartPack = computed(() => {
           </div>
           <ul class="home-matcher-dur-log__list">
             <li
-              v-for="(it, idx) in recentDurationRows"
+              v-for="(it, idx) in filteredRecentDurationRows"
               :key="`${it.at}-${idx}-${it.plugin}`"
               class="home-matcher-dur-log__row"
               :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
@@ -1361,15 +1454,15 @@ const dailyChartPack = computed(() => {
             </li>
           </ul>
           <div
-            v-if="recentDurationRows.length >= 2"
+            v-if="filteredRecentDurationRows.length >= 2"
             class="home-matcher-dur-log__time-axis muted"
             aria-hidden="true"
           >
             <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
             <span class="home-matcher-dur-log__time-axis-range">
-              <span :title="formatDurationLogAt(recentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[0]!.at) }}</span>
+              <span :title="formatDurationLogAt(filteredRecentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[0]!.at) }}</span>
               <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧</span>
-              <span :title="formatDurationLogAt(recentDurationRows[recentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(recentDurationRows[recentDurationRows.length - 1]!.at) }}</span>
+              <span :title="formatDurationLogAt(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at) }}</span>
             </span>
           </div>
         </div>
@@ -2602,6 +2695,18 @@ const dailyChartPack = computed(() => {
             <div class="home-plugin-sel__grid">
               <label v-for="s in matcherRunCandidates" :key="`ext-mb-${s.plugin}`" class="home-plugin-sel__item">
                 <input v-model="selectedMatcherKeys" type="checkbox" :value="s.plugin">
+                <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
+              </label>
+            </div>
+          </div>
+        <div v-if="chartPanel === 'matcher_duration_recent' && durationRecentCandidates.length" class="home-plugin-sel">
+            <span class="home-plugin-sel__actions">
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(true)">全选</button>
+              <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(false)">全不选</button>
+            </span>
+            <div class="home-plugin-sel__grid">
+              <label v-for="s in durationRecentCandidates" :key="`ext-mdr-${s.plugin}`" class="home-plugin-sel__item">
+                <input v-model="selectedDurationRecentKeys" type="checkbox" :value="s.plugin">
                 <span :title="s.plugin">{{ matcherPluginDisplayName(s.plugin, pluginsMeta ?? undefined) }}</span>
               </label>
             </div>
