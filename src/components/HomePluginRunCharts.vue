@@ -10,6 +10,7 @@ import type {
   PluginRow,
 } from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
+import { buildPluginRunSparkPoly, formatPluginRunSampleTime } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import HomeBucketChartSvg, { type BucketBarPack, type BucketBarSeries } from "@/components/HomeBucketChartSvg.vue";
 import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
@@ -22,6 +23,8 @@ const CHART_PANEL_KEY = "pallas_home_chart_panel_v1";
 
 type ChartPanelId =
   | "matcher_duration_recent"
+  | "matcher_duration_hist"
+  | "matcher_duration_scatter"
   | "plugins_top"
   | "plugins_duration_top"
   | "daily_msg_matcher"
@@ -37,6 +40,8 @@ type ChartPanelId =
 
 const PANEL_ORDER: ChartPanelId[] = [
   "matcher_duration_recent",
+  "matcher_duration_hist",
+  "matcher_duration_scatter",
   "plugins_top",
   "plugins_duration_top",
   "daily_msg_matcher",
@@ -166,19 +171,12 @@ const props = defineProps<{
   toolbarSummaryApi?: string | null;
   /** 插件 Matcher 片段（如「插件 145」） */
   toolbarSummaryPlugin?: string | null;
-  /** Matcher 平均耗时片段（如「均耗 320ms」） */
-  toolbarSummaryDuration?: string | null;
 }>();
 
 const emit = defineEmits<{
   drawToggle: [expanded: boolean];
   filterToggle: [expanded: boolean];
 }>();
-
-const toolbarSummaryText = computed(() => {
-  const d = props.toolbarSummaryDuration?.trim() ?? "";
-  return d || "";
-});
 
 const selectedApiKeys = ref<string[]>([]);
 const selectedMatcherKeys = ref<string[]>([]);
@@ -244,6 +242,258 @@ function fmtDurationMs(ms: number | null | undefined): string {
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
   if (n < 10) return `${n.toFixed(1)}ms`;
   return `${Math.round(n)}ms`;
+}
+
+/** 单次耗时列表 tooltip：保留原始毫秒精度 */
+function fmtDurationMsPrecise(ms: number | null | undefined): string {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n >= 60_000) return `${(n / 1000).toFixed(3)}s（${n.toFixed(3)} ms）`;
+  if (n >= 1000) return `${(n / 1000).toFixed(3)}s（${n.toFixed(3)} ms）`;
+  if (n < 0.001) return `${n.toFixed(6)} ms`;
+  if (n < 1) return `${n.toFixed(4)} ms`;
+  if (n < 10) return `${n.toFixed(3)} ms`;
+  return `${n.toFixed(2)} ms`;
+}
+
+function fmtDurationMsLogList(ms: number | null | undefined, subMsMode: boolean): string {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (subMsMode) {
+    if (n === 0) return "<0.001ms";
+    if (n < 0.001) return `${n.toFixed(4)}ms`;
+    return `${n.toFixed(3)}ms`;
+  }
+  return fmtDurationMs(ms);
+}
+
+const DURATION_HIST_BUCKET_ORDER = ["lt1", "1-10", "10-100", "100-1000", "1s+"] as const;
+
+const DURATION_HIST_BUCKET_LABELS: Record<(typeof DURATION_HIST_BUCKET_ORDER)[number], string> = {
+  lt1: "<1ms",
+  "1-10": "1–10ms",
+  "10-100": "10–100ms",
+  "100-1000": "100ms–1s",
+  "1s+": ">1s",
+};
+
+function durationHistBucketId(ms: number): (typeof DURATION_HIST_BUCKET_ORDER)[number] {
+  if (ms < 1) return "lt1";
+  if (ms < 10) return "1-10";
+  if (ms < 100) return "10-100";
+  if (ms < 1000) return "100-1000";
+  return "1s+";
+}
+
+function durationLogMsValues(rows: MatcherDurationLogEntry[]): number[] {
+  return rows
+    .map((r) => Number(r.duration_ms))
+    .filter((n) => Number.isFinite(n) && n >= 0)
+    .sort((a, b) => a - b);
+}
+
+function percentileSortedMs(sorted: number[], p: number): number | null {
+  if (!sorted.length) return null;
+  const rank = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  if (lo === hi) return sorted[lo]!;
+  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (rank - lo);
+}
+
+type DurationHistSegment = { plugin: string; count: number; color: string; y0: number; y1: number };
+
+type DurationHistPack = {
+  W: number;
+  H: number;
+  left: number;
+  bottom: number;
+  innerW: number;
+  innerH: number;
+  maxCount: number;
+  buckets: {
+    id: string;
+    label: string;
+    x: number;
+    w: number;
+    total: number;
+    segments: DurationHistSegment[];
+  }[];
+  yTicks: { y: number; t: string }[];
+  legend: { plugin: string; label: string; color: string }[];
+};
+
+type DurationScatterPoint = {
+  cx: number;
+  cy: number;
+  color: string;
+  plugin: string;
+  ms: number;
+  at: number;
+  hadError: boolean;
+};
+
+type DurationScatterPack = {
+  W: number;
+  H: number;
+  left: number;
+  bottom: number;
+  innerW: number;
+  innerH: number;
+  axisMax: number;
+  axisTopPlus: boolean;
+  points: DurationScatterPoint[];
+  yTicks: { y: number; t: string }[];
+  xTicks: { x: number; t: string }[];
+};
+
+function buildDurationHistPack(rows: MatcherDurationLogEntry[]): DurationHistPack | null {
+  if (!rows.length) return null;
+  const pluginTotals = new Map<string, number>();
+  const bucketPluginCounts = new Map<string, Map<string, number>>();
+  for (const bid of DURATION_HIST_BUCKET_ORDER) {
+    bucketPluginCounts.set(bid, new Map());
+  }
+  for (const row of rows) {
+    const plugin = row.plugin;
+    const ms = Number(row.duration_ms) || 0;
+    const bid = durationHistBucketId(ms);
+    pluginTotals.set(plugin, (pluginTotals.get(plugin) ?? 0) + 1);
+    const bp = bucketPluginCounts.get(bid)!;
+    bp.set(plugin, (bp.get(plugin) ?? 0) + 1);
+  }
+  const plugins = [...pluginTotals.keys()].sort(
+    (a, b) => (pluginTotals.get(b) ?? 0) - (pluginTotals.get(a) ?? 0) || a.localeCompare(b),
+  );
+  const W = 440;
+  const H = 220;
+  const padL = 36;
+  const padR = 10;
+  const padT = 12;
+  const padB = 40;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const bottom = padT + innerH;
+  const nB = DURATION_HIST_BUCKET_ORDER.length;
+  const slotW = innerW / nB;
+  const barW = slotW * 0.72;
+  let maxCount = 0;
+  const buckets: DurationHistPack["buckets"] = [];
+  for (let i = 0; i < nB; i++) {
+    const bid = DURATION_HIST_BUCKET_ORDER[i]!;
+    const bp = bucketPluginCounts.get(bid)!;
+    let total = 0;
+    const segments: DurationHistSegment[] = [];
+    let stack = 0;
+    for (const plugin of plugins) {
+      const count = bp.get(plugin) ?? 0;
+      if (count <= 0) continue;
+      total += count;
+      segments.push({
+        plugin,
+        count,
+        color: matcherPluginBarColor(plugin),
+        y0: stack,
+        y1: stack + count,
+      });
+      stack += count;
+    }
+    maxCount = Math.max(maxCount, total);
+    const x = left + i * slotW + (slotW - barW) / 2;
+    buckets.push({
+      id: bid,
+      label: DURATION_HIST_BUCKET_LABELS[bid],
+      x,
+      w: barW,
+      total,
+      segments,
+    });
+  }
+  if (maxCount <= 0) return null;
+  const yTicks = [
+    { y: bottom, t: "0次" },
+    { y: bottom - innerH / 2, t: fmtAxisCountTick(maxCount / 2) },
+    { y: padT, t: fmtAxisCountTick(maxCount) },
+  ];
+  return {
+    W,
+    H,
+    left,
+    bottom,
+    innerW,
+    innerH,
+    maxCount,
+    buckets,
+    yTicks,
+    legend: plugins.map((plugin) => ({
+      plugin,
+      label: matcherPluginDisplayName(plugin, props.pluginsMeta ?? undefined),
+      color: matcherPluginBarColor(plugin),
+    })),
+  };
+}
+
+function buildDurationScatterPack(rows: MatcherDurationLogEntry[]): DurationScatterPack | null {
+  if (!rows.length) return null;
+  const sorted = [...rows].sort((a, b) => (a.at || 0) - (b.at || 0));
+  const times = sorted.map((r) => Number(r.at) || 0).filter((t) => t > 0);
+  const durs = durationLogMsValues(sorted);
+  if (!times.length || !durs.length) return null;
+  const tMin = Math.min(...times);
+  const tMax = Math.max(...times);
+  const tSpan = Math.max(tMax - tMin, 1);
+  const { rawMax, scaleMax } = softBucketAxisMax(durs);
+  const axisMax = Math.max(scaleMax, 0.001);
+  const axisTopPlus = rawMax > scaleMax;
+  const W = 440;
+  const H = 220;
+  const padL = 46;
+  const padR = 12;
+  const padT = 12;
+  const padB = 38;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const left = padL;
+  const bottom = padT + innerH;
+  const xAt = (t: number) => left + ((t - tMin) / tSpan) * innerW;
+  const yAt = (ms: number) => bottom - Math.min(1, ms / axisMax) * innerH;
+  const points: DurationScatterPoint[] = sorted.map((row) => {
+    const ms = Number(row.duration_ms) || 0;
+    const at = Number(row.at) || 0;
+    return {
+      cx: xAt(at > 0 ? at : tMin),
+      cy: yAt(ms),
+      color: matcherPluginBarColor(row.plugin),
+      plugin: row.plugin,
+      ms,
+      at,
+      hadError: Boolean(row.had_error),
+    };
+  });
+  const tickTimes = pickEvenlySpacedTimes(tMin, tMax, 4);
+  const xTicks = cullOverlappingXTicks(
+    tickTimes.map((t) => ({ x: xAt(t), t: formatScatterAxisTime(t, tMin, tMax) })),
+    64,
+  );
+  const yTicks = [
+    { y: bottom, t: fmtDurationMsAxisTick(0) },
+    { y: bottom - innerH / 2, t: fmtDurationMsAxisTick(axisMax / 2) },
+    { y: padT, t: axisTopPlus ? `${fmtDurationMsAxisTick(axisMax)}+` : fmtDurationMsAxisTick(axisMax) },
+  ];
+  return {
+    W,
+    H,
+    left,
+    bottom,
+    innerW,
+    innerH,
+    axisMax,
+    axisTopPlus,
+    points,
+    yTicks,
+    xTicks,
+  };
 }
 
 function defaultTopKeys(
@@ -461,8 +711,35 @@ watch([selectedApiKeys, selectedMatcherKeys, selectedMatcherErrKeys, selectedDur
   });
 });
 
-/** 与「平均耗时」排行条同比例下限，避免最高项条过长、其余过短 */
-const PLUGIN_RANK_BAR_MIN_PCT = 12;
+/** 排行条宽度：最高项 100%；对 value/max 取 sqrt 再映射到 [MIN, 100)，便于次数等长尾对比 */
+const PLUGIN_RANK_BAR_MIN_PCT = 32;
+
+function rankBarWidthPercent(value: number, maxValue: number): number {
+  if (value <= 0 || maxValue <= 0) return 0;
+  const linearRatio = Math.min(1, value / maxValue);
+  const curvedRatio = Math.sqrt(linearRatio);
+  return Math.round(PLUGIN_RANK_BAR_MIN_PCT + (100 - PLUGIN_RANK_BAR_MIN_PCT) * curvedRatio);
+}
+
+/** 耗时条：按 value/max 线性映射至 0–100% */
+function linearBarWidthPercent(value: number, maxValue: number): number {
+  if (value <= 0 || maxValue <= 0) return 0;
+  return Math.round(Math.min(100, (value / maxValue) * 100));
+}
+
+const DURATION_LOG_SUB_MS = 1;
+
+/** 单次列表相对条：按列表内最大值线性比例 */
+function durationLogBarWidthPercent(durationMs: number, maxMs: number, subMsMode: boolean): number {
+  const v = Number(durationMs);
+  if (!Number.isFinite(v) || v < 0) return 0;
+  const max = Math.max(maxMs, 0.000_001);
+  if (v <= 0) {
+    if (subMsMode || max < DURATION_LOG_SUB_MS) return 2;
+    return 0;
+  }
+  return linearBarWidthPercent(v, max);
+}
 
 const topPlugins = computed(() =>
   [...props.plugins]
@@ -474,10 +751,7 @@ const maxRunsToday = computed(() => Math.max(1, ...topPlugins.value.map((p) => p
 
 function pluginRunsBarWidthPercent(p: PluginRunStatsRow): number {
   if (p.runs_today <= 0) return 0;
-  return Math.max(
-    PLUGIN_RANK_BAR_MIN_PCT,
-    Math.round((p.runs_today / maxRunsToday.value) * 100),
-  );
+  return rankBarWidthPercent(p.runs_today, maxRunsToday.value);
 }
 
 /** 后端有今日耗时样本即非 null（四舍五入后平均可为 0，与单次列表「<0.01ms」一致） */
@@ -486,9 +760,7 @@ function hasDurationSampleToday(p: PluginRunStatsRow): boolean {
 }
 
 function pluginTodayDurationBarMs(p: PluginRunStatsRow): number {
-  const avg = p.avg_duration_ms_today ?? 0;
-  const peak = p.max_duration_ms_today ?? 0;
-  return Math.max(avg, peak);
+  return p.avg_duration_ms_today ?? 0;
 }
 
 /** 条长按毫秒缩放；全体低于 1ms 时改用今日次数比例，避免条全空 */
@@ -503,36 +775,20 @@ const durationBarsSubMsMode = computed(
   () => topPluginsByDuration.value.length > 0 && maxDurationBarMs(topPluginsByDuration.value) < DURATION_BAR_SUB_MS,
 );
 
-/** 仅 Matcher 耗时类视图显示账号均耗；API/次数/异常等与均耗无关 */
-function chartPanelShowsDurationSummary(panel: ChartPanelId): boolean {
-  switch (panel) {
-    case "plugins_duration_top":
-      return !durationBarsSubMsMode.value;
-    case "matcher_duration_hourly":
-    case "matcher_duration_bucket":
-      return true;
-    default:
-      return false;
-  }
+function maxAvgDurationMsToday(list: PluginRunStatsRow[]): number {
+  if (!list.length) return 0;
+  return Math.max(...list.map((p) => p.avg_duration_ms_today ?? 0));
 }
-
-const toolbarSummaryVisible = computed(
-  () => Boolean(toolbarSummaryText.value) && chartPanelShowsDurationSummary(chartPanel.value),
-);
 
 function pluginDurationBarWidthPercent(p: PluginRunStatsRow): number {
   const list = topPluginsByDuration.value;
   if (!list.length) return 0;
-  const maxMs = maxDurationBarMs(list);
-  if (maxMs >= DURATION_BAR_SUB_MS) {
-    return Math.round((pluginTodayDurationBarMs(p) / Math.max(maxMs, 0.01)) * 100);
+  const maxAvg = maxAvgDurationMsToday(list);
+  if (maxAvg >= DURATION_BAR_SUB_MS) {
+    return linearBarWidthPercent(p.avg_duration_ms_today ?? 0, maxAvg);
   }
   const maxRun = Math.max(1, ...list.map((x) => x.runs_today));
-  if (p.runs_today <= 0) return 0;
-  return Math.max(
-    PLUGIN_RANK_BAR_MIN_PCT,
-    Math.round((p.runs_today / maxRun) * 100),
-  );
+  return linearBarWidthPercent(p.runs_today, maxRun);
 }
 
 function showPeakDurationToday(p: PluginRunStatsRow): boolean {
@@ -567,6 +823,43 @@ function fmtBucketAxisTime(sec: number): string {
   const day0 = localDayStartSec();
   if (sec >= day0 && sec < day0 + 86400) return `${hh}:${mm}`;
   return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
+function pickEvenlySpacedTimes(tMin: number, tMax: number, maxTicks: number): number[] {
+  if (!Number.isFinite(tMin) || !Number.isFinite(tMax)) return [];
+  if (maxTicks <= 1 || tMax <= tMin) return [tMin];
+  const out: number[] = [];
+  for (let k = 0; k < maxTicks; k++) {
+    out.push(Math.round(tMin + (k / (maxTicks - 1)) * (tMax - tMin)));
+  }
+  return [...new Set(out)].sort((a, b) => a - b);
+}
+
+function formatScatterAxisTime(sec: number, tMin: number, tMax: number): string {
+  const span = Math.max(tMax - tMin, 1);
+  const d = new Date(sec * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  if (span < 120) return `${hh}:${mm}:${ss}`;
+  return fmtBucketAxisTime(sec);
+}
+
+function cullOverlappingXTicks(
+  ticks: { x: number; t: string }[],
+  minGapPx: number,
+): { x: number; t: string }[] {
+  if (ticks.length <= 1) return ticks;
+  const out: { x: number; t: string }[] = [ticks[0]!];
+  for (let i = 1; i < ticks.length; i++) {
+    const cur = ticks[i]!;
+    if (cur.x - out[out.length - 1]!.x >= minGapPx) out.push(cur);
+  }
+  const last = ticks[ticks.length - 1]!;
+  const tail = out[out.length - 1]!;
+  if (tail.x !== last.x && last.x - tail.x >= minGapPx * 0.5) out.push(last);
+  return out;
 }
 
 /** 压低极少数极高桶对纵轴的拉扯：刻度按 scaleMax，超过部分柱顶截断至顶格（刻度带「+」提示）。 */
@@ -622,6 +915,7 @@ function downsampleBucketTimeline(
 function buildBucketBarPack(
   rows: { label: string; points: { at: number; total: number }[] }[],
   narrowViewport: boolean,
+  fmtTick: (n: number) => string = fmtAxisCountTick,
 ): BucketBarPack | null {
   if (!rows.length) return null;
   const timeSet = new Set<number>();
@@ -694,10 +988,8 @@ function buildBucketBarPack(
   }
 
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
-  const fmtTick = (x: number) =>
-    Number.isInteger(x) ? String(x) : x >= 10 ? String(Math.round(x)) : x.toFixed(1);
   const yTicks = [
-    { y: bottom, t: "0" },
+    { y: bottom, t: fmtTick(0) },
     { y: bottom - innerH / 2, t: fmtTick(axisMax / 2) },
     { y: top, t: axisTopPlus ? `${fmtTick(axisMax)}+` : fmtTick(axisMax) },
   ];
@@ -733,10 +1025,10 @@ type HourlyLayerLine = { label: string; color: string; poly: string };
 
 function buildHourlyChartPack(
   rows: { label: string; hours: number[] }[],
-  fmtTick?: (n: number) => string,
+  fmtTick: (n: number) => string = fmtAxisCountTick,
 ): HourlyChartPack | null {
   if (!rows.length) return null;
-  const formatTick = fmtTick ?? fmtAxisCount;
+  const formatTick = fmtTick;
   const flat = rows.flatMap((r) => r.hours);
   const { rawMax, scaleMax } = softBucketAxisMax(flat);
   const axisMax = scaleMax;
@@ -767,7 +1059,7 @@ function buildHourlyChartPack(
 
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
   const yTicks = [
-    { y: bottom, t: "0" },
+    { y: bottom, t: formatTick(0) },
     { y: bottom - innerH / 2, t: formatTick(axisMax / 2) },
     { y: top, t: axisTopPlus ? `${formatTick(axisMax)}+` : formatTick(axisMax) },
   ];
@@ -841,7 +1133,7 @@ const matcherDurationBucketPack = computed(() => {
       label: `${matcherPluginDisplayName(s.plugin, meta)} · 均耗`,
       points: s.points,
     }));
-  return buildBucketBarPack(rows, bucketViewportNarrow.value);
+  return buildBucketBarPack(rows, bucketViewportNarrow.value, fmtDurationMsAxisTick);
 });
 
 const hourlyMatcherDurationPack = computed(() => {
@@ -853,33 +1145,13 @@ const hourlyMatcherDurationPack = computed(() => {
       hours: aggregateLocalTodayAvgDuration(durationMsPoints(s.plugin), durationRunPoints(s.plugin)),
     }))
     .filter((r) => r.hours.some((v) => v > 0));
-  return buildHourlyChartPack(rows, fmtDurationMs);
+  return buildHourlyChartPack(rows, fmtDurationMsAxisTick);
 });
 
-const sparkPoly = computed((): string | undefined => {
-  const s = props.series;
-  if (s.length < 2) return undefined;
-  const minT = Math.min(...s.map((x) => x.t));
-  const maxT = Math.max(...s.map((x) => x.t));
-  const totals = s.map((x) => x.total);
-  const minV = Math.min(...totals);
-  const maxV = Math.max(...totals);
-  const dr = maxT - minT || 1;
-  const dv = maxV - minV || 1e-6;
-  const w = 100;
-  const h = 44;
-  return s
-    .map((pt) => {
-      const x = ((pt.t - minT) / dr) * w;
-      const y = h - ((pt.total - minV) / dv) * (h - 8) - 4;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-});
+const sparkPoly = computed((): string | undefined => buildPluginRunSparkPoly(props.series));
 
 function fmtTime(t: number): string {
-  const d = new Date(t);
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  return formatPluginRunSampleTime(t);
 }
 
 const lastLabel = computed(() => {
@@ -905,6 +1177,33 @@ const matcherErrCandidates = computed(() =>
 const matcherDurationCandidates = computed(() =>
   (props.matcherAvgDurationMsByPlugin ?? []).filter((s) => (s.points?.length ?? 0) > 0),
 );
+
+const matcherPluginColorMap = computed((): ReadonlyMap<string, string> => {
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const push = (plugin: string) => {
+    const key = String(plugin || "").trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    ordered.push(key);
+  };
+  for (const s of matcherDurationCandidates.value) push(s.plugin);
+  for (const s of matcherRunCandidates.value) push(s.plugin);
+  for (const it of props.matcherDurationLog ?? []) push(it.plugin);
+  const map = new Map<string, string>();
+  ordered.forEach((plugin, i) => {
+    map.set(plugin, COLORS[i % COLORS.length]!);
+  });
+  return map;
+});
+
+function matcherPluginBarColor(plugin: string): string {
+  return matcherPluginColorMap.value.get(plugin) ?? COLORS[0]!;
+}
+
+function matcherPluginBarFillBackground(color: string): string {
+  return `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 80%, transparent))`;
+}
 
 function durationRunPoints(plugin: string): { at: number; total: number }[] {
   return props.matcherRunsByPlugin?.find((s) => s.plugin === plugin)?.points ?? [];
@@ -965,7 +1264,12 @@ const toolbarHintText = computed(() => {
 });
 
 const toolbarHintRowVisible = computed(
-  () => Boolean(toolbarHintText.value || toolbarSummaryVisible.value),
+  () =>
+    Boolean(
+      toolbarHintText.value ||
+        durationRecentToolbarSummary.value ||
+        durationRecentPercentileToolbarText.value,
+    ),
 );
 
 function toggleChartsDraw() {
@@ -1020,6 +1324,81 @@ const filteredRecentDurationRows = computed(() =>
   capDurationLogPerPlugin(filteredRecentDurationRowsRaw.value, matcherDurationLogPerPluginCap.value),
 );
 
+type MatcherDurationLogDisplayRow = MatcherDurationLogEntry & {
+  barWidthPct: number;
+  barColor: string;
+};
+
+const durationRecentLogSubMsMode = computed(() => {
+  const rows = filteredRecentDurationRows.value;
+  if (!rows.length) return false;
+  const maxMs = Math.max(...rows.map((r) => Number(r.duration_ms) || 0));
+  return maxMs < DURATION_LOG_SUB_MS;
+});
+
+const filteredRecentDurationDisplayRows = computed((): MatcherDurationLogDisplayRow[] => {
+  const rows = filteredRecentDurationRows.value;
+  if (!rows.length) return [];
+  const subMs = durationRecentLogSubMsMode.value;
+  const maxMs = Math.max(...rows.map((r) => Number(r.duration_ms) || 0), 0.000_001);
+  return rows.map((it) => ({
+    ...it,
+    barWidthPct: durationLogBarWidthPercent(Number(it.duration_ms) || 0, maxMs, subMs),
+    barColor: matcherPluginBarColor(it.plugin),
+  }));
+});
+
+const durationRecentToolbarSummary = computed(() => {
+  if (chartPanel.value !== "matcher_duration_recent") return "";
+  const rows = filteredRecentDurationRows.value;
+  if (rows.length < 2) return "";
+  const newest = rows[0]!.at;
+  const oldest = rows[rows.length - 1]!.at;
+  const spanSec = Math.max(0, Math.abs(newest - oldest));
+  const spanLabel =
+    spanSec >= 3600
+      ? `${Math.floor(spanSec / 3600)} 小时 ${Math.floor((spanSec % 3600) / 60)} 分`
+      : spanSec >= 60
+        ? `${Math.floor(spanSec / 60)} 分 ${spanSec % 60} 秒`
+        : `${spanSec} 秒`;
+  return `${formatDurationLogAtCompact(newest)} → ${formatDurationLogAtCompact(oldest)} · ${spanLabel} · ${rows.length} 条`;
+});
+
+const durationRecentPercentileSummary = computed(() => {
+  const vals = durationLogMsValues(filteredRecentDurationRows.value);
+  if (!vals.length) return null;
+  return {
+    n: vals.length,
+    p50: percentileSortedMs(vals, 50),
+    p95: percentileSortedMs(vals, 95),
+    max: vals[vals.length - 1]!,
+  };
+});
+
+const durationRecentPercentileToolbarText = computed(() => {
+  if (
+    chartPanel.value !== "matcher_duration_recent" &&
+    chartPanel.value !== "matcher_duration_hist" &&
+    chartPanel.value !== "matcher_duration_scatter"
+  ) {
+    return "";
+  }
+  const s = durationRecentPercentileSummary.value;
+  if (!s) return "";
+  return `P50 ${fmtDurationMs(s.p50)} · P95 ${fmtDurationMs(s.p95)} · Max ${fmtDurationMs(s.max)} · ${s.n} 条`;
+});
+
+const durationHistPack = computed(() => buildDurationHistPack(filteredRecentDurationRows.value));
+
+const durationScatterPack = computed(() => buildDurationScatterPack(filteredRecentDurationRows.value));
+
+const chartUsesDurationLogFilter = computed(
+  () =>
+    chartPanel.value === "matcher_duration_recent" ||
+    chartPanel.value === "matcher_duration_hist" ||
+    chartPanel.value === "matcher_duration_scatter",
+);
+
 const durationRecentDominant = computed(() =>
   durationRecentDominantPlugin(recentDurationRows.value, durationRecentCandidates.value),
 );
@@ -1060,6 +1439,8 @@ const hasMatcherDurationSignal = computed(
 
 const panelAvailability = computed(() => ({
   matcher_duration_recent: true,
+  matcher_duration_hist: filteredRecentDurationRowsRaw.value.length > 0 || recentDurationRows.value.length > 0,
+  matcher_duration_scatter: filteredRecentDurationRowsRaw.value.length > 0 || recentDurationRows.value.length > 0,
   plugins_top: topPlugins.value.length > 0,
   plugins_duration_top: topPluginsByDuration.value.length > 0,
   daily_msg_matcher: (props.dailyStatRows?.length ?? 0) >= 1,
@@ -1077,6 +1458,8 @@ const panelAvailability = computed(() => ({
 const panelOptions = computed(() => {
   const labels: Record<ChartPanelId, string> = {
     matcher_duration_recent: "Matcher 单次耗时",
+    matcher_duration_hist: "Matcher 耗时 · 分布",
+    matcher_duration_scatter: "Matcher 耗时 · 散点",
     plugins_top: "插件今日次数",
     plugins_duration_top: "插件今日平均耗时",
     daily_msg_matcher: "消息 / Matcher（按日）",
@@ -1109,6 +1492,26 @@ function fmtAxisCount(n: number): string {
   return Number.isInteger(x) ? String(x) : x.toFixed(1);
 }
 
+function fmtAxisCountTick(n: number): string {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (x === 0) return "0";
+  return `${fmtAxisCount(x)}次`;
+}
+
+function fmtAxisMsgTick(n: number): string {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (x === 0) return "0";
+  return `${fmtAxisCount(x)}条`;
+}
+
+function fmtDurationMsAxisTick(ms: number): string {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  return fmtDurationMs(n);
+}
+
 const chartPanelExplain = computed((): ChartPanelExplain | null => {
   const cap = matcherDurationLogCap.value;
   const apiBucket = fmtBucketSec(props.apiHistoryBucketSec);
@@ -1124,9 +1527,35 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
             dd: `写入 matcher_durations.jsonl；每账号最多 ${cap} 条，单插件最多 ${matcherDurationLogPerPluginCap.value} 条，避免复读等高频占满。`,
           },
           {
-            dt: "勾选",
-            dd: "默认不勾选占记录过半的插件；列表内每插件再限显示条数（较新优先）。",
+            dt: "读图方式",
+            dd: "耗时列悬停可看精确毫秒；全体 <1ms 时改显示小数。相对条为列表内线性比例；同插件同色（与耗时图例一致）。",
           },
+          {
+            dt: "勾选",
+            dd: "默认不勾选占记录过半的插件；展开「选项」勾选要看的插件，列表内每插件再限显示条数（较新优先）。",
+          },
+          {
+            dt: "分位数",
+            dd: "工具栏 P50/P95/Max 基于当前勾选样本；分布与散点视图共用同一筛选。",
+          },
+        ],
+      };
+    case "matcher_duration_hist":
+      return {
+        lede: "当前账号 · 近期单次耗时分布（按耗时区间分桶）。",
+        items: [
+          { dt: "数据范围", dd: "与「单次耗时」相同缓冲；柱高为区间内次数，多插件堆叠同色。" },
+          { dt: "读图方式", dd: "左→右：<1ms 至 >1s；双峰分布常见于「大量快路径 + 少量长尾」。" },
+          { dt: "分位数", dd: "工具栏 P50/P95/Max 便于与直方图对照。" },
+        ],
+      };
+    case "matcher_duration_scatter":
+      return {
+        lede: "当前账号 · 单次耗时随时间散点（左旧右新）。",
+        items: [
+          { dt: "读图方式", dd: "纵轴为墙钟耗时；悬停圆点可看插件与精确值；异常点为描边高亮。" },
+          { dt: "纵轴", dd: "极值过多时顶部刻度可能压缩（与按桶图相同的软上限）。" },
+          { dt: "分位数", dd: "工具栏 P50/P95/Max 为当前勾选样本整体统计。" },
         ],
       };
     case "plugins_top":
@@ -1135,7 +1564,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         items: [
           {
             dt: "读图方式",
-            dd: "条形长度为今日次数相对比例（与「平均耗时」视图同宽）；右侧为次数，有样本时附带平均耗时。",
+            dd: "条形长度按次数开方压缩后映射（最高 100%，其余不低于约 32%，便于极端差距下对比）；右侧为次数，有样本时附带平均耗时。",
           },
           { dt: "相关视图", dd: "单次明细见「Matcher 单次耗时」；耗时见「插件今日平均耗时」。" },
         ],
@@ -1151,11 +1580,11 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
           durationBarsSubMsMode.value
             ? {
                 dt: "读图方式",
-                dd: "耗时均 <1ms，条长按今日次数相对比例（与「今日次数」同宽）；右侧为墙钟耗时与今日次数。",
+                dd: "耗时均 <1ms，条长按今日次数线性比例；右侧为平均耗时、今日次数。",
               }
             : {
                 dt: "读图方式",
-                dd: "条形长度为平均毫秒数；右侧为耗时、今日次数，「峰」为今日最大单次。",
+                dd: "条形长度按今日平均耗时线性比例（最高 100%）；右侧为平均耗时、今日次数，「峰」为今日最大单次。",
               },
           { dt: "相关视图", dd: "仅次数无耗时样本的插件见「插件今日次数」。" },
         ],
@@ -1380,7 +1809,6 @@ const dailyChartPack = computed(() => {
   const left = padL;
   const top = padT;
   const bottom = padT + innerH;
-  const fmtTick = (x: number) => fmtAxisCount(x);
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
 
   if (raw.length === 1) {
@@ -1411,13 +1839,13 @@ const dailyChartPack = computed(() => {
       singleDay: true,
       leftTicks: [
         { y: bottom, t: "0" },
-        { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
-        { y: top, t: fmtTick(maxM) },
+        { y: bottom - innerH / 2, t: fmtAxisMsgTick(maxM / 2) },
+        { y: top, t: fmtAxisMsgTick(maxM) },
       ],
       rightTicks: [
         { y: bottom, t: "0" },
-        { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
-        { y: top, t: fmtTick(maxMat) },
+        { y: bottom - innerH / 2, t: fmtAxisCountTick(maxMat / 2) },
+        { y: top, t: fmtAxisCountTick(maxMat) },
       ],
       bars: [
         {
@@ -1465,13 +1893,13 @@ const dailyChartPack = computed(() => {
   const matAreaD = linearAreaPath(matPts, bottom);
   const leftTicks = [
     { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtTick(maxM / 2) },
-    { y: top, t: fmtTick(maxM) },
+    { y: bottom - innerH / 2, t: fmtAxisMsgTick(maxM / 2) },
+    { y: top, t: fmtAxisMsgTick(maxM) },
   ];
   const rightTicks = [
     { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtTick(maxMat / 2) },
-    { y: top, t: fmtTick(maxMat) },
+    { y: bottom - innerH / 2, t: fmtAxisCountTick(maxMat / 2) },
+    { y: top, t: fmtAxisCountTick(maxMat) },
   ];
   const xi = pickTickIndices(n, 10);
   const xTicks = xi.map((i) => ({
@@ -1562,7 +1990,7 @@ const dailyChartPack = computed(() => {
           </button>
         </div>
       </div>
-      </div>
+    </div>
       <div
         v-if="toolbarHintRowVisible"
         class="home-plugin-charts__toolbar-hint-row"
@@ -1574,10 +2002,16 @@ const dailyChartPack = computed(() => {
           {{ toolbarHintText }}
         </p>
         <p
-          v-if="toolbarSummaryVisible"
+          v-if="durationRecentToolbarSummary"
           class="home-plugin-charts__toolbar-summary muted"
         >
-          均耗：{{ toolbarSummaryText }}
+          {{ durationRecentToolbarSummary }}
+        </p>
+        <p
+          v-if="durationRecentPercentileToolbarText"
+          class="home-plugin-charts__toolbar-summary home-plugin-charts__toolbar-summary--pct muted"
+        >
+          {{ durationRecentPercentileToolbarText }}
         </p>
       </div>
 
@@ -1607,7 +2041,12 @@ const dailyChartPack = computed(() => {
         v-else-if="!filteredRecentDurationRows.length"
         class="muted home-plugin-charts__empty"
       >
-        请至少勾选一个插件（展开「选项」）。
+        <template v-if="!selectedDurationRecentKeys.length && durationRecentDominant">
+          占记录过半的「{{ pluginBarLabel(durationRecentDominant.plugin) }}」已默认隐藏；点「选项」勾选插件。
+        </template>
+        <template v-else>
+          请至少勾选一个插件（展开「选项」）。
+        </template>
       </p>
       <div
         v-else
@@ -1620,21 +2059,42 @@ const dailyChartPack = computed(() => {
           >
             <span>耗时</span>
             <span>插件</span>
+            <span class="home-matcher-dur-log__head-bar">相对</span>
             <span>时间</span>
             <span />
           </div>
           <ul class="home-matcher-dur-log__list">
             <li
-              v-for="(it, idx) in filteredRecentDurationRows"
+              v-for="(it, idx) in filteredRecentDurationDisplayRows"
               :key="`${it.at}-${idx}-${it.plugin}`"
               class="home-matcher-dur-log__row"
               :class="{ 'home-matcher-dur-log__row--err': it.had_error }"
             >
-              <span class="home-matcher-dur-log__ms">{{ fmtDurationMs(it.duration_ms) }}</span>
+              <span
+                class="home-matcher-dur-log__ms"
+                :style="{ color: it.barColor }"
+                :title="fmtDurationMsPrecise(it.duration_ms)"
+              >{{ fmtDurationMsLogList(it.duration_ms, durationRecentLogSubMsMode) }}</span>
               <span
                 class="home-matcher-dur-log__plugin"
                 :title="it.plugin"
-              >{{ pluginBarLabel(it.plugin) }}</span>
+              >
+                <i
+                  class="home-matcher-dur-log__plugin-sw"
+                  :style="{ background: it.barColor }"
+                  aria-hidden="true"
+                />
+                {{ pluginBarLabel(it.plugin) }}
+              </span>
+              <div
+                class="home-matcher-dur-log__track"
+                aria-hidden="true"
+              >
+                <span
+                  class="home-matcher-dur-log__fill"
+                  :style="{ width: `${it.barWidthPct}%`, background: matcherPluginBarFillBackground(it.barColor) }"
+                />
+              </div>
               <span
                 class="home-matcher-dur-log__at muted"
                 :title="formatDurationLogAt(it.at)"
@@ -1645,20 +2105,71 @@ const dailyChartPack = computed(() => {
               >异常</span>
             </li>
           </ul>
-          <div
-            v-if="filteredRecentDurationRows.length >= 2"
-            class="home-matcher-dur-log__time-axis muted"
-            aria-hidden="true"
-          >
-            <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
-            <span class="home-matcher-dur-log__time-axis-range">
-              <span :title="formatDurationLogAt(filteredRecentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[0]!.at) }}</span>
-              <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧</span>
-              <span :title="formatDurationLogAt(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at) }}</span>
-            </span>
-          </div>
+        </div>
+        <div
+          v-if="filteredRecentDurationDisplayRows.length >= 2"
+          class="home-matcher-dur-log__time-axis home-matcher-dur-log__time-axis--foot muted"
+          aria-hidden="true"
+        >
+          <span class="home-matcher-dur-log__time-axis-label">时间轴</span>
+          <span class="home-matcher-dur-log__time-axis-range">
+            <span :title="formatDurationLogAt(filteredRecentDurationRows[0]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[0]!.at) }}</span>
+            <span class="home-matcher-dur-log__time-axis-mid">较新 ← → 较旧 · {{ filteredRecentDurationRows.length }} 条</span>
+            <span :title="formatDurationLogAt(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at)">{{ formatDurationLogAtCompact(filteredRecentDurationRows[filteredRecentDurationRows.length - 1]!.at) }}</span>
+          </span>
         </div>
       </div>
+      </div>
+    </div>
+
+    <div
+      v-if="chartPanel === 'matcher_duration_hist'"
+      class="home-plugin-charts__block"
+    >
+      <div class="home-plugin-charts__flip">
+      <p v-if="busy && !recentDurationRows.length" class="muted home-plugin-charts__empty">加载中…</p>
+      <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
+      <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
+      <div v-else-if="durationHistPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
+        <svg class="home-matcher-dur-hist__svg" :viewBox="`0 0 ${durationHistPack.W} ${durationHistPack.H}`" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <line class="home-plugin-bucket__axis" :x1="durationHistPack.left" :y1="durationHistPack.bottom" :x2="durationHistPack.left + durationHistPack.innerW" :y2="durationHistPack.bottom" />
+          <text v-for="(tk, ti) in durationHistPack.yTicks" :key="`dhy-${ti}`" class="home-plugin-bucket__ytick" :x="4" :y="tk.y + 4">{{ tk.t }}</text>
+          <template v-for="bucket in durationHistPack.buckets" :key="bucket.id">
+            <text class="home-plugin-bucket__xtick" text-anchor="middle" :x="bucket.x + bucket.w / 2" :y="durationHistPack.H - 8">{{ bucket.label }}</text>
+            <rect v-for="(seg, si) in bucket.segments" :key="`${bucket.id}-${seg.plugin}-${si}`" class="home-matcher-dur-hist__seg" :x="bucket.x" :y="durationHistPack.bottom - (seg.y1 / durationHistPack.maxCount) * durationHistPack.innerH" :width="bucket.w" :height="Math.max(((seg.y1 - seg.y0) / durationHistPack.maxCount) * durationHistPack.innerH, seg.count > 0 ? 1.2 : 0)" :fill="seg.color" rx="1">
+              <title>{{ pluginBarLabel(seg.plugin) }} · {{ bucket.label }} · {{ seg.count }} 次</title>
+            </rect>
+          </template>
+        </svg>
+        <div class="home-plugin-legend home-matcher-dur-analyze__legend">
+          <span v-for="leg in durationHistPack.legend" :key="`dhl-${leg.plugin}`" class="home-plugin-legend__item">
+            <i class="home-plugin-legend__sw" :style="{ background: leg.color }" />
+            <span :title="leg.plugin">{{ leg.label }}</span>
+          </span>
+        </div>
+      </div>
+      <p v-else class="muted home-plugin-charts__empty">当前样本无法生成分布图。</p>
+      </div>
+    </div>
+
+    <div v-if="chartPanel === 'matcher_duration_scatter'" class="home-plugin-charts__block">
+      <div class="home-plugin-charts__flip">
+      <p v-if="busy && !recentDurationRows.length" class="muted home-plugin-charts__empty">加载中…</p>
+      <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
+      <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
+      <div v-else-if="durationScatterPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
+        <svg class="home-matcher-dur-scatter__svg" :viewBox="`0 0 ${durationScatterPack.W} ${durationScatterPack.H}`" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <line v-for="(gy, gi) in [0, 0.5, 1]" :key="`dsg-${gi}`" class="home-plugin-bucket__grid" :x1="durationScatterPack.left" :y1="durationScatterPack.bottom - gy * durationScatterPack.innerH" :x2="durationScatterPack.left + durationScatterPack.innerW" :y2="durationScatterPack.bottom - gy * durationScatterPack.innerH" />
+          <line class="home-plugin-bucket__axis" :x1="durationScatterPack.left" :y1="durationScatterPack.bottom" :x2="durationScatterPack.left + durationScatterPack.innerW" :y2="durationScatterPack.bottom" />
+          <text v-for="(tk, ti) in durationScatterPack.yTicks" :key="`dsy-${ti}`" class="home-plugin-bucket__ytick" :x="4" :y="tk.y + 4">{{ tk.t }}</text>
+          <text v-for="(xk, xi) in durationScatterPack.xTicks" :key="`dsx-${xi}`" class="home-plugin-bucket__xtick" text-anchor="middle" :x="xk.x" :y="durationScatterPack.H - 6">{{ xk.t }}</text>
+          <circle v-for="(pt, pi) in durationScatterPack.points" :key="`dsp-${pi}-${pt.at}-${pt.plugin}`" class="home-matcher-dur-scatter__dot" :class="{ 'home-matcher-dur-scatter__dot--err': pt.hadError }" :cx="pt.cx" :cy="pt.cy" :r="pt.hadError ? 4 : 3" :fill="pt.color">
+            <title>{{ pluginBarLabel(pt.plugin) }} · {{ fmtDurationMsPrecise(pt.ms) }} · {{ formatDurationLogAt(pt.at) }}</title>
+          </circle>
+        </svg>
+        <p class="muted home-matcher-dur-scatter__hint">横轴：时间（左旧右新） · 纵轴：单次耗时</p>
+      </div>
+      <p v-else class="muted home-plugin-charts__empty">当前样本无法生成散点图。</p>
       </div>
     </div>
 
@@ -1747,7 +2258,7 @@ const dailyChartPack = computed(() => {
             />
           </div>
           <span class="home-plugin-bars__val home-plugin-bars__val--stack">
-            <span class="home-plugin-bars__val-line">{{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
+            <span class="home-plugin-bars__val-line">均 {{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
             <span
               v-if="showPeakDurationToday(p)"
               class="home-plugin-bars__val-line muted"
@@ -2702,7 +3213,7 @@ const dailyChartPack = computed(() => {
               </label>
             </div>
           </div>
-        <div v-if="chartPanel === 'matcher_duration_recent' && durationRecentCandidates.length" class="home-plugin-sel">
+        <div v-if="chartUsesDurationLogFilter && durationRecentCandidates.length" class="home-plugin-sel">
             <span class="home-plugin-sel__actions">
               <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(true)">全选</button>
               <button type="button" class="home-plugin-sel__btn" @click="toggleAllDurationRecent(false)">全不选</button>
@@ -3113,9 +3624,11 @@ const dailyChartPack = computed(() => {
   min-height: 22px;
 }
 .home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
-  grid-template-columns: minmax(0, 0.95fr) minmax(48px, 1.55fr) minmax(4.75rem, max-content);
+  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(4.25rem, 4.85rem);
   min-height: 28px;
   align-items: center;
+  gap: 15px;
+  padding-left: 8px;
 }
 .home-plugin-bars__row {
   display: grid;
@@ -3130,6 +3643,10 @@ const dailyChartPack = computed(() => {
   white-space: nowrap;
   color: var(--text-muted);
   font-weight: 600;
+}
+.home-plugin-bars--plugin-rank .home-plugin-bars__name {
+  min-width: 0;
+  max-width: 5.75rem;
 }
 .home-plugin-bars__track {
   height: 8px;
@@ -3163,33 +3680,53 @@ const dailyChartPack = computed(() => {
   color: var(--text-dim);
 }
 .home-matcher-dur-log {
+  --home-matcher-dur-log-ms-col: 5.25rem;
+  --home-matcher-dur-log-plugin-col: 5.75rem;
+  --home-matcher-dur-log-cols: var(--home-matcher-dur-log-ms-col) var(--home-matcher-dur-log-plugin-col) minmax(36px, 1fr) auto fit-content(2.25rem);
   border: 1px solid var(--border);
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 6px 8px;
   max-height: min(420px, 52vh);
-  overflow: auto;
+  overflow: hidden;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .home-matcher-dur-log__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
 }
 .home-matcher-dur-log__head {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--home-matcher-dur-log-cols);
   gap: 4px 10px;
-  padding: 0 6px 4px;
+  padding: 0 6px 4px 2px;
   font-size: 0.72rem;
   width: 100%;
   box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-elev);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.home-matcher-dur-log__head > span:first-child {
+  text-align: left;
+}
+.home-matcher-dur-log__head-bar {
+  font-size: 0.68rem;
+  opacity: 0.85;
 }
 .home-matcher-dur-log__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 0 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -3198,10 +3735,10 @@ const dailyChartPack = computed(() => {
 }
 .home-matcher-dur-log__row {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--home-matcher-dur-log-cols);
   gap: 4px 10px;
   align-items: center;
-  padding: 4px 6px;
+  padding: 4px 6px 4px 2px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
   font-size: 0.8rem;
@@ -3211,7 +3748,7 @@ const dailyChartPack = computed(() => {
 }
 .home-matcher-dur-log__time-axis {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--home-matcher-dur-log-cols);
   gap: 4px 10px;
   align-items: center;
   margin-top: 6px;
@@ -3221,6 +3758,16 @@ const dailyChartPack = computed(() => {
   line-height: 1.3;
   width: 100%;
   box-sizing: border-box;
+}
+.home-matcher-dur-log__time-axis--foot {
+  flex: 0 0 auto;
+  margin-top: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 6px 8px 4px;
+  background: var(--bg-elev);
+}
+.home-matcher-dur-log__time-axis--foot .home-matcher-dur-log__time-axis-range {
+  grid-column: 2 / -1;
 }
 .home-matcher-dur-log__time-axis-label {
   font-weight: 650;
@@ -3251,14 +3798,41 @@ const dailyChartPack = computed(() => {
 }
 .home-matcher-dur-log__ms {
   font-weight: 700;
-  color: #fdba74;
   white-space: nowrap;
+  text-align: left;
+  justify-self: start;
+  min-width: 0;
 }
 .home-matcher-dur-log__plugin {
   min-width: 0;
+  max-width: var(--home-matcher-dur-log-plugin-col);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.home-matcher-dur-log__plugin-sw {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  opacity: 0.95;
+}
+.home-matcher-dur-log__track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-width: 0;
+}
+.home-matcher-dur-log__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  min-width: 2px;
 }
 .home-matcher-dur-log__at {
   font-size: 0.72rem;
@@ -3272,6 +3846,7 @@ const dailyChartPack = computed(() => {
   border-radius: 4px;
   background: rgba(239, 68, 68, 0.2);
   color: #fecaca;
+  justify-self: end;
 }
 .home-plugin-bars__val--stack {
   display: flex;
@@ -3426,6 +4001,59 @@ const dailyChartPack = computed(() => {
   opacity: 0.9;
 }
 
+.home-matcher-dur-analyze {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  background: var(--bg-elev);
+  padding: 8px 10px 8px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+.home-matcher-dur-hist__svg,
+.home-matcher-dur-scatter__svg {
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  height: 100%;
+  display: block;
+  box-sizing: border-box;
+}
+.home-plugin-charts__viz .home-matcher-dur-hist__svg,
+.home-plugin-charts__viz .home-matcher-dur-scatter__svg {
+  min-height: 120px;
+  max-height: min(360px, 52vh);
+  height: auto;
+  aspect-ratio: 440 / 220;
+}
+.home-plugin-charts__viz .home-matcher-dur-analyze .home-matcher-dur-hist__svg,
+.home-plugin-charts__viz .home-matcher-dur-analyze .home-matcher-dur-scatter__svg {
+  max-height: none;
+  aspect-ratio: auto;
+}
+.home-matcher-dur-hist__seg {
+  opacity: 0.92;
+}
+.home-matcher-dur-analyze__legend {
+  margin-top: 6px;
+}
+.home-matcher-dur-scatter__dot {
+  opacity: 0.85;
+}
+.home-matcher-dur-scatter__dot--err {
+  stroke: color-mix(in srgb, var(--danger) 88%, var(--text));
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.home-matcher-dur-scatter__hint {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 /* 按「图表区块实际宽度」断行，避免宽视口 + 窄内容列时仍横向挤压 */
 @container (max-width: 640px) {
   .home-plugin-charts__toolbar {
@@ -3441,6 +4069,53 @@ const dailyChartPack = computed(() => {
 }
 
 /* 无容器查询时的回退（整页窄屏） */
+@media (max-width: 560px) {
+  .home-matcher-dur-log {
+    --home-matcher-dur-log-cols: minmax(0, 1fr) auto;
+    max-height: min(360px, 48vh);
+  }
+  .home-matcher-dur-log__head {
+    display: none;
+  }
+  .home-matcher-dur-log__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "ms at"
+      "plugin plugin"
+      "bar bar";
+    gap: 2px 8px;
+    padding: 8px 8px 8px 10px;
+  }
+  .home-matcher-dur-log__ms {
+    grid-area: ms;
+  }
+  .home-matcher-dur-log__plugin {
+    grid-area: plugin;
+    max-width: none;
+  }
+  .home-matcher-dur-log__track {
+    grid-area: bar;
+    height: 4px;
+  }
+  .home-matcher-dur-log__at {
+    grid-area: at;
+  }
+  .home-matcher-dur-log__badge {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 2px;
+  }
+  .home-matcher-dur-log__time-axis--foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-matcher-dur-log__time-axis--foot .home-matcher-dur-log__time-axis-range {
+    grid-column: 1 / -1;
+  }
+  .home-matcher-dur-scatter__hint {
+    font-size: 0.68rem;
+  }
+}
+
 @media (max-width: 640px) {
   .home-plugin-charts__toolbar {
     flex-direction: column;
