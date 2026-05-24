@@ -147,7 +147,7 @@ export interface MatcherErrorLogEntry {
   traceback: string;
 }
 
-/** 单次 Matcher 墙钟耗时（jsonl 持久化，每账号默认最多 80 条，重启可恢复） */
+/** 单次 Matcher 墙钟耗时（jsonl 持久化，每账号默认最多 150 条，重启可恢复） */
 export interface MatcherDurationLogEntry {
   at: number;
   plugin: string;
@@ -207,6 +207,8 @@ export interface PluginRunStatsData {
     /** 最近若干次 Matcher 单次耗时（新→旧，条数上限见 matcher_duration_log_cap） */
     matcher_duration_log?: MatcherDurationLogEntry[];
     matcher_duration_log_cap?: number;
+    /** 单次耗时环形缓冲内，单插件最多保留条数（避免高频插件占满） */
+    matcher_duration_log_per_plugin_cap?: number;
   }>;
 }
 
