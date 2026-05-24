@@ -18,6 +18,7 @@ import {
   consoleMetaLoading,
   refreshConsoleMeta,
 } from "@/state/consoleMeta";
+import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
 import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
 import { addNavTokenToSidebar, removeNavTokenFromSidebar } from "@/utils/sidebarNavActions";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
@@ -829,7 +830,30 @@ onUnmounted(() => {
       </nav>
       <div class="shell__sidebar-bottom">
         <footer class="shell__foot">
-          © PallasBot
+          <nav
+            class="shell__foot-links"
+            aria-label="外部链接"
+          >
+            <template
+              v-for="(item, index) in PALLAS_SHELL_EXTERNAL_LINKS"
+              :key="item.href"
+            >
+              <span
+                v-if="index > 0"
+                class="shell__foot-sep"
+                aria-hidden="true"
+              > · </span>
+              <a
+                class="shell__foot-link"
+                :href="item.href"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ item.label }}</a>
+            </template>
+          </nav>
+          <div class="shell__foot-copy">
+            © PallasBot
+          </div>
         </footer>
       </div>
     </aside>
@@ -955,6 +979,27 @@ onUnmounted(() => {
                 调整侧栏顺序与项目…
               </button>
             </RouterLink>
+            <nav
+              class="shell-mobile-nav__external"
+              aria-label="外部链接"
+            >
+              <template
+                v-for="(item, index) in PALLAS_SHELL_EXTERNAL_LINKS"
+                :key="item.href"
+              >
+                <span
+                  v-if="index > 0"
+                  class="shell__foot-sep"
+                  aria-hidden="true"
+                > · </span>
+                <a
+                  class="shell-mobile-nav__external-link"
+                  :href="item.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ item.label }}</a>
+              </template>
+            </nav>
           </nav>
         </aside>
         <div

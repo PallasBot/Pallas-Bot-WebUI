@@ -19,19 +19,17 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { axiosErrorDetail } from "@/api/http";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
+import {
+  PALLAS_BOT_DOC,
+  PALLAS_BOT_RELEASES,
+  PALLAS_BOT_REPO,
+  PALLAS_WEBUI_RELEASES,
+} from "@/utils/pallasExternalLinks";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
-const WEBUI_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
-const BOT_RELEASES_PAGE = "https://github.com/PallasBot/Pallas-Bot/releases";
-const BOT_REPO_MAIN = "https://github.com/PallasBot/Pallas-Bot/blob/main";
-const BOT_DOC = {
-  siteCustomization: `${BOT_REPO_MAIN}/docs/architecture/site-customization-and-updates.md`,
-  localReadme: `${BOT_REPO_MAIN}/local/README.md`,
-  deployment: `${BOT_REPO_MAIN}/docs/Deployment.md`,
-  dockerDeployment: `${BOT_REPO_MAIN}/docs/DockerDeployment.md`,
-  faqUpdates: `${BOT_REPO_MAIN}/docs/FAQ.md#更新与版本`,
-  settingsStorage: `${BOT_REPO_MAIN}/docs/architecture/settings-storage.md`,
-} as const;
+const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
+const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
+const BOT_DOC = PALLAS_BOT_DOC;
 
 /** 与通用配置 `?section=pallas_protocol` 一致，经通用配置落盘 */
 const PALLAS_PROTOCOL_SECTION_ID = "pallas_protocol";
@@ -101,6 +99,8 @@ const botMetaParts = computed(() => {
 const botDocLinks = computed(() => {
   const isDocker = bot.value?.deployment_mode === "docker";
   const links: { href: string; label: string }[] = [
+    { href: BOT_DOC.home, label: "在线文档" },
+    { href: PALLAS_BOT_REPO, label: "Pallas-Bot 仓库" },
     { href: BOT_DOC.siteCustomization, label: "站点定制与更新" },
     { href: BOT_DOC.localReadme, label: "local 目录说明" },
   ];
