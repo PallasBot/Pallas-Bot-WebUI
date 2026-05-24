@@ -71,7 +71,7 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
       <span
         v-for="hx in HOURLY_AXIS_HOURS"
         :key="hx"
-      >{{ hx }}</span>
+      >{{ hx }}<span class="home-plugin-hour-ticks__unit">时</span></span>
     </div>
   </div>
 </template>
@@ -136,5 +136,10 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.home-plugin-hour-ticks__unit {
+  font-size: 7px;
+  opacity: 0.88;
 }
 </style>

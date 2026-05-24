@@ -35,6 +35,35 @@ export function readPluginRunSeries(selfId: string): PluginRunSample[] {
   return [...(map[selfId] ?? [])];
 }
 
+/** 将本机 Matcher 累计采样序列转为 SVG polyline points（至少 2 个点） */
+export function buildPluginRunSparkPoly(
+  series: PluginRunSample[],
+  width = 100,
+  height = 44,
+): string | undefined {
+  if (series.length < 2) return undefined;
+  const minT = Math.min(...series.map((x) => x.t));
+  const maxT = Math.max(...series.map((x) => x.t));
+  const totals = series.map((x) => x.total);
+  const minV = Math.min(...totals);
+  const maxV = Math.max(...totals);
+  const dr = maxT - minT || 1;
+  const dv = maxV - minV || 1e-6;
+  const h = height;
+  return series
+    .map((pt) => {
+      const x = ((pt.t - minT) / dr) * width;
+      const y = h - ((pt.total - minV) / dv) * (h - 8) - 4;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+export function formatPluginRunSampleTime(t: number): string {
+  const d = new Date(t);
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
 /** 在总览拉取到插件统计后写入一条样本，供折线图使用（仅浏览器本地）。 */
 export function pushPluginRunSample(
   selfId: string,
