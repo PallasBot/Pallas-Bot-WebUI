@@ -11,6 +11,7 @@ import type {
 } from "@/api/pallasTypes";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
+import HomeBucketChartSvg, { type BucketBarPack, type BucketBarSeries } from "@/components/HomeBucketChartSvg.vue";
 import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
 
 const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
@@ -427,29 +428,6 @@ function fmtBucketSec(sec: number | undefined): string {
   if (s >= 60 && s % 60 === 0) return `${s / 60} 分钟`;
   return `${s} 秒`;
 }
-
-type BucketBarSeries = { label: string; color: string; vals: number[] };
-
-type BucketBarPack = {
-  W: number;
-  H: number;
-  padL: number;
-  padR: number;
-  padT: number;
-  padB: number;
-  innerW: number;
-  innerH: number;
-  left: number;
-  top: number;
-  bottom: number;
-  maxV: number;
-  timesSec: number[];
-  series: BucketBarSeries[];
-  gridYs: number[];
-  yTicks: { y: number; t: string }[];
-  xTicks: { x: number; t: string }[];
-  bars: { x: number; y: number; w: number; h: number; fill: string }[];
-};
 
 function fmtBucketAxisTime(sec: number): string {
   const d = new Date(sec * 1000);
@@ -1899,56 +1877,7 @@ const dailyChartPack = computed(() => {
         v-if="apiBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${apiBucketPack.W} ${apiBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in apiBucketPack.gridYs"
-            :key="`ag-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="apiBucketPack.left"
-            :y1="gy"
-            :x2="apiBucketPack.left + apiBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="apiBucketPack.left"
-            :y1="apiBucketPack.bottom"
-            :x2="apiBucketPack.left + apiBucketPack.innerW"
-            :y2="apiBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in apiBucketPack.yTicks"
-            :key="`ayt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in apiBucketPack.xTicks"
-            :key="`axt-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="apiBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in apiBucketPack.bars"
-            :key="`ab-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="apiBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in apiBucketPack.series"
@@ -2106,56 +2035,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherBucketPack.W} ${matcherBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherBucketPack.gridYs"
-            :key="`mg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherBucketPack.left"
-            :y1="gy"
-            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherBucketPack.left"
-            :y1="matcherBucketPack.bottom"
-            :x2="matcherBucketPack.left + matcherBucketPack.innerW"
-            :y2="matcherBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherBucketPack.yTicks"
-            :key="`myt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherBucketPack.xTicks"
-            :key="`mxt-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="matcherBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherBucketPack.bars"
-            :key="`mb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherBucketPack.series"
@@ -2313,57 +2193,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherDurationBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherDurationBucketPack.W} ${matcherDurationBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherDurationBucketPack.gridYs"
-            :key="`mdg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherDurationBucketPack.left"
-            :y1="gy"
-            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherDurationBucketPack.left"
-            :y1="matcherDurationBucketPack.bottom"
-            :x2="matcherDurationBucketPack.left + matcherDurationBucketPack.innerW"
-            :y2="matcherDurationBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherDurationBucketPack.yTicks"
-            :key="`mdyt-${ti}`"
-            class="home-plugin-bucket__ylabel"
-            :x="matcherDurationBucketPack.padL - 4"
-            :y="tk.y + 4"
-            text-anchor="end"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherDurationBucketPack.xTicks"
-            :key="`mdxt-${xi}`"
-            class="home-plugin-bucket__xlabel"
-            :x="xk.x"
-            :y="matcherDurationBucketPack.H - 6"
-            text-anchor="middle"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherDurationBucketPack.bars"
-            :key="`mdb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherDurationBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherDurationBucketPack.series"
@@ -2521,56 +2351,7 @@ const dailyChartPack = computed(() => {
         v-if="matcherErrBucketPack"
         class="home-plugin-multi home-plugin-charts__viz"
       >
-        <svg
-          class="home-plugin-bucket__svg"
-          :viewBox="`0 0 ${matcherErrBucketPack.W} ${matcherErrBucketPack.H}`"
-          preserveAspectRatio="xMidYMid meet"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="(gy, gi) in matcherErrBucketPack.gridYs"
-            :key="`eg-${gi}`"
-            class="home-plugin-bucket__grid"
-            :x1="matcherErrBucketPack.left"
-            :y1="gy"
-            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
-            :y2="gy"
-          />
-          <line
-            class="home-plugin-bucket__axis"
-            :x1="matcherErrBucketPack.left"
-            :y1="matcherErrBucketPack.bottom"
-            :x2="matcherErrBucketPack.left + matcherErrBucketPack.innerW"
-            :y2="matcherErrBucketPack.bottom"
-          />
-          <text
-            v-for="(tk, ti) in matcherErrBucketPack.yTicks"
-            :key="`eyt-${ti}`"
-            class="home-plugin-bucket__ytick"
-            :x="4"
-            :y="tk.y + 4"
-          >{{ tk.t }}</text>
-          <text
-            v-for="(xk, xi) in matcherErrBucketPack.xTicks"
-            :key="`ext-${xi}`"
-            class="home-plugin-bucket__xtick"
-            text-anchor="middle"
-            :x="xk.x"
-            :y="matcherErrBucketPack.H - 6"
-          >{{ xk.t }}</text>
-          <rect
-            v-for="(b, bi) in matcherErrBucketPack.bars"
-            :key="`eb-${bi}`"
-            class="home-plugin-bucket__bar"
-            :x="b.x"
-            :y="b.y"
-            :width="b.w"
-            :height="b.h"
-            :fill="b.fill"
-            rx="1.5"
-          />
-        </svg>
+        <HomeBucketChartSvg :pack="matcherErrBucketPack" />
         <div class="home-plugin-legend">
           <span
             v-for="(s, idx) in matcherErrBucketPack.series"
@@ -2992,12 +2773,19 @@ const dailyChartPack = computed(() => {
   flex-direction: column;
 }
 .home-plugin-charts__viz .home-plugin-spark--hourly,
-.home-plugin-charts__viz .home-plugin-hourly-chart__svg {
+.home-plugin-charts__viz .home-plugin-hourly-chart__svg,
+.home-plugin-charts__viz .home-plugin-bucket-chart {
   height: auto;
   min-height: 120px;
   flex: 1 1 auto;
 }
 .home-plugin-charts__viz .home-plugin-hourly-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.home-plugin-charts__viz .home-plugin-bucket-chart {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;

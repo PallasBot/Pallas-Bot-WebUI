@@ -65,7 +65,7 @@ function onToggleInput(ev: Event) {
       <strong>开发模式已开启</strong>
       <span>
         控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
-        <RouterLink to="/common-config/pallas_webui">通用配置</RouterLink>
+        <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_WEBUI_SECTION_ID } }">通用配置</RouterLink>
       </span>
     </div>
 

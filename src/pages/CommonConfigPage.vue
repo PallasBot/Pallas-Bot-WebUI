@@ -154,6 +154,17 @@ watch(currentId, () => {
   void loadSection();
 });
 
+watch(
+  () => route.query.section,
+  (q) => {
+    if (typeof q !== "string" || !q.trim()) return;
+    const sid = q.trim();
+    if (sid !== currentId.value && sections.value.some((s) => s.id === sid)) {
+      currentId.value = sid;
+    }
+  },
+);
+
 onMounted(async () => {
   try {
     await loadSections();
