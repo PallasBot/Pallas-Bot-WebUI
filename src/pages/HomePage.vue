@@ -948,9 +948,12 @@ const chartToolbarSummaryDuration = computed(() => {
     }
   }
   if (cnt <= 0) return "";
-  const ms = Math.round(sum / cnt);
-  if (ms >= 1000) return `均耗 ${(ms / 1000).toFixed(1)}s`;
-  return `均耗 ${ms}ms`;
+  const avg = sum / cnt;
+  if (avg > 0 && avg < 1) return "<1ms";
+  const ms = Math.round(avg);
+  if (ms <= 0) return "<1ms";
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
 });
 
 function formatMatcherErrorAt(sec: number): string {
