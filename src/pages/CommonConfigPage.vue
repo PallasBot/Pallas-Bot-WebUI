@@ -22,6 +22,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
+import { pluginConfigRouteFromPath } from "@/utils/pluginConfigRoute";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 const route = useRoute();
@@ -77,6 +78,11 @@ function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
   if (!data.value) return [];
   const names = new Set(group.field_names);
   return data.value.fields.filter((f) => names.has(f.name));
+}
+
+function fieldGroupPluginRoute(group: PluginConfigFieldGroup) {
+  const sectionPlugin = isPallasWebuiSection.value ? PALLAS_WEBUI_SECTION_ID : undefined;
+  return pluginConfigRouteFromPath(group.plugin_config_path, sectionPlugin);
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -421,7 +427,16 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   {{ group.title }}
                 </h3>
                 <router-link
-                  :to="group.plugin_config_path"
+                  v-if="isPallasWebuiSection"
+                  :to="{ name: 'plugin-config', params: { name: PALLAS_WEBUI_SECTION_ID } }"
+                  class="muted"
+                  style="font-size: 13px"
+                >
+                  插件完整配置 →
+                </router-link>
+                <router-link
+                  v-else
+                  :to="fieldGroupPluginRoute(group)"
                   class="muted"
                   style="font-size: 13px"
                 >

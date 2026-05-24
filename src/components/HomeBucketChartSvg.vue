@@ -87,7 +87,7 @@ defineProps<{
   min-width: 0;
   width: 100%;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
 }
@@ -96,10 +96,11 @@ defineProps<{
   width: 100%;
   max-width: 100%;
   height: auto;
+  min-height: 140px;
+  aspect-ratio: 440 / 212;
   display: block;
   box-sizing: border-box;
   flex: 1 1 auto;
-  min-height: 0;
 }
 
 .home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__grid) {
