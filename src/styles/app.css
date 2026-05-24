@@ -3788,7 +3788,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz,
   .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-spark,
   .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg,
-  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-hourly-chart {
+  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-hourly-chart,
+  .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket-chart {
     min-height: 0;
   }
 
@@ -3894,7 +3895,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-spark--hourly,
-.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-hourly-chart {
+.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-hourly-chart,
+.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz.home-plugin-multi .home-plugin-bucket-chart {
   min-height: 0;
   max-height: none;
   height: 100%;
@@ -3912,13 +3914,6 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   max-height: min(120px, 26vh);
   overflow-y: auto;
   flex-shrink: 0;
-}
-
-.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz .home-plugin-bucket__svg {
-  min-height: 0;
-  max-height: 100%;
-  height: 100%;
-  max-width: 100%;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-daily.home-plugin-charts__viz {
