@@ -73,29 +73,6 @@ export interface CommunityStatsData {
   corpus?: CommunityCorpusStatsData | null;
 }
 
-/** GET /community-stats/history：本 Bot 采样的社区统计时间桶 */
-export interface CommunityStatsHistoryPoint {
-  at: number;
-  deployments_total: number;
-  deployments_online: number;
-  bots_online_sum: number;
-  deployments_online_sharded: number;
-  shard_workers_online_sum: number;
-  corpus_contexts: number | null;
-  corpus_answers: number | null;
-  corpus_enrollments: number | null;
-  sample_n: number;
-}
-
-export interface CommunityStatsHistoryData {
-  hours: number;
-  bucket_sec: number;
-  since: number;
-  as_of: number;
-  point_count: number;
-  points: CommunityStatsHistoryPoint[];
-}
-
 /** GET /corpus-status：本部署语料多源状态 */
 export interface CorpusSourceStatusData {
   enabled: boolean;

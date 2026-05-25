@@ -14,7 +14,6 @@ import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
-import CommunityCenterPage from "@/pages/CommunityCenterPage.vue";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 
@@ -32,15 +31,6 @@ const router = createRouter({
           meta: {
             title: "仪表盘",
             description: "容量、账号与接入摘要",
-          },
-        },
-        {
-          path: "community-center",
-          name: "community-center",
-          component: CommunityCenterPage,
-          meta: {
-            title: "社区中心",
-            description: "社区统计、语料池与 24h 在线趋势",
           },
         },
         {
