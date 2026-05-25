@@ -264,9 +264,10 @@ async function runConnectivityCheck() {
   }
 }
 
-function showFieldInGenericList(f: PluginConfigField): boolean {
-  if (!(showCmdPermMatrix.value && f.name === "command_permission_overrides")) return true;
-  return false;
+function showConfigField(f: PluginConfigField): boolean {
+  if (showCmdPermMatrix.value && f.name === "command_permission_overrides") return false;
+  if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
+  return true;
 }
 </script>
 
@@ -358,7 +359,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；首页亦提供快捷开关。
+            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；顶栏提供快捷开关。
             CORS（<code>pallas_webui_cors</code>）变更仍需重启总机牛牛。
           </p>
           <div
@@ -465,6 +466,13 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   插件完整配置 →
                 </router-link>
               </div>
+              <p
+                v-if="isPallasWebuiSection && group.id === 'security'"
+                class="muted"
+                style="font-size: 13px; margin: -6px 0 12px; line-height: 1.5"
+              >
+                开发模式开关在顶栏右侧，与连接状态、主题切换同一行。
+              </p>
               <PallasImageGatewaysEditor
                 v-if="group.id === 'pallas_image' && showGatewayEditor"
                 :field-values="fieldValues"
@@ -472,7 +480,10 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               />
               <div
                 v-for="f in fieldsInGroup(group)"
-                v-show="!(group.id === 'pallas_image' && showGatewayEditor && gatewayFieldNameSet.has(f.name))"
+                v-show="
+                  showConfigField(f)
+                    && !(group.id === 'pallas_image' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
+                "
                 :key="f.name"
                 style="margin-bottom: 22px"
               >
@@ -532,7 +543,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
           </template>
           <div
             v-for="f in genericFields"
-            v-show="showFieldInGenericList(f)"
+            v-show="showConfigField(f)"
             :key="f.name"
             style="margin-bottom: 22px"
           >

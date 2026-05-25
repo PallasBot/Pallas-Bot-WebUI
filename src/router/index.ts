@@ -146,13 +146,7 @@ const router = createRouter({
         },
         {
           path: "corpus-config",
-          name: "corpus-config",
-          component: CommonConfigPage,
-          meta: {
-            title: "语料联邦",
-            description: "社区语料、多读源与 stats 心跳",
-            defaultCommonConfigSection: "corpus_federation",
-          },
+          redirect: { name: "common-config", query: { section: "corpus_federation" } },
         },
         {
           path: "ai",

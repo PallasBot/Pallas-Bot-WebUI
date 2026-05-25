@@ -1057,17 +1057,6 @@ onUnmounted(() => {
       </div>
     </Teleport>
 
-    <div
-      v-if="webuiDevModeActive"
-      class="shell__dev-mode-banner-wrap"
-    >
-      <ConsoleDevModePanel
-        :active="webuiDevModeActive"
-        :show-panel="false"
-        @updated="onWebuiDevModeUpdated"
-      />
-    </div>
-
     <div class="shell__main">
       <div
         v-if="pageLoadingVisible"

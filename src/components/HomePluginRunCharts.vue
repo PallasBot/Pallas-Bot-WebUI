@@ -728,17 +728,32 @@ function linearBarWidthPercent(value: number, maxValue: number): number {
 }
 
 const DURATION_LOG_SUB_MS = 1;
+const DURATION_LOG_BAR_MIN_PCT = 10;
 
-/** 单次列表相对条：按列表内最大值线性比例 */
-function durationLogBarWidthPercent(durationMs: number, maxMs: number, subMsMode: boolean): number {
+/** 单次列表相对条标尺：以 P95 为主，避免极少数极大值压扁常态毫秒级样本 */
+function durationLogBarScaleMs(rows: MatcherDurationLogEntry[]): number {
+  const vals = durationLogMsValues(rows);
+  if (!vals.length) return 0.000_001;
+  const max = vals[vals.length - 1]!;
+  if (max < DURATION_LOG_SUB_MS) return Math.max(max, 0.000_001);
+  const p50 = percentileSortedMs(vals, 50) ?? max;
+  const p95 = percentileSortedMs(vals, 95) ?? max;
+  const robust = Math.max(p95, p50 * 6, DURATION_LOG_SUB_MS);
+  return Math.min(max, robust * 1.2);
+}
+
+/** 单次列表相对条：对 value/scale 取 sqrt 映射至 [MIN, 100] */
+function durationLogBarWidthPercent(durationMs: number, scaleMs: number, subMsMode: boolean): number {
   const v = Number(durationMs);
   if (!Number.isFinite(v) || v < 0) return 0;
-  const max = Math.max(maxMs, 0.000_001);
+  const scale = Math.max(scaleMs, 0.000_001);
   if (v <= 0) {
-    if (subMsMode || max < DURATION_LOG_SUB_MS) return 2;
+    if (subMsMode || scale < DURATION_LOG_SUB_MS) return DURATION_LOG_BAR_MIN_PCT;
     return 0;
   }
-  return linearBarWidthPercent(v, max);
+  const linearRatio = Math.min(1, v / scale);
+  const curvedRatio = Math.sqrt(linearRatio);
+  return Math.round(DURATION_LOG_BAR_MIN_PCT + (100 - DURATION_LOG_BAR_MIN_PCT) * curvedRatio);
 }
 
 const topPlugins = computed(() =>
@@ -1340,10 +1355,10 @@ const filteredRecentDurationDisplayRows = computed((): MatcherDurationLogDisplay
   const rows = filteredRecentDurationRows.value;
   if (!rows.length) return [];
   const subMs = durationRecentLogSubMsMode.value;
-  const maxMs = Math.max(...rows.map((r) => Number(r.duration_ms) || 0), 0.000_001);
+  const scaleMs = durationLogBarScaleMs(rows);
   return rows.map((it) => ({
     ...it,
-    barWidthPct: durationLogBarWidthPercent(Number(it.duration_ms) || 0, maxMs, subMs),
+    barWidthPct: durationLogBarWidthPercent(Number(it.duration_ms) || 0, scaleMs, subMs),
     barColor: matcherPluginBarColor(it.plugin),
   }));
 });
@@ -1528,7 +1543,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
           },
           {
             dt: "读图方式",
-            dd: "耗时列悬停可看精确毫秒；全体 <1ms 时改显示小数。相对条为列表内线性比例；同插件同色（与耗时图例一致）。",
+            dd: "耗时列悬停可看精确毫秒；全体 <1ms 时改显示小数。相对条按 P95 标尺与平方根比例绘制，极大值仍满条但不压扁常态样本；同插件同色。",
           },
           {
             dt: "勾选",
