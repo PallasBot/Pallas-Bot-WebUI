@@ -5,15 +5,20 @@ import { PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
+const DEV_MODE_TOOLTIP =
+  "联调时可跳过登录与 API token；保存后立即生效，无需重启 Bot。CORS 等中间件变更仍需重启 hub。";
+
 const props = withDefaults(
   defineProps<{
     active: boolean;
     compact?: boolean;
+    toolbar?: boolean;
     showBanner?: boolean;
     showPanel?: boolean;
   }>(),
   {
     compact: false,
+    toolbar: false,
     showBanner: true,
     showPanel: true,
   },
@@ -70,11 +75,44 @@ function onToggleInput(ev: Event) {
     </div>
 
     <div
-      v-if="showPanel"
+      v-if="showPanel && toolbar"
+      class="console-dev-mode-toolbar"
+      :class="{ 'console-dev-mode-toolbar--active': active }"
+      :title="DEV_MODE_TOOLTIP"
+    >
+      <span class="console-dev-mode-toolbar__label">开发模式</span>
+      <label
+        class="console-bool-switch"
+        :class="{ 'console-bool-switch--on': active }"
+      >
+        <input
+          type="checkbox"
+          class="console-bool-switch__input"
+          :checked="active"
+          :disabled="busy"
+          :aria-busy="busy || undefined"
+          :aria-label="active ? '关闭开发模式' : '开启开发模式'"
+          :aria-description="DEV_MODE_TOOLTIP"
+          @change="onToggleInput"
+        >
+        <span
+          class="console-bool-switch__track"
+          aria-hidden="true"
+        >
+          <span class="console-bool-switch__thumb" />
+        </span>
+      </label>
+    </div>
+
+    <div
+      v-else-if="showPanel"
       class="console-dev-mode-panel"
       :class="{ 'console-dev-mode-panel--compact': compact, 'console-dev-mode-panel--active': active }"
     >
-      <div v-if="err" class="alert alert--err">{{ err }}</div>
+      <div
+        v-if="err"
+        class="alert alert--err"
+      >{{ err }}</div>
       <div class="console-dev-mode-panel__row">
         <div>
           <div class="console-dev-mode-panel__title">{{ switchLabel }}</div>
@@ -83,7 +121,10 @@ function onToggleInput(ev: Event) {
             <template v-if="!compact"> CORS 等中间件变更仍需重启 hub。</template>
           </p>
         </div>
-        <label class="console-bool-switch" :class="{ 'console-bool-switch--on': active }">
+        <label
+          class="console-bool-switch"
+          :class="{ 'console-bool-switch--on': active }"
+        >
           <input
             type="checkbox"
             class="console-bool-switch__input"
@@ -93,7 +134,10 @@ function onToggleInput(ev: Event) {
             :aria-label="active ? '关闭开发模式' : '开启开发模式'"
             @change="onToggleInput"
           >
-          <span class="console-bool-switch__track" aria-hidden="true">
+          <span
+            class="console-bool-switch__track"
+            aria-hidden="true"
+          >
             <span class="console-bool-switch__thumb" />
           </span>
         </label>

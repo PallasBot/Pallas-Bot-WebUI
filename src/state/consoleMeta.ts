@@ -20,6 +20,15 @@ export function patchConsoleMeta(
   if (botUpdate !== undefined) consoleMetaBotUpdate.value = botUpdate;
 }
 
+export function patchWebuiDevMode(active: boolean): void {
+  const h = consoleMetaHealth.value;
+  if (!h) return;
+  consoleMetaHealth.value = {
+    ...h,
+    console: { ...h.console, pallas_webui_dev_mode: active },
+  };
+}
+
 export async function refreshConsoleMeta(options?: { silent?: boolean }): Promise<void> {
   const silent = options?.silent ?? false;
   if (!silent) {
