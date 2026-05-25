@@ -2,6 +2,7 @@ import { reactive } from "vue";
 import { type AccentPreset, isAccentPreset } from "@/config/accentPresets";
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
+  migrateSidebarOrderCommunityPage,
   migrateSidebarOrderUpdateToEnd,
   normalizeMainNavOrder,
 } from "@/config/mainNav";
@@ -54,7 +55,7 @@ const defaults: ConsolePrefsState = {
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
-  sidebarNavLayoutVersion: 2,
+  sidebarNavLayoutVersion: 3,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
   databasePageGroupConfigsOpen: true,
@@ -81,12 +82,17 @@ function load(): ConsolePrefsState {
       typeof layoutVerRaw === "number" && Number.isFinite(layoutVerRaw) ? Math.floor(layoutVerRaw) : 0;
 
     let nextOrder = Array.isArray(parsed.sidebarNavOrder) ? (parsed.sidebarNavOrder as string[]) : undefined;
-    if (layoutVer < 2) {
+    let layoutVerOut = layoutVer;
+    if (layoutVerOut < 2) {
       nextOrder = migrateSidebarOrderUpdateToEnd(nextOrder);
-      merged.sidebarNavLayoutVersion = 2;
-    } else {
-      merged.sidebarNavLayoutVersion = Math.max(2, layoutVer);
+      layoutVerOut = 2;
     }
+    if (layoutVerOut < 3) {
+      nextOrder = migrateSidebarOrderCommunityPage(nextOrder);
+      layoutVerOut = 3;
+    }
+    const layoutMigrated = layoutVerOut !== layoutVer;
+    merged.sidebarNavLayoutVersion = layoutVerOut;
     merged.sidebarNavOrder = normalizeMainNavOrder(nextOrder);
 
     if (typeof parsed.friendsPageFriendsListOpen === "boolean") {
@@ -123,6 +129,13 @@ function load(): ConsolePrefsState {
     }
     if (!isAccentPreset(merged.accentPreset)) {
       merged.accentPreset = defaults.accentPreset;
+    }
+    if (layoutMigrated) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      } catch {
+        /* ignore */
+      }
     }
     return merged;
   } catch {
@@ -184,7 +197,7 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
 export function resetSidebarNavToDefaults(): void {
   setConsolePrefs({
     sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
-    sidebarNavLayoutVersion: 2,
+    sidebarNavLayoutVersion: 3,
   });
 }
 export function initConsolePrefs(): void {

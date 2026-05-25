@@ -916,12 +916,12 @@ onUnmounted(() => {
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
-          <table class="data console-data-table">
+          <table class="data console-data-table database-page__storage-table">
             <thead>
               <tr>
                 <th>集合</th>
                 <th>文档字段</th>
-                <th style="text-align: right">数量</th>
+                <th>数量</th>
               </tr>
             </thead>
             <tbody>
@@ -932,7 +932,7 @@ onUnmounted(() => {
                 <td style="font-weight: 600">{{ c.name }}</td>
                 <td class="muted">{{ c.document }}</td>
                 <td
-                  style="text-align: right; font-variant-numeric: tabular-nums"
+                  style="font-variant-numeric: tabular-nums"
                   :title="c.count_estimated ? 'Mongo 估算行数（大表）' : undefined"
                 >
                   {{ c.count_estimated ? "≈" : "" }}{{ nf.format(c.count) }}
@@ -958,11 +958,11 @@ onUnmounted(() => {
       </div>
       <div class="panel__bd">
         <div class="table-wrap">
-          <table class="data console-data-table">
+          <table class="data console-data-table database-page__storage-table">
             <thead>
               <tr>
                 <th>表名</th>
-                <th style="text-align: right">行数</th>
+                <th>行数</th>
               </tr>
             </thead>
             <tbody>
@@ -971,7 +971,7 @@ onUnmounted(() => {
                 :key="t.table"
               >
                 <td style="font-weight: 600">{{ t.table }}</td>
-                <td style="text-align: right; font-variant-numeric: tabular-nums">{{ nf.format(t.count) }}</td>
+                <td style="font-variant-numeric: tabular-nums">{{ nf.format(t.count) }}</td>
               </tr>
             </tbody>
           </table>

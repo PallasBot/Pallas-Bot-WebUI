@@ -20,6 +20,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/common-config", label: "通用配置", icon: "⛭", description: "跨模块公共项", section: "模块与配置" },
   { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表、配置与审批", section: "对话与对象" },
   { to: "/database", label: "数据库", icon: "▤", description: "存储体量", section: "数据与扩展" },
+  { to: "/community", label: "统计与语料", icon: "◉", description: "统计上报与共享语料", section: "数据与扩展" },
   { to: "/ai", label: "AI 扩展", icon: "◇", description: "扩展服务", section: "数据与扩展" },
   { to: "/preferences", label: "偏好", icon: "✦", description: "外观与控制台口令", section: "本机与维护" },
   { to: "/update", label: "更新", icon: "↑", description: "发行与升级", section: "本机与维护" },
@@ -87,6 +88,32 @@ export function migrateSidebarOrderUpdateToEnd(saved: string[] | undefined | nul
   const had = base.includes("/update");
   if (had) return [...rest, "/update"];
   return rest.length ? rest : [...DEFAULT_ORDER];
+}
+
+/** WebUI 新增「统计与语料」页：插入到「数据库」与「AI 扩展」之间（已有则不动） */
+export function migrateSidebarOrderCommunityPage(saved: string[] | undefined | null): string[] {
+  const base = normalizeMainNavOrder(saved);
+  if (base.includes("/community")) return base;
+  const insertAfter = ["/database", "/common-config", "/friends-groups"].find((t) => base.includes(t));
+  if (insertAfter) {
+    const idx = base.indexOf(insertAfter);
+    const out = [...base];
+    out.splice(idx + 1, 0, "/community");
+    return out;
+  }
+  const aiIdx = base.indexOf("/ai");
+  if (aiIdx >= 0) {
+    const out = [...base];
+    out.splice(aiIdx, 0, "/community");
+    return out;
+  }
+  const updIdx = base.indexOf("/update");
+  if (updIdx >= 0) {
+    const out = [...base];
+    out.splice(updIdx, 0, "/community");
+    return out;
+  }
+  return [...base, "/community"];
 }
 
 export function mainNavItemByPath(to: string): MainNavItem | undefined {

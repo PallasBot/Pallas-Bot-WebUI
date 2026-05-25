@@ -3,7 +3,8 @@
 export const PALLAS_BOT_DOCS = "https://PallasBot.github.io/Pallas-Bot-Docs/";
 export const PALLAS_BOT_REPO = "https://github.com/PallasBot/Pallas-Bot";
 export const PALLAS_BOT_RELEASES = `${PALLAS_BOT_REPO}/releases`;
-export const PALLAS_WEBUI_RELEASES = "https://github.com/PallasBot/Pallas-Bot-WebUI/releases";
+export const PALLAS_WEBUI_REPO = "https://github.com/PallasBot/Pallas-Bot-WebUI";
+export const PALLAS_WEBUI_RELEASES = `${PALLAS_WEBUI_REPO}/releases`;
 
 export function pallasDocsUrl(path = ""): string {
   const base = PALLAS_BOT_DOCS.replace(/\/$/, "");

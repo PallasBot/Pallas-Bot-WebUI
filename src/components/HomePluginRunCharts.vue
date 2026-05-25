@@ -4081,10 +4081,46 @@ const dailyChartPack = computed(() => {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .home-plugin-charts__toolbar-hint-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-hint,
+  .home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-summary {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+  }
 }
 
 /* 无容器查询时的回退（整页窄屏） */
 @media (max-width: 560px) {
+  .home-plugin-charts__toolbar-hint-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-hint,
+  .home-plugin-charts__toolbar-hint-row .home-plugin-charts__toolbar-summary {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+  }
+
   .home-matcher-dur-log {
     --home-matcher-dur-log-cols: minmax(0, 1fr) auto;
     max-height: min(360px, 48vh);
