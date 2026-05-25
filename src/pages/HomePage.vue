@@ -901,9 +901,9 @@ const communityBotsOnlineHint = computed(() => {
   ) {
     const avg = sum / onlineDep;
     const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
-    return `全社区在线 Bot 合计，平均每套约 ${avgText} 个`;
+    return `全社区在线牛牛合计，平均每处约 ${avgText} 只`;
   }
-  return "全社区各安装上报的在线 Bot 合计";
+  return "全社区各安装上报的在线牛牛合计";
 });
 
 const communityShardedOnline = computed(() =>
@@ -922,10 +922,6 @@ const communityCorpusAnswers = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.answers_total),
 );
 
-const communityCorpusEnrollments = computed(() =>
-  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
-);
-
 const communityCorpusEnrollmentsOnline = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.enrollments_online),
 );
@@ -937,32 +933,30 @@ const communityCorpusPoolValue = computed(() => {
   return `${ctx} 词条 · ${ans} 回复`;
 });
 
-const communityCorpusEnrollmentValue = computed(() => {
-  const online = communityCorpusEnrollmentsOnline.value;
-  const total = communityCorpusEnrollments.value;
-  if (online === "—" && total !== "—") return `累计 ${total} 套`;
-  if (online !== "—" && total !== "—") return `${online} / ${total}`;
-  return "—";
+const communityCorpusEnrollmentValue = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
+);
+
+const communityCorpusOnlineEnrollHint = computed(() => {
+  const total = communityStats.value?.corpus?.enrollments_total;
+  const parts: string[] = [`${communityOnlineHint.value}且已接入语料库`];
+  if (total != null) {
+    parts.push(`累计 ${formatCommunityStatNum(total)} 处自托管`);
+  }
+  return parts.join(" · ");
 });
 
-const communityCorpusEnrollmentsHint = computed(() => {
-  const online = communityStats.value?.corpus?.enrollments_online;
-  const total = communityStats.value?.corpus?.enrollments_total;
+const communityCorpusTotalEnrollHint = computed(() => {
   const recent = communityStats.value?.corpus?.enrollments_recent_24h;
-  const parts: string[] = [];
-  if (online != null && total != null) {
-    parts.push(`${formatCommunityStatNum(online)} 套在线 / ${formatCommunityStatNum(total)} 套累计`);
-  } else if (total != null) {
-    parts.push(`累计 ${formatCommunityStatNum(total)} 套安装`);
-  }
-  if (recent != null && recent > 0) {
-    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 套`);
-  }
   const contrib = communityStats.value?.corpus?.contribute_enabled_total;
-  if (contrib != null) {
-    parts.push(`其中 ${formatCommunityStatNum(contrib)} 套可上传学习结果`);
+  const parts: string[] = ["历史上接入过社区语料库的安装数"];
+  if (recent != null && recent > 0) {
+    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 处`);
   }
-  return parts.length ? parts.join(" · ") : "已接入社区共享语料库的安装数";
+  if (contrib != null) {
+    parts.push(`其中 ${formatCommunityStatNum(contrib)} 处可上传学习结果`);
+  }
+  return parts.join(" · ");
 });
 
 const communityCorpusPoolHint = computed(() => {
@@ -974,11 +968,11 @@ const communityCorpusPoolHint = computed(() => {
 });
 
 const communityCorpusContributeHint = computed(
-  () => "已接入且允许把本机学习结果同步到社区池",
+  () => "已接入且允许把本机学习结果同步到社区语料池",
 );
 
 const communityCorpusHitsHint = computed(
-  () => "各回复条目在社区池中的累计次数合计",
+  () => "各回复条目在社区池中的累计引用次数",
 );
 
 const communityActiveRecent24h = computed(() =>
@@ -993,7 +987,7 @@ const communityActiveRecentHint = computed(() => {
     parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
   }
   if (catalog != null && Number.isFinite(catalog)) {
-    parts.push(`在线名册 Bot ${formatCommunityStatNum(catalog)} 个`);
+    parts.push(`在线名册牛牛 ${formatCommunityStatNum(catalog)} 只`);
   }
   return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
 });
@@ -1865,7 +1859,7 @@ onUnmounted(() => {
                 />
                 <StatCard
                   dense
-                  label="在线 Bot"
+                  label="在线牛牛"
                   :value="communityBotsOnlineSum"
                   :hint="communityBotsOnlineHint"
                 />
@@ -1989,9 +1983,15 @@ onUnmounted(() => {
               />
               <StatCard
                 dense
-                label="接入安装"
+                label="在线接入"
+                :value="communityCorpusEnrollmentsOnline"
+                :hint="communityCorpusOnlineEnrollHint"
+              />
+              <StatCard
+                dense
+                label="累计接入"
                 :value="communityCorpusEnrollmentValue"
-                :hint="communityCorpusEnrollmentsHint"
+                :hint="communityCorpusTotalEnrollHint"
               />
               <StatCard
                 dense

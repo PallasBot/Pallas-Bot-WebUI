@@ -3375,53 +3375,6 @@ html[data-theme="light"] .bot-config-edit {
   padding-top: 10px;
   padding-bottom: 10px;
 }
-.home-dashboard__corpus-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 0;
-  width: 100%;
-  min-width: 0;
-}
-.home-dashboard__corpus-grid > .stat-card {
-  min-width: 0;
-}
-.home-dashboard__corpus-grid > .stat-card .card__body {
-  padding: 11px 12px;
-  gap: 4px;
-  min-height: 4.75rem;
-}
-.home-dashboard__corpus-grid > .stat-card .stat-card__label {
-  font-size: 10px;
-  letter-spacing: 0.03em;
-  line-height: 1.3;
-}
-.home-dashboard__corpus-grid > .stat-card .stat-card__value {
-  font-size: clamp(0.92rem, 1.6vw, 1.08rem);
-  line-height: 1.25;
-  font-weight: 800;
-  word-break: break-word;
-}
-.home-dashboard__corpus-grid > .stat-card .stat-card__hint {
-  font-size: 10px;
-  line-height: 1.35;
-  -webkit-line-clamp: 2;
-}
-@media (max-width: 900px) {
-  .home-dashboard__corpus-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 560px) {
-  .home-dashboard__corpus-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .home-dashboard__corpus-grid > .stat-card .card__body {
-    min-height: 0;
-    padding: 10px 11px;
-  }
-}
 .home-community__stats {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 0;
@@ -5877,7 +5830,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 1200px) {
   /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
   .home-dashboard {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
     grid-template-rows: auto auto auto auto auto;
     align-items: stretch;
   }
@@ -5901,6 +5854,26 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     flex-direction: column;
     gap: 10px;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
+  }
+  .home-dashboard__aside-community,
+  .home-dashboard__aside-version {
+    width: 100%;
+    min-width: 0;
+  }
+  .home-dashboard__aside .home-dashboard__community-panel,
+  .home-dashboard__aside .home-page__version-panel {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .home-dashboard__aside .home-dashboard__community-panel .panel__hd,
+  .home-dashboard__aside .home-page__version-panel .panel__hd {
+    padding: 9px 12px;
+  }
+  .home-dashboard__aside .home-dashboard__community-panel .panel__bd,
+  .home-dashboard__aside .home-page__version-panel .panel__bd {
+    padding: 10px 12px;
   }
   .home-dashboard__aside--tail .home-dashboard__aside-version {
     margin-top: auto;
@@ -5920,13 +5893,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-dashboard__community-panel .panel__bd {
     flex: 1 1 auto;
     min-height: 0;
-  }
-  .home-dashboard__aside-community .panel__hd {
-    padding: 8px 12px;
-  }
-  .home-dashboard__aside-community .home-dashboard__community-panel .panel__bd {
-    padding-top: 8px;
-    padding-bottom: 8px;
   }
   .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5994,7 +5960,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     min-height: 0;
   }
   .home-dashboard__aside .home-page__version-panel .panel__hd {
-    padding: 9px 12px;
     flex-shrink: 0;
   }
   .home-dashboard__aside .home-page__version-panel .panel__bd {
@@ -6002,8 +5967,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding-top: 10px;
-    padding-bottom: 12px;
   }
   .home-dashboard__aside .home-page__version-panel .home-version-dl {
     flex: 1 1 auto;
@@ -6019,6 +5982,64 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
+}
+
+/* 共享语料：5 等分一行（须覆盖 .grid-stats 的 auto-fill，否则末卡会单独换行） */
+.grid-stats.home-dashboard__corpus-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 0;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card {
+  min-width: 0;
+  height: 100%;
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card .card__body {
+  height: 100%;
+  padding: 10px 11px;
+  gap: 4px;
+  min-height: 4.5rem;
+  box-sizing: border-box;
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card .stat-card__label {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card .stat-card__value {
+  font-size: clamp(0.88rem, 1.1vw, 1.05rem);
+  line-height: 1.25;
+  font-weight: 800;
+  word-break: break-word;
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card:first-child .stat-card__value {
+  font-size: clamp(0.82rem, 1vw, 0.98rem);
+}
+.grid-stats.home-dashboard__corpus-grid > .stat-card .stat-card__hint {
+  font-size: 10px;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+}
+@media (max-width: 900px) {
+  .grid-stats.home-dashboard__corpus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-stats.home-dashboard__corpus-grid > .stat-card:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 560px) {
+  .grid-stats.home-dashboard__corpus-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .grid-stats.home-dashboard__corpus-grid > .stat-card .card__body {
+    min-height: 0;
+    padding: 10px 11px;
+  }
 }
 
 /* 侧栏社区统计：2×2 紧凑栅格（须覆盖 .grid-stats 的 200px 下限，否则窄侧栏会竖排） */
