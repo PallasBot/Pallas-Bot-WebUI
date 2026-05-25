@@ -10,7 +10,6 @@ import {
   fetchInstances,
   fetchCommunityStats,
   fetchConsoleDailyStats,
-  fetchCorpusStatus,
   fetchMessageStats,
   fetchPluginRunStats,
   fetchPlugins,
@@ -29,8 +28,6 @@ import type {
   GroupListData,
   InstancesData,
   CommunityStatsData,
-  CorpusSourceStatusData,
-  CorpusStatusData,
   ConsoleDailyStatsData,
   MessageStatsData,
   PluginRow,
@@ -97,7 +94,6 @@ const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const shardObs = ref<ShardObservabilityData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
-const corpusStatus = ref<CorpusStatusData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
@@ -932,54 +928,6 @@ const communityCorpusEnrollments = computed(() =>
 
 const communityPanelVisible = computed(() => communityStats.value != null);
 
-const corpusPanelVisible = computed(() => corpusStatus.value != null);
-
-const corpusConfigTo = { path: "/corpus-config" } as const;
-
-const corpusMergeSummary = computed(() => {
-  const c = corpusStatus.value;
-  if (!c) return "";
-  return `${c.merge_order.join(" → ")} · ${c.merge_strategy}`;
-});
-
-type CorpusSourceKey = "local" | "fed" | "community";
-
-const corpusSourceRows = computed(() => {
-  const sources = corpusStatus.value?.sources;
-  if (!sources) return [] as Array<{ key: CorpusSourceKey; label: string; summary: string; active: boolean }>;
-  const labels: Record<CorpusSourceKey, string> = {
-    local: "local",
-    fed: "fed",
-    community: "community",
-  };
-  return (["local", "fed", "community"] as CorpusSourceKey[]).map((key) => {
-    const src = sources[key];
-    return {
-      key,
-      label: labels[key],
-      summary: corpusSourceSummary(key, src),
-      active: Boolean(src?.enabled && (key === "local" || src.readable || src.configured || src.enrolled)),
-    };
-  });
-});
-
-function corpusSourceSummary(key: CorpusSourceKey, src: CorpusSourceStatusData | undefined): string {
-  if (!src) return "—";
-  if (key === "local") return "本地 PG 读写";
-  if (!src.enabled) return "未启用";
-  if (key === "fed") {
-    if (!src.enabled) return "未启用 · 托管联邦 PG（Phase 2）";
-    return src.configured ? "已配置 PG_CORPUS_FED_* · 读写待接入" : "未配置 PG_CORPUS_FED_*";
-  }
-  if (src.enrolled) {
-    const write = src.contribute ? "写回开" : "写回关";
-    return `已 enroll · ${write}`;
-  }
-  if (src.manual) return "手动 token";
-  if (src.auto_enroll) return "auto enroll 待完成";
-  return "未就绪";
-}
-
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
   const plug = clusterTodayPluginRuns.value;
@@ -1256,7 +1204,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard, corpus] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -1268,7 +1216,6 @@ async function load() {
       fetchUpdateCheck().catch(() => null),
       fetchCommunityStats().catch(() => null),
       fetchShardObservability().catch(() => null),
-      fetchCorpusStatus().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
@@ -1276,7 +1223,6 @@ async function load() {
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
     communityStats.value = (comm as CommunityStatsData | null) ?? null;
-    corpusStatus.value = (corpus as CorpusStatusData | null) ?? null;
     shardObs.value = (shard as ShardObservabilityData | null) ?? null;
     stats.value = m;
     pluginRunStats.value = pr;
@@ -1300,16 +1246,14 @@ async function load() {
 }
 
 async function refreshHomeRuntimePanels() {
-  const [sys, obs, comm, corpus] = await Promise.allSettled([
+  const [sys, obs, comm] = await Promise.allSettled([
     fetchSystem(),
     fetchShardObservability(),
     fetchCommunityStats(),
-    fetchCorpusStatus(),
   ]);
   if (sys.status === "fulfilled") system.value = sys.value;
   if (obs.status === "fulfilled") shardObs.value = obs.value;
   if (comm.status === "fulfilled") communityStats.value = comm.value;
-  if (corpus.status === "fulfilled") corpusStatus.value = corpus.value;
 }
 
 async function refreshSystemRuntimeOnly() {
@@ -1820,7 +1764,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <aside class="home-dashboard__aside">
+      <aside class="home-dashboard__aside home-dashboard__aside--tail">
         <section
           v-if="communityPanelVisible"
           class="home-dashboard__aside-community"
@@ -1940,49 +1884,6 @@ onUnmounted(() => {
         </section>
       </aside>
       </div>
-
-      <section
-        v-if="corpusPanelVisible"
-        class="home-dashboard__corpus"
-      >
-        <div class="panel home-page__panel home-corpus-panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">◎</span>语料多读源
-            </h2>
-            <div class="row-actions home-corpus__hd-actions">
-              <RouterLink
-                class="btn btn--ghost btn--sm home-corpus__config-link"
-                :to="corpusConfigTo"
-              >语料配置</RouterLink>
-              <span
-                class="home-page__hd-capsule"
-                :class="corpusStatus?.composite_active ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--muted'"
-              >{{ corpusStatus?.composite_active ? "composite" : "local" }}</span>
-            </div>
-          </div>
-          <div class="panel__bd home-corpus__bd">
-            <p class="home-corpus__lede muted">
-              {{ corpusMergeSummary }} · 远端失败 {{ corpusStatus?.on_remote_failure }}
-            </p>
-            <ul class="home-corpus__source-list">
-              <li
-                v-for="row in corpusSourceRows"
-                :key="row.key"
-                class="home-corpus__source-item"
-              >
-                <span
-                  class="home-corpus__badge"
-                  :class="{ 'home-corpus__badge--on': row.active }"
-                  :title="row.key === 'fed' ? '联邦语料：跨部署共享的第二 PostgreSQL 语料池（Phase 2）' : undefined"
-                >{{ row.label }}</span>
-                <span class="home-corpus__source-summary">{{ row.summary }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
