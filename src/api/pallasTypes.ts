@@ -54,6 +54,13 @@ export interface SystemData {
 }
 
 /** GET /community-stats：代理社区统计中心 /v1/stats */
+export interface CommunityCorpusStatsData {
+  contexts_total: number;
+  answers_total: number;
+  enrollments_total: number;
+  contribute_enabled_total: number;
+}
+
 export interface CommunityStatsData {
   deployments_total: number;
   deployments_online: number;
@@ -61,6 +68,44 @@ export interface CommunityStatsData {
   online_ttl_sec?: number;
   as_of?: string;
   stats_url?: string;
+  deployments_online_sharded?: number;
+  shard_workers_online_sum?: number;
+  corpus?: CommunityCorpusStatsData | null;
+}
+
+/** GET /corpus-status：本部署语料多源状态 */
+export interface CorpusSourceStatusData {
+  enabled: boolean;
+  wanted?: boolean;
+  configured?: boolean;
+  enrolled?: boolean;
+  manual?: boolean;
+  auto_enroll?: boolean;
+  readable?: boolean;
+  writable?: boolean;
+  api_base?: string;
+  contribute?: boolean;
+  token_present?: boolean;
+  enrolled_at?: number | null;
+  expires_at?: number | null;
+}
+
+export interface CorpusStatusData {
+  composite_active: boolean;
+  merge_order: string[];
+  merge_strategy: string;
+  on_remote_failure: string;
+  sources: {
+    local: CorpusSourceStatusData;
+    fed: CorpusSourceStatusData;
+    community: CorpusSourceStatusData;
+  };
+  deployment: {
+    deployment_id: string;
+    community_stats_enabled: boolean;
+    heartbeat_endpoint?: string;
+  };
+  as_of?: number;
 }
 
 /** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */
@@ -306,10 +351,13 @@ export interface PluginConfigData {
   supports_connectivity_check?: boolean;
   /** 控制台 dev_mode 等可热重载（保存后立即生效） */
   dev_mode_hot_reload?: boolean;
+  /** 保存后无需重启即可生效（语料联邦等） */
+  hot_reload?: boolean;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */
 export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
+export const CORPUS_FEDERATION_SECTION_ID = "corpus_federation";
 
 /** 通用配置 → 控制台 / Pallas WebUI */
 export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";

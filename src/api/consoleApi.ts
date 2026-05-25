@@ -39,6 +39,7 @@ import type {
   CommonConfigSectionMeta,
   MessageStatsData,
   CommunityStatsData,
+  CorpusStatusData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
   ShardObservabilityData,
@@ -430,6 +431,11 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {
   const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
   return unwrap(data, "/shard-observability");
+}
+
+export async function fetchCorpusStatus(): Promise<CorpusStatusData> {
+  const { data } = await http.get<ApiOk<CorpusStatusData>>("/corpus-status");
+  return unwrap(data, "/corpus-status");
 }
 
 export async function fetchPluginRunStats(

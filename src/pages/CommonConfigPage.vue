@@ -14,7 +14,7 @@ import type {
   PluginConfigField,
   PluginConfigFieldGroup,
 } from "@/api/pallasTypes";
-import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
+import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -41,9 +41,13 @@ const permSelections = ref<Record<string, string>>({});
 
 const CMD_PERM_SECTION_ID = "cmd_perm";
 
+const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
 const isServiceGateways = computed(() => currentId.value === SERVICE_GATEWAYS_SECTION_ID);
 const isPallasWebuiSection = computed(() => currentId.value === PALLAS_WEBUI_SECTION_ID);
 const showDevModeHotReloadHint = computed(() => Boolean(data.value?.dev_mode_hot_reload));
+const showHotReloadHint = computed(
+  () => Boolean(data.value?.dev_mode_hot_reload || data.value?.hot_reload),
+);
 const showGatewayEditor = computed(() => Boolean(data.value?.gateway_editor));
 const supportsConnectivityCheck = computed(() => Boolean(data.value?.supports_connectivity_check));
 const showCmdPermMatrix = computed(
@@ -132,8 +136,11 @@ async function loadSections() {
     const raw = await fetchCommonConfigSections();
     sections.value = sortSectionsCmdPermFirst(raw);
     const q = route.query.section;
+    const metaSection = route.meta.defaultCommonConfigSection;
     if (typeof q === "string" && q.trim()) {
       currentId.value = q.trim();
+    } else if (typeof metaSection === "string" && metaSection.trim()) {
+      currentId.value = metaSection.trim();
     } else if (!currentId.value && sections.value.length) {
       currentId.value =
         sections.value.find((s) => s.id === CMD_PERM_SECTION_ID)?.id ?? sections.value[0].id;
@@ -257,9 +264,10 @@ async function runConnectivityCheck() {
   }
 }
 
-function showFieldInGenericList(f: PluginConfigField): boolean {
-  if (!(showCmdPermMatrix.value && f.name === "command_permission_overrides")) return true;
-  return false;
+function showConfigField(f: PluginConfigField): boolean {
+  if (showCmdPermMatrix.value && f.name === "command_permission_overrides") return false;
+  if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
+  return true;
 }
 </script>
 
@@ -324,6 +332,21 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
           class="panel__bd"
         >
           <p
+            v-if="isCorpusFederationSection"
+            class="muted"
+            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+          >
+            配置本机 / 社区多读源与统计心跳。保存后写入
+            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与社区统计周期任务，无需重启牛牛。
+          </p>
+          <p
+            v-if="isCorpusFederationSection && showHotReloadHint"
+            class="muted"
+            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+          >
+            关闭<strong>社区语料</strong>或<strong>社区统计</strong>后，下一周期起不再访问远端；其余项保存后立即生效。
+          </p>
+          <p
             v-if="isServiceGateways"
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
@@ -336,8 +359,8 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启 Bot；首页亦提供快捷开关。
-            CORS（<code>pallas_webui_cors</code>）变更仍需重启 hub。
+            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；顶栏提供快捷开关。
+            CORS（<code>pallas_webui_cors</code>）变更仍需重启总机牛牛。
           </p>
           <div
             v-if="supportsConnectivityCheck && (checkLines.length || checkErr)"
@@ -435,7 +458,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   插件完整配置 →
                 </router-link>
                 <router-link
-                  v-else
+                  v-else-if="group.plugin_config_path"
                   :to="fieldGroupPluginRoute(group)"
                   class="muted"
                   style="font-size: 13px"
@@ -443,6 +466,13 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   插件完整配置 →
                 </router-link>
               </div>
+              <p
+                v-if="isPallasWebuiSection && group.id === 'security'"
+                class="muted"
+                style="font-size: 13px; margin: -6px 0 12px; line-height: 1.5"
+              >
+                开发模式开关在顶栏右侧，与连接状态、主题切换同一行。
+              </p>
               <PallasImageGatewaysEditor
                 v-if="group.id === 'pallas_image' && showGatewayEditor"
                 :field-values="fieldValues"
@@ -450,7 +480,10 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               />
               <div
                 v-for="f in fieldsInGroup(group)"
-                v-show="!(group.id === 'pallas_image' && showGatewayEditor && gatewayFieldNameSet.has(f.name))"
+                v-show="
+                  showConfigField(f)
+                    && !(group.id === 'pallas_image' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
+                "
                 :key="f.name"
                 style="margin-bottom: 22px"
               >
@@ -458,7 +491,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   {{ f.name }}
                   <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
                 </div>
-                <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+                <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
                   {{ f.description }}
                 </div>
                 <label
@@ -477,6 +510,20 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   </span>
                   <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
                 </label>
+                <select
+                  v-else-if="f.kind === 'enum' && f.choices?.length"
+                  v-model="fieldValues[f.name]"
+                  class="sel"
+                  style="max-width: 520px; width: 100%"
+                >
+                  <option
+                    v-for="opt in f.choices"
+                    :key="opt"
+                    :value="opt"
+                  >
+                    {{ opt }}
+                  </option>
+                </select>
                 <JsonTextareaField
                   v-else-if="f.kind === 'json'"
                   v-model="fieldValues[f.name]"
@@ -496,7 +543,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
           </template>
           <div
             v-for="f in genericFields"
-            v-show="showFieldInGenericList(f)"
+            v-show="showConfigField(f)"
             :key="f.name"
             style="margin-bottom: 22px"
           >
@@ -504,7 +551,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               {{ f.name }}
               <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
             </div>
-            <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+            <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
               {{ f.description }}
             </div>
             <label
@@ -523,6 +570,20 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               </span>
               <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
             </label>
+            <select
+              v-else-if="f.kind === 'enum' && f.choices?.length"
+              v-model="fieldValues[f.name]"
+              class="sel"
+              style="max-width: 520px; width: 100%"
+            >
+              <option
+                v-for="opt in f.choices"
+                :key="opt"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
             <JsonTextareaField
               v-else-if="f.kind === 'json'"
               v-model="fieldValues[f.name]"

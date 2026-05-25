@@ -40,7 +40,6 @@ import type {
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -195,7 +194,11 @@ const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
 const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
 
 const accountHeroHeightCapActive = computed(
-  () => accountHeroLockHeightPx.value >= 120 && typeof window !== "undefined" && window.matchMedia("(min-width: 561px)").matches,
+  () =>
+    accountChartsDrawExpanded.value &&
+    accountHeroLockHeightPx.value >= 120 &&
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 561px)").matches,
 );
 
 const accountHeroLockHeightEffectivePx = computed(() =>
@@ -382,16 +385,6 @@ function pickAccountFromList(account: number) {
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
-const webuiDevModeActive = computed(() => Boolean(system.value?.console?.pallas_webui_dev_mode));
-
-function onWebuiDevModeUpdated(active: boolean) {
-  if (!system.value) return;
-  system.value = {
-    ...system.value,
-    console: { ...(system.value.console ?? {}), pallas_webui_dev_mode: active },
-  };
-}
-
 function fmtBytes(n: number | null | undefined): string {
   if (n == null || n <= 0) return "—";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -877,9 +870,6 @@ function formatCommunityStatNum(n: number | undefined | null): string {
   return Math.floor(n).toLocaleString();
 }
 
-const communityDeploymentsTotal = computed(() =>
-  formatCommunityStatNum(communityStats.value?.deployments_total),
-);
 const communityDeploymentsOnline = computed(() =>
   formatCommunityStatNum(communityStats.value?.deployments_online),
 );
@@ -894,7 +884,6 @@ const communityOnlineHint = computed(() => {
   return `近 ${m} 分钟有心跳`;
 });
 
-const communityDeploymentsTotalHint = computed(() => "历史独立安装累计上报");
 
 const communityDeploymentsOnlineHint = computed(
   () => `${communityOnlineHint.value}  活跃独立安装`,
@@ -916,6 +905,28 @@ const communityBotsOnlineHint = computed(() => {
   }
   return "各部署在线 Bot 合计";
 });
+
+const communityShardedOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_online_sharded),
+);
+
+const communityShardWorkersSum = computed(() =>
+  formatCommunityStatNum(communityStats.value?.shard_workers_online_sum),
+);
+
+const communityCorpusContexts = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.contexts_total),
+);
+
+const communityCorpusAnswers = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.answers_total),
+);
+
+const communityCorpusEnrollments = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
+);
+
+const communityPanelVisible = computed(() => communityStats.value != null);
 
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
@@ -1235,9 +1246,14 @@ async function load() {
 }
 
 async function refreshHomeRuntimePanels() {
-  const [sys, obs] = await Promise.allSettled([fetchSystem(), fetchShardObservability()]);
+  const [sys, obs, comm] = await Promise.allSettled([
+    fetchSystem(),
+    fetchShardObservability(),
+    fetchCommunityStats(),
+  ]);
   if (sys.status === "fulfilled") system.value = sys.value;
   if (obs.status === "fulfilled") shardObs.value = obs.value;
+  if (comm.status === "fulfilled") communityStats.value = comm.value;
 }
 
 async function refreshSystemRuntimeOnly() {
@@ -1368,13 +1384,6 @@ onUnmounted(() => {
     >
       {{ err }}
     </div>
-
-    <ConsoleDevModePanel
-      v-if="pageReady && webuiDevModeActive"
-      :active="webuiDevModeActive"
-      :show-panel="false"
-      @updated="onWebuiDevModeUpdated"
-    />
 
     <ConsolePageSkeleton
       v-if="!pageReady"
@@ -1755,47 +1764,66 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <aside class="home-dashboard__aside">
-      <section class="home-dashboard__community">
-        <div class="grid-stats home-dashboard__aside-stats">
-          <StatCard
-            dense
-            label="社区部署总数"
-            :value="communityDeploymentsTotal"
-            :hint="communityDeploymentsTotalHint"
-          />
-          <StatCard
-            dense
-            label="在线部署数"
-            :value="communityDeploymentsOnline"
-            :hint="communityDeploymentsOnlineHint"
-            :hint-title="communityDeploymentsOnlineHint"
-          />
-          <StatCard
-            dense
-            label="在线牛总和"
-            :value="communityBotsOnlineSum"
-            :hint="communityBotsOnlineHint"
-            :hint-title="communityBotsOnlineHint"
-          />
-        </div>
-      </section>
-
-      <div class="panel home-page__panel home-page__version-panel">
-        <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/" />
-            <span
-              v-if="health?.ok"
-              class="home-page__hd-capsule home-page__hd-capsule--ok"
-            >API 连接</span>
+      <aside class="home-dashboard__aside home-dashboard__aside--tail">
+        <section
+          v-if="communityPanelVisible"
+          class="home-dashboard__aside-community"
+        >
+          <div class="panel home-page__panel home-dashboard__community-panel">
+            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+              <h2 class="panel__title">
+                <span class="panel__title-ico" aria-hidden="true">◉</span>社区统计
+              </h2>
+              <div class="row-actions">
+                <PanelSidebarAdd main-path="/" />
+              </div>
+            </div>
+            <div class="panel__bd">
+              <div class="grid-stats home-community__stats home-dashboard__aside-stats">
+                <StatCard
+                  dense
+                  label="在线部署"
+                  :value="communityDeploymentsOnline"
+                  :hint="communityDeploymentsOnlineHint"
+                />
+                <StatCard
+                  dense
+                  label="在线牛"
+                  :value="communityBotsOnlineSum"
+                  :hint="communityBotsOnlineHint"
+                />
+                <StatCard
+                  dense
+                  label="分片 / Worker"
+                  :value="`${communityShardedOnline} / ${communityShardWorkersSum}`"
+                  hint="在线分片部署与 worker 合计"
+                />
+                <StatCard
+                  dense
+                  label="社区语料池"
+                  :value="`${communityCorpusContexts} ctx · ${communityCorpusAnswers} ans`"
+                  :hint="`enroll ${communityCorpusEnrollments}`"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="panel__bd muted home-page__version home-page__version--grid">
-          <dl class="home-dl home-dl--version-rows home-version-dl">
+        </section>
+        <section class="home-dashboard__aside-version">
+          <div class="panel home-page__panel home-page__version-panel">
+            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+              <h2 class="panel__title">
+                <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
+              </h2>
+              <div class="row-actions">
+                <PanelSidebarAdd main-path="/" />
+                <span
+                  v-if="health?.ok"
+                  class="home-page__hd-capsule home-page__hd-capsule--ok"
+                >API 连接</span>
+              </div>
+            </div>
+            <div class="panel__bd muted home-page__version home-page__version--grid">
+              <dl class="home-dl home-dl--version-rows home-version-dl">
             <dt>NoneBot2</dt>
             <dd>
               <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
@@ -1850,18 +1878,10 @@ onUnmounted(() => {
               <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
               <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
             </dd>
-            <dt>控制台鉴权</dt>
-            <dd class="home-version-dev-mode">
-              <ConsoleDevModePanel
-                :active="webuiDevModeActive"
-                compact
-                :show-banner="false"
-                @updated="onWebuiDevModeUpdated"
-              />
-            </dd>
           </dl>
-        </div>
-      </div>
+            </div>
+          </div>
+        </section>
       </aside>
       </div>
 

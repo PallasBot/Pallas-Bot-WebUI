@@ -1,5 +1,5 @@
 import { createApp } from "vue";
-import faviconHref from "./assets/pallas-priest.png?url";
+import faviconHref from "./assets/favicon.png?url";
 import "./styles/app.css";
 import App from "./App.vue";
 import router from "./router";
