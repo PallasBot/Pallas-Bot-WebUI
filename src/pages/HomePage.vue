@@ -879,14 +879,14 @@ const communityBotsOnlineSum = computed(() =>
 
 const communityOnlineHint = computed(() => {
   const sec = communityStats.value?.online_ttl_sec;
-  if (sec == null || !Number.isFinite(sec) || sec < 60) return "有心跳窗口内";
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "统计窗口内";
   const m = Math.max(1, Math.round(sec / 60));
-  return `近 ${m} 分钟有心跳`;
+  return `近 ${m} 分钟内有心跳`;
 });
 
 
 const communityDeploymentsOnlineHint = computed(
-  () => `${communityOnlineHint.value}  活跃独立安装`,
+  () => `${communityOnlineHint.value}的自托管安装`,
 );
 
 const communityBotsOnlineHint = computed(() => {
@@ -901,9 +901,9 @@ const communityBotsOnlineHint = computed(() => {
   ) {
     const avg = sum / onlineDep;
     const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
-    return `各部署在线合计  均约 ${avgText} 个/部署`;
+    return `全社区在线 Bot 合计，平均每套约 ${avgText} 个`;
   }
-  return "各部署在线 Bot 合计";
+  return "全社区各安装上报的在线 Bot 合计";
 });
 
 const communityShardedOnline = computed(() =>
@@ -926,7 +926,84 @@ const communityCorpusEnrollments = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
 );
 
+const communityCorpusEnrollmentsOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_online),
+);
+
+const communityCorpusPoolValue = computed(() => {
+  const ctx = communityCorpusContexts.value;
+  const ans = communityCorpusAnswers.value;
+  if (ctx === "—" && ans === "—") return "—";
+  return `${ctx} 词条 · ${ans} 回复`;
+});
+
+const communityCorpusEnrollmentValue = computed(() => {
+  const online = communityCorpusEnrollmentsOnline.value;
+  const total = communityCorpusEnrollments.value;
+  if (online === "—" && total !== "—") return `累计 ${total} 套`;
+  if (online !== "—" && total !== "—") return `${online} / ${total}`;
+  return "—";
+});
+
+const communityCorpusEnrollmentsHint = computed(() => {
+  const online = communityStats.value?.corpus?.enrollments_online;
+  const total = communityStats.value?.corpus?.enrollments_total;
+  const recent = communityStats.value?.corpus?.enrollments_recent_24h;
+  const parts: string[] = [];
+  if (online != null && total != null) {
+    parts.push(`${formatCommunityStatNum(online)} 套在线 / ${formatCommunityStatNum(total)} 套累计`);
+  } else if (total != null) {
+    parts.push(`累计 ${formatCommunityStatNum(total)} 套安装`);
+  }
+  if (recent != null && recent > 0) {
+    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 套`);
+  }
+  const contrib = communityStats.value?.corpus?.contribute_enabled_total;
+  if (contrib != null) {
+    parts.push(`其中 ${formatCommunityStatNum(contrib)} 套可上传学习结果`);
+  }
+  return parts.length ? parts.join(" · ") : "已接入社区共享语料库的安装数";
+});
+
+const communityCorpusPoolHint = computed(() => {
+  const hits = communityStats.value?.corpus?.answer_hits_sum;
+  if (hits != null && Number.isFinite(hits)) {
+    return `回复累计被引用 ${formatCommunityStatNum(hits)} 次`;
+  }
+  return "全社区共享的触发词与回复条目";
+});
+
+const communityCorpusContributeHint = computed(
+  () => "已接入且允许把本机学习结果同步到社区池",
+);
+
+const communityCorpusHitsHint = computed(
+  () => "各回复条目在社区池中的累计次数合计",
+);
+
+const communityActiveRecent24h = computed(() =>
+  formatCommunityStatNum(communityStats.value?.active_recent_24h),
+);
+
+const communityActiveRecentHint = computed(() => {
+  const total = communityStats.value?.deployments_total;
+  const catalog = communityStats.value?.catalog_bots_online_sum;
+  const parts: string[] = [];
+  if (total != null) {
+    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
+  }
+  if (catalog != null && Number.isFinite(catalog)) {
+    parts.push(`在线名册 Bot ${formatCommunityStatNum(catalog)} 个`);
+  }
+  return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
+});
+
 const communityPanelVisible = computed(() => communityStats.value != null);
+
+const communityCorpusPanelVisible = computed(() => {
+  const corpus = communityStats.value?.corpus;
+  return corpus != null && Object.keys(corpus).length > 0;
+});
 
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
@@ -1772,7 +1849,7 @@ onUnmounted(() => {
           <div class="panel home-page__panel home-dashboard__community-panel">
             <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
               <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◉</span>社区统计
+                <span class="panel__title-ico" aria-hidden="true">◉</span>社区部署
               </h2>
               <div class="row-actions">
                 <PanelSidebarAdd main-path="/" />
@@ -1782,27 +1859,27 @@ onUnmounted(() => {
               <div class="grid-stats home-community__stats home-dashboard__aside-stats">
                 <StatCard
                   dense
-                  label="在线部署"
+                  label="活跃安装"
                   :value="communityDeploymentsOnline"
                   :hint="communityDeploymentsOnlineHint"
                 />
                 <StatCard
                   dense
-                  label="在线牛"
+                  label="在线 Bot"
                   :value="communityBotsOnlineSum"
                   :hint="communityBotsOnlineHint"
                 />
                 <StatCard
                   dense
-                  label="分片 / Worker"
+                  label="分片 · 进程"
                   :value="`${communityShardedOnline} / ${communityShardWorkersSum}`"
-                  hint="在线分片部署与 worker 合计"
+                  hint="分片架构的安装数与工作进程数"
                 />
                 <StatCard
                   dense
-                  label="社区语料池"
-                  :value="`${communityCorpusContexts} ctx · ${communityCorpusAnswers} ans`"
-                  :hint="`enroll ${communityCorpusEnrollments}`"
+                  label="近 24 小时"
+                  :value="communityActiveRecent24h"
+                  :hint="communityActiveRecentHint"
                 />
               </div>
             </div>
@@ -1884,6 +1961,54 @@ onUnmounted(() => {
         </section>
       </aside>
       </div>
+
+      <section
+        v-if="communityCorpusPanelVisible"
+        class="home-dashboard__corpus"
+      >
+        <div class="panel home-page__panel home-dashboard__corpus-panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">▦</span>共享语料
+            </h2>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <RouterLink
+                class="home-instances-capsule"
+                to="/corpus-config"
+              >语料设置</RouterLink>
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-stats home-dashboard__corpus-grid">
+              <StatCard
+                dense
+                label="词条规模"
+                :value="communityCorpusPoolValue"
+                :hint="communityCorpusPoolHint"
+              />
+              <StatCard
+                dense
+                label="接入安装"
+                :value="communityCorpusEnrollmentValue"
+                :hint="communityCorpusEnrollmentsHint"
+              />
+              <StatCard
+                dense
+                label="可上传学习"
+                :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
+                :hint="communityCorpusContributeHint"
+              />
+              <StatCard
+                dense
+                label="回复热度"
+                :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
+                :hint="communityCorpusHitsHint"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
