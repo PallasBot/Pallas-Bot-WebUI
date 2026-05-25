@@ -351,10 +351,13 @@ export interface PluginConfigData {
   supports_connectivity_check?: boolean;
   /** 控制台 dev_mode 等可热重载（保存后立即生效） */
   dev_mode_hot_reload?: boolean;
+  /** 保存后无需重启即可生效（语料联邦等） */
+  hot_reload?: boolean;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */
 export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
+export const CORPUS_FEDERATION_SECTION_ID = "corpus_federation";
 
 /** 通用配置 → 控制台 / Pallas WebUI */
 export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";
