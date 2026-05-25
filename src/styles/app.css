@@ -49,6 +49,8 @@
   --console-panel-title-weight: 700;
   --console-card-title-size: 14px;
   --console-card-title-weight: 700;
+  /* 主内容区最大宽度（仪表盘双列等） */
+  --shell-content-max: 1450px;
 }
 
 html[data-radius="tight"] {
@@ -719,7 +721,7 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   align-items: center;
   gap: 8px 12px;
   padding: 8px 40px 10px;
-  max-width: 1350px;
+  max-width: var(--shell-content-max);
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
@@ -1248,7 +1250,7 @@ html[data-theme="light"] .shell-page-loading {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  max-width: 1350px;
+  max-width: var(--shell-content-max);
   margin: 0 auto;
   padding: 12px 40px 48px;
 }
@@ -3363,8 +3365,56 @@ html[data-theme="light"] .bot-config-edit {
   gap: 12px;
   min-width: 0;
 }
-.home-dashboard__community {
+.home-dashboard__aside-community {
   min-width: 0;
+}
+.home-community__stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+@media (min-width: 768px) {
+  .home-community__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.home-community__stats > .stat-card .card__body {
+  padding: 10px 12px;
+}
+.home-community__stats > .stat-card .stat-card__label {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+.home-community__stats > .stat-card .stat-card__value {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+.home-community__stats > .stat-card .stat-card__hint {
+  font-size: 10px;
+  line-height: 1.3;
+}
+.home-dashboard__community-panel .panel__bd {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.home-dashboard__aside--version {
+  min-width: 0;
+}
+.home-dashboard__community-panel .panel__bd {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.home-dashboard__community-ext {
+  margin-top: 0;
+}
+@media (max-width: 560px) {
+  .home-dashboard__community-ext {
+    gap: 8px;
+  }
+  .home-community__stats,
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats {
+    grid-template-columns: 1fr;
+  }
 }
 .home-account-panel__hd {
   display: flex;
@@ -3759,7 +3809,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
     overflow-x: hidden;
     overflow-y: auto;
     box-sizing: border-box;
-    gap: 8px;
+    gap: 10px;
   }
 
   .home-account-split-bd--lock-h > .home-account-split-bd__col--hero.home-account-card .home-account-hero__detail--social-usage {
@@ -3770,7 +3820,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   .home-account-split-bd--lock-h > .home-account-split-bd__col--hero.home-account-card .home-account-hero__social-panel {
     flex: 0 0 auto;
     justify-content: flex-start;
-    gap: 10px;
+    gap: 12px;
   }
 
   .home-account-split-bd--lock-h > .home-account-split-bd__col--hero.home-account-card .home-account-hero__social-pending-wrap {
@@ -3811,8 +3861,8 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-  gap: 6px;
-  padding: 6px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -3846,6 +3896,23 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 
 /* 宽屏双列：右侧图表区高度与账号信息卡对齐（--home-account-hero-lock-px 由 HomePage 测量写入） */
 @media (min-width: 561px) {
+  .home-account-split-bd {
+    gap: 10px;
+  }
+
+  .home-account-hero__lead {
+    gap: 14px;
+  }
+
+  .home-account-hero__main {
+    gap: 6px;
+  }
+
+  .home-account-hero__matcher-foot,
+  .home-account-hero__session-meta {
+    padding: 12px 14px;
+  }
+
   .home-account-split-bd__col--hero.home-account-card {
     flex: 0 1 auto;
     align-self: start;
@@ -4176,7 +4243,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-hero__matcher-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-top: 0;
   width: 100%;
   max-width: 100%;
@@ -4408,10 +4475,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__detail {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   width: 100%;
-  padding-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
@@ -4436,7 +4503,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
   flex-direction: column;
   justify-content: flex-start;
   flex: 0 0 auto;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
@@ -4449,7 +4516,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 
 .home-account-hero__social-pending-wrap {
   box-sizing: border-box;
-  padding: 10px 0 0;
+  padding: 12px 0 0;
   margin: 0;
   border: none;
   background: transparent;
@@ -4464,7 +4531,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__social-pending {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 10px;
+  gap: 10px 12px;
   width: 100%;
   min-width: 0;
 }
@@ -4472,7 +4539,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__avatar {
 .home-account-hero__pending-shell {
   box-sizing: border-box;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   background: color-mix(in srgb, var(--bg-deep) 22%, var(--bg-card) 78%);
@@ -4681,7 +4748,7 @@ html[data-theme="light"] .home-account-hero__admin-values {
 .home-account-hero__counts-chips {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 10px;
+  gap: 10px 12px;
   width: 100%;
   min-width: 0;
 }
@@ -4692,9 +4759,9 @@ html[data-theme="light"] .home-account-hero__admin-values {
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 9px 10px;
+  padding: 11px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   background: color-mix(in srgb, var(--bg-deep) 22%, var(--bg-card) 78%);
@@ -5728,8 +5795,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-column: 1;
     grid-row: 4;
   }
-  .home-dashboard__capacity .grid-stats,
-  .home-dashboard__community .grid-stats {
+  .home-dashboard__capacity .grid-stats {
     height: auto;
     margin-bottom: 0;
     align-content: start;
@@ -5739,7 +5805,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 @media (min-width: 1200px) {
   /* 扁平化 hero，避免嵌套 grid + height:100% 导致首行高度塌陷、容量行叠在侧栏上 */
   .home-dashboard {
-    grid-template-columns: minmax(0, 1fr) minmax(272px, 312px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
     grid-template-rows: auto auto auto auto;
     align-items: stretch;
   }
@@ -5749,6 +5815,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-dashboard__accounts {
     grid-column: 1;
     grid-row: 1;
+    align-self: stretch;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -5760,22 +5827,39 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     min-height: 0;
   }
-  .home-dashboard__community {
-    flex: 0 0 auto;
+  .home-dashboard__aside--tail .home-dashboard__aside-version {
+    margin-top: auto;
   }
-  .grid-stats.home-dashboard__aside-stats > .stat-card .card__body {
-    padding: 10px 9px;
-    gap: 4px;
-    justify-content: flex-start;
+  .home-dashboard__aside-community .panel__hd {
+    padding: 8px 12px;
   }
-  .grid-stats.home-dashboard__aside-stats > .stat-card .stat-card__label {
-    font-size: 10px;
+  .home-dashboard__aside-community .home-dashboard__community-panel .panel__bd {
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
-  .grid-stats.home-dashboard__aside-stats > .stat-card .stat-card__value {
-    font-size: 1.2rem;
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats > .stat-card .card__body {
+    padding: 8px 9px;
+    gap: 3px;
+  }
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats > .stat-card .stat-card__label {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats > .stat-card .stat-card__value {
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+  .home-dashboard__aside .home-community__stats.home-dashboard__aside-stats > .stat-card .stat-card__hint {
+    font-size: 9px;
+    line-height: 1.25;
+    -webkit-line-clamp: 2;
   }
   .home-dashboard__capacity {
     grid-column: 1 / -1;
@@ -5793,19 +5877,21 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .home-dashboard__accounts > .home-page__panel {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     min-width: 0;
+    width: 100%;
   }
   .home-dashboard__accounts > .home-page__panel .panel__bd {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
   }
+
   .home-dashboard__aside .home-page__version-panel {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -5838,9 +5924,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   margin-bottom: 28px;
 }
 
-/* 侧栏社区统计：固定三列横排（须覆盖 .grid-stats 的 200px 下限，否则窄侧栏会竖排） */
+/* 侧栏社区统计：2×2 紧凑栅格（须覆盖 .grid-stats 的 200px 下限，否则窄侧栏会竖排） */
 .grid-stats.home-dashboard__aside-stats {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 0;
   width: 100%;
@@ -5955,6 +6041,16 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 /* 运行日志：内层卡片仍裁剪圆角，避免与内部滚动冲突 */
 .shell__main-inner--logs .logs-page .panel {
   overflow: hidden;
+}
+
+.common-config-field-desc {
+  white-space: pre-line;
+  line-height: 1.55;
+}
+
+.plugin-config-page .common-config-field-desc {
+  white-space: pre-line;
+  line-height: 1.55;
 }
 
 /* 仅通用配置页：分区标题栏吸顶（单卡片，依赖该卡片 overflow:visible） */
@@ -6935,15 +7031,39 @@ html[data-theme="light"] .alert--warn {
   font-size: 12px;
 }
 
-.home-version-dev-mode {
-  grid-column: 1 / -1;
+.shell__topbar-dev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
-.home-version-dev-mode .console-dev-mode-panel__desc {
-  max-width: none;
+.shell__topbar-dev__label {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1.3;
+  user-select: none;
 }
-.home-page__version-panel .home-dl dd.home-version-dev-mode {
-  margin-top: 0;
-  padding-top: 6px;
+.shell__topbar-dev--active .shell__topbar-dev__label {
+  color: #fde68a;
+  border-color: color-mix(in srgb, #fbbf24 45%, var(--border));
+  background: color-mix(in srgb, #fbbf24 14%, transparent);
+}
+html[data-theme="light"] .shell__topbar-dev--active .shell__topbar-dev__label {
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+}
+.shell__topbar-dev .console-bool-switch {
+  flex-shrink: 0;
+}
+@media (max-width: 560px) {
+  .shell__topbar-dev__label {
+    display: none;
+  }
 }
 
 .console-bool-switch {

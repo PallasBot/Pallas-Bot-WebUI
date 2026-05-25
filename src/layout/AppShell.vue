@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, onUpdated, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
-import brandMarkUrl from "@/assets/pallas-priest.png?url";
+import brandMarkUrl from "@/assets/favicon.png?url";
 import { fetchBots, fetchInstances, fetchPlugins } from "@/api/consoleApi";
 import { scheduleInstancesCatalogRefreshOnRoute } from "@/composables/useInstancesCatalogSync";
 import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
@@ -19,7 +19,9 @@ import {
   refreshConsoleMeta,
 } from "@/state/consoleMeta";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
+import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
 import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
+import { patchWebuiDevMode } from "@/state/consoleMeta";
 import { addNavTokenToSidebar, removeNavTokenFromSidebar } from "@/utils/sidebarNavActions";
 import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
 import type { ThemeMode } from "@/utils/consolePrefs";
@@ -191,6 +193,14 @@ function goPageBack() {
     return;
   }
   void router.push(pageBackFallback());
+}
+
+const webuiDevModeActive = computed(() =>
+  Boolean(consoleMetaHealth.value?.console?.pallas_webui_dev_mode),
+);
+
+function onWebuiDevModeUpdated(active: boolean) {
+  patchWebuiDevMode(active);
 }
 
 const connectionBadge = computed(() => {
@@ -561,6 +571,12 @@ onUnmounted(() => {
         </p>
       </div>
       <div class="shell__topbar-end">
+        <ConsoleDevModePanel
+          toolbar
+          :active="webuiDevModeActive"
+          :show-banner="false"
+          @updated="onWebuiDevModeUpdated"
+        />
         <span
           :class="connectionBadge.cls"
           :title="consoleMetaErr || (consoleMetaLoading ? '正在探测 API' : undefined)"

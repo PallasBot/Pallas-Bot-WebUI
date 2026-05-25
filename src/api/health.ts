@@ -10,6 +10,7 @@ export interface HealthResponse {
     version?: string;
     commit?: string;
     build_time?: string;
+    pallas_webui_dev_mode?: boolean;
   };
 }
 

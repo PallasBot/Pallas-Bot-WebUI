@@ -417,7 +417,7 @@ async function save() {
             {{ f.name }}
             <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
           </div>
-          <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+          <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
             {{ f.description }}
           </div>
           <div class="muted" style="font-size: 12px; margin-bottom: 8px">
