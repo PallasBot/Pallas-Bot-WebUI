@@ -14,6 +14,7 @@ import UpdatePage from "@/pages/UpdatePage.vue";
 import AiExtensionPage from "@/pages/AiExtensionPage.vue";
 import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
 import PreferencesPage from "@/pages/PreferencesPage.vue";
+import CommunityPage from "@/pages/CommunityPage.vue";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 
@@ -155,6 +156,15 @@ const router = createRouter({
           meta: {
             title: "AI 扩展",
             description: "扩展服务配置与健康；运行记录由后端读取",
+          },
+        },
+        {
+          path: "community",
+          name: "community",
+          component: CommunityPage,
+          meta: {
+            title: "统计与语料",
+            description: "全网部署统计与共享语料概览",
           },
         },
         {

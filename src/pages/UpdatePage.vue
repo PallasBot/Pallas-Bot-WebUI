@@ -24,6 +24,7 @@ import {
   PALLAS_BOT_RELEASES,
   PALLAS_BOT_REPO,
   PALLAS_WEBUI_RELEASES,
+  PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
@@ -115,6 +116,13 @@ const botDocLinks = computed(() => {
   }
   return links;
 });
+
+const webDocLinks = computed(() => [
+  { href: (web.value?.release_url || "").trim() || WEBUI_RELEASES_PAGE, label: "GitHub Release" },
+  { href: PALLAS_WEBUI_REPO, label: "Pallas-Bot-WebUI 仓库" },
+  { href: BOT_DOC.siteCustomization, label: "站点定制与更新" },
+  { href: BOT_DOC.faqUpdates, label: "FAQ · 更新与版本" },
+]);
 
 const botApplyDisabled = computed(
   () =>
@@ -494,17 +502,44 @@ onMounted(() => {
             {{ webCallout.text }}
           </div>
 
-          <details
-            v-if="(web?.release_notes || '').trim()"
-            class="update-page__release-fold update-page__release-notes"
-          >
+          <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
               {{ web?.latest_tag ? `「${web.latest_tag}」发行说明` : "发行说明" }}
             </summary>
             <div
+              v-if="(web?.release_notes || '').trim()"
               class="update-page__release-notes-body update-page__release-notes-body--md"
               v-html="webReleaseNotesHtml"
             />
+            <p
+              v-else
+              class="update-page__release-notes-empty muted"
+            >
+              GitHub 未提供发行说明正文，请查看
+              <a
+                class="update-page__link"
+                :href="(web?.release_url || '').trim() || WEBUI_RELEASES_PAGE"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Release 页面</a>。
+            </p>
+          </details>
+
+          <details class="update-page__release-fold update-page__doc-links">
+            <summary class="update-page__release-fold-summary">相关文档</summary>
+            <ul class="update-page__doc-links-list">
+              <li
+                v-for="link in webDocLinks"
+                :key="link.href"
+              >
+                <a
+                  class="update-page__link"
+                  :href="link.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ link.label }}</a>
+              </li>
+            </ul>
           </details>
 
           <p class="update-page__release-foot muted">
@@ -673,17 +708,27 @@ onMounted(() => {
             </p>
           </section>
 
-          <details
-            v-if="(bot?.release_notes || '').trim()"
-            class="update-page__release-fold update-page__release-notes"
-          >
+          <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
               {{ bot?.latest_tag ? `「${bot.latest_tag}」发行说明` : "发行说明" }}
             </summary>
             <div
+              v-if="(bot?.release_notes || '').trim()"
               class="update-page__release-notes-body update-page__release-notes-body--md"
               v-html="botReleaseNotesHtml"
             />
+            <p
+              v-else
+              class="update-page__release-notes-empty muted"
+            >
+              GitHub 未提供发行说明正文，请查看
+              <a
+                class="update-page__link"
+                :href="(bot?.release_url || '').trim() || BOT_RELEASES_PAGE"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Release 页面</a>。
+            </p>
           </details>
 
           <details class="update-page__release-fold update-page__doc-links">
@@ -921,6 +966,12 @@ onMounted(() => {
 .update-page__link:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.update-page__release-notes-empty {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .update-page__release-notes-body {
