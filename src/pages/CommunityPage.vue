@@ -1,0 +1,589 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
+import { fetchCommunityStats, fetchCorpusStatus } from "@/api/consoleApi";
+import type {
+  CommunityStatsData,
+  CommunityVersionCountData,
+  CorpusSourceStatusData,
+  CorpusStatusData,
+} from "@/api/pallasTypes";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import StatCard from "@/components/StatCard.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+
+const panelNavIcon = usePanelNavIcon();
+const pageReady = ref(false);
+const refreshBusy = ref(false);
+const err = ref("");
+const communityStats = ref<CommunityStatsData | null>(null);
+const corpusStatus = ref<CorpusStatusData | null>(null);
+
+function formatCommunityStatNum(n: number | undefined | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return Math.floor(n).toLocaleString();
+}
+
+const onlineHint = computed(() => {
+  const sec = communityStats.value?.online_ttl_sec;
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "统计窗口内";
+  const m = Math.max(1, Math.round(sec / 60));
+  return `近 ${m} 分钟内有心跳`;
+});
+
+const deploymentsOnlineHint = computed(
+  () => `${onlineHint.value}的自托管安装`,
+);
+
+const botsOnlineHint = computed(() => {
+  const sum = communityStats.value?.bots_online_sum;
+  const onlineDep = communityStats.value?.deployments_online;
+  if (
+    sum != null &&
+    Number.isFinite(sum) &&
+    onlineDep != null &&
+    onlineDep > 0 &&
+    Number.isFinite(onlineDep)
+  ) {
+    const avg = sum / onlineDep;
+    const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
+    return `全网在线牛牛合计，平均每处约 ${avgText} 只`;
+  }
+  return "各安装向中心上报的在线牛牛合计";
+});
+
+const activeRecentHint = computed(() => {
+  const total = communityStats.value?.deployments_total;
+  const catalog = communityStats.value?.catalog_bots_online_sum;
+  const parts: string[] = [];
+  if (total != null) {
+    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
+  }
+  if (catalog != null && Number.isFinite(catalog)) {
+    parts.push(`在线名册牛牛 ${formatCommunityStatNum(catalog)} 只`);
+  }
+  return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
+});
+
+const corpusPoolValue = computed(() => {
+  const ctx = formatCommunityStatNum(communityStats.value?.corpus?.contexts_total);
+  const ans = formatCommunityStatNum(communityStats.value?.corpus?.answers_total);
+  if (ctx === "—" && ans === "—") return "—";
+  return `${ctx} 词条 · ${ans} 回复`;
+});
+
+const corpusPoolHint = computed(() => {
+  const hits = communityStats.value?.corpus?.answer_hits_sum;
+  if (hits != null && Number.isFinite(hits)) {
+    return `回复累计被引用 ${formatCommunityStatNum(hits)} 次`;
+  }
+  return "共享池中的触发词与回复条目";
+});
+
+const corpusOnlineEnrollHint = computed(() => {
+  const total = communityStats.value?.corpus?.enrollments_total;
+  const parts: string[] = [`${onlineHint.value}且已接入共享语料`];
+  if (total != null) {
+    parts.push(`累计 ${formatCommunityStatNum(total)} 处自托管`);
+  }
+  return parts.join(" · ");
+});
+
+const corpusTotalEnrollHint = computed(() => {
+  const recent = communityStats.value?.corpus?.enrollments_recent_24h;
+  const contrib = communityStats.value?.corpus?.contribute_enabled_total;
+  const parts: string[] = ["历史上接入过共享语料的安装数"];
+  if (recent != null && recent > 0) {
+    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 处`);
+  }
+  if (contrib != null) {
+    parts.push(`其中 ${formatCommunityStatNum(contrib)} 处可上传学习结果`);
+  }
+  return parts.join(" · ");
+});
+
+const communityAvailable = computed(() => communityStats.value != null);
+
+const corpusPanelVisible = computed(() => {
+  const corpus = communityStats.value?.corpus;
+  return corpus != null && Object.keys(corpus).length > 0;
+});
+
+const onlineVersions = computed((): CommunityVersionCountData[] => {
+  const rows = communityStats.value?.online_versions;
+  if (!Array.isArray(rows)) return [];
+  return [...rows].sort((a, b) => b.count - a.count);
+});
+
+const statsAsOfText = computed(() => {
+  const asOf = (communityStats.value?.as_of || "").trim();
+  return asOf ? `快照 ${asOf}` : "";
+});
+
+const statsUrl = computed(() => (communityStats.value?.stats_url || "").trim());
+
+const allSourceKeys = ["local", "fed", "community"] as const;
+
+type SourceKey = (typeof allSourceKeys)[number];
+
+function fedSourceVisible(fed: CorpusSourceStatusData | undefined): boolean {
+  if (!fed) return false;
+  return !!(fed.configured || fed.enabled);
+}
+
+const visibleSourceKeys = computed((): SourceKey[] => {
+  const keys: SourceKey[] = ["local"];
+  if (fedSourceVisible(corpusStatus.value?.sources?.fed)) keys.push("fed");
+  keys.push("community");
+  return keys;
+});
+
+const mergeOrderSteps = computed((): Array<"local" | "fed" | "community"> => {
+  const order = corpusStatus.value?.merge_order;
+  if (!Array.isArray(order) || !order.length) return [];
+  const allowed = new Set(["local", "fed", "community"]);
+  const visible = new Set(visibleSourceKeys.value);
+  return order.filter(
+    (s): s is "local" | "fed" | "community" => allowed.has(s) && visible.has(s as SourceKey),
+  );
+});
+
+const sourceMatrixRows = [
+  { key: "enabled", label: "启用" },
+  { key: "enrolled", label: "已接入" },
+  { key: "readable", label: "可读" },
+  { key: "writable", label: "可写" },
+  { key: "contribute", label: "可贡献" },
+] as const;
+
+type MatrixRowKey = (typeof sourceMatrixRows)[number]["key"];
+
+const localMatrixNaRows = new Set<MatrixRowKey>(["enrolled", "contribute"]);
+
+function matrixCellState(
+  sourceKey: SourceKey,
+  source: CorpusSourceStatusData | undefined,
+  rowKey: MatrixRowKey,
+): "on" | "off" | "na" {
+  if (sourceKey === "local" && localMatrixNaRows.has(rowKey)) return "na";
+  if (!source) return "na";
+  if (rowKey === "enabled") return source.enabled ? "on" : "off";
+  if (!source.enabled) return "na";
+  return source[rowKey] ? "on" : "off";
+}
+
+function matrixCellText(state: "on" | "off" | "na"): string {
+  if (state === "on") return "是";
+  if (state === "off") return "否";
+  return "—";
+}
+
+const corpusSummaryFlow = computed(() => {
+  if (!mergeOrderSteps.value.length) return "";
+  return mergeOrderSteps.value.map((k) => sourceLabel(k)).join(" → ");
+});
+
+const corpusSnapshotText = computed(() => formatUnixSec(corpusStatus.value?.as_of));
+
+const deploymentIdShort = computed(() => {
+  const id = (corpusStatus.value?.deployment?.deployment_id || "").trim();
+  if (!id) return "—";
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+});
+
+function sourceApiBase(key: SourceKey): string {
+  return (corpusStatus.value?.sources?.[key]?.api_base || "").trim();
+}
+
+const sourceApiEntries = computed(() =>
+  visibleSourceKeys.value
+    .map((key) => ({ key, url: sourceApiBase(key) }))
+    .filter((row) => row.url),
+);
+
+function mergeStrategyLabel(raw: string | undefined): string {
+  const s = (raw || "").trim();
+  if (!s) return "—";
+  const map: Record<string, string> = {
+    local_first: "本地优先",
+    merge_counts: "合并计数",
+  };
+  return map[s] || s;
+}
+
+function remoteFailureLabel(raw: string | undefined): string {
+  const s = (raw || "").trim();
+  if (!s) return "—";
+  const map: Record<string, string> = {
+    local_only: "仅用本地",
+  };
+  return map[s] || s;
+}
+
+function formatUnixSec(ts: number | null | undefined): string {
+  if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
+  try {
+    return new Date(ts * 1000).toLocaleString();
+  } catch {
+    return "—";
+  }
+}
+
+function sourceLabel(key: SourceKey): string {
+  if (key === "local") return "本地";
+  if (key === "fed") return "联邦";
+  return "共享池";
+}
+
+async function load(options?: { bypassCache?: boolean }) {
+  err.value = "";
+  try {
+    const [comm, corpus] = await Promise.all([
+      fetchCommunityStats({ bypassCache: options?.bypassCache }).catch(() => null),
+      fetchCorpusStatus().catch(() => null),
+    ]);
+    communityStats.value = comm;
+    corpusStatus.value = corpus;
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pageReady.value = true;
+  }
+}
+
+async function refresh() {
+  refreshBusy.value = true;
+  try {
+    await load({ bypassCache: true });
+  } finally {
+    refreshBusy.value = false;
+  }
+}
+
+onMounted(() => {
+  void load();
+});
+</script>
+
+<template>
+  <div class="community-page">
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="3"
+    />
+    <template v-else>
+      <p
+        v-if="err"
+        class="alert alert--err community-page__alert"
+      >
+        {{ err }}
+      </p>
+
+      <div
+        v-if="!communityAvailable"
+        class="panel community-page__panel"
+      >
+        <div class="panel__bd muted community-page__empty">
+          统计中心未返回数据。请确认本部署已启用统计上报，且中心服务可访问。
+          <RouterLink
+            class="community-page__inline-link"
+            to="/corpus-config"
+          >语料与联邦设置</RouterLink>
+        </div>
+      </div>
+
+      <section
+        v-if="communityAvailable"
+        id="community-deploy"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >{{ panelNavIcon }}</span>全网部署
+            </h2>
+            <div class="row-actions community-page__hd-actions">
+              <PanelSidebarAdd main-path="/community" />
+              <RefreshIconButton
+                :busy="refreshBusy"
+                label="刷新统计与语料数据"
+                @click="refresh"
+              />
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-stats community-page__deploy-grid">
+              <StatCard
+                dense
+                label="活跃安装"
+                :value="formatCommunityStatNum(communityStats?.deployments_online)"
+                :hint="deploymentsOnlineHint"
+              />
+              <StatCard
+                dense
+                label="在线牛牛"
+                :value="formatCommunityStatNum(communityStats?.bots_online_sum)"
+                :hint="botsOnlineHint"
+              />
+              <StatCard
+                dense
+                label="分片 · 进程"
+                :value="`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`"
+                hint="分片架构的安装数与工作进程数"
+              />
+              <StatCard
+                dense
+                label="近 24 小时"
+                :value="formatCommunityStatNum(communityStats?.active_recent_24h)"
+                :hint="activeRecentHint"
+              />
+            </div>
+            <dl class="home-dl community-page__detail-dl community-page__meta-dl">
+              <dt>历史安装</dt>
+              <dd>{{ formatCommunityStatNum(communityStats?.deployments_total) }} 套</dd>
+              <dt>在线名册</dt>
+              <dd>{{ formatCommunityStatNum(communityStats?.catalog_bots_online_sum) }} 只牛牛</dd>
+              <dt>共享语料</dt>
+              <dd>
+                <span
+                  class="badge"
+                  :class="communityStats?.corpus_enabled ? 'badge--ok' : ''"
+                >{{ communityStats?.corpus_enabled ? "已启用" : "未启用" }}</span>
+              </dd>
+              <template v-if="statsAsOfText || statsUrl">
+                <dt>数据来源</dt>
+                <dd class="community-page__meta-stack">
+                  <span
+                    v-if="statsAsOfText"
+                    class="community-page__meta-line"
+                  >{{ statsAsOfText }}</span>
+                  <a
+                    v-if="statsUrl"
+                    class="community-page__ext-link community-page__meta-line community-page__mono"
+                    :href="statsUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ statsUrl }}</a>
+                </dd>
+              </template>
+            </dl>
+            <div
+              v-if="onlineVersions.length"
+              class="community-page__versions"
+            >
+              <h3 class="community-page__subhd">在线版本分布</h3>
+              <ul class="community-page__version-list">
+                <li
+                  v-for="row in onlineVersions"
+                  :key="row.version"
+                  class="community-page__version-row"
+                >
+                  <span class="community-page__version-name community-page__mono">{{ row.version || "—" }}</span>
+                  <span class="community-page__version-count">{{ formatCommunityStatNum(row.count) }} 套</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-if="corpusPanelVisible"
+        id="community-corpus"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >▦</span>共享语料
+            </h2>
+            <div class="row-actions community-page__hd-actions">
+              <RouterLink
+                class="btn btn--ghost btn--sm"
+                to="/corpus-config"
+              >语料设置</RouterLink>
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-stats community-page__corpus-grid">
+              <StatCard
+                dense
+                label="词条规模"
+                :value="corpusPoolValue"
+                :hint="corpusPoolHint"
+              />
+              <StatCard
+                dense
+                label="在线接入"
+                :value="formatCommunityStatNum(communityStats?.corpus?.enrollments_online)"
+                :hint="corpusOnlineEnrollHint"
+              />
+              <StatCard
+                dense
+                label="累计接入"
+                :value="formatCommunityStatNum(communityStats?.corpus?.enrollments_total)"
+                :hint="corpusTotalEnrollHint"
+              />
+              <StatCard
+                dense
+                label="可上传学习"
+                :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
+                hint="已接入且允许把本机学习结果同步到共享语料池"
+              />
+              <StatCard
+                dense
+                label="回复热度"
+                :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
+                hint="各回复条目在共享池中的累计引用次数"
+              />
+              <StatCard
+                dense
+                label="可读安装"
+                :value="formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)"
+                hint="已接入且允许从共享池读取语料的安装数"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="community-local"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >◎</span>本部署语料
+            </h2>
+            <div class="row-actions community-page__hd-actions">
+              <RouterLink
+                class="btn btn--ghost btn--sm"
+                to="/corpus-config"
+              >语料设置</RouterLink>
+            </div>
+          </div>
+          <div
+            v-if="corpusStatus"
+            class="panel__bd community-page__local-bd"
+          >
+            <div class="community-page__corpus-board">
+              <div class="community-page__corpus-summary">
+                <div class="community-page__corpus-summary-main">
+                  <span
+                    class="badge community-page__status-badge"
+                    :class="corpusStatus.composite_active ? 'badge--ok' : ''"
+                  >{{ corpusStatus.composite_active ? "复合已激活" : "复合未激活" }}</span>
+                  <span
+                    v-if="corpusSummaryFlow"
+                    class="community-page__corpus-summary-flow"
+                  >{{ corpusSummaryFlow }}</span>
+                </div>
+                <div class="community-page__corpus-summary-meta">
+                  <span>{{ mergeStrategyLabel(corpusStatus.merge_strategy) }}</span>
+                  <span class="community-page__corpus-summary-sep">·</span>
+                  <span>远端失败 {{ remoteFailureLabel(corpusStatus.on_remote_failure) }}</span>
+                  <span class="community-page__corpus-summary-sep">·</span>
+                  <span>快照 {{ corpusSnapshotText }}</span>
+                </div>
+              </div>
+
+              <div class="table-wrap community-page__matrix-wrap">
+                <table class="tbl community-page__source-matrix">
+                  <thead>
+                    <tr>
+                      <th scope="col">能力</th>
+                      <th
+                        v-for="key in visibleSourceKeys"
+                        :key="key"
+                        scope="col"
+                        class="community-page__matrix-src-th"
+                      >
+                        <span
+                          class="community-page__matrix-src"
+                          :class="corpusStatus.sources?.[key]?.enabled ? 'is-on' : 'is-off'"
+                        >{{ sourceLabel(key) }}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in sourceMatrixRows"
+                      :key="row.key"
+                    >
+                      <th scope="row">{{ row.label }}</th>
+                      <td
+                        v-for="key in visibleSourceKeys"
+                        :key="`${row.key}-${key}`"
+                      >
+                        <span
+                          class="community-page__matrix-cell"
+                          :class="`community-page__matrix-cell--${matrixCellState(key, corpusStatus.sources?.[key], row.key)}`"
+                        >{{ matrixCellText(matrixCellState(key, corpusStatus.sources?.[key], row.key)) }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <ul
+                v-if="sourceApiEntries.length"
+                class="community-page__api-list"
+              >
+                <li
+                  v-for="entry in sourceApiEntries"
+                  :key="entry.key"
+                  class="community-page__api-list-item"
+                >
+                  <span class="community-page__api-list-k">{{ sourceLabel(entry.key) }}</span>
+                  <code class="community-page__api-list-v">{{ entry.url }}</code>
+                </li>
+              </ul>
+
+              <div class="community-page__corpus-meta-bar">
+                <span
+                  class="community-page__corpus-meta-item"
+                  :title="corpusStatus.deployment?.deployment_id || ''"
+                >
+                  <span class="community-page__corpus-meta-k">部署</span>
+                  <span class="community-page__corpus-meta-v community-page__mono">{{ deploymentIdShort }}</span>
+                </span>
+                <span class="community-page__corpus-meta-item">
+                  <span class="community-page__corpus-meta-k">统计上报</span>
+                  <span
+                    class="community-page__corpus-meta-v"
+                    :class="corpusStatus.deployment?.community_stats_enabled ? 'is-ok' : 'is-off'"
+                  >{{ corpusStatus.deployment?.community_stats_enabled ? "已启用" : "未启用" }}</span>
+                </span>
+                <span
+                  v-if="corpusStatus.deployment?.heartbeat_endpoint"
+                  class="community-page__corpus-meta-item community-page__corpus-meta-item--grow"
+                >
+                  <span class="community-page__corpus-meta-k">心跳</span>
+                  <span class="community-page__corpus-meta-v community-page__mono">{{ corpusStatus.deployment.heartbeat_endpoint }}</span>
+                </span>
+              </div>
+            </div>          </div>
+          <div
+            v-else
+            class="panel__bd muted community-page__empty"
+          >
+            无法读取本部署语料状态。
+          </div>
+        </div>
+      </section>
+    </template>
+  </div>
+</template>
