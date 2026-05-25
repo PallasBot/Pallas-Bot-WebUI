@@ -76,13 +76,18 @@ function onToggleInput(ev: Event) {
 
     <div
       v-if="showPanel && toolbar"
-      class="console-dev-mode-toolbar"
-      :class="{ 'console-dev-mode-toolbar--active': active }"
+      class="shell-toolbar__seg shell-toolbar__seg--compact shell__topbar-dev"
+      :class="{ 'shell__topbar-dev--on': active }"
       :title="DEV_MODE_TOOLTIP"
+      role="group"
+      aria-label="开发模式"
     >
-      <span class="console-dev-mode-toolbar__label">开发模式</span>
+      <span
+        class="shell__topbar-dev__label"
+        :class="{ 'is-on': active }"
+      >开发</span>
       <label
-        class="console-bool-switch"
+        class="console-bool-switch console-bool-switch--topbar"
         :class="{ 'console-bool-switch--on': active }"
       >
         <input

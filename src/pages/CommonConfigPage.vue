@@ -335,8 +335,8 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            配置 local / community 多读源与 stats 心跳（Phase 1）。保存后写入
-            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与社区统计周期任务，无需重启 Bot。
+            配置本机 / 社区多读源与统计心跳。保存后写入
+            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与社区统计周期任务，无需重启牛牛。
           </p>
           <p
             v-if="isCorpusFederationSection && showHotReloadHint"
@@ -358,8 +358,8 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启 Bot；首页亦提供快捷开关。
-            CORS（<code>pallas_webui_cors</code>）变更仍需重启 hub。
+            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；首页亦提供快捷开关。
+            CORS（<code>pallas_webui_cors</code>）变更仍需重启总机牛牛。
           </p>
           <div
             v-if="supportsConnectivityCheck && (checkLines.length || checkErr)"
@@ -480,7 +480,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
                   {{ f.name }}
                   <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
                 </div>
-                <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+                <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
                   {{ f.description }}
                 </div>
                 <label
@@ -540,7 +540,7 @@ function showFieldInGenericList(f: PluginConfigField): boolean {
               {{ f.name }}
               <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
             </div>
-            <div class="muted" style="font-size: 13px; margin-bottom: 8px">
+            <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
               {{ f.description }}
             </div>
             <label
