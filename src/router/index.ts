@@ -145,6 +145,16 @@ const router = createRouter({
           },
         },
         {
+          path: "corpus-config",
+          name: "corpus-config",
+          component: CommonConfigPage,
+          meta: {
+            title: "语料联邦",
+            description: "社区语料、多读源与 stats 心跳",
+            defaultCommonConfigSection: "corpus_federation",
+          },
+        },
+        {
           path: "ai",
           name: "ai",
           component: AiExtensionPage,
@@ -171,13 +181,18 @@ const router = createRouter({
   ],
 });
 
-const baseTitle = "Pallas-Bot 控制台";
+const consoleSurfaceTitle = "控制台";
 
 router.afterEach((to) => {
   const h = (to.hash || "").trim();
   const pin = SIDEBAR_PIN_DEFINITIONS.find((p) => p.path === to.path && p.hash === h);
-  const piece = pin?.label ?? (to.meta.title as string | undefined);
-  document.title = piece ? `${piece} · ${baseTitle}` : baseTitle;
+  let piece = pin?.label ?? (to.meta.title as string | undefined);
+  if (to.name === "plugin-config") {
+    const n = to.params.name;
+    if (typeof n === "string" && n.trim()) piece = n.trim();
+  }
+  const title = typeof piece === "string" ? piece.trim() : "";
+  document.title = title ? `${title} · ${consoleSurfaceTitle}` : consoleSurfaceTitle;
 });
 
 installRouteLoading(router);

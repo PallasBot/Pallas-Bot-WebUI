@@ -43,7 +43,6 @@ import type {
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -199,7 +198,11 @@ const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
 const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
 
 const accountHeroHeightCapActive = computed(
-  () => accountHeroLockHeightPx.value >= 120 && typeof window !== "undefined" && window.matchMedia("(min-width: 561px)").matches,
+  () =>
+    accountChartsDrawExpanded.value &&
+    accountHeroLockHeightPx.value >= 120 &&
+    typeof window !== "undefined" &&
+    window.matchMedia("(min-width: 561px)").matches,
 );
 
 const accountHeroLockHeightEffectivePx = computed(() =>
@@ -386,16 +389,6 @@ function pickAccountFromList(account: number) {
 }
 
 const runtime = computed(() => system.value?.runtime ?? null);
-const webuiDevModeActive = computed(() => Boolean(system.value?.console?.pallas_webui_dev_mode));
-
-function onWebuiDevModeUpdated(active: boolean) {
-  if (!system.value) return;
-  system.value = {
-    ...system.value,
-    console: { ...(system.value.console ?? {}), pallas_webui_dev_mode: active },
-  };
-}
-
 function fmtBytes(n: number | null | undefined): string {
   if (n == null || n <= 0) return "—";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -881,9 +874,6 @@ function formatCommunityStatNum(n: number | undefined | null): string {
   return Math.floor(n).toLocaleString();
 }
 
-const communityDeploymentsTotal = computed(() =>
-  formatCommunityStatNum(communityStats.value?.deployments_total),
-);
 const communityDeploymentsOnline = computed(() =>
   formatCommunityStatNum(communityStats.value?.deployments_online),
 );
@@ -898,7 +888,6 @@ const communityOnlineHint = computed(() => {
   return `近 ${m} 分钟有心跳`;
 });
 
-const communityDeploymentsTotalHint = computed(() => "历史独立安装累计上报");
 
 const communityDeploymentsOnlineHint = computed(
   () => `${communityOnlineHint.value}  活跃独立安装`,
@@ -941,32 +930,16 @@ const communityCorpusEnrollments = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
 );
 
-const communityExtendedStatsVisible = computed(() => {
-  const s = communityStats.value;
-  if (!s) return false;
-  return (
-    s.deployments_online_sharded != null ||
-    s.shard_workers_online_sum != null ||
-    (s.corpus != null &&
-      (s.corpus.contexts_total > 0 ||
-        s.corpus.answers_total > 0 ||
-        s.corpus.enrollments_total > 0))
-  );
-});
+const communityPanelVisible = computed(() => communityStats.value != null);
 
-const corpusStatusVisible = computed(() => corpusStatus.value != null);
+const corpusPanelVisible = computed(() => corpusStatus.value != null);
+
+const corpusConfigTo = { path: "/corpus-config" } as const;
 
 const corpusMergeSummary = computed(() => {
   const c = corpusStatus.value;
   if (!c) return "";
   return `${c.merge_order.join(" → ")} · ${c.merge_strategy}`;
-});
-
-const corpusDeploymentShort = computed(() => {
-  const id = (corpusStatus.value?.deployment.deployment_id || "").trim();
-  if (!id) return "—";
-  if (id.length <= 13) return id;
-  return `${id.slice(0, 8)}…${id.slice(-4)}`;
 });
 
 type CorpusSourceKey = "local" | "fed" | "community";
@@ -995,7 +968,8 @@ function corpusSourceSummary(key: CorpusSourceKey, src: CorpusSourceStatusData |
   if (key === "local") return "本地 PG 读写";
   if (!src.enabled) return "未启用";
   if (key === "fed") {
-    return src.configured ? "第二 PG（待接入）" : "未配置 PG_CORPUS_FED_*";
+    if (!src.enabled) return "未启用 · 托管联邦 PG（Phase 2）";
+    return src.configured ? "已配置 PG_CORPUS_FED_* · 读写待接入" : "未配置 PG_CORPUS_FED_*";
   }
   if (src.enrolled) {
     const write = src.contribute ? "写回开" : "写回关";
@@ -1467,13 +1441,6 @@ onUnmounted(() => {
       {{ err }}
     </div>
 
-    <ConsoleDevModePanel
-      v-if="pageReady && webuiDevModeActive"
-      :active="webuiDevModeActive"
-      :show-panel="false"
-      @updated="onWebuiDevModeUpdated"
-    />
-
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="4"
@@ -1854,143 +1821,65 @@ onUnmounted(() => {
       </section>
 
       <aside class="home-dashboard__aside">
-      <section class="home-dashboard__community">
-        <div class="panel home-page__panel home-dashboard__community-panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">◎</span>社区统计
-            </h2>
-            <div class="row-actions">
-              <span class="home-page__hd-capsule home-page__hd-capsule--muted">stats 中心</span>
+        <section
+          v-if="communityPanelVisible"
+          class="home-dashboard__aside-community"
+        >
+          <div class="panel home-page__panel home-dashboard__community-panel">
+            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+              <h2 class="panel__title">
+                <span class="panel__title-ico" aria-hidden="true">◉</span>社区统计
+              </h2>
+              <div class="row-actions">
+                <PanelSidebarAdd main-path="/" />
+              </div>
+            </div>
+            <div class="panel__bd">
+              <div class="grid-stats home-community__stats home-dashboard__aside-stats">
+                <StatCard
+                  dense
+                  label="在线部署"
+                  :value="communityDeploymentsOnline"
+                  :hint="communityDeploymentsOnlineHint"
+                />
+                <StatCard
+                  dense
+                  label="在线牛"
+                  :value="communityBotsOnlineSum"
+                  :hint="communityBotsOnlineHint"
+                />
+                <StatCard
+                  dense
+                  label="分片 / Worker"
+                  :value="`${communityShardedOnline} / ${communityShardWorkersSum}`"
+                  hint="在线分片部署与 worker 合计"
+                />
+                <StatCard
+                  dense
+                  label="社区语料池"
+                  :value="`${communityCorpusContexts} ctx · ${communityCorpusAnswers} ans`"
+                  :hint="`enroll ${communityCorpusEnrollments}`"
+                />
+              </div>
             </div>
           </div>
-          <div class="panel__bd">
-            <div class="grid-stats home-dashboard__aside-stats">
-              <StatCard
-                dense
-                label="社区部署总数"
-                :value="communityDeploymentsTotal"
-                :hint="communityDeploymentsTotalHint"
-              />
-              <StatCard
-                dense
-                label="在线部署数"
-                :value="communityDeploymentsOnline"
-                :hint="communityDeploymentsOnlineHint"
-                :hint-title="communityDeploymentsOnlineHint"
-              />
-              <StatCard
-                dense
-                label="在线牛总和"
-                :value="communityBotsOnlineSum"
-                :hint="communityBotsOnlineHint"
-                :hint-title="communityBotsOnlineHint"
-              />
+        </section>
+        <section class="home-dashboard__aside-version">
+          <div class="panel home-page__panel home-page__version-panel">
+            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+              <h2 class="panel__title">
+                <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
+              </h2>
+              <div class="row-actions">
+                <PanelSidebarAdd main-path="/" />
+                <span
+                  v-if="health?.ok"
+                  class="home-page__hd-capsule home-page__hd-capsule--ok"
+                >API 连接</span>
+              </div>
             </div>
-            <div
-              v-if="communityExtendedStatsVisible"
-              class="grid-stats home-dashboard__community-ext"
-            >
-              <StatCard
-                dense
-                label="分片在线"
-                :value="communityShardedOnline"
-                hint="在线部署中启用分片"
-              />
-              <StatCard
-                dense
-                label="Worker 片数"
-                :value="communityShardWorkersSum"
-                hint="分片部署 worker 合计"
-              />
-              <StatCard
-                dense
-                label="语料 context"
-                :value="communityCorpusContexts"
-                hint="社区池触发词"
-              />
-              <StatCard
-                dense
-                label="语料 answer"
-                :value="communityCorpusAnswers"
-                :hint="`enroll ${communityCorpusEnrollments}`"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        v-if="corpusStatusVisible"
-        class="home-dashboard__corpus"
-      >
-        <div class="panel home-page__panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">⧉</span>语料源
-            </h2>
-            <div class="row-actions">
-              <span
-                class="home-page__hd-capsule"
-                :class="corpusStatus?.composite_active ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--muted'"
-              >{{ corpusStatus?.composite_active ? "composite" : "local only" }}</span>
-            </div>
-          </div>
-          <div class="panel__bd home-corpus__bd">
-            <p class="home-corpus__lede muted">
-              {{ corpusMergeSummary }} · 远端失败 {{ corpusStatus?.on_remote_failure }}
-            </p>
-            <dl class="home-dl home-corpus__meta">
-              <dt>deployment</dt>
-              <dd><code class="home-dl__code">{{ corpusDeploymentShort }}</code></dd>
-              <dt v-if="corpusStatus?.sources.community.api_base">community API</dt>
-              <dd v-if="corpusStatus?.sources.community.api_base">
-                <code class="home-dl__code home-corpus__api">{{ corpusStatus?.sources.community.api_base }}</code>
-              </dd>
-            </dl>
-            <div class="home-corpus__table-wrap">
-              <table class="home-corpus__table">
-                <thead>
-                  <tr>
-                    <th scope="col">源</th>
-                    <th scope="col">状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in corpusSourceRows"
-                    :key="row.key"
-                  >
-                    <td>
-                      <span
-                        class="home-corpus__badge"
-                        :class="{ 'home-corpus__badge--on': row.active }"
-                      >{{ row.label }}</span>
-                    </td>
-                    <td>{{ row.summary }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div class="panel home-page__panel home-page__version-panel">
-        <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/" />
-            <span
-              v-if="health?.ok"
-              class="home-page__hd-capsule home-page__hd-capsule--ok"
-            >API 连接</span>
-          </div>
-        </div>
-        <div class="panel__bd muted home-page__version home-page__version--grid">
-          <dl class="home-dl home-dl--version-rows home-version-dl">
+            <div class="panel__bd muted home-page__version home-page__version--grid">
+              <dl class="home-dl home-dl--version-rows home-version-dl">
             <dt>NoneBot2</dt>
             <dd>
               <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
@@ -2045,20 +1934,55 @@ onUnmounted(() => {
               <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
               <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
             </dd>
-            <dt>控制台鉴权</dt>
-            <dd class="home-version-dev-mode">
-              <ConsoleDevModePanel
-                :active="webuiDevModeActive"
-                compact
-                :show-banner="false"
-                @updated="onWebuiDevModeUpdated"
-              />
-            </dd>
           </dl>
-        </div>
-      </div>
+            </div>
+          </div>
+        </section>
       </aside>
       </div>
+
+      <section
+        v-if="corpusPanelVisible"
+        class="home-dashboard__corpus"
+      >
+        <div class="panel home-page__panel home-corpus-panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">◎</span>语料多读源
+            </h2>
+            <div class="row-actions home-corpus__hd-actions">
+              <RouterLink
+                class="btn btn--ghost btn--sm home-corpus__config-link"
+                :to="corpusConfigTo"
+              >语料配置</RouterLink>
+              <span
+                class="home-page__hd-capsule"
+                :class="corpusStatus?.composite_active ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--muted'"
+              >{{ corpusStatus?.composite_active ? "composite" : "local" }}</span>
+            </div>
+          </div>
+          <div class="panel__bd home-corpus__bd">
+            <p class="home-corpus__lede muted">
+              {{ corpusMergeSummary }} · 远端失败 {{ corpusStatus?.on_remote_failure }}
+            </p>
+            <ul class="home-corpus__source-list">
+              <li
+                v-for="row in corpusSourceRows"
+                :key="row.key"
+                class="home-corpus__source-item"
+              >
+                <span
+                  class="home-corpus__badge"
+                  :class="{ 'home-corpus__badge--on': row.active }"
+                  :title="row.key === 'fed' ? '联邦语料：跨部署共享的第二 PostgreSQL 语料池（Phase 2）' : undefined"
+                >{{ row.label }}</span>
+                <span class="home-corpus__source-summary">{{ row.summary }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
