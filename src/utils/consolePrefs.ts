@@ -2,8 +2,6 @@ import { reactive } from "vue";
 import { type AccentPreset, isAccentPreset } from "@/config/accentPresets";
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
-  migrateSidebarOrderCommunityCenter,
-  migrateSidebarOrderCorpusConfig,
   migrateSidebarOrderUpdateToEnd,
   normalizeMainNavOrder,
 } from "@/config/mainNav";
@@ -56,7 +54,7 @@ const defaults: ConsolePrefsState = {
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
-  sidebarNavLayoutVersion: 4,
+  sidebarNavLayoutVersion: 2,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
   databasePageGroupConfigsOpen: true,
@@ -86,16 +84,8 @@ function load(): ConsolePrefsState {
     if (layoutVer < 2) {
       nextOrder = migrateSidebarOrderUpdateToEnd(nextOrder);
       merged.sidebarNavLayoutVersion = 2;
-    }
-    if (merged.sidebarNavLayoutVersion < 3) {
-      nextOrder = migrateSidebarOrderCorpusConfig(nextOrder);
-      merged.sidebarNavLayoutVersion = 3;
-    }
-    if (merged.sidebarNavLayoutVersion < 4) {
-      nextOrder = migrateSidebarOrderCommunityCenter(nextOrder);
-      merged.sidebarNavLayoutVersion = 4;
     } else {
-      merged.sidebarNavLayoutVersion = Math.max(4, layoutVer);
+      merged.sidebarNavLayoutVersion = Math.max(2, layoutVer);
     }
     merged.sidebarNavOrder = normalizeMainNavOrder(nextOrder);
 
@@ -194,7 +184,7 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
 export function resetSidebarNavToDefaults(): void {
   setConsolePrefs({
     sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
-    sidebarNavLayoutVersion: 4,
+    sidebarNavLayoutVersion: 2,
   });
 }
 export function initConsolePrefs(): void {

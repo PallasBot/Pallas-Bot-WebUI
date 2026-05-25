@@ -39,7 +39,6 @@ import type {
   CommonConfigSectionMeta,
   MessageStatsData,
   CommunityStatsData,
-  CommunityStatsHistoryData,
   CorpusStatusData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
@@ -427,19 +426,6 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
     });
   }
   return communityStatsInflight;
-}
-
-export async function fetchCommunityStatsHistory(options?: {
-  hours?: number;
-  bucketSec?: number;
-}): Promise<CommunityStatsHistoryData> {
-  const params: { hours?: number; bucket_sec?: number } = {};
-  if (options?.hours != null) params.hours = options.hours;
-  if (options?.bucketSec != null) params.bucket_sec = options.bucketSec;
-  const { data } = await http.get<ApiOk<CommunityStatsHistoryData>>("/community-stats/history", {
-    params,
-  });
-  return unwrap(data, "/community-stats/history");
 }
 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {
