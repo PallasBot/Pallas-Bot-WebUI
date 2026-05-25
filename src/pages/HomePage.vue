@@ -10,6 +10,7 @@ import {
   fetchInstances,
   fetchCommunityStats,
   fetchConsoleDailyStats,
+  fetchCorpusStatus,
   fetchMessageStats,
   fetchPluginRunStats,
   fetchPlugins,
@@ -28,6 +29,8 @@ import type {
   GroupListData,
   InstancesData,
   CommunityStatsData,
+  CorpusSourceStatusData,
+  CorpusStatusData,
   ConsoleDailyStatsData,
   MessageStatsData,
   PluginRow,
@@ -95,6 +98,7 @@ const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const shardObs = ref<ShardObservabilityData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
+const corpusStatus = ref<CorpusStatusData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
@@ -917,6 +921,91 @@ const communityBotsOnlineHint = computed(() => {
   return "各部署在线 Bot 合计";
 });
 
+const communityShardedOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.deployments_online_sharded),
+);
+
+const communityShardWorkersSum = computed(() =>
+  formatCommunityStatNum(communityStats.value?.shard_workers_online_sum),
+);
+
+const communityCorpusContexts = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.contexts_total),
+);
+
+const communityCorpusAnswers = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.answers_total),
+);
+
+const communityCorpusEnrollments = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
+);
+
+const communityExtendedStatsVisible = computed(() => {
+  const s = communityStats.value;
+  if (!s) return false;
+  return (
+    s.deployments_online_sharded != null ||
+    s.shard_workers_online_sum != null ||
+    (s.corpus != null &&
+      (s.corpus.contexts_total > 0 ||
+        s.corpus.answers_total > 0 ||
+        s.corpus.enrollments_total > 0))
+  );
+});
+
+const corpusStatusVisible = computed(() => corpusStatus.value != null);
+
+const corpusMergeSummary = computed(() => {
+  const c = corpusStatus.value;
+  if (!c) return "";
+  return `${c.merge_order.join(" → ")} · ${c.merge_strategy}`;
+});
+
+const corpusDeploymentShort = computed(() => {
+  const id = (corpusStatus.value?.deployment.deployment_id || "").trim();
+  if (!id) return "—";
+  if (id.length <= 13) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+});
+
+type CorpusSourceKey = "local" | "fed" | "community";
+
+const corpusSourceRows = computed(() => {
+  const sources = corpusStatus.value?.sources;
+  if (!sources) return [] as Array<{ key: CorpusSourceKey; label: string; summary: string; active: boolean }>;
+  const labels: Record<CorpusSourceKey, string> = {
+    local: "local",
+    fed: "fed",
+    community: "community",
+  };
+  return (["local", "fed", "community"] as CorpusSourceKey[]).map((key) => {
+    const src = sources[key];
+    return {
+      key,
+      label: labels[key],
+      summary: corpusSourceSummary(key, src),
+      active: Boolean(src?.enabled && (key === "local" || src.readable || src.configured || src.enrolled)),
+    };
+  });
+});
+
+function corpusSourceSummary(key: CorpusSourceKey, src: CorpusSourceStatusData | undefined): string {
+  if (!src) return "—";
+  if (key === "local") return "本地 PG 读写";
+  if (!src.enabled) return "未启用";
+  if (key === "fed") {
+    return src.configured ? "第二 PG（待接入）" : "未配置 PG_CORPUS_FED_*";
+  }
+  if (src.enrolled) {
+    const write = src.contribute ? "写回开" : "写回关";
+    return `已 enroll · ${write}`;
+  }
+  if (src.manual) return "手动 token";
+  if (src.auto_enroll) return "auto enroll 待完成";
+  return "未就绪";
+}
+
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
   const plug = clusterTodayPluginRuns.value;
@@ -1193,7 +1282,7 @@ async function load() {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard] = await Promise.all([
+    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard, corpus] = await Promise.all([
       fetchHealth(),
       fetchSystem(),
       fetchMessageStats(),
@@ -1205,6 +1294,7 @@ async function load() {
       fetchUpdateCheck().catch(() => null),
       fetchCommunityStats().catch(() => null),
       fetchShardObservability().catch(() => null),
+      fetchCorpusStatus().catch(() => null),
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
@@ -1212,6 +1302,7 @@ async function load() {
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
     system.value = s;
     communityStats.value = (comm as CommunityStatsData | null) ?? null;
+    corpusStatus.value = (corpus as CorpusStatusData | null) ?? null;
     shardObs.value = (shard as ShardObservabilityData | null) ?? null;
     stats.value = m;
     pluginRunStats.value = pr;
@@ -1235,9 +1326,16 @@ async function load() {
 }
 
 async function refreshHomeRuntimePanels() {
-  const [sys, obs] = await Promise.allSettled([fetchSystem(), fetchShardObservability()]);
+  const [sys, obs, comm, corpus] = await Promise.allSettled([
+    fetchSystem(),
+    fetchShardObservability(),
+    fetchCommunityStats(),
+    fetchCorpusStatus(),
+  ]);
   if (sys.status === "fulfilled") system.value = sys.value;
   if (obs.status === "fulfilled") shardObs.value = obs.value;
+  if (comm.status === "fulfilled") communityStats.value = comm.value;
+  if (corpus.status === "fulfilled") corpusStatus.value = corpus.value;
 }
 
 async function refreshSystemRuntimeOnly() {
@@ -1757,27 +1855,124 @@ onUnmounted(() => {
 
       <aside class="home-dashboard__aside">
       <section class="home-dashboard__community">
-        <div class="grid-stats home-dashboard__aside-stats">
-          <StatCard
-            dense
-            label="社区部署总数"
-            :value="communityDeploymentsTotal"
-            :hint="communityDeploymentsTotalHint"
-          />
-          <StatCard
-            dense
-            label="在线部署数"
-            :value="communityDeploymentsOnline"
-            :hint="communityDeploymentsOnlineHint"
-            :hint-title="communityDeploymentsOnlineHint"
-          />
-          <StatCard
-            dense
-            label="在线牛总和"
-            :value="communityBotsOnlineSum"
-            :hint="communityBotsOnlineHint"
-            :hint-title="communityBotsOnlineHint"
-          />
+        <div class="panel home-page__panel home-dashboard__community-panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">◎</span>社区统计
+            </h2>
+            <div class="row-actions">
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">stats 中心</span>
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-stats home-dashboard__aside-stats">
+              <StatCard
+                dense
+                label="社区部署总数"
+                :value="communityDeploymentsTotal"
+                :hint="communityDeploymentsTotalHint"
+              />
+              <StatCard
+                dense
+                label="在线部署数"
+                :value="communityDeploymentsOnline"
+                :hint="communityDeploymentsOnlineHint"
+                :hint-title="communityDeploymentsOnlineHint"
+              />
+              <StatCard
+                dense
+                label="在线牛总和"
+                :value="communityBotsOnlineSum"
+                :hint="communityBotsOnlineHint"
+                :hint-title="communityBotsOnlineHint"
+              />
+            </div>
+            <div
+              v-if="communityExtendedStatsVisible"
+              class="grid-stats home-dashboard__community-ext"
+            >
+              <StatCard
+                dense
+                label="分片在线"
+                :value="communityShardedOnline"
+                hint="在线部署中启用分片"
+              />
+              <StatCard
+                dense
+                label="Worker 片数"
+                :value="communityShardWorkersSum"
+                hint="分片部署 worker 合计"
+              />
+              <StatCard
+                dense
+                label="语料 context"
+                :value="communityCorpusContexts"
+                hint="社区池触发词"
+              />
+              <StatCard
+                dense
+                label="语料 answer"
+                :value="communityCorpusAnswers"
+                :hint="`enroll ${communityCorpusEnrollments}`"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-if="corpusStatusVisible"
+        class="home-dashboard__corpus"
+      >
+        <div class="panel home-page__panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">⧉</span>语料源
+            </h2>
+            <div class="row-actions">
+              <span
+                class="home-page__hd-capsule"
+                :class="corpusStatus?.composite_active ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--muted'"
+              >{{ corpusStatus?.composite_active ? "composite" : "local only" }}</span>
+            </div>
+          </div>
+          <div class="panel__bd home-corpus__bd">
+            <p class="home-corpus__lede muted">
+              {{ corpusMergeSummary }} · 远端失败 {{ corpusStatus?.on_remote_failure }}
+            </p>
+            <dl class="home-dl home-corpus__meta">
+              <dt>deployment</dt>
+              <dd><code class="home-dl__code">{{ corpusDeploymentShort }}</code></dd>
+              <dt v-if="corpusStatus?.sources.community.api_base">community API</dt>
+              <dd v-if="corpusStatus?.sources.community.api_base">
+                <code class="home-dl__code home-corpus__api">{{ corpusStatus?.sources.community.api_base }}</code>
+              </dd>
+            </dl>
+            <div class="home-corpus__table-wrap">
+              <table class="home-corpus__table">
+                <thead>
+                  <tr>
+                    <th scope="col">源</th>
+                    <th scope="col">状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in corpusSourceRows"
+                    :key="row.key"
+                  >
+                    <td>
+                      <span
+                        class="home-corpus__badge"
+                        :class="{ 'home-corpus__badge--on': row.active }"
+                      >{{ row.label }}</span>
+                    </td>
+                    <td>{{ row.summary }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 
