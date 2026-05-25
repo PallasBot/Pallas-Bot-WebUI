@@ -53,12 +53,21 @@ export interface SystemData {
   };
 }
 
-/** GET /community-stats：代理社区统计中心 /v1/stats */
+/** GET /community-stats：代理社区统计中心 /v1/monitor/overview（回退 /v1/stats） */
 export interface CommunityCorpusStatsData {
   contexts_total: number;
   answers_total: number;
   enrollments_total: number;
   contribute_enabled_total: number;
+  answer_hits_sum?: number;
+  enrollments_online?: number;
+  enrollments_recent_24h?: number;
+  read_enabled_total?: number;
+}
+
+export interface CommunityVersionCountData {
+  version: string;
+  count: number;
 }
 
 export interface CommunityStatsData {
@@ -70,6 +79,10 @@ export interface CommunityStatsData {
   stats_url?: string;
   deployments_online_sharded?: number;
   shard_workers_online_sum?: number;
+  catalog_bots_online_sum?: number;
+  active_recent_24h?: number;
+  online_versions?: CommunityVersionCountData[];
+  corpus_enabled?: boolean;
   corpus?: CommunityCorpusStatsData | null;
 }
 

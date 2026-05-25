@@ -336,15 +336,15 @@ function showConfigField(f: PluginConfigField): boolean {
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            配置本机 / 社区多读源与统计心跳。保存后写入
-            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与社区统计周期任务，无需重启牛牛。
+            配置本机 / 共享池多读源与统计上报。保存后写入
+            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与在线统计周期任务，无需重启牛牛。
           </p>
           <p
             v-if="isCorpusFederationSection && showHotReloadHint"
             class="muted"
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
-            关闭<strong>社区语料</strong>或<strong>社区统计</strong>后，下一周期起不再访问远端；其余项保存后立即生效。
+            关闭<strong>共享语料</strong>或<strong>在线统计</strong>后，下一周期起不再访问远端；其余项保存后立即生效。
           </p>
           <p
             v-if="isServiceGateways"

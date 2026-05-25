@@ -133,6 +133,8 @@ const accountCardRef = ref<HTMLElement | null>(null);
 const accountHeroLockHeightPx = ref(loadStoredAccountHeroLockPx());
 /** 锁高已稳定（刷新先用 localStorage，数据就绪后重测一次） */
 const accountHeroLockSealed = ref(accountHeroLockHeightPx.value >= 120);
+/** 展开图表时实时跟随左侧账户卡自然高度，避免锁高与内容不一致 */
+const accountHeroLiveHeightPx = ref(0);
 
 const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
 const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
@@ -142,16 +144,11 @@ const ACCOUNT_HERO_LOCK_MIN_PX = 420;
 /** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
 const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
 
-function effectiveAccountHeroLockPx(raw: number): number {
-  if (!Number.isFinite(raw) || raw < 120) return 0;
-  return Math.max(Math.round(raw), ACCOUNT_HERO_LOCK_MIN_PX);
-}
-
 function loadStoredAccountHeroLockPx(): number {
   if (typeof localStorage === "undefined") return 0;
   try {
     const n = Number(localStorage.getItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY));
-    if (Number.isFinite(n) && n >= 120 && n <= 2400) return effectiveAccountHeroLockPx(n);
+    if (Number.isFinite(n) && n >= 120 && n <= 2400) return Math.round(n);
   } catch {
     /* ignore */
   }
@@ -161,11 +158,23 @@ function loadStoredAccountHeroLockPx(): number {
 function saveStoredAccountHeroLockPx(h: number) {
   if (typeof localStorage === "undefined") return;
   try {
-    const eff = effectiveAccountHeroLockPx(h);
-    if (eff >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(eff));
+    const raw = Math.round(h);
+    if (raw >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(raw));
   } catch {
     /* ignore */
   }
+}
+
+function syncAccountHeroLiveHeight() {
+  if (typeof window === "undefined") return;
+  if (!window.matchMedia("(min-width: 561px)").matches) {
+    accountHeroLiveHeightPx.value = 0;
+    return;
+  }
+  const el = accountCardRef.value;
+  if (!el) return;
+  const h = Math.round(el.getBoundingClientRect().height);
+  if (h >= 120) accountHeroLiveHeightPx.value = h;
 }
 
 function loadAccountChartsDrawExpanded(): boolean {
@@ -196,19 +205,26 @@ const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
 const accountHeroHeightCapActive = computed(
   () =>
     accountChartsDrawExpanded.value &&
-    accountHeroLockHeightPx.value >= 120 &&
+    accountChartsLockHeightPx.value >= 120 &&
     typeof window !== "undefined" &&
     window.matchMedia("(min-width: 561px)").matches,
 );
 
-const accountHeroLockHeightEffectivePx = computed(() =>
-  effectiveAccountHeroLockPx(accountHeroLockHeightPx.value),
-);
+/** 展开时优先用左侧实时高度；收起封存值作首帧兜底，并保留图表最小锁高 */
+const accountChartsLockHeightPx = computed(() => {
+  if (accountChartsDrawExpanded.value && accountHeroLiveHeightPx.value >= 120) {
+    return accountHeroLiveHeightPx.value;
+  }
+  if (accountHeroLockHeightPx.value >= 120) {
+    return Math.max(accountHeroLockHeightPx.value, ACCOUNT_HERO_LOCK_MIN_PX);
+  }
+  return 0;
+});
 
-/** 硬上限：仅在图表收起时更新，值为左侧账户区高度（≈ 无图表展开时的整块高度） */
+/** 硬上限：仅在图表收起时测量左侧自然高度；展开后只锁右侧图表壳，左侧排版不变 */
 const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
   if (!accountHeroHeightCapActive.value) return {};
-  return { "--home-account-hero-lock-px": `${accountHeroLockHeightEffectivePx.value}px` };
+  return { "--home-account-hero-lock-px": `${accountChartsLockHeightPx.value}px` };
 });
 
 /** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
@@ -218,7 +234,7 @@ const accountChartsShellLockStyle = computed((): Record<string, string> => {
   if (!accountChartsDrawExpanded.value) {
     return { minHeight: "0", height: "auto", maxHeight: "none" };
   }
-  const h = accountHeroLockHeightEffectivePx.value;
+  const h = accountChartsLockHeightPx.value;
   if (h < 120) return {};
   const style: Record<string, string> = {
     height: `${h}px`,
@@ -240,6 +256,15 @@ function onAccountChartsDrawToggle(expanded: boolean) {
     return;
   }
   applyStoredAccountHeroLock();
+  scheduleAccountHeroLiveSync();
+}
+
+function scheduleAccountHeroLiveSync() {
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      syncAccountHeroLiveHeight();
+    });
+  });
 }
 
 function onAccountChartsFilterToggle(expanded: boolean) {
@@ -265,11 +290,14 @@ function measureAccountHeroLockHeight(force = false) {
   if (!force && accountHeroLockSealed.value && accountHeroLockHeightPx.value >= 120) {
     return;
   }
+  if (!force && accountChartsDrawExpanded.value) {
+    return;
+  }
   const h = Math.round(el.getBoundingClientRect().height);
   if (h < 120) return;
-  const eff = effectiveAccountHeroLockPx(h);
-  accountHeroLockHeightPx.value = eff;
-  saveStoredAccountHeroLockPx(eff);
+  accountHeroLockHeightPx.value = h;
+  accountHeroLiveHeightPx.value = h;
+  saveStoredAccountHeroLockPx(h);
   accountHeroLockSealed.value = true;
 }
 
@@ -298,12 +326,14 @@ function applyStoredAccountHeroLock() {
 function onMatcherDetailsToggle() {
   accountHeroLockSealed.value = false;
   scheduleAccountHeroLockMeasure(true);
+  scheduleAccountHeroLiveSync();
 }
 
 watchEffect((onCleanup) => {
   if (typeof window === "undefined") return;
   if (selectedAccount.value == null) {
     accountHeroLockHeightPx.value = 0;
+    accountHeroLiveHeightPx.value = 0;
     accountHeroLockSealed.value = false;
     return;
   }
@@ -314,16 +344,16 @@ watchEffect((onCleanup) => {
   const el = accountCardRef.value;
   if (!el) return;
   const mql = window.matchMedia("(min-width: 561px)");
-  const mqlRow = window.matchMedia("(min-width: 1200px)");
   const onMql = () => {
     accountHeroLockSealed.value = false;
     scheduleAccountHeroLockMeasure(true);
   };
   mql.addEventListener("change", onMql);
-  mqlRow.addEventListener("change", onMql);
   const ro = new ResizeObserver(() => {
-    if (accountHeroLockSealed.value) return;
-    measureAccountHeroLockHeight(false);
+    syncAccountHeroLiveHeight();
+    if (!accountChartsDrawExpanded.value && !accountHeroLockSealed.value) {
+      measureAccountHeroLockHeight(false);
+    }
   });
   ro.observe(el);
   if (!applyStoredAccountHeroLock()) {
@@ -332,13 +362,17 @@ watchEffect((onCleanup) => {
   onCleanup(() => {
     ro.disconnect();
     mql.removeEventListener("change", onMql);
-    mqlRow.removeEventListener("change", onMql);
   });
+});
+
+watch(pageReady, (ready) => {
+  if (ready) scheduleAccountHeroLockMeasure(false);
 });
 
 watch(selectedAccount, (acc) => {
   if (acc == null) {
     accountHeroLockHeightPx.value = 0;
+    accountHeroLiveHeightPx.value = 0;
     accountHeroLockSealed.value = false;
     return;
   }
@@ -879,14 +913,14 @@ const communityBotsOnlineSum = computed(() =>
 
 const communityOnlineHint = computed(() => {
   const sec = communityStats.value?.online_ttl_sec;
-  if (sec == null || !Number.isFinite(sec) || sec < 60) return "有心跳窗口内";
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "统计窗口内";
   const m = Math.max(1, Math.round(sec / 60));
-  return `近 ${m} 分钟有心跳`;
+  return `近 ${m} 分钟内有心跳`;
 });
 
 
 const communityDeploymentsOnlineHint = computed(
-  () => `${communityOnlineHint.value}  活跃独立安装`,
+  () => `${communityOnlineHint.value}的自托管安装`,
 );
 
 const communityBotsOnlineHint = computed(() => {
@@ -901,9 +935,9 @@ const communityBotsOnlineHint = computed(() => {
   ) {
     const avg = sum / onlineDep;
     const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
-    return `各部署在线合计  均约 ${avgText} 个/部署`;
+    return `全网在线牛牛合计，平均每处约 ${avgText} 只`;
   }
-  return "各部署在线 Bot 合计";
+  return "各安装向中心上报的在线牛牛合计";
 });
 
 const communityShardedOnline = computed(() =>
@@ -922,11 +956,82 @@ const communityCorpusAnswers = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.answers_total),
 );
 
-const communityCorpusEnrollments = computed(() =>
+const communityCorpusEnrollmentsOnline = computed(() =>
+  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_online),
+);
+
+const communityCorpusPoolValue = computed(() => {
+  const ctx = communityCorpusContexts.value;
+  const ans = communityCorpusAnswers.value;
+  if (ctx === "—" && ans === "—") return "—";
+  return `${ctx} 词条 · ${ans} 回复`;
+});
+
+const communityCorpusEnrollmentValue = computed(() =>
   formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
 );
 
+const communityCorpusOnlineEnrollHint = computed(() => {
+  const total = communityStats.value?.corpus?.enrollments_total;
+  const parts: string[] = [`${communityOnlineHint.value}且已接入共享语料`];
+  if (total != null) {
+    parts.push(`累计 ${formatCommunityStatNum(total)} 处自托管`);
+  }
+  return parts.join(" · ");
+});
+
+const communityCorpusTotalEnrollHint = computed(() => {
+  const recent = communityStats.value?.corpus?.enrollments_recent_24h;
+  const contrib = communityStats.value?.corpus?.contribute_enabled_total;
+  const parts: string[] = ["历史上接入过共享语料的安装数"];
+  if (recent != null && recent > 0) {
+    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 处`);
+  }
+  if (contrib != null) {
+    parts.push(`其中 ${formatCommunityStatNum(contrib)} 处可上传学习结果`);
+  }
+  return parts.join(" · ");
+});
+
+const communityCorpusPoolHint = computed(() => {
+  const hits = communityStats.value?.corpus?.answer_hits_sum;
+  if (hits != null && Number.isFinite(hits)) {
+    return `回复累计被引用 ${formatCommunityStatNum(hits)} 次`;
+  }
+  return "共享池中的触发词与回复条目";
+});
+
+const communityCorpusContributeHint = computed(
+  () => "已接入且允许把本机学习结果同步到共享语料池",
+);
+
+const communityCorpusHitsHint = computed(
+  () => "各回复条目在共享池中的累计引用次数",
+);
+
+const communityActiveRecent24h = computed(() =>
+  formatCommunityStatNum(communityStats.value?.active_recent_24h),
+);
+
+const communityActiveRecentHint = computed(() => {
+  const total = communityStats.value?.deployments_total;
+  const catalog = communityStats.value?.catalog_bots_online_sum;
+  const parts: string[] = [];
+  if (total != null) {
+    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
+  }
+  if (catalog != null && Number.isFinite(catalog)) {
+    parts.push(`在线名册牛牛 ${formatCommunityStatNum(catalog)} 只`);
+  }
+  return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
+});
+
 const communityPanelVisible = computed(() => communityStats.value != null);
+
+const communityCorpusPanelVisible = computed(() => {
+  const corpus = communityStats.value?.corpus;
+  return corpus != null && Object.keys(corpus).length > 0;
+});
 
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
@@ -1764,7 +1869,9 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <aside class="home-dashboard__aside home-dashboard__aside--tail">
+      <aside
+        class="home-dashboard__aside home-dashboard__aside--tail"
+      >
         <section
           v-if="communityPanelVisible"
           class="home-dashboard__aside-community"
@@ -1772,7 +1879,7 @@ onUnmounted(() => {
           <div class="panel home-page__panel home-dashboard__community-panel">
             <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
               <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◉</span>社区统计
+                <span class="panel__title-ico" aria-hidden="true">◉</span>全网部署
               </h2>
               <div class="row-actions">
                 <PanelSidebarAdd main-path="/" />
@@ -1782,34 +1889,36 @@ onUnmounted(() => {
               <div class="grid-stats home-community__stats home-dashboard__aside-stats">
                 <StatCard
                   dense
-                  label="在线部署"
+                  label="活跃安装"
                   :value="communityDeploymentsOnline"
                   :hint="communityDeploymentsOnlineHint"
                 />
                 <StatCard
                   dense
-                  label="在线牛"
+                  label="在线牛牛"
                   :value="communityBotsOnlineSum"
                   :hint="communityBotsOnlineHint"
                 />
                 <StatCard
                   dense
-                  label="分片 / Worker"
+                  label="分片 · 进程"
                   :value="`${communityShardedOnline} / ${communityShardWorkersSum}`"
-                  hint="在线分片部署与 worker 合计"
+                  hint="分片架构的安装数与工作进程数"
                 />
                 <StatCard
                   dense
-                  label="社区语料池"
-                  :value="`${communityCorpusContexts} ctx · ${communityCorpusAnswers} ans`"
-                  :hint="`enroll ${communityCorpusEnrollments}`"
+                  label="近 24 小时"
+                  :value="communityActiveRecent24h"
+                  :hint="communityActiveRecentHint"
                 />
               </div>
             </div>
           </div>
         </section>
         <section class="home-dashboard__aside-version">
-          <div class="panel home-page__panel home-page__version-panel">
+          <div
+            class="panel home-page__panel home-page__version-panel"
+          >
             <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
               <h2 class="panel__title">
                 <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
@@ -1831,7 +1940,10 @@ onUnmounted(() => {
             </dd>
             <dt>Pallas-Bot</dt>
             <dd>
-              <span class="home-dl__pill home-dl__pill--version">{{ pallasBotVersionDisplay }}</span>
+              <span
+                class="home-dl__pill home-dl__pill--version"
+                :title="pallasBotVersionDisplay"
+              >{{ pallasBotVersionDisplay }}</span>
               <RouterLink
                 v-if="botUpdateCheck?.has_update"
                 class="home-version-update-link"
@@ -1875,8 +1987,14 @@ onUnmounted(() => {
             </dd>
             <dt>主机 / Python</dt>
             <dd>
-              <span class="home-dl__pill home-dl__pill--version">{{ system?.runtime?.hostname ?? "—" }}</span>
-              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ system?.runtime?.python ?? "—" }}</span>
+              <span
+                class="home-dl__pill home-dl__pill--version"
+                :title="system?.runtime?.hostname ?? '—'"
+              >{{ system?.runtime?.hostname ?? "—" }}</span>
+              <span
+                class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
+                :title="system?.runtime?.python ?? '—'"
+              >{{ system?.runtime?.python ?? "—" }}</span>
             </dd>
           </dl>
             </div>
@@ -1884,6 +2002,60 @@ onUnmounted(() => {
         </section>
       </aside>
       </div>
+
+      <section
+        v-if="communityCorpusPanelVisible"
+        class="home-dashboard__corpus"
+      >
+        <div class="panel home-page__panel home-dashboard__corpus-panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">▦</span>共享语料
+            </h2>
+            <div class="row-actions">
+              <PanelSidebarAdd main-path="/" />
+              <RouterLink
+                class="home-instances-capsule"
+                to="/corpus-config"
+              >语料设置</RouterLink>
+            </div>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-stats home-dashboard__corpus-grid">
+              <StatCard
+                dense
+                label="词条规模"
+                :value="communityCorpusPoolValue"
+                :hint="communityCorpusPoolHint"
+              />
+              <StatCard
+                dense
+                label="在线接入"
+                :value="communityCorpusEnrollmentsOnline"
+                :hint="communityCorpusOnlineEnrollHint"
+              />
+              <StatCard
+                dense
+                label="累计接入"
+                :value="communityCorpusEnrollmentValue"
+                :hint="communityCorpusTotalEnrollHint"
+              />
+              <StatCard
+                dense
+                label="可上传学习"
+                :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
+                :hint="communityCorpusContributeHint"
+              />
+              <StatCard
+                dense
+                label="回复热度"
+                :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
+                :hint="communityCorpusHitsHint"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="home-dashboard__capacity">
         <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
