@@ -40,6 +40,7 @@ import type {
   MessageStatsData,
   CommunityStatsData,
   CorpusStatusData,
+  FederationOnboardingData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
   ShardObservabilityData,
@@ -436,6 +437,11 @@ export async function fetchShardObservability(): Promise<ShardObservabilityData>
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {
   const { data } = await http.get<ApiOk<CorpusStatusData>>("/corpus-status");
   return unwrap(data, "/corpus-status");
+}
+
+export async function fetchFederationOnboarding(): Promise<FederationOnboardingData> {
+  const { data } = await http.get<ApiOk<FederationOnboardingData>>("/federation-onboarding");
+  return unwrap(data, "/federation-onboarding");
 }
 
 export async function fetchPluginRunStats(
