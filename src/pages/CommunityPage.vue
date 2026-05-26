@@ -192,6 +192,12 @@ const corpusSummaryFlow = computed(() => {
 
 const corpusSnapshotText = computed(() => formatUnixSec(corpusStatus.value?.as_of));
 
+const communityUsage = computed(() => corpusStatus.value?.sources?.community?.usage ?? null);
+
+const communityUsageVisible = computed(() => communityUsage.value != null);
+
+const communityUsageUpdatedText = computed(() => formatUnixSec(communityUsage.value?.updated_at ?? undefined));
+
 const deploymentIdShort = computed(() => {
   const id = (corpusStatus.value?.deployment?.deployment_id || "").trim();
   if (!id) return "—";
@@ -781,6 +787,36 @@ onMounted(() => {
                   <span>快照 {{ corpusSnapshotText }}</span>
                 </div>
               </div>
+
+              <div
+                v-if="communityUsageVisible"
+                class="grid-stats community-page__usage-grid"
+              >
+                <StatCard
+                  dense
+                  label="查询共享池"
+                  :value="formatCommunityStatNum(communityUsage?.read_lookups)"
+                  hint="向社区语料发起的读取次数（含未命中）"
+                />
+                <StatCard
+                  dense
+                  label="命中共享池"
+                  :value="formatCommunityStatNum(communityUsage?.read_hits)"
+                  hint="社区池实际返回语料的次数"
+                />
+                <StatCard
+                  dense
+                  label="写回共享池"
+                  :value="formatCommunityStatNum(communityUsage?.contribute_ok)"
+                  :hint="`成功贡献到社区池；统计更新 ${communityUsageUpdatedText}`"
+                />
+              </div>
+              <p
+                v-else-if="corpusStatus.sources?.community?.enrolled"
+                class="muted community-page__usage-unavail"
+              >
+                中心暂未返回本部署用量（需中心部署 <code class="community-page__mono">GET /v1/corpus/usage</code>）。
+              </p>
 
               <div class="table-wrap community-page__matrix-wrap">
                 <table class="tbl community-page__source-matrix">

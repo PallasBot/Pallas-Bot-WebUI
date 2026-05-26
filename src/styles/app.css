@@ -8740,13 +8740,23 @@ html[data-theme="light"] .home-cpu-core {
   gap: 10px;
   margin-bottom: 14px;
 }
-.grid-stats.community-page__corpus-grid {
+.grid-stats.community-page__corpus-grid,
+.grid-stats.community-page__usage-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 0;
 }
+.community-page__usage-grid {
+  margin-top: 12px;
+}
+.community-page__usage-unavail {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
 .grid-stats.community-page__deploy-grid > .stat-card .card__body,
-.grid-stats.community-page__corpus-grid > .stat-card .card__body {
+.grid-stats.community-page__corpus-grid > .stat-card .card__body,
+.grid-stats.community-page__usage-grid > .stat-card .card__body {
   padding: 12px 12px;
   min-height: 4.75rem;
   box-sizing: border-box;
@@ -9038,7 +9048,8 @@ html[data-theme="light"] .home-cpu-core {
   .grid-stats.community-page__deploy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .grid-stats.community-page__corpus-grid {
+  .grid-stats.community-page__corpus-grid,
+  .grid-stats.community-page__usage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -9057,7 +9068,8 @@ html[data-theme="light"] .home-cpu-core {
     justify-content: center;
   }
   .grid-stats.community-page__deploy-grid,
-  .grid-stats.community-page__corpus-grid {
+  .grid-stats.community-page__corpus-grid,
+  .grid-stats.community-page__usage-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }

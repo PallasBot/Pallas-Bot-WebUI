@@ -87,6 +87,14 @@ export interface CommunityStatsData {
 }
 
 /** GET /corpus-status：本部署语料多源状态 */
+export interface CorpusCommunityUsageData {
+  read_lookups: number;
+  read_hits: number;
+  contribute_ok: number;
+  updated_at?: number | null;
+  source?: string;
+}
+
 export interface CorpusSourceStatusData {
   enabled: boolean;
   wanted?: boolean;
@@ -101,6 +109,7 @@ export interface CorpusSourceStatusData {
   token_present?: boolean;
   enrolled_at?: number | null;
   expires_at?: number | null;
+  usage?: CorpusCommunityUsageData | null;
 }
 
 export interface CorpusControlPlaneStatusData {
