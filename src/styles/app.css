@@ -4133,12 +4133,21 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 .home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
   > .home-plugin-charts
-  .home-plugin-bars.home-plugin-charts__viz
+  .home-plugin-bars--plugin-rank.home-plugin-charts__viz
   > .home-plugin-bars__row {
   flex: 1 1 0;
-  min-height: 22px;
+  min-height: 2rem;
   align-items: center;
+}
+
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz
+  > .home-plugin-bars__row {
+  min-height: 2.85rem;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__block,
