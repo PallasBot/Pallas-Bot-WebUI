@@ -9148,6 +9148,51 @@ html[data-theme="light"] .home-cpu-core {
   padding-top: 0;
   border-top: none;
 }
+.community-page__federation-failover-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.community-page__federation-fallback-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.community-page__federation-fallback-tag {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.community-page__federation-coord-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.community-page__federation-coord-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.community-page__federation-coord-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+  color: var(--accent);
+}
+.community-page__federation-coord-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .community-page__federation-local {
   padding-top: 4px;
   border-top: 1px solid var(--border);
@@ -9178,6 +9223,10 @@ html[data-theme="light"] .home-cpu-core {
 }
 @media (max-width: 560px) {
   .community-page__federation-secret-hd .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .community-page__federation-coord-row .btn {
     width: 100%;
     justify-content: center;
   }

@@ -219,6 +219,20 @@ const federationCoordDisplay = computed(() => {
   return `redis://${host}${port}${db}`;
 });
 
+const federationCoordEndpoint = computed(() => {
+  const c = federationOnboarding.value?.coord;
+  if (!c) return "";
+  const host = (c.host || "").trim();
+  if (!host) return "";
+  const port = c.port != null ? String(c.port) : "";
+  const db = c.db != null ? `/${c.db}` : "";
+  return port ? `${host}:${port}${db}` : `${host}${db}`;
+});
+
+const statsPrimaryUrl = computed(() => (federationOnboarding.value?.stats_primary_url || "").trim());
+
+const statsFallbackUrl = computed(() => (federationOnboarding.value?.stats_fallback_url || "").trim());
+
 const controlPlaneConfigLink = computed(() => ({
   name: "common-config" as const,
   query: {
@@ -244,6 +258,19 @@ async function copyFederationSecret() {
     return;
   }
   pushConsoleToast("已复制入池密钥", "ok");
+}
+
+async function copyCoordAddress() {
+  const text = federationCoordDisplay.value || federationCoordEndpoint.value;
+  if (!text) {
+    pushConsoleToast("暂无去重服务器地址", "err");
+    return;
+  }
+  if (!(await copyTextToClipboard(text))) {
+    pushConsoleToast("复制失败", "err");
+    return;
+  }
+  pushConsoleToast("已复制去重服务器地址（不含密码）", "ok");
 }
 
 function sourceApiBase(key: SourceKey): string {
@@ -459,7 +486,7 @@ onMounted(() => {
               <span
                 class="panel__title-ico"
                 aria-hidden="true"
-              >◇</span>{{ federationOnboarding?.title || "联邦 Phase 2" }}
+              >◇</span>{{ federationOnboarding?.title || "社区联邦" }}
             </h2>
             <div class="row-actions community-page__hd-actions">
               <RouterLink
@@ -479,7 +506,7 @@ onMounted(() => {
               v-else-if="federationOnboardingUnavailable"
               class="muted community-page__federation-summary"
             >
-              中心暂未开放入池说明接口；你仍可在「联邦控制面」手动填写密钥与 bootstrap 地址。
+              中心暂未开放入池说明；你仍可在「联邦控制面」手动填写密钥。
             </p>
             <p
               v-if="federationOnboarding?.ingress_note"
@@ -513,21 +540,81 @@ onMounted(() => {
               </p>
             </div>
 
+            <p
+              v-if="federationOnboarding?.stats_failover_note"
+              class="community-page__federation-failover-note muted"
+            >
+              {{ federationOnboarding.stats_failover_note }}
+            </p>
+
             <dl
               v-if="federationOnboarding"
               class="home-dl community-page__detail-dl community-page__federation-meta"
             >
               <dt>联邦池</dt>
               <dd class="community-page__mono">{{ federationOnboarding.federate_id || "—" }}</dd>
-              <dt>bootstrap</dt>
+              <dt>自动下发配置</dt>
               <dd>
                 <span
                   class="badge"
                   :class="federationOnboarding.bootstrap_enabled ? 'badge--ok' : ''"
                 >{{ federationOnboarding.bootstrap_enabled ? "已启用" : "未启用" }}</span>
               </dd>
-              <dt>协调 Redis</dt>
-              <dd class="community-page__mono community-page__meta-line">{{ federationCoordDisplay || "—" }}</dd>
+              <dt>中心（主站）</dt>
+              <dd>
+                <a
+                  v-if="statsPrimaryUrl"
+                  class="community-page__ext-link community-page__mono community-page__meta-line"
+                  :href="statsPrimaryUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ statsPrimaryUrl }}</a>
+                <span
+                  v-else
+                  class="muted"
+                >—</span>
+              </dd>
+              <dt>中心（备站）</dt>
+              <dd class="community-page__federation-fallback-dd">
+                <a
+                  v-if="statsFallbackUrl"
+                  class="community-page__ext-link community-page__mono community-page__meta-line"
+                  :href="statsFallbackUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ statsFallbackUrl }}</a>
+                <span
+                  v-else
+                  class="muted"
+                >—</span>
+                <span class="community-page__federation-fallback-tag muted">主站故障时牛牛自动改用</span>
+              </dd>
+              <dt>去重服务器</dt>
+              <dd class="community-page__federation-coord-dd">
+                <div
+                  v-if="federationCoordDisplay || federationCoordEndpoint"
+                  class="community-page__federation-coord-row"
+                >
+                  <code class="community-page__federation-coord-value community-page__mono">{{ federationCoordDisplay || federationCoordEndpoint }}</code>
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--sm"
+                    @click="copyCoordAddress"
+                  >
+                    复制地址
+                  </button>
+                </div>
+                <span
+                  v-else
+                  class="muted"
+                >—</span>
+                <p
+                  v-if="federationOnboarding.coord_redis_hint"
+                  class="community-page__federation-coord-hint muted"
+                >
+                  {{ federationOnboarding.coord_redis_hint }}
+                </p>
+              </dd>
             </dl>
 
             <div
@@ -551,21 +638,21 @@ onMounted(() => {
                   >{{ controlPlane.instance_secret_configured ? "已填写" : "未填写" }}</span>
                 </span>
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">bootstrap</span>
+                  <span class="community-page__corpus-meta-k">中心配置</span>
                   <span
                     class="community-page__corpus-meta-v"
                     :class="controlPlane.bootstrap_valid ? 'is-ok' : 'is-off'"
-                  >{{ controlPlane.bootstrap_valid ? "有效" : "待拉取/过期" }}</span>
+                  >{{ controlPlane.bootstrap_valid ? "已拿到" : "待拉取或过期" }}</span>
                 </span>
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">ingress</span>
+                  <span class="community-page__corpus-meta-k">去重</span>
                   <span class="community-page__corpus-meta-v">{{ ingressEnabledLabel(controlPlane.federate_ingress_enabled) }}</span>
                 </span>
                 <span
                   v-if="controlPlane.federate_id"
                   class="community-page__corpus-meta-item community-page__corpus-meta-item--grow"
                 >
-                  <span class="community-page__corpus-meta-k">池 ID</span>
+                  <span class="community-page__corpus-meta-k">池编号</span>
                   <span class="community-page__corpus-meta-v community-page__mono">{{ controlPlane.federate_id }}</span>
                 </span>
               </div>
@@ -580,7 +667,7 @@ onMounted(() => {
                 :key="step.order"
                 class="community-page__federation-step"
               >
-                <span class="community-page__federation-step-title">{{ step.order }}. {{ step.title }}</span>
+                <span class="community-page__federation-step-title">{{ step.title }}</span>
                 <span class="community-page__federation-step-detail">{{ step.detail }}</span>
               </li>
             </ol>

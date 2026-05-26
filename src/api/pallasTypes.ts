@@ -157,6 +157,10 @@ export interface FederationOnboardingData {
   bootstrap_enabled?: boolean;
   federate_id?: string | null;
   coord?: FederationCoordPublicData | null;
+  coord_redis_hint?: string;
+  stats_primary_url?: string;
+  stats_fallback_url?: string;
+  stats_failover_note?: string;
   instance_secret?: string | null;
   instance_secret_label?: string;
   instance_secret_hint?: string;
@@ -356,6 +360,8 @@ export interface HelpMenuVisibilityData {
 
 export interface PluginConfigField {
   name: string;
+  /** 展示用中文名；缺省时用 name */
+  label?: string;
   kind: "bool" | "int" | "float" | "json" | "string" | "enum";
   required: boolean;
   description: string;
