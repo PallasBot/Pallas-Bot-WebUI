@@ -8740,13 +8740,23 @@ html[data-theme="light"] .home-cpu-core {
   gap: 10px;
   margin-bottom: 14px;
 }
-.grid-stats.community-page__corpus-grid {
+.grid-stats.community-page__corpus-grid,
+.grid-stats.community-page__usage-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 0;
 }
+.community-page__usage-grid {
+  margin-top: 12px;
+}
+.community-page__usage-unavail {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
 .grid-stats.community-page__deploy-grid > .stat-card .card__body,
-.grid-stats.community-page__corpus-grid > .stat-card .card__body {
+.grid-stats.community-page__corpus-grid > .stat-card .card__body,
+.grid-stats.community-page__usage-grid > .stat-card .card__body {
   padding: 12px 12px;
   min-height: 4.75rem;
   box-sizing: border-box;
@@ -9038,7 +9048,8 @@ html[data-theme="light"] .home-cpu-core {
   .grid-stats.community-page__deploy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .grid-stats.community-page__corpus-grid {
+  .grid-stats.community-page__corpus-grid,
+  .grid-stats.community-page__usage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -9057,7 +9068,8 @@ html[data-theme="light"] .home-cpu-core {
     justify-content: center;
   }
   .grid-stats.community-page__deploy-grid,
-  .grid-stats.community-page__corpus-grid {
+  .grid-stats.community-page__corpus-grid,
+  .grid-stats.community-page__usage-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }
@@ -9087,5 +9099,150 @@ html[data-theme="light"] .home-cpu-core {
   }
   .community-page__corpus-meta-item--grow {
     flex-basis: auto;
+  }
+}
+
+.community-page__federation-bd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.community-page__federation-summary {
+  margin: 0;
+  line-height: 1.55;
+  font-size: 14px;
+  color: var(--text);
+}
+.community-page__federation-ingress-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.community-page__federation-secret {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  min-width: 0;
+}
+.community-page__federation-secret-hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.community-page__federation-secret-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+.community-page__federation-secret-value {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+  color: var(--accent);
+}
+.community-page__federation-secret-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.community-page__federation-meta {
+  margin: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.community-page__federation-failover-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.community-page__federation-fallback-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.community-page__federation-fallback-tag {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.community-page__federation-coord-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.community-page__federation-coord-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.community-page__federation-coord-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+  color: var(--accent);
+}
+.community-page__federation-coord-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.community-page__federation-local {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.community-page__federation-steps {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.community-page__federation-step {
+  line-height: 1.45;
+  min-width: 0;
+}
+.community-page__federation-step-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.community-page__federation-step-detail {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+@media (max-width: 560px) {
+  .community-page__federation-secret-hd .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .community-page__federation-coord-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .community-page__federation-steps {
+    padding-left: 1rem;
   }
 }

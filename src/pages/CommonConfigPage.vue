@@ -269,6 +269,19 @@ function showConfigField(f: PluginConfigField): boolean {
   if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
   return true;
 }
+
+function fieldDisplayTitle(f: PluginConfigField): string {
+  return (f.label || "").trim() || f.name;
+}
+
+function enumChoiceLabel(opt: string): string {
+  const map: Record<string, string> = {
+    auto: "自动",
+    true: "开启",
+    false: "关闭",
+  };
+  return map[opt] ?? opt;
+}
 </script>
 
 <template>
@@ -488,10 +501,14 @@ function showConfigField(f: PluginConfigField): boolean {
                 style="margin-bottom: 22px"
               >
                 <div style="font-weight: 700; margin-bottom: 6px">
-                  {{ f.name }}
-                  <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
+                  {{ fieldDisplayTitle(f) }}
+                  <span
+                    v-if="!f.label"
+                    class="muted"
+                    style="font-weight: 500"
+                  >（{{ f.kind }}）</span>
                 </div>
-                <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
+                <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px; white-space: pre-line">
                   {{ f.description }}
                 </div>
                 <label
@@ -521,7 +538,7 @@ function showConfigField(f: PluginConfigField): boolean {
                     :key="opt"
                     :value="opt"
                   >
-                    {{ opt }}
+                    {{ enumChoiceLabel(opt) }}
                   </option>
                 </select>
                 <JsonTextareaField
@@ -548,10 +565,14 @@ function showConfigField(f: PluginConfigField): boolean {
             style="margin-bottom: 22px"
           >
             <div style="font-weight: 700; margin-bottom: 6px">
-              {{ f.name }}
-              <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
+              {{ fieldDisplayTitle(f) }}
+              <span
+                v-if="!f.label"
+                class="muted"
+                style="font-weight: 500"
+              >（{{ f.kind }}）</span>
             </div>
-            <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
+            <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px; white-space: pre-line">
               {{ f.description }}
             </div>
             <label
@@ -581,7 +602,7 @@ function showConfigField(f: PluginConfigField): boolean {
                 :key="opt"
                 :value="opt"
               >
-                {{ opt }}
+                {{ enumChoiceLabel(opt) }}
               </option>
             </select>
             <JsonTextareaField
