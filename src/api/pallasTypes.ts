@@ -54,6 +54,16 @@ export interface SystemData {
 }
 
 /** GET /community-stats：代理社区统计中心 /v1/monitor/overview（回退 /v1/stats） */
+export interface FederationPoolStatsData {
+  members_total: number;
+  members_online: number;
+  members_recent_24h: number;
+  coord_active_deployments?: number | null;
+  bootstrap_enabled?: boolean;
+  federate_id?: string | null;
+  coord_redis_configured?: boolean;
+}
+
 export interface CommunityCorpusStatsData {
   contexts_total: number;
   answers_total: number;
@@ -84,6 +94,7 @@ export interface CommunityStatsData {
   online_versions?: CommunityVersionCountData[];
   corpus_enabled?: boolean;
   corpus?: CommunityCorpusStatsData | null;
+  federation?: FederationPoolStatsData | null;
 }
 
 /** GET /corpus-status：本部署语料多源状态 */
@@ -178,6 +189,7 @@ export interface FederationOnboardingData {
   config_section_id?: string;
   as_of?: string;
   onboarding_url?: string;
+  pool_stats?: FederationPoolStatsData | null;
 }
 
 /** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */

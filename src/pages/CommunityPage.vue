@@ -211,6 +211,12 @@ const federationPanelVisible = computed(
   () => federationOnboarding.value != null || federationOnboardingUnavailable.value,
 );
 
+const federationPoolStats = computed(
+  () => federationOnboarding.value?.pool_stats ?? communityStats.value?.federation ?? null,
+);
+
+const federationPoolStatsVisible = computed(() => federationPoolStats.value != null);
+
 const federationSecret = computed(() => (federationOnboarding.value?.instance_secret || "").trim());
 
 const federationCoordDisplay = computed(() => {
@@ -223,6 +229,12 @@ const federationCoordDisplay = computed(() => {
   const port = c.port != null ? `:${c.port}` : "";
   const db = c.db != null ? `/${c.db}` : "";
   return `redis://${host}${port}${db}`;
+});
+
+const federationCoordActiveLabel = computed(() => {
+  const n = federationPoolStats.value?.coord_active_deployments;
+  if (n == null) return "—";
+  return formatCommunityStatNum(n);
 });
 
 const federationCoordEndpoint = computed(() => {
@@ -520,6 +532,30 @@ onMounted(() => {
             >
               {{ federationOnboarding.ingress_note }}
             </p>
+
+            <div
+              v-if="federationPoolStatsVisible"
+              class="grid-stats community-page__federation-pool-grid"
+            >
+              <StatCard
+                dense
+                label="已入池部署"
+                :value="formatCommunityStatNum(federationPoolStats?.members_total)"
+                hint="曾向中心拉取 bootstrap 的自托管套数"
+              />
+              <StatCard
+                dense
+                label="在线且已入池"
+                :value="formatCommunityStatNum(federationPoolStats?.members_online)"
+                hint="在在线窗口内心跳且已入池"
+              />
+              <StatCard
+                dense
+                label="Redis 活跃部署"
+                :value="federationCoordActiveLabel"
+                hint="协调 Redis 上仍有去重 claim 的部署数（近似正在使用）"
+              />
+            </div>
 
             <div
               v-if="federationSecret"
