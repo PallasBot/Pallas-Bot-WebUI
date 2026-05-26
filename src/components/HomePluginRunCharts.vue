@@ -2255,7 +2255,7 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-charts__viz"
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-bars--duration-rank home-plugin-charts__viz"
       >
         <div
           v-for="p in topPluginsByDuration"
@@ -3638,12 +3638,21 @@ const dailyChartPack = computed(() => {
   flex: 1 1 0;
   min-height: 22px;
 }
+.home-plugin-bars--plugin-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
+  min-height: 2rem;
+}
+.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
+  min-height: 2.85rem;
+}
 .home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
-  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(4.25rem, 4.85rem);
-  min-height: 28px;
+  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
+  min-height: 2rem;
   align-items: center;
   gap: 15px;
   padding-left: 8px;
+}
+.home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+  min-height: 2.85rem;
 }
 .home-plugin-bars__row {
   display: grid;
@@ -3868,8 +3877,8 @@ const dailyChartPack = computed(() => {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  gap: 1px;
-  line-height: 1.2;
+  gap: 2px;
+  line-height: 1.22;
   min-width: 0;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
