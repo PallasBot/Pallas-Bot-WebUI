@@ -9131,6 +9131,11 @@ html[data-theme="light"] .home-cpu-core {
   font-size: 13px;
   line-height: 1.45;
 }
+.community-page__federation-pool-note {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .community-page__federation-secret {
   padding: 12px 14px;
   border-radius: var(--radius-md);

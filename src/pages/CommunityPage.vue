@@ -109,12 +109,7 @@ const corpusTotalEnrollHint = computed(() => {
   return parts.join(" · ");
 });
 
-const communityAvailable = computed(() => communityStats.value != null);
-
-const corpusPanelVisible = computed(() => {
-  const corpus = communityStats.value?.corpus;
-  return corpus != null && Object.keys(corpus).length > 0;
-});
+const communityStatsUnavailable = computed(() => communityStats.value == null);
 
 const onlineVersions = computed((): CommunityVersionCountData[] => {
   const rows = communityStats.value?.online_versions;
@@ -194,8 +189,6 @@ const corpusSnapshotText = computed(() => formatUnixSec(corpusStatus.value?.as_o
 
 const communityUsage = computed(() => corpusStatus.value?.sources?.community?.usage ?? null);
 
-const communityUsageVisible = computed(() => communityUsage.value != null);
-
 const communityUsageUpdatedText = computed(() => formatUnixSec(communityUsage.value?.updated_at ?? undefined));
 
 const deploymentIdShort = computed(() => {
@@ -207,15 +200,9 @@ const deploymentIdShort = computed(() => {
 
 const controlPlane = computed(() => corpusStatus.value?.control_plane);
 
-const federationPanelVisible = computed(
-  () => federationOnboarding.value != null || federationOnboardingUnavailable.value,
-);
-
 const federationPoolStats = computed(
   () => federationOnboarding.value?.pool_stats ?? communityStats.value?.federation ?? null,
 );
-
-const federationPoolStatsVisible = computed(() => federationPoolStats.value != null);
 
 const federationSecret = computed(() => (federationOnboarding.value?.instance_secret || "").trim());
 
@@ -382,21 +369,18 @@ onMounted(() => {
         {{ err }}
       </p>
 
-      <div
-        v-if="!communityAvailable"
-        class="panel community-page__panel"
+      <p
+        v-if="communityStatsUnavailable"
+        class="alert alert--warn community-page__alert"
       >
-        <div class="panel__bd muted community-page__empty">
-          统计中心未返回数据。请确认本部署已启用统计上报，且中心服务可访问。
-          <RouterLink
-            class="community-page__inline-link"
-            to="/corpus-config"
-          >语料与联邦设置</RouterLink>
-        </div>
-      </div>
+        统计中心未返回数据，下列数值以 — 占位。请确认本部署已启用统计上报，且中心服务可访问。
+        <RouterLink
+          class="community-page__inline-link"
+          to="/corpus-config"
+        >语料与联邦设置</RouterLink>
+      </p>
 
       <section
-        v-if="communityAvailable"
         id="community-deploy"
         class="community-page__section"
       >
@@ -452,9 +436,14 @@ onMounted(() => {
               <dt>共享语料</dt>
               <dd>
                 <span
+                  v-if="communityStats != null"
                   class="badge"
-                  :class="communityStats?.corpus_enabled ? 'badge--ok' : ''"
-                >{{ communityStats?.corpus_enabled ? "已启用" : "未启用" }}</span>
+                  :class="communityStats.corpus_enabled ? 'badge--ok' : ''"
+                >{{ communityStats.corpus_enabled ? "已启用" : "未启用" }}</span>
+                <span
+                  v-else
+                  class="community-page__mono"
+                >—</span>
               </dd>
               <template v-if="statsAsOfText || statsUrl">
                 <dt>数据来源</dt>
@@ -494,7 +483,6 @@ onMounted(() => {
       </section>
 
       <section
-        v-if="federationPanelVisible"
         id="community-federation"
         class="community-page__section"
       >
@@ -533,27 +521,27 @@ onMounted(() => {
               {{ federationOnboarding.ingress_note }}
             </p>
 
-            <div
-              v-if="federationPoolStatsVisible"
-              class="grid-stats community-page__federation-pool-grid"
-            >
+            <p class="muted community-page__federation-pool-note">
+              左两列由中心登记：先领取联邦配置（bootstrap）再报心跳；右列看去重 Redis，须群消息触发 claim，与左两列无关。
+            </p>
+            <div class="grid-stats community-page__federation-pool-grid">
               <StatCard
                 dense
-                label="已入池部署"
+                label="累计入池"
                 :value="formatCommunityStatNum(federationPoolStats?.members_total)"
-                hint="曾向中心拉取 bootstrap 的自托管套数"
+                hint="曾向中心成功领取联邦配置（bootstrap）的自托管套数"
               />
               <StatCard
                 dense
-                label="在线且已入池"
+                label="在线入池"
                 :value="formatCommunityStatNum(federationPoolStats?.members_online)"
-                hint="在在线窗口内心跳且已入池"
+                hint="已入池且在统计窗口内（约 15 分钟）向中心上报过心跳"
               />
               <StatCard
                 dense
-                label="Redis 活跃部署"
+                label="去重活跃"
                 :value="federationCoordActiveLabel"
-                hint="协调 Redis 上仍有去重 claim 的部署数（近似正在使用）"
+                hint="协调 Redis 上仍有群消息去重 claim 的部署数；实际处理过群消息才计入"
               />
             </div>
 
@@ -718,7 +706,6 @@ onMounted(() => {
       </section>
 
       <section
-        v-if="corpusPanelVisible"
         id="community-corpus"
         class="community-page__section"
       >
@@ -824,10 +811,7 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div
-                v-if="communityUsageVisible"
-                class="grid-stats community-page__usage-grid"
-              >
+              <div class="grid-stats community-page__usage-grid">
                 <StatCard
                   dense
                   label="查询共享池"
@@ -844,15 +828,9 @@ onMounted(() => {
                   dense
                   label="写回共享池"
                   :value="formatCommunityStatNum(communityUsage?.contribute_ok)"
-                  :hint="`成功贡献到社区池；统计更新 ${communityUsageUpdatedText}`"
+                  :hint="communityUsage ? `成功贡献到社区池；统计更新 ${communityUsageUpdatedText}` : '中心暂未返回本部署用量'"
                 />
               </div>
-              <p
-                v-else-if="corpusStatus.sources?.community?.enrolled"
-                class="muted community-page__usage-unavail"
-              >
-                中心暂未返回本部署用量（需中心部署 <code class="community-page__mono">GET /v1/corpus/usage</code>）。
-              </p>
 
               <div class="table-wrap community-page__matrix-wrap">
                 <table class="tbl community-page__source-matrix">
