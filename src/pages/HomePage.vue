@@ -1026,13 +1026,6 @@ const communityActiveRecentHint = computed(() => {
   return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
 });
 
-const communityPanelVisible = computed(() => communityStats.value != null);
-
-const communityCorpusPanelVisible = computed(() => {
-  const corpus = communityStats.value?.corpus;
-  return corpus != null && Object.keys(corpus).length > 0;
-});
-
 const todayCallsStatValue = computed(() => {
   const api = clusterTodayApiCalls.value;
   const plug = clusterTodayPluginRuns.value;
@@ -1872,10 +1865,7 @@ onUnmounted(() => {
       <aside
         class="home-dashboard__aside home-dashboard__aside--tail"
       >
-        <section
-          v-if="communityPanelVisible"
-          class="home-dashboard__aside-community"
-        >
+        <section class="home-dashboard__aside-community">
           <div class="panel home-page__panel home-dashboard__community-panel">
             <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
               <h2 class="panel__title">
@@ -2003,10 +1993,7 @@ onUnmounted(() => {
       </aside>
       </div>
 
-      <section
-        v-if="communityCorpusPanelVisible"
-        class="home-dashboard__corpus"
-      >
+      <section class="home-dashboard__corpus">
         <div class="panel home-page__panel home-dashboard__corpus-panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
