@@ -9089,3 +9089,99 @@ html[data-theme="light"] .home-cpu-core {
     flex-basis: auto;
   }
 }
+
+.community-page__federation-bd {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.community-page__federation-summary {
+  margin: 0;
+  line-height: 1.55;
+  font-size: 14px;
+  color: var(--text);
+}
+.community-page__federation-ingress-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.community-page__federation-secret {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  min-width: 0;
+}
+.community-page__federation-secret-hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.community-page__federation-secret-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+.community-page__federation-secret-value {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+  color: var(--accent);
+}
+.community-page__federation-secret-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.community-page__federation-meta {
+  margin: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.community-page__federation-local {
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.community-page__federation-steps {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.community-page__federation-step {
+  line-height: 1.45;
+  min-width: 0;
+}
+.community-page__federation-step-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.community-page__federation-step-detail {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+@media (max-width: 560px) {
+  .community-page__federation-secret-hd .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .community-page__federation-steps {
+    padding-left: 1rem;
+  }
+}
