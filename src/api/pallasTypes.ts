@@ -103,6 +103,18 @@ export interface CorpusSourceStatusData {
   expires_at?: number | null;
 }
 
+export interface CorpusControlPlaneStatusData {
+  enabled?: boolean;
+  instance_secret_configured?: boolean;
+  federate_id?: string;
+  federate_ingress_enabled?: string;
+  coord_redis_configured?: boolean;
+  bootstrap_refresh_enabled?: boolean;
+  bootstrap_valid?: boolean;
+  bootstrap_federate_id?: string;
+  bootstrap_expires_at?: number | null;
+}
+
 export interface CorpusStatusData {
   composite_active: boolean;
   merge_order: string[];
@@ -118,7 +130,41 @@ export interface CorpusStatusData {
     community_stats_enabled: boolean;
     heartbeat_endpoint?: string;
   };
+  control_plane?: CorpusControlPlaneStatusData;
   as_of?: number;
+}
+
+/** GET /federation-onboarding：中心 Phase 2 入池说明 */
+export interface FederationOnboardingStepData {
+  order: number;
+  title: string;
+  detail: string;
+}
+
+export interface FederationCoordPublicData {
+  redis_url_display?: string;
+  host?: string;
+  port?: number | null;
+  db?: number | null;
+}
+
+export interface FederationOnboardingData {
+  schema_version?: number;
+  phase?: number;
+  available?: boolean;
+  title?: string;
+  summary?: string;
+  bootstrap_enabled?: boolean;
+  federate_id?: string | null;
+  coord?: FederationCoordPublicData | null;
+  instance_secret?: string | null;
+  instance_secret_label?: string;
+  instance_secret_hint?: string;
+  steps?: FederationOnboardingStepData[];
+  ingress_note?: string;
+  config_section_id?: string;
+  as_of?: string;
+  onboarding_url?: string;
 }
 
 /** 消息收/发按时间桶（与 message_traffic_history_bucket_sec 对齐）；at 为桶起点 Unix 秒，与 Bot 主机本地 wall-clock 对齐 */

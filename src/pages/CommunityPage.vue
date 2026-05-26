@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { fetchCommunityStats, fetchCorpusStatus } from "@/api/consoleApi";
+import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding } from "@/api/consoleApi";
 import type {
   CommunityStatsData,
   CommunityVersionCountData,
   CorpusSourceStatusData,
   CorpusStatusData,
+  FederationOnboardingData,
 } from "@/api/pallasTypes";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import { copyTextToClipboard } from "@/utils/clipboard";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -20,6 +23,8 @@ const refreshBusy = ref(false);
 const err = ref("");
 const communityStats = ref<CommunityStatsData | null>(null);
 const corpusStatus = ref<CorpusStatusData | null>(null);
+const federationOnboarding = ref<FederationOnboardingData | null>(null);
+const federationOnboardingUnavailable = ref(false);
 
 function formatCommunityStatNum(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -194,6 +199,53 @@ const deploymentIdShort = computed(() => {
   return `${id.slice(0, 8)}…${id.slice(-4)}`;
 });
 
+const controlPlane = computed(() => corpusStatus.value?.control_plane);
+
+const federationPanelVisible = computed(
+  () => federationOnboarding.value != null || federationOnboardingUnavailable.value,
+);
+
+const federationSecret = computed(() => (federationOnboarding.value?.instance_secret || "").trim());
+
+const federationCoordDisplay = computed(() => {
+  const c = federationOnboarding.value?.coord;
+  if (!c) return "";
+  const display = (c.redis_url_display || "").trim();
+  if (display) return display;
+  const host = (c.host || "").trim();
+  if (!host) return "";
+  const port = c.port != null ? `:${c.port}` : "";
+  const db = c.db != null ? `/${c.db}` : "";
+  return `redis://${host}${port}${db}`;
+});
+
+const controlPlaneConfigLink = computed(() => ({
+  name: "common-config" as const,
+  query: {
+    section: (federationOnboarding.value?.config_section_id || "control_plane").trim() || "control_plane",
+  },
+}));
+
+function ingressEnabledLabel(raw: string | undefined): string {
+  const s = (raw || "auto").trim() || "auto";
+  if (s === "true") return "开启";
+  if (s === "false") return "关闭";
+  return "自动";
+}
+
+async function copyFederationSecret() {
+  const text = federationSecret.value;
+  if (!text) {
+    pushConsoleToast("中心未提供入池密钥", "err");
+    return;
+  }
+  if (!(await copyTextToClipboard(text))) {
+    pushConsoleToast("复制失败", "err");
+    return;
+  }
+  pushConsoleToast("已复制入池密钥", "ok");
+}
+
 function sourceApiBase(key: SourceKey): string {
   return (corpusStatus.value?.sources?.[key]?.api_base || "").trim();
 }
@@ -241,12 +293,15 @@ function sourceLabel(key: SourceKey): string {
 async function load(options?: { bypassCache?: boolean }) {
   err.value = "";
   try {
-    const [comm, corpus] = await Promise.all([
+    const [comm, corpus, fed] = await Promise.all([
       fetchCommunityStats({ bypassCache: options?.bypassCache }).catch(() => null),
       fetchCorpusStatus().catch(() => null),
+      fetchFederationOnboarding().catch(() => null),
     ]);
     communityStats.value = comm;
     corpusStatus.value = corpus;
+    federationOnboarding.value = fed;
+    federationOnboardingUnavailable.value = fed == null;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -389,6 +444,146 @@ onMounted(() => {
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-if="federationPanelVisible"
+        id="community-federation"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel community-page__federation-panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >◇</span>{{ federationOnboarding?.title || "联邦 Phase 2" }}
+            </h2>
+            <div class="row-actions community-page__hd-actions">
+              <RouterLink
+                class="btn btn--ghost btn--sm"
+                :to="controlPlaneConfigLink"
+              >联邦控制面</RouterLink>
+            </div>
+          </div>
+          <div class="panel__bd community-page__federation-bd">
+            <p
+              v-if="federationOnboarding?.summary"
+              class="community-page__federation-summary"
+            >
+              {{ federationOnboarding.summary }}
+            </p>
+            <p
+              v-else-if="federationOnboardingUnavailable"
+              class="muted community-page__federation-summary"
+            >
+              中心暂未开放入池说明接口；你仍可在「联邦控制面」手动填写密钥与 bootstrap 地址。
+            </p>
+            <p
+              v-if="federationOnboarding?.ingress_note"
+              class="community-page__federation-ingress-note muted"
+            >
+              {{ federationOnboarding.ingress_note }}
+            </p>
+
+            <div
+              v-if="federationSecret"
+              class="community-page__federation-secret"
+            >
+              <div class="community-page__federation-secret-hd">
+                <span class="community-page__federation-secret-label">{{
+                  federationOnboarding?.instance_secret_label || "入池密钥"
+                }}</span>
+                <button
+                  type="button"
+                  class="btn btn--ghost btn--sm"
+                  @click="copyFederationSecret"
+                >
+                  复制密钥
+                </button>
+              </div>
+              <code class="community-page__federation-secret-value community-page__mono">{{ federationSecret }}</code>
+              <p
+                v-if="federationOnboarding?.instance_secret_hint"
+                class="community-page__federation-secret-hint muted"
+              >
+                {{ federationOnboarding.instance_secret_hint }}
+              </p>
+            </div>
+
+            <dl
+              v-if="federationOnboarding"
+              class="home-dl community-page__detail-dl community-page__federation-meta"
+            >
+              <dt>联邦池</dt>
+              <dd class="community-page__mono">{{ federationOnboarding.federate_id || "—" }}</dd>
+              <dt>bootstrap</dt>
+              <dd>
+                <span
+                  class="badge"
+                  :class="federationOnboarding.bootstrap_enabled ? 'badge--ok' : ''"
+                >{{ federationOnboarding.bootstrap_enabled ? "已启用" : "未启用" }}</span>
+              </dd>
+              <dt>协调 Redis</dt>
+              <dd class="community-page__mono community-page__meta-line">{{ federationCoordDisplay || "—" }}</dd>
+            </dl>
+
+            <div
+              v-if="controlPlane"
+              class="community-page__federation-local"
+            >
+              <h3 class="community-page__subhd">本部署</h3>
+              <div class="community-page__corpus-meta-bar">
+                <span class="community-page__corpus-meta-item">
+                  <span class="community-page__corpus-meta-k">控制面</span>
+                  <span
+                    class="community-page__corpus-meta-v"
+                    :class="controlPlane.enabled ? 'is-ok' : 'is-off'"
+                  >{{ controlPlane.enabled ? "已开启" : "已关闭" }}</span>
+                </span>
+                <span class="community-page__corpus-meta-item">
+                  <span class="community-page__corpus-meta-k">密钥</span>
+                  <span
+                    class="community-page__corpus-meta-v"
+                    :class="controlPlane.instance_secret_configured ? 'is-ok' : 'is-off'"
+                  >{{ controlPlane.instance_secret_configured ? "已填写" : "未填写" }}</span>
+                </span>
+                <span class="community-page__corpus-meta-item">
+                  <span class="community-page__corpus-meta-k">bootstrap</span>
+                  <span
+                    class="community-page__corpus-meta-v"
+                    :class="controlPlane.bootstrap_valid ? 'is-ok' : 'is-off'"
+                  >{{ controlPlane.bootstrap_valid ? "有效" : "待拉取/过期" }}</span>
+                </span>
+                <span class="community-page__corpus-meta-item">
+                  <span class="community-page__corpus-meta-k">ingress</span>
+                  <span class="community-page__corpus-meta-v">{{ ingressEnabledLabel(controlPlane.federate_ingress_enabled) }}</span>
+                </span>
+                <span
+                  v-if="controlPlane.federate_id"
+                  class="community-page__corpus-meta-item community-page__corpus-meta-item--grow"
+                >
+                  <span class="community-page__corpus-meta-k">池 ID</span>
+                  <span class="community-page__corpus-meta-v community-page__mono">{{ controlPlane.federate_id }}</span>
+                </span>
+              </div>
+            </div>
+
+            <ol
+              v-if="federationOnboarding?.steps?.length"
+              class="community-page__federation-steps"
+            >
+              <li
+                v-for="step in federationOnboarding.steps"
+                :key="step.order"
+                class="community-page__federation-step"
+              >
+                <span class="community-page__federation-step-title">{{ step.order }}. {{ step.title }}</span>
+                <span class="community-page__federation-step-detail">{{ step.detail }}</span>
+              </li>
+            </ol>
           </div>
         </div>
       </section>
