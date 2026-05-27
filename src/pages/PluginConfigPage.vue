@@ -83,8 +83,8 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
 }
 
 const pluginName = computed(() => String(route.params.name || ""));
-const supportsConfigCheck = computed(() => pluginName.value === "pallas_image");
-const usesGatewayEditor = computed(() => pluginName.value === "pallas_image");
+const supportsConfigCheck = computed(() => pluginName.value === "draw");
+const usesGatewayEditor = computed(() => pluginName.value === "draw");
 
 const visibleFields = computed(() => {
   if (!data.value) return [];
