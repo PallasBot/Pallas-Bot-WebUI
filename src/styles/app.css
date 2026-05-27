@@ -4097,11 +4097,7 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-charts-shell--hero-side
   > .home-plugin-charts-wrap
   > .home-plugin-charts
-  .home-matcher-dur-analyze__legend,
-.home-account-charts-shell--hero-side
-  > .home-plugin-charts-wrap
-  > .home-plugin-charts
-  .home-matcher-dur-scatter__hint {
+  .home-matcher-dur-analyze__legend {
   min-height: 0;
   overflow: hidden;
 }

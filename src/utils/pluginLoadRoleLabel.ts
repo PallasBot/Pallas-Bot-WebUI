@@ -10,6 +10,18 @@ const LOAD_WHERE: Record<PluginLoadRole, string> = {
 
 export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
+/** 分片部署下的角色文案；unified 时显示「本进程」，避免误解为 hub/worker 双进程。 */
+export function loadRoleDisplayLabel(
+  role: PluginLoadRole,
+  catalog?: PluginCatalogProcessRole,
+): string {
+  if (catalog === "unified") {
+    if (role === "infra") return "依赖";
+    return "本进程";
+  }
+  return LOAD_WHERE[role] ?? "";
+}
+
 export function pluginExpectsCatalogProcess(
   p: Pick<PluginRow, "load_role" | "expected_in_catalog_process">,
 ): boolean {
@@ -48,12 +60,12 @@ export function pluginLoadWhere(
     return "未加载";
   }
   if (!loaded) {
-    return LOAD_WHERE[role] ?? "";
+    return loadRoleDisplayLabel(role, catalog);
   }
   if (catalog === "hub" && (role === "worker" || role === "internal")) {
     return "Worker 进程";
   }
-  return LOAD_WHERE[role] ?? "";
+  return loadRoleDisplayLabel(role, catalog);
 }
 
 export function pluginLoadBadgeText(
@@ -91,6 +103,9 @@ export function hasPluginLoadWhere(
 }
 
 export function catalogProcessHint(catalog?: PluginCatalogProcessRole): string {
+  if (catalog === "unified") {
+    return "当前为单进程部署：下列「加载」均为本进程；启用多进程分片后，请以 Hub / 各 Worker 进程内的插件目录为准。";
+  }
   if (catalog === "hub") {
     return "目录来自 Hub 进程：标注 Worker 的插件在分片 worker 中运行，Hub 未加载属正常。";
   }

@@ -38,23 +38,51 @@ type ChartPanelId =
   | "matcher_err_bucket"
   | "local_spark";
 
-const PANEL_ORDER: ChartPanelId[] = [
-  "matcher_duration_recent",
-  "matcher_duration_hist",
-  "matcher_duration_scatter",
-  "plugins_top",
-  "plugins_duration_top",
-  "daily_msg_matcher",
-  "api_hourly",
-  "api_bucket",
-  "matcher_hourly",
-  "matcher_bucket",
-  "matcher_duration_hourly",
-  "matcher_duration_bucket",
-  "matcher_err_hourly",
-  "matcher_err_bucket",
-  "local_spark",
+const PANEL_LABELS: Record<ChartPanelId, string> = {
+  matcher_duration_recent: "Matcher 单次耗时",
+  matcher_duration_hist: "Matcher 耗时 · 分布",
+  matcher_duration_scatter: "Matcher 耗时 · 散点",
+  matcher_duration_hourly: "Matcher 耗时 · 今日各小时",
+  matcher_duration_bucket: "Matcher 耗时 · 按时间桶",
+  plugins_top: "插件今日次数",
+  plugins_duration_top: "插件今日平均耗时",
+  matcher_hourly: "Matcher · 今日各小时",
+  matcher_bucket: "Matcher · 按时间桶",
+  matcher_err_hourly: "Matcher 异常 · 今日各小时",
+  matcher_err_bucket: "Matcher 异常 · 按时间桶",
+  daily_msg_matcher: "消息 / Matcher（按日）",
+  api_hourly: "协议 API · 今日各小时",
+  api_bucket: "协议 API · 按时间桶",
+  local_spark: "Matcher 累计（本机采样）",
+};
+
+/** 下拉分组与默认遍历顺序（细粒度耗时 → 运行统计 → 异常 → 汇总与其它） */
+const PANEL_GROUPS: { label: string; panels: ChartPanelId[] }[] = [
+  {
+    label: "Matcher 耗时",
+    panels: [
+      "matcher_duration_recent",
+      "matcher_duration_hist",
+      "matcher_duration_scatter",
+      "matcher_duration_hourly",
+      "matcher_duration_bucket",
+    ],
+  },
+  {
+    label: "Matcher 运行",
+    panels: ["plugins_top", "plugins_duration_top", "matcher_hourly", "matcher_bucket"],
+  },
+  {
+    label: "Matcher 异常",
+    panels: ["matcher_err_hourly", "matcher_err_bucket"],
+  },
+  {
+    label: "汇总与其它",
+    panels: ["daily_msg_matcher", "api_hourly", "api_bucket", "local_spark"],
+  },
 ];
+
+const PANEL_ORDER: ChartPanelId[] = PANEL_GROUPS.flatMap((g) => g.panels);
 
 function isChartPanelId(s: string): s is ChartPanelId {
   return (PANEL_ORDER as string[]).includes(s);
@@ -345,6 +373,7 @@ type DurationScatterPack = {
   points: DurationScatterPoint[];
   yTicks: { y: number; t: string }[];
   xTicks: { x: number; t: string }[];
+  legend: { plugin: string; label: string; color: string }[];
 };
 
 function buildDurationHistPack(rows: MatcherDurationLogEntry[]): DurationHistPack | null {
@@ -436,6 +465,13 @@ function buildDurationHistPack(rows: MatcherDurationLogEntry[]): DurationHistPac
 
 function buildDurationScatterPack(rows: MatcherDurationLogEntry[]): DurationScatterPack | null {
   if (!rows.length) return null;
+  const pluginTotals = new Map<string, number>();
+  for (const row of rows) {
+    pluginTotals.set(row.plugin, (pluginTotals.get(row.plugin) ?? 0) + 1);
+  }
+  const plugins = [...pluginTotals.keys()].sort(
+    (a, b) => (pluginTotals.get(b) ?? 0) - (pluginTotals.get(a) ?? 0) || a.localeCompare(b),
+  );
   const sorted = [...rows].sort((a, b) => (a.at || 0) - (b.at || 0));
   const times = sorted.map((r) => Number(r.at) || 0).filter((t) => t > 0);
   const durs = durationLogMsValues(sorted);
@@ -493,6 +529,11 @@ function buildDurationScatterPack(rows: MatcherDurationLogEntry[]): DurationScat
     points,
     yTicks,
     xTicks,
+    legend: plugins.map((plugin) => ({
+      plugin,
+      label: matcherPluginDisplayName(plugin, props.pluginsMeta ?? undefined),
+      color: matcherPluginBarColor(plugin),
+    })),
   };
 }
 
@@ -1470,28 +1511,15 @@ const panelAvailability = computed(() => ({
   local_spark: showLocalSpark.value,
 }));
 
-const panelOptions = computed(() => {
-  const labels: Record<ChartPanelId, string> = {
-    matcher_duration_recent: "Matcher 单次耗时",
-    matcher_duration_hist: "Matcher 耗时 · 分布",
-    matcher_duration_scatter: "Matcher 耗时 · 散点",
-    plugins_top: "插件今日次数",
-    plugins_duration_top: "插件今日平均耗时",
-    daily_msg_matcher: "消息 / Matcher（按日）",
-    api_hourly: "协议 API · 今日各小时",
-    api_bucket: "协议 API · 按时间桶（柱状）",
-    matcher_hourly: "Matcher · 今日各小时",
-    matcher_bucket: "Matcher · 按时间桶（柱状）",
-    matcher_duration_hourly: "Matcher 耗时 · 今日各小时",
-    matcher_duration_bucket: "Matcher 耗时 · 按时间桶",
-    matcher_err_hourly: "Matcher 异常 · 今日各小时",
-    matcher_err_bucket: "Matcher 异常 · 按时间桶（柱状）",
-    local_spark: "Matcher 累计（本机采样）",
-  };
-  return PANEL_ORDER.map((id) => ({
-    id,
-    label: labels[id],
-    available: panelAvailability.value[id],
+const panelOptionGroups = computed(() => {
+  const avail = panelAvailability.value;
+  return PANEL_GROUPS.map((grp) => ({
+    label: grp.label,
+    options: grp.panels.map((id) => ({
+      id,
+      label: PANEL_LABELS[id],
+      available: avail[id],
+    })),
   }));
 });
 
@@ -1965,14 +1993,18 @@ const dailyChartPack = computed(() => {
             aria-label="图表类型"
             title="切换要查看的图表类型（如插件次数/耗时、按日汇总、协议 API 等）"
           >
-            <option
-              v-for="o in panelOptions"
-              :key="o.id"
-              :value="o.id"
-              :disabled="!o.available"
-            >
-              {{ o.label }}
-            </option>
+            <template v-for="grp in panelOptionGroups" :key="grp.label">
+              <optgroup :label="grp.label">
+                <option
+                  v-for="o in grp.options"
+                  :key="o.id"
+                  :value="o.id"
+                  :disabled="!o.available"
+                >
+                  {{ o.label }}
+                </option>
+              </optgroup>
+            </template>
           </select>
           <button
             v-if="chartFilterToggleVisible"
@@ -2182,7 +2214,12 @@ const dailyChartPack = computed(() => {
             <title>{{ pluginBarLabel(pt.plugin) }} · {{ fmtDurationMsPrecise(pt.ms) }} · {{ formatDurationLogAt(pt.at) }}</title>
           </circle>
         </svg>
-        <p class="muted home-matcher-dur-scatter__hint">横轴：时间（左旧右新） · 纵轴：单次耗时</p>
+        <div class="home-plugin-legend home-matcher-dur-analyze__legend">
+          <span v-for="leg in durationScatterPack.legend" :key="`dsl-${leg.plugin}`" class="home-plugin-legend__item">
+            <i class="home-plugin-legend__sw" :style="{ background: leg.color }" />
+            <span :title="leg.plugin">{{ leg.label }}</span>
+          </span>
+        </div>
       </div>
       <p v-else class="muted home-plugin-charts__empty">当前样本无法生成散点图。</p>
       </div>
@@ -4072,11 +4109,6 @@ const dailyChartPack = computed(() => {
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
-.home-matcher-dur-scatter__hint {
-  margin: 6px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-}
 
 /* 按「图表区块实际宽度」断行，避免宽视口 + 窄内容列时仍横向挤压 */
 @container (max-width: 640px) {
@@ -4170,9 +4202,6 @@ const dailyChartPack = computed(() => {
   }
   .home-matcher-dur-log__time-axis--foot .home-matcher-dur-log__time-axis-range {
     grid-column: 1 / -1;
-  }
-  .home-matcher-dur-scatter__hint {
-    font-size: 0.68rem;
   }
 }
 
