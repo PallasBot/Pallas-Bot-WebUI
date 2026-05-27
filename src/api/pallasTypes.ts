@@ -363,7 +363,7 @@ export interface PluginRow {
   help_hidden?: boolean;
   /** 插件代码来源：主仓 src/plugins、站点 local/plugins、pip 基础设施 */
   plugin_source?: PluginSourceKind;
-  /** 相对仓库根的目录，如 local/plugins/pallas_image */
+  /** 相对仓库根的目录，如 local/plugins/draw */
   plugin_source_dir?: string | null;
   metadata: {
     name?: string;

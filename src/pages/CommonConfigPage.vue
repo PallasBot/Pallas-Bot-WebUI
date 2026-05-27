@@ -365,7 +365,7 @@ function enumChoiceLabel(opt: string): string {
             style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
           >
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
-            <router-link to="/plugins/pallas_image">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
+            <router-link to="/plugins/draw">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
           </p>
           <p
             v-if="showDevModeHotReloadHint"
@@ -487,7 +487,7 @@ function enumChoiceLabel(opt: string): string {
                 开发模式开关在顶栏右侧，与连接状态、主题切换同一行。
               </p>
               <PallasImageGatewaysEditor
-                v-if="group.id === 'pallas_image' && showGatewayEditor"
+                v-if="group.id === 'draw' && showGatewayEditor"
                 :field-values="fieldValues"
                 @update:field-values="onGatewayFieldValues"
               />
@@ -495,7 +495,7 @@ function enumChoiceLabel(opt: string): string {
                 v-for="f in fieldsInGroup(group)"
                 v-show="
                   showConfigField(f)
-                    && !(group.id === 'pallas_image' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
+                    && !(group.id === 'draw' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
                 "
                 :key="f.name"
                 style="margin-bottom: 22px"
