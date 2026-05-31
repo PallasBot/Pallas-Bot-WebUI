@@ -4203,6 +4203,70 @@ const dailyChartPack = computed(() => {
   .home-matcher-dur-log__time-axis--foot .home-matcher-dur-log__time-axis-range {
     grid-column: 1 / -1;
   }
+
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
+    max-height: min(320px, 46vh);
+    flex: 0 1 auto;
+    height: auto;
+  }
+
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz > .home-plugin-bars__row {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 4px 8px;
+    min-height: auto;
+    padding: 4px 6px;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__name {
+    max-width: none;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__val--stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: 2px 6px;
+    max-width: min(11rem, 48vw);
+  }
+}
+
+@container (max-width: 480px) {
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
+    max-height: min(320px, 46vh);
+    flex: 0 1 auto;
+    height: auto;
+  }
+
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz > .home-plugin-bars__row {
+    flex: 0 0 auto;
+    min-height: auto;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 4px 8px;
+    min-height: auto;
+    padding: 4px 6px;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__name {
+    max-width: none;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__val--stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: 2px 6px;
+    max-width: min(11rem, 48vw);
+  }
 }
 
 @media (max-width: 640px) {
