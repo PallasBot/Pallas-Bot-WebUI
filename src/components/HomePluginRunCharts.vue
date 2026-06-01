@@ -2292,7 +2292,7 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-bars--duration-rank home-plugin-charts__viz"
+        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--duration-rank home-plugin-charts__viz"
       >
         <div
           v-for="p in topPluginsByDuration"
@@ -3678,10 +3678,17 @@ const dailyChartPack = computed(() => {
 .home-plugin-bars--plugin-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
   min-height: 2rem;
 }
-.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
-  min-height: 2.85rem;
+.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz {
+  flex: 0 1 auto;
+  height: auto;
+  max-height: min(320px, 46vh);
 }
-.home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
+.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+.home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank,
+.home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
   grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
   min-height: 2rem;
   align-items: center;
@@ -3705,7 +3712,8 @@ const dailyChartPack = computed(() => {
   color: var(--text-muted);
   font-weight: 600;
 }
-.home-plugin-bars--plugin-rank .home-plugin-bars__name {
+.home-plugin-bars--plugin-rank .home-plugin-bars__name,
+.home-plugin-bars--duration-rank .home-plugin-bars__name {
   min-width: 0;
   max-width: 5.75rem;
 }
@@ -3730,12 +3738,14 @@ const dailyChartPack = computed(() => {
 .home-plugin-bars__fill--duration {
   background: linear-gradient(90deg, #c2410c, rgba(251, 146, 60, 0.85));
 }
-.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child {
+.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child,
+.home-plugin-bars--duration-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
-.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line.muted {
+.home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line.muted,
+.home-plugin-bars--duration-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line.muted {
   font-size: 0.68rem;
   font-weight: 500;
   color: var(--text-dim);
@@ -4204,17 +4214,6 @@ const dailyChartPack = computed(() => {
     grid-column: 1 / -1;
   }
 
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
-    max-height: min(320px, 46vh);
-    flex: 0 1 auto;
-    height: auto;
-  }
-
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz > .home-plugin-bars__row {
-    flex: 0 0 auto;
-    min-height: auto;
-  }
-
   .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
     grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     gap: 4px 8px;
@@ -4237,17 +4236,6 @@ const dailyChartPack = computed(() => {
 }
 
 @container (max-width: 480px) {
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
-    max-height: min(320px, 46vh);
-    flex: 0 1 auto;
-    height: auto;
-  }
-
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz > .home-plugin-bars__row {
-    flex: 0 0 auto;
-    min-height: auto;
-  }
-
   .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
     grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     gap: 4px 8px;

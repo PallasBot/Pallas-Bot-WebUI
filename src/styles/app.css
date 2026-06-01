@@ -4141,9 +4141,19 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-charts-shell--hero-side
   > .home-plugin-charts-wrap
   > .home-plugin-charts
+  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
+  max-height: min(320px, 46vh);
+  height: auto;
+  flex: 0 1 auto;
+}
+
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
   .home-plugin-bars--duration-rank.home-plugin-charts__viz
   > .home-plugin-bars__row {
-  min-height: 2.85rem;
+  flex: 0 0 auto;
+  min-height: auto;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__block,
@@ -5666,24 +5676,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
   .home-account-charts-shell--hero-side:has(.home-plugin-charts:not(.home-plugin-charts--draw-collapsed)) {
     min-height: min(240px, 52vh);
-  }
-
-  .home-account-charts-shell--hero-side
-    > .home-plugin-charts-wrap
-    > .home-plugin-charts
-    .home-plugin-bars--duration-rank.home-plugin-charts__viz {
-    max-height: min(320px, 46vh);
-    height: auto;
-    flex: 0 1 auto;
-  }
-
-  .home-account-charts-shell--hero-side
-    > .home-plugin-charts-wrap
-    > .home-plugin-charts
-    .home-plugin-bars--duration-rank.home-plugin-charts__viz
-    > .home-plugin-bars__row {
-    flex: 0 0 auto;
-    min-height: auto;
   }
 
   .home-account-hero__proto-sub {
