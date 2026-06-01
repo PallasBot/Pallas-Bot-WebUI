@@ -4114,7 +4114,10 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 }
 
 /* 总览账户卡内：说明与勾选已 teleport；图表区随右列等高伸展（> .home-plugin-charts 提高优先级以覆盖组件 scoped） */
-.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-bars.home-plugin-charts__viz {
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-bars.home-plugin-charts__viz:not(.home-plugin-duration-rank) {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
@@ -4141,18 +4144,36 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
 .home-account-charts-shell--hero-side
   > .home-plugin-charts-wrap
   > .home-plugin-charts
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz {
-  max-height: min(320px, 46vh);
-  height: auto;
+  .home-plugin-duration-rank.home-plugin-charts__viz {
+  --home-plugin-duration-rank-max-h: min(320px, 46vh);
   flex: 0 1 auto;
+  align-self: flex-start;
+  width: 100%;
+  min-height: 0;
+  max-height: var(--home-plugin-duration-rank-max-h);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .home-account-charts-shell--hero-side
   > .home-plugin-charts-wrap
   > .home-plugin-charts
-  .home-plugin-bars--duration-rank.home-plugin-charts__viz
+  .home-plugin-duration-rank__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-bars--duration-rank
   > .home-plugin-bars__row {
-  flex: 0 0 auto;
+  flex: none;
   min-height: auto;
 }
 
@@ -4163,7 +4184,39 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   height: 100%;
 }
 
-.home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-charts__viz {
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__block:has(.home-plugin-duration-rank),
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__flip:has(.home-plugin-duration-rank),
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__draw:has(.home-plugin-duration-rank),
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__block:has(.home-matcher-dur-log),
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__flip:has(.home-matcher-dur-log),
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__draw:has(.home-matcher-dur-log) {
+  flex: 0 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-plugin-charts__viz:not(.home-plugin-duration-rank) {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -4172,11 +4225,20 @@ html[data-theme="light"] .home-account-hero--color .home-account-hero__picker-it
   > .home-plugin-charts-wrap
   > .home-plugin-charts
   .home-matcher-dur-log.home-plugin-charts__viz {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  align-self: flex-start;
+  width: 100%;
   min-height: 0;
-  max-height: none;
-  height: 100%;
+  max-height: var(--home-matcher-dur-log-max-h, min(360px, 48vh));
+  height: auto;
   overflow: hidden;
+}
+
+.home-account-charts-shell--hero-side
+  > .home-plugin-charts-wrap
+  > .home-plugin-charts
+  .home-matcher-dur-log__scroll {
+  overflow-x: hidden;
 }
 
 .home-account-charts-shell--hero-side > .home-plugin-charts-wrap > .home-plugin-charts .home-plugin-multi.home-plugin-charts__viz {

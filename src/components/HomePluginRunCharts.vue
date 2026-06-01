@@ -2292,34 +2292,38 @@ const dailyChartPack = computed(() => {
       </p>
       <div
         v-else
-        class="home-plugin-bars home-plugin-bars--fill home-plugin-bars--duration-rank home-plugin-charts__viz"
+        class="home-plugin-duration-rank home-plugin-charts__viz"
       >
-        <div
-          v-for="p in topPluginsByDuration"
-          :key="`dur-${p.name}`"
-          class="home-plugin-bars__row home-plugin-bars__row--plugin-rank"
-        >
-          <span
-            class="home-plugin-bars__name"
-            :title="p.name"
-          >{{ pluginBarLabel(p.name) }}</span>
-          <div class="home-plugin-bars__track">
-            <span
-              class="home-plugin-bars__fill home-plugin-bars__fill--duration"
-              :style="{ width: `${pluginDurationBarWidthPercent(p)}%` }"
-            />
+        <div class="home-plugin-duration-rank__scroll">
+          <div class="home-plugin-bars home-plugin-bars--duration-rank">
+            <div
+              v-for="p in topPluginsByDuration"
+              :key="`dur-${p.name}`"
+              class="home-plugin-bars__row home-plugin-bars__row--duration-rank"
+            >
+              <span
+                class="home-plugin-bars__name"
+                :title="p.name"
+              >{{ pluginBarLabel(p.name) }}</span>
+              <div class="home-plugin-bars__track">
+                <span
+                  class="home-plugin-bars__fill home-plugin-bars__fill--duration"
+                  :style="{ width: `${pluginDurationBarWidthPercent(p)}%` }"
+                />
+              </div>
+              <span class="home-plugin-bars__val home-plugin-bars__val--stack">
+                <span class="home-plugin-bars__val-line">均 {{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
+                <span
+                  v-if="showPeakDurationToday(p)"
+                  class="home-plugin-bars__val-line muted"
+                >峰 {{ fmtDurationMs(p.max_duration_ms_today) }}</span>
+                <span
+                  v-if="p.runs_today > 0"
+                  class="home-plugin-bars__val-line muted"
+                >今日 {{ p.runs_today }} 次</span>
+              </span>
+            </div>
           </div>
-          <span class="home-plugin-bars__val home-plugin-bars__val--stack">
-            <span class="home-plugin-bars__val-line">均 {{ fmtDurationMs(p.avg_duration_ms_today) }}</span>
-            <span
-              v-if="showPeakDurationToday(p)"
-              class="home-plugin-bars__val-line muted"
-            >峰 {{ fmtDurationMs(p.max_duration_ms_today) }}</span>
-            <span
-              v-if="p.runs_today > 0"
-              class="home-plugin-bars__val-line muted"
-            >今日 {{ p.runs_today }} 次</span>
-          </span>
         </div>
       </div>
       </div>
@@ -3678,25 +3682,53 @@ const dailyChartPack = computed(() => {
 .home-plugin-bars--plugin-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
   min-height: 2rem;
 }
-.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz {
+.home-plugin-duration-rank.home-plugin-charts__viz {
+  --home-plugin-duration-rank-max-h: min(320px, 46vh);
   flex: 0 1 auto;
-  height: auto;
-  max-height: min(320px, 46vh);
+  align-self: flex-start;
+  width: 100%;
+  min-height: 0;
+  max-height: var(--home-plugin-duration-rank-max-h);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
-.home-plugin-bars--duration-rank.home-plugin-bars--fill.home-plugin-charts__viz > .home-plugin-bars__row {
-  flex: 0 0 auto;
+.home-plugin-duration-rank__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.home-plugin-bars--duration-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.home-plugin-bars--duration-rank > .home-plugin-bars__row {
+  flex: none;
   min-height: auto;
 }
-.home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank,
-.home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+.home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
   grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
   min-height: 2rem;
   align-items: center;
   gap: 15px;
   padding-left: 8px;
 }
-.home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+.home-plugin-bars--duration-rank .home-plugin-bars__row--duration-rank {
+  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
   min-height: 2.85rem;
+  align-items: center;
+  gap: 15px;
+  padding-left: 8px;
+}
+.home-plugin-charts__viz.home-plugin-duration-rank {
+  flex: 0 1 auto;
+  min-height: 0;
 }
 .home-plugin-bars__row {
   display: grid;
@@ -3754,21 +3786,27 @@ const dailyChartPack = computed(() => {
   --home-matcher-dur-log-ms-col: 5.25rem;
   --home-matcher-dur-log-plugin-col: 5.75rem;
   --home-matcher-dur-log-cols: var(--home-matcher-dur-log-ms-col) var(--home-matcher-dur-log-plugin-col) minmax(36px, 1fr) auto fit-content(2.25rem);
+  --home-matcher-dur-log-max-h: min(360px, 48vh);
   border: 1px solid var(--border);
   border-radius: var(--radius-shell);
   background: var(--bg-elev);
   padding: 6px 8px;
-  max-height: min(420px, 52vh);
+  max-height: var(--home-matcher-dur-log-max-h);
   overflow: hidden;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
+.home-matcher-dur-log.home-plugin-charts__viz {
+  flex: 0 1 auto;
+  align-self: flex-start;
+  width: 100%;
+}
 .home-matcher-dur-log__scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
@@ -3815,6 +3853,7 @@ const dailyChartPack = computed(() => {
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 .home-matcher-dur-log__time-axis {
@@ -3898,6 +3937,8 @@ const dailyChartPack = computed(() => {
   border: 1px solid var(--border);
   overflow: hidden;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 .home-matcher-dur-log__fill {
   display: block;
@@ -4174,7 +4215,6 @@ const dailyChartPack = computed(() => {
 
   .home-matcher-dur-log {
     --home-matcher-dur-log-cols: minmax(0, 1fr) auto;
-    max-height: min(360px, 48vh);
   }
   .home-matcher-dur-log__head {
     display: none;
@@ -4214,18 +4254,27 @@ const dailyChartPack = computed(() => {
     grid-column: 1 / -1;
   }
 
-  .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+  .home-plugin-bars--duration-rank .home-plugin-bars__row--duration-rank {
     grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-areas:
+      "name val"
+      "track track";
     gap: 4px 8px;
     min-height: auto;
     padding: 4px 6px;
   }
 
   .home-plugin-bars--duration-rank .home-plugin-bars__name {
+    grid-area: name;
     max-width: none;
   }
 
+  .home-plugin-bars--duration-rank .home-plugin-bars__track {
+    grid-area: track;
+  }
+
   .home-plugin-bars--duration-rank .home-plugin-bars__val--stack {
+    grid-area: val;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -4236,18 +4285,68 @@ const dailyChartPack = computed(() => {
 }
 
 @container (max-width: 480px) {
-  .home-plugin-bars--duration-rank .home-plugin-bars__row--plugin-rank {
+  .home-matcher-dur-log {
+    --home-matcher-dur-log-cols: minmax(0, 1fr) auto;
+  }
+  .home-matcher-dur-log__head {
+    display: none;
+  }
+  .home-matcher-dur-log__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "ms at"
+      "plugin plugin"
+      "bar bar";
+    gap: 2px 8px;
+    padding: 8px 8px 8px 10px;
+  }
+  .home-matcher-dur-log__ms {
+    grid-area: ms;
+  }
+  .home-matcher-dur-log__plugin {
+    grid-area: plugin;
+    max-width: none;
+  }
+  .home-matcher-dur-log__track {
+    grid-area: bar;
+    height: 4px;
+  }
+  .home-matcher-dur-log__at {
+    grid-area: at;
+  }
+  .home-matcher-dur-log__badge {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 2px;
+  }
+  .home-matcher-dur-log__time-axis--foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-matcher-dur-log__time-axis--foot .home-matcher-dur-log__time-axis-range {
+    grid-column: 1 / -1;
+  }
+
+  .home-plugin-bars--duration-rank .home-plugin-bars__row--duration-rank {
     grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    grid-template-areas:
+      "name val"
+      "track track";
     gap: 4px 8px;
     min-height: auto;
     padding: 4px 6px;
   }
 
   .home-plugin-bars--duration-rank .home-plugin-bars__name {
+    grid-area: name;
     max-width: none;
   }
 
+  .home-plugin-bars--duration-rank .home-plugin-bars__track {
+    grid-area: track;
+  }
+
   .home-plugin-bars--duration-rank .home-plugin-bars__val--stack {
+    grid-area: val;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: flex-end;
