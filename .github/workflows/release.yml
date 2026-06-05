@@ -33,10 +33,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # 正式版：合并进 main/master 的同仓库 PR（workflow 在 closed 时触发，merged 由 if 约束）
-    # 测试版：直推 main/master，且排除合并类提交 / 机器人发版提交 / GitHub squash 常见标题里的 (#nn)
+    # 正式版：合并进 main/master 的同仓库 PR，或直推 main/master（均默认 patch + v* tag）
+    # 直推时排除：机器人发版提交 chore(release):、GitHub PR 合并/squash 类提交（避免与 pull_request 重复发版）
     # 手动：workflow_dispatch；或推送不含 -dev. 的 v* tag
-    # 跳过：由本工作流创建的 v*-dev.* tag 触发的二次 push（若 token 会级联触发）
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master') && github.event.pull_request.head.repo.full_name == github.repository) ||
       github.event_name == 'workflow_dispatch' ||
@@ -58,8 +57,11 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Bump version and push tag（合并 PR / Actions 手动发版）
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+      - name: Bump version and push tag（合并 PR / 直推 main / Actions 手动发版）
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'pull_request' ||
+          (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master'))
         env:
           BUMP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump || 'patch' }}
         run: |
@@ -72,7 +74,7 @@ jobs:
           while git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; do
             i=$((i + 1))
             if [ "$i" -gt 256 ]; then
-              echo "::error::连续 patch 后仍无法得到未占用 tag（上限 256）。请删除冲突远端 tag，或先把 package.json 的 version 对齐当前发版线后再合并 PR / 发版。最后尝试: ${VERSION}"
+              echo "::error::连续 patch 后仍无法得到未占用 tag（上限 256）。请删除冲突远端 tag，或先把 package.json 的 version 对齐当前发版线后再发版。最后尝试: ${VERSION}"
               exit 1
             fi
             echo "::notice::Tag ${VERSION} 在已 fetch 的 refs/tags 中已存在，自动再执行一次 patch 以对齐全局发版线"
@@ -94,18 +96,15 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
-          RUN_NUMBER: ${{ github.run_number }}
-          SHA_FULL: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "pull_request" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "pull_request" ] || [[ "$REF" == refs/heads/main || "$REF" == refs/heads/master ]]; then
             T="v$(node -p "require('./package.json').version")"
           elif [[ "$REF" == refs/tags/* ]]; then
             T="${REF#refs/tags/}"
           else
-            PKG_VER=$(node -p "require('./package.json').version")
-            SHORT=$(echo "$SHA_FULL" | cut -c1-7)
-            T="v${PKG_VER}-dev.${RUN_NUMBER}-${SHORT}"
+            echo "::error::无法解析发版 tag（event=${EVENT_NAME} ref=${REF}）"
+            exit 1
           fi
           echo "tag=${T}" >> "$GITHUB_OUTPUT"
 
@@ -175,11 +174,7 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: Release ${{ steps.ver.outputs.tag }}
-          prerelease: >-
-            ${{
-              (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease) ||
-              (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/'))
-            }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease }}
           files: dist.zip
           body: |
             ## 更新内容
@@ -188,5 +183,5 @@ jobs:
 
             ${{ github.event_name == 'pull_request' && '> **类型**：合并到 `main` / `master` 的 PR 触发的正式发版（默认 `patch` 递增 + 语义化 `v*` tag）。' || '' }}
             ${{ github.event_name == 'workflow_dispatch' && '> **类型**：Actions 手动发版。' || '' }}
-            ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && '> **类型**：直推分支触发的测试发版（`v*`-`dev.*`，预发布）。' || '' }}
+            ${{ github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && '> **类型**：直推 `main` / `master` 触发的正式发版（默认 `patch` 递增 + 语义化 `v*` tag）。' || '' }}
             ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.') && '> **类型**：推送语义化 tag 触发的发版。' || '' }}
