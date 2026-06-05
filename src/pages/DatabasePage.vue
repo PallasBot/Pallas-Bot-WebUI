@@ -81,6 +81,9 @@ const groupConfigOpen = ref(false);
 const groupConfigId = ref<number | null>(null);
 const userConfigOpen = ref(false);
 const userConfigId = ref<number | null>(null);
+const userConfigDefaultBanned = ref(false);
+const addUserInput = ref("");
+const addUserHint = ref("");
 
 const plugins = ref<PluginRow[]>([]);
 {
@@ -419,8 +422,27 @@ function openGroupConfig(groupId: number) {
 }
 
 function openUserConfig(userId: number) {
+  userConfigDefaultBanned.value = false;
   userConfigId.value = userId;
   userConfigOpen.value = true;
+}
+
+function openAddUserConfig() {
+  addUserHint.value = "";
+  const raw = addUserInput.value.trim();
+  if (!raw) {
+    addUserHint.value = "请输入 QQ 号。";
+    return;
+  }
+  const uid = parseInt(raw, 10);
+  if (!Number.isFinite(uid) || uid < 1) {
+    addUserHint.value = "请输入有效的 QQ 号。";
+    return;
+  }
+  userConfigDefaultBanned.value = true;
+  userConfigId.value = uid;
+  userConfigOpen.value = true;
+  addUserInput.value = "";
 }
 
 function onSocialConfigSaved(kind: "group" | "user") {
@@ -435,6 +457,10 @@ watch(
     if (!anyOpen) document.body.style.overflow = "";
   },
 );
+
+watch(userConfigOpen, (isOpen) => {
+  if (!isOpen) userConfigDefaultBanned.value = false;
+});
 
 onUnmounted(() => {
   stopBackupProgressTimer();
@@ -848,6 +874,44 @@ onUnmounted(() => {
         v-show="consolePrefs.databasePageUserConfigsOpen"
         class="panel__bd"
       >
+        <div
+          class="database-user-config-add"
+          style="margin-bottom: 12px"
+        >
+          <p
+            class="muted"
+            style="margin: 0 0 8px; font-size: 12px"
+          >
+            输入 QQ 号后点击添加并设置封禁。此为全局拉黑，与私聊「牛牛拉黑」写入同一字段；本群维度拉黑请在上方群配置中维护。
+          </p>
+          <div class="row-actions database-user-config-add__row">
+            <input
+              v-model="addUserInput"
+              class="inp database-user-config-add__inp"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="QQ 号"
+              :disabled="socialConfigsBusy"
+              @keydown.enter.prevent="openAddUserConfig"
+            >
+            <button
+              type="button"
+              class="btn btn--primary database-user-config-add__btn"
+              :disabled="socialConfigsBusy"
+              @click="openAddUserConfig"
+            >
+              添加
+            </button>
+          </div>
+          <p
+            v-if="addUserHint"
+            class="alert alert--err"
+            style="margin: 8px 0 0; padding: 8px 10px; font-size: 12px"
+          >
+            {{ addUserHint }}
+          </p>
+        </div>
         <p
           v-if="socialConfigsBusy && !userConfigs.length"
           class="muted"
@@ -860,7 +924,7 @@ onUnmounted(() => {
           class="muted"
         >
           <template v-if="userListQ.trim() && userConfigs.length > 0">无匹配结果。</template>
-          <template v-else>数据库中暂无好友配置记录。</template>
+          <template v-else>数据库中暂无好友配置记录，可使用上方输入框添加。</template>
         </div>
         <div
           v-else
@@ -1074,6 +1138,7 @@ onUnmounted(() => {
     <UserSocialConfigModal
       v-model:open="userConfigOpen"
       :user-id="userConfigId"
+      :default-banned="userConfigDefaultBanned"
       @saved="onSocialConfigSaved('user')"
     />
   </div>

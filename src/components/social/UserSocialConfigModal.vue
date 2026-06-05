@@ -10,6 +10,8 @@ const props = defineProps<{
   userId: number | null;
   /** 好友昵称（好友列表传入；数据库页无昵称时可省略） */
   userNickname?: string;
+  /** 打开弹窗时封禁下拉默认选「是」（数据库页添加封禁用户） */
+  defaultBanned?: boolean;
 }>();
 
 const subtitleUserNickname = computed(() => props.userNickname?.trim() ?? "");
@@ -57,7 +59,7 @@ async function loadConfig() {
   try {
     const u = await fetchUserConfigById(uid);
     userCfg.value = u;
-    userDraft.value = { banned: u.banned };
+    userDraft.value = { banned: props.defaultBanned ? true : u.banned };
     saveErr.value = "";
   } catch (e) {
     loadErr.value = e instanceof Error ? e.message : String(e);
@@ -136,7 +138,7 @@ watch(
               id="user-policy-modal-title"
               class="console-modal__title"
             >
-              编辑用户颗粒配置
+              {{ defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置" }}
             </h2>
             <p class="console-modal__subtitle">
               <span

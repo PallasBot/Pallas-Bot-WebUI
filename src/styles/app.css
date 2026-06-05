@@ -6406,6 +6406,23 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   align-items: center;
 }
 
+#db-user-configs .database-user-config-add__row {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+#db-user-configs .database-user-config-add__inp {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 220px;
+}
+
+#db-user-configs .database-user-config-add__btn {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 /* 窄屏：卡片标题栏内控件纵向排布，避免挤压、换行杂乱 */
 @media (max-width: 560px) {
   .panel__hd {
@@ -6833,6 +6850,28 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .panel__bd .row-actions > .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  /* 数据库 · 好友配置：窄屏添加行保持横排，避免输入框被 panel__bd 规则拉满全宽 */
+  #db-user-configs .database-user-config-add__row {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #db-user-configs .database-user-config-add__row > .database-user-config-add__inp {
+    width: auto !important;
+    flex: 1 1 0;
+    min-width: 0 !important;
+    max-width: min(220px, 100%) !important;
+  }
+
+  #db-user-configs .database-user-config-add__row > .database-user-config-add__btn {
+    width: auto !important;
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    font-size: 12px;
   }
 
   .data-summary-card--bot .data-summary-card__row--admins {
