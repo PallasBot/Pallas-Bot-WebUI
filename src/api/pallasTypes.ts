@@ -361,6 +361,10 @@ export interface PluginRow {
   help_visible?: boolean;
   help_ignored?: boolean;
   help_hidden?: boolean;
+  /** 全实例运行时禁用（所有 bot、所有群） */
+  globally_disabled?: boolean;
+  /** 基础设施插件，不可全实例禁用 */
+  global_disable_protected?: boolean;
   /** 插件代码来源：主仓 src/plugins、站点 local/plugins、pip 基础设施 */
   plugin_source?: PluginSourceKind;
   /** 相对仓库根的目录，如 local/plugins/draw */
@@ -377,6 +381,11 @@ export interface PluginRow {
 export interface HelpMenuVisibilityData {
   hidden_plugins: string[];
   ignored_plugins: string[];
+}
+
+export interface GlobalPluginDisableData {
+  disabled_plugins: string[];
+  protected_plugins: string[];
 }
 
 export interface PluginConfigField {

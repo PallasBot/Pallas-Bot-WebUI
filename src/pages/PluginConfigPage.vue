@@ -5,9 +5,11 @@ import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchPluginConfig,
   fetchPlugins,
+  fetchPluginsGlobalDisable,
   fetchPluginsHelpMenuVisibility,
   postPluginConfigCheck,
   putPluginConfig,
+  putPluginsGlobalDisable,
   putPluginsHelpMenuVisibility,
 } from "@/api/consoleApi";
 import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
@@ -35,6 +37,9 @@ const helpMenuHiddenList = ref<string[]>([]);
 const helpMenuIgnoredList = ref<string[]>([]);
 const helpMenuBusy = ref(false);
 const helpMenuErr = ref("");
+const globalDisabledList = ref<string[]>([]);
+const globalDisableBusy = ref(false);
+const globalDisableErr = ref("");
 const saveFeedbackRef = ref<HTMLElement | null>(null);
 
 const showInHelpMenu = computed(() => {
@@ -43,21 +48,52 @@ const showInHelpMenu = computed(() => {
   return Boolean(pluginRow.value.help_visible ?? !pluginRow.value.help_hidden);
 });
 
+const isGloballyDisabled = computed(() => {
+  const name = pluginName.value;
+  return Boolean(name && globalDisabledList.value.includes(name));
+});
+
 async function loadHelpMenuState() {
   const name = pluginName.value;
   if (!name) return;
   helpMenuBusy.value = true;
   helpMenuErr.value = "";
   try {
-    const [rows, vis] = await Promise.all([fetchPlugins(), fetchPluginsHelpMenuVisibility()]);
+    const [rows, vis, globalDisable] = await Promise.all([
+      fetchPlugins(),
+      fetchPluginsHelpMenuVisibility(),
+      fetchPluginsGlobalDisable(),
+    ]);
     pluginRow.value = rows.find((r) => r.name === name) ?? null;
     helpMenuHiddenList.value = [...vis.hidden_plugins];
     helpMenuIgnoredList.value = [...vis.ignored_plugins];
+    globalDisabledList.value = [...globalDisable.disabled_plugins];
   } catch (e) {
     helpMenuErr.value = e instanceof Error ? e.message : String(e);
     pluginRow.value = null;
   } finally {
     helpMenuBusy.value = false;
+  }
+}
+
+async function toggleGlobalDisable(wantDisabled: boolean) {
+  const name = pluginName.value;
+  if (!name || !pluginRow.value?.name) return;
+  if (pluginRow.value.global_disable_protected) return;
+  globalDisableBusy.value = true;
+  globalDisableErr.value = "";
+  try {
+    const set = new Set(globalDisabledList.value);
+    if (wantDisabled) set.add(name);
+    else set.delete(name);
+    const out = await putPluginsGlobalDisable([...set].sort((a, b) => a.localeCompare(b)));
+    globalDisabledList.value = [...out.disabled_plugins];
+    const rows = await fetchPlugins({ bypassCache: true });
+    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+  } catch (e) {
+    globalDisableErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    globalDisableBusy.value = false;
   }
 }
 
@@ -283,8 +319,44 @@ async function save() {
           {{ helpMenuErr }}
         </div>
         <template v-else-if="pluginRow">
+          <div
+            v-if="globalDisableErr"
+            class="alert alert--err"
+            style="margin-bottom: 10px"
+          >
+            {{ globalDisableErr }}
+          </div>
           <label
             class="plugin-help-menu-label"
+            :class="{
+              'plugin-help-menu-label--disabled': globalDisableBusy || Boolean(pluginRow.global_disable_protected),
+            }"
+          >
+            <input
+              type="checkbox"
+              :checked="isGloballyDisabled"
+              :disabled="globalDisableBusy || Boolean(pluginRow.global_disable_protected)"
+              @click.prevent="void toggleGlobalDisable(!isGloballyDisabled)"
+            >
+            <span>全实例禁用（所有牛牛、所有群）</span>
+          </label>
+          <p
+            v-if="pluginRow.global_disable_protected"
+            class="muted"
+            style="margin: 10px 0 0; line-height: 1.55"
+          >
+            基础设施插件，不可全实例禁用。
+          </p>
+          <p
+            v-else
+            class="muted"
+            style="margin: 10px 0 0; line-height: 1.55"
+          >
+            勾选后立即拦截该插件的 matcher，无需重启；与实例/群级「禁用插件」叠加生效。
+          </p>
+          <label
+            class="plugin-help-menu-label"
+            style="margin-top: 14px"
             :class="{ 'plugin-help-menu-label--disabled': pluginRow.help_ignored || helpMenuBusy }"
           >
             <input

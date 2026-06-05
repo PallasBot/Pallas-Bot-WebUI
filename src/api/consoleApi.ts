@@ -33,6 +33,7 @@ import type {
   AiExtensionTestData,
   AiExtensionLogsData,
   AiProxyResult,
+  GlobalPluginDisableData,
   HelpMenuVisibilityData,
   PluginConfigData,
   PluginConfigCheckResult,
@@ -304,6 +305,22 @@ export async function putPluginsHelpMenuVisibility(hiddenPlugins: string[]): Pro
     hidden_plugins: hiddenPlugins,
   });
   const out = unwrap(data, "/plugins/help-menu-visibility");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function fetchPluginsGlobalDisable(): Promise<GlobalPluginDisableData> {
+  const { data } = await http.get<ApiOk<GlobalPluginDisableData>>("/plugins/global-disable");
+  return unwrap(data, "/plugins/global-disable");
+}
+
+export async function putPluginsGlobalDisable(
+  disabledPlugins: string[],
+): Promise<GlobalPluginDisableData> {
+  const { data } = await http.put<ApiOk<GlobalPluginDisableData>>("/plugins/global-disable", {
+    disabled_plugins: disabledPlugins,
+  });
+  const out = unwrap(data, "/plugins/global-disable");
   invalidatePluginsCache();
   return out;
 }

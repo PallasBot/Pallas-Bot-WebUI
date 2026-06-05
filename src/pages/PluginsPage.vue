@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { fetchPluginConfig, fetchPlugins, peekPluginsCache } from "@/api/consoleApi";
+import {
+  fetchPluginConfig,
+  fetchPlugins,
+  fetchPluginsGlobalDisable,
+  peekPluginsCache,
+  putPluginsGlobalDisable,
+} from "@/api/consoleApi";
 import type { PluginConfigData, PluginRow, PluginSourceKind } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
@@ -29,6 +35,10 @@ const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
 type SourceFilter = "all" | PluginSourceKind;
 const sourceFilter = ref<SourceFilter>("all");
 const loadFilter = ref<"all" | "loaded" | "problem">("all");
+const globalDisabled = ref<string[]>([]);
+const globalDisableProtected = ref<string[]>([]);
+const globalDisableBusy = ref(false);
+const globalDisableErr = ref("");
 
 const catalogProcessRole = computed(
   () => list.value.find((p) => p.catalog_process_role)?.catalog_process_role,
@@ -80,9 +90,53 @@ function isPluginFavorite(name: string): boolean {
   return pluginFavoriteNames.value.has(name);
 }
 
+function isGloballyDisabled(name: string): boolean {
+  return globalDisabled.value.includes(name);
+}
+
+function isGlobalDisableProtected(p: PluginRow): boolean {
+  return Boolean(p.global_disable_protected);
+}
+
+async function loadGlobalDisable() {
+  globalDisableErr.value = "";
+  try {
+    const data = await fetchPluginsGlobalDisable();
+    globalDisabled.value = [...data.disabled_plugins];
+    globalDisableProtected.value = [...data.protected_plugins];
+  } catch (e) {
+    globalDisableErr.value = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function toggleGlobalDisable(name: string, wantDisabled: boolean) {
+  if (globalDisableBusy.value) return;
+  const p = list.value.find((row) => row.name === name);
+  if (p && isGlobalDisableProtected(p)) return;
+  globalDisableBusy.value = true;
+  globalDisableErr.value = "";
+  const set = new Set(globalDisabled.value);
+  if (wantDisabled) set.add(name);
+  else set.delete(name);
+  try {
+    const out = await putPluginsGlobalDisable([...set].sort((a, b) => a.localeCompare(b)));
+    globalDisabled.value = [...out.disabled_plugins];
+    globalDisableProtected.value = [...out.protected_plugins];
+    list.value = list.value.map((row) => ({
+      ...row,
+      globally_disabled: out.disabled_plugins.includes(row.name),
+    }));
+  } catch (e) {
+    globalDisableErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    globalDisableBusy.value = false;
+  }
+}
+
 onMounted(async () => {
   try {
-    list.value = await fetchPlugins();
+    const [rows] = await Promise.all([fetchPlugins(), loadGlobalDisable()]);
+    list.value = rows;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -131,7 +185,13 @@ async function togglePreview(name: string) {
             <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
           </h2>
           <p class="muted plugins-page__hero-note">
-            是否在「牛牛帮助」总列表中展示该插件，请在进入对应插件后的配置页顶部「帮助菜单」中设置。
+            「全实例禁用」对本站所有牛牛、所有群立即生效（无需重启）；帮助菜单展示请在各插件配置页设置。
+          </p>
+          <p
+            v-if="globalDisableErr"
+            class="alert alert--err plugins-page__hero-note"
+          >
+            {{ globalDisableErr }}
           </p>
           <p
             v-if="catalogProcessHint(catalogProcessRole)"
@@ -212,6 +272,11 @@ async function togglePreview(name: string) {
                 <div class="plugin-card__title-line">
                   {{ p.metadata?.name || p.nb_plugin_name || p.name }}
                   <span
+                    v-if="p.globally_disabled"
+                    class="plugins-page__badge plugins-page__badge--muted"
+                    title="全实例已禁用"
+                  >已禁用</span>
+                  <span
                     v-if="pluginLoadBadgeText(p)"
                     class="plugins-page__badge plugins-page__badge--warn"
                     :title="pluginLoadWhere(p)"
@@ -262,6 +327,26 @@ async function togglePreview(name: string) {
               </button>
             </div>
           </div>
+          <label
+            class="plugin-global-disable-label"
+            :class="{
+              'plugin-global-disable-label--disabled': globalDisableBusy || isGlobalDisableProtected(p),
+            }"
+          >
+            <input
+              type="checkbox"
+              :checked="isGloballyDisabled(p.name)"
+              :disabled="globalDisableBusy || isGlobalDisableProtected(p)"
+              @click.prevent="void toggleGlobalDisable(p.name, !isGloballyDisabled(p.name))"
+            >
+            <span>全实例禁用</span>
+          </label>
+          <p
+            v-if="isGlobalDisableProtected(p)"
+            class="muted plugin-global-disable-hint"
+          >
+            基础设施插件，不可全实例禁用。
+          </p>
           <div class="plugin-card__actions plugin-card__actions--pair">
             <RouterLink
               class="btn btn--primary plugin-card__action-btn"
