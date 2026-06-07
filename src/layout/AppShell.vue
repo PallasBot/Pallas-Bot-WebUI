@@ -9,13 +9,14 @@ import { mainNavIconForPath, type MainNavItem } from "@/config/mainNav";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
-import { displayVersionWithoutSha, pallasBotVersionLabel } from "@/utils/versionDisplay";
+import { consoleResourceVersionLabel, pallasBotVersionLabel } from "@/utils/versionDisplay";
 import {
   CONSOLE_META_POLL_MS,
   consoleMetaBotUpdate,
   consoleMetaErr,
   consoleMetaHealth,
   consoleMetaLoading,
+  consoleMetaWebUpdate,
   refreshConsoleMeta,
 } from "@/state/consoleMeta";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
@@ -123,14 +124,11 @@ function scrollPageToTop() {
 const webuiVersion = __WEBUI_VERSION__;
 
 /** 控制台静态资源版本（与首页「控制台资源」一致） */
-const brandVersionDisplay = computed(() => {
-  const c = consoleMetaHealth.value?.console;
-  const ver = (c?.version || "").trim();
-  const cleaned = displayVersionWithoutSha(ver);
-  if (cleaned) return cleaned;
-  if (ver) return ver;
-  return `v${webuiVersion}`;
-});
+const brandVersionDisplay = computed(() =>
+  consoleResourceVersionLabel(consoleMetaHealth.value, consoleMetaWebUpdate.value, {
+    webuiBuildVersion: webuiVersion,
+  }),
+);
 
 /** 当前 API 所在 Pallas-Bot 进程版本（与首页「Pallas-Bot」一致） */
 const brandBotVersionDisplay = computed(() =>

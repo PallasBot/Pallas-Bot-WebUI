@@ -1,11 +1,12 @@
 import { ref } from "vue";
 import { fetchHealth, type HealthResponse } from "@/api/health";
-import { fetchBotUpdateCheck } from "@/api/consoleApi";
-import type { BotUpdateCheckData } from "@/api/pallasTypes";
+import { fetchBotUpdateCheck, fetchUpdateCheck } from "@/api/consoleApi";
+import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 
-/** 侧栏品牌区与首页共用的 /health、Bot 更新检查快照 */
+/** 侧栏品牌区与首页共用的 /health、更新检查快照 */
 export const consoleMetaHealth = ref<HealthResponse | null>(null);
 export const consoleMetaBotUpdate = ref<BotUpdateCheckData | null>(null);
+export const consoleMetaWebUpdate = ref<UpdateCheckData | null>(null);
 export const consoleMetaErr = ref("");
 export const consoleMetaLoading = ref(false);
 
@@ -15,9 +16,11 @@ export const CONSOLE_META_POLL_MS = 12_000;
 export function patchConsoleMeta(
   health: HealthResponse | null,
   botUpdate?: BotUpdateCheckData | null,
+  webUpdate?: UpdateCheckData | null,
 ): void {
   consoleMetaHealth.value = health;
   if (botUpdate !== undefined) consoleMetaBotUpdate.value = botUpdate;
+  if (webUpdate !== undefined) consoleMetaWebUpdate.value = webUpdate;
 }
 
 export function patchWebuiDevMode(active: boolean): void {
@@ -36,12 +39,14 @@ export async function refreshConsoleMeta(options?: { silent?: boolean }): Promis
     consoleMetaErr.value = "";
   }
   try {
-    const [h, bot] = await Promise.all([
+    const [h, bot, web] = await Promise.all([
       fetchHealth(),
       fetchBotUpdateCheck().catch(() => null),
+      fetchUpdateCheck().catch(() => null),
     ]);
     consoleMetaHealth.value = h;
     if (bot) consoleMetaBotUpdate.value = bot;
+    if (web) consoleMetaWebUpdate.value = web;
   } catch (e) {
     consoleMetaErr.value = e instanceof Error ? e.message : String(e);
     if (!silent) consoleMetaHealth.value = null;

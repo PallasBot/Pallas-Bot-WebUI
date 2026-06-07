@@ -27,6 +27,7 @@ import {
   PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
@@ -46,6 +47,9 @@ const configMigration = ref<BotConfigMigrationCheckData | null>(null);
 
 const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
 const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
+
+const webCurrentDisplay = computed(() => updateCheckCurrentTagLabel(web.value?.current_tag));
+const botCurrentDisplay = computed(() => pallasBotVersionLabel(undefined, bot.value));
 
 const webApplyDisabled = computed(
   () => busy.value || !web.value?.has_update || !web.value?.latest_tag,
@@ -460,7 +464,7 @@ onMounted(() => {
           <div class="update-page__release-summary">
             <div class="update-page__release-stat">
               <span class="update-page__release-stat-label">当前</span>
-              <span class="update-page__release-stat-value">{{ web?.current_tag || "—" }}</span>
+              <span class="update-page__release-stat-value">{{ webCurrentDisplay }}</span>
             </div>
             <span
               class="update-page__release-stat-arrow muted"
@@ -583,7 +587,7 @@ onMounted(() => {
           <div class="update-page__release-summary">
             <div class="update-page__release-stat">
               <span class="update-page__release-stat-label">当前</span>
-              <span class="update-page__release-stat-value">{{ bot?.current_tag || "—" }}</span>
+              <span class="update-page__release-stat-value">{{ botCurrentDisplay }}</span>
               <span
                 v-if="bot?.current_commit"
                 class="update-page__release-stat-sub muted"

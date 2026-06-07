@@ -54,7 +54,11 @@ import {
 } from "@/utils/consoleSocialCache";
 import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
-import { displayVersionWithoutSha, pallasBotVersionLabel } from "@/utils/versionDisplay";
+import {
+  consoleResourceVersionLabel,
+  displayVersionWithoutSha,
+  pallasBotVersionLabel,
+} from "@/utils/versionDisplay";
 import { patchConsoleMeta } from "@/state/consoleMeta";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
@@ -645,11 +649,11 @@ const botDevelopmentBuildTitle = computed(() => {
   return parts.join("");
 });
 
-const consoleResourceVersionDisplay = computed(() => {
-  const v = (health.value?.console?.version ?? "").trim();
-  const x = displayVersionWithoutSha(v);
-  return x || v || "—";
-});
+const consoleResourceVersionDisplay = computed(() =>
+  consoleResourceVersionLabel(health.value, webUpdateCheck.value, {
+    webuiBuildVersion: __WEBUI_VERSION__,
+  }),
+);
 
 /** 待同意跳转：带上当前选中账号，好友与群页自动选中对应 Bot */
 const friendsGroupsFriendPendingTo = computed(() => {
@@ -1317,8 +1321,8 @@ async function load() {
     ]);
     health.value = h;
     botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
-    patchConsoleMeta(h, botUpdateCheck.value);
     webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
+    patchConsoleMeta(h, botUpdateCheck.value, webUpdateCheck.value);
     system.value = s;
     communityStats.value = (comm as CommunityStatsData | null) ?? null;
     shardObs.value = (shard as ShardObservabilityData | null) ?? null;
