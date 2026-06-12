@@ -34,6 +34,8 @@ import type {
   AiExtensionLogsData,
   AiProxyResult,
   GlobalPluginDisableData,
+  GroupFleetWhitelistData,
+  GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
   PluginConfigData,
   PluginConfigCheckResult,
@@ -321,6 +323,22 @@ export async function putPluginsGlobalDisable(
     disabled_plugins: disabledPlugins,
   });
   const out = unwrap(data, "/plugins/global-disable");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function fetchPluginsGroupFleetWhitelist(): Promise<GroupFleetWhitelistData> {
+  const { data } = await http.get<ApiOk<GroupFleetWhitelistData>>("/plugins/group-fleet-whitelist");
+  return unwrap(data, "/plugins/group-fleet-whitelist");
+}
+
+export async function putPluginsGroupFleetWhitelist(
+  entries: GroupFleetWhitelistEntry[],
+): Promise<GroupFleetWhitelistData> {
+  const { data } = await http.put<ApiOk<GroupFleetWhitelistData>>("/plugins/group-fleet-whitelist", {
+    entries,
+  });
+  const out = unwrap(data, "/plugins/group-fleet-whitelist");
   invalidatePluginsCache();
   return out;
 }

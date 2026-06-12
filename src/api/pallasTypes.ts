@@ -388,6 +388,16 @@ export interface GlobalPluginDisableData {
   protected_plugins: string[];
 }
 
+export interface GroupFleetWhitelistEntry {
+  group_id: number;
+  plugins: string[];
+}
+
+export interface GroupFleetWhitelistData {
+  entries: GroupFleetWhitelistEntry[];
+  protected_plugins: string[];
+}
+
 export interface PluginConfigField {
   name: string;
   /** 展示用中文名；缺省时用 name */

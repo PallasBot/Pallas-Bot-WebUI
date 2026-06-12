@@ -6,13 +6,20 @@ import {
   fetchPluginConfig,
   fetchPlugins,
   fetchPluginsGlobalDisable,
+  fetchPluginsGroupFleetWhitelist,
   fetchPluginsHelpMenuVisibility,
   postPluginConfigCheck,
   putPluginConfig,
   putPluginsGlobalDisable,
+  putPluginsGroupFleetWhitelist,
   putPluginsHelpMenuVisibility,
 } from "@/api/consoleApi";
-import type { PluginConfigData, PluginConfigField, PluginRow } from "@/api/pallasTypes";
+import type {
+  GroupFleetWhitelistEntry,
+  PluginConfigData,
+  PluginConfigField,
+  PluginRow,
+} from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
@@ -40,6 +47,11 @@ const helpMenuErr = ref("");
 const globalDisabledList = ref<string[]>([]);
 const globalDisableBusy = ref(false);
 const globalDisableErr = ref("");
+const fleetWhitelistEntries = ref<GroupFleetWhitelistEntry[]>([]);
+const fleetWhitelistBusy = ref(false);
+const fleetWhitelistErr = ref("");
+const addWhitelistGroupInput = ref("");
+const whitelistGroupAddHint = ref("");
 const saveFeedbackRef = ref<HTMLElement | null>(null);
 
 const showInHelpMenu = computed(() => {
@@ -53,27 +65,113 @@ const isGloballyDisabled = computed(() => {
   return Boolean(name && globalDisabledList.value.includes(name));
 });
 
+const whitelistedGroupIds = computed(() => {
+  const name = pluginName.value;
+  if (!name) return [];
+  return fleetWhitelistEntries.value
+    .filter((entry) => entry.plugins.includes(name))
+    .map((entry) => entry.group_id)
+    .sort((a, b) => a - b);
+});
+
+const showFleetWhitelistEditor = computed(
+  () => isGloballyDisabled.value || whitelistedGroupIds.value.length > 0,
+);
+
 async function loadHelpMenuState() {
   const name = pluginName.value;
   if (!name) return;
   helpMenuBusy.value = true;
   helpMenuErr.value = "";
   try {
-    const [rows, vis, globalDisable] = await Promise.all([
+    const [rows, vis, globalDisable, fleetWhitelist] = await Promise.all([
       fetchPlugins(),
       fetchPluginsHelpMenuVisibility(),
       fetchPluginsGlobalDisable(),
+      fetchPluginsGroupFleetWhitelist(),
     ]);
     pluginRow.value = rows.find((r) => r.name === name) ?? null;
     helpMenuHiddenList.value = [...vis.hidden_plugins];
     helpMenuIgnoredList.value = [...vis.ignored_plugins];
     globalDisabledList.value = [...globalDisable.disabled_plugins];
+    fleetWhitelistEntries.value = fleetWhitelist.entries.map((entry) => ({
+      group_id: entry.group_id,
+      plugins: [...entry.plugins],
+    }));
   } catch (e) {
     helpMenuErr.value = e instanceof Error ? e.message : String(e);
     pluginRow.value = null;
   } finally {
     helpMenuBusy.value = false;
   }
+}
+
+function cloneFleetWhitelistEntries(): GroupFleetWhitelistEntry[] {
+  return fleetWhitelistEntries.value.map((entry) => ({
+    group_id: entry.group_id,
+    plugins: [...entry.plugins],
+  }));
+}
+
+async function persistFleetWhitelist(entries: GroupFleetWhitelistEntry[]) {
+  fleetWhitelistBusy.value = true;
+  fleetWhitelistErr.value = "";
+  try {
+    const out = await putPluginsGroupFleetWhitelist(entries);
+    fleetWhitelistEntries.value = out.entries.map((entry) => ({
+      group_id: entry.group_id,
+      plugins: [...entry.plugins],
+    }));
+  } catch (e) {
+    fleetWhitelistErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    fleetWhitelistBusy.value = false;
+  }
+}
+
+async function addGroupToFleetWhitelist() {
+  const name = pluginName.value;
+  if (!name || fleetWhitelistBusy.value) return;
+  whitelistGroupAddHint.value = "";
+  const raw = addWhitelistGroupInput.value.trim();
+  if (!raw) return;
+  const groupId = parseInt(raw, 10);
+  if (!Number.isFinite(groupId) || groupId < 1) {
+    whitelistGroupAddHint.value = "请输入有效的群号。";
+    return;
+  }
+  if (whitelistedGroupIds.value.includes(groupId)) {
+    whitelistGroupAddHint.value = "该群已在白名单中。";
+    return;
+  }
+  const entries = cloneFleetWhitelistEntries();
+  const idx = entries.findIndex((entry) => entry.group_id === groupId);
+  if (idx >= 0) {
+    entries[idx] = {
+      group_id: groupId,
+      plugins: [...entries[idx].plugins, name].sort((a, b) => a.localeCompare(b)),
+    };
+  } else {
+    entries.push({ group_id: groupId, plugins: [name] });
+  }
+  entries.sort((a, b) => a.group_id - b.group_id);
+  addWhitelistGroupInput.value = "";
+  await persistFleetWhitelist(entries);
+}
+
+async function removeGroupFromFleetWhitelist(groupId: number) {
+  const name = pluginName.value;
+  if (!name || fleetWhitelistBusy.value) return;
+  const entries = cloneFleetWhitelistEntries()
+    .map((entry) => {
+      if (entry.group_id !== groupId) return entry;
+      return {
+        group_id: entry.group_id,
+        plugins: entry.plugins.filter((plugin) => plugin !== name),
+      };
+    })
+    .filter((entry) => entry.plugins.length > 0);
+  await persistFleetWhitelist(entries);
 }
 
 async function toggleGlobalDisable(wantDisabled: boolean) {
@@ -354,6 +452,76 @@ async function save() {
           >
             勾选后立即拦截该插件的 matcher，无需重启；与实例/群级「禁用插件」叠加生效。
           </p>
+          <div
+            v-if="showFleetWhitelistEditor"
+            class="plugin-fleet-whitelist"
+          >
+            <div class="plugin-fleet-whitelist__title">群白名单（豁免全实例禁用）</div>
+            <p class="muted plugin-fleet-whitelist__hint">
+              输入群号后点击添加；白名单群仍可使用本插件。超管私聊为指定群开启时也会自动写入。
+            </p>
+            <div
+              v-if="fleetWhitelistErr"
+              class="alert alert--err"
+              style="margin-bottom: 10px"
+            >
+              {{ fleetWhitelistErr }}
+            </div>
+            <div class="row-actions plugin-fleet-whitelist__add-row">
+              <input
+                v-model="addWhitelistGroupInput"
+                class="inp"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="群号"
+                :disabled="fleetWhitelistBusy"
+                @keydown.enter.prevent="void addGroupToFleetWhitelist()"
+              >
+              <button
+                type="button"
+                class="btn"
+                :disabled="fleetWhitelistBusy"
+                @click="void addGroupToFleetWhitelist()"
+              >
+                添加
+              </button>
+            </div>
+            <p
+              v-if="whitelistGroupAddHint"
+              class="alert alert--err plugin-fleet-whitelist__hint-alert"
+            >
+              {{ whitelistGroupAddHint }}
+            </p>
+            <div
+              v-if="whitelistedGroupIds.length"
+              class="admin-chip-list"
+            >
+              <div
+                v-for="groupId in whitelistedGroupIds"
+                :key="`fleet-whitelist-${pluginName}-${groupId}`"
+                class="admin-chip"
+              >
+                <span class="admin-chip__id">{{ groupId }}</span>
+                <button
+                  type="button"
+                  class="admin-chip__rm"
+                  :aria-label="`移除群白名单 ${groupId}`"
+                  title="移除"
+                  :disabled="fleetWhitelistBusy"
+                  @click="void removeGroupFromFleetWhitelist(groupId)"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <p
+              v-else
+              class="muted plugin-fleet-whitelist__empty"
+            >
+              尚未添加群白名单。
+            </p>
+          </div>
           <label
             class="plugin-help-menu-label"
             style="margin-top: 14px"
@@ -550,6 +718,63 @@ async function save() {
 .plugin-help-menu-label--disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.plugin-fleet-whitelist {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.plugin-fleet-whitelist__title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.plugin-fleet-whitelist__hint {
+  margin: 0 0 10px;
+  line-height: 1.55;
+  font-size: 13px;
+}
+.plugin-fleet-whitelist__add-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.plugin-fleet-whitelist__add-row .inp {
+  max-width: 200px;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+.plugin-fleet-whitelist__hint-alert {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.plugin-fleet-whitelist__empty {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .plugin-fleet-whitelist__add-row {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .plugin-fleet-whitelist__add-row .inp {
+    width: auto !important;
+    flex: 1 1 0;
+    min-width: 0 !important;
+    max-width: min(11rem, calc(100% - 5.5rem)) !important;
+  }
+
+  .plugin-fleet-whitelist__add-row > .btn {
+    width: auto !important;
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }
 
 .plugin-config-page__module {
