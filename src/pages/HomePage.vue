@@ -123,6 +123,8 @@ const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
 const requestOverviewSnap = ref<RequestOverviewData | null>(null);
 const socialBusy = ref(false);
+/** 账号图表/按 Bot 统计拉取中（不含好友群列表） */
+const accountDetailBusy = ref(false);
 /** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
 const pageReady = ref(false);
 /** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
@@ -1079,6 +1081,12 @@ watch(socialBusy, (busy, wasBusy) => {
   }
 });
 
+watch(accountDetailBusy, (busy, wasBusy) => {
+  if (wasBusy && !busy && selectedAccount.value != null && !accountHeroLockSealed.value) {
+    scheduleAccountHeroLockMeasure(false);
+  }
+});
+
 const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
 
 const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
@@ -1111,7 +1119,7 @@ function syncPluginRunSeriesFromStorage() {
   pluginRunTimeSamples.value = acc != null ? readPluginRunSeries(String(acc)) : [];
 }
 
-const accountStatsBusy = computed(() => overviewBusy.value || socialBusy.value);
+const accountStatsBusy = computed(() => overviewBusy.value || accountDetailBusy.value);
 
 const accountTodayMsgDisplay = computed(() => {
   const b = scopedBotStatsRow.value;
@@ -1141,12 +1149,49 @@ const msgCapacityHint = computed(() => {
   return `本日收 ${s.today_received ?? "—"} / 发 ${s.today_sent ?? "—"}（合计）`;
 });
 
-async function refreshSelectedBotDetails() {
+function scheduleIdleWork(fn: () => void) {
+  if (typeof window === "undefined") {
+    fn();
+    return;
+  }
+  const ric = window.requestIdleCallback;
+  if (ric) {
+    ric(() => fn(), { timeout: 2500 });
+    return;
+  }
+  window.setTimeout(fn, 1);
+}
+
+async function refreshSelectedBotAccountStats() {
   const acc = selectedAccount.value;
   if (acc == null) {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
     consoleDailyStats.value = null;
+    return;
+  }
+  accountDetailBusy.value = true;
+  try {
+    const settled = await Promise.allSettled([
+      fetchMessageStats(acc),
+      fetchPluginRunStats(acc),
+      fetchConsoleDailyStats({ selfId: acc }),
+    ]);
+    function take<T>(i: number): T | null {
+      const r = settled[i];
+      return r.status === "fulfilled" ? (r.value as T) : null;
+    }
+    statsScoped.value = take<MessageStatsData>(0);
+    pluginRunStatsScoped.value = take<PluginRunStatsData>(1);
+    consoleDailyStats.value = take<ConsoleDailyStatsData>(2);
+  } finally {
+    accountDetailBusy.value = false;
+  }
+}
+
+async function refreshSelectedBotSocialLists() {
+  const acc = selectedAccount.value;
+  if (acc == null) {
     friendSnap.value = null;
     groupSnap.value = null;
     requestOverviewSnap.value = null;
@@ -1161,9 +1206,6 @@ async function refreshSelectedBotDetails() {
       groupSnap.value = cachedListsWarm.groups;
     }
     const settled = await Promise.allSettled([
-      fetchMessageStats(acc),
-      fetchPluginRunStats(acc),
-      fetchConsoleDailyStats({ selfId: acc }),
       fetchFriendList(acc),
       fetchGroupList(acc),
       fetchRequestOverview({ selfId: acc }),
@@ -1172,12 +1214,9 @@ async function refreshSelectedBotDetails() {
       const r = settled[i];
       return r.status === "fulfilled" ? (r.value as T) : null;
     }
-    statsScoped.value = take<MessageStatsData>(0);
-    pluginRunStatsScoped.value = take<PluginRunStatsData>(1);
-    consoleDailyStats.value = take<ConsoleDailyStatsData>(2);
-    friendSnap.value = take<FriendListData>(3);
-    groupSnap.value = take<GroupListData>(4);
-    requestOverviewSnap.value = take<RequestOverviewData>(5);
+    friendSnap.value = take<FriendListData>(0);
+    groupSnap.value = take<GroupListData>(1);
+    requestOverviewSnap.value = take<RequestOverviewData>(2);
     if (!friendSnap.value || !groupSnap.value) {
       const fb = cacheTryGetFriendGroupLists(sidKey);
       if (fb) {
@@ -1194,6 +1233,15 @@ async function refreshSelectedBotDetails() {
   } finally {
     socialBusy.value = false;
   }
+}
+
+function refreshSelectedBotDetails(options?: { deferSocial?: boolean }) {
+  void refreshSelectedBotAccountStats();
+  if (options?.deferSocial) {
+    scheduleIdleWork(() => void refreshSelectedBotSocialLists());
+    return;
+  }
+  void refreshSelectedBotSocialLists();
 }
 
 watch(selectedAccount, (acc, prev) => {
@@ -1219,7 +1267,7 @@ watch(selectedAccount, (acc, prev) => {
   void refreshSelectedBotDetails();
 });
 
-watch([scopedPluginRunRow, selectedAccount, socialBusy], ([row, acc, busy]) => {
+watch([scopedPluginRunRow, selectedAccount, accountDetailBusy], ([row, acc, busy]) => {
   if (busy || acc == null || !row) return;
   pushPluginRunSample(String(acc), row.runs_today, row.plugins ?? []);
   syncPluginRunSeriesFromStorage();
@@ -1368,7 +1416,11 @@ async function load(opts?: LoadOptions) {
     const accAfter = selectedAccount.value;
     pageReady.value = true;
     if (accBefore === accAfter) {
-      void refreshSelectedBotDetails();
+      if (refreshMeta) {
+        void refreshSelectedBotDetails();
+      } else {
+        void refreshSelectedBotDetails({ deferSocial: true });
+      }
     }
     if (refreshMeta) {
       await loadHomeDeferred(true);
@@ -1877,7 +1929,7 @@ onUnmounted(() => {
                         :plugins="scopedPluginPlugins"
                         :plugins-meta="pluginsList"
                         :series="pluginRunTimeSamples"
-                        :busy="socialBusy"
+                        :busy="accountDetailBusy"
                         :api-history-by-api="scopedApiCallsByApi"
                         :api-history-bucket-sec="accountMessageStats?.api_calls_history_bucket_sec"
                         :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
