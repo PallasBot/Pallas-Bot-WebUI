@@ -34,12 +34,12 @@ export function consoleResourceVersionLabel(
   webUpdate?: UpdateCheckData | null,
   options?: ConsoleResourceVersionOptions,
 ): string {
-  const buildVer = (options?.webuiBuildVersion ?? "").trim();
-  const devMode =
-    options?.devMode ?? Boolean(health?.console?.pallas_webui_dev_mode);
+  const buildVer = pickCleanVersion(options?.webuiBuildVersion);
 
-  if (devMode && buildVer) {
-    return pickCleanVersion(buildVer);
+  // 优先展示当前浏览器已加载的 bundle 版本（与 package.json / 构建产物一致），
+  // 避免 /health 缓存或 dist 内 console-version.json 滞后时侧栏仍显示旧号。
+  if (buildVer) {
+    return buildVer;
   }
 
   const fromHealth = pickCleanVersion(health?.console?.version);
@@ -47,8 +47,6 @@ export function consoleResourceVersionLabel(
 
   const fromWeb = pickCleanVersion(webUpdate?.current_tag);
   if (fromWeb) return fromWeb;
-
-  if (buildVer) return pickCleanVersion(buildVer);
 
   return "—";
 }

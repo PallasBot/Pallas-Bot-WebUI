@@ -107,21 +107,29 @@ function onGatewayFieldValues(next: Record<string, string>) {
 watch(
   data,
   (d) => {
-    fieldValues.value = {};
     permSelections.value = {};
-    if (!d?.fields?.length) return;
-    for (const f of d.fields) {
-      fieldValues.value[f.name] = fieldModel(f);
+    if (!d?.fields?.length) {
+      fieldValues.value = {};
+      return;
     }
+    const next: Record<string, string> = {};
+    for (const f of d.fields) {
+      try {
+        next[f.name] = fieldModel(f);
+      } catch {
+        next[f.name] = f.kind === "bool" ? "false" : "";
+      }
+    }
+    fieldValues.value = next;
     const ui = d.command_perm_ui;
     if (ui) {
-      const next: Record<string, string> = {};
+      const permNext: Record<string, string> = {};
       for (const p of ui.plugins) {
         for (const c of p.commands) {
-          next[c.command_id] = c.effective_level;
+          permNext[c.command_id] = c.effective_level;
         }
       }
-      permSelections.value = next;
+      permSelections.value = permNext;
     }
   },
   { immediate: true },
@@ -231,8 +239,20 @@ function collectValues(): Record<string, unknown> {
 }
 
 function setBoolField(name: string, checked: boolean) {
-  fieldValues.value[name] = checked ? "true" : "false";
+  fieldValues.value = {
+    ...fieldValues.value,
+    [name]: checked ? "true" : "false",
+  };
 }
+
+function onBoolFieldChange(name: string, ev: Event) {
+  const el = ev.target as HTMLInputElement | null;
+  if (!el) return;
+  setBoolField(name, el.checked);
+}
+
+const BACKFILL_ENABLE_CONFIRM =
+  "开启后将在后台分批把本机历史语料同步到社区共享池；需已开启「上传本机新回复」并完成语料登记。\n\n与接话无关，队列繁忙时会自动跳过。\n\n确定开启？";
 
 const DEV_MODE_ENABLE_CONFIRM =
   "开启开发模式将跳过控制台 JSON API 与静态页登录鉴权，任何能访问该地址的人均可读写控制台。\n\n仅在受信任的本机/内网联调时使用，生产环境务必保持关闭。\n\n确定开启？";
@@ -244,6 +264,12 @@ async function save() {
     const prev = data.value.fields.find((f) => f.name === "pallas_webui_dev_mode")?.current === true;
     const next = values.pallas_webui_dev_mode === true;
     if (!prev && next && !window.confirm(DEV_MODE_ENABLE_CONFIRM)) return;
+  }
+  if (isCorpusFederationSection.value) {
+    const values = collectValues();
+    const prev = data.value.fields.find((f) => f.name === "corpus_backfill_enabled")?.current === true;
+    const next = values.corpus_backfill_enabled === true;
+    if (!prev && next && !window.confirm(BACKFILL_ENABLE_CONFIRM)) return;
   }
   saving.value = true;
   err.value = "";
@@ -542,7 +568,8 @@ function showConfigField(f: PluginConfigField): boolean {
                     type="checkbox"
                     class="console-bool-switch__input"
                     :checked="fieldValues[f.name] === 'true'"
-                    @change="setBoolField(f.name, ($event.target as HTMLInputElement).checked)"
+                    @click.stop
+                    @change="onBoolFieldChange(f.name, $event)"
                   >
                   <span class="console-bool-switch__track" aria-hidden="true">
                     <span class="console-bool-switch__thumb" />
@@ -606,7 +633,8 @@ function showConfigField(f: PluginConfigField): boolean {
                 type="checkbox"
                 class="console-bool-switch__input"
                 :checked="fieldValues[f.name] === 'true'"
-                @change="setBoolField(f.name, ($event.target as HTMLInputElement).checked)"
+                @click.stop
+                @change="onBoolFieldChange(f.name, $event)"
               >
               <span class="console-bool-switch__track" aria-hidden="true">
                 <span class="console-bool-switch__thumb" />
