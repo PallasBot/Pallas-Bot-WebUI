@@ -564,7 +564,6 @@ onUnmounted(() => {
         <p
           v-if="topBarDesc"
           class="shell__topbar-desc muted"
-          :class="{ 'shell__topbar-desc--hide-narrow': isNarrow }"
           :title="topBarDesc"
         >
           {{ topBarDesc }}

@@ -11,19 +11,19 @@ export interface MainNavItem {
 
 /** 侧栏主导航默认项与顺序（「更新」固定在最后） */
 export const MAIN_NAV_ITEMS: MainNavItem[] = [
-  { to: "/", label: "仪表盘", icon: "◆", description: "容量与账号摘要", section: "运行与观测" },
-  { to: "/logs", label: "运行日志", icon: "≡", description: "检索与导出", section: "运行与观测" },
-  { to: "/log-errors", label: "日志报错", icon: "⚠", description: "ERROR 快照与归档", section: "运行与观测" },
-  { to: "/instances", label: "数据库实例", icon: "◎", description: "库内 Bot 与 NoneBot 连接", section: "接入与实例" },
-  { to: "/protocol", label: "协议端实例", icon: "◎", description: "协议账号与运维入口", section: "接入与实例" },
-  { to: "/plugins", label: "插件", icon: "▣", description: "已启用模块", section: "模块与配置" },
-  { to: "/common-config", label: "通用配置", icon: "⛭", description: "跨模块公共项", section: "模块与配置" },
-  { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表、配置与审批", section: "对话与对象" },
-  { to: "/database", label: "数据库", icon: "▤", description: "存储体量", section: "数据与扩展" },
-  { to: "/community", label: "统计与语料", icon: "◉", description: "社区在线数据与本机语料状态", section: "数据与扩展" },
+  { to: "/", label: "仪表盘", icon: "◆", description: "运行概览", section: "运行与观测" },
+  { to: "/logs", label: "运行日志", icon: "≡", description: "检索导出", section: "运行与观测" },
+  { to: "/log-errors", label: "日志报错", icon: "⚠", description: "错误归档", section: "运行与观测" },
+  { to: "/instances", label: "数据库实例", icon: "◎", description: "Bot 连接", section: "接入与实例" },
+  { to: "/protocol", label: "协议端实例", icon: "◎", description: "协议运维", section: "接入与实例" },
+  { to: "/plugins", label: "插件", icon: "▣", description: "已启用", section: "模块与配置" },
+  { to: "/common-config", label: "通用配置", icon: "⛭", description: "公共项", section: "模块与配置" },
+  { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表审批", section: "对话与对象" },
+  { to: "/database", label: "数据库", icon: "▤", description: "存储明细", section: "数据与扩展" },
+  { to: "/community", label: "统计与语料", icon: "◉", description: "社区统计", section: "数据与扩展" },
   { to: "/ai", label: "AI 扩展", icon: "◇", description: "扩展服务", section: "数据与扩展" },
-  { to: "/preferences", label: "偏好", icon: "✦", description: "外观与控制台口令", section: "本机与维护" },
-  { to: "/update", label: "更新", icon: "↑", description: "发行与升级", section: "本机与维护" },
+  { to: "/preferences", label: "偏好", icon: "✦", description: "外观口令", section: "本机与维护" },
+  { to: "/update", label: "更新", icon: "↑", description: "版本升级", section: "本机与维护" },
 ];
 
 /** 顶栏/路由与侧栏图标对齐 */
