@@ -99,7 +99,6 @@ async function renderBubbleChart() {
       return `hot-bubble-node${active}`;
     })
     .attr("transform", (d) => `translate(${d.x},${d.y})`)
-    .style("--hot-delay", (_, i) => `${Math.min(i * 35, 640)}ms`)
     .attr("role", "button")
     .attr("tabindex", 0)
     .attr("aria-pressed", (d) => (d.item.keywords === selectedKeywords.value ? "true" : "false"))
@@ -112,13 +111,18 @@ async function renderBubbleChart() {
       toggleKeyword(d.item.keywords);
     });
 
-  node
+  const body = node
+    .append("g")
+    .attr("class", "hot-bubble-node__body")
+    .style("--hot-delay", (_, i) => `${Math.min(i * 35, 640)}ms`);
+
+  body
     .append("circle")
     .attr("r", (d) => d.r)
     .attr("class", "hot-bubble-node__disk")
     .attr("fill", (d) => hotBubbleFill(d.scoreRatio));
 
-  node
+  body
     .append("text")
     .attr("class", "hot-bubble-node__label")
     .attr("text-anchor", "middle")
