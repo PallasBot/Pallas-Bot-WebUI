@@ -2442,6 +2442,20 @@ html[data-theme="light"] .console-modal__close:hover {
   background: rgba(15, 23, 42, 0.06);
 }
 
+.console-modal__hd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.console-modal__hd-btns {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
 .console-modal__bd {
   padding: 16px 20px 22px;
   overflow-y: auto;
@@ -3255,6 +3269,12 @@ html[data-theme="light"] .bot-config-edit {
   grid-template-columns: 1fr 1fr;
 }
 
+.bot-config-edit__hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .bot-config-edit__field label {
   display: block;
   font-size: 11px;
@@ -3278,9 +3298,10 @@ html[data-theme="light"] .bot-config-edit {
 
 .bot-config-edit--modal .bot-config-edit__grid {
   margin-bottom: 16px;
+  align-items: start;
 }
 
-.bot-config-edit--modal .bot-config-edit__field {
+.bot-config-edit--modal > .bot-config-edit__field {
   margin-bottom: 12px;
 }
 
@@ -3289,6 +3310,39 @@ html[data-theme="light"] .bot-config-edit {
   padding-top: 14px;
   border-top: 1px solid var(--border);
   gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .console-modal__hd--with-actions {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .console-modal__hd--with-actions .console-modal__head-text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .console-modal__hd--with-actions .console-modal__hd-actions {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .console-modal__hd--with-actions .console-modal__hd-btns {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .console-modal__hd--with-actions .console-modal__hd-btns > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .bot-config-edit__grid--pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .plugin-check-grid {

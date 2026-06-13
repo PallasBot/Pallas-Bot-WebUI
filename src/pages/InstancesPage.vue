@@ -787,7 +787,7 @@ onUnmounted(() => {
           class="console-modal__dialog"
           @click.stop
         >
-          <div class="console-modal__hd">
+          <div class="console-modal__hd console-modal__hd--with-actions">
             <div class="console-modal__head-text">
               <h2
                 id="bot-config-modal-title"
@@ -802,14 +802,35 @@ onUnmounted(() => {
                 <span class="muted"> · 账号 {{ editModalAccount }}</span>
               </p>
             </div>
-            <button
-              type="button"
-              class="console-modal__close"
-              aria-label="关闭"
-              @click="cancelEdit"
-            >
-              ×
-            </button>
+            <div class="console-modal__hd-actions">
+              <div class="row-actions console-modal__hd-btns">
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="saveBusy"
+                  title="Ctrl+S"
+                  @click="saveBotConfig()"
+                >
+                  {{ saveBusy ? "保存中…" : "保存" }}
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="saveBusy"
+                  @click="cancelEdit"
+                >
+                  取消
+                </button>
+              </div>
+              <button
+                type="button"
+                class="console-modal__close"
+                aria-label="关闭"
+                @click="cancelEdit"
+              >
+                ×
+              </button>
+            </div>
           </div>
           <div class="console-modal__bd">
             <div class="bot-config-edit bot-config-edit--modal">
@@ -820,7 +841,7 @@ onUnmounted(() => {
               >
                 {{ saveErr }}
               </p>
-              <div class="bot-config-edit__grid">
+              <div class="bot-config-edit__grid bot-config-edit__grid--pair">
                 <div class="bot-config-edit__field">
                   <label>安全模式</label>
                   <select
@@ -877,10 +898,7 @@ onUnmounted(() => {
                     <option value="1">开启</option>
                     <option value="0">关闭</option>
                   </select>
-                  <p
-                    class="muted"
-                    style="margin: 6px 0 0; font-size: 12px"
-                  >
+                  <p class="bot-config-edit__hint muted">
                     关闭后该牛不上报社区名册（气泡墙不展示）。
                   </p>
                 </div>
@@ -978,25 +996,6 @@ onUnmounted(() => {
                     <span>{{ p.label }}</span>
                   </label>
                 </div>
-              </div>
-              <div class="row-actions">
-                <button
-                  type="button"
-                  class="btn btn--primary"
-                  :disabled="saveBusy"
-                  title="Ctrl+S"
-                  @click="saveBotConfig()"
-                >
-                  {{ saveBusy ? "保存中…" : "保存" }}
-                </button>
-                <button
-                  type="button"
-                  class="btn"
-                  :disabled="saveBusy"
-                  @click="cancelEdit"
-                >
-                  取消
-                </button>
               </div>
             </div>
           </div>
