@@ -7,7 +7,6 @@ export const PALLAS_WEBUI_REPO = "https://github.com/PallasBot/Pallas-Bot-WebUI"
 export const PALLAS_WEBUI_RELEASES = `${PALLAS_WEBUI_REPO}/releases`;
 /** 社区中心公开页（统计、气泡墙等） */
 export const PALLAS_COMMUNITY_HUB = "https://stats.pallasbot.top/";
-export const PALLAS_COMMUNITY_HUB_FALLBACK = "https://pallas.togetsudo.com/";
 
 export function pallasDocsUrl(path = ""): string {
   const base = PALLAS_BOT_DOCS.replace(/\/$/, "");

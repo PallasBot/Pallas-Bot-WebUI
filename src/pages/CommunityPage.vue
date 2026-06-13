@@ -16,7 +16,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatCard from "@/components/StatCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { PALLAS_COMMUNITY_HUB, PALLAS_COMMUNITY_HUB_FALLBACK } from "@/utils/pallasExternalLinks";
+import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 
 const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
@@ -239,10 +239,6 @@ const communityHubUrl = computed(
   () => (federationOnboarding.value?.stats_primary_url || PALLAS_COMMUNITY_HUB).trim() || PALLAS_COMMUNITY_HUB,
 );
 
-const communityHubFallbackUrl = computed(
-  () => (federationOnboarding.value?.stats_fallback_url || PALLAS_COMMUNITY_HUB_FALLBACK).trim(),
-);
-
 const controlPlaneConfigLink = computed(() => ({
   name: "common-config" as const,
   query: {
@@ -376,12 +372,7 @@ onMounted(() => {
               :href="communityHubUrl"
               target="_blank"
               rel="noopener noreferrer"
-            >社区主站</a><template v-if="communityHubFallbackUrl"><span aria-hidden="true"> · </span><a
-              class="community-page__inline-link"
-              :href="communityHubFallbackUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >备站</a></template>。
+            >社区主站</a>。
             数据只读；改设置请前往
             <RouterLink to="/common-config?section=corpus_federation">语料联邦</RouterLink>
             或

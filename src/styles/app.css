@@ -28,7 +28,7 @@
   --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
   /* 顶栏与侧栏共用 */
   --shell-chrome-bg: linear-gradient(180deg, rgba(14, 14, 18, 0.92) 0%, rgba(10, 10, 12, 0.98) 100%);
-  --shell-sidebar-w: 200px;
+  --shell-sidebar-w: 184px;
   --home-aside-min-w: 300px;
   --home-aside-max-w: 360px;
   /* 表单控件：相对面板背景略提亮，便于辨认边界与内容 */
@@ -351,7 +351,7 @@ a:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0 10px 12px;
+  padding: 0 8px 12px;
   border-right: 1px solid var(--border);
   background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
@@ -442,6 +442,8 @@ a:hover {
   gap: 2px;
   flex: 1;
   overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -2px;
 }
 
 .shell__nav-item {
@@ -543,7 +545,7 @@ nav.shell__nav .shell__nav-link:hover {
 nav.shell__nav .shell__nav-link.is-router-active {
   color: var(--text);
   background: var(--accent-soft);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.22);
 }
 
 /* 「/」在嵌套路由下会一直处于 active；仅精确匹配总览时高亮 */
@@ -554,7 +556,7 @@ nav.shell__nav .shell__nav-link.shell__nav-link--root.is-router-active:not(.is-r
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link.is-router-active {
-  box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.22);
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.is-router-active:not(.is-router-exact) {
