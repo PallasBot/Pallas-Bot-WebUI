@@ -97,6 +97,27 @@ export interface CommunityStatsData {
   federation?: FederationPoolStatsData | null;
 }
 
+export type CommunityHotPeriod = "day" | "week" | "month";
+
+export interface HotCorpusAnswerData {
+  answer_keywords: string;
+  message: string;
+  count: number;
+}
+
+export interface HotCorpusItem {
+  keywords: string;
+  score: number;
+  answers: HotCorpusAnswerData[];
+}
+
+export interface CommunityCorpusHotData {
+  period: CommunityHotPeriod;
+  window_sec: number;
+  as_of: string;
+  items: HotCorpusItem[];
+}
+
 /** GET /corpus-status：本部署语料多源状态 */
 export interface CorpusCommunityUsageData {
   read_lookups: number;

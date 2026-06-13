@@ -42,6 +42,8 @@ import type {
   CommonConfigSectionMeta,
   MessageStatsData,
   CommunityStatsData,
+  CommunityCorpusHotData,
+  CommunityHotPeriod,
   CorpusStatusData,
   FederationOnboardingData,
   ConsoleDailyStatsData,
@@ -462,6 +464,40 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
     });
   }
   return communityStatsInflight;
+}
+
+const CORPUS_HOT_FRESH_MS = 120_000;
+const corpusHotCache = new Map<string, { data: CommunityCorpusHotData; ts: number }>();
+const corpusHotInflight = new Map<string, Promise<CommunityCorpusHotData>>();
+
+export async function fetchCommunityCorpusHot(
+  period: CommunityHotPeriod = "day",
+  options?: { bypassCache?: boolean; limit?: number },
+): Promise<CommunityCorpusHotData> {
+  const periodNorm: CommunityHotPeriod = period === "week" || period === "month" ? period : "day";
+  const limit = Math.max(5, Math.min(options?.limit ?? 40, 80));
+  const cacheKey = `${periodNorm}:${limit}`;
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  const cached = corpusHotCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < CORPUS_HOT_FRESH_MS) {
+    return cached.data;
+  }
+  let inflight = corpusHotInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = (async () => {
+      const { data } = await http.get<ApiOk<CommunityCorpusHotData>>("/community-corpus-hot", {
+        params: { period: periodNorm, limit },
+      });
+      const parsed = unwrap(data, "/community-corpus-hot");
+      corpusHotCache.set(cacheKey, { data: parsed, ts: Date.now() });
+      return parsed;
+    })().finally(() => {
+      corpusHotInflight.delete(cacheKey);
+    });
+    corpusHotInflight.set(cacheKey, inflight);
+  }
+  return inflight;
 }
 
 let shardObsInflight: Promise<ShardObservabilityData> | null = null;

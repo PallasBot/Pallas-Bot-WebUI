@@ -12,6 +12,7 @@ import type {
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import CorpusWordCloud from "@/components/CorpusWordCloud.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatCard from "@/components/StatCard.vue";
@@ -21,6 +22,7 @@ import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
 const refreshBusy = ref(false);
+const hotReloadToken = ref(0);
 const err = ref("");
 const communityStats = ref<CommunityStatsData | null>(null);
 const corpusStatus = ref<CorpusStatusData | null>(null);
@@ -346,6 +348,7 @@ async function refresh() {
   refreshBusy.value = true;
   try {
     await load({ bypassCache: true });
+    hotReloadToken.value += 1;
   } finally {
     refreshBusy.value = false;
   }
@@ -757,6 +760,28 @@ onMounted(() => {
                 hint="已接入且允许从共享池读取语料的安装数"
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="community-hot"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >☁</span>共享语料热词
+            </h2>
+          </div>
+          <div class="panel__bd">
+            <p class="muted community-page__hot-lead">
+              社区共享池按日/周/月汇总的最热触发词与代表回复（只读）。点击词条查看回复。
+            </p>
+            <CorpusWordCloud :reload-token="hotReloadToken" />
           </div>
         </div>
       </section>
