@@ -862,7 +862,7 @@ onUnmounted(() => {
                   </select>
                 </div>
                 <div class="bot-config-edit__field">
-                  <label>社区展示 QQ</label>
+                  <label>社区名册公开</label>
                   <select
                     class="sel"
                     style="width: 100%"
@@ -881,7 +881,7 @@ onUnmounted(() => {
                     class="muted"
                     style="margin: 6px 0 0; font-size: 12px"
                   >
-                    需在「通用配置 → 在线统计与社区主站」开启「公开牛牛 QQ」后生效。
+                    关闭后该牛不上报社区名册（气泡墙不展示）。
                   </p>
                 </div>
               </div>
