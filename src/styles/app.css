@@ -9561,8 +9561,6 @@ html[data-theme="light"] .home-cpu-core {
   outline: none;
 }
 .hot-bubble-node__body {
-  transform-box: fill-box;
-  transform-origin: center;
   animation: hot-bubble-enter 0.42s ease-out backwards;
   animation-delay: var(--hot-delay, 0ms);
 }
@@ -9599,12 +9597,39 @@ html[data-theme="light"] .home-cpu-core {
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
+.corpus-hot__detail-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.corpus-hot__detail-heading {
+  min-width: 0;
+  flex: 1;
+}
+.corpus-hot__detail-close {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.corpus-hot__detail-close:hover {
+  border-color: var(--border-strong, var(--border));
+  color: var(--text);
+}
 .corpus-hot__detail-title {
   margin: 0;
   font-size: 16px;
 }
 .corpus-hot__detail-meta {
-  margin: 6px 0 10px;
+  margin: 6px 0 0;
   font-size: 12px;
 }
 .corpus-hot__reply-list {

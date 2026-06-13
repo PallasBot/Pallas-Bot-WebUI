@@ -28,6 +28,7 @@ const data = ref<CommunityCorpusHotData | null>(null);
 const selectedKeywords = ref<string | null>(null);
 const cloudHost = ref<HTMLElement | null>(null);
 let resizeObserver: ResizeObserver | null = null;
+let resizeTimer: number | null = null;
 let renderToken = 0;
 
 const periodLabel = computed(() => periods.find((row) => row.key === period.value)?.label || "今日");
@@ -38,9 +39,25 @@ const selectedItem = computed(() =>
   items.value.find((item) => item.keywords === selectedKeywords.value) || null,
 );
 
+function syncSelectionState() {
+  const host = cloudHost.value;
+  if (!host) return;
+  host.querySelectorAll<SVGGElement>("g.hot-bubble-node").forEach((el) => {
+    const key = el.getAttribute("data-keywords");
+    const active = key !== null && key === selectedKeywords.value;
+    el.classList.toggle("hot-bubble-node--active", active);
+    el.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
 function toggleKeyword(keywords: string) {
   selectedKeywords.value = selectedKeywords.value === keywords ? null : keywords;
-  void renderBubbleChart();
+  syncSelectionState();
+}
+
+function clearSelection() {
+  selectedKeywords.value = null;
+  syncSelectionState();
 }
 
 async function loadHot(bypassCache = false) {
@@ -78,6 +95,7 @@ async function renderBubbleChart() {
   if (!items.value.length) return;
 
   const width = host.clientWidth || 640;
+  if (width < 48) return;
   const { nodes, height } = layoutHotBubbles(items.value, width);
 
   const svg = d3
@@ -98,6 +116,7 @@ async function renderBubbleChart() {
       const active = d.item.keywords === selectedKeywords.value ? " hot-bubble-node--active" : "";
       return `hot-bubble-node${active}`;
     })
+    .attr("data-keywords", (d) => d.item.keywords)
     .attr("transform", (d) => `translate(${d.x},${d.y})`)
     .attr("role", "button")
     .attr("tabindex", 0)
@@ -139,12 +158,17 @@ onMounted(() => {
   void loadHot();
   if (!cloudHost.value) return;
   resizeObserver = new ResizeObserver(() => {
-    void renderBubbleChart();
+    if (resizeTimer != null) window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      void renderBubbleChart();
+    }, 120);
   });
   resizeObserver.observe(cloudHost.value);
 });
 
 onBeforeUnmount(() => {
+  if (resizeTimer != null) window.clearTimeout(resizeTimer);
+  resizeTimer = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
 });
@@ -216,12 +240,24 @@ watch(
       class="corpus-hot__detail"
       aria-live="polite"
     >
-      <h3 class="corpus-hot__detail-title">
-        {{ selectedItem.keywords }}
-      </h3>
-      <p class="corpus-hot__detail-meta muted">
-        {{ periodLabel }}热度 {{ selectedItem.score }}
-      </p>
+      <div class="corpus-hot__detail-hd">
+        <div class="corpus-hot__detail-heading">
+          <h3 class="corpus-hot__detail-title">
+            {{ selectedItem.keywords }}
+          </h3>
+          <p class="corpus-hot__detail-meta muted">
+            {{ periodLabel }}热度 {{ selectedItem.score }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="corpus-hot__detail-close"
+          aria-label="收起代表回复"
+          @click="clearSelection"
+        >
+          收起
+        </button>
+      </div>
       <ul class="corpus-hot__reply-list">
         <li
           v-if="!selectedItem.answers.length"
