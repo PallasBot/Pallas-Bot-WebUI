@@ -33,13 +33,13 @@ function formatCommunityStatNum(n: number | undefined | null): string {
 
 const onlineHint = computed(() => {
   const sec = communityStats.value?.online_ttl_sec;
-  if (sec == null || !Number.isFinite(sec) || sec < 60) return "统计窗口内";
+  if (sec == null || !Number.isFinite(sec) || sec < 60) return "近期有上报";
   const m = Math.max(1, Math.round(sec / 60));
-  return `近 ${m} 分钟内有心跳`;
+  return `近 ${m} 分钟内有上报`;
 });
 
 const deploymentsOnlineHint = computed(
-  () => `${onlineHint.value}的自托管安装`,
+  () => `${onlineHint.value}的自托管安装套数`,
 );
 
 const botsOnlineHint = computed(() => {
@@ -54,9 +54,9 @@ const botsOnlineHint = computed(() => {
   ) {
     const avg = sum / onlineDep;
     const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
-    return `全网在线牛牛合计，平均每处约 ${avgText} 只`;
+    return `各安装上报的在线牛牛合计，平均每套约 ${avgText} 只`;
   }
-  return "各安装向中心上报的在线牛牛合计";
+  return "各安装向社区中心上报的在线牛牛总数";
 });
 
 const activeRecentHint = computed(() => {
@@ -64,12 +64,12 @@ const activeRecentHint = computed(() => {
   const catalog = communityStats.value?.catalog_bots_online_sum;
   const parts: string[] = [];
   if (total != null) {
-    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
+    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套`);
   }
   if (catalog != null && Number.isFinite(catalog)) {
-    parts.push(`在线名册牛牛 ${formatCommunityStatNum(catalog)} 只`);
+    parts.push(`当前在线名册 ${formatCommunityStatNum(catalog)} 只牛牛`);
   }
-  return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
+  return parts.length ? parts.join(" · ") : "近 24 小时内有统计上报的安装数";
 });
 
 const corpusPoolValue = computed(() => {
@@ -91,7 +91,7 @@ const corpusOnlineEnrollHint = computed(() => {
   const total = communityStats.value?.corpus?.enrollments_total;
   const parts: string[] = [`${onlineHint.value}且已接入共享语料`];
   if (total != null) {
-    parts.push(`累计 ${formatCommunityStatNum(total)} 处自托管`);
+    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套`);
   }
   return parts.join(" · ");
 });
@@ -99,12 +99,12 @@ const corpusOnlineEnrollHint = computed(() => {
 const corpusTotalEnrollHint = computed(() => {
   const recent = communityStats.value?.corpus?.enrollments_recent_24h;
   const contrib = communityStats.value?.corpus?.contribute_enabled_total;
-  const parts: string[] = ["历史上接入过共享语料的安装数"];
+  const parts: string[] = ["曾经接入过社区共享语料的安装总数"];
   if (recent != null && recent > 0) {
-    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 处`);
+    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 套`);
   }
   if (contrib != null) {
-    parts.push(`其中 ${formatCommunityStatNum(contrib)} 处可上传学习结果`);
+    parts.push(`其中 ${formatCommunityStatNum(contrib)} 套允许上传新回复`);
   }
   return parts.join(" · ");
 });
@@ -293,7 +293,7 @@ function mergeStrategyLabel(raw: string | undefined): string {
   if (!s) return "—";
   const map: Record<string, string> = {
     local_first: "本地优先",
-    merge_counts: "合并计数",
+    merge_counts: "合并使用次数",
   };
   return map[s] || s;
 }
@@ -302,7 +302,7 @@ function remoteFailureLabel(raw: string | undefined): string {
   const s = (raw || "").trim();
   if (!s) return "—";
   const map: Record<string, string> = {
-    local_only: "仅用本地",
+    local_only: "仅用本机语料",
   };
   return map[s] || s;
 }
@@ -317,8 +317,8 @@ function formatUnixSec(ts: number | null | undefined): string {
 }
 
 function sourceLabel(key: SourceKey): string {
-  if (key === "local") return "本地";
-  if (key === "fed") return "联邦";
+  if (key === "local") return "本机";
+  if (key === "fed") return "联邦库";
   return "共享池";
 }
 
@@ -362,6 +362,20 @@ onMounted(() => {
       :panels="3"
     />
     <template v-else>
+      <section class="community-page__intro panel">
+        <div class="panel__bd">
+          <p class="community-page__intro-lead">
+            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。数据只读；改设置请点各面板右上角的链接，或前往
+            <RouterLink to="/common-config?section=corpus_federation">通用配置 → 语料联邦</RouterLink>。
+          </p>
+          <ul class="community-page__intro-list muted">
+            <li><strong>在线统计</strong>：默认开启，向社区中心上报本机在线牛牛数量（不含消息内容）。</li>
+            <li><strong>共享语料</strong>：默认关闭，开启后可读取社区大家贡献的接话素材，也可选择上传本机新回复。</li>
+            <li><strong>社区联邦</strong>：多套牛牛共池时，避免对同一条群消息重复回复；需填写入池密钥。</li>
+          </ul>
+        </div>
+      </section>
+
       <p
         v-if="err"
         class="alert alert--err community-page__alert"
@@ -373,11 +387,11 @@ onMounted(() => {
         v-if="communityStatsUnavailable"
         class="alert alert--warn community-page__alert"
       >
-        统计中心未返回数据，下列数值以 — 占位。请确认本部署已启用统计上报，且中心服务可访问。
+        暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
         <RouterLink
           class="community-page__inline-link"
           to="/corpus-config"
-        >语料与联邦设置</RouterLink>
+        >前往语料与统计设置</RouterLink>
       </p>
 
       <section
@@ -396,7 +410,7 @@ onMounted(() => {
               <PanelSidebarAdd main-path="/community" />
               <RefreshIconButton
                 :busy="refreshBusy"
-                label="刷新统计与语料数据"
+                label="刷新本页数据"
                 @click="refresh"
               />
             </div>
@@ -417,9 +431,9 @@ onMounted(() => {
               />
               <StatCard
                 dense
-                label="分片 · 进程"
+                label="分片安装"
                 :value="`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`"
-                hint="分片架构的安装数与工作进程数"
+                hint="采用分片架构的安装数 / 在线工作进程数"
               />
               <StatCard
                 dense
@@ -439,7 +453,7 @@ onMounted(() => {
                   v-if="communityStats != null"
                   class="badge"
                   :class="communityStats.corpus_enabled ? 'badge--ok' : ''"
-                >{{ communityStats.corpus_enabled ? "已启用" : "未启用" }}</span>
+                >{{ communityStats.corpus_enabled ? "已接入" : "未接入" }}</span>
                 <span
                   v-else
                   class="community-page__mono"
@@ -498,7 +512,7 @@ onMounted(() => {
               <RouterLink
                 class="btn btn--ghost btn--sm"
                 :to="controlPlaneConfigLink"
-              >联邦控制面</RouterLink>
+              >联邦控制</RouterLink>
             </div>
           </div>
           <div class="panel__bd community-page__federation-bd">
@@ -512,7 +526,7 @@ onMounted(() => {
               v-else-if="federationOnboardingUnavailable"
               class="muted community-page__federation-summary"
             >
-              中心暂未开放入池说明；你仍可在「联邦控制面」手动填写密钥。
+              社区中心暂未提供入池说明；你仍可在「联邦控制」中手动填写密钥与相关项。
             </p>
             <p
               v-if="federationOnboarding?.ingress_note"
@@ -522,26 +536,26 @@ onMounted(() => {
             </p>
 
             <p class="muted community-page__federation-pool-note">
-              左两列由中心登记：先领取联邦配置（bootstrap）再报心跳；右列看去重 Redis，须群消息触发 claim，与左两列无关。
+              左两列：已向中心登记联邦配置、并在近期上报在线统计的安装。右列：去重服务上仍有活跃标记的安装（表示近期确实处理过群消息），与左两列统计口径不同。
             </p>
             <div class="grid-stats community-page__federation-pool-grid">
               <StatCard
                 dense
                 label="累计入池"
                 :value="formatCommunityStatNum(federationPoolStats?.members_total)"
-                hint="曾向中心成功领取联邦配置（bootstrap）的自托管套数"
+                hint="曾成功从社区中心领取联邦配置的安装套数"
               />
               <StatCard
                 dense
                 label="在线入池"
                 :value="formatCommunityStatNum(federationPoolStats?.members_online)"
-                hint="已入池且在统计窗口内（约 15 分钟）向中心上报过心跳"
+                hint="已入池且近期有在线统计上报的安装套数"
               />
               <StatCard
                 dense
                 label="去重活跃"
                 :value="federationCoordActiveLabel"
-                hint="协调 Redis 上仍有群消息去重 claim 的部署数；实际处理过群消息才计入"
+                hint="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息"
               />
             </div>
 
@@ -583,12 +597,12 @@ onMounted(() => {
             >
               <dt>联邦池</dt>
               <dd class="community-page__mono">{{ federationOnboarding.federate_id || "—" }}</dd>
-              <dt>自动下发配置</dt>
+              <dt>自动拉取配置</dt>
               <dd>
                 <span
                   class="badge"
                   :class="federationOnboarding.bootstrap_enabled ? 'badge--ok' : ''"
-                >{{ federationOnboarding.bootstrap_enabled ? "已启用" : "未启用" }}</span>
+                >{{ federationOnboarding.bootstrap_enabled ? "已开启" : "已关闭" }}</span>
               </dd>
               <dt>中心（主站）</dt>
               <dd>
@@ -617,7 +631,7 @@ onMounted(() => {
                   v-else
                   class="muted"
                 >—</span>
-                <span class="community-page__federation-fallback-tag muted">主站故障时牛牛自动改用</span>
+                <span class="community-page__federation-fallback-tag muted">主站不可用时牛牛会自动改用</span>
               </dd>
               <dt>去重服务器</dt>
               <dd class="community-page__federation-coord-dd">
@@ -651,17 +665,17 @@ onMounted(() => {
               v-if="controlPlane"
               class="community-page__federation-local"
             >
-              <h3 class="community-page__subhd">本部署</h3>
+              <h3 class="community-page__subhd">本部署状态</h3>
               <div class="community-page__corpus-meta-bar">
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">控制面</span>
+                  <span class="community-page__corpus-meta-k">联邦控制</span>
                   <span
                     class="community-page__corpus-meta-v"
                     :class="controlPlane.enabled ? 'is-ok' : 'is-off'"
                   >{{ controlPlane.enabled ? "已开启" : "已关闭" }}</span>
                 </span>
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">密钥</span>
+                  <span class="community-page__corpus-meta-k">入池密钥</span>
                   <span
                     class="community-page__corpus-meta-v"
                     :class="controlPlane.instance_secret_configured ? 'is-ok' : 'is-off'"
@@ -672,10 +686,10 @@ onMounted(() => {
                   <span
                     class="community-page__corpus-meta-v"
                     :class="controlPlane.bootstrap_valid ? 'is-ok' : 'is-off'"
-                  >{{ controlPlane.bootstrap_valid ? "已拿到" : "待拉取或过期" }}</span>
+                  >{{ controlPlane.bootstrap_valid ? "已获取" : "待拉取或过期" }}</span>
                 </span>
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">去重</span>
+                  <span class="community-page__corpus-meta-k">消息去重</span>
                   <span class="community-page__corpus-meta-v">{{ ingressEnabledLabel(controlPlane.federate_ingress_enabled) }}</span>
                 </span>
                 <span
@@ -746,19 +760,19 @@ onMounted(() => {
               />
               <StatCard
                 dense
-                label="可上传学习"
+                label="允许上传"
                 :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
-                hint="已接入且允许把本机学习结果同步到共享语料池"
+                hint="已接入且允许把本机新回复同步到共享池的安装数"
               />
               <StatCard
                 dense
-                label="回复热度"
+                label="回复被引用"
                 :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
-                hint="各回复条目在共享池中的累计引用次数"
+                hint="共享池中各回复条目被接话引用的累计次数"
               />
               <StatCard
                 dense
-                label="可读安装"
+                label="允许读取"
                 :value="formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)"
                 hint="已接入且允许从共享池读取语料的安装数"
               />
@@ -796,16 +810,16 @@ onMounted(() => {
                   <span
                     class="badge community-page__status-badge"
                     :class="corpusStatus.composite_active ? 'badge--ok' : ''"
-                  >{{ corpusStatus.composite_active ? "复合已激活" : "复合未激活" }}</span>
+                  >{{ corpusStatus.composite_active ? "多源接话已启用" : "多源接话未启用" }}</span>
                   <span
                     v-if="corpusSummaryFlow"
                     class="community-page__corpus-summary-flow"
-                  >{{ corpusSummaryFlow }}</span>
+                  >查找顺序：{{ corpusSummaryFlow }}</span>
                 </div>
                 <div class="community-page__corpus-summary-meta">
                   <span>{{ mergeStrategyLabel(corpusStatus.merge_strategy) }}</span>
                   <span class="community-page__corpus-summary-sep">·</span>
-                  <span>远端失败 {{ remoteFailureLabel(corpusStatus.on_remote_failure) }}</span>
+                  <span>远端失败时 {{ remoteFailureLabel(corpusStatus.on_remote_failure) }}</span>
                   <span class="community-page__corpus-summary-sep">·</span>
                   <span>快照 {{ corpusSnapshotText }}</span>
                 </div>
@@ -816,19 +830,19 @@ onMounted(() => {
                   dense
                   label="查询共享池"
                   :value="formatCommunityStatNum(communityUsage?.read_lookups)"
-                  hint="向社区语料发起的读取次数（含未命中）"
+                  hint="向社区共享池发起读取的次数（含未命中）"
                 />
                 <StatCard
                   dense
                   label="命中共享池"
                   :value="formatCommunityStatNum(communityUsage?.read_hits)"
-                  hint="社区池实际返回语料的次数"
+                  hint="共享池实际返回可用语料的次数"
                 />
                 <StatCard
                   dense
-                  label="写回共享池"
+                  label="上传到共享池"
                   :value="formatCommunityStatNum(communityUsage?.contribute_ok)"
-                  :hint="communityUsage ? `成功贡献到社区池；统计更新 ${communityUsageUpdatedText}` : '中心暂未返回本部署用量'"
+                  :hint="communityUsage ? `成功上传的新回复条数；统计更新于 ${communityUsageUpdatedText}` : '社区中心暂未返回本部署用量'"
                 />
               </div>
 
@@ -893,17 +907,17 @@ onMounted(() => {
                   <span class="community-page__corpus-meta-v community-page__mono">{{ deploymentIdShort }}</span>
                 </span>
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">统计上报</span>
+                  <span class="community-page__corpus-meta-k">在线统计</span>
                   <span
                     class="community-page__corpus-meta-v"
                     :class="corpusStatus.deployment?.community_stats_enabled ? 'is-ok' : 'is-off'"
-                  >{{ corpusStatus.deployment?.community_stats_enabled ? "已启用" : "未启用" }}</span>
+                  >{{ corpusStatus.deployment?.community_stats_enabled ? "已开启" : "已关闭" }}</span>
                 </span>
                 <span
                   v-if="corpusStatus.deployment?.heartbeat_endpoint"
                   class="community-page__corpus-meta-item community-page__corpus-meta-item--grow"
                 >
-                  <span class="community-page__corpus-meta-k">心跳</span>
+                  <span class="community-page__corpus-meta-k">上报地址</span>
                   <span class="community-page__corpus-meta-v community-page__mono">{{ corpusStatus.deployment.heartbeat_endpoint }}</span>
                 </span>
               </div>

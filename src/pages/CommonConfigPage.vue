@@ -40,8 +40,10 @@ const fieldValues = ref<Record<string, string>>({});
 const permSelections = ref<Record<string, string>>({});
 
 const CMD_PERM_SECTION_ID = "cmd_perm";
+const CONTROL_PLANE_SECTION_ID = "control_plane";
 
 const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
+const isControlPlaneSection = computed(() => currentId.value === CONTROL_PLANE_SECTION_ID);
 const isServiceGateways = computed(() => currentId.value === SERVICE_GATEWAYS_SECTION_ID);
 const isPallasWebuiSection = computed(() => currentId.value === PALLAS_WEBUI_SECTION_ID);
 const showDevModeHotReloadHint = computed(() => Boolean(data.value?.dev_mode_hot_reload));
@@ -74,7 +76,11 @@ function sortSectionsCmdPermFirst(list: CommonConfigSectionMeta[]): CommonConfig
 function fieldModel(f: PluginConfigField): string {
   const v = f.current;
   if (f.kind === "json") return JSON.stringify(v ?? null, null, 2);
-  if (typeof v === "boolean") return v ? "true" : "false";
+  if (f.kind === "bool") {
+    if (typeof v === "boolean") return v ? "true" : "false";
+    const text = String(v ?? "").trim().toLowerCase();
+    return text === "true" || text === "1" || text === "yes" || text === "on" ? "true" : "false";
+  }
   return v === null || v === undefined ? "" : String(v);
 }
 
@@ -98,7 +104,7 @@ watch(
   (d) => {
     fieldValues.value = {};
     permSelections.value = {};
-    if (!d) return;
+    if (!d?.fields?.length) return;
     for (const f of d.fields) {
       fieldValues.value[f.name] = fieldModel(f);
     }
@@ -237,7 +243,11 @@ async function save() {
   saving.value = true;
   err.value = "";
   try {
-    data.value = await putCommonConfig(currentId.value, collectValues());
+    const saved = await putCommonConfig(currentId.value, collectValues());
+    if (!saved?.fields?.length) {
+      throw new Error("保存响应缺少 fields，请刷新页面后重试");
+    }
+    data.value = saved;
     toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -279,6 +289,12 @@ function enumChoiceLabel(opt: string): string {
     auto: "自动",
     true: "开启",
     false: "关闭",
+    prefetch: "后台预取（推荐）",
+    sync: "当场联网查询",
+    "local,community": "先本机，再共享池",
+    local: "只用本机",
+    local_first: "本地优先",
+    merge_counts: "合并使用次数",
   };
   return map[opt] ?? opt;
 }
@@ -345,32 +361,35 @@ function enumChoiceLabel(opt: string): string {
           class="panel__bd"
         >
           <p
-            v-if="isCorpusFederationSection"
-            class="muted"
-            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+            v-if="isControlPlaneSection"
+            class="muted common-config-page__intro"
           >
-            配置本机 / 共享池多读源与统计上报。保存后写入
-            <code>webui.json</code> 并<strong>热重载</strong>语料读路径与在线统计周期任务，无需重启牛牛。
+            多套牛牛加入同一<strong>社区联邦池</strong>时，可共用中心下发的配置，并对同一条群消息<strong>只让一套牛牛回复</strong>，避免重复抢答。
+            入池密钥在<strong>统计与语料</strong>页复制；保存后写入 <code>webui.json</code> 并立即尝试向中心拉取最新配置。
+          </p>
+          <p
+            v-if="isCorpusFederationSection"
+            class="muted common-config-page__intro"
+          >
+            管理<strong>接话语料</strong>从哪读、是否接入<strong>社区共享池</strong>，以及是否向社区中心<strong>上报在线统计</strong>。
+            共享语料默认关闭，需手动开启；在线统计默认开启。保存后写入 <code>webui.json</code>，语料与统计任务<strong>热重载</strong>，一般无需重启牛牛。
           </p>
           <p
             v-if="isCorpusFederationSection && showHotReloadHint"
-            class="muted"
-            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+            class="muted common-config-page__intro"
           >
-            关闭<strong>共享语料</strong>或<strong>在线统计</strong>后，下一周期起不再访问远端；其余项保存后立即生效。
+            关闭「使用共享语料」或「上报在线统计」后，下一统计周期起不再访问远端；其余项保存后立即生效。
           </p>
           <p
             v-if="isServiceGateways"
-            class="muted"
-            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+            class="muted common-config-page__intro"
           >
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
             <router-link to="/plugins/draw">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
           </p>
           <p
             v-if="showDevModeHotReloadHint"
-            class="muted"
-            style="font-size: 13px; margin: 0 0 20px; line-height: 1.55"
+            class="muted common-config-page__intro"
           >
             <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；顶栏提供快捷开关。
             CORS（<code>pallas_webui_cors</code>）变更仍需重启总机牛牛。
@@ -627,6 +646,16 @@ function enumChoiceLabel(opt: string): string {
 </template>
 
 <style scoped>
+.common-config-page__intro {
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.6;
+}
+
+.common-config-page__intro + .common-config-page__intro {
+  margin-top: -8px;
+}
+
 .cmd-perm-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border, rgba(255, 255, 255, 0.08));

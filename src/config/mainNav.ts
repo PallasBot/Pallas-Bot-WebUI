@@ -20,7 +20,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/common-config", label: "通用配置", icon: "⛭", description: "跨模块公共项", section: "模块与配置" },
   { to: "/friends-groups", label: "好友与群聊", icon: "⊞", description: "列表、配置与审批", section: "对话与对象" },
   { to: "/database", label: "数据库", icon: "▤", description: "存储体量", section: "数据与扩展" },
-  { to: "/community", label: "统计与语料", icon: "◉", description: "统计上报与共享语料", section: "数据与扩展" },
+  { to: "/community", label: "统计与语料", icon: "◉", description: "社区在线数据与本机语料状态", section: "数据与扩展" },
   { to: "/ai", label: "AI 扩展", icon: "◇", description: "扩展服务", section: "数据与扩展" },
   { to: "/preferences", label: "偏好", icon: "✦", description: "外观与控制台口令", section: "本机与维护" },
   { to: "/update", label: "更新", icon: "↑", description: "发行与升级", section: "本机与维护" },

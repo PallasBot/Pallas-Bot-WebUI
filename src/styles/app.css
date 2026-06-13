@@ -8904,6 +8904,23 @@ html[data-theme="light"] .home-cpu-core {
   gap: 16px;
   min-width: 0;
 }
+.community-page__intro {
+  margin: 0;
+}
+.community-page__intro-lead {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.community-page__intro-list {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.community-page__intro-list li + li {
+  margin-top: 6px;
+}
 .community-page__section {
   min-width: 0;
 }

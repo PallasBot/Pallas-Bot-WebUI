@@ -1,22 +1,23 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layout/AppShell.vue";
 import HomePage from "@/pages/HomePage.vue";
-import LogsPage from "@/pages/LogsPage.vue";
-import LogErrorsPage from "@/pages/LogErrorsPage.vue";
-import PluginsPage from "@/pages/PluginsPage.vue";
-import PluginConfigPage from "@/pages/PluginConfigPage.vue";
-import CommonConfigPage from "@/pages/CommonConfigPage.vue";
-import InstancesPage from "@/pages/InstancesPage.vue";
-import ProtocolManagePage from "@/pages/ProtocolManagePage.vue";
-import DatabasePage from "@/pages/DatabasePage.vue";
-import DatabaseBackupsPage from "@/pages/DatabaseBackupsPage.vue";
-import UpdatePage from "@/pages/UpdatePage.vue";
-import AiExtensionPage from "@/pages/AiExtensionPage.vue";
-import FriendsGroupsPage from "@/pages/FriendsGroupsPage.vue";
-import PreferencesPage from "@/pages/PreferencesPage.vue";
-import CommunityPage from "@/pages/CommunityPage.vue";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
+
+const LogsPage = () => import("@/pages/LogsPage.vue");
+const LogErrorsPage = () => import("@/pages/LogErrorsPage.vue");
+const PluginsPage = () => import("@/pages/PluginsPage.vue");
+const PluginConfigPage = () => import("@/pages/PluginConfigPage.vue");
+const CommonConfigPage = () => import("@/pages/CommonConfigPage.vue");
+const InstancesPage = () => import("@/pages/InstancesPage.vue");
+const ProtocolManagePage = () => import("@/pages/ProtocolManagePage.vue");
+const DatabasePage = () => import("@/pages/DatabasePage.vue");
+const DatabaseBackupsPage = () => import("@/pages/DatabaseBackupsPage.vue");
+const UpdatePage = () => import("@/pages/UpdatePage.vue");
+const AiExtensionPage = () => import("@/pages/AiExtensionPage.vue");
+const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
+const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
+const CommunityPage = () => import("@/pages/CommunityPage.vue");
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -164,7 +165,7 @@ const router = createRouter({
           component: CommunityPage,
           meta: {
             title: "统计与语料",
-            description: "全网部署统计与共享语料概览",
+            description: "社区公开统计与本部署语料、联邦状态",
           },
         },
         {
