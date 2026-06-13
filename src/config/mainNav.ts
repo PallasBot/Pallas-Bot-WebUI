@@ -55,6 +55,7 @@ function canonicalNavPath(path: string): string {
   if (p === "/security") return "/preferences";
   if (p === "/bot-social-config") return "/friends-groups";
   if (p === "/corpus-config") return "/common-config";
+  if (p === "/community-stats-config") return "/common-config";
   return p;
 }
 

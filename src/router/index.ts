@@ -151,6 +151,10 @@ const router = createRouter({
           redirect: { name: "common-config", query: { section: "corpus_federation" } },
         },
         {
+          path: "community-stats-config",
+          redirect: { name: "common-config", query: { section: "community_stats" } },
+        },
+        {
           path: "ai",
           name: "ai",
           component: AiExtensionPage,

@@ -28,6 +28,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { boolChoiceLabel, enumChoiceLabel, fieldDisplayTitle } from "@/utils/configFieldDisplay";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
 const route = useRoute();
@@ -654,24 +655,36 @@ async function save() {
           style="margin-bottom: 22px"
         >
           <div style="font-weight: 700; margin-bottom: 6px">
-            {{ f.name }}
-            <span class="muted" style="font-weight: 500">（{{ f.kind }}）</span>
+            {{ fieldDisplayTitle(f) }}
+            <span
+              v-if="!f.label"
+              class="muted"
+              style="font-weight: 500"
+            >（{{ f.kind }}）</span>
           </div>
-          <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px">
+          <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px; white-space: pre-line">
             {{ f.description }}
           </div>
           <div class="muted" style="font-size: 12px; margin-bottom: 8px">
             配置键: <code>{{ f.env_key }}</code>
             · 默认：{{ JSON.stringify(f.default) }}
           </div>
-          <select
+          <label
             v-if="f.kind === 'bool'"
-            v-model="fieldValues[f.name]"
-            class="sel"
+            class="console-bool-switch"
+            :class="{ 'console-bool-switch--on': fieldValues[f.name] === 'true' }"
           >
-            <option value="true">true</option>
-            <option value="false">false</option>
-          </select>
+            <input
+              type="checkbox"
+              class="console-bool-switch__input"
+              :checked="fieldValues[f.name] === 'true'"
+              @change="fieldValues[f.name] = ($event.target as HTMLInputElement).checked ? 'true' : 'false'"
+            >
+            <span class="console-bool-switch__track" aria-hidden="true">
+              <span class="console-bool-switch__thumb" />
+            </span>
+            <span class="console-bool-switch__label">{{ boolChoiceLabel(fieldValues[f.name]) }}</span>
+          </label>
           <select
             v-else-if="f.kind === 'enum' && f.choices?.length"
             v-model="fieldValues[f.name]"
@@ -682,7 +695,7 @@ async function save() {
               :key="opt"
               :value="opt"
             >
-              {{ opt }}
+              {{ enumChoiceLabel(opt) }}
             </option>
           </select>
           <JsonTextareaField

@@ -14,7 +14,7 @@ import type {
   PluginConfigField,
   PluginConfigFieldGroup,
 } from "@/api/pallasTypes";
-import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID } from "@/api/pallasTypes";
+import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -24,6 +24,7 @@ import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
 import { pluginConfigRouteFromPath } from "@/utils/pluginConfigRoute";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { enumChoiceLabel, fieldDisplayTitle } from "@/utils/configFieldDisplay";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
@@ -43,6 +44,7 @@ const CMD_PERM_SECTION_ID = "cmd_perm";
 const CONTROL_PLANE_SECTION_ID = "control_plane";
 
 const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
+const isCommunityStatsSection = computed(() => currentId.value === COMMUNITY_STATS_SECTION_ID);
 const isControlPlaneSection = computed(() => currentId.value === CONTROL_PLANE_SECTION_ID);
 const isServiceGateways = computed(() => currentId.value === SERVICE_GATEWAYS_SECTION_ID);
 const isPallasWebuiSection = computed(() => currentId.value === PALLAS_WEBUI_SECTION_ID);
@@ -55,6 +57,8 @@ const supportsConnectivityCheck = computed(() => Boolean(data.value?.supports_co
 const showCmdPermMatrix = computed(
   () => currentId.value === CMD_PERM_SECTION_ID && Boolean(data.value?.command_perm_ui),
 );
+const isCmdPermSection = computed(() => currentId.value === CMD_PERM_SECTION_ID);
+const isMessageScrubSection = computed(() => currentId.value === "message_scrub");
 const gatewayFieldNameSet = computed(() => new Set<string>(PALLAS_IMAGE_GATEWAY_FIELD_NAMES));
 
 const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_groups ?? []);
@@ -279,25 +283,6 @@ function showConfigField(f: PluginConfigField): boolean {
   if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
   return true;
 }
-
-function fieldDisplayTitle(f: PluginConfigField): string {
-  return (f.label || "").trim() || f.name;
-}
-
-function enumChoiceLabel(opt: string): string {
-  const map: Record<string, string> = {
-    auto: "自动",
-    true: "开启",
-    false: "关闭",
-    prefetch: "后台预取（推荐）",
-    sync: "当场联网查询",
-    "local,community": "先本机，再共享池",
-    local: "只用本机",
-    local_first: "本地优先",
-    merge_counts: "合并使用次数",
-  };
-  return map[opt] ?? opt;
-}
 </script>
 
 <template>
@@ -361,6 +346,18 @@ function enumChoiceLabel(opt: string): string {
           class="panel__bd"
         >
           <p
+            v-if="isCmdPermSection"
+            class="muted common-config-page__intro"
+          >
+            调整各口令<strong>谁可用</strong>（所有人、群管、号主等）。下方矩阵只显示中文命令名；保存后立即生效，一般无需重启。
+          </p>
+          <p
+            v-if="isMessageScrubSection"
+            class="muted common-config-page__intro"
+          >
+            复读<strong>学习</strong>与做梦<strong>采集</strong>前的入站过滤。不配任何项时与未启用时行为一致；保存后热重载。
+          </p>
+          <p
             v-if="isControlPlaneSection"
             class="muted common-config-page__intro"
           >
@@ -371,14 +368,21 @@ function enumChoiceLabel(opt: string): string {
             v-if="isCorpusFederationSection"
             class="muted common-config-page__intro"
           >
-            管理<strong>接话语料</strong>从哪读、是否接入<strong>社区共享池</strong>，以及是否向社区中心<strong>上报在线统计</strong>。
-            共享语料默认关闭，需手动开启；在线统计默认开启。保存后写入 <code>webui.json</code>，语料与统计任务<strong>热重载</strong>，一般无需重启牛牛。
+            管理<strong>接话语料</strong>从哪读、是否接入<strong>社区共享池</strong>。
+            共享语料默认关闭，需手动开启。保存后写入 <code>webui.json</code> 并<strong>热重载</strong>，一般无需重启牛牛。
+          </p>
+          <p
+            v-if="isCommunityStatsSection"
+            class="muted common-config-page__intro"
+          >
+            向社区中心<strong>上报在线统计</strong>（默认开启，不含消息内容）。
+            下方可分别设置是否在主站气泡墙<strong>公开 QQ</strong>或<strong>头像昵称</strong>，默认均关闭。
           </p>
           <p
             v-if="isCorpusFederationSection && showHotReloadHint"
             class="muted common-config-page__intro"
           >
-            关闭「使用共享语料」或「上报在线统计」后，下一统计周期起不再访问远端；其余项保存后立即生效。
+            关闭「使用共享语料」后，下一周期起不再访问共享池；其余项保存后立即生效。
           </p>
           <p
             v-if="isServiceGateways"
@@ -391,8 +395,8 @@ function enumChoiceLabel(opt: string): string {
             v-if="showDevModeHotReloadHint"
             class="muted common-config-page__intro"
           >
-            <strong>pallas_webui_dev_mode</strong> 保存后立即生效（API 与静态页鉴权），无需重启牛牛；顶栏提供快捷开关。
-            CORS（<code>pallas_webui_cors</code>）变更仍需重启总机牛牛。
+            <strong>开发模式</strong>可在顶栏快速开关：开启后跳过控制台登录校验，仅适合本机调试；公网务必关闭。
+            「允许跨域访问」变更后需重启总机牛牛。
           </p>
           <div
             v-if="supportsConnectivityCheck && (checkLines.length || checkErr)"
@@ -418,8 +422,7 @@ function enumChoiceLabel(opt: string): string {
             style="margin-bottom: 28px"
           >
             <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
-              下列为各命令当前生效权限（单选）。仅当所选等级与插件声明的默认不同时，会写入
-              <code>PALLAS_COMMAND_PERMISSION_OVERRIDES</code>。
+              为各命令选择「谁可用」。仅当所选等级与插件默认不同时才会保存覆盖项。
             </p>
             <div
               v-for="pg in data.command_perm_ui.plugins"
@@ -450,7 +453,6 @@ function enumChoiceLabel(opt: string): string {
                     >
                       <th scope="row" class="cmd-perm-table__cmd">
                         <span class="cmd-perm-table__label">{{ row.label }}</span>
-                        <span class="muted cmd-perm-table__id">{{ row.command_id }}</span>
                       </th>
                       <td
                         v-for="lv in data.command_perm_ui.levels"

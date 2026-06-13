@@ -463,6 +463,7 @@ export interface PluginConfigData {
 /** 通用配置 → 服务网关 / 连通性 */
 export const SERVICE_GATEWAYS_SECTION_ID = "service_gateways";
 export const CORPUS_FEDERATION_SECTION_ID = "corpus_federation";
+export const COMMUNITY_STATS_SECTION_ID = "community_stats";
 
 /** 通用配置 → 控制台 / Pallas WebUI */
 export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";

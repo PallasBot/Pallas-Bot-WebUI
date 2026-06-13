@@ -365,8 +365,10 @@ onMounted(() => {
       <section class="community-page__intro panel">
         <div class="panel__bd">
           <p class="community-page__intro-lead">
-            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。数据只读；改设置请点各面板右上角的链接，或前往
-            <RouterLink to="/common-config?section=corpus_federation">通用配置 → 语料联邦</RouterLink>。
+            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。数据只读；改设置请前往
+            <RouterLink to="/common-config?section=corpus_federation">语料联邦</RouterLink>
+            或
+            <RouterLink to="/common-config?section=community_stats">在线统计与社区主站</RouterLink>。
           </p>
           <ul class="community-page__intro-list muted">
             <li><strong>在线统计</strong>：默认开启，向社区中心上报本机在线牛牛数量（不含消息内容）。</li>
@@ -390,8 +392,8 @@ onMounted(() => {
         暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
         <RouterLink
           class="community-page__inline-link"
-          to="/corpus-config"
-        >前往语料与统计设置</RouterLink>
+          to="/community-stats-config"
+        >前往在线统计设置</RouterLink>
       </p>
 
       <section
@@ -408,6 +410,10 @@ onMounted(() => {
             </h2>
             <div class="row-actions community-page__hd-actions">
               <PanelSidebarAdd main-path="/community" />
+              <RouterLink
+                class="btn btn--ghost btn--sm"
+                to="/community-stats-config"
+              >在线统计设置</RouterLink>
               <RefreshIconButton
                 :busy="refreshBusy"
                 label="刷新本页数据"
