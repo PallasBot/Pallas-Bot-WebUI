@@ -65,6 +65,7 @@ const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_g
 
 const genericFields = computed(() => {
   if (!data.value || fieldGroups.value.length) return [];
+  if (isCmdPermSection.value && data.value.command_perm_ui) return [];
   return data.value.fields;
 });
 
