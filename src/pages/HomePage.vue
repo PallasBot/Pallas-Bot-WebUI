@@ -59,7 +59,7 @@ import {
   displayVersionWithoutSha,
   pallasBotVersionLabel,
 } from "@/utils/versionDisplay";
-import { patchConsoleMeta } from "@/state/consoleMeta";
+import { patchConsoleMeta, consoleMetaBotUpdate, consoleMetaHealth, consoleMetaWebUpdate } from "@/state/consoleMeta";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 
@@ -114,6 +114,10 @@ const bots = ref<BotRow[]>([]);
   }
 }
 const instances = ref<InstancesData | null>(null);
+{
+  const warmInst = peekInstancesCache();
+  if (warmInst) instances.value = warmInst;
+}
 const selectedAccount = ref<number | null>(null);
 const friendSnap = ref<FriendListData | null>(null);
 const groupSnap = ref<GroupListData | null>(null);
@@ -1301,33 +1305,60 @@ function stopHomeConnDurationTick() {
   homeConnDurationPollId = null;
 }
 
-async function load() {
+async function loadHomeDeferred(refreshMeta: boolean) {
+  const botUpdateP =
+    !refreshMeta && consoleMetaBotUpdate.value
+      ? Promise.resolve(consoleMetaBotUpdate.value)
+      : fetchBotUpdateCheck().catch(() => null);
+  const webUpdateP =
+    !refreshMeta && consoleMetaWebUpdate.value
+      ? Promise.resolve(consoleMetaWebUpdate.value)
+      : fetchUpdateCheck().catch(() => null);
+  const settled = await Promise.allSettled([
+    fetchMessageStats(),
+    fetchPluginRunStats(),
+    botUpdateP,
+    webUpdateP,
+    fetchCommunityStats().catch(() => null),
+    fetchShardObservability(),
+  ]);
+  function take<T>(i: number): T | null {
+    const r = settled[i];
+    return r.status === "fulfilled" ? (r.value as T) : null;
+  }
+  stats.value = take<MessageStatsData>(0);
+  pluginRunStats.value = take<PluginRunStatsData>(1);
+  botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
+  webUpdateCheck.value = take<UpdateCheckData | null>(3);
+  communityStats.value = take<CommunityStatsData | null>(4);
+  shardObs.value = take<ShardObservabilityData>(5);
+  const h = consoleMetaHealth.value ?? health.value;
+  if (h) health.value = h;
+  patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
+}
+
+type LoadOptions = {
+  /** 手动刷新时等待次要接口并强制重拉更新检查 */
+  refreshMeta?: boolean;
+};
+
+async function load(opts?: LoadOptions) {
+  const refreshMeta = opts?.refreshMeta ?? false;
   if (overviewBusy.value) return;
   err.value = "";
   overviewBusy.value = true;
   try {
-    const [h, s, m, pr, botList, inst, pl, botCh, webCh, comm, shard] = await Promise.all([
-      fetchHealth(),
+    const healthP = consoleMetaHealth.value ? Promise.resolve(consoleMetaHealth.value) : fetchHealth();
+    const [h, s, botList, inst, pl] = await Promise.all([
+      healthP,
       fetchSystem(),
-      fetchMessageStats(),
-      fetchPluginRunStats(),
       fetchBots(),
       fetchInstances(),
       fetchPlugins(),
-      fetchBotUpdateCheck().catch(() => null),
-      fetchUpdateCheck().catch(() => null),
-      fetchCommunityStats().catch(() => null),
-      fetchShardObservability().catch(() => null),
     ]);
     health.value = h;
-    botUpdateCheck.value = (botCh as BotUpdateCheckData | null) ?? null;
-    webUpdateCheck.value = (webCh as UpdateCheckData | null) ?? null;
-    patchConsoleMeta(h, botUpdateCheck.value, webUpdateCheck.value);
+    patchConsoleMeta(h);
     system.value = s;
-    communityStats.value = (comm as CommunityStatsData | null) ?? null;
-    shardObs.value = (shard as ShardObservabilityData | null) ?? null;
-    stats.value = m;
-    pluginRunStats.value = pr;
     bots.value = botList;
     instances.value = inst;
     pluginsList.value = pl;
@@ -1338,6 +1369,11 @@ async function load() {
     pageReady.value = true;
     if (accBefore === accAfter) {
       void refreshSelectedBotDetails();
+    }
+    if (refreshMeta) {
+      await loadHomeDeferred(true);
+    } else {
+      void loadHomeDeferred(false);
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -1512,7 +1548,7 @@ onUnmounted(() => {
               <RefreshIconButton
                 :busy="overviewBusy"
                 label="刷新概况"
-                @click="load"
+                @click="() => load({ refreshMeta: true })"
               />
             </h2>
             <div class="row-actions">

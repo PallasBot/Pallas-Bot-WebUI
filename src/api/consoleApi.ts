@@ -464,9 +464,18 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
   return communityStatsInflight;
 }
 
+let shardObsInflight: Promise<ShardObservabilityData> | null = null;
+
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {
-  const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
-  return unwrap(data, "/shard-observability");
+  if (!shardObsInflight) {
+    shardObsInflight = (async () => {
+      const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
+      return unwrap(data, "/shard-observability");
+    })().finally(() => {
+      shardObsInflight = null;
+    });
+  }
+  return shardObsInflight;
 }
 
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {
@@ -861,9 +870,18 @@ export async function postAiNcmLogout(): Promise<AiProxyResult> {
   return unwrap(data, "/ai-extension/ncm/logout");
 }
 
+let updateCheckInflight: Promise<UpdateCheckData> | null = null;
+
 export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
-  const { data } = await http.get<ApiOk<UpdateCheckData>>("/update/check");
-  return unwrap(data, "/update/check");
+  if (!updateCheckInflight) {
+    updateCheckInflight = (async () => {
+      const { data } = await http.get<ApiOk<UpdateCheckData>>("/update/check");
+      return unwrap(data, "/update/check");
+    })().finally(() => {
+      updateCheckInflight = null;
+    });
+  }
+  return updateCheckInflight;
 }
 
 export async function postUpdateApply(): Promise<UpdateApplyData> {
@@ -871,9 +889,18 @@ export async function postUpdateApply(): Promise<UpdateApplyData> {
   return unwrap(data, "/update/apply");
 }
 
+let botUpdateCheckInflight: Promise<BotUpdateCheckData> | null = null;
+
 export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
-  const { data } = await http.get<ApiOk<BotUpdateCheckData>>("/update/bot/check");
-  return unwrap(data, "/update/bot/check");
+  if (!botUpdateCheckInflight) {
+    botUpdateCheckInflight = (async () => {
+      const { data } = await http.get<ApiOk<BotUpdateCheckData>>("/update/bot/check");
+      return unwrap(data, "/update/bot/check");
+    })().finally(() => {
+      botUpdateCheckInflight = null;
+    });
+  }
+  return botUpdateCheckInflight;
 }
 
 export async function postBotUpdateApply(): Promise<BotUpdateApplyData> {

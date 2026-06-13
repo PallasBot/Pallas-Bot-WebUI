@@ -389,7 +389,9 @@ onMounted(() => {
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
   void refreshConsoleMeta();
-  void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
+  if (route.name !== "home") {
+    void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
+  }
   healthPollTimer = setInterval(() => {
     void refreshConsoleMeta({ silent: true });
   }, CONSOLE_META_POLL_MS);
