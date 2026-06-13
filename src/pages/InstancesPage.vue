@@ -57,6 +57,7 @@ const draft = ref<{
   security: boolean;
   auto_accept_friend: boolean;
   auto_accept_group: boolean;
+  community_roster_show_qq: boolean;
   disabled_plugins: string[];
   admins: number[];
 } | null>(null);
@@ -309,6 +310,7 @@ function startEdit(c: BotConfigPublic) {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
     auto_accept_group: c.auto_accept_group,
+    community_roster_show_qq: c.community_roster_show_qq !== false,
     disabled_plugins: [...(c.disabled_plugins ?? [])],
     admins: [...(c.admins ?? [])],
   };
@@ -335,7 +337,10 @@ function boolSelectVal(v: boolean): string {
   return v ? "1" : "0";
 }
 
-function onBoolSelect(field: "security" | "auto_accept_friend" | "auto_accept_group", raw: string) {
+function onBoolSelect(
+  field: "security" | "auto_accept_friend" | "auto_accept_group" | "community_roster_show_qq",
+  raw: string,
+) {
   if (!draft.value) return;
   draft.value[field] = raw === "1";
 }
@@ -855,6 +860,29 @@ onUnmounted(() => {
                     <option value="1">开启</option>
                     <option value="0">关闭</option>
                   </select>
+                </div>
+                <div class="bot-config-edit__field">
+                  <label>社区展示 QQ</label>
+                  <select
+                    class="sel"
+                    style="width: 100%"
+                    :value="boolSelectVal(draft.community_roster_show_qq)"
+                    @change="
+                      onBoolSelect(
+                        'community_roster_show_qq',
+                        ($event.target as HTMLSelectElement).value,
+                      )
+                    "
+                  >
+                    <option value="1">开启</option>
+                    <option value="0">关闭</option>
+                  </select>
+                  <p
+                    class="muted"
+                    style="margin: 6px 0 0; font-size: 12px"
+                  >
+                    需在「通用配置 → 在线统计与社区主站」开启「公开牛牛 QQ」后生效。
+                  </p>
                 </div>
               </div>
               <div class="bot-config-edit__field">

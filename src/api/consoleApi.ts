@@ -824,6 +824,7 @@ export async function putBotConfig(
     auto_accept_friend: boolean;
     auto_accept_group: boolean;
     security: boolean;
+    community_roster_show_qq: boolean;
   }>,
 ): Promise<BotConfigPublic> {
   const { data } = await http.put<ApiOk<BotConfigPublic>>(`/bot-configs/${account}`, body);

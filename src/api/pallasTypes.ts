@@ -623,6 +623,8 @@ export interface BotConfigPublic {
   taken_name: Record<string, number>;
   drunk: Record<string, number>;
   disabled_plugins: string[];
+  /** 是否在社区主站名册展示本牛 QQ（默认开；需通用配置开启「公开牛牛 QQ」） */
+  community_roster_show_qq: boolean;
 }
 
 export interface GroupConfigPublic {
