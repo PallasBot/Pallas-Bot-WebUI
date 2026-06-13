@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import * as d3 from "d3";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { fetchCommunityCorpusHot } from "@/api/consoleApi";
-import type { CommunityCorpusHotData, CommunityHotPeriod, HotCorpusItem } from "@/api/pallasTypes";
+import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/consoleApi";
+import type { CommunityCorpusHotData, CommunityHotTab, HotCorpusItem } from "@/api/pallasTypes";
 import {
   hotBubbleFill,
   hotBubbleFontSize,
@@ -11,17 +11,24 @@ import {
   type HotBubbleLayoutNode,
 } from "@/utils/hotBubbleLayout";
 
-const props = defineProps<{
-  reloadToken?: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    reloadToken?: number;
+    source?: "community" | "local";
+  }>(),
+  {
+    source: "community",
+  },
+);
 
-const periods: Array<{ key: CommunityHotPeriod; label: string }> = [
+const communityTabs: Array<{ key: CommunityHotTab; label: string }> = [
+  { key: "pool", label: "高频池" },
   { key: "day", label: "今日" },
   { key: "week", label: "本周" },
   { key: "month", label: "本月" },
 ];
 
-const period = ref<CommunityHotPeriod>("day");
+const tab = ref<CommunityHotTab>("pool");
 const busy = ref(false);
 const err = ref("");
 const data = ref<CommunityCorpusHotData | null>(null);
@@ -31,7 +38,12 @@ let resizeObserver: ResizeObserver | null = null;
 let resizeTimer: number | null = null;
 let renderToken = 0;
 
-const periodLabel = computed(() => periods.find((row) => row.key === period.value)?.label || "今日");
+const tabLabel = computed(() => communityTabs.find((row) => row.key === tab.value)?.label || "高频池");
+
+const scopeLabel = computed(() => {
+  if (props.source === "local") return "本机累计";
+  return tab.value === "pool" ? "社区高频池" : `${tabLabel.value}近期活跃`;
+});
 
 const items = computed((): HotCorpusItem[] => data.value?.items || []);
 
@@ -64,7 +76,10 @@ async function loadHot(bypassCache = false) {
   busy.value = true;
   err.value = "";
   try {
-    data.value = await fetchCommunityCorpusHot(period.value, { bypassCache });
+    data.value =
+      props.source === "local"
+        ? await fetchLocalCorpusHot({ bypassCache })
+        : await fetchCommunityCorpusHot(tab.value, { bypassCache });
     if (selectedKeywords.value && !data.value.items.some((item) => item.keywords === selectedKeywords.value)) {
       selectedKeywords.value = null;
     }
@@ -80,9 +95,9 @@ async function loadHot(bypassCache = false) {
   }
 }
 
-function selectPeriod(next: CommunityHotPeriod) {
-  if (next === period.value || busy.value) return;
-  period.value = next;
+function selectTab(next: CommunityHotTab) {
+  if (next === tab.value || busy.value) return;
+  tab.value = next;
   selectedKeywords.value = null;
   void loadHot();
 }
@@ -106,7 +121,7 @@ async function renderBubbleChart() {
     .attr("width", "100%")
     .attr("height", height)
     .attr("role", "img")
-    .attr("aria-label", "共享语料热词气泡图");
+    .attr("aria-label", props.source === "local" ? "本机语料热词气泡图" : "共享语料热词气泡图");
 
   const node = svg
     .selectAll<SVGGElement, HotBubbleLayoutNode>("g.hot-bubble-node")
@@ -184,20 +199,21 @@ watch(
 <template>
   <div class="corpus-hot">
     <div
+      v-if="source === 'community'"
       class="corpus-hot__tabs"
       role="tablist"
-      aria-label="热词时间范围"
+      aria-label="热词统计范围"
     >
       <button
-        v-for="row in periods"
+        v-for="row in communityTabs"
         :key="row.key"
         type="button"
         class="corpus-hot__tab"
-        :class="{ 'corpus-hot__tab--active': period === row.key }"
+        :class="{ 'corpus-hot__tab--active': tab === row.key }"
         role="tab"
-        :aria-selected="period === row.key ? 'true' : 'false'"
+        :aria-selected="tab === row.key ? 'true' : 'false'"
         :disabled="busy"
-        @click="selectPeriod(row.key)"
+        @click="selectTab(row.key)"
       >
         {{ row.label }}
       </button>
@@ -207,7 +223,7 @@ watch(
       v-if="busy && !items.length"
       class="muted corpus-hot__status"
     >
-      加载{{ periodLabel }}热词…
+      加载{{ scopeLabel }}热词…
     </p>
     <p
       v-else-if="err"
@@ -219,13 +235,21 @@ watch(
       v-else-if="!items.length"
       class="muted corpus-hot__status"
     >
-      该时段暂无共享语料热词。接入并贡献语料后，这里会以气泡图展示社区最热触发词。
+      <template v-if="source === 'local'">
+        暂无本机语料热词。日常接话学习后，这里会展示本部署累计最热触发词。
+      </template>
+      <template v-else-if="tab === 'pool'">
+        暂无共享语料高频词。接入并贡献语料后，这里会展示社区累计最热触发词。
+      </template>
+      <template v-else>
+        该时段暂无近期活跃热词。可切换到「高频池」查看累计热度。
+      </template>
     </p>
     <p
       v-else
       class="muted corpus-hot__status"
     >
-      {{ periodLabel }}最热触发词 · 气泡越大越热 · 点击查看代表回复
+      {{ scopeLabel }} · 气泡越大越热 · 点击查看代表回复
     </p>
 
     <div
@@ -246,7 +270,12 @@ watch(
             {{ selectedItem.keywords }}
           </h3>
           <p class="corpus-hot__detail-meta muted">
-            {{ periodLabel }}热度 {{ selectedItem.score }}
+            <template v-if="source === 'local' || tab === 'pool'">
+              累计热度 {{ selectedItem.score }}
+            </template>
+            <template v-else>
+              {{ tabLabel }}热度 {{ selectedItem.score }}
+            </template>
           </p>
         </div>
         <button

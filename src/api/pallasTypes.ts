@@ -97,7 +97,9 @@ export interface CommunityStatsData {
   federation?: FederationPoolStatsData | null;
 }
 
+export type CommunityHotMode = "pool" | "recent" | "fleet";
 export type CommunityHotPeriod = "day" | "week" | "month";
+export type CommunityHotTab = "pool" | CommunityHotPeriod;
 
 export interface HotCorpusAnswerData {
   answer_keywords: string;
@@ -112,6 +114,7 @@ export interface HotCorpusItem {
 }
 
 export interface CommunityCorpusHotData {
+  mode: CommunityHotMode;
   period: CommunityHotPeriod;
   window_sec: number;
   as_of: string;

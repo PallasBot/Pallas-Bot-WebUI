@@ -779,9 +779,37 @@ onMounted(() => {
           </div>
           <div class="panel__bd">
             <p class="muted community-page__hot-lead">
-              社区共享池按日/周/月汇总的最热触发词（气泡图，颜色越深越热）。点击气泡查看代表回复。
+              社区共享池热词：默认展示累计高频池；「今日/本周/本月」为近期活跃窗口。点击气泡查看代表回复。
             </p>
-            <CorpusWordCloud :reload-token="hotReloadToken" />
+            <CorpusWordCloud
+              source="community"
+              :reload-token="hotReloadToken"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="community-local-hot"
+        class="community-page__section"
+      >
+        <div class="panel community-page__panel">
+          <div class="panel__hd panel__hd--split community-page__panel-hd">
+            <h2 class="panel__title">
+              <span
+                class="panel__title-ico"
+                aria-hidden="true"
+              >◉</span>本机语料热词
+            </h2>
+          </div>
+          <div class="panel__bd">
+            <p class="muted community-page__hot-lead">
+              本部署全部群的学习语料累计热度，与共享池独立统计。
+            </p>
+            <CorpusWordCloud
+              source="local"
+              :reload-token="hotReloadToken"
+            />
           </div>
         </div>
       </section>

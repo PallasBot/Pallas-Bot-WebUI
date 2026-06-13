@@ -43,7 +43,9 @@ import type {
   MessageStatsData,
   CommunityStatsData,
   CommunityCorpusHotData,
+  CommunityHotMode,
   CommunityHotPeriod,
+  CommunityHotTab,
   CorpusStatusData,
   FederationOnboardingData,
   ConsoleDailyStatsData,
@@ -469,14 +471,18 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
 const CORPUS_HOT_FRESH_MS = 120_000;
 const corpusHotCache = new Map<string, { data: CommunityCorpusHotData; ts: number }>();
 const corpusHotInflight = new Map<string, Promise<CommunityCorpusHotData>>();
+const localCorpusHotCache = new Map<string, { data: CommunityCorpusHotData; ts: number }>();
+const localCorpusHotInflight = new Map<string, Promise<CommunityCorpusHotData>>();
+const LOCAL_CORPUS_HOT_FRESH_MS = 60_000;
 
 export async function fetchCommunityCorpusHot(
-  period: CommunityHotPeriod = "day",
+  tab: CommunityHotTab = "pool",
   options?: { bypassCache?: boolean; limit?: number },
 ): Promise<CommunityCorpusHotData> {
-  const periodNorm: CommunityHotPeriod = period === "week" || period === "month" ? period : "day";
   const limit = Math.max(5, Math.min(options?.limit ?? 40, 80));
-  const cacheKey = `${periodNorm}:${limit}`;
+  const mode: CommunityHotMode = tab === "pool" ? "pool" : "recent";
+  const period: CommunityHotPeriod = tab === "pool" ? "day" : tab;
+  const cacheKey = `${mode}:${period}:${limit}`;
   const bypass = options?.bypassCache === true;
   const now = Date.now();
   const cached = corpusHotCache.get(cacheKey);
@@ -487,7 +493,7 @@ export async function fetchCommunityCorpusHot(
   if (!inflight) {
     inflight = (async () => {
       const { data } = await http.get<ApiOk<CommunityCorpusHotData>>("/community-corpus-hot", {
-        params: { period: periodNorm, limit },
+        params: { mode, period, limit },
       });
       const parsed = unwrap(data, "/community-corpus-hot");
       corpusHotCache.set(cacheKey, { data: parsed, ts: Date.now() });
@@ -496,6 +502,38 @@ export async function fetchCommunityCorpusHot(
       corpusHotInflight.delete(cacheKey);
     });
     corpusHotInflight.set(cacheKey, inflight);
+  }
+  return inflight;
+}
+
+export async function fetchLocalCorpusHot(
+  options?: { bypassCache?: boolean; limit?: number; scope?: "global" | "group"; groupId?: number },
+): Promise<CommunityCorpusHotData> {
+  const limit = Math.max(5, Math.min(options?.limit ?? 40, 80));
+  const scope = options?.scope === "group" ? "group" : "global";
+  const groupId = options?.groupId ?? 0;
+  const cacheKey = `${scope}:${groupId}:${limit}`;
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  const cached = localCorpusHotCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < LOCAL_CORPUS_HOT_FRESH_MS) {
+    return cached.data;
+  }
+  let inflight = localCorpusHotInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = (async () => {
+      const params: Record<string, string | number> = { scope, limit };
+      if (scope === "group" && options?.groupId != null) {
+        params.group_id = options.groupId;
+      }
+      const { data } = await http.get<ApiOk<CommunityCorpusHotData>>("/local-corpus-hot", { params });
+      const parsed = unwrap(data, "/local-corpus-hot");
+      localCorpusHotCache.set(cacheKey, { data: parsed, ts: Date.now() });
+      return parsed;
+    })().finally(() => {
+      localCorpusHotInflight.delete(cacheKey);
+    });
+    localCorpusHotInflight.set(cacheKey, inflight);
   }
   return inflight;
 }
