@@ -16,6 +16,7 @@ import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatCard from "@/components/StatCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { PALLAS_COMMUNITY_HUB, PALLAS_COMMUNITY_HUB_FALLBACK } from "@/utils/pallasExternalLinks";
 
 const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
@@ -234,9 +235,13 @@ const federationCoordEndpoint = computed(() => {
   return port ? `${host}:${port}${db}` : `${host}${db}`;
 });
 
-const statsPrimaryUrl = computed(() => (federationOnboarding.value?.stats_primary_url || "").trim());
+const communityHubUrl = computed(
+  () => (federationOnboarding.value?.stats_primary_url || PALLAS_COMMUNITY_HUB).trim() || PALLAS_COMMUNITY_HUB,
+);
 
-const statsFallbackUrl = computed(() => (federationOnboarding.value?.stats_fallback_url || "").trim());
+const communityHubFallbackUrl = computed(
+  () => (federationOnboarding.value?.stats_fallback_url || PALLAS_COMMUNITY_HUB_FALLBACK).trim(),
+);
 
 const controlPlaneConfigLink = computed(() => ({
   name: "common-config" as const,
@@ -365,7 +370,19 @@ onMounted(() => {
       <section class="community-page__intro panel">
         <div class="panel__bd">
           <p class="community-page__intro-lead">
-            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。数据只读；改设置请前往
+            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。公开页面：
+            <a
+              class="community-page__inline-link"
+              :href="communityHubUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >社区主站</a><template v-if="communityHubFallbackUrl"><span aria-hidden="true"> · </span><a
+              class="community-page__inline-link"
+              :href="communityHubFallbackUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >备站</a></template>。
+            数据只读；改设置请前往
             <RouterLink to="/common-config?section=corpus_federation">语料联邦</RouterLink>
             或
             <RouterLink to="/common-config?section=community_stats">在线统计与社区主站</RouterLink>。
@@ -401,24 +418,26 @@ onMounted(() => {
         class="community-page__section"
       >
         <div class="panel community-page__panel">
-          <div class="panel__hd panel__hd--split community-page__panel-hd">
+          <div class="panel__hd panel__hd--split community-page__panel-hd community-page__deploy-panel-hd">
             <h2 class="panel__title">
               <span
                 class="panel__title-ico"
                 aria-hidden="true"
               >{{ panelNavIcon }}</span>全网部署
-            </h2>
-            <div class="row-actions community-page__hd-actions">
-              <PanelSidebarAdd main-path="/community" />
-              <RouterLink
-                class="btn btn--ghost btn--sm"
-                to="/community-stats-config"
-              >在线统计设置</RouterLink>
               <RefreshIconButton
                 :busy="refreshBusy"
                 label="刷新本页数据"
                 @click="refresh"
               />
+            </h2>
+            <div class="row-actions community-page__hd-actions community-page__deploy-hd-actions">
+              <span class="friends-groups-hd-pin-wrap community-page__deploy-hd-pin-wrap">
+                <PanelSidebarAdd main-path="/community" />
+              </span>
+              <RouterLink
+                class="btn btn--ghost btn--sm community-page__deploy-settings-btn"
+                to="/community-stats-config"
+              >在线统计设置</RouterLink>
             </div>
           </div>
           <div class="panel__bd">
@@ -590,13 +609,6 @@ onMounted(() => {
               </p>
             </div>
 
-            <p
-              v-if="federationOnboarding?.stats_failover_note"
-              class="community-page__federation-failover-note muted"
-            >
-              {{ federationOnboarding.stats_failover_note }}
-            </p>
-
             <dl
               v-if="federationOnboarding"
               class="home-dl community-page__detail-dl community-page__federation-meta"
@@ -609,35 +621,6 @@ onMounted(() => {
                   class="badge"
                   :class="federationOnboarding.bootstrap_enabled ? 'badge--ok' : ''"
                 >{{ federationOnboarding.bootstrap_enabled ? "已开启" : "已关闭" }}</span>
-              </dd>
-              <dt>中心（主站）</dt>
-              <dd>
-                <a
-                  v-if="statsPrimaryUrl"
-                  class="community-page__ext-link community-page__mono community-page__meta-line"
-                  :href="statsPrimaryUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ statsPrimaryUrl }}</a>
-                <span
-                  v-else
-                  class="muted"
-                >—</span>
-              </dd>
-              <dt>中心（备站）</dt>
-              <dd class="community-page__federation-fallback-dd">
-                <a
-                  v-if="statsFallbackUrl"
-                  class="community-page__ext-link community-page__mono community-page__meta-line"
-                  :href="statsFallbackUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ statsFallbackUrl }}</a>
-                <span
-                  v-else
-                  class="muted"
-                >—</span>
-                <span class="community-page__federation-fallback-tag muted">主站不可用时牛牛会自动改用</span>
               </dd>
               <dt>去重服务器</dt>
               <dd class="community-page__federation-coord-dd">
