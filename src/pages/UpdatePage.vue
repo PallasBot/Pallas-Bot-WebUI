@@ -993,6 +993,54 @@ onMounted(() => {
 
 .update-page__release-notes-body--md {
   white-space: normal;
+  font-family: inherit;
+}
+
+.update-page__release-notes-body--md :deep(h2),
+.update-page__release-notes-body--md :deep(h3),
+.update-page__release-notes-body--md :deep(h4) {
+  margin: 10px 0 6px;
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.update-page__release-notes-body--md :deep(h2) {
+  font-size: 14px;
+}
+
+.update-page__release-notes-body--md :deep(h3) {
+  font-size: 13px;
+}
+
+.update-page__release-notes-body--md :deep(h4) {
+  font-size: 12px;
+}
+
+.update-page__release-notes-body--md :deep(p) {
+  margin: 4px 0;
+}
+
+.update-page__release-notes-body--md :deep(ul),
+.update-page__release-notes-body--md :deep(ol) {
+  margin: 4px 0 8px;
+  padding-left: 1.25rem;
+}
+
+.update-page__release-notes-body--md :deep(li) {
+  margin-bottom: 4px;
+}
+
+.update-page__release-notes-body--md :deep(blockquote) {
+  margin: 8px 0;
+  padding: 0 0 0 10px;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.update-page__release-notes-body--md :deep(strong) {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .update-page__release-notes-body--md :deep(a.update-page__commit-link) {
