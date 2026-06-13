@@ -779,7 +779,7 @@ onMounted(() => {
           </div>
           <div class="panel__bd">
             <p class="muted community-page__hot-lead">
-              社区共享池按日/周/月汇总的最热触发词与代表回复（只读）。点击词条查看回复。
+              社区共享池按日/周/月汇总的最热触发词（气泡图，颜色越深越热）。点击气泡查看代表回复。
             </p>
             <CorpusWordCloud :reload-token="hotReloadToken" />
           </div>

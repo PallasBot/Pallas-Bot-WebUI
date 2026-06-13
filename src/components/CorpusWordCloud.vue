@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import * as d3 from "d3";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { fetchCommunityCorpusHot } from "@/api/consoleApi";
 import type { CommunityCorpusHotData, CommunityHotPeriod, HotCorpusItem } from "@/api/pallasTypes";
+import {
+  hotBubbleFill,
+  hotBubbleFontSize,
+  hotBubbleLabel,
+  layoutHotBubbles,
+  type HotBubbleLayoutNode,
+} from "@/utils/hotBubbleLayout";
 
 const props = defineProps<{
   reloadToken?: number;
@@ -18,25 +26,21 @@ const busy = ref(false);
 const err = ref("");
 const data = ref<CommunityCorpusHotData | null>(null);
 const selectedKeywords = ref<string | null>(null);
+const cloudHost = ref<HTMLElement | null>(null);
+let resizeObserver: ResizeObserver | null = null;
+let renderToken = 0;
 
 const periodLabel = computed(() => periods.find((row) => row.key === period.value)?.label || "今日");
 
 const items = computed((): HotCorpusItem[] => data.value?.items || []);
 
-const maxScore = computed(() => Math.max(...items.value.map((item) => item.score), 1));
-
 const selectedItem = computed(() =>
   items.value.find((item) => item.keywords === selectedKeywords.value) || null,
 );
 
-function wordFontSize(score: number): string {
-  const ratio = 0.35 + score / maxScore.value;
-  const rem = Math.max(0.78, Math.min(1.65, 0.78 + ratio * 0.9));
-  return `${rem}rem`;
-}
-
 function toggleKeyword(keywords: string) {
   selectedKeywords.value = selectedKeywords.value === keywords ? null : keywords;
+  void renderBubbleChart();
 }
 
 async function loadHot(bypassCache = false) {
@@ -47,10 +51,13 @@ async function loadHot(bypassCache = false) {
     if (selectedKeywords.value && !data.value.items.some((item) => item.keywords === selectedKeywords.value)) {
       selectedKeywords.value = null;
     }
+    await nextTick();
+    await renderBubbleChart();
   } catch (e) {
     data.value = null;
     selectedKeywords.value = null;
     err.value = e instanceof Error ? e.message : String(e);
+    if (cloudHost.value) cloudHost.value.innerHTML = "";
   } finally {
     busy.value = false;
   }
@@ -63,8 +70,79 @@ function selectPeriod(next: CommunityHotPeriod) {
   void loadHot();
 }
 
+async function renderBubbleChart() {
+  const host = cloudHost.value;
+  if (!host) return;
+  const token = ++renderToken;
+  host.innerHTML = "";
+  if (!items.value.length) return;
+
+  const width = host.clientWidth || 640;
+  const { nodes, height } = layoutHotBubbles(items.value, width);
+
+  const svg = d3
+    .select(host)
+    .append("svg")
+    .attr("class", "hot-bubble-svg")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("width", "100%")
+    .attr("height", height)
+    .attr("role", "img")
+    .attr("aria-label", "共享语料热词气泡图");
+
+  const node = svg
+    .selectAll<SVGGElement, HotBubbleLayoutNode>("g.hot-bubble-node")
+    .data(nodes)
+    .join("g")
+    .attr("class", (d) => {
+      const active = d.item.keywords === selectedKeywords.value ? " hot-bubble-node--active" : "";
+      return `hot-bubble-node${active}`;
+    })
+    .attr("transform", (d) => `translate(${d.x},${d.y})`)
+    .style("--hot-delay", (_, i) => `${Math.min(i * 35, 640)}ms`)
+    .attr("role", "button")
+    .attr("tabindex", 0)
+    .attr("aria-pressed", (d) => (d.item.keywords === selectedKeywords.value ? "true" : "false"))
+    .on("click", (_, d) => {
+      toggleKeyword(d.item.keywords);
+    })
+    .on("keydown", (event, d) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleKeyword(d.item.keywords);
+    });
+
+  node
+    .append("circle")
+    .attr("r", (d) => d.r)
+    .attr("class", "hot-bubble-node__disk")
+    .attr("fill", (d) => hotBubbleFill(d.scoreRatio));
+
+  node
+    .append("text")
+    .attr("class", "hot-bubble-node__label")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "central")
+    .attr("font-size", (d) => hotBubbleFontSize(d.r))
+    .text((d) => hotBubbleLabel(d.item.keywords, d.r));
+
+  node.append("title").text((d) => `${d.item.keywords}\n热度 ${d.item.score}`);
+
+  if (token !== renderToken) return;
+}
+
 onMounted(() => {
   void loadHot();
+  if (!cloudHost.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    void renderBubbleChart();
+  });
+  resizeObserver.observe(cloudHost.value);
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
 });
 
 watch(
@@ -113,27 +191,21 @@ watch(
       v-else-if="!items.length"
       class="muted corpus-hot__status"
     >
-      该时段暂无共享语料热词。接入并贡献语料后，这里会展示社区最热触发词。
+      该时段暂无共享语料热词。接入并贡献语料后，这里会以气泡图展示社区最热触发词。
+    </p>
+    <p
+      v-else
+      class="muted corpus-hot__status"
+    >
+      {{ periodLabel }}最热触发词 · 气泡越大越热 · 点击查看代表回复
     </p>
 
     <div
-      v-if="items.length"
-      class="corpus-hot__cloud"
-      aria-label="热词云"
-    >
-      <button
-        v-for="item in items"
-        :key="item.keywords"
-        type="button"
-        class="corpus-hot__word"
-        :class="{ 'corpus-hot__word--active': selectedKeywords === item.keywords }"
-        :style="{ fontSize: wordFontSize(item.score) }"
-        :title="`热度 ${item.score}`"
-        @click="toggleKeyword(item.keywords)"
-      >
-        {{ item.keywords }}
-      </button>
-    </div>
+      v-show="items.length"
+      ref="cloudHost"
+      class="corpus-hot__canvas"
+      aria-label="热词气泡图"
+    />
 
     <div
       v-if="selectedItem"
