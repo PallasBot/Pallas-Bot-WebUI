@@ -779,7 +779,7 @@ onMounted(() => {
           </div>
           <div class="panel__bd">
             <p class="muted community-page__hot-lead">
-              社区共享池热词：默认展示累计高频池；「今日/本周/本月」为近期活跃窗口。点击气泡查看代表回复。
+              默认展示近24h各部署热词叠加（机群榜）；「高频池」为共享语料累计，「今日/本周/本月」为近期活跃窗口。
             </p>
             <CorpusWordCloud
               source="community"

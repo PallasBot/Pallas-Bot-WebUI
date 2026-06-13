@@ -476,12 +476,13 @@ const localCorpusHotInflight = new Map<string, Promise<CommunityCorpusHotData>>(
 const LOCAL_CORPUS_HOT_FRESH_MS = 60_000;
 
 export async function fetchCommunityCorpusHot(
-  tab: CommunityHotTab = "pool",
+  tab: CommunityHotTab = "fleet",
   options?: { bypassCache?: boolean; limit?: number },
 ): Promise<CommunityCorpusHotData> {
   const limit = Math.max(5, Math.min(options?.limit ?? 40, 80));
-  const mode: CommunityHotMode = tab === "pool" ? "pool" : "recent";
-  const period: CommunityHotPeriod = tab === "pool" ? "day" : tab;
+  const mode: CommunityHotMode =
+    tab === "fleet" ? "fleet" : tab === "pool" ? "pool" : "recent";
+  const period: CommunityHotPeriod = tab === "pool" || tab === "fleet" ? "day" : tab;
   const cacheKey = `${mode}:${period}:${limit}`;
   const bypass = options?.bypassCache === true;
   const now = Date.now();

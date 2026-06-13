@@ -22,13 +22,14 @@ const props = withDefaults(
 );
 
 const communityTabs: Array<{ key: CommunityHotTab; label: string }> = [
+  { key: "fleet", label: "机群" },
   { key: "pool", label: "高频池" },
   { key: "day", label: "今日" },
   { key: "week", label: "本周" },
   { key: "month", label: "本月" },
 ];
 
-const tab = ref<CommunityHotTab>("pool");
+const tab = ref<CommunityHotTab>("fleet");
 const busy = ref(false);
 const err = ref("");
 const data = ref<CommunityCorpusHotData | null>(null);
@@ -38,12 +39,19 @@ let resizeObserver: ResizeObserver | null = null;
 let resizeTimer: number | null = null;
 let renderToken = 0;
 
-const tabLabel = computed(() => communityTabs.find((row) => row.key === tab.value)?.label || "高频池");
+const tabLabel = computed(() => communityTabs.find((row) => row.key === tab.value)?.label || "机群");
 
 const scopeLabel = computed(() => {
   if (props.source === "local") return "本机累计";
+  if (tab.value === "fleet") return "近24h机群叠加";
   return tab.value === "pool" ? "社区高频池" : `${tabLabel.value}近期活跃`;
 });
+
+const statusHint = computed(() =>
+  props.source === "local" || tab.value === "fleet"
+    ? "气泡越大越热 · 点击查看热度"
+    : "气泡越大越热 · 点击查看代表回复",
+);
 
 const items = computed((): HotCorpusItem[] => data.value?.items || []);
 
@@ -238,18 +246,21 @@ watch(
       <template v-if="source === 'local'">
         暂无本机语料热词。日常接话学习后，这里会展示本部署累计最热触发词。
       </template>
+      <template v-else-if="tab === 'fleet'">
+        暂无机群热词。各部署开启语料贡献并上报心跳后，这里会展示近24h热词叠加榜。
+      </template>
       <template v-else-if="tab === 'pool'">
         暂无共享语料高频词。接入并贡献语料后，这里会展示社区累计最热触发词。
       </template>
       <template v-else>
-        该时段暂无近期活跃热词。可切换到「高频池」查看累计热度。
+        该时段暂无近期活跃热词。可切换到「机群」或「高频池」查看。
       </template>
     </p>
     <p
       v-else
       class="muted corpus-hot__status"
     >
-      {{ scopeLabel }} · 气泡越大越热 · 点击查看代表回复
+      {{ scopeLabel }} · {{ statusHint }}
     </p>
 
     <div
@@ -273,6 +284,9 @@ watch(
             <template v-if="source === 'local' || tab === 'pool'">
               累计热度 {{ selectedItem.score }}
             </template>
+            <template v-else-if="tab === 'fleet'">
+              机群叠加热度 {{ selectedItem.score }}
+            </template>
             <template v-else>
               {{ tabLabel }}热度 {{ selectedItem.score }}
             </template>
@@ -292,7 +306,7 @@ watch(
           v-if="!selectedItem.answers.length"
           class="corpus-hot__reply corpus-hot__reply--empty muted"
         >
-          暂无代表回复
+          {{ tab === 'fleet' ? '机群榜不含代表回复' : '暂无代表回复' }}
         </li>
         <li
           v-for="(answer, idx) in selectedItem.answers"

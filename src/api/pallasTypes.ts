@@ -99,7 +99,7 @@ export interface CommunityStatsData {
 
 export type CommunityHotMode = "pool" | "recent" | "fleet";
 export type CommunityHotPeriod = "day" | "week" | "month";
-export type CommunityHotTab = "pool" | CommunityHotPeriod;
+export type CommunityHotTab = "fleet" | "pool" | CommunityHotPeriod;
 
 export interface HotCorpusAnswerData {
   answer_keywords: string;
