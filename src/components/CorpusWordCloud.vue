@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/consoleApi";
 import type { CommunityCorpusHotData, CommunityHotTab, HotCorpusItem } from "@/api/pallasTypes";
-import { layoutHotTags, rankHotItems, type HotTagLayoutNode } from "@/utils/hotBubbleLayout";
+import { rankHotItems, type HotTagNode } from "@/utils/hotBubbleLayout";
 
 const props = withDefaults(
   defineProps<{
@@ -27,11 +27,9 @@ const busy = ref(false);
 const err = ref("");
 const data = ref<CommunityCorpusHotData | null>(null);
 const selectedKeywords = ref<string | null>(null);
-const cloudHost = ref<HTMLElement | null>(null);
-const layoutNodes = ref<HotTagLayoutNode[]>([]);
-const cloudHeight = ref(280);
-let resizeObserver: ResizeObserver | null = null;
-let resizeTimer: number | null = null;
+const cloudLoading = ref(false);
+const cloudEntering = ref(false);
+let enterTimer: number | null = null;
 
 const tabLabel = computed(() => communityTabs.find((row) => row.key === tab.value)?.label || "机群");
 
@@ -48,6 +46,7 @@ const statusHint = computed(() =>
 );
 
 const items = computed((): HotCorpusItem[] => data.value?.items || []);
+const rankedNodes = computed(() => rankHotItems(items.value));
 
 const selectedItem = computed(() =>
   items.value.find((item) => item.keywords === selectedKeywords.value) || null,
@@ -55,10 +54,10 @@ const selectedItem = computed(() =>
 
 const selectedRank = computed(() => {
   if (!selectedKeywords.value) return null;
-  return rankHotItems(items.value).find((node) => node.item.keywords === selectedKeywords.value)?.rank ?? null;
+  return rankedNodes.value.find((node) => node.item.keywords === selectedKeywords.value)?.rank ?? null;
 });
 
-function pillClasses(node: HotTagLayoutNode): string[] {
+function pillClasses(node: HotTagNode): string[] {
   const classes = ["corpus-hot__pill", `corpus-hot__pill--${node.sizeClass}`];
   if (node.rank <= 3) classes.push(`corpus-hot__pill--top${node.rank}`);
   if (node.item.keywords === selectedKeywords.value) classes.push("corpus-hot__pill--active");
@@ -73,21 +72,17 @@ function clearSelection() {
   selectedKeywords.value = null;
 }
 
-function updateLayout() {
-  const host = cloudHost.value;
-  if (!host || !items.value.length) {
-    layoutNodes.value = [];
-    cloudHeight.value = 280;
-    return;
-  }
-  const width = host.clientWidth || 640;
-  if (width < 48) return;
-  const { nodes, height } = layoutHotTags(items.value, width);
-  layoutNodes.value = nodes;
-  cloudHeight.value = height;
+function triggerCloudEnter() {
+  cloudEntering.value = true;
+  if (enterTimer != null) window.clearTimeout(enterTimer);
+  enterTimer = window.setTimeout(() => {
+    cloudEntering.value = false;
+    enterTimer = null;
+  }, 640);
 }
 
 async function loadHot(bypassCache = false) {
+  const tabSwitch = cloudLoading.value;
   busy.value = true;
   err.value = "";
   try {
@@ -98,42 +93,34 @@ async function loadHot(bypassCache = false) {
     if (selectedKeywords.value && !data.value.items.some((item) => item.keywords === selectedKeywords.value)) {
       selectedKeywords.value = null;
     }
-    await nextTick();
-    updateLayout();
+    if (tabSwitch && rankedNodes.value.length) {
+      triggerCloudEnter();
+    }
   } catch (e) {
     data.value = null;
     selectedKeywords.value = null;
-    layoutNodes.value = [];
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     busy.value = false;
+    cloudLoading.value = false;
   }
 }
 
 function selectTab(next: CommunityHotTab) {
   if (next === tab.value || busy.value) return;
+  if (items.value.length) {
+    cloudLoading.value = true;
+  }
   tab.value = next;
   selectedKeywords.value = null;
   void loadHot();
 }
 
-onMounted(() => {
-  void loadHot();
-  if (!cloudHost.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    if (resizeTimer != null) window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => {
-      updateLayout();
-    }, 120);
-  });
-  resizeObserver.observe(cloudHost.value);
-});
+void loadHot();
 
 onBeforeUnmount(() => {
-  if (resizeTimer != null) window.clearTimeout(resizeTimer);
-  resizeTimer = null;
-  resizeObserver?.disconnect();
-  resizeObserver = null;
+  if (enterTimer != null) window.clearTimeout(enterTimer);
+  enterTimer = null;
 });
 
 watch(
@@ -205,27 +192,26 @@ watch(
 
     <div
       v-show="items.length"
-      ref="cloudHost"
       class="corpus-hot__canvas"
+      :class="{ 'corpus-hot__canvas--loading': cloudLoading }"
       aria-label="共享语料热词云"
     >
       <div
-        v-if="layoutNodes.length"
         class="corpus-hot__cloud"
-        :class="{ 'corpus-hot__cloud--selected': selectedKeywords }"
-        :style="{ height: `${cloudHeight}px` }"
+        :class="{
+          'corpus-hot__cloud--selected': selectedKeywords,
+          'corpus-hot__cloud--tab-enter': cloudEntering,
+        }"
         role="list"
       >
         <button
-          v-for="(node, index) in layoutNodes"
+          v-for="(node, index) in rankedNodes"
           :key="node.item.keywords"
           type="button"
           :class="pillClasses(node)"
           :style="{
             '--heat': node.scoreRatio.toFixed(3),
             '--pill-i': String(index),
-            left: `${node.x}px`,
-            top: `${node.y}px`,
           }"
           role="listitem"
           :aria-pressed="node.item.keywords === selectedKeywords ? 'true' : 'false'"
