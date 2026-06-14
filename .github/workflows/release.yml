@@ -139,35 +139,26 @@ jobs:
 
       - name: Generate changelog
         id: changelog
+        env:
+          VERSION: ${{ steps.ver.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+          INCLUDE_REFACTOR: "1"
         run: |
           set -euo pipefail
-          if git describe --tags --abbrev=0 HEAD~1 >/dev/null 2>&1; then
-            PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1)
-            CURR_TAG="${{ steps.ver.outputs.tag }}"
-            {
-              echo "changelog<<EOF"
-              echo "### 🚀 新功能"
-              FEAT=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^feat" 2>/dev/null || true)
-              [ -n "$FEAT" ] && echo "$FEAT" || echo "* 无"
-              echo ""
-              echo "### 🐛 错误修复"
-              FIX=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^fix" 2>/dev/null || true)
-              [ -n "$FIX" ] && echo "$FIX" || echo "* 无"
-              echo ""
-              echo "### ♻️ 重构"
-              REFACTOR=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --grep="^refactor" 2>/dev/null || true)
-              [ -n "$REFACTOR" ] && echo "$REFACTOR" || echo "* 无"
-              echo ""
-              echo "### 🔨 其他更改"
-              OTHER=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" "$PREV_TAG..HEAD" --invert-grep --grep="^feat\|^fix\|^refactor" 2>/dev/null || true)
-              [ -n "$OTHER" ] && echo "$OTHER" || echo "* 无"
-              echo ""
-              echo "**完整变更**: [\`$PREV_TAG...$CURR_TAG\`](https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURR_TAG)"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "changelog=🎉 **首次发布**" >> "$GITHUB_OUTPUT"
+          chmod +x tools/generate_release_changelog.sh
+          PREVIOUS=""
+          if git rev-parse "${VERSION}^{commit}" >/dev/null 2>&1; then
+            PREVIOUS=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || true)
           fi
+          if [ -z "${PREVIOUS}" ]; then
+            PREVIOUS=$(git tag -l 'v*' --sort=-version:refname | grep -Fxv "${VERSION}" | head -n1 || true)
+          fi
+          CHANGELOG=$(./tools/generate_release_changelog.sh "${PREVIOUS}" "${VERSION}" "${REPOSITORY}")
+          {
+            echo 'changelog<<EOF'
+            echo "${CHANGELOG}"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -185,3 +176,5 @@ jobs:
             ${{ github.event_name == 'workflow_dispatch' && '> **类型**：Actions 手动发版。' || '' }}
             ${{ github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && '> **类型**：直推 `main` / `master` 触发的正式发版（默认 `patch` 递增 + 语义化 `v*` tag）。' || '' }}
             ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.') && '> **类型**：推送语义化 tag 触发的发版。' || '' }}
+
+            附件 **`dist.zip`**：由 Pallas-Bot `pallas_webui` 自动拉取，或手动解压到 `data/pallas_webui/public/`。
