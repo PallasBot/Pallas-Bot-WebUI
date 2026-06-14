@@ -1,15 +1,8 @@
 <script setup lang="ts">
-import * as d3 from "d3";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/consoleApi";
 import type { CommunityCorpusHotData, CommunityHotTab, HotCorpusItem } from "@/api/pallasTypes";
-import {
-  hotBubbleFill,
-  hotBubbleFontSize,
-  hotBubbleLabel,
-  layoutHotBubbles,
-  type HotBubbleLayoutNode,
-} from "@/utils/hotBubbleLayout";
+import { layoutHotTags, rankHotItems, type HotTagLayoutNode } from "@/utils/hotBubbleLayout";
 
 const props = withDefaults(
   defineProps<{
@@ -35,9 +28,10 @@ const err = ref("");
 const data = ref<CommunityCorpusHotData | null>(null);
 const selectedKeywords = ref<string | null>(null);
 const cloudHost = ref<HTMLElement | null>(null);
+const layoutNodes = ref<HotTagLayoutNode[]>([]);
+const cloudHeight = ref(280);
 let resizeObserver: ResizeObserver | null = null;
 let resizeTimer: number | null = null;
-let renderToken = 0;
 
 const tabLabel = computed(() => communityTabs.find((row) => row.key === tab.value)?.label || "机群");
 
@@ -49,8 +43,8 @@ const scopeLabel = computed(() => {
 
 const statusHint = computed(() =>
   props.source === "local" || tab.value === "fleet"
-    ? "气泡越大越热 · 点击查看热度"
-    : "气泡越大越热 · 点击查看代表回复",
+    ? "标签越大越热 · 点击查看热度"
+    : "标签越大越热 · 点击查看代表回复",
 );
 
 const items = computed((): HotCorpusItem[] => data.value?.items || []);
@@ -59,25 +53,38 @@ const selectedItem = computed(() =>
   items.value.find((item) => item.keywords === selectedKeywords.value) || null,
 );
 
-function syncSelectionState() {
-  const host = cloudHost.value;
-  if (!host) return;
-  host.querySelectorAll<SVGGElement>("g.hot-bubble-node").forEach((el) => {
-    const key = el.getAttribute("data-keywords");
-    const active = key !== null && key === selectedKeywords.value;
-    el.classList.toggle("hot-bubble-node--active", active);
-    el.setAttribute("aria-pressed", active ? "true" : "false");
-  });
+const selectedRank = computed(() => {
+  if (!selectedKeywords.value) return null;
+  return rankHotItems(items.value).find((node) => node.item.keywords === selectedKeywords.value)?.rank ?? null;
+});
+
+function pillClasses(node: HotTagLayoutNode): string[] {
+  const classes = ["corpus-hot__pill", `corpus-hot__pill--${node.sizeClass}`];
+  if (node.rank <= 3) classes.push(`corpus-hot__pill--top${node.rank}`);
+  if (node.item.keywords === selectedKeywords.value) classes.push("corpus-hot__pill--active");
+  return classes;
 }
 
 function toggleKeyword(keywords: string) {
   selectedKeywords.value = selectedKeywords.value === keywords ? null : keywords;
-  syncSelectionState();
 }
 
 function clearSelection() {
   selectedKeywords.value = null;
-  syncSelectionState();
+}
+
+function updateLayout() {
+  const host = cloudHost.value;
+  if (!host || !items.value.length) {
+    layoutNodes.value = [];
+    cloudHeight.value = 280;
+    return;
+  }
+  const width = host.clientWidth || 640;
+  if (width < 48) return;
+  const { nodes, height } = layoutHotTags(items.value, width);
+  layoutNodes.value = nodes;
+  cloudHeight.value = height;
 }
 
 async function loadHot(bypassCache = false) {
@@ -92,12 +99,12 @@ async function loadHot(bypassCache = false) {
       selectedKeywords.value = null;
     }
     await nextTick();
-    await renderBubbleChart();
+    updateLayout();
   } catch (e) {
     data.value = null;
     selectedKeywords.value = null;
+    layoutNodes.value = [];
     err.value = e instanceof Error ? e.message : String(e);
-    if (cloudHost.value) cloudHost.value.innerHTML = "";
   } finally {
     busy.value = false;
   }
@@ -110,80 +117,13 @@ function selectTab(next: CommunityHotTab) {
   void loadHot();
 }
 
-async function renderBubbleChart() {
-  const host = cloudHost.value;
-  if (!host) return;
-  const token = ++renderToken;
-  host.innerHTML = "";
-  if (!items.value.length) return;
-
-  const width = host.clientWidth || 640;
-  if (width < 48) return;
-  const { nodes, height } = layoutHotBubbles(items.value, width);
-
-  const svg = d3
-    .select(host)
-    .append("svg")
-    .attr("class", "hot-bubble-svg")
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("width", "100%")
-    .attr("height", height)
-    .attr("role", "img")
-    .attr("aria-label", props.source === "local" ? "本机语料热词气泡图" : "共享语料热词气泡图");
-
-  const node = svg
-    .selectAll<SVGGElement, HotBubbleLayoutNode>("g.hot-bubble-node")
-    .data(nodes)
-    .join("g")
-    .attr("class", (d) => {
-      const active = d.item.keywords === selectedKeywords.value ? " hot-bubble-node--active" : "";
-      return `hot-bubble-node${active}`;
-    })
-    .attr("data-keywords", (d) => d.item.keywords)
-    .attr("transform", (d) => `translate(${d.x},${d.y})`)
-    .attr("role", "button")
-    .attr("tabindex", 0)
-    .attr("aria-pressed", (d) => (d.item.keywords === selectedKeywords.value ? "true" : "false"))
-    .on("click", (_, d) => {
-      toggleKeyword(d.item.keywords);
-    })
-    .on("keydown", (event, d) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      toggleKeyword(d.item.keywords);
-    });
-
-  const body = node
-    .append("g")
-    .attr("class", "hot-bubble-node__body")
-    .style("--hot-delay", (_, i) => `${Math.min(i * 35, 640)}ms`);
-
-  body
-    .append("circle")
-    .attr("r", (d) => d.r)
-    .attr("class", "hot-bubble-node__disk")
-    .attr("fill", (d) => hotBubbleFill(d.scoreRatio));
-
-  body
-    .append("text")
-    .attr("class", "hot-bubble-node__label")
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "central")
-    .attr("font-size", (d) => hotBubbleFontSize(d.r))
-    .text((d) => hotBubbleLabel(d.item.keywords, d.r));
-
-  node.append("title").text((d) => `${d.item.keywords}\n热度 ${d.item.score}`);
-
-  if (token !== renderToken) return;
-}
-
 onMounted(() => {
   void loadHot();
   if (!cloudHost.value) return;
   resizeObserver = new ResizeObserver(() => {
     if (resizeTimer != null) window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
-      void renderBubbleChart();
+      updateLayout();
     }, 120);
   });
   resizeObserver.observe(cloudHost.value);
@@ -267,61 +207,100 @@ watch(
       v-show="items.length"
       ref="cloudHost"
       class="corpus-hot__canvas"
-      aria-label="热词气泡图"
-    />
+      aria-label="共享语料热词云"
+    >
+      <div
+        v-if="layoutNodes.length"
+        class="corpus-hot__cloud"
+        :class="{ 'corpus-hot__cloud--selected': selectedKeywords }"
+        :style="{ height: `${cloudHeight}px` }"
+        role="list"
+      >
+        <button
+          v-for="(node, index) in layoutNodes"
+          :key="node.item.keywords"
+          type="button"
+          :class="pillClasses(node)"
+          :style="{
+            '--heat': node.scoreRatio.toFixed(3),
+            '--pill-i': String(index),
+            left: `${node.x}px`,
+            top: `${node.y}px`,
+          }"
+          role="listitem"
+          :aria-pressed="node.item.keywords === selectedKeywords ? 'true' : 'false'"
+          :title="`${node.item.keywords} · 热度 ${node.item.score}`"
+          @click="toggleKeyword(node.item.keywords)"
+        >
+          <span
+            v-if="node.rank <= 3"
+            class="corpus-hot__pill-rank"
+            aria-hidden="true"
+          >{{ node.rank }}</span>
+          <span class="corpus-hot__pill-word">{{ node.item.keywords }}</span>
+          <span class="corpus-hot__pill-score">{{ node.item.score }}</span>
+        </button>
+      </div>
+    </div>
 
     <div
       v-if="selectedItem"
       class="corpus-hot__detail"
       aria-live="polite"
     >
-      <div class="corpus-hot__detail-hd">
-        <div class="corpus-hot__detail-heading">
-          <h3 class="corpus-hot__detail-title">
-            {{ selectedItem.keywords }}
-          </h3>
-          <p class="corpus-hot__detail-meta muted">
-            <template v-if="source === 'local' || tab === 'pool'">
-              累计热度 {{ selectedItem.score }}
-            </template>
-            <template v-else-if="tab === 'fleet'">
-              机群叠加热度 {{ selectedItem.score }}
-            </template>
-            <template v-else>
-              {{ tabLabel }}热度 {{ selectedItem.score }}
-            </template>
-          </p>
+      <div class="corpus-hot__detail-panel">
+        <div class="corpus-hot__detail-hd">
+          <div class="corpus-hot__detail-heading">
+            <span
+              v-if="selectedRank !== null && selectedRank <= 3"
+              class="corpus-hot__detail-rank"
+            >#{{ selectedRank }}</span>
+            <h3 class="corpus-hot__detail-title">
+              {{ selectedItem.keywords }}
+            </h3>
+            <p class="corpus-hot__detail-meta muted">
+              <template v-if="source === 'local' || tab === 'pool'">
+                累计热度 {{ selectedItem.score }}
+              </template>
+              <template v-else-if="tab === 'fleet'">
+                机群叠加热度 {{ selectedItem.score }}
+              </template>
+              <template v-else>
+                {{ tabLabel }}热度 {{ selectedItem.score }}
+              </template>
+            </p>
+          </div>
+          <button
+            type="button"
+            class="corpus-hot__detail-close"
+            aria-label="收起详情"
+            @click="clearSelection"
+          >
+            收起
+          </button>
         </div>
-        <button
-          type="button"
-          class="corpus-hot__detail-close"
-          aria-label="收起代表回复"
-          @click="clearSelection"
-        >
-          收起
-        </button>
+        <ul class="corpus-hot__reply-list">
+          <li
+            v-if="!selectedItem.answers.length"
+            class="corpus-hot__reply corpus-hot__reply--empty muted"
+          >
+            {{ tab === 'fleet' ? '机群榜不含代表回复' : '暂无代表回复' }}
+          </li>
+          <li
+            v-for="(answer, idx) in selectedItem.answers"
+            v-else
+            :key="`${selectedItem.keywords}-${idx}`"
+            class="corpus-hot__reply"
+          >
+            <p class="corpus-hot__reply-text">
+              {{ answer.message || answer.answer_keywords || "（无文案）" }}
+            </p>
+            <p class="corpus-hot__reply-hint muted">
+              引用 {{ answer.count }} 次
+            </p>
+          </li>
+        </ul>
       </div>
-      <ul class="corpus-hot__reply-list">
-        <li
-          v-if="!selectedItem.answers.length"
-          class="corpus-hot__reply corpus-hot__reply--empty muted"
-        >
-          {{ tab === 'fleet' ? '机群榜不含代表回复' : '暂无代表回复' }}
-        </li>
-        <li
-          v-for="(answer, idx) in selectedItem.answers"
-          v-else
-          :key="`${selectedItem.keywords}-${idx}`"
-          class="corpus-hot__reply"
-        >
-          <p class="corpus-hot__reply-text">
-            {{ answer.message || answer.answer_keywords || "（无文案）" }}
-          </p>
-          <p class="corpus-hot__reply-hint muted">
-            引用 {{ answer.count }} 次
-          </p>
-        </li>
-      </ul>
     </div>
   </div>
 </template>
