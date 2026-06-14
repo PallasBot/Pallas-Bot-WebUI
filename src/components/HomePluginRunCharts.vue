@@ -14,6 +14,7 @@ import { buildPluginRunSparkPoly, formatPluginRunSampleTime } from "@/utils/plug
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import HomeBucketChartSvg, { type BucketBarPack, type BucketBarSeries } from "@/components/HomeBucketChartSvg.vue";
 import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
+import HomeChartPanelSkeleton from "@/components/HomeChartPanelSkeleton.vue";
 
 const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
 
@@ -1511,6 +1512,48 @@ const panelAvailability = computed(() => ({
   local_spark: showLocalSpark.value,
 }));
 
+const activeChartLoading = computed((): boolean => {
+  if (!props.busy) return false;
+  switch (chartPanel.value) {
+    case "matcher_duration_recent":
+      return recentDurationRows.value.length === 0;
+    case "matcher_duration_hist":
+      return recentDurationRows.value.length === 0 || !durationHistPack.value;
+    case "matcher_duration_scatter":
+      return recentDurationRows.value.length === 0 || !durationScatterPack.value;
+    case "plugins_top":
+      return topPlugins.value.length === 0;
+    case "plugins_duration_top":
+      return topPluginsByDuration.value.length === 0;
+    case "daily_msg_matcher":
+      return !dailyChartPack.value;
+    case "api_hourly":
+      return !hourlyApiPack.value;
+    case "api_bucket":
+      return !apiBucketPack.value;
+    case "matcher_hourly":
+      return !hourlyMatcherPack.value;
+    case "matcher_bucket":
+      return !matcherBucketPack.value;
+    case "matcher_duration_hourly":
+      return !hourlyMatcherDurationPack.value;
+    case "matcher_duration_bucket":
+      return !matcherDurationBucketPack.value;
+    case "matcher_err_hourly":
+      return !hourlyMatcherErrPack.value;
+    case "matcher_err_bucket":
+      return !matcherErrBucketPack.value;
+    case "local_spark":
+      return false;
+    default:
+      return true;
+  }
+});
+
+const chartsDrawVisible = computed(
+  () => chartsDrawExpanded.value || (props.busy && activeChartLoading.value),
+);
+
 const panelOptionGroups = computed(() => {
   const avail = panelAvailability.value;
   return PANEL_GROUPS.map((grp) => ({
@@ -2064,20 +2107,22 @@ const dailyChartPack = computed(() => {
 
     <div
       id="home-plugin-charts-draw"
-      v-show="chartsDrawExpanded"
+      v-show="chartsDrawVisible"
       class="home-plugin-charts__draw"
+      :class="{ 'home-plugin-charts__draw--loading': busy && activeChartLoading }"
     >
+    <HomeChartPanelSkeleton
+      v-if="busy && activeChartLoading"
+      tall
+      class="home-plugin-charts__draw-skel"
+    />
+    <template v-else-if="chartsDrawExpanded">
     <div
       v-if="chartPanel === 'matcher_duration_recent'"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <p
-        v-if="busy && !recentDurationRows.length"
-        class="muted home-plugin-charts__empty"
-      >
-        加载中…
-      </p>
+      <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p
         v-else-if="!recentDurationRows.length"
         class="muted home-plugin-charts__empty"
@@ -2174,7 +2219,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <p v-if="busy && !recentDurationRows.length" class="muted home-plugin-charts__empty">加载中…</p>
+      <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
       <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
       <div v-else-if="durationHistPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
@@ -2201,7 +2246,7 @@ const dailyChartPack = computed(() => {
 
     <div v-if="chartPanel === 'matcher_duration_scatter'" class="home-plugin-charts__block">
       <div class="home-plugin-charts__flip">
-      <p v-if="busy && !recentDurationRows.length" class="muted home-plugin-charts__empty">加载中…</p>
+      <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
       <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
       <div v-else-if="durationScatterPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
@@ -2230,12 +2275,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <p
-        v-if="busy && !topPlugins.length"
-        class="muted home-plugin-charts__empty"
-      >
-        加载中…
-      </p>
+      <HomeChartPanelSkeleton v-if="busy && !topPlugins.length" />
       <p
         v-else-if="!topPlugins.length"
         class="muted home-plugin-charts__empty"
@@ -2278,12 +2318,7 @@ const dailyChartPack = computed(() => {
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
-      <p
-        v-if="busy && !topPluginsByDuration.length"
-        class="muted home-plugin-charts__empty"
-      >
-        加载中…
-      </p>
+      <HomeChartPanelSkeleton v-if="busy && !topPluginsByDuration.length" />
       <p
         v-else-if="!topPluginsByDuration.length"
         class="muted home-plugin-charts__empty"
@@ -2339,12 +2374,7 @@ const dailyChartPack = computed(() => {
           按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
         </p>
       </template>
-      <p
-        v-if="busy && !dailyChartPack"
-        class="muted home-plugin-charts__empty"
-      >
-        加载中…
-      </p>
+      <HomeChartPanelSkeleton v-if="busy && !dailyChartPack" />
       <p
         v-else-if="!dailyChartPack"
         class="muted home-plugin-charts__empty"
@@ -3189,7 +3219,7 @@ const dailyChartPack = computed(() => {
       </div>
       </div>
     </div>
-    </div>
+    </template>
     </div>
 
     <div
@@ -3341,6 +3371,7 @@ const dailyChartPack = computed(() => {
           </div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 

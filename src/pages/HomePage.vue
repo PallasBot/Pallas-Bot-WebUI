@@ -40,6 +40,7 @@ import type {
 } from "@/api/pallasTypes";
 import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import HomeLazyReveal from "@/components/HomeLazyReveal.vue";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -129,6 +130,20 @@ const accountDetailBusy = ref(false);
 const pageReady = ref(false);
 /** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
 const overviewBusy = ref(false);
+/** 首屏次要接口（统计/社区/分片等）拉取中 */
+const homeDeferredBusy = ref(false);
+
+const communityDataPending = computed(() => homeDeferredBusy.value);
+const capacityDataPending = computed(() => homeDeferredBusy.value);
+const accountSocialPending = computed(() => {
+  if (selectedAccount.value == null) return false;
+  if (socialBusy.value) return true;
+  return accountDetailBusy.value && statsScoped.value == null;
+});
+const accountChartsPending = computed(
+  () => accountDetailBusy.value && selectedAccount.value != null,
+);
+const versionMetaPending = computed(() => homeDeferredBusy.value);
 
 const pluginsList = ref<PluginRow[]>([]);
 {
@@ -1354,35 +1369,40 @@ function stopHomeConnDurationTick() {
 }
 
 async function loadHomeDeferred(refreshMeta: boolean) {
-  const botUpdateP =
-    !refreshMeta && consoleMetaBotUpdate.value
-      ? Promise.resolve(consoleMetaBotUpdate.value)
-      : fetchBotUpdateCheck().catch(() => null);
-  const webUpdateP =
-    !refreshMeta && consoleMetaWebUpdate.value
-      ? Promise.resolve(consoleMetaWebUpdate.value)
-      : fetchUpdateCheck().catch(() => null);
-  const settled = await Promise.allSettled([
-    fetchMessageStats(),
-    fetchPluginRunStats(),
-    botUpdateP,
-    webUpdateP,
-    fetchCommunityStats().catch(() => null),
-    fetchShardObservability(),
-  ]);
-  function take<T>(i: number): T | null {
-    const r = settled[i];
-    return r.status === "fulfilled" ? (r.value as T) : null;
+  homeDeferredBusy.value = true;
+  try {
+    const botUpdateP =
+      !refreshMeta && consoleMetaBotUpdate.value
+        ? Promise.resolve(consoleMetaBotUpdate.value)
+        : fetchBotUpdateCheck().catch(() => null);
+    const webUpdateP =
+      !refreshMeta && consoleMetaWebUpdate.value
+        ? Promise.resolve(consoleMetaWebUpdate.value)
+        : fetchUpdateCheck().catch(() => null);
+    const settled = await Promise.allSettled([
+      fetchMessageStats(),
+      fetchPluginRunStats(),
+      botUpdateP,
+      webUpdateP,
+      fetchCommunityStats().catch(() => null),
+      fetchShardObservability(),
+    ]);
+    function take<T>(i: number): T | null {
+      const r = settled[i];
+      return r.status === "fulfilled" ? (r.value as T) : null;
+    }
+    stats.value = take<MessageStatsData>(0);
+    pluginRunStats.value = take<PluginRunStatsData>(1);
+    botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
+    webUpdateCheck.value = take<UpdateCheckData | null>(3);
+    communityStats.value = take<CommunityStatsData | null>(4);
+    shardObs.value = take<ShardObservabilityData>(5);
+    const h = consoleMetaHealth.value ?? health.value;
+    if (h) health.value = h;
+    patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
+  } finally {
+    homeDeferredBusy.value = false;
   }
-  stats.value = take<MessageStatsData>(0);
-  pluginRunStats.value = take<PluginRunStatsData>(1);
-  botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
-  webUpdateCheck.value = take<UpdateCheckData | null>(3);
-  communityStats.value = take<CommunityStatsData | null>(4);
-  shardObs.value = take<ShardObservabilityData>(5);
-  const h = consoleMetaHealth.value ?? health.value;
-  if (h) health.value = h;
-  patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
 }
 
 type LoadOptions = {
@@ -1591,7 +1611,10 @@ onUnmounted(() => {
           role="status"
         >正在同步概况…</p>
     <div class="home-dashboard">
-      <div class="home-dashboard__hero">
+      <div
+        class="home-dashboard__hero home-dashboard__section"
+        style="--home-section-i: 0"
+      >
       <section class="home-dashboard__accounts">
         <div class="panel home-page__panel">
           <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
@@ -1768,6 +1791,10 @@ onUnmounted(() => {
                       <div
                         class="home-account-hero__detail home-account-hero__detail--social-usage"
                       >
+                        <HomeLazyReveal
+                          :loading="accountSocialPending"
+                          variant="account-social"
+                        >
                         <div
                           class="home-account-hero__social-panel"
                           aria-label="好友与群聊"
@@ -1846,6 +1873,7 @@ onUnmounted(() => {
                             </div>
                           </div>
                         </div>
+                        </HomeLazyReveal>
                       </div>
                   <div class="home-account-hero__matcher-stack">
                       <details
@@ -1919,6 +1947,10 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div class="home-account-split-bd__col home-account-split-bd__col--charts">
+                    <HomeLazyReveal
+                      :loading="accountChartsPending"
+                      variant="charts"
+                    >
                     <div
                       class="home-account-charts-shell home-account-charts-shell--hero-side"
                       :style="accountChartsShellLockStyle"
@@ -1947,6 +1979,7 @@ onUnmounted(() => {
                         :daily-stat-rows="consoleDailyStats?.rows ?? []"
                       />
                     </div>
+                    </HomeLazyReveal>
                 </div>
               </div>
             </template>
@@ -1955,7 +1988,8 @@ onUnmounted(() => {
       </section>
 
       <aside
-        class="home-dashboard__aside home-dashboard__aside--tail"
+        class="home-dashboard__aside home-dashboard__aside--tail home-dashboard__section"
+        style="--home-section-i: 1"
       >
         <section class="home-dashboard__aside-community">
           <div class="panel home-page__panel home-dashboard__community-panel">
@@ -1968,6 +2002,10 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="panel__bd">
+              <HomeLazyReveal
+                :loading="communityDataPending"
+                variant="stats-4"
+              >
               <div class="grid-stats home-community__stats home-dashboard__aside-stats">
                 <StatCard
                   dense
@@ -1994,6 +2032,7 @@ onUnmounted(() => {
                   :hint="communityActiveRecentHint"
                 />
               </div>
+              </HomeLazyReveal>
             </div>
           </div>
         </section>
@@ -2014,6 +2053,10 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="panel__bd muted home-page__version home-page__version--grid">
+              <HomeLazyReveal
+                :loading="versionMetaPending"
+                variant="version-dl"
+              >
               <dl class="home-dl home-dl--version-rows home-version-dl">
             <dt>NoneBot2</dt>
             <dd>
@@ -2079,13 +2122,17 @@ onUnmounted(() => {
               >{{ system?.runtime?.python ?? "—" }}</span>
             </dd>
           </dl>
+              </HomeLazyReveal>
             </div>
           </div>
         </section>
       </aside>
       </div>
 
-      <section class="home-dashboard__corpus">
+      <section
+        class="home-dashboard__corpus home-dashboard__section"
+        style="--home-section-i: 2"
+      >
         <div class="panel home-page__panel home-dashboard__corpus-panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
@@ -2100,6 +2147,10 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="panel__bd">
+            <HomeLazyReveal
+              :loading="communityDataPending"
+              variant="stats-5"
+            >
             <div class="grid-stats home-dashboard__corpus-grid">
               <StatCard
                 dense
@@ -2132,11 +2183,19 @@ onUnmounted(() => {
                 :hint="communityCorpusHitsHint"
               />
             </div>
+            </HomeLazyReveal>
           </div>
         </div>
       </section>
 
-      <section class="home-dashboard__capacity">
+      <section
+        class="home-dashboard__capacity home-dashboard__section"
+        style="--home-section-i: 3"
+      >
+        <HomeLazyReveal
+          :loading="capacityDataPending"
+          variant="stats-4"
+        >
         <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
           <StatCard
             dense
@@ -2163,9 +2222,13 @@ onUnmounted(() => {
             :hint="todayCallsStatHint"
           />
         </div>
+        </HomeLazyReveal>
       </section>
 
-      <section class="home-dashboard__perf">
+      <section
+        class="home-dashboard__perf home-dashboard__section"
+        style="--home-section-i: 4"
+      >
         <div class="panel home-page__panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
             <h2 class="panel__title">
@@ -2320,9 +2383,11 @@ onUnmounted(() => {
         </div>
       </section>
 
+      <Transition name="home-lazy-cross">
       <section
         v-if="shardObsVisible"
-        class="home-dashboard__shard-obs"
+        class="home-dashboard__shard-obs home-dashboard__section"
+        style="--home-section-i: 5"
       >
         <div class="panel home-page__panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
@@ -2421,6 +2486,7 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
+      </Transition>
     </div>
     </div>
     </Transition>
