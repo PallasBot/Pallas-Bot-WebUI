@@ -9092,6 +9092,9 @@ html[data-theme="light"] .home-cpu-core {
   font-size: 12px;
   line-height: 1.5;
 }
+.home-shard-obs__explain-lede--warn {
+  color: var(--pallas-danger, #c45c26);
+}
 .home-panel-explain__glossary,
 .home-shard-obs__glossary {
   margin: 0;

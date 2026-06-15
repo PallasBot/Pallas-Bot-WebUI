@@ -327,16 +327,16 @@ function sourceLabel(key: SourceKey): string {
 
 async function load(options?: { bypassCache?: boolean }) {
   err.value = "";
+  const commPromise = fetchCommunityStats({ bypassCache: options?.bypassCache }).catch(() => null);
+  void Promise.all([fetchCorpusStatus().catch(() => null), fetchFederationOnboarding().catch(() => null)]).then(
+    ([corpus, fed]) => {
+      corpusStatus.value = corpus;
+      federationOnboarding.value = fed;
+      federationOnboardingUnavailable.value = fed == null;
+    },
+  );
   try {
-    const [comm, corpus, fed] = await Promise.all([
-      fetchCommunityStats({ bypassCache: options?.bypassCache }).catch(() => null),
-      fetchCorpusStatus().catch(() => null),
-      fetchFederationOnboarding().catch(() => null),
-    ]);
-    communityStats.value = comm;
-    corpusStatus.value = corpus;
-    federationOnboarding.value = fed;
-    federationOnboardingUnavailable.value = fed == null;
+    communityStats.value = await commPromise;
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {

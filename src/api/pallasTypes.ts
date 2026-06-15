@@ -906,6 +906,46 @@ export interface ShardObservabilityWorker {
   coord_pending?: ShardCoordPendingSnapshot;
 }
 
+export interface IngressDispatchSendQueueStatus {
+  enabled?: boolean;
+  installed?: boolean;
+  depth?: number;
+  depth_live?: number;
+  max_depth?: number;
+  workers?: number;
+  sent?: number;
+  dropped?: number;
+  min_interval_ms?: number;
+}
+
+export interface IngressDispatchPoolBudget {
+  capacity?: number;
+  utilization?: number;
+  checked_out?: number;
+}
+
+/** GET /ingress-dispatch */
+export interface IngressDispatchData {
+  day_key?: string;
+  group_messages?: number;
+  command_traffic?: number;
+  chatter_traffic?: number;
+  matchers_considered?: number;
+  matchers_selected?: number;
+  matchers_run?: number;
+  matchers_selected_ratio?: number | null;
+  avg_matchers_per_message?: number | null;
+  lane_wait_ms_avg?: number | null;
+  lane_busy?: number;
+  overload_signals?: number;
+  prefetch_paused?: number;
+  preprocessor_dropped?: number;
+  ingress_duration_ms_p95?: number | null;
+  send_queue?: IngressDispatchSendQueueStatus;
+  pool_budget?: IngressDispatchPoolBudget;
+  alerts?: string[];
+}
+
 /** GET /shard-observability */
 export interface ShardObservabilityData {
   sharded?: boolean;
