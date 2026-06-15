@@ -494,10 +494,15 @@ const ingressDispatchVisible = computed(() => {
   return Array.isArray(workers) && workers.length > 0;
 });
 
+const INGRESS_DISPATCH_ALERT_LABELS: Record<string, string> = {
+  ingress_p95_over_100ms: "入站处理 P95 超过 100ms",
+  pg_pool_over_85pct: "数据库连接池利用率 ≥ 85%",
+};
+
 const ingressDispatchLede = computed(() =>
   shardObsVisible.value
-    ? "分片 hub 汇总各 worker 今日 dispatch 指标；配置见通用配置 → 中央入站调度。"
-    : "单进程 unified 今日入站 dispatch 指标；配置见通用配置 → 中央入站调度。",
+    ? "分片 hub 汇总各 worker 今日入站调度数据；参数见「通用配置 → 中央入站调度」。"
+    : "单进程模式下今日入站调度数据；参数见「通用配置 → 中央入站调度」。",
 );
 
 const ingressDispatchWorkerRows = computed((): IngressDispatchWorker[] => {
@@ -541,18 +546,27 @@ const ingressDispatchGroupMessages = computed(() => {
 
 const ingressDispatchMatcherHint = computed(() => {
   const d = ingressDispatch.value;
-  if (!d) return "考虑 / 选中 / 运行";
-  return `${d.matchers_considered ?? 0} / ${d.matchers_selected ?? 0} / ${d.matchers_run ?? 0}`;
+  if (!d) return "筛选 / 命中 / 执行 matcher 次数";
+  return `筛选 ${d.matchers_considered ?? 0} · 命中 ${d.matchers_selected ?? 0} · 执行 ${d.matchers_run ?? 0}`;
 });
 
 const ingressDispatchLaneWait = computed(() => fmtMs(ingressDispatch.value?.lane_wait_ms_avg ?? null));
 
+const ingressDispatchP95Hint = computed(() => {
+  const d = ingressDispatch.value;
+  if (!d) return "95% 群消息入站耗时低于此值";
+  const cmd = d.command_traffic ?? 0;
+  const chat = d.chatter_traffic ?? 0;
+  if (cmd > 0 || chat > 0) return `指令 ${cmd} · 闲聊 ${chat}`;
+  return "95% 群消息入站耗时低于此值";
+});
+
 const ingressDispatchLaneHint = computed(() => {
   const d = ingressDispatch.value;
-  if (!d) return "lane 忙次与过载信号";
-  const parts = [`忙 ${d.lane_busy ?? 0}`];
+  if (!d) return "并发槽占用与过载信号";
+  const parts = [`槽满 ${d.lane_busy ?? 0}`];
   if ((d.overload_signals ?? 0) > 0) parts.push(`过载 ${d.overload_signals}`);
-  if ((d.prefetch_paused ?? 0) > 0) parts.push(`prefetch 跳过 ${d.prefetch_paused}`);
+  if ((d.prefetch_paused ?? 0) > 0) parts.push(`预取暂停 ${d.prefetch_paused}`);
   return parts.join(" · ");
 });
 
@@ -566,8 +580,8 @@ const ingressDispatchSendQueue = computed(() => {
 
 const ingressDispatchSendQueueHint = computed(() => {
   const q = ingressDispatch.value?.send_queue;
-  if (!q) return "出站队列 depth";
-  return `已发 ${q.sent ?? 0} · 丢弃 ${q.dropped ?? 0}`;
+  if (!q) return "当前排队 / 最大深度";
+  return `今日已发 ${q.sent ?? 0} · 丢弃 ${q.dropped ?? 0}`;
 });
 
 const ingressDispatchPgUtil = computed(() => {
@@ -578,15 +592,15 @@ const ingressDispatchPgUtil = computed(() => {
 
 const ingressDispatchPgHint = computed(() => {
   const pool = ingressDispatch.value?.pool_budget;
-  if (!pool) return "PG 连接池利用率";
+  if (!pool) return "SQLAlchemy 连接池占用";
   const cap = pool.capacity;
-  return cap != null ? `capacity ${cap}` : "PG 连接池利用率";
+  return cap != null ? `池容量 ${cap}` : "SQLAlchemy 连接池占用";
 });
 
 const ingressDispatchAlerts = computed(() => {
   const alerts = ingressDispatch.value?.alerts;
   if (!alerts?.length) return "";
-  return alerts.join(", ");
+  return alerts.map((a) => INGRESS_DISPATCH_ALERT_LABELS[a] ?? a).join("、");
 });
 
 const ingressDispatchPgWarn = computed(() =>
@@ -2506,7 +2520,7 @@ onUnmounted(() => {
               <span class="panel__title-ico" aria-hidden="true">⏱</span>入站调度
             </h2>
             <div class="row-actions">
-              <span class="home-page__hd-capsule home-page__hd-capsule--muted">matcher / lane / 出站</span>
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">预筛选 · 并发控制 · 出站整形</span>
             </div>
           </div>
           <div class="panel__bd home-shard-obs__bd">
@@ -2521,38 +2535,38 @@ onUnmounted(() => {
             <div class="grid-stats home-shard-obs__kpis">
               <StatCard
                 dense
-                label="群消息"
+                label="今日群消息"
                 :value="ingressDispatchGroupMessages"
                 :hint="ingressDispatchMatcherHint"
               />
               <StatCard
                 dense
-                label="Matcher 选中率"
+                label="Matcher 命中率"
                 :value="ingressDispatchMatcherRatio"
-                hint="选中 ÷ 考虑"
+                hint="命中数 ÷ 参与筛选数"
               />
               <StatCard
                 dense
-                label="Ingress P95"
+                label="入站处理 P95"
                 :value="ingressDispatchP95"
+                :hint="ingressDispatchP95Hint"
+              />
+              <StatCard
+                dense
+                label="并发槽等待"
+                :value="ingressDispatchLaneWait"
                 :hint="ingressDispatchLaneHint"
               />
               <StatCard
                 dense
-                label="Lane 等待均值"
-                :value="ingressDispatchLaneWait"
-                hint="lane acquire 等待"
-              />
-              <StatCard
-                dense
-                label="Send 队列"
+                label="出站发送队列"
                 :value="ingressDispatchSendQueue"
                 :hint="ingressDispatchSendQueueHint"
               />
               <div :class="{ 'home-shard-obs__pg-warn': ingressDispatchPgWarn }">
                 <StatCard
                   dense
-                  label="PG 池利用率"
+                  label="数据库连接池"
                   :value="ingressDispatchPgUtil"
                   :hint="ingressDispatchPgHint"
                 />
@@ -2564,7 +2578,7 @@ onUnmounted(() => {
             >
               <p class="home-shard-obs__workers-title">各 worker 入站调度（今日）</p>
               <p class="home-shard-obs__workers-desc muted">
-                按 worker 汇总群消息与 matcher 漏斗；P95 为片内入站处理延迟。
+                各 worker 今日群消息与 matcher 漏斗；入站 P95 为该片处理耗时的 95 分位。
               </p>
               <div class="home-shard-obs__table-wrap">
                 <table class="home-shard-obs__table">
@@ -2572,8 +2586,8 @@ onUnmounted(() => {
                     <tr>
                       <th scope="col">Worker</th>
                       <th scope="col">群消息</th>
-                      <th scope="col">选中率</th>
-                      <th scope="col">P95</th>
+                      <th scope="col">命中率</th>
+                      <th scope="col">入站 P95</th>
                     </tr>
                   </thead>
                   <tbody>
