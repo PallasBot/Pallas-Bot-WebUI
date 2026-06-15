@@ -37,6 +37,7 @@ import type {
   ShardObservabilityData,
   ShardObservabilityWorker,
   IngressDispatchData,
+  IngressDispatchWorker,
   SystemData,
   UpdateCheckData,
 } from "@/api/pallasTypes";
@@ -487,7 +488,35 @@ function ratioPct(ratio: number | null | undefined, digits = 1): string {
 
 const shardObsVisible = computed(() => shardObs.value?.sharded === true);
 
-const ingressDispatchVisible = computed(() => !shardObsVisible.value);
+const ingressDispatchVisible = computed(() => {
+  if (!shardObsVisible.value) return true;
+  const workers = ingressDispatch.value?.workers;
+  return Array.isArray(workers) && workers.length > 0;
+});
+
+const ingressDispatchLede = computed(() =>
+  shardObsVisible.value
+    ? "分片 hub 汇总各 worker 今日 dispatch 指标；配置见通用配置 → 中央入站调度。"
+    : "单进程 unified 今日入站 dispatch 指标；配置见通用配置 → 中央入站调度。",
+);
+
+const ingressDispatchWorkerRows = computed((): IngressDispatchWorker[] => {
+  const rows = ingressDispatch.value?.workers;
+  return Array.isArray(rows) ? rows : [];
+});
+
+function ingressWorkerGroupMessages(row: IngressDispatchWorker): string {
+  const n = row.ingress_dispatch?.group_messages;
+  return n == null ? "—" : String(n);
+}
+
+function ingressWorkerP95(row: IngressDispatchWorker): string {
+  return fmtMs(row.ingress_dispatch?.ingress_duration_ms_p95 ?? null);
+}
+
+function ingressWorkerMatcherRatio(row: IngressDispatchWorker): string {
+  return fmtRatio(row.ingress_dispatch?.matchers_selected_ratio ?? null);
+}
 
 function fmtMs(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return "—";
@@ -2483,7 +2512,7 @@ onUnmounted(() => {
           <div class="panel__bd home-shard-obs__bd">
             <div class="home-shard-obs__explain">
               <p class="home-shard-obs__explain-lede muted">
-                单进程 unified 今日入站 dispatch 指标；配置见通用配置 → 中央入站调度。
+                {{ ingressDispatchLede }}
               </p>
               <p v-if="ingressDispatchAlerts" class="home-shard-obs__explain-lede home-shard-obs__explain-lede--warn">
                 告警：{{ ingressDispatchAlerts }}
@@ -2527,6 +2556,38 @@ onUnmounted(() => {
                   :value="ingressDispatchPgUtil"
                   :hint="ingressDispatchPgHint"
                 />
+              </div>
+            </div>
+            <div
+              v-if="ingressDispatchWorkerRows.length"
+              class="home-shard-obs__workers"
+            >
+              <p class="home-shard-obs__workers-title">各 worker 入站调度（今日）</p>
+              <p class="home-shard-obs__workers-desc muted">
+                按 worker 汇总群消息与 matcher 漏斗；P95 为片内入站处理延迟。
+              </p>
+              <div class="home-shard-obs__table-wrap">
+                <table class="home-shard-obs__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Worker</th>
+                      <th scope="col">群消息</th>
+                      <th scope="col">选中率</th>
+                      <th scope="col">P95</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in ingressDispatchWorkerRows"
+                      :key="row.shard_id"
+                    >
+                      <td>worker-{{ row.shard_id }}</td>
+                      <td>{{ ingressWorkerGroupMessages(row) }}</td>
+                      <td>{{ ingressWorkerMatcherRatio(row) }}</td>
+                      <td>{{ ingressWorkerP95(row) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

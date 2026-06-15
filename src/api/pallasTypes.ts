@@ -922,10 +922,19 @@ export interface IngressDispatchPoolBudget {
   capacity?: number;
   utilization?: number;
   checked_out?: number;
+  cluster_pg?: Record<string, unknown>;
+}
+
+export interface IngressDispatchWorker {
+  shard_id: number;
+  updated_at?: number;
+  ingress_dispatch?: IngressDispatchData;
 }
 
 /** GET /ingress-dispatch */
 export interface IngressDispatchData {
+  sharded?: boolean;
+  workers?: IngressDispatchWorker[];
   day_key?: string;
   group_messages?: number;
   command_traffic?: number;
