@@ -488,10 +488,11 @@ function ratioPct(ratio: number | null | undefined, digits = 1): string {
 
 const shardObsVisible = computed(() => shardObs.value?.sharded === true);
 
-const ingressDispatchVisible = computed(() => {
-  if (!shardObsVisible.value) return true;
-  const workers = ingressDispatch.value?.workers;
-  return Array.isArray(workers) && workers.length > 0;
+const ingressDispatchStandaloneVisible = computed(() => !shardObsVisible.value);
+
+const ingressDispatchShardSummaryVisible = computed(() => {
+  if (!shardObsVisible.value) return false;
+  return ingressDispatch.value != null || ingressDispatchWorkerRows.value.length > 0;
 });
 
 const INGRESS_DISPATCH_ALERT_LABELS: Record<string, string> = {
@@ -2510,7 +2511,8 @@ onUnmounted(() => {
 
       <Transition name="home-lazy-cross">
       <section
-        v-if="ingressDispatchVisible"
+        key="ingress-standalone"
+        v-if="ingressDispatchStandaloneVisible"
         class="home-dashboard__shard-obs home-dashboard__section"
         style="--home-section-i: 5"
       >
@@ -2611,6 +2613,7 @@ onUnmounted(() => {
 
       <Transition name="home-lazy-cross">
       <section
+        key="shard-observability"
         v-if="shardObsVisible"
         class="home-dashboard__shard-obs home-dashboard__section"
         style="--home-section-i: 6"
@@ -2625,6 +2628,69 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="panel__bd home-shard-obs__bd">
+            <section
+              v-if="ingressDispatchShardSummaryVisible"
+              class="home-shard-obs__subpanel"
+              aria-label="入站调度摘要"
+            >
+              <div class="home-shard-obs__subpanel-hd">
+                <h3 class="home-shard-obs__subpanel-title">
+                  <span aria-hidden="true">⏱</span>入站调度
+                </h3>
+                <span class="home-page__hd-capsule home-page__hd-capsule--muted">预筛选 · 并发控制 · 出站整形</span>
+              </div>
+              <div class="home-shard-obs__explain">
+                <p class="home-shard-obs__explain-lede muted">
+                  {{ ingressDispatchLede }}
+                </p>
+                <p
+                  v-if="ingressDispatchAlerts"
+                  class="home-shard-obs__explain-lede home-shard-obs__explain-lede--warn"
+                >
+                  告警：{{ ingressDispatchAlerts }}
+                </p>
+              </div>
+              <div class="grid-stats home-shard-obs__kpis">
+                <StatCard
+                  dense
+                  label="今日群消息"
+                  :value="ingressDispatchGroupMessages"
+                  :hint="ingressDispatchMatcherHint"
+                />
+                <StatCard
+                  dense
+                  label="Matcher 命中率"
+                  :value="ingressDispatchMatcherRatio"
+                  hint="命中数 ÷ 参与筛选数"
+                />
+                <StatCard
+                  dense
+                  label="入站处理 P95"
+                  :value="ingressDispatchP95"
+                  :hint="ingressDispatchP95Hint"
+                />
+                <StatCard
+                  dense
+                  label="并发槽等待"
+                  :value="ingressDispatchLaneWait"
+                  :hint="ingressDispatchLaneHint"
+                />
+                <StatCard
+                  dense
+                  label="出站发送队列"
+                  :value="ingressDispatchSendQueue"
+                  :hint="ingressDispatchSendQueueHint"
+                />
+                <div :class="{ 'home-shard-obs__pg-warn': ingressDispatchPgWarn }">
+                  <StatCard
+                    dense
+                    label="数据库连接池"
+                    :value="ingressDispatchPgUtil"
+                    :hint="ingressDispatchPgHint"
+                  />
+                </div>
+              </div>
+            </section>
             <div class="home-shard-obs__explain">
               <p class="home-shard-obs__explain-lede muted">
                 分片模式下 hub 汇总各 worker 今日指标；ingress 仅代表牛计数，避免多牛重复放大。
@@ -2720,6 +2786,32 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.home-shard-obs__subpanel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%);
+}
+
+.home-shard-obs__subpanel-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-shard-obs__subpanel-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
 .home-account-hero__title--picker .home-account-hero__fav-star {
   padding: 0 2px;
 }
@@ -2750,5 +2842,16 @@ onUnmounted(() => {
 .home-account-hero__fav-star[aria-pressed="true"] {
   opacity: 1;
   color: #fbbf24;
+}
+
+@media (max-width: 560px) {
+  .home-shard-obs__subpanel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .home-shard-obs__subpanel-hd {
+    align-items: flex-start;
+  }
 }
 </style>

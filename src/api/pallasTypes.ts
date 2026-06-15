@@ -460,6 +460,23 @@ export interface CommandPermUiData {
   plugins: CommandPermUiPlugin[];
 }
 
+export interface CommandLimitsUiCommand {
+  command_id: string;
+  label: string;
+  default_cd_sec: number;
+  effective_cd_sec: number;
+}
+
+export interface CommandLimitsUiPlugin {
+  plugin: string;
+  title: string;
+  commands: CommandLimitsUiCommand[];
+}
+
+export interface CommandLimitsUiData {
+  plugins: CommandLimitsUiPlugin[];
+}
+
 export interface PluginConfigFieldGroup {
   id: string;
   title: string;
@@ -472,6 +489,7 @@ export interface PluginConfigData {
   module: string;
   fields: PluginConfigField[];
   command_perm_ui?: CommandPermUiData;
+  command_limits_ui?: CommandLimitsUiData;
   /** 通用配置 service_gateways：分组展示与跳转插件页 */
   field_groups?: PluginConfigFieldGroup[];
   /** 使用 PallasImageGatewaysEditor 编辑画画网关 */

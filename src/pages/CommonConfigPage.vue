@@ -41,6 +41,7 @@ const fieldValues = ref<Record<string, string>>({});
 const permSelections = ref<Record<string, string>>({});
 
 const CMD_PERM_SECTION_ID = "cmd_perm";
+const COMMAND_LIMITS_SECTION_ID = "command_limits";
 const CONTROL_PLANE_SECTION_ID = "control_plane";
 
 const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
@@ -57,15 +58,20 @@ const supportsConnectivityCheck = computed(() => Boolean(data.value?.supports_co
 const showCmdPermMatrix = computed(
   () => currentId.value === CMD_PERM_SECTION_ID && Boolean(data.value?.command_perm_ui),
 );
+const showCommandLimitsTable = computed(
+  () => currentId.value === COMMAND_LIMITS_SECTION_ID && Boolean(data.value?.command_limits_ui),
+);
 const isCmdPermSection = computed(() => currentId.value === CMD_PERM_SECTION_ID);
 const isMessageScrubSection = computed(() => currentId.value === "message_scrub");
 const gatewayFieldNameSet = computed(() => new Set<string>(PALLAS_IMAGE_GATEWAY_FIELD_NAMES));
 
 const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_groups ?? []);
+const limitSelections = ref<Record<string, string>>({});
 
 const genericFields = computed(() => {
   if (!data.value || fieldGroups.value.length) return [];
   if (isCmdPermSection.value && data.value.command_perm_ui) return [];
+  if (showCommandLimitsTable.value && data.value.command_limits_ui) return [];
   return data.value.fields;
 });
 
@@ -108,6 +114,7 @@ watch(
   data,
   (d) => {
     permSelections.value = {};
+    limitSelections.value = {};
     if (!d?.fields?.length) {
       fieldValues.value = {};
       return;
@@ -131,6 +138,16 @@ watch(
       }
       permSelections.value = permNext;
     }
+    const limitUi = d.command_limits_ui;
+    if (limitUi) {
+      const limitNext: Record<string, string> = {};
+      for (const p of limitUi.plugins) {
+        for (const c of p.commands) {
+          limitNext[c.command_id] = String(c.effective_cd_sec);
+        }
+      }
+      limitSelections.value = limitNext;
+    }
   },
   { immediate: true },
 );
@@ -148,6 +165,34 @@ function buildOverridesFromMatrix(): Record<string, string> {
     }
   }
   return out;
+}
+
+function buildCommandLimitOverridesFromTable(): Record<string, number> {
+  const ui = data.value?.command_limits_ui;
+  if (!ui) return {};
+  const out: Record<string, number> = {};
+  for (const p of ui.plugins) {
+    for (const c of p.commands) {
+      const raw = (limitSelections.value[c.command_id] ?? String(c.effective_cd_sec)).trim();
+      const parsed = Number.parseInt(raw === "" ? String(c.default_cd_sec) : raw, 10);
+      const safe = Number.isFinite(parsed) && parsed >= 0 ? parsed : c.default_cd_sec;
+      if (safe !== c.default_cd_sec) out[c.command_id] = safe;
+    }
+  }
+  return out;
+}
+
+function onCommandLimitInput(commandId: string, value: string) {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    limitSelections.value = { ...limitSelections.value, [commandId]: "" };
+    return;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  limitSelections.value = {
+    ...limitSelections.value,
+    [commandId]: Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : "0",
+  };
 }
 
 async function loadSections() {
@@ -226,6 +271,10 @@ function collectValues(): Record<string, unknown> {
   for (const f of data.value.fields) {
     if (showCmdPermMatrix.value && f.name === "command_permission_overrides") {
       values[f.name] = buildOverridesFromMatrix();
+      continue;
+    }
+    if (showCommandLimitsTable.value && f.name === "command_limit_overrides") {
+      values[f.name] = buildCommandLimitOverridesFromTable();
       continue;
     }
     const raw = fieldValues.value[f.name] ?? "";
@@ -307,6 +356,7 @@ async function runConnectivityCheck() {
 
 function showConfigField(f: PluginConfigField): boolean {
   if (showCmdPermMatrix.value && f.name === "command_permission_overrides") return false;
+  if (showCommandLimitsTable.value && f.name === "command_limit_overrides") return false;
   if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
   return true;
 }
@@ -377,6 +427,12 @@ function showConfigField(f: PluginConfigField): boolean {
             class="muted common-config-page__intro"
           >
             调整各口令<strong>谁可用</strong>（所有人、群管、号主等）。下方矩阵只显示中文命令名；保存后立即生效，一般无需重启。
+          </p>
+          <p
+            v-if="showCommandLimitsTable"
+            class="muted common-config-page__intro"
+          >
+            调整各命令的默认冷却秒数覆盖。仅当所填秒数与插件默认值不同时才会保存覆盖项；填 <code>0</code> 表示关闭该命令冷却。
           </p>
           <p
             v-if="isMessageScrubSection"
@@ -494,6 +550,61 @@ function showConfigField(f: PluginConfigField): boolean {
                           :name="'cmdperm-' + row.command_id"
                           :value="lv.id"
                         >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="showCommandLimitsTable && data.command_limits_ui"
+            class="cmd-perm-matrix"
+            style="margin-bottom: 28px"
+          >
+            <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
+              按插件分组编辑冷却秒数。表格内填写的是<strong>生效值</strong>；与默认值相同则不会写入覆盖。
+            </p>
+            <div
+              v-for="pg in data.command_limits_ui.plugins"
+              :key="pg.plugin"
+              style="margin-bottom: 20px"
+            >
+              <h3 style="font-size: 15px; margin: 0 0 10px; font-weight: 700">
+                {{ pg.title }}
+              </h3>
+              <div class="cmd-perm-table-wrap">
+                <table class="cmd-perm-table cmd-limit-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">命令</th>
+                      <th scope="col">默认冷却</th>
+                      <th scope="col">生效冷却</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in pg.commands"
+                      :key="row.command_id"
+                    >
+                      <th scope="row" class="cmd-perm-table__cmd">
+                        <span class="cmd-perm-table__label">{{ row.label }}</span>
+                        <span class="cmd-perm-table__id">{{ row.command_id }}</span>
+                      </th>
+                      <td class="cmd-limit-table__default">
+                        {{ row.default_cd_sec }} 秒
+                      </td>
+                      <td class="cmd-limit-table__input-cell">
+                        <input
+                          :value="limitSelections[row.command_id]"
+                          class="inp cmd-limit-table__input"
+                          type="number"
+                          min="0"
+                          step="1"
+                          inputmode="numeric"
+                          @input="onCommandLimitInput(row.command_id, ($event.target as HTMLInputElement).value)"
+                        >
+                        <span class="cmd-limit-table__suffix muted">秒</span>
                       </td>
                     </tr>
                   </tbody>
@@ -740,6 +851,26 @@ function showConfigField(f: PluginConfigField): boolean {
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+.cmd-limit-table__default {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmd-limit-table__input-cell {
+  min-width: 180px;
+}
+
+.cmd-limit-table__input {
+  width: 96px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmd-limit-table__suffix {
+  margin-left: 8px;
+  white-space: nowrap;
 }
 
 .plugin-config-page__check-output {
