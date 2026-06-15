@@ -15,6 +15,7 @@ import {
   fetchPlugins,
   fetchRequestOverview,
   fetchShardObservability,
+  fetchIngressDispatch,
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
@@ -35,6 +36,8 @@ import type {
   RequestOverviewData,
   ShardObservabilityData,
   ShardObservabilityWorker,
+  IngressDispatchData,
+  IngressDispatchWorker,
   SystemData,
   UpdateCheckData,
 } from "@/api/pallasTypes";
@@ -98,6 +101,7 @@ const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const shardObs = ref<ShardObservabilityData | null>(null);
+const ingressDispatch = ref<IngressDispatchData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
@@ -483,6 +487,111 @@ function ratioPct(ratio: number | null | undefined, digits = 1): string {
 }
 
 const shardObsVisible = computed(() => shardObs.value?.sharded === true);
+
+const ingressDispatchVisible = computed(() => {
+  if (!shardObsVisible.value) return true;
+  const workers = ingressDispatch.value?.workers;
+  return Array.isArray(workers) && workers.length > 0;
+});
+
+const ingressDispatchLede = computed(() =>
+  shardObsVisible.value
+    ? "分片 hub 汇总各 worker 今日 dispatch 指标；配置见通用配置 → 中央入站调度。"
+    : "单进程 unified 今日入站 dispatch 指标；配置见通用配置 → 中央入站调度。",
+);
+
+const ingressDispatchWorkerRows = computed((): IngressDispatchWorker[] => {
+  const rows = ingressDispatch.value?.workers;
+  return Array.isArray(rows) ? rows : [];
+});
+
+function ingressWorkerGroupMessages(row: IngressDispatchWorker): string {
+  const n = row.ingress_dispatch?.group_messages;
+  return n == null ? "—" : String(n);
+}
+
+function ingressWorkerP95(row: IngressDispatchWorker): string {
+  return fmtMs(row.ingress_dispatch?.ingress_duration_ms_p95 ?? null);
+}
+
+function ingressWorkerMatcherRatio(row: IngressDispatchWorker): string {
+  return fmtRatio(row.ingress_dispatch?.matchers_selected_ratio ?? null);
+}
+
+function fmtMs(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${value.toFixed(1)} ms`;
+}
+
+function fmtRatio(value: number | null | undefined, digits = 1): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+const ingressDispatchP95 = computed(() => fmtMs(ingressDispatch.value?.ingress_duration_ms_p95 ?? null));
+
+const ingressDispatchMatcherRatio = computed(() =>
+  fmtRatio(ingressDispatch.value?.matchers_selected_ratio ?? null),
+);
+
+const ingressDispatchGroupMessages = computed(() => {
+  const n = ingressDispatch.value?.group_messages;
+  return n == null ? "—" : String(n);
+});
+
+const ingressDispatchMatcherHint = computed(() => {
+  const d = ingressDispatch.value;
+  if (!d) return "考虑 / 选中 / 运行";
+  return `${d.matchers_considered ?? 0} / ${d.matchers_selected ?? 0} / ${d.matchers_run ?? 0}`;
+});
+
+const ingressDispatchLaneWait = computed(() => fmtMs(ingressDispatch.value?.lane_wait_ms_avg ?? null));
+
+const ingressDispatchLaneHint = computed(() => {
+  const d = ingressDispatch.value;
+  if (!d) return "lane 忙次与过载信号";
+  const parts = [`忙 ${d.lane_busy ?? 0}`];
+  if ((d.overload_signals ?? 0) > 0) parts.push(`过载 ${d.overload_signals}`);
+  if ((d.prefetch_paused ?? 0) > 0) parts.push(`prefetch 跳过 ${d.prefetch_paused}`);
+  return parts.join(" · ");
+});
+
+const ingressDispatchSendQueue = computed(() => {
+  const q = ingressDispatch.value?.send_queue;
+  if (!q) return "—";
+  const depth = q.depth_live ?? q.depth ?? 0;
+  const max = q.max_depth ?? "—";
+  return `${depth}/${max}`;
+});
+
+const ingressDispatchSendQueueHint = computed(() => {
+  const q = ingressDispatch.value?.send_queue;
+  if (!q) return "出站队列 depth";
+  return `已发 ${q.sent ?? 0} · 丢弃 ${q.dropped ?? 0}`;
+});
+
+const ingressDispatchPgUtil = computed(() => {
+  const util = ingressDispatch.value?.pool_budget?.utilization;
+  if (util == null || Number.isNaN(util)) return "—";
+  return `${(util * 100).toFixed(1)}%`;
+});
+
+const ingressDispatchPgHint = computed(() => {
+  const pool = ingressDispatch.value?.pool_budget;
+  if (!pool) return "PG 连接池利用率";
+  const cap = pool.capacity;
+  return cap != null ? `capacity ${cap}` : "PG 连接池利用率";
+});
+
+const ingressDispatchAlerts = computed(() => {
+  const alerts = ingressDispatch.value?.alerts;
+  if (!alerts?.length) return "";
+  return alerts.join(", ");
+});
+
+const ingressDispatchPgWarn = computed(() =>
+  (ingressDispatch.value?.pool_budget?.utilization ?? 0) >= 0.85,
+);
 
 const shardIngressHitRate = computed(() =>
   ratioPct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null),
@@ -1384,8 +1493,8 @@ async function loadHomeDeferred(refreshMeta: boolean) {
       fetchPluginRunStats(),
       botUpdateP,
       webUpdateP,
-      fetchCommunityStats().catch(() => null),
       fetchShardObservability(),
+      fetchIngressDispatch().catch(() => null),
     ]);
     function take<T>(i: number): T | null {
       const r = settled[i];
@@ -1395,8 +1504,8 @@ async function loadHomeDeferred(refreshMeta: boolean) {
     pluginRunStats.value = take<PluginRunStatsData>(1);
     botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
     webUpdateCheck.value = take<UpdateCheckData | null>(3);
-    communityStats.value = take<CommunityStatsData | null>(4);
-    shardObs.value = take<ShardObservabilityData>(5);
+    shardObs.value = take<ShardObservabilityData>(4);
+    ingressDispatch.value = take<IngressDispatchData | null>(5);
     const h = consoleMetaHealth.value ?? health.value;
     if (h) health.value = h;
     patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
@@ -1417,12 +1526,13 @@ async function load(opts?: LoadOptions) {
   overviewBusy.value = true;
   try {
     const healthP = consoleMetaHealth.value ? Promise.resolve(consoleMetaHealth.value) : fetchHealth();
-    const [h, s, botList, inst, pl] = await Promise.all([
+    const [h, s, botList, inst, pl, comm] = await Promise.all([
       healthP,
       fetchSystem(),
       fetchBots(),
       fetchInstances(),
       fetchPlugins(),
+      fetchCommunityStats(refreshMeta ? { bypassCache: true } : undefined).catch(() => null),
     ]);
     health.value = h;
     patchConsoleMeta(h);
@@ -1430,6 +1540,7 @@ async function load(opts?: LoadOptions) {
     bots.value = botList;
     instances.value = inst;
     pluginsList.value = pl;
+    communityStats.value = comm;
     botCount.value = botList.length;
     const accBefore = selectedAccount.value;
     ensureSelectedAccount();
@@ -2385,9 +2496,110 @@ onUnmounted(() => {
 
       <Transition name="home-lazy-cross">
       <section
-        v-if="shardObsVisible"
+        v-if="ingressDispatchVisible"
         class="home-dashboard__shard-obs home-dashboard__section"
         style="--home-section-i: 5"
+      >
+        <div class="panel home-page__panel">
+          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+            <h2 class="panel__title">
+              <span class="panel__title-ico" aria-hidden="true">⏱</span>入站调度
+            </h2>
+            <div class="row-actions">
+              <span class="home-page__hd-capsule home-page__hd-capsule--muted">matcher / lane / 出站</span>
+            </div>
+          </div>
+          <div class="panel__bd home-shard-obs__bd">
+            <div class="home-shard-obs__explain">
+              <p class="home-shard-obs__explain-lede muted">
+                {{ ingressDispatchLede }}
+              </p>
+              <p v-if="ingressDispatchAlerts" class="home-shard-obs__explain-lede home-shard-obs__explain-lede--warn">
+                告警：{{ ingressDispatchAlerts }}
+              </p>
+            </div>
+            <div class="grid-stats home-shard-obs__kpis">
+              <StatCard
+                dense
+                label="群消息"
+                :value="ingressDispatchGroupMessages"
+                :hint="ingressDispatchMatcherHint"
+              />
+              <StatCard
+                dense
+                label="Matcher 选中率"
+                :value="ingressDispatchMatcherRatio"
+                hint="选中 ÷ 考虑"
+              />
+              <StatCard
+                dense
+                label="Ingress P95"
+                :value="ingressDispatchP95"
+                :hint="ingressDispatchLaneHint"
+              />
+              <StatCard
+                dense
+                label="Lane 等待均值"
+                :value="ingressDispatchLaneWait"
+                hint="lane acquire 等待"
+              />
+              <StatCard
+                dense
+                label="Send 队列"
+                :value="ingressDispatchSendQueue"
+                :hint="ingressDispatchSendQueueHint"
+              />
+              <div :class="{ 'home-shard-obs__pg-warn': ingressDispatchPgWarn }">
+                <StatCard
+                  dense
+                  label="PG 池利用率"
+                  :value="ingressDispatchPgUtil"
+                  :hint="ingressDispatchPgHint"
+                />
+              </div>
+            </div>
+            <div
+              v-if="ingressDispatchWorkerRows.length"
+              class="home-shard-obs__workers"
+            >
+              <p class="home-shard-obs__workers-title">各 worker 入站调度（今日）</p>
+              <p class="home-shard-obs__workers-desc muted">
+                按 worker 汇总群消息与 matcher 漏斗；P95 为片内入站处理延迟。
+              </p>
+              <div class="home-shard-obs__table-wrap">
+                <table class="home-shard-obs__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Worker</th>
+                      <th scope="col">群消息</th>
+                      <th scope="col">选中率</th>
+                      <th scope="col">P95</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in ingressDispatchWorkerRows"
+                      :key="row.shard_id"
+                    >
+                      <td>worker-{{ row.shard_id }}</td>
+                      <td>{{ ingressWorkerGroupMessages(row) }}</td>
+                      <td>{{ ingressWorkerMatcherRatio(row) }}</td>
+                      <td>{{ ingressWorkerP95(row) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      </Transition>
+
+      <Transition name="home-lazy-cross">
+      <section
+        v-if="shardObsVisible"
+        class="home-dashboard__shard-obs home-dashboard__section"
+        style="--home-section-i: 6"
       >
         <div class="panel home-page__panel">
           <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">

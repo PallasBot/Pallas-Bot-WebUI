@@ -51,6 +51,7 @@ import type {
   ConsoleDailyStatsData,
   PluginRunStatsData,
   ShardObservabilityData,
+  IngressDispatchData,
 } from "./pallasTypes";
 
 /**
@@ -551,6 +552,20 @@ export async function fetchShardObservability(): Promise<ShardObservabilityData>
     });
   }
   return shardObsInflight;
+}
+
+let ingressDispatchInflight: Promise<IngressDispatchData> | null = null;
+
+export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
+  if (!ingressDispatchInflight) {
+    ingressDispatchInflight = (async () => {
+      const { data } = await http.get<ApiOk<IngressDispatchData>>("/ingress-dispatch");
+      return unwrap(data, "/ingress-dispatch");
+    })().finally(() => {
+      ingressDispatchInflight = null;
+    });
+  }
+  return ingressDispatchInflight;
 }
 
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {
