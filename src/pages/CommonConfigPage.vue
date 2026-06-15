@@ -403,7 +403,8 @@ function showConfigField(f: PluginConfigField): boolean {
             class="muted common-config-page__intro"
           >
             向社区中心<strong>上报在线统计</strong>（默认开启，不含消息内容）。
-            下方可分别设置是否在主站气泡墙<strong>公开 QQ</strong>或<strong>头像昵称</strong>，默认均关闭。
+            下方「社区主站展示」可分别设置是否在主站气泡墙<strong>公开 QQ</strong>（默认关）或<strong>头像昵称</strong>（默认开）。
+            也可在<strong>统计与语料</strong>页通过链接进入本页调整。
           </p>
           <p
             v-if="isCorpusFederationSection && showHotReloadHint"

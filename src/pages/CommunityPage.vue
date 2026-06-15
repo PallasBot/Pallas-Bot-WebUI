@@ -383,6 +383,9 @@ onMounted(() => {
           </p>
           <ul class="community-page__intro-list muted">
             <li><strong>在线统计</strong>：默认开启，向社区中心上报本机在线牛牛数量（不含消息内容）。</li>
+            <li><strong>主站展示</strong>：默认向社区主站气泡墙公开牛牛<strong>头像昵称</strong>；QQ 默认不公开。可在
+              <RouterLink to="/common-config?section=community_stats">在线统计与社区主站</RouterLink>
+              调整。</li>
             <li><strong>共享语料</strong>：默认关闭，开启后可读取社区大家贡献的接话素材，也可选择上传本机新回复。</li>
             <li><strong>社区联邦</strong>：多套牛牛共池时，避免对同一条群消息重复回复；需填写入池密钥。</li>
           </ul>
