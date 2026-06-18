@@ -2,14 +2,27 @@ import { reactive } from "vue";
 import { type AccentPreset, isAccentPreset } from "@/config/accentPresets";
 import {
   DEFAULT_SIDEBAR_NAV_ORDER,
+  migrateSidebarOrderChartsPage,
   migrateSidebarOrderCommunityPage,
+  migrateSidebarOrderDatabaseBackups,
+  migrateSidebarOrderAiConfig,
+  migrateSidebarOrderAiHubSingle,
+  migrateSidebarOrderPluginStore,
   migrateSidebarOrderUpdateToEnd,
   normalizeMainNavOrder,
 } from "@/config/mainNav";
+import {
+  applyConsoleDocumentDataset,
+  buildConsoleDocumentDataset,
+} from "@/utils/consolePrefsDocument";
+
 const STORAGE_KEY = "pallas_console_prefs_v1";
 
 export type ThemeMode = "dark" | "light" | "system";
 export type RadiusMode = "tight" | "default" | "round";
+export type SurfaceStyle = "solid" | "glass";
+/** GS 彩色胶囊 vs shadcn 纯黑白 */
+export type UiPreset = "gs" | "shadcn";
 export type DensityMode = "comfortable" | "compact";
 export type { AccentPreset };
 
@@ -18,9 +31,17 @@ export type DataViewMode = "table" | "cards";
 export interface ConsolePrefsState {
   theme: ThemeMode;
   radius: RadiusMode;
+  /** 面板/卡片视觉：纯色或毛玻璃 */
+  surfaceStyle: SurfaceStyle;
+  /** 毛玻璃 blur 像素（8–40） */
+  glassBlur: number;
+  /** 卡片毛玻璃不透明度（0.12–0.72） */
+  cardGlassOpacity: number;
   density: DensityMode;
   /** 强调色预设（链接、主按钮、高亮等） */
   accentPreset: AccentPreset;
+  /** 界面主题预设：GS 或 shadcn monochrome */
+  uiPreset: UiPreset;
   /** 桌面宽度下是否收起左侧主导航（仅图标条） */
   sidebarCollapsed: boolean;
   /** 实例页：数据库中的实例表格/卡片默认视图 */
@@ -46,16 +67,20 @@ export interface ConsolePrefsState {
 }
 const defaults: ConsolePrefsState = {
   theme: "system",
-  radius: "default",
+  radius: "round",
+  surfaceStyle: "glass",
+  glassBlur: 24,
+  cardGlassOpacity: 0.38,
   density: "comfortable",
   accentPreset: "sky",
+  uiPreset: "gs",
   sidebarCollapsed: false,
   instancesBotView: "table",
   protocolAccountsView: "table",
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
-  sidebarNavLayoutVersion: 3,
+  sidebarNavLayoutVersion: 9,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
   databasePageGroupConfigsOpen: true,
@@ -91,6 +116,34 @@ function load(): ConsolePrefsState {
       nextOrder = migrateSidebarOrderCommunityPage(nextOrder);
       layoutVerOut = 3;
     }
+    if (layoutVerOut < 4) {
+      nextOrder = migrateSidebarOrderPluginStore(nextOrder);
+      layoutVerOut = 4;
+    }
+    if (layoutVerOut < 5) {
+      nextOrder = migrateSidebarOrderChartsPage(nextOrder);
+      layoutVerOut = 5;
+    }
+    if (layoutVerOut < 6) {
+      nextOrder = migrateSidebarOrderDatabaseBackups(nextOrder);
+      layoutVerOut = 6;
+    }
+    if (layoutVerOut < 7) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 7;
+    }
+    if (layoutVerOut < 8) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 8;
+    }
+    if (layoutVerOut < 9) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 9;
+    }
+    if (layoutVerOut < 10) {
+      nextOrder = migrateSidebarOrderAiHubSingle(nextOrder);
+      layoutVerOut = 10;
+    }
     const layoutMigrated = layoutVerOut !== layoutVer;
     merged.sidebarNavLayoutVersion = layoutVerOut;
     merged.sidebarNavOrder = normalizeMainNavOrder(nextOrder);
@@ -124,11 +177,24 @@ function load(): ConsolePrefsState {
     if (merged.radius !== "tight" && merged.radius !== "default" && merged.radius !== "round") {
       merged.radius = defaults.radius;
     }
+    if (merged.surfaceStyle !== "solid" && merged.surfaceStyle !== "glass") {
+      merged.surfaceStyle = defaults.surfaceStyle;
+    }
+    const blurRaw = Number((parsed as { glassBlur?: unknown }).glassBlur ?? merged.glassBlur);
+    if (Number.isFinite(blurRaw)) merged.glassBlur = Math.min(40, Math.max(8, Math.round(blurRaw)));
+    const opRaw = Number((parsed as { cardGlassOpacity?: unknown }).cardGlassOpacity ?? merged.cardGlassOpacity);
+    if (Number.isFinite(opRaw)) merged.cardGlassOpacity = Math.min(0.72, Math.max(0.12, opRaw));
     if (merged.density !== "comfortable" && merged.density !== "compact") {
       merged.density = defaults.density;
     }
     if (!isAccentPreset(merged.accentPreset)) {
       merged.accentPreset = defaults.accentPreset;
+    }
+    const uiRaw = (parsed as { uiPreset?: unknown }).uiPreset;
+    if (uiRaw === "gs" || uiRaw === "shadcn") {
+      merged.uiPreset = uiRaw;
+    } else {
+      merged.uiPreset = defaults.uiPreset;
     }
     if (layoutMigrated) {
       try {
@@ -145,21 +211,22 @@ function load(): ConsolePrefsState {
 
 export const consolePrefs = reactive<ConsolePrefsState>(load());
 
-function resolvedTheme(): "dark" | "light" {
-  if (consolePrefs.theme === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return consolePrefs.theme;
+function systemPrefersDark(): boolean {
+  if (typeof window === "undefined") return true;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 export function applyConsolePrefsToDocument(): void {
   if (typeof document === "undefined") return;
-  const t = resolvedTheme();
-  document.documentElement.dataset.theme = t;
-  document.documentElement.dataset.radius = consolePrefs.radius;
-  document.documentElement.dataset.density = consolePrefs.density;
-  document.documentElement.dataset.accent = consolePrefs.accentPreset;
-  document.documentElement.style.colorScheme = t;
+  const el = document.documentElement;
+  applyConsoleDocumentDataset(el, buildConsoleDocumentDataset(consolePrefs, systemPrefersDark()));
+  const blur = consolePrefs.glassBlur;
+  const saturate = 1.05 + ((blur - 8) / 32) * 0.75;
+  const glassPct = Math.round(consolePrefs.cardGlassOpacity * 100);
+  el.style.setProperty("--surface-blur", `${blur}px`);
+  el.style.setProperty("--card-glass-opacity", String(consolePrefs.cardGlassOpacity));
+  el.style.setProperty("--shell-glass-pct", `${glassPct}%`);
+  el.style.setProperty("--glass-saturate", saturate.toFixed(2));
 }
 
 export function persistConsolePrefs(): void {
@@ -197,7 +264,7 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
 export function resetSidebarNavToDefaults(): void {
   setConsolePrefs({
     sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
-    sidebarNavLayoutVersion: 3,
+    sidebarNavLayoutVersion: 9,
   });
 }
 export function initConsolePrefs(): void {

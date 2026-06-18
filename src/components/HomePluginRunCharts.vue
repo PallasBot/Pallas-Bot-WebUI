@@ -13,10 +13,10 @@ import type { PluginRunSample } from "@/utils/pluginRunHistory";
 import { buildPluginRunSparkPoly, formatPluginRunSampleTime } from "@/utils/pluginRunHistory";
 import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import HomeBucketChartSvg, { type BucketBarPack, type BucketBarSeries } from "@/components/HomeBucketChartSvg.vue";
-import HomeHourlyChartSvg, { type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
+import HomeHourlyChartSvg, { type HourlyChartLayer, type HourlyChartPack } from "@/components/HomeHourlyChartSvg.vue";
 import HomeChartPanelSkeleton from "@/components/HomeChartPanelSkeleton.vue";
-
-const COLORS = ["#ea580c", "#fb923c", "#f97316", "#fdba74", "#c2410c", "#fed7aa", "#fb7185", "#fbbf24"];
+import GsDualAxisTrendChart from "@/components/GsDualAxisTrendChart.vue";
+import { installChartThemeWatcher, readChartPalette } from "@/utils/chartTheme";
 
 /** 今日各小时图横轴刻度 0–23（本地自然日） — 见 HomeHourlyChartSvg */
 const CHART_SEL_KEY = "pallas_home_chart_sel_v1";
@@ -84,6 +84,17 @@ const PANEL_GROUPS: { label: string; panels: ChartPanelId[] }[] = [
 ];
 
 const PANEL_ORDER: ChartPanelId[] = PANEL_GROUPS.flatMap((g) => g.panels);
+
+const DEFAULT_DASHBOARD_PANELS: ChartPanelId[] = [
+  "daily_msg_matcher",
+  "api_bucket",
+  "matcher_bucket",
+  "plugins_top",
+  "matcher_duration_hourly",
+  "matcher_err_bucket",
+];
+
+const DASHBOARD_PANEL_SPAN2 = new Set<ChartPanelId>(["daily_msg_matcher", "matcher_duration_hourly"]);
 
 function isChartPanelId(s: string): s is ChartPanelId {
   return (PANEL_ORDER as string[]).includes(s);
@@ -176,7 +187,7 @@ function saveSel(s: SelState) {
 
 const props = defineProps<{
   plugins: PluginRunStatsRow[];
-  /** 与 GET /plugins 一致，用于 Matcher 曲线中文名（metadata.name） */
+  /** Matcher 曲线用的插件中文名 */
   pluginsMeta?: PluginRow[] | null;
   series: PluginRunSample[];
   busy: boolean;
@@ -190,16 +201,20 @@ const props = defineProps<{
   matcherDurationLogCap?: number;
   matcherDurationLogPerPluginCap?: number;
   matcherHistoryBucketSec?: number;
-  /** 今日 Matcher 异常次数（当前账号） */
+  /** 今日 Matcher 异常次数 */
   matcherErrorsToday?: number;
-  /** 最近 Matcher 异常快照（含 traceback） */
+  /** 最近 Matcher 异常快照 */
   matcherErrorLog?: MatcherErrorLogEntry[];
   /** GET /console-daily-stats 的 rows（当前选中账号） */
   dailyStatRows?: ConsoleDailyStatRow[] | null;
   /** 图表标题旁小字：API 片段（如「API 22」） */
   toolbarSummaryApi?: string | null;
-  /** 插件 Matcher 片段（如「插件 145」） */
+  /** Matcher 插件显示名片段 */
   toolbarSummaryPlugin?: string | null;
+  /** single：单图切换；dashboard：看板多图同屏 */
+  layoutMode?: "single" | "dashboard";
+  /** dashboard 模式下展示的图表（默认见 DEFAULT_DASHBOARD_PANELS） */
+  dashboardPanels?: ChartPanelId[];
 }>();
 
 const emit = defineEmits<{
@@ -443,7 +458,9 @@ function buildDurationHistPack(rows: MatcherDurationLogEntry[]): DurationHistPac
   if (maxCount <= 0) return null;
   const yTicks = [
     { y: bottom, t: "0次" },
+    { y: bottom - innerH * 0.25, t: fmtAxisCountTick(maxCount * 0.25) },
     { y: bottom - innerH / 2, t: fmtAxisCountTick(maxCount / 2) },
+    { y: bottom - innerH * 0.75, t: fmtAxisCountTick(maxCount * 0.75) },
     { y: padT, t: fmtAxisCountTick(maxCount) },
   ];
   return {
@@ -515,7 +532,9 @@ function buildDurationScatterPack(rows: MatcherDurationLogEntry[]): DurationScat
   );
   const yTicks = [
     { y: bottom, t: fmtDurationMsAxisTick(0) },
+    { y: bottom - innerH * 0.25, t: fmtDurationMsAxisTick(axisMax * 0.25) },
     { y: bottom - innerH / 2, t: fmtDurationMsAxisTick(axisMax / 2) },
+    { y: bottom - innerH * 0.75, t: fmtDurationMsAxisTick(axisMax * 0.75) },
     { y: padT, t: axisTopPlus ? `${fmtDurationMsAxisTick(axisMax)}+` : fmtDurationMsAxisTick(axisMax) },
   ];
   return {
@@ -992,7 +1011,7 @@ function buildBucketBarPack(
 
   const seriesRaw: BucketBarSeries[] = rows.map((row, i) => ({
     label: row.label,
-    color: COLORS[i % COLORS.length]!,
+    color: chartSeriesColor(i),
     vals: timesSec.map((t) => valAt(row.points, t)),
   }));
 
@@ -1024,7 +1043,7 @@ function buildBucketBarPack(
   const marginT = nT <= 3 ? 0.05 : narrowViewport ? 0.055 : 0.08;
   const barFill = narrowViewport ? 0.92 : 0.88;
   const barGapRatio = narrowViewport ? 0.04 : 0.06;
-  const minBarW = narrowViewport ? 2.2 : 1.1;
+  const minBarW = narrowViewport ? 2.8 : 2;
 
   for (let i = 0; i < nT; i++) {
     const colL = left + i * slotW;
@@ -1047,7 +1066,9 @@ function buildBucketBarPack(
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
   const yTicks = [
     { y: bottom, t: fmtTick(0) },
+    { y: bottom - innerH * 0.25, t: fmtTick(axisMax * 0.25) },
     { y: bottom - innerH / 2, t: fmtTick(axisMax / 2) },
+    { y: bottom - innerH * 0.75, t: fmtTick(axisMax * 0.75) },
     { y: top, t: axisTopPlus ? `${fmtTick(axisMax)}+` : fmtTick(axisMax) },
   ];
   const xi = pickTickIndices(nT, 9);
@@ -1078,8 +1099,6 @@ function buildBucketBarPack(
   };
 }
 
-type HourlyLayerLine = { label: string; color: string; poly: string };
-
 function buildHourlyChartPack(
   rows: { label: string; hours: number[] }[],
   fmtTick: (n: number) => string = fmtAxisCountTick,
@@ -1106,9 +1125,10 @@ function buildHourlyChartPack(
   const xAt = (h: number) => left + (h / 23) * innerW;
   const yAt = (v: number) => bottom - Math.min(1, v / axisMax) * innerH;
 
-  const layers: HourlyLayerLine[] = rows.map((row, i) => ({
+  const layers: HourlyChartLayer[] = rows.map((row, i) => ({
     label: row.label,
-    color: COLORS[i % COLORS.length]!,
+    color: chartSeriesColor(i),
+    hours: row.hours,
     poly: row.hours
       .map((v, h) => `${xAt(h).toFixed(2)},${yAt(v).toFixed(2)}`)
       .join(" "),
@@ -1117,7 +1137,9 @@ function buildHourlyChartPack(
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((g) => bottom - g * innerH);
   const yTicks = [
     { y: bottom, t: formatTick(0) },
+    { y: bottom - innerH * 0.25, t: formatTick(axisMax * 0.25) },
     { y: bottom - innerH / 2, t: formatTick(axisMax / 2) },
+    { y: bottom - innerH * 0.75, t: formatTick(axisMax * 0.75) },
     { y: top, t: axisTopPlus ? `${formatTick(axisMax)}+` : formatTick(axisMax) },
   ];
 
@@ -1249,13 +1271,13 @@ const matcherPluginColorMap = computed((): ReadonlyMap<string, string> => {
   for (const it of props.matcherDurationLog ?? []) push(it.plugin);
   const map = new Map<string, string>();
   ordered.forEach((plugin, i) => {
-    map.set(plugin, COLORS[i % COLORS.length]!);
+    map.set(plugin, chartSeriesColor(i));
   });
   return map;
 });
 
 function matcherPluginBarColor(plugin: string): string {
-  return matcherPluginColorMap.value.get(plugin) ?? COLORS[0]!;
+  return matcherPluginColorMap.value.get(plugin) ?? chartSeriesColor(0);
 }
 
 function matcherPluginBarFillBackground(color: string): string {
@@ -1276,6 +1298,13 @@ function resolveInitialChartPanel(): ChartPanelId {
   return "matcher_duration_recent";
 }
 
+const chartPalette = ref(readChartPalette());
+
+function chartSeriesColor(index: number): string {
+  const palette = chartPalette.value;
+  return palette[index % palette.length] ?? palette[0] ?? "#38bdf8";
+}
+
 const chartPanel = ref<ChartPanelId>(resolveInitialChartPanel());
 const panelPickReady = ref(Boolean(loadChartPanel()));
 const chartsDrawExpanded = ref(loadChartsDrawExpanded());
@@ -1292,9 +1321,15 @@ function refreshBucketViewportNarrow() {
 onMounted(() => {
   refreshBucketViewportNarrow();
   window.addEventListener("resize", refreshBucketViewportNarrow, { passive: true });
+  chartPalette.value = readChartPalette();
+});
+
+const stopChartThemeWatch = installChartThemeWatcher(() => {
+  chartPalette.value = readChartPalette();
 });
 
 onUnmounted(() => {
+  stopChartThemeWatch();
   if (typeof window === "undefined") return;
   window.removeEventListener("resize", refreshBucketViewportNarrow);
 });
@@ -1302,6 +1337,7 @@ onUnmounted(() => {
 /** 图表区底部选项条：图表已展开且用户点「选项」后才显示 */
 const chartFilterStripVisible = computed(
   () =>
+    !isDashboard.value &&
     chartsDrawExpanded.value &&
     chartsFilterExpanded.value &&
     (chartPanel.value !== "local_spark" || showLocalSpark.value),
@@ -1309,6 +1345,7 @@ const chartFilterStripVisible = computed(
 
 const chartFilterToggleVisible = computed(
   () =>
+    !isDashboard.value &&
     chartsDrawExpanded.value &&
     (chartPanel.value !== "local_spark" || showLocalSpark.value),
 );
@@ -1512,6 +1549,29 @@ const panelAvailability = computed(() => ({
   local_spark: showLocalSpark.value,
 }));
 
+const isDashboard = computed(() => props.layoutMode === "dashboard");
+
+const effectiveDashboardPanels = computed((): ChartPanelId[] => {
+  const custom = props.dashboardPanels;
+  if (custom?.length) return custom.filter((id) => isChartPanelId(id));
+  return DEFAULT_DASHBOARD_PANELS;
+});
+
+function panelVisible(id: ChartPanelId): boolean {
+  const avail = panelAvailability.value;
+  if (isDashboard.value) {
+    return effectiveDashboardPanels.value.includes(id) && avail[id];
+  }
+  return chartPanel.value === id;
+}
+
+function dashboardCellClass(id: ChartPanelId): Record<string, boolean> {
+  return {
+    "home-plugin-charts-dashboard__cell": isDashboard.value,
+    "home-plugin-charts-dashboard__cell--span-2": isDashboard.value && DASHBOARD_PANEL_SPAN2.has(id),
+  };
+}
+
 const activeChartLoading = computed((): boolean => {
   if (!props.busy) return false;
   switch (chartPanel.value) {
@@ -1526,7 +1586,7 @@ const activeChartLoading = computed((): boolean => {
     case "plugins_duration_top":
       return topPluginsByDuration.value.length === 0;
     case "daily_msg_matcher":
-      return !dailyChartPack.value;
+      return (props.dailyStatRows?.length ?? 0) < 1;
     case "api_hourly":
       return !hourlyApiPack.value;
     case "api_bucket":
@@ -1551,7 +1611,10 @@ const activeChartLoading = computed((): boolean => {
 });
 
 const chartsDrawVisible = computed(
-  () => chartsDrawExpanded.value || (props.busy && activeChartLoading.value),
+  () =>
+    isDashboard.value ||
+    chartsDrawExpanded.value ||
+    (props.busy && activeChartLoading.value),
 );
 
 const panelOptionGroups = computed(() => {
@@ -1585,13 +1648,6 @@ function fmtAxisCountTick(n: number): string {
   return `${fmtAxisCount(x)}次`;
 }
 
-function fmtAxisMsgTick(n: number): string {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return "—";
-  if (x === 0) return "0";
-  return `${fmtAxisCount(x)}条`;
-}
-
 function fmtDurationMsAxisTick(ms: number): string {
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return "0";
@@ -1605,89 +1661,56 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
   switch (chartPanel.value) {
     case "matcher_duration_recent":
       return {
-        lede: "当前账号 · 单次 Matcher 墙钟耗时（新→旧）。",
+        lede: "当前账号 · Matcher 墙钟耗时，新→旧。",
         items: [
-          { dt: "数据含义", dd: "每条为一次执行耗时，不是今日平均。" },
-          {
-            dt: "持久化",
-            dd: `写入 matcher_durations.jsonl；每账号最多 ${cap} 条，单插件最多 ${matcherDurationLogPerPluginCap.value} 条，避免复读等高频占满。`,
-          },
-          {
-            dt: "读图方式",
-            dd: "耗时列悬停可看精确毫秒；全体 <1ms 时改显示小数。相对条按 P95 标尺与平方根比例绘制，极大值仍满条但不压扁常态样本；同插件同色。",
-          },
-          {
-            dt: "勾选",
-            dd: "默认不勾选占记录过半的插件；展开「选项」勾选要看的插件，列表内每插件再限显示条数（较新优先）。",
-          },
-          {
-            dt: "分位数",
-            dd: "工具栏 P50/P95/Max 基于当前勾选样本；分布与散点视图共用同一筛选。",
-          },
+          { dt: "含义", dd: "单次 matcher 执行耗时，非今日平均。" },
+          { dt: "持久化", dd: `matcher_durations.jsonl，每账号最多 ${cap} 条。` },
+          { dt: "读图", dd: "按插件勾选；P50/P95/Max 基于当前样本。" },
         ],
       };
     case "matcher_duration_hist":
       return {
-        lede: "当前账号 · 近期单次耗时分布（按耗时区间分桶）。",
+        lede: "当前账号 · Matcher 耗时分布。",
         items: [
-          { dt: "数据范围", dd: "与「单次耗时」相同缓冲；柱高为区间内次数，多插件堆叠同色。" },
-          { dt: "读图方式", dd: "左→右：<1ms 至 >1s；双峰分布常见于「大量快路径 + 少量长尾」。" },
-          { dt: "分位数", dd: "工具栏 P50/P95/Max 便于与直方图对照。" },
+          { dt: "范围", dd: "同「单次耗时」缓冲。" },
+          { dt: "读图", dd: "柱高为区间内次数，多插件堆叠。" },
         ],
       };
     case "matcher_duration_scatter":
       return {
-        lede: "当前账号 · 单次耗时随时间散点（左旧右新）。",
+        lede: "当前账号 · Matcher 耗时散点，左旧右新。",
         items: [
-          { dt: "读图方式", dd: "纵轴为墙钟耗时；悬停圆点可看插件与精确值；异常点为描边高亮。" },
-          { dt: "纵轴", dd: "极值过多时顶部刻度可能压缩（与按桶图相同的软上限）。" },
-          { dt: "分位数", dd: "工具栏 P50/P95/Max 为当前勾选样本整体统计。" },
+          { dt: "读图", dd: "纵轴墙钟耗时；悬停看插件与毫秒。" },
         ],
       };
     case "plugins_top":
       return {
-        lede: "当前账号 · 插件今日 Matcher 次数排行。",
+        lede: "当前账号 · 插件今日 Matcher 次数。",
         items: [
-          {
-            dt: "读图方式",
-            dd: "条形长度按次数开方压缩后映射（最高 100%，其余不低于约 32%，便于极端差距下对比）；右侧为次数，有样本时附带平均耗时。",
-          },
-          { dt: "相关视图", dd: "单次明细见「Matcher 单次耗时」；耗时见「插件今日平均耗时」。" },
+          { dt: "读图", dd: "条形按次数开方压缩；右侧为次数与平均耗时。" },
         ],
       };
     case "plugins_duration_top":
       return {
-        lede: "当前账号 · 按今日平均 Matcher 耗时排序（含今日次数）。",
+        lede: "当前账号 · 插件今日平均 Matcher 耗时。",
         items: [
-          {
-            dt: "统计口径",
-            dd: "preprocessor 至 postprocessor 墙钟耗时；后端保留三位小数（0.001ms）。",
-          },
-          durationBarsSubMsMode.value
-            ? {
-                dt: "读图方式",
-                dd: "耗时均 <1ms，条长按今日次数线性比例；右侧为平均耗时、今日次数。",
-              }
-            : {
-                dt: "读图方式",
-                dd: "条形长度按今日平均耗时线性比例（最高 100%）；右侧为平均耗时、今日次数，「峰」为今日最大单次。",
-              },
-          { dt: "相关视图", dd: "仅次数无耗时样本的插件见「插件今日次数」。" },
+          { dt: "口径", dd: "preprocessor 至 postprocessor 墙钟耗时。" },
+          { dt: "读图", dd: "按平均耗时排序；右侧附今日次数。" },
         ],
       };
     case "daily_msg_matcher":
       return {
-        lede: "当前账号 · 按自然日汇总（console_daily_stats.json）。",
+        lede: "当前账号 · 按日汇总 console_daily_stats.json。",
         items: [
-          { dt: "读图方式", dd: "左轴消息收+发合计，右轴 Matcher 次数；仅 1 天时为柱状图。" },
-          { dt: "数据来源", dd: "分片下由 hub 合并 worker 快照与磁盘刷盘；跨自然日写入持久化。" },
+          { dt: "读图", dd: "左轴发送/接收消息，右轴 Matcher 与 API；悬停看每日明细。" },
+          { dt: "来源", dd: "分片时 hub 合并 worker 快照。" },
         ],
       };
     case "api_hourly":
       return {
         lede: "当前账号 · 协议 API 今日各小时累计。",
         items: [
-          { dt: "读图方式", dd: "横轴 0–23 为本地自然日各小时；纵轴为该小时累计调用次数。" },
+          { dt: "读图", dd: "横轴 0–23 本地小时；纵轴累计次数。" },
           { dt: "勾选", dd: "下方勾选要绘制的 OneBot 接口；可切换「按时间桶」对照原始曲线。" },
         ],
       };
@@ -1839,36 +1862,6 @@ function pluginBarLabel(name: string): string {
   return matcherPluginDisplayName(name, props.pluginsMeta ?? undefined);
 }
 
-function catmullStrokePath(pts: { x: number; y: number }[]): string {
-  if (pts.length === 0) return "";
-  if (pts.length === 1) return `M ${pts[0]!.x} ${pts[0]!.y}`;
-  let d = `M ${pts[0]!.x} ${pts[0]!.y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = i > 0 ? pts[i - 1]! : pts[0]!;
-    const p1 = pts[i]!;
-    const p2 = pts[i + 1]!;
-    const p3 = i + 2 < pts.length ? pts[i + 2]! : p2;
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`;
-  }
-  return d;
-}
-
-function linearAreaPath(pts: { x: number; y: number }[], bottomY: number): string {
-  if (!pts.length) return "";
-  const first = pts[0]!;
-  const last = pts[pts.length - 1]!;
-  let d = `M ${first.x} ${bottomY} L ${first.x} ${first.y}`;
-  for (let i = 1; i < pts.length; i++) {
-    d += ` L ${pts[i]!.x} ${pts[i]!.y}`;
-  }
-  d += ` L ${last.x} ${bottomY} Z`;
-  return d;
-}
-
 function pickTickIndices(n: number, maxTicks: number): number[] {
   if (n <= 0) return [];
   if (n <= maxTicks) return Array.from({ length: n }, (_, i) => i);
@@ -1880,153 +1873,21 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   out.push(n - 1);
   return [...new Set(out)].sort((a, b) => a - b);
 }
-
-const dailyChartPack = computed(() => {
-  const raw = [...(props.dailyStatRows ?? [])].sort((a, b) => a.date.localeCompare(b.date));
-  if (raw.length < 1) return null;
-  const W = 400;
-  const H = 200;
-  const padL = 44;
-  const padR = 44;
-  const padT = 36;
-  const padB = 40;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const left = padL;
-  const top = padT;
-  const bottom = padT + innerH;
-  const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
-
-  if (raw.length === 1) {
-    const row = raw[0]!;
-    const msgSum = (Number(row.received) || 0) + (Number(row.sent) || 0);
-    const mat = Number(row.matcher_runs) || 0;
-    const maxM = Math.max(msgSum, 1);
-    const maxMat = Math.max(mat, 1);
-    const barW = 52;
-    const gap = 28;
-    const cx = left + innerW / 2;
-    const msgX = cx - gap / 2 - barW;
-    const matX = cx + gap / 2;
-    const msgH = (msgSum / maxM) * innerH;
-    const matH = (mat / maxMat) * innerH;
-    const dateLabel = row.date.length >= 10 ? row.date.slice(5) : row.date;
-    return {
-      mode: "bars" as const,
-      W,
-      H,
-      left,
-      top,
-      bottom,
-      innerW,
-      innerH,
-      gridYs,
-      dateLabel,
-      singleDay: true,
-      leftTicks: [
-        { y: bottom, t: "0" },
-        { y: bottom - innerH / 2, t: fmtAxisMsgTick(maxM / 2) },
-        { y: top, t: fmtAxisMsgTick(maxM) },
-      ],
-      rightTicks: [
-        { y: bottom, t: "0" },
-        { y: bottom - innerH / 2, t: fmtAxisCountTick(maxMat / 2) },
-        { y: top, t: fmtAxisCountTick(maxMat) },
-      ],
-      bars: [
-        {
-          x: msgX,
-          y: bottom - msgH,
-          w: barW,
-          h: msgH,
-          cls: "msg",
-          value: msgSum,
-          label: "消息",
-        },
-        {
-          x: matX,
-          y: bottom - matH,
-          w: barW,
-          h: matH,
-          cls: "mat",
-          value: mat,
-          label: "Matcher",
-        },
-      ],
-      xTicks: [{ x: cx, t: dateLabel }],
-      msgPathD: "",
-      matPathD: "",
-      msgAreaD: "",
-      matAreaD: "",
-      msgDots: [] as { x: number; y: number }[],
-      matDots: [] as { x: number; y: number }[],
-    };
-  }
-
-  const msgSums = raw.map((r) => (Number(r.received) || 0) + (Number(r.sent) || 0));
-  const mats = raw.map((r) => Number(r.matcher_runs) || 0);
-  const maxM = Math.max(...msgSums, 1);
-  const maxMat = Math.max(...mats, 1);
-  const n = raw.length;
-  const xAt = (i: number) => left + (i / (n - 1)) * innerW;
-  const yMsg = (v: number) => bottom - (v / maxM) * innerH;
-  const yMat = (v: number) => bottom - (v / maxMat) * innerH;
-  const msgPts = msgSums.map((v, i) => ({ x: xAt(i), y: yMsg(v) }));
-  const matPts = mats.map((v, i) => ({ x: xAt(i), y: yMat(v) }));
-  const msgPathD = catmullStrokePath(msgPts);
-  const matPathD = catmullStrokePath(matPts);
-  const msgAreaD = linearAreaPath(msgPts, bottom);
-  const matAreaD = linearAreaPath(matPts, bottom);
-  const leftTicks = [
-    { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtAxisMsgTick(maxM / 2) },
-    { y: top, t: fmtAxisMsgTick(maxM) },
-  ];
-  const rightTicks = [
-    { y: bottom, t: "0" },
-    { y: bottom - innerH / 2, t: fmtAxisCountTick(maxMat / 2) },
-    { y: top, t: fmtAxisCountTick(maxMat) },
-  ];
-  const xi = pickTickIndices(n, 10);
-  const xTicks = xi.map((i) => ({
-    x: xAt(i),
-    t: raw[i]!.date.length >= 10 ? raw[i]!.date.slice(5) : raw[i]!.date,
-  }));
-  return {
-    mode: "line" as const,
-    W,
-    H,
-    padL,
-    padR,
-    padT,
-    padB,
-    innerW,
-    innerH,
-    left,
-    top,
-    bottom,
-    gridYs,
-    msgPathD,
-    matPathD,
-    msgAreaD,
-    matAreaD,
-    msgDots: msgPts,
-    matDots: matPts,
-    leftTicks,
-    rightTicks,
-    xTicks,
-    singleDay: false,
-  };
-});
 </script>
 
 <template>
   <div class="home-plugin-charts-wrap">
   <div
     class="home-plugin-charts"
-    :class="{ 'home-plugin-charts--draw-collapsed': !chartsDrawExpanded }"
+    :class="{
+      'home-plugin-charts--draw-collapsed': !isDashboard && !chartsDrawExpanded,
+      'home-plugin-charts--dashboard': isDashboard,
+    }"
   >
-    <div class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact">
+    <div
+      v-if="!isDashboard"
+      class="home-plugin-charts__toolbar home-plugin-charts__toolbar--compact"
+    >
       <div class="home-plugin-charts__toolbar-line home-plugin-charts__toolbar-line--compact">
         <div class="home-plugin-charts__toolbar-controls">
           <select
@@ -2036,7 +1897,10 @@ const dailyChartPack = computed(() => {
             aria-label="图表类型"
             title="切换要查看的图表类型（如插件次数/耗时、按日汇总、协议 API 等）"
           >
-            <template v-for="grp in panelOptionGroups" :key="grp.label">
+            <template
+              v-for="grp in panelOptionGroups"
+              :key="grp.label"
+            >
               <optgroup :label="grp.label">
                 <option
                   v-for="o in grp.options"
@@ -2082,7 +1946,7 @@ const dailyChartPack = computed(() => {
       </div>
     </div>
       <div
-        v-if="toolbarHintRowVisible"
+        v-if="!isDashboard && toolbarHintRowVisible"
         class="home-plugin-charts__toolbar-hint-row"
       >
         <p
@@ -2109,18 +1973,30 @@ const dailyChartPack = computed(() => {
       id="home-plugin-charts-draw"
       v-show="chartsDrawVisible"
       class="home-plugin-charts__draw"
-      :class="{ 'home-plugin-charts__draw--loading': busy && activeChartLoading }"
+      :class="{
+        'home-plugin-charts__draw--loading': busy && activeChartLoading && !isDashboard,
+        'home-plugin-charts__draw--dashboard': isDashboard,
+      }"
     >
     <HomeChartPanelSkeleton
-      v-if="busy && activeChartLoading"
+      v-if="busy && activeChartLoading && !isDashboard"
       tall
       class="home-plugin-charts__draw-skel"
     />
-    <template v-else-if="chartsDrawExpanded">
+    <template v-else-if="isDashboard || chartsDrawExpanded">
+    <div :class="{ 'home-plugin-charts-dashboard': isDashboard }">
     <div
-      v-if="chartPanel === 'matcher_duration_recent'"
+      v-if="panelVisible('matcher_duration_recent')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_duration_recent')"
+      data-panel="matcher_duration_recent"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_duration_recent }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p
@@ -2215,15 +2091,24 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_duration_hist'"
+      v-if="panelVisible('matcher_duration_hist')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_duration_hist')"
+      data-panel="matcher_duration_hist"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_duration_hist }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
       <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
       <div v-else-if="durationHistPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
         <svg class="home-matcher-dur-hist__svg" :viewBox="`0 0 ${durationHistPack.W} ${durationHistPack.H}`" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <line v-for="(gy, gi) in [0, 0.25, 0.5, 0.75, 1]" :key="`dhg-${gi}`" class="home-plugin-bucket__grid" :x1="durationHistPack.left" :y1="durationHistPack.bottom - gy * durationHistPack.innerH" :x2="durationHistPack.left + durationHistPack.innerW" :y2="durationHistPack.bottom - gy * durationHistPack.innerH" />
           <line class="home-plugin-bucket__axis" :x1="durationHistPack.left" :y1="durationHistPack.bottom" :x2="durationHistPack.left + durationHistPack.innerW" :y2="durationHistPack.bottom" />
           <text v-for="(tk, ti) in durationHistPack.yTicks" :key="`dhy-${ti}`" class="home-plugin-bucket__ytick" :x="4" :y="tk.y + 4">{{ tk.t }}</text>
           <template v-for="bucket in durationHistPack.buckets" :key="bucket.id">
@@ -2244,18 +2129,29 @@ const dailyChartPack = computed(() => {
       </div>
     </div>
 
-    <div v-if="chartPanel === 'matcher_duration_scatter'" class="home-plugin-charts__block">
+    <div
+      v-if="panelVisible('matcher_duration_scatter')"
+      class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_duration_scatter')"
+      data-panel="matcher_duration_scatter"
+    >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_duration_scatter }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <HomeChartPanelSkeleton v-if="busy && !recentDurationRows.length" />
       <p v-else-if="!recentDurationRows.length" class="muted home-plugin-charts__empty">暂无单次耗时记录。</p>
       <p v-else-if="!filteredRecentDurationRows.length" class="muted home-plugin-charts__empty">请至少勾选一个插件（展开「选项」）。</p>
       <div v-else-if="durationScatterPack" class="home-matcher-dur-analyze home-plugin-charts__viz">
         <svg class="home-matcher-dur-scatter__svg" :viewBox="`0 0 ${durationScatterPack.W} ${durationScatterPack.H}`" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-          <line v-for="(gy, gi) in [0, 0.5, 1]" :key="`dsg-${gi}`" class="home-plugin-bucket__grid" :x1="durationScatterPack.left" :y1="durationScatterPack.bottom - gy * durationScatterPack.innerH" :x2="durationScatterPack.left + durationScatterPack.innerW" :y2="durationScatterPack.bottom - gy * durationScatterPack.innerH" />
+          <line v-for="(gy, gi) in [0, 0.25, 0.5, 0.75, 1]" :key="`dsg-${gi}`" class="home-plugin-bucket__grid" :x1="durationScatterPack.left" :y1="durationScatterPack.bottom - gy * durationScatterPack.innerH" :x2="durationScatterPack.left + durationScatterPack.innerW" :y2="durationScatterPack.bottom - gy * durationScatterPack.innerH" />
           <line class="home-plugin-bucket__axis" :x1="durationScatterPack.left" :y1="durationScatterPack.bottom" :x2="durationScatterPack.left + durationScatterPack.innerW" :y2="durationScatterPack.bottom" />
           <text v-for="(tk, ti) in durationScatterPack.yTicks" :key="`dsy-${ti}`" class="home-plugin-bucket__ytick" :x="4" :y="tk.y + 4">{{ tk.t }}</text>
           <text v-for="(xk, xi) in durationScatterPack.xTicks" :key="`dsx-${xi}`" class="home-plugin-bucket__xtick" text-anchor="middle" :x="xk.x" :y="durationScatterPack.H - 6">{{ xk.t }}</text>
-          <circle v-for="(pt, pi) in durationScatterPack.points" :key="`dsp-${pi}-${pt.at}-${pt.plugin}`" class="home-matcher-dur-scatter__dot" :class="{ 'home-matcher-dur-scatter__dot--err': pt.hadError }" :cx="pt.cx" :cy="pt.cy" :r="pt.hadError ? 4 : 3" :fill="pt.color">
+          <circle v-for="(pt, pi) in durationScatterPack.points" :key="`dsp-${pi}-${pt.at}-${pt.plugin}`" class="home-matcher-dur-scatter__dot" :class="{ 'home-matcher-dur-scatter__dot--err': pt.hadError }" :cx="pt.cx" :cy="pt.cy" :r="pt.hadError ? 5.5 : 4" :fill="pt.color">
             <title>{{ pluginBarLabel(pt.plugin) }} · {{ fmtDurationMsPrecise(pt.ms) }} · {{ formatDurationLogAt(pt.at) }}</title>
           </circle>
         </svg>
@@ -2271,9 +2167,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'plugins_top'"
+      v-if="panelVisible('plugins_top')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('plugins_top')"
+      data-panel="plugins_top"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.plugins_top }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <HomeChartPanelSkeleton v-if="busy && !topPlugins.length" />
       <p
@@ -2314,9 +2218,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'plugins_duration_top'"
+      v-if="panelVisible('plugins_duration_top')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('plugins_duration_top')"
+      data-panel="plugins_duration_top"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.plugins_duration_top }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <HomeChartPanelSkeleton v-if="busy && !topPluginsByDuration.length" />
       <p
@@ -2365,202 +2277,46 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'daily_msg_matcher'"
+      v-if="panelVisible('daily_msg_matcher')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('daily_msg_matcher')"
+      data-panel="daily_msg_matcher"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.daily_msg_matcher }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint home-plugin-daily__hint">
           按自然日汇总（磁盘持久化）；左轴为消息收+发合计，右轴为 Matcher 次数。
         </p>
       </template>
-      <HomeChartPanelSkeleton v-if="busy && !dailyChartPack" />
-      <p
-        v-else-if="!dailyChartPack"
-        class="muted home-plugin-charts__empty"
-      >
-        暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 <code>console_daily_stats.json</code>。
-      </p>
-      <template v-else-if="dailyChartPack">
-      <p
-        v-if="dailyChartPack.singleDay"
-        class="muted home-plugin-charts__hint home-plugin-daily__hint"
-      >
-        当前仅有 1 个自然日记录，以柱状图展示；跨日后将自动切换为折线趋势。
-      </p>
-      <div class="home-plugin-daily home-plugin-charts__viz">
-        <div class="home-plugin-daily__legend muted">
-          <span class="home-plugin-daily__leg-item">
-            <i
-              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--msg"
-              aria-hidden="true"
-            />
-            消息收+发
-          </span>
-          <span class="home-plugin-daily__leg-item">
-            <i
-              class="home-plugin-daily__leg-swatch home-plugin-daily__leg-swatch--mat"
-              aria-hidden="true"
-            />
-            Matcher
-          </span>
-        </div>
-        <div class="home-plugin-daily__svg-wrap">
-          <svg
-            class="home-plugin-daily__svg"
-            :viewBox="`0 0 ${dailyChartPack.W} ${dailyChartPack.H}`"
-            preserveAspectRatio="xMidYMid meet"
-            overflow="visible"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient
-                id="home-daily-msg-area"
-                gradientUnits="userSpaceOnUse"
-                :x1="dailyChartPack.left"
-                :y1="dailyChartPack.bottom"
-                :x2="dailyChartPack.left"
-                :y2="dailyChartPack.top"
-              >
-                <stop
-                  offset="0%"
-                  stop-color="#f472b6"
-                  stop-opacity="0"
-                />
-                <stop
-                  offset="100%"
-                  stop-color="#f472b6"
-                  stop-opacity="0.2"
-                />
-              </linearGradient>
-              <linearGradient
-                id="home-daily-mat-area"
-                gradientUnits="userSpaceOnUse"
-                :x1="dailyChartPack.left"
-                :y1="dailyChartPack.bottom"
-                :x2="dailyChartPack.left"
-                :y2="dailyChartPack.top"
-              >
-                <stop
-                  offset="0%"
-                  stop-color="#d946ef"
-                  stop-opacity="0"
-                />
-                <stop
-                  offset="100%"
-                  stop-color="#d946ef"
-                  stop-opacity="0.18"
-                />
-              </linearGradient>
-            </defs>
-            <line
-              v-for="(gy, gi) in dailyChartPack.gridYs"
-              :key="`g-${gi}`"
-              class="home-plugin-daily__grid"
-              :x1="dailyChartPack.left"
-              :y1="gy"
-              :x2="dailyChartPack.left + dailyChartPack.innerW"
-              :y2="gy"
-            />
-            <text
-              v-for="(tk, ti) in dailyChartPack.leftTicks"
-              :key="`lt-${ti}`"
-              class="home-plugin-daily__axis home-plugin-daily__axis--left"
-              :x="6"
-              :y="tk.y + 4"
-            >{{ tk.t }}</text>
-            <text
-              v-for="(tk, ti) in dailyChartPack.rightTicks"
-              :key="`rt-${ti}`"
-              class="home-plugin-daily__axis home-plugin-daily__axis--right"
-              :x="dailyChartPack.W - 6"
-              :y="tk.y + 4"
-            >{{ tk.t }}</text>
-            <text
-              v-for="(xt, xi) in dailyChartPack.xTicks"
-              :key="`xt-${xi}`"
-              class="home-plugin-daily__axis home-plugin-daily__axis--x"
-              :x="xt.x"
-              :y="dailyChartPack.H - 8"
-            >{{ xt.t }}</text>
-            <template v-if="dailyChartPack.mode === 'bars'">
-              <rect
-                v-for="(bar, bi) in dailyChartPack.bars"
-                :key="`db-${bi}`"
-                class="home-plugin-daily__bar"
-                :class="bar.cls === 'msg' ? 'home-plugin-daily__bar--msg' : 'home-plugin-daily__bar--mat'"
-                :x="bar.x"
-                :y="bar.y"
-                :width="bar.w"
-                :height="Math.max(bar.h, 0)"
-                rx="3"
-              />
-              <text
-                v-for="(bar, bi) in dailyChartPack.bars"
-                :key="`dbv-${bi}`"
-                class="home-plugin-daily__bar-val"
-                :x="bar.x + bar.w / 2"
-                :y="bar.y - 6"
-                text-anchor="middle"
-              >{{ fmtAxisCount(bar.value) }}</text>
-              <text
-                v-for="(bar, bi) in dailyChartPack.bars"
-                :key="`dbl-${bi}`"
-                class="home-plugin-daily__bar-lbl muted"
-                :x="bar.x + bar.w / 2"
-                :y="dailyChartPack.bottom + 18"
-                text-anchor="middle"
-              >{{ bar.label }}</text>
-            </template>
-            <template v-else>
-              <path
-                class="home-plugin-daily__area home-plugin-daily__area--mat"
-                :d="dailyChartPack.matAreaD"
-                fill="url(#home-daily-mat-area)"
-              />
-              <path
-                class="home-plugin-daily__area home-plugin-daily__area--msg"
-                :d="dailyChartPack.msgAreaD"
-                fill="url(#home-daily-msg-area)"
-              />
-              <path
-                class="home-plugin-daily__line home-plugin-daily__line--mat"
-                :d="dailyChartPack.matPathD"
-                fill="none"
-              />
-              <path
-                class="home-plugin-daily__line home-plugin-daily__line--msg"
-                :d="dailyChartPack.msgPathD"
-                fill="none"
-              />
-              <circle
-                v-for="(p, di) in dailyChartPack.matDots"
-                :key="`md-${di}`"
-                class="home-plugin-daily__dot home-plugin-daily__dot--mat"
-                :cx="p.x"
-                :cy="p.y"
-                r="3.2"
-              />
-              <circle
-                v-for="(p, di) in dailyChartPack.msgDots"
-                :key="`mg-${di}`"
-                class="home-plugin-daily__dot home-plugin-daily__dot--msg"
-                :cx="p.x"
-                :cy="p.y"
-                r="3.2"
-              />
-            </template>
-          </svg>
-        </div>
-      </div>
-      </template>
+      <GsDualAxisTrendChart
+        class="home-plugin-charts__viz"
+        chart-uid="home-daily-msg"
+        :rows="dailyStatRows ?? []"
+        :busy="busy"
+        empty-text="暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 console_daily_stats.json。"
+        :show-summary="false"
+      />
       </div>
     </div>
 
     <div
-      v-if="chartPanel === 'api_hourly'"
+      v-if="panelVisible('api_hourly')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('api_hourly')"
+      data-panel="api_hourly"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.api_hourly }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -2637,9 +2393,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'api_bucket'"
+      v-if="panelVisible('api_bucket')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('api_bucket')"
+      data-panel="api_bucket"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.api_bucket }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -2716,9 +2480,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_hourly'"
+      v-if="panelVisible('matcher_hourly')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_hourly')"
+      data-panel="matcher_hourly"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_hourly }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -2795,9 +2567,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_bucket'"
+      v-if="panelVisible('matcher_bucket')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_bucket')"
+      data-panel="matcher_bucket"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_bucket }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -2874,9 +2654,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_duration_hourly'"
+      v-if="panelVisible('matcher_duration_hourly')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_duration_hourly')"
+      data-panel="matcher_duration_hourly"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_duration_hourly }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -2953,9 +2741,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_duration_bucket'"
+      v-if="panelVisible('matcher_duration_bucket')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_duration_bucket')"
+      data-panel="matcher_duration_bucket"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_duration_bucket }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -3032,9 +2828,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_err_hourly'"
+      v-if="panelVisible('matcher_err_hourly')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_err_hourly')"
+      data-panel="matcher_err_hourly"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_err_hourly }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -3111,9 +2915,17 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'matcher_err_bucket'"
+      v-if="panelVisible('matcher_err_bucket')"
       class="home-plugin-charts__block"
+      :class="dashboardCellClass('matcher_err_bucket')"
+      data-panel="matcher_err_bucket"
     >
+      <h3
+        v-if="isDashboard"
+        class="home-plugin-charts-dashboard__title"
+      >
+        {{ PANEL_LABELS.matcher_err_bucket }}
+      </h3>
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
@@ -3190,7 +3002,7 @@ const dailyChartPack = computed(() => {
     </div>
 
     <div
-      v-if="chartPanel === 'local_spark' && showLocalSpark"
+      v-if="panelVisible('local_spark') && showLocalSpark"
       class="home-plugin-charts__block"
     >
       <div class="home-plugin-charts__flip">
@@ -3209,7 +3021,6 @@ const dailyChartPack = computed(() => {
           <polyline
             class="home-plugin-chart-line"
             fill="none"
-            stroke="#ea580c"
             :points="sparkPoly"
           />
         </svg>
@@ -3218,6 +3029,7 @@ const dailyChartPack = computed(() => {
         </div>
       </div>
       </div>
+    </div>
     </div>
     </template>
     </div>
@@ -3438,6 +3250,7 @@ const dailyChartPack = computed(() => {
 .home-plugin-charts__toolbar-controls .home-plugin-charts__pick {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: min(100%, 15rem);
 }
 .home-plugin-charts__toolbar-controls .home-plugin-charts__draw-toggle {
   flex: 0 0 auto;
@@ -3556,10 +3369,10 @@ const dailyChartPack = computed(() => {
 .home-plugin-charts__pick--compact {
   min-width: 0;
   max-width: 100%;
-  min-height: 30px;
-  font-size: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  min-height: calc(var(--ui-ctrl-height) - 6px);
+  font-size: calc(var(--ui-ctrl-font) - 1px);
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 .home-plugin-charts__block {
   min-width: 0;
@@ -3791,15 +3604,15 @@ const dailyChartPack = computed(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), rgba(125, 211, 252, 0.75));
+  background: linear-gradient(90deg, var(--accent), var(--chart-bar-mix));
   min-width: 2px;
   transition: width 0.25s var(--ease, ease);
 }
 .home-plugin-bars__fill--runs {
-  background: linear-gradient(90deg, var(--accent), rgba(125, 211, 252, 0.75));
+  background: linear-gradient(90deg, var(--accent), var(--chart-bar-mix));
 }
 .home-plugin-bars__fill--duration {
-  background: linear-gradient(90deg, #c2410c, rgba(251, 146, 60, 0.85));
+  background: linear-gradient(90deg, var(--chart-bar-alt), color-mix(in srgb, var(--chart-bar-alt) 80%, transparent));
 }
 .home-plugin-bars--plugin-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child,
 .home-plugin-bars--duration-rank .home-plugin-bars__val--stack > .home-plugin-bars__val-line:first-child {
@@ -4082,9 +3895,9 @@ const dailyChartPack = computed(() => {
   white-space: nowrap;
 }
 .home-plugin-legend__sw {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 .home-plugin-spark-wrap {
@@ -4101,6 +3914,7 @@ const dailyChartPack = computed(() => {
 }
 
 .home-plugin-chart-line {
+  stroke: var(--chart-palette-1);
   stroke-width: 2px;
   vector-effect: non-scaling-stroke;
 }
@@ -4439,17 +4253,17 @@ const dailyChartPack = computed(() => {
 }
 
 .home-plugin-daily__leg-swatch--msg {
-  background: linear-gradient(90deg, #f472b6, #fb7185);
+  background: linear-gradient(90deg, var(--chart-daily-msg), color-mix(in srgb, var(--chart-daily-msg) 75%, transparent));
 }
 
 .home-plugin-daily__leg-swatch--mat {
-  background: linear-gradient(90deg, #d946ef, #e879f9);
+  background: linear-gradient(90deg, var(--chart-daily-matcher), color-mix(in srgb, var(--chart-daily-matcher) 75%, transparent));
 }
 
 .home-plugin-daily__svg-wrap {
   width: 100%;
-  max-width: min(720px, 100%);
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   box-sizing: border-box;
 }
 
@@ -4495,11 +4309,11 @@ const dailyChartPack = computed(() => {
 }
 
 .home-plugin-daily__line--msg {
-  stroke: #f472b6;
+  stroke: var(--chart-daily-msg);
 }
 
 .home-plugin-daily__line--mat {
-  stroke: #d946ef;
+  stroke: var(--chart-daily-matcher);
 }
 
 .home-plugin-daily__dot {
@@ -4508,37 +4322,37 @@ const dailyChartPack = computed(() => {
 }
 
 .home-plugin-daily__dot--msg {
-  fill: #fdf2f8;
+  fill: color-mix(in srgb, var(--chart-daily-msg) 14%, var(--bg-card));
 }
 
 .home-plugin-daily__dot--mat {
-  fill: #faf5ff;
+  fill: color-mix(in srgb, var(--chart-daily-matcher) 14%, var(--bg-card));
 }
 
 html[data-theme="light"] .home-plugin-daily__line--msg {
-  stroke: #db2777;
+  stroke: color-mix(in srgb, var(--chart-daily-msg) 88%, #000 12%);
 }
 
 html[data-theme="light"] .home-plugin-daily__line--mat {
-  stroke: #a21caf;
+  stroke: color-mix(in srgb, var(--chart-daily-matcher) 88%, #000 12%);
 }
 
 html[data-theme="light"] .home-plugin-daily__dot--msg {
-  fill: #fff1f2;
-  stroke: #fce7f3;
+  fill: color-mix(in srgb, var(--chart-daily-msg) 10%, #fff);
+  stroke: color-mix(in srgb, var(--chart-daily-msg) 22%, var(--border));
 }
 
 html[data-theme="light"] .home-plugin-daily__dot--mat {
-  fill: #fdf4ff;
-  stroke: #fae8ff;
+  fill: color-mix(in srgb, var(--chart-daily-matcher) 10%, #fff);
+  stroke: color-mix(in srgb, var(--chart-daily-matcher) 22%, var(--border));
 }
 
 .home-plugin-daily__bar--msg {
-  fill: #f472b6;
+  fill: var(--chart-daily-msg);
 }
 
 .home-plugin-daily__bar--mat {
-  fill: #d946ef;
+  fill: var(--chart-daily-matcher);
 }
 
 .home-plugin-daily__bar-val {
@@ -4553,11 +4367,11 @@ html[data-theme="light"] .home-plugin-daily__dot--mat {
 }
 
 html[data-theme="light"] .home-plugin-daily__bar--msg {
-  fill: #db2777;
+  fill: color-mix(in srgb, var(--chart-daily-msg) 88%, #000 12%);
 }
 
 html[data-theme="light"] .home-plugin-daily__bar--mat {
-  fill: #a21caf;
+  fill: color-mix(in srgb, var(--chart-daily-matcher) 88%, #000 12%);
 }
 
 .home-plugin-charts__filter-external {
@@ -4579,5 +4393,97 @@ html[data-theme="light"] .home-plugin-daily__bar--mat {
 }
 .home-plugin-charts__filter-external .home-plugin-sel {
   margin-top: 0;
+}
+
+.home-plugin-charts--dashboard {
+  gap: 0;
+}
+
+.home-plugin-charts__draw--dashboard {
+  min-height: 0;
+  padding: 0;
+}
+
+.home-plugin-charts-dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-plugin-charts-dashboard__cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 14px 12px;
+  border-radius: var(--hub-radius, var(--radius-md));
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  box-shadow: var(--hub-shadow, var(--shadow-card));
+}
+
+html[data-layout="hub"] .home-plugin-charts-dashboard__cell {
+  border-radius: var(--hub-radius);
+  background: var(--hub-surface);
+}
+
+html[data-layout="hub"][data-surface="glass"] .home-plugin-charts-dashboard__cell {
+  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.35));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.35));
+  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+}
+
+.home-plugin-charts-dashboard__cell--span-2 {
+  grid-column: 1 / -1;
+}
+
+.home-plugin-charts-dashboard__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.home-plugin-charts--dashboard .home-plugin-charts__block:not(.home-plugin-charts-dashboard__cell) {
+  border: none;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-plugin-charts--dashboard .home-plugin-charts__viz {
+  min-height: 220px;
+}
+
+.home-plugin-charts-dashboard__cell--span-2 .home-plugin-charts__viz {
+  min-height: 260px;
+}
+
+@media (max-width: 900px) {
+  .home-plugin-charts-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .home-plugin-charts-dashboard__cell--span-2 {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .home-plugin-charts-dashboard {
+    gap: 10px;
+  }
+
+  .home-plugin-charts-dashboard__cell {
+    padding: 12px 10px 10px;
+  }
+
+  .home-plugin-charts--dashboard .home-plugin-charts__viz {
+    min-height: 200px;
+  }
 }
 </style>

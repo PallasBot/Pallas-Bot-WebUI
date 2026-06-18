@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/consoleApi";
+import UiDialog from "@/components/ui/UiDialog.vue";
+import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import type { GroupConfigPublic, PluginRow } from "@/api/pallasTypes";
@@ -70,6 +72,18 @@ const groupSingProgressUi = computed(() =>
   groupCfg.value ? singProgressModel(groupCfg.value.sing_progress) : null,
 );
 
+const groupStyleSnapshot = computed(() => groupCfg.value?.style_profile_snapshot ?? null);
+
+function formatStyleUpdatedAt(ts: number | null | undefined): string {
+  if (ts == null || !Number.isFinite(ts)) return "—";
+  const ms = ts > 1e12 ? ts : ts * 1000;
+  try {
+    return new Date(ms).toLocaleString();
+  } catch {
+    return String(ts);
+  }
+}
+
 function normalizeBlockedUserIdsForSave(ids: number[]): number[] {
   const next = [...new Set(ids.map((n) => Math.floor(Number(n))))].filter((n) => Number.isFinite(n) && n > 0);
   next.sort((a, b) => a - b);
@@ -101,15 +115,6 @@ function resetState() {
 
 function close() {
   open.value = false;
-}
-
-function boolSelectVal(v: boolean): string {
-  return v ? "1" : "0";
-}
-
-function onGroupBannedSelect(raw: string) {
-  if (!groupDraft.value) return;
-  groupDraft.value.banned = raw === "1";
 }
 
 const rouletteModeOptions = computed(() =>
@@ -217,9 +222,6 @@ useSaveHotkey(
 watch(
   () => open.value,
   (isOpen) => {
-    if (typeof document !== "undefined") {
-      document.body.style.overflow = isOpen ? "hidden" : "";
-    }
     if (isOpen) void loadConfig();
     else resetState();
   },
@@ -234,56 +236,43 @@ watch(
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="console-modal"
-      role="dialog"
-      :aria-modal="true"
-      aria-labelledby="group-policy-modal-title"
-    >
-      <div
-        class="console-modal__backdrop"
-        :aria-hidden="true"
+  <UiDialog
+    :open="open"
+    title-id="group-policy-modal-title"
+    @close="close"
+  >
+    <template #header>
+      <div class="console-modal__head-text">
+        <h2
+          id="group-policy-modal-title"
+          class="console-modal__title"
+        >
+          编辑群颗粒配置
+        </h2>
+        <p class="console-modal__subtitle">
+          <span
+            v-if="groupCfg"
+            class="console-modal__subtitle-strong"
+          >群 {{ groupCfg.group_id }}</span>
+          <span
+            v-else-if="groupId"
+            class="console-modal__subtitle-strong"
+          >群 {{ groupId }}</span>
+          <span
+            v-if="subtitleGroupName"
+            class="muted"
+          > · {{ subtitleGroupName }}</span>
+        </p>
+      </div>
+      <button
+        type="button"
+        class="console-modal__close"
+        aria-label="关闭"
         @click="close"
-      />
-      <div
-        class="console-modal__dialog"
-        @click.stop
       >
-        <div class="console-modal__hd">
-          <div class="console-modal__head-text">
-            <h2
-              id="group-policy-modal-title"
-              class="console-modal__title"
-            >
-              编辑群颗粒配置
-            </h2>
-            <p class="console-modal__subtitle">
-              <span
-                v-if="groupCfg"
-                class="console-modal__subtitle-strong"
-              >群 {{ groupCfg.group_id }}</span>
-              <span
-                v-else-if="groupId"
-                class="console-modal__subtitle-strong"
-              >群 {{ groupId }}</span>
-              <span
-                v-if="subtitleGroupName"
-                class="muted"
-              > · {{ subtitleGroupName }}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            class="console-modal__close"
-            aria-label="关闭"
-            @click="close"
-          >
-            ×
-          </button>
-        </div>
-        <div class="console-modal__bd">
+        ×
+      </button>
+    </template>
           <p
             v-if="loadBusy"
             class="muted"
@@ -333,18 +322,12 @@ watch(
                   </option>
                 </select>
               </div>
-              <div class="bot-config-edit__field">
-                <label>封禁</label>
-                <select
-                  class="sel"
-                  style="width: 100%"
-                  :value="boolSelectVal(groupDraft.banned)"
-                  @change="onGroupBannedSelect(($event.target as HTMLSelectElement).value)"
-                >
-                  <option value="1">是</option>
-                  <option value="0">否</option>
-                </select>
-              </div>
+              <FormBoolSwitchField
+                label="封禁"
+                label-style="yesno"
+                :model-value="groupDraft.banned"
+                @update:model-value="groupDraft.banned = $event"
+              />
             </div>
             <div class="bot-config-edit__field">
               <label>本群拉黑 QQ（<code>blocked_user_ids</code>）</label>
@@ -441,6 +424,68 @@ watch(
               </div>
             </div>
             <div class="bot-config-edit__field">
+              <label>群风格画像（只读）</label>
+              <p
+                class="muted"
+                style="margin: 0 0 8px; font-size: 12px"
+              >
+                由群消息统计自动生成，驱动复读接话与智能对话语气/句长；不可在此编辑。
+              </p>
+              <div
+                v-if="groupStyleSnapshot"
+                class="style-profile-card"
+              >
+                <div class="style-profile-card__header">
+                  <span class="muted style-profile-card__eyebrow">style_profile</span>
+                  <span
+                    class="badge"
+                    :class="groupStyleSnapshot.ready ? 'badge--ok' : 'badge--warn'"
+                  >{{ groupStyleSnapshot.ready ? "可用" : "样本不足" }}</span>
+                </div>
+                <p
+                  v-if="groupStyleSnapshot.hints?.length"
+                  class="style-profile-card__hints"
+                >
+                  {{ groupStyleSnapshot.hints.join("；") }}
+                </p>
+                <p
+                  v-else
+                  class="muted"
+                  style="margin: 0; font-size: 12px"
+                >
+                  尚无显著特征摘要。
+                </p>
+                <dl
+                  v-if="groupStyleSnapshot.ready && groupStyleSnapshot.signals"
+                  class="style-profile-card__dl"
+                >
+                  <div>
+                    <dt>长度偏好</dt>
+                    <dd>{{ groupStyleSnapshot.signals.length_pref ?? "—" }}</dd>
+                  </div>
+                  <div>
+                    <dt>接话倍率</dt>
+                    <dd>{{ groupStyleSnapshot.signals.reply_bias_mul ?? "—" }}</dd>
+                  </div>
+                  <div>
+                    <dt>混沌</dt>
+                    <dd>{{ groupStyleSnapshot.signals.chaos_bias ?? "—" }}</dd>
+                  </div>
+                  <div>
+                    <dt>更新</dt>
+                    <dd>{{ formatStyleUpdatedAt(groupStyleSnapshot.updated_at) }}</dd>
+                  </div>
+                </dl>
+              </div>
+              <p
+                v-else
+                class="muted"
+                style="margin: 0; font-size: 12px"
+              >
+                暂无画像数据。
+              </p>
+            </div>
+            <div class="bot-config-edit__field">
               <label>sing_progress（只读）</label>
               <div
                 v-if="groupSingProgressUi"
@@ -503,13 +548,50 @@ watch(
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  </UiDialog>
 </template>
 
 <style scoped>
+.style-profile-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--bg-elev);
+}
+.style-profile-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.style-profile-card__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+}
+.style-profile-card__hints {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.style-profile-card__dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+}
+.style-profile-card__dl dt {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.style-profile-card__dl dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
 .sing-progress-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

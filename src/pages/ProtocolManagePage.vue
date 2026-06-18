@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import {
   fetchInstances,
@@ -23,6 +24,7 @@ import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import {
+  accountConnectedWsPortLabel,
   accountProtocolId,
   accountWebUiHref,
   protocolAccountDetailUrl,
@@ -41,8 +43,9 @@ import {
 } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
@@ -67,6 +70,8 @@ const snap = computed(() => {
   }
   return base;
 });
+const protocolExtension = computed(() => instances.value?.protocol_extension ?? null);
+const protocolNotInstalled = computed(() => protocolExtension.value?.installed === false);
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
@@ -593,32 +598,64 @@ onUnmounted(() => {
     {{ err }}
   </div>
 
-  <ConsolePageSkeleton
-    v-if="!pageReady"
-    :panels="2"
-  />
-  <template v-else>
-    <div class="panel">
+  <div class="console-hub-page">
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="2"
+    />
+    <template v-else>
+    <div
+      v-if="protocolNotInstalled"
+      class="alert alert--warn protocol-page__ext-missing"
+      role="status"
+    >
+      <p>
+        尚未安装协议端扩展（<code>{{ protocolExtension?.package ?? "pallas-plugin-protocol" }}</code>），无法管理 NapCat / SnowLuma 实例与重新上号。
+      </p>
+      <p
+        v-if="protocolExtension?.install_cli"
+        class="muted protocol-page__ext-missing-cmd"
+      >
+        在本体项目目录执行：<code>{{ protocolExtension.install_cli }}</code>
+      </p>
+      <p
+        v-if="protocolExtension?.repository_url"
+        class="muted"
+      >
+        <a
+          :href="protocolExtension.repository_url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >扩展仓库</a>
+        · 迁移期也可设置 <code>PALLAS_LOAD_BUNDLED_EXTRA=1</code> 加载本体 bundled 副本
+      </p>
+    </div>
+    <UiCard
+      tag="div"
+      glass
+      class="protocol-page__panel"
+    >
       <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
-          <span
+          <ConsoleNavIcon
             class="panel__title-ico"
-            aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议端中的实例
+            :name="panelNavIcon"
+          />协议端中的实例
           <RefreshIconButton
+            :show-label="false"
             :busy="loadBusy"
             label="刷新实例数据"
             @click="load"
           />
         </h2>
         <div class="inst-db-panel__hd-side">
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
+          <UiButton
+            variant="outline"
+            class="panel-hd-collapse-btn"
             @click="expProtocolAccounts = !expProtocolAccounts"
           >
             {{ expProtocolAccounts ? "收起" : "展开" }}
-          </button>
+          </UiButton>
           <div
             class="console-view-toggle"
             role="group"
@@ -655,20 +692,19 @@ onUnmounted(() => {
               title="按账号、昵称、协议、ID 筛选"
             >
           </div>
-          <button
-            type="button"
-            class="btn"
+          <UiButton
+            variant="outline"
             :disabled="
               !protoActionsEnabled ||
               restartSelectedBusy ||
               unref(bulk.selectedCount) === 0 ||
               actionBusy.size > 0
             "
+            :busy="restartSelectedBusy"
             @click="restartSelectedAccounts"
           >
             {{ restartSelectedBusy ? "重启中…" : "重启" }}
-          </button>
-          <PanelSidebarAdd main-path="/protocol" />
+          </UiButton>
         </div>
       </div>
       <div
@@ -687,6 +723,7 @@ onUnmounted(() => {
                 <th>连接</th>
                 <th>进程</th>
                 <th>WebUI</th>
+                <th>WS 端口</th>
                 <th style="width: 220px">操作</th>
               </tr>
             </thead>
@@ -730,15 +767,19 @@ onUnmounted(() => {
                     class="muted"
                   >—</span>
                 </td>
+                <td>{{ accountConnectedWsPortLabel(a) }}</td>
                 <td>
                   <div class="inst-actions protocol-acc-table-actions">
-                    <a
+                    <UiButton
                       v-if="detailHref(a)"
-                      class="btn"
+                      variant="outline"
+                      size="sm"
                       :href="detailHref(a)!"
                       target="_blank"
                       rel="noopener noreferrer"
-                    >详情</a>
+                    >
+                      详情
+                    </UiButton>
                     <button
                       v-if="protocolAccountNumber(a) != null"
                       type="button"
@@ -753,30 +794,32 @@ onUnmounted(() => {
                     >
                       ★
                     </button>
-                    <button
-                      type="button"
-                      class="btn"
+                    <UiButton
+                      variant="outline"
+                      size="sm"
                       :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                      :busy="isAnyAccountActionBusy(a)"
                       @click="restartAccount(a)"
                     >
                       {{ restartLabel(a) }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn"
+                    </UiButton>
+                    <UiButton
+                      variant="outline"
+                      size="sm"
                       :disabled="!protoMountUrl || !accountProtocolId(a)"
                       @click="openQrcodeModal(a)"
                     >
                       二维码
-                    </button>
-                    <button
-                      type="button"
-                      :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+                    </UiButton>
+                    <UiButton
+                      size="sm"
+                      :variant="isProcessRunning(a) ? 'outline' : 'primary'"
                       :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                      :busy="isAnyAccountActionBusy(a)"
                       @click="toggleAccountPower(a)"
                     >
                       {{ togglePowerLabel(a) }}
-                    </button>
+                    </UiButton>
                   </div>
                 </td>
               </tr>
@@ -892,32 +935,38 @@ onUnmounted(() => {
                 class="data-summary-card__val muted"
               >{{ a.webui_port ?? "—" }}</span>
             </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">WS 端口</span>
+              <span class="data-summary-card__val">{{ accountConnectedWsPortLabel(a) }}</span>
+            </div>
             </div>
             <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
-              <button
-                type="button"
-                class="btn"
+              <UiButton
+                variant="outline"
+                size="sm"
                 :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                :busy="isAnyAccountActionBusy(a)"
                 @click="restartAccount(a)"
               >
                 {{ restartLabel(a) }}
-              </button>
-              <button
-                type="button"
-                class="btn"
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :disabled="!protoMountUrl || !accountProtocolId(a)"
                 @click="openQrcodeModal(a)"
               >
                 二维码
-              </button>
-              <button
-                type="button"
-                :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+              </UiButton>
+              <UiButton
+                size="sm"
+                :variant="isProcessRunning(a) ? 'outline' : 'primary'"
                 :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                :busy="isAnyAccountActionBusy(a)"
                 @click="toggleAccountPower(a)"
               >
                 {{ togglePowerLabel(a) }}
-              </button>
+              </UiButton>
             </div>
           </div>
         </div>
@@ -944,23 +993,27 @@ onUnmounted(() => {
           协议内置页未启用时，无法在控制台内启停或删除；请使用下方「协议端入口」或检查主仓配置。
         </p>
       </div>
-    </div>
+    </UiCard>
 
-    <div class="panel">
+    <UiCard
+      tag="div"
+      glass
+      class="protocol-page__panel"
+    >
       <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
-          <span
+          <ConsoleNavIcon
             class="panel__title-ico"
-            aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议端入口
+            :name="panelNavIcon"
+          />协议端入口
           <RefreshIconButton
+            :show-label="false"
             :busy="loadBusy"
             label="刷新协议端数据"
             @click="load"
           />
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/protocol" />
         </div>
       </div>
       <div class="panel__bd">
@@ -995,28 +1048,46 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="row-actions protocol-page__actions">
-          <a
+          <UiButton
             v-if="dashUrl"
-            class="btn btn--primary"
+            variant="primary"
             :href="dashUrl"
             target="_blank"
             rel="noopener noreferrer"
-          >打开协议端管理</a>
+          >
+            打开协议端管理
+          </UiButton>
           <span
             v-else
             class="muted"
           >当前无法拼接管理页 URL（请检查 http_base、webui_enabled 与 webui_path）。</span>
           <RouterLink
-            class="btn"
+            custom
+            v-slot="{ navigate }"
             to="/instances"
-          >数据库实例</RouterLink>
+          >
+            <UiButton
+              variant="outline"
+              @click="navigate"
+            >
+              数据库实例
+            </UiButton>
+          </RouterLink>
           <RouterLink
-            class="btn"
+            custom
+            v-slot="{ navigate }"
             to="/"
-          >返回总览</RouterLink>
+          >
+            <UiButton
+              variant="outline"
+              @click="navigate"
+            >
+              返回总览
+            </UiButton>
+          </RouterLink>
         </div>
       </div>
-    </div>
+    </UiCard>
 
     <ConsoleDeleteConfirmModal
       :open="deleteModalOpen"
@@ -1037,7 +1108,8 @@ onUnmounted(() => {
       :account-title="qrcodeTarget?.title ?? ''"
       @close="closeQrcodeModal"
     />
-  </template>
+    </template>
+  </div>
 </template>
 
 <style scoped>
@@ -1061,6 +1133,21 @@ onUnmounted(() => {
 .protocol-page__hint {
   margin: 12px 0 0;
   font-size: 12px;
+}
+.protocol-page__ext-missing {
+  margin-bottom: 12px;
+}
+.protocol-page__ext-missing code {
+  word-break: break-all;
+}
+.protocol-page__ext-missing-cmd {
+  margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .protocol-page__ext-missing {
+    font-size: 13px;
+  }
 }
 
 .protocol-acc-table-actions {

@@ -106,6 +106,51 @@ export function accountNativeWebUiUrl(account: NapcatAccountRow): string | null 
 }
 
 /** 协议账号 WebUI：优先 native_url，否则用 console.http_base 替换端口 */
+function parseUrlPort(raw: string | null | undefined): number | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    if (u.port) {
+      const p = parseInt(u.port, 10);
+      return Number.isFinite(p) && p >= 1 && p <= 65535 ? p : null;
+    }
+    if (u.protocol === "wss:" || u.protocol === "https:") return 443;
+    if (u.protocol === "ws:" || u.protocol === "http:") return 80;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** 协议账号配置的 OneBot WS 端口（自 ws_url 或 Docker 映射解析） */
+export function accountOnebotWsPort(account: NapcatAccountRow): number | null {
+  const wsUrl = typeof account.ws_url === "string" ? account.ws_url : null;
+  const fromUrl = parseUrlPort(wsUrl);
+  if (fromUrl != null) return fromUrl;
+
+  const docker = account.snowluma_docker_host_onebot_ws;
+  if (docker != null && String(docker).trim() !== "") {
+    const p = parseInt(String(docker), 10);
+    if (Number.isFinite(p) && p >= 1 && p <= 65535) return p;
+  }
+
+  const publish = account.snowluma_publish_ports as
+    | { items?: { label?: string; host?: number }[] }
+    | undefined;
+  const item = publish?.items?.find((i) => i.label === "OneBot WS");
+  if (item?.host != null && item.host >= 1 && item.host <= 65535) return item.host;
+
+  return null;
+}
+
+/** 已连接时展示 WS 端口，未连接为 — */
+export function accountConnectedWsPortLabel(account: NapcatAccountRow): string {
+  if (account.connected !== true) return "—";
+  const port = accountOnebotWsPort(account);
+  return port != null ? String(port) : "—";
+}
+
 export function accountWebUiHref(account: NapcatAccountRow, system: SystemData | null): string | null {
   const direct = accountNativeWebUiUrl(account);
   if (direct) return direct;

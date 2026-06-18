@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
@@ -18,12 +19,15 @@ import type {
   InstancesData,
   RequestOverviewData,
 } from "@/api/pallasTypes";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -429,17 +433,17 @@ function setPickedGroups(next: Set<string>) {
   pickedGroupKeys.value = next;
 }
 
-function togglePickFriend(key: string) {
+function setPickFriend(key: string, picked: boolean) {
   const s = new Set(pickedFriendKeys.value);
-  if (s.has(key)) s.delete(key);
-  else s.add(key);
+  if (picked) s.add(key);
+  else s.delete(key);
   setPickedFriends(s);
 }
 
-function togglePickGroup(key: string) {
+function setPickGroup(key: string, picked: boolean) {
   const s = new Set(pickedGroupKeys.value);
-  if (s.has(key)) s.delete(key);
-  else s.add(key);
+  if (picked) s.add(key);
+  else s.delete(key);
   setPickedGroups(s);
 }
 
@@ -459,14 +463,12 @@ const allGroupsPicked = computed(
 
 const someGroupsPicked = computed(() => pickedGroupKeys.value.size > 0 && !allGroupsPicked.value);
 
-function togglePickAllFriends() {
-  if (allFriendsPicked.value) setPickedFriends(new Set());
-  else setPickedFriends(new Set(allFriendKeys.value));
+function setPickAllFriends(picked: boolean) {
+  setPickedFriends(picked ? new Set(allFriendKeys.value) : new Set());
 }
 
-function togglePickAllGroups() {
-  if (allGroupsPicked.value) setPickedGroups(new Set());
-  else setPickedGroups(new Set(allGroupKeys.value));
+function setPickAllGroups(picked: boolean) {
+  setPickedGroups(picked ? new Set(allGroupKeys.value) : new Set());
 }
 
 watch(requestRows, (rows) => {
@@ -737,7 +739,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -751,15 +753,33 @@ onUnmounted(() => {
       {{ ok }}
     </div>
 
-    <div>
-    <div
+    <ConsoleHubMasthead :icon="panelNavIcon">
+      <template #title>
+        好友与群聊
+      </template>
+      <template #lead>
+        选择账号查看好友、群聊与入群/好友申请。
+      </template>
+      <template #actions>
+        <RefreshIconButton
+          :busy="pageRefreshBusy"
+          label="刷新本页数据"
+          @click="refreshPage"
+        />
+      </template>
+    </ConsoleHubMasthead>
+
+    <UiCard
       id="fg-account"
-      class="panel friends-groups-account-panel"
+      tag="div"
+      glass
+      class="friends-groups-page__panel friends-groups-account-panel"
     >
       <div class="panel__hd friends-groups-account-panel__hd">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>当前账号
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />当前账号
           <RefreshIconButton
+                :show-label="false"
             :busy="pageRefreshBusy"
             label="刷新本页数据"
             @click="refreshPage"
@@ -767,7 +787,6 @@ onUnmounted(() => {
         </h2>
         <div class="friends-groups-account-hd-tail">
           <span class="friends-groups-hd-pin-wrap friends-groups-account-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="friends-groups-account" />
           </span>
           <select
             v-model="selfIdStr"
@@ -784,19 +803,20 @@ onUnmounted(() => {
           </select>
         </div>
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="fg-friends"
-      class="panel"
+      tag="div"
+      glass
+      class="friends-groups-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友列表
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友列表
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="friends-groups-friends" />
           </span>
           <input
             v-model="friendListQ"
@@ -812,18 +832,19 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >列表加载中…</span>
-            <span
+            <UiBadge
               v-else-if="friends?.truncated"
-              class="badge badge--warn"
-            >已截断</span>
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
+              variant="warn"
+            >
+              已截断
+            </UiBadge>
+            <UiButton
+              variant="outline"
+              size="sm"
               @click="toggleFriendsListPanel"
             >
               {{ consolePrefs.friendsPageFriendsListOpen ? "收起" : "展开" }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -924,19 +945,20 @@ onUnmounted(() => {
           :total="filteredFriends.length"
         />
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="fg-groups"
-      class="panel"
+      tag="div"
+      glass
+      class="friends-groups-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群聊列表
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />群聊列表
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="friends-groups-groups" />
           </span>
           <input
             v-model="groupListQ"
@@ -952,18 +974,19 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >列表加载中…</span>
-            <span
+            <UiBadge
               v-else-if="groups?.truncated"
-              class="badge badge--warn"
-            >已截断 · limit {{ groups?.limit }}</span>
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
+              variant="warn"
+            >
+              已截断 · limit {{ groups?.limit }}
+            </UiBadge>
+            <UiButton
+              variant="outline"
+              size="sm"
               @click="toggleGroupsListPanel"
             >
               {{ consolePrefs.friendsPageGroupsListOpen ? "收起" : "展开" }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -1064,16 +1087,19 @@ onUnmounted(() => {
           :total="filteredGroups.length"
         />
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="friends-groups-friend-requests"
-      class="panel"
+      tag="div"
+      glass
+      class="friends-groups-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友申请
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友申请
           <RefreshIconButton
+                :show-label="false"
             :busy="reqsBusy"
             :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"
@@ -1082,43 +1108,41 @@ onUnmounted(() => {
         </h2>
         <div class="row-actions friends-groups-req-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="friends-groups-friend-req" />
           </span>
           <div class="friends-groups-req-hd-meta">
             <span
               v-if="reqsBusy"
               class="muted friends-groups-req-hd-meta__hint"
             >审批数据加载中…</span>
-            <span
+            <UiBadge
               v-if="requestRows.length"
-              class="badge badge--warn"
-            >{{ requestRows.length }} 条</span>
+              variant="warn"
+            >
+              {{ requestRows.length }} 条
+            </UiBadge>
           </div>
           <div class="friends-groups-req-hd-bulk-btns">
-            <button
-              type="button"
-              class="btn btn--primary"
+            <UiButton
+              variant="primary"
               :disabled="busy || pickedFriendKeys.size === 0"
               @click="approvePickedFriends"
             >
               同意所选
-            </button>
-            <button
-              type="button"
-              class="btn"
+            </UiButton>
+            <UiButton
+              variant="outline"
               :disabled="busy || pickedFriendKeys.size === 0"
               @click="rejectPickedFriends"
             >
               拒绝所选
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary"
+            </UiButton>
+            <UiButton
+              variant="primary"
               :disabled="busy || !requestRows.length"
               @click="approveAllFriends"
             >
               全部同意
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -1156,7 +1180,7 @@ onUnmounted(() => {
                     :checked="allFriendsPicked"
                     :indeterminate.prop="someFriendsPicked"
                     :disabled="!requestRows.length || busy"
-                    @click.prevent="togglePickAllFriends()"
+                    @change="setPickAllFriends(($event.target as HTMLInputElement).checked)"
                   >
                 </th>
                 <th>用户 QQ</th>
@@ -1175,7 +1199,7 @@ onUnmounted(() => {
                     type="checkbox"
                     :checked="pickedFriendKeys.has(friendReqKey(row))"
                     :disabled="busy"
-                    @click.prevent="togglePickFriend(friendReqKey(row))"
+                    @change="setPickFriend(friendReqKey(row), ($event.target as HTMLInputElement).checked)"
                   >
                 </td>
                 <td>{{ row.user_id }}</td>
@@ -1183,22 +1207,22 @@ onUnmounted(() => {
                 <td>{{ friendSourceLabel(row.source) }}</td>
                 <td>
                   <div class="friends-req-actions">
-                    <button
-                      type="button"
-                      class="btn btn--primary"
+                    <UiButton
+                      variant="primary"
+                      size="sm"
                       :disabled="busy"
                       @click="actFriend(row.self_id, row.user_id, 'approve', row.source)"
                     >
                       同意
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn--danger"
+                    </UiButton>
+                    <UiButton
+                      variant="destructive"
+                      size="sm"
                       :disabled="busy"
                       @click="actFriend(row.self_id, row.user_id, 'reject', row.source)"
                     >
                       拒绝
-                    </button>
+                    </UiButton>
                   </div>
                 </td>
               </tr>
@@ -1212,16 +1236,19 @@ onUnmounted(() => {
           :total="requestRows.length"
         />
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="friends-groups-group-requests"
-      class="panel"
+      tag="div"
+      glass
+      class="friends-groups-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>入群请求
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />入群请求
           <RefreshIconButton
+                :show-label="false"
             :busy="reqsBusy"
             :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"
@@ -1230,43 +1257,41 @@ onUnmounted(() => {
         </h2>
         <div class="row-actions friends-groups-req-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="friends-groups-group-req" />
           </span>
           <div class="friends-groups-req-hd-meta">
             <span
               v-if="reqsBusy"
               class="muted friends-groups-req-hd-meta__hint"
             >审批数据加载中…</span>
-            <span
+            <UiBadge
               v-if="groupRequestRows.length"
-              class="badge badge--warn"
-            >{{ groupRequestRows.length }} 条</span>
+              variant="warn"
+            >
+              {{ groupRequestRows.length }} 条
+            </UiBadge>
           </div>
           <div class="friends-groups-req-hd-bulk-btns">
-            <button
-              type="button"
-              class="btn btn--primary"
+            <UiButton
+              variant="primary"
               :disabled="busy || pickedGroupKeys.size === 0"
               @click="approvePickedGroups"
             >
               同意所选
-            </button>
-            <button
-              type="button"
-              class="btn"
+            </UiButton>
+            <UiButton
+              variant="outline"
               :disabled="busy || pickedGroupKeys.size === 0"
               @click="rejectPickedGroups"
             >
               拒绝所选
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary"
+            </UiButton>
+            <UiButton
+              variant="primary"
               :disabled="busy || !groupRequestRows.length"
               @click="approveAllGroups"
             >
               全部同意
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -1303,7 +1328,7 @@ onUnmounted(() => {
                     :checked="allGroupsPicked"
                     :indeterminate.prop="someGroupsPicked"
                     :disabled="!groupRequestRows.length || busy"
-                    @click.prevent="togglePickAllGroups()"
+                    @change="setPickAllGroups(($event.target as HTMLInputElement).checked)"
                   >
                 </th>
                 <th>群号</th>
@@ -1323,7 +1348,7 @@ onUnmounted(() => {
                     type="checkbox"
                     :checked="pickedGroupKeys.has(groupReqKey(row))"
                     :disabled="busy"
-                    @click.prevent="togglePickGroup(groupReqKey(row))"
+                    @change="setPickGroup(groupReqKey(row), ($event.target as HTMLInputElement).checked)"
                   >
                 </td>
                 <td>{{ row.group_id }}</td>
@@ -1332,22 +1357,22 @@ onUnmounted(() => {
                 <td class="muted">{{ row.comment }}</td>
                 <td>
                   <div class="friends-req-actions">
-                    <button
-                      type="button"
-                      class="btn btn--primary"
+                    <UiButton
+                      variant="primary"
+                      size="sm"
                       :disabled="busy"
                       @click="actGroup(row.self_id, row.user_id, row.group_id, 'approve')"
                     >
                       同意
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn--danger"
+                    </UiButton>
+                    <UiButton
+                      variant="destructive"
+                      size="sm"
                       :disabled="busy"
                       @click="actGroup(row.self_id, row.user_id, row.group_id, 'reject')"
                     >
                       拒绝
-                    </button>
+                    </UiButton>
                   </div>
                 </td>
               </tr>
@@ -1361,8 +1386,7 @@ onUnmounted(() => {
           :total="groupRequestRows.length"
         />
       </div>
-    </div>
-    </div>
+    </UiCard>
 
     <GroupSocialConfigModal
       v-model:open="groupConfigOpen"

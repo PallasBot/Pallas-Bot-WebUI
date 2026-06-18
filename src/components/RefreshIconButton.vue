@@ -1,12 +1,21 @@
 <script setup lang="ts">
+import UiButton from "@/components/ui/UiButton.vue";
+
 const props = withDefaults(
   defineProps<{
     busy?: boolean;
     disabled?: boolean;
-    /** 无障碍名称，默认「刷新」 */
     label?: string;
+    busyLabel?: string;
+    showLabel?: boolean;
   }>(),
-  { busy: false, disabled: false },
+  {
+    busy: false,
+    disabled: false,
+    label: "刷新",
+    busyLabel: "刷新中…",
+    showLabel: true,
+  },
 );
 const emit = defineEmits<{ click: [] }>();
 
@@ -17,28 +26,39 @@ function onClick() {
 </script>
 
 <template>
-  <button
-    type="button"
-    class="btn-refresh-icon"
-    :class="{ 'btn-refresh-icon--busy': busy }"
+  <UiButton
+    variant="outline"
+    class="btn-refresh-action"
+    :class="{
+      'btn-refresh-action--busy': busy,
+      'btn-refresh-action--icon-only': !showLabel,
+    }"
     :disabled="disabled"
-    :aria-busy="busy || undefined"
-    :aria-label="label ?? '刷新'"
-    :title="label ?? '刷新'"
+    :busy="busy"
+    :aria-label="label"
+    :title="label"
     @click="onClick"
   >
     <svg
-      class="btn-refresh-icon__svg"
-      :class="{ 'btn-refresh-icon__svg--spin': busy }"
+      class="ui-btn__ico btn-refresh-action__ico"
+      :class="{ 'btn-refresh-action__ico--spin': busy }"
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
+      width="16"
+      height="16"
       aria-hidden="true"
     >
       <path
-        fill="currentColor"
-        d="M17.65 6.35A7.95 7.95 0 0 0 12 4V1L7 6l5 5V7.1c2.32 0 4.2 1.88 4.2 4.2 0 1.03-.38 1.98-1 2.7l1.45 1.45A7.93 7.93 0 0 0 20 11.3c0-1.84-.63-3.54-1.69-4.95zM6.35 17.65A7.95 7.95 0 0 0 12 20v3l5-5-5-5v2.9c-2.32 0-4.2-1.88-4.2-4.2 0-1.03.38-1.98 1-2.7L6.34 6.54A7.93 7.93 0 0 0 4 12.7c0 1.84.63 3.54 1.69 4.95l1.66-1z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
       />
     </svg>
-  </button>
+    <span
+      v-if="showLabel"
+      class="btn-refresh-action__text"
+    >{{ busy ? busyLabel : label }}</span>
+  </UiButton>
 </template>

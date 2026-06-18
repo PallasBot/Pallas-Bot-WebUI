@@ -7,7 +7,7 @@ import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 const LogsPage = () => import("@/pages/LogsPage.vue");
 const LogErrorsPage = () => import("@/pages/LogErrorsPage.vue");
 const PluginsPage = () => import("@/pages/PluginsPage.vue");
-const PluginConfigPage = () => import("@/pages/PluginConfigPage.vue");
+const PluginStorePage = () => import("@/pages/PluginStorePage.vue");
 const CommonConfigPage = () => import("@/pages/CommonConfigPage.vue");
 const InstancesPage = () => import("@/pages/InstancesPage.vue");
 const ProtocolManagePage = () => import("@/pages/ProtocolManagePage.vue");
@@ -18,6 +18,7 @@ const AiExtensionPage = () => import("@/pages/AiExtensionPage.vue");
 const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
 const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
 const CommunityPage = () => import("@/pages/CommunityPage.vue");
+const ChartsPage = () => import("@/pages/ChartsPage.vue");
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,6 +34,15 @@ const router = createRouter({
           meta: {
             title: "仪表盘",
             description: "运行概览",
+          },
+        },
+        {
+          path: "charts",
+          name: "charts",
+          component: ChartsPage,
+          meta: {
+            title: "数据看板",
+            description: "插件与调用统计",
           },
         },
         {
@@ -55,21 +65,21 @@ const router = createRouter({
           },
         },
         {
-          path: "plugins",
+          path: "plugins/:name?",
           name: "plugins",
           component: PluginsPage,
           meta: {
             title: "插件目录",
-            description: "已启用",
+            description: "已加载",
           },
         },
         {
-          path: "plugins/:name",
-          name: "plugin-config",
-          component: PluginConfigPage,
+          path: "plugin-store",
+          name: "plugin-store",
+          component: PluginStorePage,
           meta: {
-            title: "插件配置",
-            description: "参数配置",
+            title: "插件商店",
+            description: "官方扩展",
           },
         },
         {
@@ -86,8 +96,14 @@ const router = createRouter({
           path: "common-config/:sectionId",
           redirect: (to) => {
             const id = String(to.params.sectionId ?? "").trim();
+            if (id === "llm") {
+              return { name: "ai", params: { section: "model" } };
+            }
+            if (id === "arknights_kb") {
+              return { name: "ai", params: { section: "knowledge" } };
+            }
             if (id === "pallas_webui" || id === "pallas_protocol" || id === "help") {
-              return { name: "plugin-config", params: { name: id } };
+              return { name: "plugins", params: { name: id } };
             }
             return { name: "common-config", query: { section: id } };
           },
@@ -133,8 +149,8 @@ const router = createRouter({
           name: "database-backups",
           component: DatabaseBackupsPage,
           meta: {
-            title: "备份清理",
-            description: "历史备份",
+            title: "备份管理",
+            description: "创建与清理逻辑备份",
           },
         },
         {
@@ -156,11 +172,21 @@ const router = createRouter({
         },
         {
           path: "ai",
+          redirect: (to) => {
+            const raw = to.query.section ?? to.query.tab;
+            if (raw != null && String(raw).trim()) {
+              return { path: `/ai/${String(raw).trim()}` };
+            }
+            return "/ai/runtime";
+          },
+        },
+        {
+          path: "ai/:section",
           name: "ai",
           component: AiExtensionPage,
           meta: {
-            title: "AI 扩展",
-            description: "扩展服务",
+            title: "AI配置",
+            description: "模型与知识库",
           },
         },
         {
@@ -196,9 +222,11 @@ router.afterEach((to) => {
   const h = (to.hash || "").trim();
   const pin = SIDEBAR_PIN_DEFINITIONS.find((p) => p.path === to.path && p.hash === h);
   let piece = pin?.label ?? (to.meta.title as string | undefined);
-  if (to.name === "plugin-config") {
-    const n = to.params.name;
-    if (typeof n === "string" && n.trim()) piece = n.trim();
+  if (to.name === "plugins") {
+    piece = (to.meta.title as string | undefined) ?? "插件目录";
+  }
+  if (to.name === "ai") {
+    piece = "AI配置";
   }
   const title = typeof piece === "string" ? piece.trim() : "";
   document.title = title ? `${title} · ${consoleSurfaceTitle}` : consoleSurfaceTitle;

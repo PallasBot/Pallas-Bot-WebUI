@@ -5,6 +5,8 @@ import {
   protocolFetchQrcodeMeta,
   protocolQrcodeImageUrl,
 } from "@/api/protocolApi";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiDialog from "@/components/ui/UiDialog.vue";
 
 const props = defineProps<{
   open: boolean;
@@ -108,78 +110,43 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <UiDialog
+    :open="open"
+    title="登录二维码"
+    :subtitle="accountTitle"
+    title-id="protocol-qrcode-modal-title"
+    root-class="protocol-qrcode-modal"
+    panel-class="protocol-qrcode-modal__dialog"
+    body-class="protocol-qrcode-modal__bd"
+    @close="emit('close')"
+  >
+    <p class="muted protocol-qrcode-modal__hint">
+      {{ hint }}
+    </p>
     <div
-      v-if="open"
-      class="console-modal protocol-qrcode-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="protocol-qrcode-modal-title"
+      v-if="exists && imageUrl && !imageErr"
+      class="protocol-qrcode-modal__frame"
     >
-      <div
-        class="console-modal__backdrop"
-        aria-hidden="true"
-        @click="emit('close')"
-      />
-      <div
-        class="console-modal__dialog protocol-qrcode-modal__dialog"
-        @click.stop
+      <img
+        class="protocol-qrcode-modal__img"
+        :src="imageUrl"
+        alt="协议端登录二维码"
+        @error="onImageError"
       >
-        <div class="console-modal__hd">
-          <div class="console-modal__head-text">
-            <h2
-              id="protocol-qrcode-modal-title"
-              class="console-modal__title"
-            >
-              登录二维码
-            </h2>
-            <p class="console-modal__subtitle muted">
-              {{ accountTitle }}
-            </p>
-          </div>
-          <button
-            type="button"
-            class="console-modal__close"
-            aria-label="关闭"
-            @click="emit('close')"
-          >
-            ×
-          </button>
-        </div>
-        <div class="console-modal__bd protocol-qrcode-modal__bd">
-          <p class="muted protocol-qrcode-modal__hint">
-            {{ hint }}
-          </p>
-          <div
-            v-if="exists && imageUrl && !imageErr"
-            class="protocol-qrcode-modal__frame"
-          >
-            <img
-              class="protocol-qrcode-modal__img"
-              :src="imageUrl"
-              alt="协议端登录二维码"
-              @error="onImageError"
-            >
-          </div>
-          <div class="row-actions protocol-qrcode-modal__actions">
-            <button
-              type="button"
-              class="btn"
-              :disabled="refreshBusy"
-              @click="refreshMeta(true)"
-            >
-              {{ refreshBusy ? "刷新中…" : "刷新" }}
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary"
-              @click="emit('close')"
-            >
-              关闭
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
-  </Teleport>
+    <div class="row-actions protocol-qrcode-modal__actions">
+      <UiButton
+        :disabled="refreshBusy"
+        @click="refreshMeta(true)"
+      >
+        {{ refreshBusy ? "刷新中…" : "刷新" }}
+      </UiButton>
+      <UiButton
+        variant="primary"
+        @click="emit('close')"
+      >
+        关闭
+      </UiButton>
+    </div>
+  </UiDialog>
 </template>

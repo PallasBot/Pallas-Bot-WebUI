@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import { useRoute, useRouter } from "vue-router";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchCommonConfig,
@@ -11,22 +13,38 @@ import {
 import type {
   CommonConfigSectionMeta,
   PluginConfigData,
+  PluginConfigCheckResult,
   PluginConfigField,
   PluginConfigFieldGroup,
 } from "@/api/pallasTypes";
 import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
-import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
+import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
+import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
+import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
 import { pluginConfigRouteFromPath } from "@/utils/pluginConfigRoute";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
-import { enumChoiceLabel, fieldDisplayTitle } from "@/utils/configFieldDisplay";
+import {
+  buildAiRuntimeOverview,
+  groupAiRuntimeSnapshot,
+  resolveAiRuntimeSnapshot,
+} from "@/utils/aiRuntimeResolver";
+import {
+  fieldValuesFromConfig,
+  parsePluginConfigField,
+} from "@/utils/pluginConfigFieldModel";
 
 const route = useRoute();
+const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
@@ -36,6 +54,7 @@ const data = ref<PluginConfigData | null>(null);
 const saving = ref(false);
 const checking = ref(false);
 const checkLines = ref<string[]>([]);
+const checkResults = ref<PluginConfigCheckResult["results"]>([]);
 const checkErr = ref("");
 const fieldValues = ref<Record<string, string>>({});
 const permSelections = ref<Record<string, string>>({});
@@ -43,6 +62,9 @@ const permSelections = ref<Record<string, string>>({});
 const CMD_PERM_SECTION_ID = "cmd_perm";
 const COMMAND_LIMITS_SECTION_ID = "command_limits";
 const CONTROL_PLANE_SECTION_ID = "control_plane";
+const LLM_SECTION_ID = "llm";
+const ARKNIGHTS_KB_SECTION_ID = "arknights_kb";
+const AI_MANAGED_SECTION_IDS = new Set([LLM_SECTION_ID, ARKNIGHTS_KB_SECTION_ID]);
 
 const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
 const isCommunityStatsSection = computed(() => currentId.value === COMMUNITY_STATS_SECTION_ID);
@@ -67,6 +89,14 @@ const gatewayFieldNameSet = computed(() => new Set<string>(PALLAS_IMAGE_GATEWAY_
 
 const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_groups ?? []);
 const limitSelections = ref<Record<string, string>>({});
+const gatewayRuntimeItems = computed(() =>
+  resolveAiRuntimeSnapshot({
+    gatewayResults: checkResults.value,
+    extensionTest: null,
+  }),
+);
+const gatewayRuntimeGroups = computed(() => groupAiRuntimeSnapshot(gatewayRuntimeItems.value));
+const gatewayRuntimeOverview = computed(() => buildAiRuntimeOverview(gatewayRuntimeItems.value));
 
 const genericFields = computed(() => {
   if (!data.value || fieldGroups.value.length) return [];
@@ -84,17 +114,6 @@ function sortSectionsCmdPermFirst(list: CommonConfigSectionMeta[]): CommonConfig
   return next;
 }
 
-function fieldModel(f: PluginConfigField): string {
-  const v = f.current;
-  if (f.kind === "json") return JSON.stringify(v ?? null, null, 2);
-  if (f.kind === "bool") {
-    if (typeof v === "boolean") return v ? "true" : "false";
-    const text = String(v ?? "").trim().toLowerCase();
-    return text === "true" || text === "1" || text === "yes" || text === "on" ? "true" : "false";
-  }
-  return v === null || v === undefined ? "" : String(v);
-}
-
 function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
   if (!data.value) return [];
   const names = new Set(group.field_names);
@@ -110,6 +129,10 @@ function onGatewayFieldValues(next: Record<string, string>) {
   fieldValues.value = { ...fieldValues.value, ...next };
 }
 
+function updateFieldValue(name: string, value: string) {
+  fieldValues.value = { ...fieldValues.value, [name]: value };
+}
+
 watch(
   data,
   (d) => {
@@ -119,15 +142,15 @@ watch(
       fieldValues.value = {};
       return;
     }
-    const next: Record<string, string> = {};
-    for (const f of d.fields) {
-      try {
-        next[f.name] = fieldModel(f);
-      } catch {
+    try {
+      fieldValues.value = fieldValuesFromConfig(d.fields);
+    } catch {
+      const next: Record<string, string> = {};
+      for (const f of d.fields) {
         next[f.name] = f.kind === "bool" ? "false" : "";
       }
+      fieldValues.value = next;
     }
-    fieldValues.value = next;
     const ui = d.command_perm_ui;
     if (ui) {
       const permNext: Record<string, string> = {};
@@ -195,19 +218,32 @@ function onCommandLimitInput(commandId: string, value: string) {
   };
 }
 
+
 async function loadSections() {
   try {
     const raw = await fetchCommonConfigSections();
-    sections.value = sortSectionsCmdPermFirst(raw);
     const q = route.query.section;
+    if (typeof q === "string" && q.trim() === LLM_SECTION_ID) {
+      await router.replace(aiConfigSectionPath("model"));
+      return;
+    }
+    if (typeof q === "string" && q.trim() === ARKNIGHTS_KB_SECTION_ID) {
+      await router.replace(aiConfigSectionPath("knowledge"));
+      return;
+    }
+    sections.value = sortSectionsCmdPermFirst(raw.filter((s) => !AI_MANAGED_SECTION_IDS.has(s.id)));
     const metaSection = route.meta.defaultCommonConfigSection;
     if (typeof q === "string" && q.trim()) {
-      currentId.value = q.trim();
+      const sid = q.trim();
+      if (!AI_MANAGED_SECTION_IDS.has(sid) && sections.value.some((s) => s.id === sid)) {
+        currentId.value = sid;
+      }
     } else if (typeof metaSection === "string" && metaSection.trim()) {
-      currentId.value = metaSection.trim();
-    } else if (!currentId.value && sections.value.length) {
+      const sid = metaSection.trim();
+      if (!AI_MANAGED_SECTION_IDS.has(sid)) currentId.value = sid;
+    } else if (!currentId.value || AI_MANAGED_SECTION_IDS.has(currentId.value)) {
       currentId.value =
-        sections.value.find((s) => s.id === CMD_PERM_SECTION_ID)?.id ?? sections.value[0].id;
+        sections.value.find((s) => s.id === CMD_PERM_SECTION_ID)?.id ?? sections.value[0]?.id ?? "";
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -236,6 +272,14 @@ watch(
   (q) => {
     if (typeof q !== "string" || !q.trim()) return;
     const sid = q.trim();
+    if (sid === LLM_SECTION_ID) {
+      void router.replace(aiConfigSectionPath("model"));
+      return;
+    }
+    if (sid === ARKNIGHTS_KB_SECTION_ID) {
+      void router.replace(aiConfigSectionPath("knowledge"));
+      return;
+    }
     if (sid !== currentId.value && sections.value.some((s) => s.id === sid)) {
       currentId.value = sid;
     }
@@ -256,15 +300,6 @@ useSaveHotkey(
   () => save(),
 );
 
-function parseField(f: PluginConfigField, raw: unknown): unknown {
-  const text = String(raw ?? "");
-  if (f.kind === "bool") return text === "true" || text === "1";
-  if (f.kind === "int") return parseInt(text.trim() || "0", 10);
-  if (f.kind === "float") return parseFloat(text.trim() || "0");
-  if (f.kind === "json") return JSON.parse(text) as unknown;
-  return text;
-}
-
 function collectValues(): Record<string, unknown> {
   if (!data.value) return {};
   const values: Record<string, unknown> = {};
@@ -281,23 +316,10 @@ function collectValues(): Record<string, unknown> {
     if (f.kind === "json" && String(raw).trim() === "") {
       values[f.name] = null;
     } else {
-      values[f.name] = parseField(f, raw);
+      values[f.name] = parsePluginConfigField(f, raw);
     }
   }
   return values;
-}
-
-function setBoolField(name: string, checked: boolean) {
-  fieldValues.value = {
-    ...fieldValues.value,
-    [name]: checked ? "true" : "false",
-  };
-}
-
-function onBoolFieldChange(name: string, ev: Event) {
-  const el = ev.target as HTMLInputElement | null;
-  if (!el) return;
-  setBoolField(name, el.checked);
 }
 
 const BACKFILL_ENABLE_CONFIRM =
@@ -342,9 +364,11 @@ async function runConnectivityCheck() {
   checking.value = true;
   checkErr.value = "";
   checkLines.value = [];
+  checkResults.value = [];
   try {
     const r = await postServiceGatewaysConnectivityCheck(collectValues());
     checkLines.value = r.lines;
+    checkResults.value = r.results;
     toastProbeLines(r.lines);
   } catch (e) {
     checkErr.value = axiosErrorDetail(e);
@@ -360,6 +384,7 @@ function showConfigField(f: PluginConfigField): boolean {
   if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
   return true;
 }
+
 </script>
 
 <template>
@@ -376,15 +401,29 @@ function showConfigField(f: PluginConfigField): boolean {
     />
     <div
       v-else
-      class="common-config-page"
+      class="common-config-page console-hub-page"
     >
-      <div class="panel">
+      <ConsoleHubMasthead :icon="panelNavIcon">
+        <template #title>
+          通用配置
+        </template>
+        <template #lead>
+          按分区编辑站点级设置；保存后多数项可热载，无需重启。
+        </template>
+        <template #actions>
+        </template>
+      </ConsoleHubMasthead>
+
+      <UiCard
+        tag="div"
+        glass
+        class="common-config-page__card"
+      >
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>分区
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />分区
           </h2>
           <div class="row-actions">
-            <PanelSidebarAdd main-path="/common-config" />
             <select
               v-model="currentId"
               class="sel"
@@ -397,25 +436,24 @@ function showConfigField(f: PluginConfigField): boolean {
                 {{ s.title }}
               </option>
             </select>
-            <button
+            <UiButton
               v-if="supportsConnectivityCheck"
-              type="button"
-              class="btn"
+              variant="outline"
               :disabled="checking || saving || !data"
-              :aria-busy="checking || undefined"
+              :busy="checking"
               @click="runConnectivityCheck"
             >
               {{ checking ? "检测中…" : "检测连通" }}
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary"
+            </UiButton>
+            <UiButton
+              variant="primary"
               :disabled="saving || checking || !data"
+              :busy="saving"
               title="Ctrl+S"
               @click="save"
             >
               {{ saving ? "保存中…" : "保存配置" }}
-            </button>
+            </UiButton>
           </div>
         </div>
         <div
@@ -444,7 +482,7 @@ function showConfigField(f: PluginConfigField): boolean {
             v-if="isControlPlaneSection"
             class="muted common-config-page__intro"
           >
-            多套牛牛加入同一<strong>社区联邦池</strong>时，可共用中心下发的配置，并对同一条群消息<strong>只让一套牛牛回复</strong>，避免重复抢答。
+            多套牛牛加入同一<strong>多机协同池</strong>时，可共用中心下发的配置，并对同一条群消息<strong>只让一套牛牛回复</strong>，避免重复抢答。
             入池密钥在<strong>统计与语料</strong>页复制；保存后写入 <code>webui.json</code> 并立即尝试向中心拉取最新配置。
           </p>
           <p
@@ -474,6 +512,8 @@ function showConfigField(f: PluginConfigField): boolean {
           >
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
             <router-link to="/plugins/draw">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
+            统一 AI 运行态与媒体任务队列见
+            <router-link to="/ai/runtime">AI配置</router-link>。
           </p>
           <p
             v-if="showDevModeHotReloadHint"
@@ -501,116 +541,45 @@ function showConfigField(f: PluginConfigField): boolean {
             >{{ checkLines.join("\n") }}</pre>
           </div>
           <div
+            v-if="supportsConnectivityCheck && checkResults.length"
+            style="margin-bottom: 20px"
+          >
+            <AiRuntimeSummaryPanel
+              v-if="gatewayRuntimeItems.length"
+              :overview="gatewayRuntimeOverview"
+              :groups="gatewayRuntimeGroups"
+              variant="compact"
+              show-hub-link
+              class="common-config-page__runtime-summary"
+            />
+            <RuntimeCheckResults :results="checkResults" />
+          </div>
+          <div
             v-if="showCmdPermMatrix && data.command_perm_ui"
-            class="cmd-perm-matrix"
             style="margin-bottom: 28px"
           >
             <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
               为各命令选择「谁可用」。仅当所选等级与插件默认不同时才会保存覆盖项。
             </p>
-            <div
-              v-for="pg in data.command_perm_ui.plugins"
-              :key="pg.plugin"
-              style="margin-bottom: 20px"
-            >
-              <h3 style="font-size: 15px; margin: 0 0 10px; font-weight: 700">
-                {{ pg.title }}
-              </h3>
-              <div class="cmd-perm-table-wrap">
-                <table class="cmd-perm-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">命令</th>
-                      <th
-                        v-for="lv in data.command_perm_ui.levels"
-                        :key="lv.id"
-                        scope="col"
-                      >
-                        {{ lv.label }}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="row in pg.commands"
-                      :key="row.command_id"
-                    >
-                      <th scope="row" class="cmd-perm-table__cmd">
-                        <span class="cmd-perm-table__label">{{ row.label }}</span>
-                      </th>
-                      <td
-                        v-for="lv in data.command_perm_ui.levels"
-                        :key="row.command_id + lv.id"
-                        class="cmd-perm-table__cell"
-                      >
-                        <input
-                          v-model="permSelections[row.command_id]"
-                          type="radio"
-                          class="cmd-perm-radio"
-                          :name="'cmdperm-' + row.command_id"
-                          :value="lv.id"
-                        >
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <CmdPermMatrix
+              :levels="data.command_perm_ui.levels"
+              :plugins="data.command_perm_ui.plugins"
+              :selections="permSelections"
+              @change="(cmdId, lv) => (permSelections[cmdId] = lv)"
+            />
           </div>
           <div
             v-if="showCommandLimitsTable && data.command_limits_ui"
-            class="cmd-perm-matrix"
             style="margin-bottom: 28px"
           >
             <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
               按插件分组编辑冷却秒数。表格内填写的是<strong>生效值</strong>；与默认值相同则不会写入覆盖。
             </p>
-            <div
-              v-for="pg in data.command_limits_ui.plugins"
-              :key="pg.plugin"
-              style="margin-bottom: 20px"
-            >
-              <h3 style="font-size: 15px; margin: 0 0 10px; font-weight: 700">
-                {{ pg.title }}
-              </h3>
-              <div class="cmd-perm-table-wrap">
-                <table class="cmd-perm-table cmd-limit-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">命令</th>
-                      <th scope="col">默认冷却</th>
-                      <th scope="col">生效冷却</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="row in pg.commands"
-                      :key="row.command_id"
-                    >
-                      <th scope="row" class="cmd-perm-table__cmd">
-                        <span class="cmd-perm-table__label">{{ row.label }}</span>
-                        <span class="cmd-perm-table__id">{{ row.command_id }}</span>
-                      </th>
-                      <td class="cmd-limit-table__default">
-                        {{ row.default_cd_sec }} 秒
-                      </td>
-                      <td class="cmd-limit-table__input-cell">
-                        <input
-                          :value="limitSelections[row.command_id]"
-                          class="inp cmd-limit-table__input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          inputmode="numeric"
-                          @input="onCommandLimitInput(row.command_id, ($event.target as HTMLInputElement).value)"
-                        >
-                        <span class="cmd-limit-table__suffix muted">秒</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <CmdLimitsTable
+              :plugins="data.command_limits_ui.plugins"
+              :selections="limitSelections"
+              @input="onCommandLimitInput"
+            />
           </div>
           <template v-if="fieldGroups.length">
             <section
@@ -624,7 +593,7 @@ function showConfigField(f: PluginConfigField): boolean {
                 </h3>
                 <router-link
                   v-if="isPallasWebuiSection"
-                  :to="{ name: 'plugin-config', params: { name: PALLAS_WEBUI_SECTION_ID } }"
+                  :to="{ name: 'plugins', params: { name: PALLAS_WEBUI_SECTION_ID } }"
                   class="muted"
                   style="font-size: 13px"
                 >
@@ -651,139 +620,33 @@ function showConfigField(f: PluginConfigField): boolean {
                 :field-values="fieldValues"
                 @update:field-values="onGatewayFieldValues"
               />
-              <div
+              <ConfigFieldRenderer
                 v-for="f in fieldsInGroup(group)"
                 v-show="
                   showConfigField(f)
                     && !(group.id === 'draw' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
                 "
                 :key="f.name"
-                style="margin-bottom: 22px"
-              >
-                <div style="font-weight: 700; margin-bottom: 6px">
-                  {{ fieldDisplayTitle(f) }}
-                  <span
-                    v-if="!f.label"
-                    class="muted"
-                    style="font-weight: 500"
-                  >（{{ f.kind }}）</span>
-                </div>
-                <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px; white-space: pre-line">
-                  {{ f.description }}
-                </div>
-                <label
-                  v-if="f.kind === 'bool'"
-                  class="console-bool-switch"
-                  :class="{ 'console-bool-switch--on': fieldValues[f.name] === 'true' }"
-                >
-                  <input
-                    type="checkbox"
-                    class="console-bool-switch__input"
-                    :checked="fieldValues[f.name] === 'true'"
-                    @click.stop
-                    @change="onBoolFieldChange(f.name, $event)"
-                  >
-                  <span class="console-bool-switch__track" aria-hidden="true">
-                    <span class="console-bool-switch__thumb" />
-                  </span>
-                  <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
-                </label>
-                <select
-                  v-else-if="f.kind === 'enum' && f.choices?.length"
-                  v-model="fieldValues[f.name]"
-                  class="sel"
-                  style="max-width: 520px; width: 100%"
-                >
-                  <option
-                    v-for="opt in f.choices"
-                    :key="opt"
-                    :value="opt"
-                  >
-                    {{ enumChoiceLabel(opt) }}
-                  </option>
-                </select>
-                <JsonTextareaField
-                  v-else-if="f.kind === 'json'"
-                  v-model="fieldValues[f.name]"
-                  :title="`${currentId} · ${f.name}（JSON）`"
-                  :rows="5"
-                />
-                <input
-                  v-else
-                  v-model="fieldValues[f.name]"
-                  class="inp"
-                  style="max-width: 520px; width: 100%"
-                  type="text"
-                  :inputmode="f.kind === 'int' ? 'numeric' : f.kind === 'float' ? 'decimal' : undefined"
-                >
-              </div>
+                :field="f"
+                :model-value="fieldValues[f.name] ?? ''"
+                :show-meta="false"
+                :json-title="`${currentId} · ${f.name}（JSON）`"
+                @update:model-value="(v) => updateFieldValue(f.name, v)"
+              />
             </section>
           </template>
-          <div
+          <ConfigFieldRenderer
             v-for="f in genericFields"
             v-show="showConfigField(f)"
             :key="f.name"
-            style="margin-bottom: 22px"
-          >
-            <div style="font-weight: 700; margin-bottom: 6px">
-              {{ fieldDisplayTitle(f) }}
-              <span
-                v-if="!f.label"
-                class="muted"
-                style="font-weight: 500"
-              >（{{ f.kind }}）</span>
-            </div>
-            <div class="muted common-config-field-desc" style="font-size: 13px; margin-bottom: 8px; white-space: pre-line">
-              {{ f.description }}
-            </div>
-            <label
-              v-if="f.kind === 'bool'"
-              class="console-bool-switch"
-              :class="{ 'console-bool-switch--on': fieldValues[f.name] === 'true' }"
-            >
-              <input
-                type="checkbox"
-                class="console-bool-switch__input"
-                :checked="fieldValues[f.name] === 'true'"
-                @click.stop
-                @change="onBoolFieldChange(f.name, $event)"
-              >
-              <span class="console-bool-switch__track" aria-hidden="true">
-                <span class="console-bool-switch__thumb" />
-              </span>
-              <span class="console-bool-switch__label">{{ fieldValues[f.name] === "true" ? "开启" : "关闭" }}</span>
-            </label>
-            <select
-              v-else-if="f.kind === 'enum' && f.choices?.length"
-              v-model="fieldValues[f.name]"
-              class="sel"
-              style="max-width: 520px; width: 100%"
-            >
-              <option
-                v-for="opt in f.choices"
-                :key="opt"
-                :value="opt"
-              >
-                {{ enumChoiceLabel(opt) }}
-              </option>
-            </select>
-            <JsonTextareaField
-              v-else-if="f.kind === 'json'"
-              v-model="fieldValues[f.name]"
-              :title="`${currentId} · ${f.name}（JSON）`"
-              :rows="5"
-            />
-            <input
-              v-else
-              v-model="fieldValues[f.name]"
-              class="inp"
-              style="max-width: 520px; width: 100%"
-              type="text"
-              :inputmode="f.kind === 'int' ? 'numeric' : f.kind === 'float' ? 'decimal' : undefined"
-            >
-          </div>
+            :field="f"
+            :model-value="fieldValues[f.name] ?? ''"
+            :show-meta="false"
+            :json-title="`${currentId} · ${f.name}（JSON）`"
+            @update:model-value="(v) => updateFieldValue(f.name, v)"
+          />
         </div>
-      </div>
+      </UiCard>
     </div>
   </div>
 </template>
@@ -799,80 +662,6 @@ function showConfigField(f: PluginConfigField): boolean {
   margin-top: -8px;
 }
 
-.cmd-perm-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  border-radius: 8px;
-}
-
-.cmd-perm-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.cmd-perm-table th,
-.cmd-perm-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
-  text-align: center;
-  vertical-align: middle;
-}
-
-.cmd-perm-table thead th {
-  font-weight: 600;
-  background: var(--panel-hd-bg, rgba(0, 0, 0, 0.15));
-  white-space: nowrap;
-}
-
-.cmd-perm-table tbody tr:last-child th,
-.cmd-perm-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.cmd-perm-table__cmd {
-  text-align: left !important;
-  min-width: 160px;
-}
-
-.cmd-perm-table__label {
-  display: block;
-  font-weight: 600;
-}
-
-.cmd-perm-table__id {
-  display: block;
-  font-size: 11px;
-  margin-top: 2px;
-  word-break: break-all;
-}
-
-.cmd-perm-radio {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.cmd-limit-table__default {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.cmd-limit-table__input-cell {
-  min-width: 180px;
-}
-
-.cmd-limit-table__input {
-  width: 96px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.cmd-limit-table__suffix {
-  margin-left: 8px;
-  white-space: nowrap;
-}
-
 .plugin-config-page__check-output {
   margin: 0;
   padding: 12px 14px;
@@ -882,5 +671,9 @@ function showConfigField(f: PluginConfigField): boolean {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.common-config-page__runtime-summary {
+  margin-bottom: 14px;
 }
 </style>

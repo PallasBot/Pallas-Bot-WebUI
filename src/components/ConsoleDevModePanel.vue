@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { putCommonConfig } from "@/api/consoleApi";
+import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import { PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
@@ -56,12 +57,8 @@ async function applyDevMode(next: boolean) {
   }
 }
 
-function onToggleInput(ev: Event) {
-  const el = ev.target as HTMLInputElement;
-  const want = el.checked;
+function onToggleInput(want: boolean) {
   if (want === props.active) return;
-  void el.blur();
-  el.checked = props.active;
   void applyDevMode(want);
 }
 </script>
@@ -86,27 +83,14 @@ function onToggleInput(ev: Event) {
     :title="DEV_MODE_TOOLTIP"
   >
     <span class="shell__topbar-dev__label">开发模式</span>
-    <label
-      class="console-bool-switch"
-      :class="{ 'console-bool-switch--on': active }"
-    >
-      <input
-        type="checkbox"
-        class="console-bool-switch__input"
-        :checked="active"
-        :disabled="busy"
-        :aria-busy="busy || undefined"
-        :aria-label="active ? '关闭开发模式' : '开启开发模式'"
-        :aria-description="DEV_MODE_TOOLTIP"
-        @change="onToggleInput"
-      >
-      <span
-        class="console-bool-switch__track"
-        aria-hidden="true"
-      >
-        <span class="console-bool-switch__thumb" />
-      </span>
-    </label>
+    <ConsoleSwitch
+      :model-value="active"
+      :disabled="busy"
+      tone="amber"
+      :show-label="false"
+      :aria-label="active ? '关闭开发模式' : '开启开发模式'"
+      @update:model-value="onToggleInput"
+    />
   </div>
 
   <div
@@ -126,26 +110,14 @@ function onToggleInput(ev: Event) {
           <template v-if="!compact"> CORS 等中间件变更仍需重启 hub。</template>
         </p>
       </div>
-      <label
-        class="console-bool-switch"
-        :class="{ 'console-bool-switch--on': active }"
-      >
-        <input
-          type="checkbox"
-          class="console-bool-switch__input"
-          :checked="active"
-          :disabled="busy"
-          :aria-busy="busy || undefined"
-          :aria-label="active ? '关闭开发模式' : '开启开发模式'"
-          @change="onToggleInput"
-        >
-        <span
-          class="console-bool-switch__track"
-          aria-hidden="true"
-        >
-          <span class="console-bool-switch__thumb" />
-        </span>
-      </label>
+      <ConsoleSwitch
+        :model-value="active"
+        :disabled="busy"
+        tone="amber"
+        :show-label="false"
+        :aria-label="active ? '关闭开发模式' : '开启开发模式'"
+        @update:model-value="onToggleInput"
+      />
     </div>
   </div>
 </template>

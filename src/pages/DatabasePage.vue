@@ -1,22 +1,16 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import {
-  fetchDbBackupInfo,
   fetchDbOverview,
-  fetchActiveDbBackupJob,
-  fetchDbBackupJob,
   fetchGroupConfigs,
   fetchPlugins,
   fetchUserConfigs,
   peekPluginsCache,
-  postDbBackup,
   postMongoAggregate,
 } from "@/api/consoleApi";
-import { axiosErrorDetail } from "@/api/http";
 import type {
-  DbBackupInfo,
-  DbBackupJobData,
-  DbBackupResult,
   DbOverviewData,
   GroupConfigPublic,
   PluginRow,
@@ -25,9 +19,11 @@ import type {
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -53,21 +49,6 @@ const collection = ref("");
 const pipelineText = ref("[\n  { \"$limit\": 20 }\n]");
 const aggResult = ref<string>("");
 const aggLoading = ref(false);
-
-const backupInfo = ref<DbBackupInfo | null>(null);
-const backupOutputParent = ref("");
-const backupLabel = ref("");
-const backupScope = ref<"full" | "important">("full");
-const backupPgFormat = ref<"custom" | "plain" | "directory">("custom");
-const backupBusy = ref(false);
-const backupResult = ref<DbBackupResult | null>(null);
-const backupJob = ref<DbBackupJobData | null>(null);
-const backupJobSizeBytes = ref(0);
-const backupElapsedSec = ref(0);
-let backupElapsedTimer: ReturnType<typeof setInterval> | null = null;
-let backupPollTimer: ReturnType<typeof setInterval> | null = null;
-
-const BACKUP_POLL_MS = 1500;
 
 const socialConfigsBusy = ref(false);
 const groupConfigs = ref<GroupConfigPublic[]>([]);
@@ -120,26 +101,6 @@ const backendLabel = computed(() => {
   if (o.backend === "postgres") return "PostgreSQL";
   return o.backend;
 });
-
-const backupToolReady = computed(() => backupInfo.value?.tool_available === true);
-
-const backupScopeOptions = computed(() => {
-  if (backupInfo.value?.backend === "mongodb") {
-    return [
-      { value: "full" as const, label: "整库（mongodump）" },
-      { value: "important" as const, label: "关键集合（config / group_config / user_config 等）" },
-    ];
-  }
-  return [{ value: "full" as const, label: "整库（pg_dump）" }];
-});
-
-function formatBytes(n: number): string {
-  if (!Number.isFinite(n) || n < 0) return "—";
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
 
 const totalDocuments = computed(() => {
   if (!isMongo(overview.value)) return null;
@@ -253,140 +214,9 @@ async function loadAll() {
   void loadSocialConfigs();
 }
 
-async function loadBackupInfo() {
-  try {
-    const info = await fetchDbBackupInfo();
-    backupInfo.value = info;
-    if (!backupOutputParent.value.trim()) {
-      backupOutputParent.value = info.default_output_parent;
-    }
-  } catch (e) {
-    err.value = axiosErrorDetail(e);
-  }
-}
-
-function formatElapsed(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function backupProgressHint(): string {
-  const tool = backupInfo.value?.tool_name ?? "备份工具";
-  const job = backupJob.value;
-  const size = formatBytes(backupJobSizeBytes.value);
-  if (job?.status === "queued") return `任务排队中，等待启动 ${tool}…`;
-  const sec = backupElapsedSec.value;
-  if (job?.status === "running" && backupJobSizeBytes.value > 0) {
-    return `正在写入备份文件，已落盘 ${size}。`;
-  }
-  if (sec >= 120) return `大库导出可能较久，${tool} 仍在运行，请勿关闭页面。`;
-  if (sec >= 30) return `正在写入备份文件，请稍候…`;
-  return `正在启动 ${tool} 并连接数据库…`;
-}
-
-const backupProgressComplete = computed(() => backupJob.value?.status === "completed");
-
-function stopBackupPollTimer() {
-  if (backupPollTimer == null) return;
-  clearInterval(backupPollTimer);
-  backupPollTimer = null;
-}
-
-async function pollBackupJobOnce(jobId: string) {
-  const next = await fetchDbBackupJob(jobId);
-  backupJob.value = next;
-  backupJobSizeBytes.value = next.size_bytes ?? 0;
-  if (next.status === "completed" && next.result) {
-    backupResult.value = next.result;
-    ok.value = next.result.message || "备份已完成。";
-    backupBusy.value = false;
-    stopBackupPollTimer();
-    stopBackupProgressTimer();
-  } else if (next.status === "failed") {
-    err.value = next.error || "备份失败。";
-    backupBusy.value = false;
-    stopBackupPollTimer();
-    stopBackupProgressTimer();
-  }
-}
-
-function startBackupPollTimer(jobId: string) {
-  stopBackupPollTimer();
-  backupPollTimer = setInterval(() => {
-    void pollBackupJobOnce(jobId).catch((e) => {
-      err.value = e instanceof Error ? e.message : String(e);
-      backupBusy.value = false;
-      stopBackupPollTimer();
-      stopBackupProgressTimer();
-    });
-  }, BACKUP_POLL_MS);
-}
-
-async function resumeActiveBackupJob() {
-  try {
-    const active = await fetchActiveDbBackupJob();
-    if (!active?.job_id) return;
-    backupJob.value = active;
-    backupJobSizeBytes.value = active.size_bytes ?? 0;
-    if (active.status === "queued" || active.status === "running") {
-      backupBusy.value = true;
-      startBackupProgressTimer();
-      startBackupPollTimer(active.job_id);
-      void pollBackupJobOnce(active.job_id);
-    }
-  } catch {
-    /* 忽略恢复失败 */
-  }
-}
-
-function startBackupProgressTimer() {
-  backupElapsedSec.value = 0;
-  stopBackupProgressTimer();
-  backupElapsedTimer = setInterval(() => {
-    backupElapsedSec.value += 1;
-  }, 1000);
-}
-
-function stopBackupProgressTimer() {
-  if (backupElapsedTimer == null) return;
-  clearInterval(backupElapsedTimer);
-  backupElapsedTimer = null;
-}
-
-async function runDbBackup() {
-  backupBusy.value = true;
-  backupResult.value = null;
-  backupJob.value = null;
-  backupJobSizeBytes.value = 0;
-  err.value = "";
-  ok.value = "";
-  startBackupProgressTimer();
-  try {
-    const parent = backupOutputParent.value.trim();
-    const started = await postDbBackup({
-      output_parent: parent || null,
-      label: backupLabel.value.trim(),
-      scope: backupScope.value,
-      pg_format: backupPgFormat.value,
-    });
-    backupJob.value = started;
-    backupJobSizeBytes.value = started.size_bytes ?? 0;
-    startBackupPollTimer(started.job_id);
-    await pollBackupJobOnce(started.job_id);
-  } catch (e) {
-    err.value = axiosErrorDetail(e);
-    backupBusy.value = false;
-    stopBackupProgressTimer();
-    stopBackupPollTimer();
-  }
-}
-
 onMounted(() => {
   void loadPluginsCatalog();
   void loadAll();
-  void loadBackupInfo();
-  void resumeActiveBackupJob();
 });
 
 async function runAggregate() {
@@ -463,8 +293,6 @@ watch(userConfigOpen, (isOpen) => {
 });
 
 onUnmounted(() => {
-  stopBackupProgressTimer();
-  stopBackupPollTimer();
   if (typeof document !== "undefined") {
     document.body.style.overflow = "";
   }
@@ -472,7 +300,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -486,16 +314,18 @@ onUnmounted(() => {
       {{ ok }}
     </div>
 
-    <div class="plugins-page__hero database-page__hero">
-      <h2 class="panel__title">
-        <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库总览
+    <ConsoleHubMasthead :icon="panelNavIcon">
+      <template #title>
+        数据库总览
+      </template>
+      <template #actions>
         <RefreshIconButton
           :busy="dbRefreshBusy"
           label="刷新数据库总览"
           @click="loadAll"
         />
-      </h2>
-    </div>
+      </template>
+    </ConsoleHubMasthead>
 
     <ConsolePageSkeleton
       v-if="(blockingLoad && !overview) || dbRefreshBusy"
@@ -540,189 +370,53 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div
+    <UiCard
       v-if="overview && (overview.backend === 'mongodb' || overview.backend === 'postgres')"
       id="db-backup"
-      class="panel"
+      tag="section"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库备份
+          <ConsoleNavIcon
+            class="panel__title-ico"
+            name="backup"
+          />备份管理
         </h2>
         <div class="row-actions">
           <RouterLink
-            class="btn"
+            custom
+            v-slot="{ navigate }"
             to="/database/backups"
-            style="padding: 6px 12px; font-size: 12px"
           >
-            管理备份
+            <UiButton
+              variant="primary"
+              @click="navigate"
+            >
+              前往备份管理
+            </UiButton>
           </RouterLink>
-          <PanelSidebarAdd main-path="/database" />
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="backupBusy || !backupToolReady"
-            @click="runDbBackup"
-          >
-            {{ backupBusy ? "备份中…" : "开始备份" }}
-          </button>
         </div>
       </div>
       <div class="panel__bd">
-        <div
-          v-if="backupInfo && !backupInfo.tool_available"
-          class="alert alert--err"
-          style="margin: 0 0 12px"
-        >
-          <p style="margin: 0 0 8px">
-            未在运行 Bot 的环境中检测到 <strong>{{ backupInfo.tool_name }}</strong>，无法从 WebUI 发起备份。
-            请先安装
-            <template v-if="backupInfo.tool_download_url">
-              <a
-                :href="backupInfo.tool_download_url"
-                target="_blank"
-                rel="noopener noreferrer"
-              >{{ backupInfo.tool_download_label || backupInfo.tool_name }}</a>
-            </template>
-            <template v-else>
-              {{ backupInfo.tool_download_label || backupInfo.tool_name }}
-            </template>
-            并加入 PATH。
-          </p>
-          <p
-            v-if="backupInfo.tool_install_hint"
-            class="muted"
-            style="margin: 0; font-size: 0.92em"
-          >
-            {{ backupInfo.tool_install_hint }}
-          </p>
-        </div>
-        <p
-          v-else-if="backupInfo"
-          class="muted"
-          style="margin: 0 0 12px"
-        >
-          当前后端：<strong style="color: var(--text)">{{ backendLabel }}</strong>
-          · {{ backupInfo.connection.host }}:{{ backupInfo.connection.port }}
-          · 库 <strong style="color: var(--text)">{{ backupInfo.connection.database }}</strong>
-          · 工具 {{ backupInfo.tool_name }}
+        <p class="muted database-page__backup-lead">
+          创建逻辑备份、查看进度与清理历史目录已整合至备份管理页。
         </p>
-        <div
-          class="database-backup-form"
-          style="display: grid; gap: 12px; max-width: 720px"
-        >
-          <div>
-            <label class="muted" style="display: block; margin-bottom: 6px">备份父目录</label>
-            <input
-              v-model="backupOutputParent"
-              class="inp"
-              style="width: 100%; max-width: 100%"
-              placeholder="例如 D:/Pallas/backups 或留空使用默认"
-            >
-            <p class="muted" style="margin: 6px 0 0; font-size: 0.9em">
-              将在该目录下创建带时间戳的子文件夹；相对路径相对于 Bot 仓库根目录。
-            </p>
-          </div>
-          <div>
-            <label class="muted" style="display: block; margin-bottom: 6px">目录后缀（可选）</label>
-            <input
-              v-model="backupLabel"
-              class="inp"
-              style="width: 100%; max-width: 360px"
-              placeholder="例如 before_upgrade"
-            >
-          </div>
-          <div>
-            <label class="muted" style="display: block; margin-bottom: 6px">备份范围</label>
-            <select
-              v-model="backupScope"
-              class="sel"
-              style="max-width: 420px; width: 100%"
-              :disabled="backupInfo?.backend === 'postgres'"
-            >
-              <option
-                v-for="opt in backupScopeOptions"
-                :key="opt.value"
-                :value="opt.value"
-              >
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-          <div v-if="backupInfo?.backend === 'postgres'">
-            <label class="muted" style="display: block; margin-bottom: 6px">PostgreSQL 格式</label>
-            <select
-              v-model="backupPgFormat"
-              class="sel"
-              style="max-width: 420px; width: 100%"
-            >
-              <option value="custom">custom（.dump，推荐）</option>
-              <option value="plain">plain SQL（.sql）</option>
-              <option value="directory">directory（目录格式）</option>
-            </select>
-          </div>
-        </div>
-        <div
-          v-if="backupBusy"
-          class="database-backup-progress"
-          role="status"
-          aria-live="polite"
-        >
-          <div class="database-backup-progress__head">
-            <span class="database-backup-progress__label">
-              {{ backupProgressComplete ? "备份完成" : "备份进行中" }}
-            </span>
-            <span class="database-backup-progress__elapsed muted">
-              已用时 {{ formatElapsed(backupElapsedSec) }}
-              · 已写入 {{ formatBytes(backupJobSizeBytes) }}
-            </span>
-          </div>
-          <div
-            class="database-backup-progress__bar"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            :aria-valuenow="backupProgressComplete ? 100 : undefined"
-            :aria-valuetext="backupProgressComplete ? '已完成' : `已写入 ${formatBytes(backupJobSizeBytes)}`"
-          >
-            <span
-              class="database-backup-progress__fill"
-              :class="{ 'database-backup-progress__fill--done': backupProgressComplete }"
-            />
-          </div>
-          <p class="muted database-backup-progress__hint">
-            {{ backupProgressHint() }}
-          </p>
-        </div>
-        <div
-          v-if="backupResult"
-          class="panel panel--nested"
-          style="margin-top: 16px"
-        >
-          <div class="panel__bd">
-            <p style="margin: 0 0 8px"><strong>输出目录</strong> {{ backupResult.output_dir }}</p>
-            <p
-              v-for="(art, i) in backupResult.artifacts"
-              :key="i"
-              class="muted"
-              style="margin: 0 0 4px; word-break: break-all"
-            >
-              产物：{{ art }}
-            </p>
-            <p class="muted" style="margin: 8px 0 0">大小：{{ formatBytes(backupResult.size_bytes) }}</p>
-          </div>
-        </div>
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="db-group-configs"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>群配置
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />群配置
           <RefreshIconButton
+                :show-label="false"
             :busy="socialConfigsBusy"
             label="刷新群配置列表"
             @click="loadSocialConfigs"
@@ -730,7 +424,6 @@ onUnmounted(() => {
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="database-group-configs" />
           </span>
           <input
             v-model="groupListQ"
@@ -746,14 +439,13 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
+            <UiButton
+              variant="outline"
+              size="sm"
               @click="toggleGroupConfigsPanel"
             >
               {{ consolePrefs.databasePageGroupConfigsOpen ? "收起" : "展开" }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -826,16 +518,19 @@ onUnmounted(() => {
           :total="filteredGroupConfigs.length"
         />
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       id="db-user-configs"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>好友配置
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友配置
           <RefreshIconButton
+                :show-label="false"
             :busy="socialConfigsBusy"
             label="刷新好友配置列表"
             @click="loadSocialConfigs"
@@ -843,7 +538,6 @@ onUnmounted(() => {
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
-            <PanelSidebarAdd pin-id="database-user-configs" />
           </span>
           <input
             v-model="userListQ"
@@ -859,14 +553,13 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <button
-              type="button"
-              class="btn"
-              style="padding: 6px 12px; font-size: 12px"
+            <UiButton
+              variant="outline"
+              size="sm"
               @click="toggleUserConfigsPanel"
             >
               {{ consolePrefs.databasePageUserConfigsOpen ? "收起" : "展开" }}
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -895,14 +588,14 @@ onUnmounted(() => {
               :disabled="socialConfigsBusy"
               @keydown.enter.prevent="openAddUserConfig"
             >
-            <button
-              type="button"
-              class="btn btn--primary database-user-config-add__btn"
+            <UiButton
+              variant="primary"
+              class="database-user-config-add__btn"
               :disabled="socialConfigsBusy"
               @click="openAddUserConfig"
             >
               添加
-            </button>
+            </UiButton>
           </div>
           <p
             v-if="addUserHint"
@@ -964,18 +657,19 @@ onUnmounted(() => {
           :total="filteredUserConfigs.length"
         />
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       v-if="overview?.backend === 'mongodb'"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>集合与文档数
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />集合与文档数
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/database" />
         </div>
       </div>
       <div class="panel__bd">
@@ -1006,18 +700,19 @@ onUnmounted(() => {
           </table>
         </div>
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       v-else-if="overview?.backend === 'postgres'"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>表与行数
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />表与行数
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/database" />
         </div>
       </div>
       <div class="panel__bd">
@@ -1041,18 +736,19 @@ onUnmounted(() => {
           </table>
         </div>
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       v-else-if="overview"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>概览
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />概览
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/database" />
         </div>
       </div>
       <div class="panel__bd">
@@ -1065,26 +761,27 @@ onUnmounted(() => {
           {{ overview.note }}
         </p>
       </div>
-    </div>
+    </UiCard>
 
-    <div
+    <UiCard
       v-if="overview && overview.backend === 'mongodb'"
-      class="panel"
+      tag="div"
+      glass
+      class="database-page__panel"
     >
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>MongoDB 聚合
+          <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />MongoDB 聚合
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/database" />
-          <button
-            type="button"
-            class="btn btn--primary"
+          <UiButton
+            variant="primary"
             :disabled="aggLoading || !collection.trim()"
+            :busy="aggLoading"
             @click="runAggregate"
           >
             {{ aggLoading ? "执行中…" : "执行" }}
-          </button>
+          </UiButton>
         </div>
       </div>
       <div class="panel__bd">
@@ -1128,7 +825,7 @@ onUnmounted(() => {
           <pre class="pre-block">{{ aggResult }}</pre>
         </div>
       </div>
-    </div>
+    </UiCard>
 
     <GroupSocialConfigModal
       v-model:open="groupConfigOpen"
@@ -1143,60 +840,3 @@ onUnmounted(() => {
     />
   </div>
 </template>
-
-<style scoped>
-.database-backup-progress {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
-}
-.database-backup-progress__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.database-backup-progress__label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-.database-backup-progress__elapsed {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.database-backup-progress__bar {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--border-strong);
-  overflow: hidden;
-}
-.database-backup-progress__fill {
-  display: block;
-  width: 38%;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  animation: database-backup-progress-slide 1.35s ease-in-out infinite;
-}
-.database-backup-progress__fill--done {
-  width: 100%;
-  animation: none;
-}
-.database-backup-progress__hint {
-  margin: 10px 0 0;
-  font-size: 0.9em;
-  line-height: 1.45;
-}
-@keyframes database-backup-progress-slide {
-  0% {
-    transform: translateX(-120%);
-  }
-  100% {
-    transform: translateX(320%);
-  }
-}
-</style>

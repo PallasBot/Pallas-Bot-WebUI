@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiCard from "@/components/ui/UiCard.vue";
+
 defineProps<{
   label: string;
   value: string | number;
@@ -11,8 +13,11 @@ defineProps<{
 </script>
 
 <template>
-  <div
-    class="card stat-card"
+  <UiCard
+    tag="div"
+    glass
+    interactive
+    class="stat-card"
     :class="{ 'stat-card--dense': dense }"
   >
     <div class="card__body">
@@ -26,5 +31,5 @@ defineProps<{
         {{ hint }}
       </div>
     </div>
-  </div>
+  </UiCard>
 </template>

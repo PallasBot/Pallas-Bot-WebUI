@@ -1,5 +1,7 @@
 import { computed } from "vue";
 import { MAIN_NAV_ITEMS, mainNavItemByPath, type MainNavItem } from "@/config/mainNav";
+import { sidebarGroupForPath } from "@/config/sidebarGroups";
+import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import {
   parseSidebarPinToken,
   SIDEBAR_PIN_DEFINITIONS,
@@ -19,6 +21,65 @@ export type SidebarPoolRow =
   | { kind: "main"; token: string; item: MainNavItem; section: string; showSection: boolean }
   | { kind: "pin"; token: string; pin: SidebarPinDefinition; section: string; showSection: boolean };
 
+export type SidebarNavMainRowView = SidebarNavRowView & { kind: "main" };
+
+export type SidebarNavEntry =
+  | { kind: "single"; row: SidebarNavRowView }
+  | {
+      kind: "group";
+      groupId: string;
+      label: string;
+      icon: ConsoleNavIconId;
+      children: SidebarNavMainRowView[];
+    };
+
+function buildSidebarNavEntries(rows: SidebarNavRowView[]): SidebarNavEntry[] {
+  const emitted = new Set<string>();
+  const entries: SidebarNavEntry[] = [];
+  for (const row of rows) {
+    if (row.kind === "pin") {
+      entries.push({ kind: "single", row });
+      continue;
+    }
+    const group = sidebarGroupForPath(row.item.to);
+    if (!group) {
+      entries.push({ kind: "single", row });
+      continue;
+    }
+    if (emitted.has(group.id)) continue;
+    emitted.add(group.id);
+    const children = rows.filter(
+      (r): r is SidebarNavRowView & { kind: "main" } =>
+        r.kind === "main" && group.paths.includes(r.item.to),
+    );
+    if (children.length <= 1) {
+      entries.push({ kind: "single", row: children[0] ?? row });
+      continue;
+    }
+    entries.push({
+      kind: "group",
+      groupId: group.id,
+      label: group.label,
+      icon: group.icon,
+      children,
+    });
+  }
+  return entries;
+}
+
+/** 收起侧栏时展平分组，保留各子项图标入口 */
+export function flattenSidebarNavEntries(entries: SidebarNavEntry[]): SidebarNavEntry[] {
+  const flat: SidebarNavEntry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "group") {
+      for (const child of entry.children) flat.push({ kind: "single", row: child });
+    } else {
+      flat.push(entry);
+    }
+  }
+  return flat;
+}
+
 export function useSidebarNavLists() {
   const sidebarNavRows = computed((): SidebarNavRowView[] => {
     const raw: SidebarNavRow[] = [];
@@ -31,13 +92,10 @@ export function useSidebarNavLists() {
       const item = mainNavItemByPath(token);
       if (item) raw.push({ kind: "main", token, item });
     }
-    let prevSection: string | null = null;
     return raw.map((r) => {
       const fallback = r.kind === "main" ? r.item.section : r.pin.section;
       const section = effectiveSidebarSection(r.token, fallback);
-      const showSection = section !== prevSection;
-      prevSection = section;
-      return { ...r, section, showSection };
+      return { ...r, section, showSection: false };
     });
   });
 
@@ -66,5 +124,13 @@ export function useSidebarNavLists() {
     return tmp;
   });
 
-  return { sidebarNavRows, sidebarPoolRows };
+  const sidebarNavEntries = computed(() => buildSidebarNavEntries(sidebarNavRows.value));
+
+  const sidebarNavEntriesDisplay = computed(() =>
+    consolePrefs.sidebarCollapsed
+      ? flattenSidebarNavEntries(sidebarNavEntries.value)
+      : sidebarNavEntries.value,
+  );
+
+  return { sidebarNavRows, sidebarNavEntries, sidebarNavEntriesDisplay, sidebarPoolRows };
 }

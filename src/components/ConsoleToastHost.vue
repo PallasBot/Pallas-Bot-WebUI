@@ -6,8 +6,10 @@ const { items } = useConsoleToastState();
 
 <template>
   <Teleport to="body">
-    <div
+    <TransitionGroup
       v-if="items.length"
+      name="console-toast"
+      tag="div"
       class="console-toast-host"
       role="status"
       aria-live="polite"
@@ -29,6 +31,6 @@ const { items } = useConsoleToastState();
           ×
         </button>
       </div>
-    </div>
+    </TransitionGroup>
   </Teleport>
 </template>

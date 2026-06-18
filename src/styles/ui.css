@@ -1,0 +1,423 @@
+/* shadcn 语义 token + Ui 原子组件（GS / hub 对齐） */
+
+:root {
+  --background: var(--bg-deep);
+  --foreground: var(--text);
+  --card: var(--bg-card);
+  --card-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--text-muted) 14%, var(--bg-card));
+  --muted-foreground: var(--text-muted);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in srgb, var(--text) 6%, var(--bg-card));
+  --secondary-foreground: var(--text);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border-ui: var(--border);
+  --input: var(--control-border);
+  --ring: color-mix(in srgb, var(--accent) 42%, transparent);
+  --radius-ui: var(--radius-md);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] {
+  --secondary: rgba(15, 23, 42, 0.05);
+  --muted: rgba(15, 23, 42, 0.05);
+}
+
+/* ── UiButton ── */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ui-ctrl-height);
+  padding: var(--ui-btn-pad-y) var(--ui-btn-pad-x);
+  font-family: var(--font-sans);
+  font-size: var(--ui-btn-font);
+  font-weight: var(--ui-btn-weight);
+  line-height: 1.2;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    transform 0.12s var(--ease),
+    color 0.18s var(--ease);
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+.ui-btn--sm {
+  min-height: 32px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ui-btn--lg {
+  min-height: 42px;
+  padding: 9px 18px;
+  font-size: 14px;
+}
+
+.ui-btn--default {
+  background: var(--secondary);
+  border-color: var(--border-ui);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+html[data-theme="light"] .ui-btn--default {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.ui-btn--default:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 5%, var(--secondary));
+  border-color: color-mix(in srgb, var(--border-ui) 80%, var(--foreground));
+}
+
+.ui-btn--primary {
+  background: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 72%, transparent);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 88%, #ffffff 12%);
+}
+
+.ui-btn--destructive {
+  background: var(--destructive);
+  border-color: color-mix(in srgb, var(--destructive) 72%, transparent);
+  color: var(--destructive-foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-btn--destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--destructive) 88%, #ffffff 10%);
+}
+
+.ui-btn--outline {
+  background: transparent;
+  border-color: var(--border-ui);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+html[data-theme="light"] .ui-btn--outline {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.ui-btn--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted-foreground);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+
+.ui-btn--latest {
+  background: var(--muted);
+  border-color: var(--border-ui);
+  color: var(--muted-foreground);
+  box-shadow: none;
+  cursor: default;
+}
+
+.ui-btn--latest:active:not(:disabled) {
+  transform: none;
+}
+
+html[data-theme="light"] .ui-btn--latest {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.45);
+}
+
+.ui-btn__ico {
+  flex-shrink: 0;
+}
+
+/* ── UiCard ── */
+.ui-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--border-ui) 88%, transparent);
+  border-radius: calc(var(--radius-ui) + 2px);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition:
+    transform 0.2s var(--ease),
+    box-shadow 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+
+html[data-theme="light"] .ui-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
+}
+
+.ui-card--glass {
+  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+}
+
+html[data-theme="light"] .ui-card--glass {
+  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.ui-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border-ui));
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+
+.ui-card--active {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border-ui));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent),
+    var(--shadow-lg);
+}
+
+.ui-card__header {
+  padding: 14px 14px 0;
+}
+
+.ui-card__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px;
+}
+
+.ui-card__content--flush-top {
+  padding-top: 0;
+}
+
+.ui-card__footer {
+  padding: 0 14px 14px;
+  margin-top: auto;
+}
+
+/* ── UiBadge ── */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.ui-badge--default {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+  color: color-mix(in srgb, var(--primary) 88%, var(--foreground));
+}
+
+.ui-badge--secondary {
+  background: var(--secondary);
+  border-color: var(--border-ui);
+  color: var(--muted-foreground);
+}
+
+.ui-badge--outline {
+  background: transparent;
+  border-color: var(--border-ui);
+  color: var(--muted-foreground);
+}
+
+.ui-badge--ok {
+  color: color-mix(in srgb, var(--success) 88%, #000);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+}
+
+.ui-badge--warn {
+  color: color-mix(in srgb, var(--warn) 88%, #000);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+.ui-badge--muted {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
+  border-color: color-mix(in srgb, var(--border-ui) 80%, transparent);
+}
+
+.ui-badge--destructive {
+  color: var(--destructive-foreground);
+  background: color-mix(in srgb, var(--destructive) 88%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
+}
+
+/* hub + glass：壳层实色，内容卡片可 blur */
+html[data-layout="hub"][data-surface="glass"] .ui-card--glass,
+html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-card,
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-config-page__card {
+  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+}
+
+html[data-layout="hub"][data-surface="glass"] .ui-card--glass {
+  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .ui-card--glass {
+  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+}
+
+html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-card {
+  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-card {
+  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+}
+
+html[data-layout="hub"] .ui-btn {
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+html[data-layout="hub"] .ui-btn--sm {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+html[data-layout="hub"] .ui-btn--lg,
+html[data-layout="hub"] .ui-btn--block {
+  min-height: 38px;
+  font-weight: 600;
+}
+
+.panel__title .btn-refresh-action--icon-only.ui-btn,
+html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only.ui-btn,
+html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.ui-btn {
+  min-height: 1.75rem;
+  height: 1.75rem;
+  width: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0;
+}
+
+/* ── UiDialog ── */
+.ui-dialog-enter-active,
+.ui-dialog-leave-active {
+  transition: opacity 0.22s var(--ease);
+}
+
+.ui-dialog-enter-active .ui-dialog__panel,
+.ui-dialog-leave-active .ui-dialog__panel {
+  transition:
+    opacity 0.22s var(--ease),
+    transform 0.22s var(--ease);
+}
+
+.ui-dialog-enter-from,
+.ui-dialog-leave-to {
+  opacity: 0;
+}
+
+.ui-dialog-enter-from .ui-dialog__panel,
+.ui-dialog-leave-to .ui-dialog__panel {
+  opacity: 0;
+  transform: scale(0.96) translateY(10px);
+}
+
+.ui-dialog__ft {
+  flex-shrink: 0;
+}
+
+/* Toast 进出场（TransitionGroup） */
+.console-toast-enter-active,
+.console-toast-leave-active {
+  transition:
+    opacity 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+
+.console-toast-enter-from,
+.console-toast-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+}
+
+.console-toast-move {
+  transition: transform 0.2s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-dialog-enter-active,
+  .ui-dialog-leave-active,
+  .ui-dialog-enter-active .ui-dialog__panel,
+  .ui-dialog-leave-active .ui-dialog__panel,
+  .console-toast-enter-active,
+  .console-toast-leave-active,
+  .console-toast-move {
+    transition: none;
+  }
+
+  .ui-dialog-enter-from .ui-dialog__panel,
+  .ui-dialog-leave-to .ui-dialog__panel,
+  .console-toast-enter-from,
+  .console-toast-leave-to {
+    transform: none;
+  }
+}

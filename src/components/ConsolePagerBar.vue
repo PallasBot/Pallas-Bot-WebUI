@@ -160,9 +160,8 @@ function onSizeChange(ev: Event) {
 }
 
 .console-pager__size .sel {
-  min-width: 72px;
-  padding: 6px 10px;
-  font-size: 13px;
+  min-width: 4.5rem;
+  font-size: var(--ui-ctrl-font);
 }
 
 .console-pager__nav {
@@ -181,8 +180,8 @@ function onSizeChange(ev: Event) {
 }
 
 .console-pager__jump .inp {
-  width: 64px;
-  padding: 6px 8px;
+  width: 4rem;
+  min-height: var(--ui-ctrl-height);
 }
 
 .console-pager--embedded {

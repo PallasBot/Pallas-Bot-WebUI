@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
+import type { RouteLocationRaw } from "vue-router";
 import { fetchHealth } from "@/api/health";
 import type { HealthResponse } from "@/api/health";
 import {
@@ -9,18 +11,17 @@ import {
   fetchGroupList,
   fetchInstances,
   fetchCommunityStats,
-  fetchConsoleDailyStats,
   fetchMessageStats,
   fetchPluginRunStats,
+  fetchConsoleDailyStats,
   fetchPlugins,
   fetchRequestOverview,
-  fetchShardObservability,
-  fetchIngressDispatch,
   fetchSystem,
   fetchUpdateCheck,
   peekBotsCache,
   peekInstancesCache,
   peekPluginsCache,
+  refreshInstancesCatalogGlobal,
 } from "@/api/consoleApi";
 import type {
   BotRow,
@@ -29,24 +30,18 @@ import type {
   GroupListData,
   InstancesData,
   CommunityStatsData,
-  ConsoleDailyStatsData,
   MessageStatsData,
+  ConsoleDailyStatsData,
   PluginRow,
   PluginRunStatsData,
   RequestOverviewData,
-  ShardObservabilityData,
-  ShardObservabilityWorker,
-  IngressDispatchData,
-  IngressDispatchWorker,
   SystemData,
   UpdateCheckData,
 } from "@/api/pallasTypes";
-import StatCard from "@/components/StatCard.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomeLazyReveal from "@/components/HomeLazyReveal.vue";
-import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
@@ -56,8 +51,6 @@ import {
   cacheTryGetFriendGroupLists,
   cacheTryGetRequestOverview,
 } from "@/utils/consoleSocialCache";
-import type { PluginRunSample } from "@/utils/pluginRunHistory";
-import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 import {
   consoleResourceVersionLabel,
   displayVersionWithoutSha,
@@ -65,7 +58,6 @@ import {
 } from "@/utils/versionDisplay";
 import { patchConsoleMeta, consoleMetaBotUpdate, consoleMetaHealth, consoleMetaWebUpdate } from "@/state/consoleMeta";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
-import { refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
@@ -100,15 +92,12 @@ const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
-const shardObs = ref<ShardObservabilityData | null>(null);
-const ingressDispatch = ref<IngressDispatchData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
 const stats = ref<MessageStatsData | null>(null);
 const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(null);
 const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
-/** 当前选中账号的按日持久化统计（GET /console-daily-stats） */
-const consoleDailyStats = ref<ConsoleDailyStatsData | null>(null);
+const consoleDailyStatsScoped = ref<ConsoleDailyStatsData | null>(null);
 const botCount = ref(0);
 const bots = ref<BotRow[]>([]);
 {
@@ -137,16 +126,11 @@ const overviewBusy = ref(false);
 /** 首屏次要接口（统计/社区/分片等）拉取中 */
 const homeDeferredBusy = ref(false);
 
-const communityDataPending = computed(() => homeDeferredBusy.value);
-const capacityDataPending = computed(() => homeDeferredBusy.value);
 const accountSocialPending = computed(() => {
   if (selectedAccount.value == null) return false;
   if (socialBusy.value) return true;
   return accountDetailBusy.value && statsScoped.value == null;
 });
-const accountChartsPending = computed(
-  () => accountDetailBusy.value && selectedAccount.value != null,
-);
 const versionMetaPending = computed(() => homeDeferredBusy.value);
 
 const pluginsList = ref<PluginRow[]>([]);
@@ -157,258 +141,6 @@ const pluginsList = ref<PluginRow[]>([]);
 
 const accountPickerOpen = ref(false);
 const accountPickerRoot = ref<HTMLElement | null>(null);
-/** 双列布局下账号信息卡，用于宽屏锁定右侧图表区高度与之对齐 */
-const accountCardRef = ref<HTMLElement | null>(null);
-const accountHeroLockHeightPx = ref(loadStoredAccountHeroLockPx());
-/** 锁高已稳定（刷新先用 localStorage，数据就绪后重测一次） */
-const accountHeroLockSealed = ref(accountHeroLockHeightPx.value >= 120);
-/** 展开图表时实时跟随左侧账户卡自然高度，避免锁高与内容不一致 */
-const accountHeroLiveHeightPx = ref(0);
-
-const CHART_DRAW_EXPANDED_KEY = "pallas_home_chart_draw_expanded_v1";
-const CHART_FILTER_EXPANDED_KEY = "pallas_home_chart_filter_expanded_v1";
-const ACCOUNT_HERO_LOCK_HEIGHT_KEY = "pallas_home_account_hero_lock_px_v1";
-/** 宽屏图表区与账户区对齐时的最小锁高（给图表更多纵向空间） */
-const ACCOUNT_HERO_LOCK_MIN_PX = 420;
-/** 宽屏展开选项条时图表壳底部预留固定高度（可滚动） */
-const ACCOUNT_CHART_FILTER_SLOT_PX = 132;
-
-function loadStoredAccountHeroLockPx(): number {
-  if (typeof localStorage === "undefined") return 0;
-  try {
-    const n = Number(localStorage.getItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY));
-    if (Number.isFinite(n) && n >= 120 && n <= 2400) return Math.round(n);
-  } catch {
-    /* ignore */
-  }
-  return 0;
-}
-
-function saveStoredAccountHeroLockPx(h: number) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    const raw = Math.round(h);
-    if (raw >= 120) localStorage.setItem(ACCOUNT_HERO_LOCK_HEIGHT_KEY, String(raw));
-  } catch {
-    /* ignore */
-  }
-}
-
-function syncAccountHeroLiveHeight() {
-  if (typeof window === "undefined") return;
-  if (!window.matchMedia("(min-width: 561px)").matches) {
-    accountHeroLiveHeightPx.value = 0;
-    return;
-  }
-  const el = accountCardRef.value;
-  if (!el) return;
-  const h = Math.round(el.getBoundingClientRect().height);
-  if (h >= 120) accountHeroLiveHeightPx.value = h;
-}
-
-function loadAccountChartsDrawExpanded(): boolean {
-  if (typeof localStorage === "undefined") return true;
-  try {
-    const v = localStorage.getItem(CHART_DRAW_EXPANDED_KEY);
-    if (v === "0") return false;
-    if (v === "1") return true;
-  } catch {
-    /* ignore */
-  }
-  return true;
-}
-
-function loadAccountChartsFilterExpanded(): boolean {
-  if (typeof localStorage === "undefined") return false;
-  try {
-    if (localStorage.getItem(CHART_FILTER_EXPANDED_KEY) === "1") return true;
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
-
-const accountChartsDrawExpanded = ref(loadAccountChartsDrawExpanded());
-const accountChartsFilterExpanded = ref(loadAccountChartsFilterExpanded());
-
-const accountHeroHeightCapActive = computed(
-  () =>
-    accountChartsDrawExpanded.value &&
-    accountChartsLockHeightPx.value >= 120 &&
-    typeof window !== "undefined" &&
-    window.matchMedia("(min-width: 561px)").matches,
-);
-
-/** 展开时优先用左侧实时高度；收起封存值作首帧兜底，并保留图表最小锁高 */
-const accountChartsLockHeightPx = computed(() => {
-  if (accountChartsDrawExpanded.value && accountHeroLiveHeightPx.value >= 120) {
-    return accountHeroLiveHeightPx.value;
-  }
-  if (accountHeroLockHeightPx.value >= 120) {
-    return Math.max(accountHeroLockHeightPx.value, ACCOUNT_HERO_LOCK_MIN_PX);
-  }
-  return 0;
-});
-
-/** 硬上限：仅在图表收起时测量左侧自然高度；展开后只锁右侧图表壳，左侧排版不变 */
-const accountUnifiedHeroLockStyle = computed((): Record<string, string> => {
-  if (!accountHeroHeightCapActive.value) return {};
-  return { "--home-account-hero-lock-px": `${accountChartsLockHeightPx.value}px` };
-});
-
-/** 图表壳层直接写死 px，避免 flex 子项 min-height:auto 撑破 max-height 变量 */
-const accountChartsShellLockStyle = computed((): Record<string, string> => {
-  if (typeof window === "undefined") return {};
-  if (!window.matchMedia("(min-width: 561px)").matches) return {};
-  if (!accountChartsDrawExpanded.value) {
-    return { minHeight: "0", height: "auto", maxHeight: "none" };
-  }
-  const h = accountChartsLockHeightPx.value;
-  if (h < 120) return {};
-  const style: Record<string, string> = {
-    height: `${h}px`,
-    maxHeight: `${h}px`,
-    minHeight: "0",
-    overflow: "hidden",
-  };
-  if (accountChartsFilterExpanded.value) {
-    style["--home-account-chart-filter-slot-px"] = `${ACCOUNT_CHART_FILTER_SLOT_PX}px`;
-  }
-  return style;
-});
-
-function onAccountChartsDrawToggle(expanded: boolean) {
-  accountChartsDrawExpanded.value = expanded;
-  if (!expanded) {
-    accountHeroLockSealed.value = false;
-    scheduleAccountHeroLockMeasure(true);
-    return;
-  }
-  applyStoredAccountHeroLock();
-  scheduleAccountHeroLiveSync();
-}
-
-function scheduleAccountHeroLiveSync() {
-  void nextTick(() => {
-    requestAnimationFrame(() => {
-      syncAccountHeroLiveHeight();
-    });
-  });
-}
-
-function onAccountChartsFilterToggle(expanded: boolean) {
-  accountChartsFilterExpanded.value = expanded;
-}
-
-/** 锁账户卡自然高度；有封存锁高时默认不重测，避免刷新后布局跳动 */
-function measureAccountHeroLockHeight(force = false) {
-  if (typeof window === "undefined") return;
-  if (!window.matchMedia("(min-width: 561px)").matches) {
-    accountHeroLockHeightPx.value = 0;
-    accountHeroLockSealed.value = false;
-    return;
-  }
-  const el = accountCardRef.value;
-  if (!el) {
-    if (force) {
-      accountHeroLockHeightPx.value = 0;
-      accountHeroLockSealed.value = false;
-    }
-    return;
-  }
-  if (!force && accountHeroLockSealed.value && accountHeroLockHeightPx.value >= 120) {
-    return;
-  }
-  if (!force && accountChartsDrawExpanded.value) {
-    return;
-  }
-  const h = Math.round(el.getBoundingClientRect().height);
-  if (h < 120) return;
-  accountHeroLockHeightPx.value = h;
-  accountHeroLiveHeightPx.value = h;
-  saveStoredAccountHeroLockPx(h);
-  accountHeroLockSealed.value = true;
-}
-
-function scheduleAccountHeroLockMeasure(force = false) {
-  void nextTick(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        measureAccountHeroLockHeight(force);
-      });
-    });
-  });
-}
-
-function applyStoredAccountHeroLock() {
-  const stored = loadStoredAccountHeroLockPx();
-  if (stored >= 120) {
-    accountHeroLockHeightPx.value = stored;
-    accountHeroLockSealed.value = true;
-    return true;
-  }
-  accountHeroLockSealed.value = false;
-  return false;
-}
-
-/** matcher 异常 details 开合会改变左侧卡高，需重测硬上限 */
-function onMatcherDetailsToggle() {
-  accountHeroLockSealed.value = false;
-  scheduleAccountHeroLockMeasure(true);
-  scheduleAccountHeroLiveSync();
-}
-
-watchEffect((onCleanup) => {
-  if (typeof window === "undefined") return;
-  if (selectedAccount.value == null) {
-    accountHeroLockHeightPx.value = 0;
-    accountHeroLiveHeightPx.value = 0;
-    accountHeroLockSealed.value = false;
-    return;
-  }
-  if (!pageReady.value) {
-    applyStoredAccountHeroLock();
-    return;
-  }
-  const el = accountCardRef.value;
-  if (!el) return;
-  const mql = window.matchMedia("(min-width: 561px)");
-  const onMql = () => {
-    accountHeroLockSealed.value = false;
-    scheduleAccountHeroLockMeasure(true);
-  };
-  mql.addEventListener("change", onMql);
-  const ro = new ResizeObserver(() => {
-    syncAccountHeroLiveHeight();
-    if (!accountChartsDrawExpanded.value && !accountHeroLockSealed.value) {
-      measureAccountHeroLockHeight(false);
-    }
-  });
-  ro.observe(el);
-  if (!applyStoredAccountHeroLock()) {
-    scheduleAccountHeroLockMeasure(false);
-  }
-  onCleanup(() => {
-    ro.disconnect();
-    mql.removeEventListener("change", onMql);
-  });
-});
-
-watch(pageReady, (ready) => {
-  if (ready) scheduleAccountHeroLockMeasure(false);
-});
-
-watch(selectedAccount, (acc) => {
-  if (acc == null) {
-    accountHeroLockHeightPx.value = 0;
-    accountHeroLiveHeightPx.value = 0;
-    accountHeroLockSealed.value = false;
-    return;
-  }
-  if (!applyStoredAccountHeroLock()) {
-    scheduleAccountHeroLockMeasure(false);
-  }
-});
 
 function onAccountPickerDocDown(ev: MouseEvent) {
   if (!accountPickerOpen.value) return;
@@ -461,8 +193,8 @@ function fmtBytes(n: number | null | undefined): string {
   return `${v.toFixed(decimals)} ${units[u]}`;
 }
 
-function uptimeFromBoot(boot: number | null | undefined): string {
-  if (boot == null) return "—";
+function uptimeDisplayParts(boot: number | null | undefined): { value: string; unit: string; sub?: string } | null {
+  if (boot == null) return null;
   const nowSec = Date.now() / 1000;
   let s = Math.max(0, nowSec - boot);
   const d = Math.floor(s / 86400);
@@ -470,228 +202,28 @@ function uptimeFromBoot(boot: number | null | undefined): string {
   const h = Math.floor(s / 3600);
   s %= 3600;
   const m = Math.floor(s / 60);
-  if (d > 0) return `${d} 天 ${h} 小时`;
-  if (h > 0) return `${h} 小时 ${m} 分`;
-  return `${m} 分`;
+  if (d > 0) {
+    return { value: String(d), unit: "天", sub: h > 0 ? `${h} 小时` : undefined };
+  }
+  if (h > 0) {
+    return { value: String(h), unit: "小时", sub: m > 0 ? `${m} 分` : undefined };
+  }
+  return { value: String(m), unit: "分" };
+}
+
+function osFamilyLabel(platform: string | null | undefined): string {
+  if (!platform) return "—";
+  const p = platform.toLowerCase();
+  if (p.includes("windows") || p.startsWith("win")) return "Windows";
+  if (p.includes("linux")) return "Linux";
+  if (p.includes("darwin") || p.includes("mac")) return "macOS";
+  const head = platform.split("-")[0]?.trim();
+  return head || platform;
 }
 
 function pct(n: number | null | undefined, digits = 1): string {
   if (n == null || Number.isNaN(n)) return "—";
   return `${n.toFixed(digits)}%`;
-}
-
-/** API 返回 0–1 比率（如 claim_hit_rate），需乘 100 再显示为百分数。 */
-function ratioPct(ratio: number | null | undefined, digits = 1): string {
-  if (ratio == null || Number.isNaN(ratio)) return "—";
-  return `${(ratio * 100).toFixed(digits)}%`;
-}
-
-const shardObsVisible = computed(() => shardObs.value?.sharded === true);
-
-const ingressDispatchStandaloneVisible = computed(() => !shardObsVisible.value);
-
-const ingressDispatchShardSummaryVisible = computed(() => {
-  if (!shardObsVisible.value) return false;
-  return ingressDispatch.value != null || ingressDispatchWorkerRows.value.length > 0;
-});
-
-const INGRESS_DISPATCH_ALERT_LABELS: Record<string, string> = {
-  ingress_p95_over_100ms: "入站处理 P95 超过 100ms",
-  pg_pool_over_85pct: "数据库连接池利用率 ≥ 85%",
-};
-
-const ingressDispatchLede = computed(() =>
-  shardObsVisible.value
-    ? "分片 hub 汇总各 worker 今日入站调度数据；参数见「通用配置 → 中央入站调度」。"
-    : "单进程模式下今日入站调度数据；参数见「通用配置 → 中央入站调度」。",
-);
-
-const ingressDispatchWorkerRows = computed((): IngressDispatchWorker[] => {
-  const rows = ingressDispatch.value?.workers;
-  return Array.isArray(rows) ? rows : [];
-});
-
-function ingressWorkerGroupMessages(row: IngressDispatchWorker): string {
-  const n = row.ingress_dispatch?.group_messages;
-  return n == null ? "—" : String(n);
-}
-
-function ingressWorkerP95(row: IngressDispatchWorker): string {
-  return fmtMs(row.ingress_dispatch?.ingress_duration_ms_p95 ?? null);
-}
-
-function ingressWorkerMatcherRatio(row: IngressDispatchWorker): string {
-  return fmtRatio(row.ingress_dispatch?.matchers_selected_ratio ?? null);
-}
-
-function fmtMs(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return `${value.toFixed(1)} ms`;
-}
-
-function fmtRatio(value: number | null | undefined, digits = 1): string {
-  if (value == null || Number.isNaN(value)) return "—";
-  return `${(value * 100).toFixed(digits)}%`;
-}
-
-const ingressDispatchP95 = computed(() => fmtMs(ingressDispatch.value?.ingress_duration_ms_p95 ?? null));
-
-const ingressDispatchMatcherRatio = computed(() =>
-  fmtRatio(ingressDispatch.value?.matchers_selected_ratio ?? null),
-);
-
-const ingressDispatchGroupMessages = computed(() => {
-  const n = ingressDispatch.value?.group_messages;
-  return n == null ? "—" : String(n);
-});
-
-const ingressDispatchMatcherHint = computed(() => {
-  const d = ingressDispatch.value;
-  if (!d) return "筛选 / 命中 / 执行 matcher 次数";
-  return `筛选 ${d.matchers_considered ?? 0} · 命中 ${d.matchers_selected ?? 0} · 执行 ${d.matchers_run ?? 0}`;
-});
-
-const ingressDispatchLaneWait = computed(() => fmtMs(ingressDispatch.value?.lane_wait_ms_avg ?? null));
-
-const ingressDispatchP95Hint = computed(() => {
-  const d = ingressDispatch.value;
-  if (!d) return "95% 群消息入站耗时低于此值";
-  const cmd = d.command_traffic ?? 0;
-  const chat = d.chatter_traffic ?? 0;
-  if (cmd > 0 || chat > 0) return `指令 ${cmd} · 闲聊 ${chat}`;
-  return "95% 群消息入站耗时低于此值";
-});
-
-const ingressDispatchLaneHint = computed(() => {
-  const d = ingressDispatch.value;
-  if (!d) return "并发槽占用与过载信号";
-  const parts = [`槽满 ${d.lane_busy ?? 0}`];
-  if ((d.overload_signals ?? 0) > 0) parts.push(`过载 ${d.overload_signals}`);
-  if ((d.prefetch_paused ?? 0) > 0) parts.push(`预取暂停 ${d.prefetch_paused}`);
-  return parts.join(" · ");
-});
-
-const ingressDispatchSendQueue = computed(() => {
-  const q = ingressDispatch.value?.send_queue;
-  if (!q) return "—";
-  const depth = q.depth_live ?? q.depth ?? 0;
-  const max = q.max_depth ?? "—";
-  return `${depth}/${max}`;
-});
-
-const ingressDispatchSendQueueHint = computed(() => {
-  const q = ingressDispatch.value?.send_queue;
-  if (!q) return "当前排队 / 最大深度";
-  return `今日已发 ${q.sent ?? 0} · 丢弃 ${q.dropped ?? 0}`;
-});
-
-const ingressDispatchPgUtil = computed(() => {
-  const util = ingressDispatch.value?.pool_budget?.utilization;
-  if (util == null || Number.isNaN(util)) return "—";
-  return `${(util * 100).toFixed(1)}%`;
-});
-
-const ingressDispatchPgHint = computed(() => {
-  const pool = ingressDispatch.value?.pool_budget;
-  if (!pool) return "SQLAlchemy 连接池占用";
-  const cap = pool.capacity;
-  return cap != null ? `池容量 ${cap}` : "SQLAlchemy 连接池占用";
-});
-
-const ingressDispatchAlerts = computed(() => {
-  const alerts = ingressDispatch.value?.alerts;
-  if (!alerts?.length) return "";
-  return alerts.map((a) => INGRESS_DISPATCH_ALERT_LABELS[a] ?? a).join("、");
-});
-
-const ingressDispatchPgWarn = computed(() =>
-  (ingressDispatch.value?.pool_budget?.utilization ?? 0) >= 0.85,
-);
-
-const shardIngressHitRate = computed(() =>
-  ratioPct(shardObs.value?.ingress_cluster?.claim_hit_rate ?? null),
-);
-
-const shardIngressEvents = computed(() => {
-  const ing = shardObs.value?.ingress_cluster;
-  if (!ing) return "—";
-  return String(ing.events ?? 0);
-});
-
-const shardIngressGateHint = computed(() => {
-  const ing = shardObs.value?.ingress_cluster;
-  if (!ing) return "代表牛 claim 成功 ÷（成功+失败）";
-  const won = ing.claim_won ?? 0;
-  const lost = ing.claim_lost ?? 0;
-  return `成功 ${won} · 失败 ${lost}`;
-});
-
-const shardIngressEventsHint = computed(() => {
-  const ing = shardObs.value?.ingress_cluster;
-  if (!ing) return "今日进入门控的入站消息";
-  const early = (ing.early_fleet ?? 0) + (ing.early_not_at_target ?? 0);
-  const parts: string[] = [];
-  const fanout = ing.fanout_bypass ?? 0;
-  if (fanout > 0) parts.push(`全员同响 ${fanout}`);
-  if (early > 0) parts.push(`提前丢弃 ${early}`);
-  return parts.length ? parts.join(" · ") : "无 fanout / 提前丢弃";
-});
-
-const shardCoordValue = computed(() => {
-  const c = shardObs.value?.coord_pending_live;
-  if (!c) return "—";
-  const actionable = c.actionable_total ?? c.bot_action_open;
-  if (actionable != null) return String(actionable);
-  return String(c.total_json ?? 0);
-});
-
-const shardCoordHint = computed(() => {
-  const c = shardObs.value?.coord_pending_live;
-  if (!c) return "扫描 data/pallas_shard/coord";
-  const parts = [`bot_action 待办 ${c.bot_action_open ?? 0}`];
-  const stale = c.bot_action_stale_open ?? 0;
-  if (stale > 0) parts.push(`超时 ${stale}`);
-  const hist = c.historical_retained;
-  if (hist != null && hist > 0) parts.push(`历史残留 ${hist}`);
-  return parts.join(" · ");
-});
-
-const shardPgPeakValue = computed(() => {
-  const p = shardObs.value?.pg_pool;
-  if (p?.estimated_pg_connections_peak == null) return "—";
-  return `~${p.estimated_pg_connections_peak}`;
-});
-
-const shardPgHint = computed(() => {
-  const p = shardObs.value?.pg_pool;
-  if (!p) return "宜低于 PostgreSQL max_connections";
-  const warning = (p.warning || "").trim();
-  if (warning) return warning;
-  return `${p.estimated_processes ?? "?"} 进程 · 单进程上限 ${p.per_process_max ?? "?"}`;
-});
-
-const shardPgHintTitle = computed(() => {
-  if (!shardPgHintWarn.value) return undefined;
-  return shardPgHint.value;
-});
-
-const shardPgHintWarn = computed(() => Boolean((shardObs.value?.pg_pool?.warning || "").trim()));
-
-const shardWorkerRows = computed((): ShardObservabilityWorker[] => {
-  const rows = shardObs.value?.workers;
-  return Array.isArray(rows) ? rows : [];
-});
-
-function shardWorkerHitRate(row: ShardObservabilityWorker): string {
-  const ing = row.ingress;
-  if (!ing) return "无数据";
-  return ratioPct(ing.claim_hit_rate ?? null);
-}
-
-function shardWorkerCell(row: ShardObservabilityWorker, field: "claim_won" | "claim_lost"): string {
-  const ing = row.ingress;
-  if (!ing) return "—";
-  return String(ing[field] ?? 0);
 }
 
 const perfSampled = computed(() => {
@@ -762,8 +294,10 @@ const diskHint = computed(() => {
   if (!d) return undefined;
   return `${fmtBytes(d.used)} / ${fmtBytes(d.total)} · 可用 ${fmtBytes(d.free)}`;
 });
-const uptimeDisplay = computed(() => uptimeFromBoot(runtime.value?.boot_time ?? null));
-const uptimeHint = computed(() => runtime.value?.platform || undefined);
+const uptimeParts = computed(() => uptimeDisplayParts(runtime.value?.boot_time ?? null));
+const osFamilyDisplay = computed(() => osFamilyLabel(runtime.value?.platform));
+const hostnameDisplay = computed(() => runtime.value?.hostname?.trim() || "—");
+const pythonVersionDisplay = computed(() => runtime.value?.python?.trim() || "—");
 
 const nonebotListenDisplay = computed(() => {
   const d = system.value?.nonebot2_driver;
@@ -934,8 +468,6 @@ const selectedAdminsDisplay = computed(() => {
   return admins.map((id) => String(id)).join(" ");
 });
 
-const accountProtocolIsUnknown = computed(() => accountAdapterDisplay.value === "—");
-
 const friendCountDisplay = computed(() => {
   if (friendSnap.value == null) return "—";
   return String(friendSnap.value.friends?.length ?? 0);
@@ -982,8 +514,45 @@ const groupPendingLine = computed(() => {
   return `${d}条待同意`;
 });
 
-const friendCountNumPending = computed(() => friendSnap.value == null);
-const groupCountNumPending = computed(() => groupSnap.value == null);
+const RESOURCE_WARN_PCT = 90;
+
+const diskResourceWarn = computed(() => (diskBarPct.value ?? 0) >= RESOURCE_WARN_PCT);
+const memResourceWarn = computed(() => (memBarPct.value ?? 0) >= RESOURCE_WARN_PCT);
+const sysResourceWarn = computed(() => diskResourceWarn.value || memResourceWarn.value);
+
+type HomeActionItem = {
+  key: string;
+  label: string;
+  to?: RouteLocationRaw;
+  level: "warn" | "err";
+};
+
+const homeActionItems = computed((): HomeActionItem[] => {
+  const items: HomeActionItem[] = [];
+  if (botUpdateCheck.value?.has_update) {
+    items.push({
+      key: "bot-update",
+      label: "Pallas-Bot 有更新",
+      to: { path: "/update", hash: "#console-update-bot" },
+      level: "warn",
+    });
+  }
+  if (webUpdateCheck.value?.has_update) {
+    items.push({
+      key: "web-update",
+      label: "控制台有更新",
+      to: { path: "/update", hash: "#console-update-webui" },
+      level: "warn",
+    });
+  }
+  return items;
+});
+
+const homeActionStripVisible = computed(() => homeActionItems.value.length > 0);
+
+const versionHasUpdate = computed(
+  () => Boolean(botUpdateCheck.value?.has_update || webUpdateCheck.value?.has_update),
+);
 
 function ensureSelectedAccount() {
   const rows = sortedDbBots.value;
@@ -1013,12 +582,6 @@ const clusterMessageStats = computed(() => stats.value);
 
 /** 当前账号 message-stats（账户卡、协议 API 时序）；优先 statsScoped */
 const accountMessageStats = computed(() => statsScoped.value ?? stats.value);
-
-const msgTotalStr = computed(() => {
-  const s = clusterMessageStats.value;
-  if (!s) return "—";
-  return `${s.total_received} / ${s.total_sent}`;
-});
 
 const clusterTodayApiCalls = computed(() => {
   const bots = clusterMessageStats.value?.bots;
@@ -1060,136 +623,26 @@ const communityBotsOnlineSum = computed(() =>
   formatCommunityStatNum(communityStats.value?.bots_online_sum),
 );
 
-const communityOnlineHint = computed(() => {
-  const sec = communityStats.value?.online_ttl_sec;
-  if (sec == null || !Number.isFinite(sec) || sec < 60) return "统计窗口内";
-  const m = Math.max(1, Math.round(sec / 60));
-  return `近 ${m} 分钟内有心跳`;
-});
-
-
-const communityDeploymentsOnlineHint = computed(
-  () => `${communityOnlineHint.value}的自托管安装`,
-);
-
-const communityBotsOnlineHint = computed(() => {
-  const sum = communityStats.value?.bots_online_sum;
-  const onlineDep = communityStats.value?.deployments_online;
-  if (
-    sum != null &&
-    Number.isFinite(sum) &&
-    onlineDep != null &&
-    onlineDep > 0 &&
-    Number.isFinite(onlineDep)
-  ) {
-    const avg = sum / onlineDep;
-    const avgText = avg >= 10 ? Math.round(avg).toString() : avg.toFixed(1);
-    return `全网在线牛牛合计，平均每处约 ${avgText} 只`;
-  }
-  return "各安装向中心上报的在线牛牛合计";
-});
-
-const communityShardedOnline = computed(() =>
-  formatCommunityStatNum(communityStats.value?.deployments_online_sharded),
-);
-
-const communityShardWorkersSum = computed(() =>
-  formatCommunityStatNum(communityStats.value?.shard_workers_online_sum),
-);
-
-const communityCorpusContexts = computed(() =>
-  formatCommunityStatNum(communityStats.value?.corpus?.contexts_total),
-);
-
-const communityCorpusAnswers = computed(() =>
-  formatCommunityStatNum(communityStats.value?.corpus?.answers_total),
-);
-
-const communityCorpusEnrollmentsOnline = computed(() =>
-  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_online),
-);
-
-const communityCorpusPoolValue = computed(() => {
-  const ctx = communityCorpusContexts.value;
-  const ans = communityCorpusAnswers.value;
-  if (ctx === "—" && ans === "—") return "—";
-  return `${ctx} 词条 · ${ans} 回复`;
-});
-
-const communityCorpusEnrollmentValue = computed(() =>
-  formatCommunityStatNum(communityStats.value?.corpus?.enrollments_total),
-);
-
-const communityCorpusOnlineEnrollHint = computed(() => {
-  const total = communityStats.value?.corpus?.enrollments_total;
-  const parts: string[] = [`${communityOnlineHint.value}且已接入共享语料`];
-  if (total != null) {
-    parts.push(`累计 ${formatCommunityStatNum(total)} 处自托管`);
-  }
-  return parts.join(" · ");
-});
-
-const communityCorpusTotalEnrollHint = computed(() => {
-  const recent = communityStats.value?.corpus?.enrollments_recent_24h;
-  const contrib = communityStats.value?.corpus?.contribute_enabled_total;
-  const parts: string[] = ["历史上接入过共享语料的安装数"];
-  if (recent != null && recent > 0) {
-    parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 处`);
-  }
-  if (contrib != null) {
-    parts.push(`其中 ${formatCommunityStatNum(contrib)} 处可上传学习结果`);
-  }
-  return parts.join(" · ");
-});
-
-const communityCorpusPoolHint = computed(() => {
-  const hits = communityStats.value?.corpus?.answer_hits_sum;
-  if (hits != null && Number.isFinite(hits)) {
-    return `回复累计被引用 ${formatCommunityStatNum(hits)} 次`;
-  }
-  return "共享池中的触发词与回复条目";
-});
-
-const communityCorpusContributeHint = computed(
-  () => "已接入且允许把本机学习结果同步到共享语料池",
-);
-
-const communityCorpusHitsHint = computed(
-  () => "各回复条目在共享池中的累计引用次数",
-);
-
-const communityActiveRecent24h = computed(() =>
-  formatCommunityStatNum(communityStats.value?.active_recent_24h),
-);
-
-const communityActiveRecentHint = computed(() => {
-  const total = communityStats.value?.deployments_total;
-  const catalog = communityStats.value?.catalog_bots_online_sum;
-  const parts: string[] = [];
-  if (total != null) {
-    parts.push(`历史累计 ${formatCommunityStatNum(total)} 套安装`);
-  }
-  if (catalog != null && Number.isFinite(catalog)) {
-    parts.push(`在线名册牛牛 ${formatCommunityStatNum(catalog)} 只`);
-  }
-  return parts.length ? parts.join(" · ") : "近 24 小时内有心跳上报";
-});
-
-const todayCallsStatValue = computed(() => {
+const kpiTodayApiDisplay = computed(() => {
   const api = clusterTodayApiCalls.value;
-  const plug = clusterTodayPluginRuns.value;
-  if (api == null && plug == null) return "—";
-  const apiStr = api == null ? "—" : String(Math.floor(api));
-  const plugStr = plug == null ? "—" : String(Math.floor(plug));
-  return `API ${apiStr} · 插件 ${plugStr}`;
+  return api == null ? "—" : String(Math.floor(api));
 });
 
-const todayCallsStatHint = computed(() => {
-  const acc = selectedAccount.value;
-  if (acc != null && scopedBotStatsRow.value) {
-    return `全账号合计；${acc} 见账户卡`;
-  }
-  return "协议 API 与 Matcher（全账号今日）";
+const kpiTodayPluginDisplay = computed(() => {
+  const plug = clusterTodayPluginRuns.value;
+  return plug == null ? "—" : String(Math.floor(plug));
+});
+
+const kpiMsgRxDisplay = computed(() => {
+  const s = clusterMessageStats.value;
+  if (!s) return "—";
+  return String(s.total_received);
+});
+
+const kpiMsgTxDisplay = computed(() => {
+  const s = clusterMessageStats.value;
+  if (!s) return "—";
+  return String(s.total_sent);
 });
 
 const scopedBotStatsRow = computed(() => {
@@ -1199,8 +652,6 @@ const scopedBotStatsRow = computed(() => {
   const sid = String(acc);
   return st.bots.find((b) => b.self_id === sid) ?? null;
 });
-
-const scopedApiCallsByApi = computed(() => scopedBotStatsRow.value?.api_calls_history_by_api ?? []);
 
 const pluginRunMain = computed(() => pluginRunStatsScoped.value ?? pluginRunStats.value);
 
@@ -1212,35 +663,7 @@ const scopedPluginRunRow = computed(() => {
   return pr.bots.find((b) => b.self_id === sid) ?? null;
 });
 
-const scopedPluginPlugins = computed(() => scopedPluginRunRow.value?.plugins ?? []);
-
-watch(socialBusy, (busy, wasBusy) => {
-  if (wasBusy && !busy && selectedAccount.value != null && !accountHeroLockSealed.value) {
-    scheduleAccountHeroLockMeasure(false);
-  }
-});
-
-watch(accountDetailBusy, (busy, wasBusy) => {
-  if (wasBusy && !busy && selectedAccount.value != null && !accountHeroLockSealed.value) {
-    scheduleAccountHeroLockMeasure(false);
-  }
-});
-
-const scopedMatcherRunsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_runs_by_plugin ?? []);
-
-const scopedMatcherErrorsByPlugin = computed(() => scopedPluginRunRow.value?.matcher_errors_by_plugin ?? []);
-
-const scopedMatcherAvgDurationByPlugin = computed(
-  () => scopedPluginRunRow.value?.matcher_avg_duration_ms_by_plugin ?? [],
-);
-
-const scopedMatcherDurationMsByPlugin = computed(
-  () => scopedPluginRunRow.value?.matcher_duration_ms_by_plugin ?? [],
-);
-
 const scopedMatcherErrorLog = computed(() => scopedPluginRunRow.value?.matcher_error_log ?? []);
-
-const scopedMatcherDurationLog = computed(() => scopedPluginRunRow.value?.matcher_duration_log ?? []);
 
 function formatMatcherErrorAt(sec: number): string {
   if (!Number.isFinite(sec) || sec <= 0) return "—";
@@ -1251,22 +674,7 @@ function formatMatcherErrorAt(sec: number): string {
   }
 }
 
-const pluginRunTimeSamples = ref<PluginRunSample[]>([]);
-
-function syncPluginRunSeriesFromStorage() {
-  const acc = selectedAccount.value;
-  pluginRunTimeSamples.value = acc != null ? readPluginRunSeries(String(acc)) : [];
-}
-
 const accountStatsBusy = computed(() => overviewBusy.value || accountDetailBusy.value);
-
-const accountTodayMsgDisplay = computed(() => {
-  const b = scopedBotStatsRow.value;
-  if (!b) return accountStatsBusy.value ? "…" : "—";
-  const rx = b.today_received ?? "—";
-  const tx = b.today_sent ?? "—";
-  return `${rx} / ${tx}`;
-});
 
 const accountTodayApiCallsDisplay = computed(() => {
   const n = scopedBotStatsRow.value?.today_api_calls;
@@ -1274,18 +682,16 @@ const accountTodayApiCallsDisplay = computed(() => {
   return String(Math.floor(Number(n)));
 });
 
-const accountTodayTopApiTitle = computed(() => {
+const accountTodayRxDisplay = computed(() => {
   const b = scopedBotStatsRow.value;
-  if (!b?.today_top_api?.trim()) return "";
-  const cnt = b.today_top_api_count;
-  const cntLabel = cnt == null || !Number.isFinite(Number(cnt)) ? "?" : String(Math.floor(Number(cnt)));
-  return `今日最多：${b.today_top_api} · ${cntLabel} 次`;
+  if (!b) return accountStatsBusy.value ? "…" : "—";
+  return String(b.today_received ?? "—");
 });
 
-const msgCapacityHint = computed(() => {
-  const s = clusterMessageStats.value;
-  if (!s || (s.today_received == null && s.today_sent == null)) return "全部账号合计";
-  return `本日收 ${s.today_received ?? "—"} / 发 ${s.today_sent ?? "—"}（合计）`;
+const accountTodayTxDisplay = computed(() => {
+  const b = scopedBotStatsRow.value;
+  if (!b) return accountStatsBusy.value ? "…" : "—";
+  return String(b.today_sent ?? "—");
 });
 
 function scheduleIdleWork(fn: () => void) {
@@ -1306,7 +712,7 @@ async function refreshSelectedBotAccountStats() {
   if (acc == null) {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
-    consoleDailyStats.value = null;
+    consoleDailyStatsScoped.value = null;
     return;
   }
   accountDetailBusy.value = true;
@@ -1322,7 +728,7 @@ async function refreshSelectedBotAccountStats() {
     }
     statsScoped.value = take<MessageStatsData>(0);
     pluginRunStatsScoped.value = take<PluginRunStatsData>(1);
-    consoleDailyStats.value = take<ConsoleDailyStatsData>(2);
+    consoleDailyStatsScoped.value = take<ConsoleDailyStatsData>(2);
   } finally {
     accountDetailBusy.value = false;
   }
@@ -1388,7 +794,7 @@ watch(selectedAccount, (acc, prev) => {
   if (prev != null && acc != null && prev !== acc) {
     statsScoped.value = null;
     pluginRunStatsScoped.value = null;
-    consoleDailyStats.value = null;
+    consoleDailyStatsScoped.value = null;
     const sidKey = String(acc);
     const cachedLists = cacheTryGetFriendGroupLists(sidKey);
     if (cachedLists) {
@@ -1402,14 +808,7 @@ watch(selectedAccount, (acc, prev) => {
     if (cachedOv) requestOverviewSnap.value = cachedOv;
     else requestOverviewSnap.value = null;
   }
-  syncPluginRunSeriesFromStorage();
   void refreshSelectedBotDetails();
-});
-
-watch([scopedPluginRunRow, selectedAccount, accountDetailBusy], ([row, acc, busy]) => {
-  if (busy || acc == null || !row) return;
-  pushPluginRunSample(String(acc), row.runs_today, row.plugins ?? []);
-  syncPluginRunSeriesFromStorage();
 });
 
 watch(sortedDbBots, () => {
@@ -1508,8 +907,6 @@ async function loadHomeDeferred(refreshMeta: boolean) {
       fetchPluginRunStats(),
       botUpdateP,
       webUpdateP,
-      fetchShardObservability(),
-      fetchIngressDispatch().catch(() => null),
     ]);
     function take<T>(i: number): T | null {
       const r = settled[i];
@@ -1519,8 +916,6 @@ async function loadHomeDeferred(refreshMeta: boolean) {
     pluginRunStats.value = take<PluginRunStatsData>(1);
     botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
     webUpdateCheck.value = take<UpdateCheckData | null>(3);
-    shardObs.value = take<ShardObservabilityData>(4);
-    ingressDispatch.value = take<IngressDispatchData | null>(5);
     const h = consoleMetaHealth.value ?? health.value;
     if (h) health.value = h;
     patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
@@ -1582,13 +977,8 @@ async function load(opts?: LoadOptions) {
 }
 
 async function refreshHomeRuntimePanels() {
-  const [sys, obs, comm] = await Promise.allSettled([
-    fetchSystem(),
-    fetchShardObservability(),
-    fetchCommunityStats(),
-  ]);
+  const [sys, comm] = await Promise.allSettled([fetchSystem(), fetchCommunityStats()]);
   if (sys.status === "fulfilled") system.value = sys.value;
-  if (obs.status === "fulfilled") shardObs.value = obs.value;
   if (comm.status === "fulfilled") communityStats.value = comm.value;
 }
 
@@ -1710,1148 +1100,367 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div
-    class="home-page"
-    :aria-busy="overviewBusy || undefined"
-  >
-    <div
-      v-if="err"
-      class="alert alert--err"
-    >
-      {{ err }}
-    </div>
+  <div class="home-page console-hub-page" :aria-busy="overviewBusy || undefined">
+    <div v-if="err" class="alert alert--err">{{ err }}</div>
 
-    <ConsolePageSkeleton
-      v-if="!pageReady"
-      :panels="4"
-    />
+    <ConsolePageSkeleton v-if="!pageReady" :panels="3" />
+
     <Transition name="home-shell-fade">
-      <div
-        v-if="pageReady"
-        class="home-page__body"
-        :class="{ 'home-page__body--syncing': overviewBusy }"
-      >
-        <p
-          v-if="overviewBusy"
-          class="home-page__sync-line muted"
-          role="status"
-        >正在同步概况…</p>
-    <div class="home-dashboard">
-      <div
-        class="home-dashboard__hero home-dashboard__section"
-        style="--home-section-i: 0"
-      >
-      <section class="home-dashboard__accounts">
-        <div class="panel home-page__panel">
-          <div class="panel__hd home-account-panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">◎</span>账户信息
-              <RefreshIconButton
-                :busy="overviewBusy"
-                label="刷新概况"
-                @click="() => load({ refreshMeta: true })"
-              />
-            </h2>
-            <div class="row-actions">
-              <PanelSidebarAdd main-path="/" />
-              <RouterLink
-                class="home-instances-capsule"
-                to="/instances"
-              >数据库实例</RouterLink>
+      <div v-if="pageReady" class="home-body" :class="{ 'home-body--syncing': overviewBusy }">
+        <p v-if="overviewBusy" class="home-sync" role="status">正在同步概况…</p>
+
+        <!-- ═══ KPI Bar（GsHub 风格） ═══ -->
+        <div class="home-kpi-head">
+          <div class="home-kpi-bar">
+            <div class="home-kpi-cell">
+              <div class="home-kpi-cell__head">
+                <ConsoleNavIcon class="home-kpi-cell__ico" name="account" :size="16" />
+                <span class="home-kpi-cell__label">在线 Bot</span>
+              </div>
+              <div class="home-kpi-cell__value-slot">
+                <span class="home-kpi-cell__value">{{ botCount }}</span>
+              </div>
+            </div>
+            <div class="home-kpi-cell">
+              <div class="home-kpi-cell__head">
+                <ConsoleNavIcon class="home-kpi-cell__ico" name="layers" :size="16" />
+                <span class="home-kpi-cell__label">消息 收 / 发</span>
+              </div>
+              <div class="home-kpi-cell__value-slot">
+                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
+                  {{ kpiMsgRxDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiMsgTxDisplay }}
+                </span>
+              </div>
+            </div>
+            <div class="home-kpi-cell">
+              <div class="home-kpi-cell__head">
+                <ConsoleNavIcon class="home-kpi-cell__ico" name="activity" :size="16" />
+                <span class="home-kpi-cell__label">API / 插件</span>
+              </div>
+              <div class="home-kpi-cell__value-slot">
+                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
+                  {{ kpiTodayApiDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiTodayPluginDisplay }}
+                </span>
+              </div>
+            </div>
+            <div class="home-kpi-cell">
+              <div class="home-kpi-cell__head">
+                <ConsoleNavIcon class="home-kpi-cell__ico" name="plugin" :size="16" />
+                <span class="home-kpi-cell__label">已加载插件</span>
+              </div>
+              <div class="home-kpi-cell__value-slot">
+                <span class="home-kpi-cell__value">{{ system?.plugin_count ?? '—' }}</span>
+              </div>
             </div>
           </div>
-          <div class="panel__bd">
-            <p
-              v-if="!sortedDbBots.length"
-              class="muted"
-              style="margin: 0"
-            >
-              数据库中暂无 Bot 配置记录。请在后端创建 <code>bot_config</code> 后刷新。
-            </p>
-            <template v-else>
-              <div
-                v-if="selectedAccount != null"
-                class="home-account-split-bd"
-                :class="{ 'home-account-split-bd--lock-h': accountHeroHeightCapActive }"
-                :style="accountUnifiedHeroLockStyle"
-              >
-                <div
-                  ref="accountCardRef"
-                  class="home-account-split-bd__col home-account-split-bd__col--hero home-account-card home-account-hero--color"
-                >
-                  <div class="home-account-hero__lead">
-                        <div class="home-account-hero__avatar">
-                          <img
-                            :src="qqAvatarUrl(selectedAccount)"
-                            alt=""
-                            width="96"
-                            height="96"
-                            decoding="async"
-                            referrerpolicy="no-referrer"
-                            @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-                          >
-                        </div>
-                        <div class="home-account-hero__main">
-                          <div
-                            ref="accountPickerRoot"
-                            class="home-account-hero__picker"
-                          >
-                            <div class="home-account-hero__title home-account-hero__title--picker">
-                              <span class="home-account-hero__title-name">{{ dbNick(selectedAccount) || "BOT" }}</span>
-                              <button
-                                v-if="sortedDbBots.length > 1"
-                                type="button"
-                                class="home-account-hero__picker-toggle"
-                                :aria-expanded="accountPickerOpen"
-                                aria-haspopup="listbox"
-                                aria-label="切换账号"
-                                @click="toggleAccountPicker"
-                              >
-                                <span
-                                  class="home-account-hero__picker-caret"
-                                  aria-hidden="true"
-                                />
-                              </button>
-                              <button
-                                v-if="selectedAccount != null"
-                                type="button"
-                                class="home-account-hero__fav-star"
-                                :aria-pressed="botFavoriteAccounts.has(selectedAccount)"
-                                :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'"
-                                @click.stop="toggleFavoriteBot(selectedAccount)"
-                              >
-                                ★
-                              </button>
-                              <span
-                                v-if="selectedConnected"
-                                class="home-account-conn-pill home-account-conn-pill--on"
-                                aria-label="已连接"
-                              >
-                                <span class="home-account-conn-pill__txt">已连接</span>
-                                <span
-                                  class="home-account-conn-pill__dot"
-                                  aria-hidden="true"
-                                />
-                              </span>
-                              <span
-                                v-else
-                                class="home-account-conn-pill home-account-conn-pill--off"
-                                aria-label="未连接"
-                              >
-                                <span class="home-account-conn-pill__txt">未连接</span>
-                              </span>
-                            </div>
-                            <div
-                              v-if="accountPickerOpen && sortedDbBots.length > 1"
-                              class="home-account-hero__picker-menu"
-                              role="listbox"
-                              aria-label="选择 Bot 账号"
-                            >
-                              <div
-                                v-for="c in sortedDbBots"
-                                :key="c.account"
-                                class="home-account-hero__picker-item"
-                                :class="{ 'is-active': c.account === selectedAccount }"
-                                role="option"
-                                :aria-selected="c.account === selectedAccount"
-                              >
-                                <button
-                                  type="button"
-                                  class="home-account-hero__picker-item-hit"
-                                  @click="pickAccountFromList(c.account)"
-                                >
-                                  <span
-                                    class="home-account-hero__picker-item-avatar"
-                                    aria-hidden="true"
-                                  >
-                                    <img
-                                      :src="qqAvatarUrl(c.account)"
-                                      alt=""
-                                      width="32"
-                                      height="32"
-                                      decoding="async"
-                                      referrerpolicy="no-referrer"
-                                      @error="($event.target as HTMLImageElement).style.visibility = 'hidden'"
-                                    >
-                                  </span>
-                                  <span class="home-account-hero__picker-item-text">
-                                    <span class="home-account-hero__picker-item-main">{{ dbNick(c.account) || "BOT" }}</span>
-                                    <span class="home-account-hero__picker-item-sub muted">{{ c.account }}</span>
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  class="home-account-hero__fav-star home-account-hero__fav-star--sm"
-                                  :aria-pressed="botFavoriteAccounts.has(c.account)"
-                                  :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
-                                  @click.stop="toggleFavoriteBot(c.account)"
-                                >
-                                  ★
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          <p class="home-account-hero__sub muted">账号 {{ selectedAccount }}</p>
-                          <p class="home-account-hero__proto">
-                            <RouterLink
-                              class="home-account-hero__proto-link"
-                              :to="{ name: 'protocol' }"
-                            >
-                              <template v-if="!accountProtocolIsUnknown">
-                                协议 · {{ accountAdapterDisplay }}
-                              </template>
-                              <template v-else>
-                                协议 · <span class="home-account-hero__proto-hint">未上报</span>
-                              </template>
-                            </RouterLink>
-                          </p>
-                          <p class="home-account-hero__admin home-account-hero__admin--under-proto">
-                            <span class="home-account-hero__admin-label">管理员</span>
-                            <span
-                              class="home-account-hero__admin-values"
-                              :class="{ 'home-account-hero__admin-values--placeholder': !(selectedBotConfig?.admins?.length) }"
-                            >{{ selectedAdminsDisplay }}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        class="home-account-hero__detail home-account-hero__detail--social-usage"
-                      >
-                        <HomeLazyReveal
-                          :loading="accountSocialPending"
-                          variant="account-social"
-                        >
-                        <div
-                          class="home-account-hero__social-panel"
-                          aria-label="好友与群聊"
-                        >
-                          <div class="home-account-hero__counts-chips home-account-hero__counts-chips--social">
-                            <div class="home-account-hero__counts-chip">
-                              <span class="home-account-hero__counts-chip__k">好友</span>
-                              <strong
-                                class="home-account-hero__counts-num home-account-hero__counts-chip__v"
-                                :class="{ 'home-account-hero__counts-num--pending': friendCountNumPending }"
-                              >{{ friendCountDisplay }}</strong>
-                            </div>
-                            <div class="home-account-hero__counts-chip">
-                              <span class="home-account-hero__counts-chip__k">群聊</span>
-                              <strong
-                                class="home-account-hero__counts-num home-account-hero__counts-chip__v"
-                                :class="{ 'home-account-hero__counts-num--pending': groupCountNumPending }"
-                              >{{ groupCountDisplay }}</strong>
-                            </div>
-                          </div>
-                          <div
-                            class="home-account-hero__counts-chips home-account-hero__counts-chips--traffic"
-                            aria-label="今日协议与消息"
-                          >
-                            <div
-                              class="home-account-hero__counts-chip"
-                              :title="accountTodayTopApiTitle || undefined"
-                            >
-                              <span class="home-account-hero__counts-chip__k">协议 API</span>
-                              <strong class="home-account-hero__counts-num home-account-hero__counts-chip__v">{{
-                                accountTodayApiCallsDisplay
-                              }}</strong>
-                            </div>
-                            <div
-                              class="home-account-hero__counts-chip"
-                              :title="accountTodayMsgDisplay"
-                            >
-                              <span class="home-account-hero__counts-chip__k">消息</span>
-                              <strong class="home-account-hero__counts-num home-account-hero__counts-chip__v">{{
-                                accountTodayMsgDisplay
-                              }}</strong>
-                            </div>
-                          </div>
-
-                          <div
-                            class="home-account-hero__social-pending-wrap"
-                            aria-label="待处理请求"
-                          >
-                            <div class="home-account-hero__social-pending">
-                              <div class="home-account-hero__pending-shell">
-                                <div class="home-account-hero__pending-card">
-                                  <div class="home-account-hero__pending-title home-account-hero__pending-title--friend">好友申请</div>
-                                  <div class="home-account-hero__pending-val">
-                                    <RouterLink
-                                      class="home-account-hero__pending-count-link home-account-hero__pending-count-link--single-line"
-                                      :to="friendsGroupsFriendPendingTo"
-                                    >
-                                      <span class="home-account-hero__pending-line">{{ friendPendingLine }}</span>
-                                    </RouterLink>
-                                  </div>
-                                </div>
-                              </div>
-                              <div class="home-account-hero__pending-shell">
-                                <div class="home-account-hero__pending-card">
-                                  <div class="home-account-hero__pending-title home-account-hero__pending-title--group">入群邀请</div>
-                                  <div class="home-account-hero__pending-val">
-                                    <RouterLink
-                                      class="home-account-hero__pending-count-link home-account-hero__pending-count-link--single-line"
-                                      :to="friendsGroupsGroupPendingTo"
-                                    >
-                                      <span class="home-account-hero__pending-line">{{ groupPendingLine }}</span>
-                                    </RouterLink>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        </HomeLazyReveal>
-                      </div>
-                  <div class="home-account-hero__matcher-stack">
-                      <details
-                        v-if="scopedMatcherErrorLog.length"
-                        class="home-account-hero__matcher-details muted"
-                        @toggle="onMatcherDetailsToggle"
-                      >
-                        <summary
-                          class="home-account-hero__matcher-foot home-account-hero__matcher-details-summary"
-                          :class="{
-                            'home-account-hero__matcher-foot--bad':
-                              (scopedPluginRunRow?.errors_today ?? 0) > 0,
-                          }"
-                        >
-                          <span class="home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
-                          <span class="home-account-hero__matcher-foot__v">{{
-                            scopedPluginRunRow == null
-                              ? "—"
-                              : String(scopedPluginRunRow.errors_today ?? 0)
-                          }}</span>
-                          <span class="home-account-hero__matcher-foot__link muted">点击展开 traceback</span>
-                        </summary>
-                        <ul class="home-account-hero__matcher-details-list">
-                          <li
-                            v-for="(it, idx) in scopedMatcherErrorLog"
-                            :key="`${it.at}-${idx}-${it.plugin}`"
-                            class="home-account-hero__matcher-details-item"
-                          >
-                            <div class="home-account-hero__matcher-details-head">
-                              <span>{{ formatMatcherErrorAt(it.at) }}</span>
-                              <span class="home-account-hero__matcher-details-plugin">{{ it.plugin }}</span>
-                              <span>{{ it.exc_type }}</span>
-                            </div>
-                            <div class="home-account-hero__matcher-details-msg">{{ it.message }}</div>
-                            <pre class="home-account-hero__matcher-details-tb">{{ it.traceback }}</pre>
-                          </li>
-                        </ul>
-                      </details>
-                      <div
-                        v-else
-                        class="home-account-hero__matcher-foot"
-                        :class="{
-                          'home-account-hero__matcher-foot--bad':
-                            (scopedPluginRunRow?.errors_today ?? 0) > 0,
-                        }"
-                      >
-                        <span class="muted home-account-hero__matcher-foot__k">Matcher 异常（今日）</span>
-                        <span class="home-account-hero__matcher-foot__v">{{
-                          scopedPluginRunRow == null
-                            ? "—"
-                            : String(scopedPluginRunRow.errors_today ?? 0)
-                        }}</span>
-                        <span
-                          v-if="(scopedPluginRunRow?.errors_today ?? 0) > 0"
-                          class="home-account-hero__matcher-foot__link muted"
-                        >仅有计数，暂无 traceback 快照</span>
-                      </div>
-                      <div
-                        class="home-account-hero__session-meta muted"
-                        aria-label="协议会话接入信息"
-                      >
-                        <div class="home-account-hero__session-meta-row">
-                          <span class="home-account-hero__session-meta-k">连接时长</span>
-                          <span class="home-account-hero__session-meta-v">{{ selectedConnDurationDisplay }}</span>
-                        </div>
-                        <div class="home-account-hero__session-meta-row">
-                          <span class="home-account-hero__session-meta-k">连接日期</span>
-                          <span class="home-account-hero__session-meta-v">{{ selectedConnDateDisplay }}</span>
-                        </div>
-                      </div>
-                  </div>
-                </div>
-                <div class="home-account-split-bd__col home-account-split-bd__col--charts">
-                    <HomeLazyReveal
-                      :loading="accountChartsPending"
-                      variant="charts"
-                    >
-                    <div
-                      class="home-account-charts-shell home-account-charts-shell--hero-side"
-                      :style="accountChartsShellLockStyle"
-                    >
-                      <HomePluginRunCharts
-                        @draw-toggle="onAccountChartsDrawToggle"
-                        @filter-toggle="onAccountChartsFilterToggle"
-                        :plugins="scopedPluginPlugins"
-                        :plugins-meta="pluginsList"
-                        :series="pluginRunTimeSamples"
-                        :busy="accountDetailBusy"
-                        :api-history-by-api="scopedApiCallsByApi"
-                        :api-history-bucket-sec="accountMessageStats?.api_calls_history_bucket_sec"
-                        :matcher-runs-by-plugin="scopedMatcherRunsByPlugin"
-                        :matcher-errors-by-plugin="scopedMatcherErrorsByPlugin"
-                        :matcher-avg-duration-ms-by-plugin="scopedMatcherAvgDurationByPlugin"
-                        :matcher-duration-ms-by-plugin="scopedMatcherDurationMsByPlugin"
-                        :matcher-duration-log="scopedMatcherDurationLog"
-                        :matcher-duration-log-cap="scopedPluginRunRow?.matcher_duration_log_cap ?? 150"
-                        :matcher-duration-log-per-plugin-cap="
-                          scopedPluginRunRow?.matcher_duration_log_per_plugin_cap ?? 30
-                        "
-                        :matcher-history-bucket-sec="pluginRunMain?.matcher_calls_history_bucket_sec"
-                        :matcher-errors-today="scopedPluginRunRow?.errors_today ?? 0"
-                        :matcher-error-log="scopedMatcherErrorLog"
-                        :daily-stat-rows="consoleDailyStats?.rows ?? []"
-                      />
-                    </div>
-                    </HomeLazyReveal>
-                </div>
-              </div>
-            </template>
+          <div class="home-kpi-head__side">
+            <RouterLink class="home-kpi-community" to="/community" title="社区统计与语料">
+              社区
+              <span class="home-kpi-community__val">{{ communityDeploymentsOnline }}</span>
+              <span class="home-kpi-community__hint muted">安装</span>
+              <span class="home-kpi-community__sep muted">·</span>
+              <span class="home-kpi-community__val">{{ communityBotsOnlineSum }}</span>
+              <span class="home-kpi-community__hint muted">牛牛</span>
+            </RouterLink>
+            <RouterLink class="home-kpi-quick" to="/charts" title="数据看板">
+              <ConsoleNavIcon name="charts" :size="16" />
+              <span>数据看板</span>
+            </RouterLink>
           </div>
         </div>
-      </section>
 
-      <aside
-        class="home-dashboard__aside home-dashboard__aside--tail home-dashboard__section"
-        style="--home-section-i: 1"
-      >
-        <section class="home-dashboard__aside-community">
-          <div class="panel home-page__panel home-dashboard__community-panel">
-            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-              <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◉</span>全网部署
-              </h2>
-              <div class="row-actions">
-                <PanelSidebarAdd main-path="/" />
-              </div>
-            </div>
-            <div class="panel__bd">
-              <HomeLazyReveal
-                :loading="communityDataPending"
-                variant="stats-4"
-              >
-              <div class="grid-stats home-community__stats home-dashboard__aside-stats">
-                <StatCard
-                  dense
-                  label="活跃安装"
-                  :value="communityDeploymentsOnline"
-                  :hint="communityDeploymentsOnlineHint"
-                />
-                <StatCard
-                  dense
-                  label="在线牛牛"
-                  :value="communityBotsOnlineSum"
-                  :hint="communityBotsOnlineHint"
-                />
-                <StatCard
-                  dense
-                  label="分片 · 进程"
-                  :value="`${communityShardedOnline} / ${communityShardWorkersSum}`"
-                  hint="分片架构的安装数与工作进程数"
-                />
-                <StatCard
-                  dense
-                  label="近 24 小时"
-                  :value="communityActiveRecent24h"
-                  :hint="communityActiveRecentHint"
-                />
-              </div>
-              </HomeLazyReveal>
-            </div>
-          </div>
-        </section>
-        <section class="home-dashboard__aside-version">
-          <div
-            class="panel home-page__panel home-page__version-panel"
+        <div v-if="homeActionStripVisible" class="home-action-strip" role="status" aria-label="可用更新">
+          <component
+            :is="item.to ? 'RouterLink' : 'span'"
+            v-for="item in homeActionItems"
+            :key="item.key"
+            class="home-action-strip__item"
+            :class="`home-action-strip__item--${item.level}`"
+            v-bind="item.to ? { to: item.to } : {}"
           >
-            <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-              <h2 class="panel__title">
-                <span class="panel__title-ico" aria-hidden="true">◇</span>版本与运行环境
-              </h2>
-              <div class="row-actions">
-                <PanelSidebarAdd main-path="/" />
-                <span
-                  v-if="health?.ok"
-                  class="home-page__hd-capsule home-page__hd-capsule--ok"
-                >API 连接</span>
+            {{ item.label }}
+          </component>
+        </div>
+
+        <!-- ═══ Main Grid ═══ -->
+        <div class="home-grid">
+          <!-- Account -->
+          <div class="home-card home-card--acct" style="grid-area: acct">
+            <div class="home-card__hd home-acct__hd">
+              <div class="home-acct__hd-left">
+                <div class="home-acct__avatar">
+                  <img v-if="selectedAccount != null" :src="qqAvatarUrl(selectedAccount)" alt="" width="44" height="44" decoding="async" referrerpolicy="no-referrer" @error="($event.target as HTMLImageElement).style.visibility = 'hidden'">
+                </div>
+                <div ref="accountPickerRoot" class="home-acct__title-wrap">
+                  <h2 class="home-card__title home-acct__title">
+                    <span class="home-acct__name">{{ selectedAccount != null ? (dbNick(selectedAccount) || "BOT") : "BOT" }}</span>
+                    <button v-if="sortedDbBots.length > 1" type="button" class="home-acct__caret" :aria-expanded="accountPickerOpen" aria-haspopup="listbox" aria-label="切换账号" @click="toggleAccountPicker"><span class="home-acct__caret-ico" aria-hidden="true" /></button>
+                    <button v-if="selectedAccount != null" type="button" class="home-acct__fav" :aria-pressed="botFavoriteAccounts.has(selectedAccount)" :title="botFavoriteAccounts.has(selectedAccount) ? '取消收藏' : '收藏该 Bot'" @click.stop="toggleFavoriteBot(selectedAccount)">★</button>
+                  </h2>
+                  <p class="home-acct__qq muted">QQ {{ selectedAccount ?? "—" }}</p>
+                  <div v-if="accountPickerOpen && sortedDbBots.length > 1" class="home-acct-picker" role="listbox" aria-label="选择 Bot 账号">
+                    <button v-for="c in sortedDbBots" :key="c.account" type="button" class="home-acct-picker__item" :class="{ 'is-active': c.account === selectedAccount }" role="option" :aria-selected="c.account === selectedAccount" @click="pickAccountFromList(c.account)">
+                      <img :src="qqAvatarUrl(c.account)" alt="" width="32" height="32" decoding="async" referrerpolicy="no-referrer" class="home-acct-picker__avatar" @error="($event.target as HTMLImageElement).style.visibility = 'hidden'">
+                      <span class="home-acct-picker__text"><span class="home-acct-picker__name">{{ dbNick(c.account) || "BOT" }}</span><span class="home-acct-picker__qq muted">{{ c.account }}</span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="home-acct__hd-actions">
+                <span v-if="selectedAccount != null && selectedConnected" class="home-acct__conn home-acct__conn--on"><span class="home-acct__conn-dot" aria-hidden="true" />已连接</span>
+                <span v-else-if="selectedAccount != null" class="home-acct__conn home-acct__conn--off">未连接</span>
+                <RefreshIconButton :show-label="false" :busy="overviewBusy" label="刷新概况" @click="() => load({ refreshMeta: true })" />
               </div>
             </div>
-            <div class="panel__bd muted home-page__version home-page__version--grid">
-              <HomeLazyReveal
-                :loading="versionMetaPending"
-                variant="version-dl"
-              >
-              <dl class="home-dl home-dl--version-rows home-version-dl">
-            <dt>NoneBot2</dt>
-            <dd>
-              <span class="home-dl__pill home-dl__pill--version">{{ nonebot2VersionDisplay }}</span>
-              <span class="home-dl__sub muted">框架</span>
-            </dd>
-            <dt>Pallas-Bot</dt>
-            <dd>
-              <span
-                class="home-dl__pill home-dl__pill--version"
-                :title="pallasBotVersionDisplay"
-              >{{ pallasBotVersionDisplay }}</span>
-              <RouterLink
-                v-if="botUpdateCheck?.has_update"
-                class="home-version-update-link"
-                to="/update#console-update-bot"
-              >
-                <span class="badge badge--warn">有更新</span>
-                <span
-                  v-if="(botUpdateCheck?.latest_tag || '').trim()"
-                  class="home-version-update-meta muted"
-                >{{ (botUpdateCheck?.latest_tag || "").trim() }}</span>
-              </RouterLink>
-              <span
-                v-else-if="botUpdateCheck?.development_build"
-                class="badge badge--dev home-version-dev-badge"
-                :title="botDevelopmentBuildTitle"
-              >开发构建</span>
-              <span class="home-dl__sub muted">业务</span>
-            </dd>
-            <dt>控制台资源</dt>
-            <dd>
-              <span class="home-dl__pill home-dl__pill--version">{{ consoleResourceVersionDisplay }}</span>
-              <RouterLink
-                v-if="webUpdateCheck?.has_update"
-                class="home-version-update-link"
-                to="/update#console-update-webui"
-              >
-                <span class="badge badge--warn">有更新</span>
-                <span
-                  v-if="(webUpdateCheck?.latest_tag || '').trim()"
-                  class="home-version-update-meta muted"
-                >{{ (webUpdateCheck?.latest_tag || "").trim() }}</span>
-              </RouterLink>
-            </dd>
-            <dt>服务时间</dt>
-            <dd>
-              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ versionServerTimeStr }}</span>
-            </dd>
-            <dt>NoneBot 监听</dt>
-            <dd>
-              <span class="home-dl__pill home-dl__pill--version home-dl__pill--mono">{{ nonebotListenDisplay }}</span>
-            </dd>
-            <dt>主机 / Python</dt>
-            <dd>
-              <span
-                class="home-dl__pill home-dl__pill--version"
-                :title="system?.runtime?.hostname ?? '—'"
-              >{{ system?.runtime?.hostname ?? "—" }}</span>
-              <span
-                class="home-dl__pill home-dl__pill--version home-dl__pill--mono"
-                :title="system?.runtime?.python ?? '—'"
-              >{{ system?.runtime?.python ?? "—" }}</span>
-            </dd>
-          </dl>
+            <div class="home-card__bd home-acct__bd" v-if="selectedAccount != null">
+              <div class="home-acct-meta">
+                <RouterLink class="home-acct-meta__tag" :to="{ name: 'protocol' }">协议 · {{ accountAdapterDisplay }}</RouterLink>
+                <span class="home-acct-meta__tag home-acct-meta__tag--muted" :title="selectedAdminsDisplay">管理员 {{ selectedAdminsDisplay }}</span>
+              </div>
+              <HomeLazyReveal :loading="accountSocialPending" variant="account-social">
+                <div class="home-acct-grid">
+                  <div class="home-acct-tile">
+                    <span class="home-acct-tile__label">好友</span>
+                    <span class="home-acct-tile__value">{{ friendCountDisplay }}</span>
+                  </div>
+                  <div class="home-acct-tile">
+                    <span class="home-acct-tile__label">群聊</span>
+                    <span class="home-acct-tile__value">{{ groupCountDisplay }}</span>
+                  </div>
+                  <div class="home-acct-tile home-acct-tile--sub">
+                    <span class="home-acct-tile__label">今日 API</span>
+                    <span class="home-acct-tile__value">{{ accountTodayApiCallsDisplay }}</span>
+                  </div>
+                  <div class="home-acct-tile home-acct-tile--sub">
+                    <span class="home-acct-tile__label">今日消息</span>
+                    <span class="home-acct-tile__value home-acct-tile__value--duo">
+                      <span>{{ accountTodayRxDisplay }}</span>
+                      <span class="home-acct-tile__sep">/</span>
+                      <span>{{ accountTodayTxDisplay }}</span>
+                    </span>
+                  </div>
+                </div>
+                <div v-if="friendPendingLine !== '—' || groupPendingLine !== '—'" class="home-acct-pending-row">
+                  <RouterLink v-if="friendPendingLine !== '—'" class="home-acct-pending-pill home-acct-pending-pill--friend" :to="friendsGroupsFriendPendingTo">
+                    好友申请 · {{ friendPendingLine }}
+                  </RouterLink>
+                  <RouterLink v-if="groupPendingLine !== '—'" class="home-acct-pending-pill home-acct-pending-pill--group" :to="friendsGroupsGroupPendingTo">
+                    入群邀请 · {{ groupPendingLine }}
+                  </RouterLink>
+                </div>
+              </HomeLazyReveal>
+              <div class="home-acct__foot">
+                <details v-if="scopedMatcherErrorLog.length" class="home-acct-matcher">
+                  <summary class="home-acct-matcher__toggle">Matcher 异常 <strong>{{ scopedPluginRunRow?.errors_today ?? 0 }}</strong> · 点击展开</summary>
+                  <ul class="home-acct-matcher__list">
+                    <li v-for="(it, idx) in scopedMatcherErrorLog" :key="`${it.at}-${idx}-${it.plugin}`" class="home-acct-matcher__item">
+                      <div class="home-acct-matcher__head"><span>{{ formatMatcherErrorAt(it.at) }}</span><span class="home-acct-matcher__plugin">{{ it.plugin }}</span><span>{{ it.exc_type }}</span></div>
+                      <div class="home-acct-matcher__msg">{{ it.message }}</div>
+                      <pre class="home-acct-matcher__tb">{{ it.traceback }}</pre>
+                    </li>
+                  </ul>
+                </details>
+                <div v-else class="home-acct-matcher__plain" :class="{ 'home-acct-matcher__plain--warn': (scopedPluginRunRow?.errors_today ?? 0) > 0 }">Matcher 异常 <strong>{{ scopedPluginRunRow == null ? '—' : String(scopedPluginRunRow.errors_today ?? 0) }}</strong></div>
+                <div class="home-acct__session muted">已连接 {{ selectedConnDurationDisplay }} · {{ selectedConnDateDisplay }}</div>
+              </div>
+            </div>
+            <div class="home-card__bd home-card__bd--empty" v-else-if="sortedDbBots.length">
+              <p class="muted">请选择一个 Bot 账号</p>
+            </div>
+            <div class="home-card__bd home-card__bd--empty" v-else>
+              <p class="muted">数据库中暂无 Bot 配置记录。请在后端创建 <code>bot_config</code> 后刷新。</p>
+            </div>
+          </div>
+
+          <!-- System Health -->
+          <div class="home-card home-card--sys" :class="{ 'home-card--resource-warn': sysResourceWarn }" style="grid-area: sys">
+            <div class="home-card__hd">
+              <h2 class="home-card__title"><ConsoleNavIcon class="home-card__title-ico" name="activity" />系统性能</h2>
+              <span class="home-card__tag muted">节点采样</span>
+            </div>
+            <div class="home-card__bd">
+              <p v-if="!perfSampled" class="muted" style="margin:0">当前未上报 CPU/内存/磁盘/GPU 等指标。</p>
+              <template v-else>
+                <div class="home-sys-grid">
+                  <div class="home-sys-card">
+                    <div class="home-sys-card__head">
+                      <span class="home-sys-card__label">CPU</span>
+                      <span class="home-sys-card__value">{{ cpuDisplay }}</span>
+                    </div>
+                    <div class="home-sys-card__viz">
+                      <div v-if="cpuPerCorePercents.length" class="home-sys-card__cores" role="img" :aria-label="`${cpuPerCorePercents.length} 核心`">
+                        <div v-for="(p, i) in cpuPerCorePercents" :key="i" class="home-sys-card__core" :title="`核心 ${i}：${p.toFixed(1)}%`">
+                          <span class="home-sys-card__core-fill" :style="{ height: `${Math.min(100, Math.max(0, p))}%` }" />
+                        </div>
+                      </div>
+                      <div v-else-if="cpuBarPct != null" class="home-sys-card__bar"><span :style="{ width: `${cpuBarPct}%` }" /></div>
+                    </div>
+                    <p v-if="cpuFootHint" class="home-sys-card__hint">{{ cpuFootHint }}</p>
+                  </div>
+                  <div class="home-sys-card" :class="{ 'home-sys-card--warn': memResourceWarn }">
+                    <div class="home-sys-card__head">
+                      <span class="home-sys-card__label">内存</span>
+                      <span class="home-sys-card__value">{{ memDisplay }}</span>
+                    </div>
+                    <div class="home-sys-card__viz">
+                      <div v-if="memBarPct != null" class="home-sys-card__bar"><span :style="{ width: `${memBarPct}%` }" /></div>
+                    </div>
+                    <p v-if="memHint" class="home-sys-card__hint">{{ memHint }}</p>
+                  </div>
+                  <div class="home-sys-card" :class="{ 'home-sys-card--warn': diskResourceWarn }">
+                    <div class="home-sys-card__head">
+                      <span class="home-sys-card__label">磁盘</span>
+                      <span class="home-sys-card__value">{{ diskDisplay }}</span>
+                    </div>
+                    <div class="home-sys-card__viz">
+                      <div v-if="diskBarPct != null" class="home-sys-card__bar"><span :style="{ width: `${diskBarPct}%` }" /></div>
+                    </div>
+                    <p v-if="diskHint" class="home-sys-card__hint">{{ diskHint }}</p>
+                  </div>
+                  <div class="home-sys-card home-sys-card--uptime">
+                    <div class="home-sys-card__head">
+                      <span class="home-sys-card__label">运行时长</span>
+                      <span v-if="uptimeParts" class="home-sys-card__value home-uptime-value">
+                        <span class="home-uptime-value__num">{{ uptimeParts.value }}</span><span class="home-uptime-value__unit">{{ uptimeParts.unit }}</span>
+                      </span>
+                      <span v-else class="home-sys-card__value">—</span>
+                    </div>
+                    <div class="home-sys-card__viz home-sys-card__viz--empty" aria-hidden="true" />
+                    <p v-if="uptimeParts?.sub" class="home-sys-card__hint">{{ uptimeParts.sub }}</p>
+                  </div>
+                  <div v-for="dev in gpuDevices" :key="dev.index" class="home-sys-card home-sys-card--gpu">
+                    <div class="home-sys-card__head">
+                      <span class="home-sys-card__label">GPU {{ dev.index }}</span>
+                      <span class="home-sys-card__value">{{ pct(dev.utilization_gpu) }}</span>
+                    </div>
+                    <p class="home-sys-card__hint">{{ gpuNameShort(dev.name || '', 36) }}</p>
+                    <div class="home-sys-card__gpu-metrics">
+                      <div class="home-sys-card__gpu-metric">
+                        <span class="home-sys-card__label">利用率</span>
+                        <div v-if="gpuUtilBarPct(dev.utilization_gpu) != null" class="home-sys-card__bar"><span :style="{ width: `${gpuUtilBarPct(dev.utilization_gpu)}%` }" /></div>
+                      </div>
+                      <div class="home-sys-card__gpu-metric">
+                        <div class="home-sys-card__row home-sys-card__row--sub">
+                          <span class="home-sys-card__label">显存</span>
+                          <span class="home-sys-card__value home-sys-card__value--sm">{{ dev.memory_total > 0 ? pct((dev.memory_used / dev.memory_total) * 100) : pct(dev.utilization_memory) }}</span>
+                        </div>
+                        <div v-if="gpuMemBarPct(dev.memory_used, dev.memory_total) != null" class="home-sys-card__bar"><span :style="{ width: `${gpuMemBarPct(dev.memory_used, dev.memory_total)}%` }" /></div>
+                      </div>
+                    </div>
+                    <p class="home-sys-card__hint">{{ fmtBytes(dev.memory_used) }} / {{ fmtBytes(dev.memory_total) }}<template v-if="dev.temperature != null"> · {{ tempDisplay(dev.temperature) }}</template></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Version & environment -->
+          <div class="home-card home-card--ver" style="grid-area: verL">
+            <div class="home-card__hd">
+              <h2 class="home-card__title"><ConsoleNavIcon class="home-card__title-ico" name="download" />版本</h2>
+              <span v-if="versionHasUpdate" class="home-card__tag"><UiBadge variant="warn">有更新</UiBadge></span>
+            </div>
+            <div class="home-card__bd">
+              <HomeLazyReveal :loading="versionMetaPending" variant="version-dl">
+                <dl class="home-ver-dl">
+                  <div class="home-ver-dl__row"><dt>NoneBot2</dt><dd><span class="home-ver-dl__val">{{ nonebot2VersionDisplay }}</span><span class="home-ver-dl__tag">框架</span></dd></div>
+                  <div class="home-ver-dl__row"><dt>Pallas-Bot</dt><dd>
+                    <span class="home-ver-dl__val">{{ pallasBotVersionDisplay }}</span>
+                    <RouterLink v-if="botUpdateCheck?.has_update" class="home-ver-dl__link" to="/update#console-update-bot"><UiBadge variant="warn">有更新</UiBadge></RouterLink>
+                    <UiBadge v-else-if="botUpdateCheck?.development_build" variant="secondary" :title="botDevelopmentBuildTitle">开发构建</UiBadge>
+                    <span class="home-ver-dl__tag">业务</span>
+                  </dd></div>
+                  <div class="home-ver-dl__row"><dt>控制台资源</dt><dd>
+                    <span class="home-ver-dl__val">{{ consoleResourceVersionDisplay }}</span>
+                    <RouterLink v-if="webUpdateCheck?.has_update" class="home-ver-dl__link" to="/update#console-update-webui"><UiBadge variant="warn">有更新</UiBadge></RouterLink>
+                  </dd></div>
+                  <div class="home-ver-dl__row"><dt>Python</dt><dd><span class="home-ver-dl__val home-ver-dl__val--mono">{{ pythonVersionDisplay }}</span></dd></div>
+                </dl>
               </HomeLazyReveal>
             </div>
           </div>
-        </section>
-      </aside>
+
+          <div class="home-card home-card--ver" style="grid-area: verR">
+            <div class="home-card__hd">
+              <h2 class="home-card__title"><ConsoleNavIcon class="home-card__title-ico" name="server" />环境</h2>
+              <span v-if="health?.ok" class="home-card__tag home-card__tag--ok muted">API 已连接</span>
+            </div>
+            <div class="home-card__bd">
+              <HomeLazyReveal :loading="versionMetaPending" variant="version-dl">
+                <dl class="home-ver-dl">
+                  <div class="home-ver-dl__row"><dt>服务时间</dt><dd><span class="home-ver-dl__val home-ver-dl__val--mono">{{ versionServerTimeStr }}</span></dd></div>
+                  <div class="home-ver-dl__row"><dt>监听地址</dt><dd><span class="home-ver-dl__val home-ver-dl__val--mono">{{ nonebotListenDisplay }}</span></dd></div>
+                  <div class="home-ver-dl__row"><dt>系统</dt><dd><span class="home-ver-dl__val">{{ osFamilyDisplay }}</span></dd></div>
+                  <div class="home-ver-dl__row"><dt>主机</dt><dd><span class="home-ver-dl__val">{{ hostnameDisplay }}</span></dd></div>
+                </dl>
+              </HomeLazyReveal>
+            </div>
+          </div>
+
+        </div>
       </div>
-
-      <section
-        class="home-dashboard__corpus home-dashboard__section"
-        style="--home-section-i: 2"
-      >
-        <div class="panel home-page__panel home-dashboard__corpus-panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">▦</span>共享语料
-            </h2>
-            <div class="row-actions">
-              <PanelSidebarAdd main-path="/" />
-              <RouterLink
-                class="home-instances-capsule"
-                to="/corpus-config"
-              >语料设置</RouterLink>
-            </div>
-          </div>
-          <div class="panel__bd">
-            <HomeLazyReveal
-              :loading="communityDataPending"
-              variant="stats-5"
-            >
-            <div class="grid-stats home-dashboard__corpus-grid">
-              <StatCard
-                dense
-                label="词条规模"
-                :value="communityCorpusPoolValue"
-                :hint="communityCorpusPoolHint"
-              />
-              <StatCard
-                dense
-                label="在线接入"
-                :value="communityCorpusEnrollmentsOnline"
-                :hint="communityCorpusOnlineEnrollHint"
-              />
-              <StatCard
-                dense
-                label="累计接入"
-                :value="communityCorpusEnrollmentValue"
-                :hint="communityCorpusTotalEnrollHint"
-              />
-              <StatCard
-                dense
-                label="可上传学习"
-                :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
-                :hint="communityCorpusContributeHint"
-              />
-              <StatCard
-                dense
-                label="回复热度"
-                :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
-                :hint="communityCorpusHitsHint"
-              />
-            </div>
-            </HomeLazyReveal>
-          </div>
-        </div>
-      </section>
-
-      <section
-        class="home-dashboard__capacity home-dashboard__section"
-        style="--home-section-i: 3"
-      >
-        <HomeLazyReveal
-          :loading="capacityDataPending"
-          variant="stats-4"
-        >
-        <div class="grid-stats home-page__capacity-grid home-page__capacity-grid--compact">
-          <StatCard
-            dense
-            label="已加载插件"
-            :value="system?.plugin_count ?? '—'"
-            hint="进程内模块"
-          />
-          <StatCard
-            dense
-            label="在线 Bot"
-            :value="botCount"
-            :hint="`登记账号 ${system?.bot_count ?? '—'}`"
-          />
-          <StatCard
-            dense
-            label="消息 收/发"
-            :value="msgTotalStr"
-            :hint="msgCapacityHint"
-          />
-          <StatCard
-            dense
-            label="今日调用"
-            :value="todayCallsStatValue"
-            :hint="todayCallsStatHint"
-          />
-        </div>
-        </HomeLazyReveal>
-      </section>
-
-      <section
-        class="home-dashboard__perf home-dashboard__section"
-        style="--home-section-i: 4"
-      >
-        <div class="panel home-page__panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">▤</span>系统性能
-            </h2>
-            <div class="row-actions">
-              <PanelSidebarAdd main-path="/" />
-              <span class="home-page__hd-capsule home-page__hd-capsule--muted">节点采样</span>
-            </div>
-          </div>
-          <div class="panel__bd">
-            <p
-              v-if="!perfSampled"
-              class="muted home-page__empty"
-            >
-              当前未上报 CPU/内存/磁盘/GPU 等指标。请确认后端已启用系统快照并刷新。
-            </p>
-            <template v-else>
-              <div class="home-metric-grid">
-                <div class="home-metric home-metric--cpu">
-                  <div class="home-metric__row">
-                    <span class="home-metric__label">CPU</span>
-                    <span class="home-metric__val">{{ cpuDisplay }}</span>
-                  </div>
-                  <div
-                    v-if="cpuPerCorePercents.length"
-                    class="home-cpu-cores"
-                    role="img"
-                    :aria-label="`共 ${cpuPerCorePercents.length} 个逻辑核心，柱高表示各核占用率`"
-                  >
-                    <div
-                      v-for="(p, i) in cpuPerCorePercents"
-                      :key="i"
-                      class="home-cpu-core"
-                      :title="`核心 ${i}：${p.toFixed(1)}%`"
-                    >
-                      <span
-                        class="home-cpu-core__fill"
-                        :style="{ height: `${Math.min(100, Math.max(0, p))}%` }"
-                      />
-                    </div>
-                  </div>
-                  <div
-                    v-else-if="cpuBarPct != null"
-                    class="home-metric__bar"
-                    aria-hidden="true"
-                  >
-                    <span :style="{ width: `${cpuBarPct}%` }" />
-                  </div>
-                  <p
-                    v-if="cpuFootHint"
-                    class="home-metric__hint"
-                  >
-                    {{ cpuFootHint }}
-                  </p>
-                </div>
-                <div class="home-metric">
-                  <div class="home-metric__row">
-                    <span class="home-metric__label">内存</span>
-                    <span class="home-metric__val">{{ memDisplay }}</span>
-                  </div>
-                  <div
-                    v-if="memBarPct != null"
-                    class="home-metric__bar"
-                    aria-hidden="true"
-                  >
-                    <span :style="{ width: `${memBarPct}%` }" />
-                  </div>
-                  <p
-                    v-if="memHint"
-                    class="home-metric__hint"
-                  >
-                    {{ memHint }}
-                  </p>
-                </div>
-                <div class="home-metric">
-                  <div class="home-metric__row">
-                    <span class="home-metric__label">磁盘</span>
-                    <span class="home-metric__val">{{ diskDisplay }}</span>
-                  </div>
-                  <div
-                    v-if="diskBarPct != null"
-                    class="home-metric__bar"
-                    aria-hidden="true"
-                  >
-                    <span :style="{ width: `${diskBarPct}%` }" />
-                  </div>
-                  <p
-                    v-if="diskHint"
-                    class="home-metric__hint"
-                  >
-                    {{ diskHint }}
-                  </p>
-                </div>
-                <div class="home-metric home-metric--plain">
-                  <div class="home-metric__row">
-                    <span class="home-metric__label">运行时长</span>
-                    <span class="home-metric__val home-metric__val--sm">{{ uptimeDisplay }}</span>
-                  </div>
-                  <p
-                    v-if="uptimeHint"
-                    class="home-metric__hint"
-                  >
-                    {{ uptimeHint }}
-                  </p>
-                </div>
-                <div
-                  v-for="dev in gpuDevices"
-                  :key="dev.index"
-                  class="home-metric home-metric--gpu"
-                >
-                  <div class="home-metric__row">
-                    <span class="home-metric__label">GPU {{ dev.index }}</span>
-                    <span class="home-metric__val">{{ pct(dev.utilization_gpu) }}</span>
-                  </div>
-                  <p
-                    class="home-metric__hint home-metric__hint--gpu-name"
-                    :title="(dev.name || '').trim() || undefined"
-                  >
-                    {{ gpuNameShort(dev.name || '', 36) }}
-                  </p>
-                  <div
-                    v-if="gpuUtilBarPct(dev.utilization_gpu) != null"
-                    class="home-metric__bar"
-                    aria-hidden="true"
-                  >
-                    <span :style="{ width: `${gpuUtilBarPct(dev.utilization_gpu)}%` }" />
-                  </div>
-                  <div class="home-metric__row home-metric__row--gpu-sub">
-                    <span class="home-metric__label">显存</span>
-                    <span class="home-metric__val home-metric__val--sm">{{
-                      dev.memory_total > 0
-                        ? pct((dev.memory_used / dev.memory_total) * 100)
-                        : pct(dev.utilization_memory)
-                    }}</span>
-                  </div>
-                  <div
-                    v-if="gpuMemBarPct(dev.memory_used, dev.memory_total) != null"
-                    class="home-metric__bar"
-                    aria-hidden="true"
-                  >
-                    <span :style="{ width: `${gpuMemBarPct(dev.memory_used, dev.memory_total)}%` }" />
-                  </div>
-                  <p class="home-metric__hint">
-                    {{ fmtBytes(dev.memory_used) }} / {{ fmtBytes(dev.memory_total) }}
-                    <template v-if="dev.temperature != null"> · {{ tempDisplay(dev.temperature) }}</template>
-                  </p>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </section>
-
-      <Transition name="home-lazy-cross">
-      <section
-        key="ingress-standalone"
-        v-if="ingressDispatchStandaloneVisible"
-        class="home-dashboard__shard-obs home-dashboard__section"
-        style="--home-section-i: 5"
-      >
-        <div class="panel home-page__panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">⏱</span>入站调度
-            </h2>
-            <div class="row-actions">
-              <span class="home-page__hd-capsule home-page__hd-capsule--muted">预筛选 · 并发控制 · 出站整形</span>
-            </div>
-          </div>
-          <div class="panel__bd home-shard-obs__bd">
-            <div class="home-shard-obs__explain">
-              <p class="home-shard-obs__explain-lede muted">
-                {{ ingressDispatchLede }}
-              </p>
-              <p v-if="ingressDispatchAlerts" class="home-shard-obs__explain-lede home-shard-obs__explain-lede--warn">
-                告警：{{ ingressDispatchAlerts }}
-              </p>
-            </div>
-            <div class="grid-stats home-shard-obs__kpis">
-              <StatCard
-                dense
-                label="今日群消息"
-                :value="ingressDispatchGroupMessages"
-                :hint="ingressDispatchMatcherHint"
-              />
-              <StatCard
-                dense
-                label="Matcher 命中率"
-                :value="ingressDispatchMatcherRatio"
-                hint="命中数 ÷ 参与筛选数"
-              />
-              <StatCard
-                dense
-                label="入站处理 P95"
-                :value="ingressDispatchP95"
-                :hint="ingressDispatchP95Hint"
-              />
-              <StatCard
-                dense
-                label="并发槽等待"
-                :value="ingressDispatchLaneWait"
-                :hint="ingressDispatchLaneHint"
-              />
-              <StatCard
-                dense
-                label="出站发送队列"
-                :value="ingressDispatchSendQueue"
-                :hint="ingressDispatchSendQueueHint"
-              />
-              <div :class="{ 'home-shard-obs__pg-warn': ingressDispatchPgWarn }">
-                <StatCard
-                  dense
-                  label="数据库连接池"
-                  :value="ingressDispatchPgUtil"
-                  :hint="ingressDispatchPgHint"
-                />
-              </div>
-            </div>
-            <div
-              v-if="ingressDispatchWorkerRows.length"
-              class="home-shard-obs__workers"
-            >
-              <p class="home-shard-obs__workers-title">各 worker 入站调度（今日）</p>
-              <p class="home-shard-obs__workers-desc muted">
-                各 worker 今日群消息与 matcher 漏斗；入站 P95 为该片处理耗时的 95 分位。
-              </p>
-              <div class="home-shard-obs__table-wrap">
-                <table class="home-shard-obs__table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Worker</th>
-                      <th scope="col">群消息</th>
-                      <th scope="col">命中率</th>
-                      <th scope="col">入站 P95</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="row in ingressDispatchWorkerRows"
-                      :key="row.shard_id"
-                    >
-                      <td>worker-{{ row.shard_id }}</td>
-                      <td>{{ ingressWorkerGroupMessages(row) }}</td>
-                      <td>{{ ingressWorkerMatcherRatio(row) }}</td>
-                      <td>{{ ingressWorkerP95(row) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      </Transition>
-
-      <Transition name="home-lazy-cross">
-      <section
-        key="shard-observability"
-        v-if="shardObsVisible"
-        class="home-dashboard__shard-obs home-dashboard__section"
-        style="--home-section-i: 6"
-      >
-        <div class="panel home-page__panel">
-          <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <span class="panel__title-ico" aria-hidden="true">⎇</span>分片可观测
-            </h2>
-            <div class="row-actions">
-              <span class="home-page__hd-capsule home-page__hd-capsule--muted">ingress / coord / PG</span>
-            </div>
-          </div>
-          <div class="panel__bd home-shard-obs__bd">
-            <section
-              v-if="ingressDispatchShardSummaryVisible"
-              class="home-shard-obs__subpanel"
-              aria-label="入站调度摘要"
-            >
-              <div class="home-shard-obs__subpanel-hd">
-                <h3 class="home-shard-obs__subpanel-title">
-                  <span aria-hidden="true">⏱</span>入站调度
-                </h3>
-                <span class="home-page__hd-capsule home-page__hd-capsule--muted">预筛选 · 并发控制 · 出站整形</span>
-              </div>
-              <div class="home-shard-obs__explain">
-                <p class="home-shard-obs__explain-lede muted">
-                  {{ ingressDispatchLede }}
-                </p>
-                <p
-                  v-if="ingressDispatchAlerts"
-                  class="home-shard-obs__explain-lede home-shard-obs__explain-lede--warn"
-                >
-                  告警：{{ ingressDispatchAlerts }}
-                </p>
-              </div>
-              <div class="grid-stats home-shard-obs__kpis">
-                <StatCard
-                  dense
-                  label="今日群消息"
-                  :value="ingressDispatchGroupMessages"
-                  :hint="ingressDispatchMatcherHint"
-                />
-                <StatCard
-                  dense
-                  label="Matcher 命中率"
-                  :value="ingressDispatchMatcherRatio"
-                  hint="命中数 ÷ 参与筛选数"
-                />
-                <StatCard
-                  dense
-                  label="入站处理 P95"
-                  :value="ingressDispatchP95"
-                  :hint="ingressDispatchP95Hint"
-                />
-                <StatCard
-                  dense
-                  label="并发槽等待"
-                  :value="ingressDispatchLaneWait"
-                  :hint="ingressDispatchLaneHint"
-                />
-                <StatCard
-                  dense
-                  label="出站发送队列"
-                  :value="ingressDispatchSendQueue"
-                  :hint="ingressDispatchSendQueueHint"
-                />
-                <div :class="{ 'home-shard-obs__pg-warn': ingressDispatchPgWarn }">
-                  <StatCard
-                    dense
-                    label="数据库连接池"
-                    :value="ingressDispatchPgUtil"
-                    :hint="ingressDispatchPgHint"
-                  />
-                </div>
-              </div>
-            </section>
-            <div class="home-shard-obs__explain">
-              <p class="home-shard-obs__explain-lede muted">
-                分片模式下 hub 汇总各 worker 今日指标；ingress 仅代表牛计数，避免多牛重复放大。
-              </p>
-              <dl class="home-shard-obs__glossary">
-                <div class="home-shard-obs__glossary-item">
-                  <dt>Ingress 命中率</dt>
-                  <dd>入站消息进 matcher 前，本片代表牛抢到处理权的比例；多 worker 时理想约 1÷活跃片数。</dd>
-                </div>
-                <div class="home-shard-obs__glossary-item">
-                  <dt>Ingress 事件</dt>
-                  <dd>今日进入 ingress 门控的消息总数；含全员同响放行与提前丢弃（非目标片 / fleet 过滤）。</dd>
-                </div>
-                <div class="home-shard-obs__glossary-item">
-                  <dt>Coord 积压</dt>
-                  <dd>跨 worker 协同目录 <code>coord/</code> 中的待办 JSON，如 bot_action 代发；含超时未完结与历史残留。</dd>
-                </div>
-                <div class="home-shard-obs__glossary-item">
-                  <dt>PG 连接池</dt>
-                  <dd>hub + worker 各进程 SQLAlchemy 连接池峰值粗算，应低于数据库 <code>max_connections</code>。</dd>
-                </div>
-              </dl>
-            </div>
-            <div class="grid-stats home-shard-obs__kpis">
-              <StatCard
-                dense
-                label="Ingress 命中率"
-                :value="shardIngressHitRate"
-                :hint="shardIngressGateHint"
-              />
-              <StatCard
-                dense
-                label="Ingress 事件"
-                :value="shardIngressEvents"
-                :hint="shardIngressEventsHint"
-              />
-              <StatCard
-                dense
-                label="Coord 积压"
-                :value="shardCoordValue"
-                :hint="shardCoordHint"
-              />
-              <div :class="{ 'home-shard-obs__pg-warn': shardPgHintWarn }">
-                <StatCard
-                  dense
-                  label="PG 连接池"
-                  :value="shardPgPeakValue"
-                  :hint="shardPgHint"
-                  :hint-title="shardPgHintTitle"
-                />
-              </div>
-            </div>
-            <div
-              v-if="shardWorkerRows.length"
-              class="home-shard-obs__workers"
-            >
-              <p class="home-shard-obs__workers-title">各 worker 命中率（今日）</p>
-              <p class="home-shard-obs__workers-desc muted">
-                按 worker 汇总 ingress；「成功 / 失败」为该片代表牛 claim 次数。
-              </p>
-              <div class="home-shard-obs__table-wrap">
-                <table class="home-shard-obs__table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Worker</th>
-                      <th scope="col">命中率</th>
-                      <th scope="col">成功</th>
-                      <th scope="col">失败</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="row in shardWorkerRows"
-                      :key="row.shard_id"
-                    >
-                      <td>worker-{{ row.shard_id }}</td>
-                      <td>{{ shardWorkerHitRate(row) }}</td>
-                      <td>{{ shardWorkerCell(row, 'claim_won') }}</td>
-                      <td>{{ shardWorkerCell(row, 'claim_lost') }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      </Transition>
-    </div>
-    </div>
     </Transition>
   </div>
 </template>
 
 <style scoped>
-.home-shard-obs__subpanel {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--bg-card) 88%, var(--accent) 12%);
-}
-
-.home-shard-obs__subpanel-hd {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.home-shard-obs__subpanel-title {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.96rem;
-  font-weight: 800;
-}
-
-.home-account-hero__title--picker .home-account-hero__fav-star {
-  padding: 0 2px;
-}
-.home-account-hero__fav-star {
+/* Account picker avatar */
+.home-acct-picker__avatar {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
   flex-shrink: 0;
-  margin: 0;
-  padding: 6px 10px;
-  font-size: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+}
+
+/* Favorite star */
+.home-acct__fav {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 15px;
   line-height: 1;
   border: none;
-  border-radius: 0;
   background: transparent;
-  box-shadow: none;
   color: inherit;
   cursor: pointer;
-  opacity: 0.38;
+  opacity: 0.35;
 }
-.home-account-hero__fav-star:hover,
-.home-account-hero__fav-star:focus-visible {
+.home-acct__fav:hover { opacity: 0.6; }
+.home-acct__fav[aria-pressed="true"] { opacity: 1; color: #fbbf24; }
+
+/* Caret */
+.home-acct__caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: none;
   background: transparent;
-  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
   opacity: 0.55;
 }
-.home-account-hero__fav-star--sm {
-  padding: 4px 8px;
-  font-size: 15px;
+.home-acct__caret:hover { opacity: 0.85; }
+.home-acct__caret-ico {
+  display: block;
+  width: 0; height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform 0.16s ease;
 }
-.home-account-hero__fav-star[aria-pressed="true"] {
-  opacity: 1;
-  color: #fbbf24;
-}
+.home-acct__caret[aria-expanded="true"] .home-acct__caret-ico { transform: rotate(180deg); }
 
-@media (max-width: 560px) {
-  .home-shard-obs__subpanel {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .home-shard-obs__subpanel-hd {
-    align-items: flex-start;
-  }
+/* Connection pill dot */
+.home-acct__conn-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 </style>

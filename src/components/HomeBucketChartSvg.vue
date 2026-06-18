@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
+
 export type BucketBarSeries = { label: string; color: string; vals: number[] };
 
 export type BucketBarPack = {
@@ -22,19 +24,90 @@ export type BucketBarPack = {
   bars: { x: number; y: number; w: number; h: number; fill: string }[];
 };
 
-defineProps<{
+const props = defineProps<{
   pack: BucketBarPack;
+  formatTime?: (sec: number) => string;
 }>();
+
+const plotRef = ref<HTMLElement | null>(null);
+const svgRef = ref<SVGSVGElement | null>(null);
+const hoverIndex = ref<number | null>(null);
+const tooltipX = ref(0);
+
+watch(
+  () => props.pack,
+  () => {
+    hoverIndex.value = null;
+  },
+);
+
+const slotW = computed(() => {
+  const nT = props.pack.timesSec.length;
+  return nT > 0 ? props.pack.innerW / nT : 0;
+});
+
+const hoverTime = computed(() => {
+  if (hoverIndex.value == null) return null;
+  return props.pack.timesSec[hoverIndex.value] ?? null;
+});
+
+const hoverRows = computed(() => {
+  if (hoverIndex.value == null) return [];
+  const idx = hoverIndex.value;
+  return props.pack.series
+    .map((s) => ({ label: s.label, color: s.color, value: s.vals[idx] ?? 0 }))
+    .filter((r) => r.value > 0);
+});
+
+const hoverX = computed(() => {
+  if (hoverIndex.value == null) return null;
+  return props.pack.left + (hoverIndex.value + 0.5) * slotW.value;
+});
+
+function formatTimeLabel(sec: number): string {
+  if (props.formatTime) return props.formatTime(sec);
+  const d = new Date(sec * 1000);
+  return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function onPlotMove(ev: PointerEvent) {
+  const svg = svgRef.value;
+  const wrap = plotRef.value;
+  const p = props.pack;
+  if (!svg || !wrap || !p.timesSec.length) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX;
+  pt.y = ev.clientY;
+  const svgPt = pt.matrixTransform(ctm.inverse());
+  const idx = Math.floor((svgPt.x - p.left) / Math.max(1, slotW.value));
+  hoverIndex.value = Math.max(0, Math.min(p.timesSec.length - 1, idx));
+  const rect = wrap.getBoundingClientRect();
+  const pad = 12;
+  tooltipX.value = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
+}
+
+function onPlotLeave() {
+  hoverIndex.value = null;
+}
 </script>
 
 <template>
-  <div class="home-plugin-bucket-chart">
+  <div
+    ref="plotRef"
+    class="home-plugin-bucket-chart home-plugin-bucket-chart--interactive"
+    @pointermove="onPlotMove"
+    @pointerleave="onPlotLeave"
+  >
     <svg
+      ref="svgRef"
       class="home-plugin-bucket-chart__svg home-plugin-bucket__svg"
       :viewBox="`0 0 ${pack.W} ${pack.H}`"
       preserveAspectRatio="xMidYMid meet"
-      overflow="visible"
-      aria-hidden="true"
+      overflow="hidden"
+      role="img"
+      aria-label="时间桶柱状图"
     >
       <line
         v-for="(gy, gi) in pack.gridYs"
@@ -71,14 +144,42 @@ defineProps<{
         v-for="(b, bi) in pack.bars"
         :key="`bb-${bi}`"
         class="home-plugin-bucket__bar"
+        :class="{ 'home-plugin-bucket__bar--active': hoverIndex != null }"
         :x="b.x"
         :y="b.y"
         :width="b.w"
         :height="b.h"
         :fill="b.fill"
-        rx="1.5"
+        rx="2.5"
+      />
+      <line
+        v-if="hoverX != null"
+        class="home-plugin-bucket__cursor"
+        :x1="hoverX"
+        :y1="pack.top"
+        :x2="hoverX"
+        :y2="pack.bottom"
       />
     </svg>
+    <div
+      v-if="hoverTime != null && hoverRows.length"
+      class="home-plugin-chart-tooltip"
+      :style="{ left: `${tooltipX}px` }"
+    >
+      <div class="home-plugin-chart-tooltip__hd">{{ formatTimeLabel(hoverTime) }}</div>
+      <div
+        v-for="row in hoverRows"
+        :key="row.label"
+        class="home-plugin-chart-tooltip__row"
+      >
+        <span
+          class="home-plugin-chart-tooltip__dot"
+          :style="{ background: row.color }"
+        />
+        <span class="home-plugin-chart-tooltip__label">{{ row.label }}</span>
+        <span class="home-plugin-chart-tooltip__val">{{ row.value.toLocaleString() }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -86,21 +187,13 @@ defineProps<{
 .home-plugin-bucket-chart {
   min-width: 0;
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 140px;
-  display: flex;
-  flex-direction: column;
 }
 
 .home-plugin-bucket-chart__svg {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 140px;
-  aspect-ratio: 440 / 212;
   display: block;
-  box-sizing: border-box;
-  flex: 1 1 auto;
 }
 
 .home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__grid) {
@@ -115,19 +208,19 @@ defineProps<{
   vector-effect: non-scaling-stroke;
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__ytick) {
+.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__ytick),
+.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__xtick) {
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-muted);
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__xtick) {
-  font-size: 9px;
-  font-weight: 600;
-  fill: var(--text-muted);
+.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__bar) {
+  transition: opacity 0.12s var(--ease);
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__bar) {
-  opacity: 0.9;
+.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__bar--active) {
+  opacity: 0.82;
+  filter: brightness(1.1);
 }
 </style>

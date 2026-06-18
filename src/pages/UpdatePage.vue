@@ -1,20 +1,23 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
-  fetchBotConfigMigrationCheck,
   fetchBotUpdateCheck,
   fetchCommonConfig,
   fetchUpdateCheck,
-  postBotConfigMigrationApply,
+  fetchUpdateCheckAll,
   postBotUpdateApply,
   postUpdateApply,
   putCommonConfig,
 } from "@/api/consoleApi";
-import type { BotConfigMigrationCheckData, BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
+import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { axiosErrorDetail } from "@/api/http";
@@ -43,7 +46,6 @@ const err = ref("");
 const pageReady = ref(false);
 const web = ref<UpdateCheckData | null>(null);
 const bot = ref<BotUpdateCheckData | null>(null);
-const configMigration = ref<BotConfigMigrationCheckData | null>(null);
 
 const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
 const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
@@ -101,6 +103,63 @@ const botMetaParts = computed(() => {
   return parts;
 });
 
+const updateMastheadLead = computed(() => {
+  const parts: string[] = [];
+  if (web.value) {
+    const tag = web.value.has_update ? " · 有更新" : "";
+    parts.push(`WebUI ${webCurrentDisplay.value}${tag}`);
+  }
+  if (bot.value) {
+    const tag = bot.value.has_update ? " · 有更新" : "";
+    parts.push(`Bot ${botCurrentDisplay.value}${tag}`);
+  }
+  return parts.length ? parts.join(" · ") : "检查 WebUI 与 Bot 版本并应用更新。";
+});
+
+const updateRefreshBusy = computed(() => refreshWebBusy.value || refreshBotBusy.value);
+
+const updateCheckedAt = ref<number | null>(null);
+
+function formatCheckedAt(ts: number | null | undefined): string {
+  if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
+  try {
+    return new Date(ts * 1000).toLocaleString(undefined, {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+const updateCheckedAtDisplay = computed(() => formatCheckedAt(updateCheckedAt.value));
+
+function applyUpdateCheckAll(data: {
+  webui: UpdateCheckData;
+  bot: BotUpdateCheckData;
+  checked_at: number;
+}) {
+  web.value = data.webui;
+  bot.value = data.bot;
+  updateCheckedAt.value = data.checked_at;
+}
+
+async function loadUpdateChecks() {
+  try {
+    const all = await fetchUpdateCheckAll();
+    applyUpdateCheckAll(all);
+    return;
+  } catch {
+    /* 旧版 Bot 无聚合接口时回退 */
+  }
+  const [webRes, botRes] = await Promise.all([fetchUpdateCheck(), fetchBotUpdateCheck()]);
+  web.value = webRes;
+  bot.value = botRes;
+  updateCheckedAt.value = Math.max(webRes.checked_at ?? 0, botRes.checked_at ?? 0) || null;
+}
+
 const botDocLinks = computed(() => {
   const isDocker = bot.value?.deployment_mode === "docker";
   const links: { href: string; label: string }[] = [
@@ -115,9 +174,6 @@ const botDocLinks = computed(() => {
     links.push({ href: BOT_DOC.deployment, label: "标准部署" });
   }
   links.push({ href: BOT_DOC.faqUpdates, label: "FAQ · 更新与版本" });
-  if (configMigration.value?.show) {
-    links.push({ href: BOT_DOC.settingsStorage, label: "配置存储" });
-  }
   return links;
 });
 
@@ -140,23 +196,6 @@ const busy = ref(false);
 const msg = ref("");
 const refreshWebBusy = ref(false);
 const refreshBotBusy = ref(false);
-const configMigrationBusy = ref(false);
-const configMigrationMsg = ref("");
-const configMigrationErr = ref("");
-const configMigrationLegacyFiles = computed(() => {
-  const files = configMigration.value?.legacy_env_files ?? [];
-  return files.length ? files.join("、") : ".env";
-});
-
-async function loadConfigMigration() {
-  configMigrationErr.value = "";
-  try {
-    configMigration.value = await fetchBotConfigMigrationCheck();
-  } catch (e) {
-    configMigrationErr.value = e instanceof Error ? e.message : String(e);
-    configMigration.value = null;
-  }
-}
 
 const ghTokenInput = ref("");
 const ghTokenHadValue = ref(false);
@@ -238,7 +277,7 @@ async function load() {
   err.value = "";
   msg.value = "";
   try {
-    await Promise.all([fetchUpdateCheck().then((r) => (web.value = r)), fetchBotUpdateCheck().then((r) => (bot.value = r))]);
+    await loadUpdateChecks();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -246,7 +285,6 @@ async function load() {
   }
   scrollUpdateHashIntoView();
   void loadGithubTokenHint();
-  void loadConfigMigration();
 }
 
 /** 与原先「重新检查」一致：仅重新拉取 WebUI 远端比对结果 */
@@ -268,10 +306,23 @@ async function refreshBot() {
   refreshBotBusy.value = true;
   try {
     bot.value = await fetchBotUpdateCheck();
-    await loadConfigMigration();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
+    refreshBotBusy.value = false;
+  }
+}
+
+async function refreshAllUpdates() {
+  err.value = "";
+  refreshWebBusy.value = true;
+  refreshBotBusy.value = true;
+  try {
+    await loadUpdateChecks();
+  } catch (e) {
+    err.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    refreshWebBusy.value = false;
     refreshBotBusy.value = false;
   }
 }
@@ -292,41 +343,23 @@ async function applyWeb() {
   }
 }
 
-async function applyBot() {
+async function applyBot(restart = false) {
   if (!bot.value?.latest_tag) return;
-  if (!confirm(`将 Bot 更新到 ${bot.value.latest_tag}？`)) return;
+  const prompt = restart
+    ? `将 Bot 更新到 ${bot.value.latest_tag} 并重启进程？`
+    : `将 Bot 更新到 ${bot.value.latest_tag}？`;
+  if (!confirm(prompt)) return;
   busy.value = true;
   try {
-    const r = await postBotUpdateApply();
-    msg.value = r.message || "已触发。";
-    await load();
+    const r = await postBotUpdateApply({ restart });
+    msg.value = r.message || (restart ? "已触发更新与重启。" : "已触发。");
+    if (!restart) {
+      await load();
+    }
   } catch (e) {
     err.value = axiosErrorDetail(e);
   } finally {
     busy.value = false;
-  }
-}
-
-async function applyConfigMigration(force: boolean) {
-  const cm = configMigration.value;
-  if (!cm?.show) return;
-  const prompt = force
-    ? "将覆盖已有的 config/pallas.toml 与 webui.json，是否继续？建议先备份。"
-    : "把根目录 .env 迁移到 config/pallas.toml 与 data/pallas_config/webui.json？";
-  if (!confirm(prompt)) return;
-  configMigrationBusy.value = true;
-  configMigrationErr.value = "";
-  configMigrationMsg.value = "";
-  try {
-    const r = await postBotConfigMigrationApply(force);
-    configMigrationMsg.value = r.message;
-    configMigration.value = r.migration ?? (await fetchBotConfigMigrationCheck());
-    toastSaveSuccess("配置已迁移");
-  } catch (e) {
-    configMigrationErr.value = axiosErrorDetail(e);
-    toastApiError(e, "迁移失败");
-  } finally {
-    configMigrationBusy.value = false;
   }
 }
 
@@ -343,7 +376,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="update-page">
+  <div class="update-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -362,102 +395,83 @@ onMounted(() => {
       :panels="2"
     />
     <template v-else>
-      <div
-        id="console-update-github"
-        class="panel update-page__panel"
-      >
-        <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span><span class="update-page__title-keep">GitHub 令牌</span>
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/update" />
-          </div>
-        </div>
-        <div class="panel__bd muted update-page__bd">
-          <p>
-            可选。用于 Release 检查与下载、协议端在线拉包等。也可在侧边栏
-            <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_PROTOCOL_SECTION_ID } }">通用配置 → 协议端</RouterLink>
-            中填写，键名 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>；下方保存与此处等效。
-          </p>
-          <p>
-            当前：<strong class="update-page__strong">{{ ghTokenHadValue ? "已配置" : "未配置" }}</strong>
-            <span v-if="ghTokenHadValue">（不显示内容；输入新值覆盖）</span>
-          </p>
-          <div class="update-page__gh-row">
-            <input
-              v-model="ghTokenInput"
-              class="inp update-page__gh-inp"
-              type="password"
-              autocomplete="off"
-              placeholder="粘贴 fine-grained 或 classic PAT"
-              :disabled="ghTokenBusy"
-            >
-            <button
-              type="button"
-              class="btn btn--primary"
-              :disabled="ghTokenBusy"
-              @click="saveGithubToken"
-            >
-              {{ ghTokenBusy ? "保存中…" : "保存" }}
-            </button>
-            <button
-              v-if="ghTokenHadValue"
-              type="button"
-              class="btn"
-              :disabled="ghTokenBusy"
-              @click="clearGithubToken"
-            >
-              清除
-            </button>
-          </div>
-          <div
-            v-if="ghTokenErr"
-            class="alert alert--err update-page__gh-alert"
-          >
-            {{ ghTokenErr }}
-          </div>
-          <div
-            v-if="ghTokenOk"
-            class="alert alert--ok update-page__gh-alert"
-          >
-            {{ ghTokenOk }}
-          </div>
-          <p class="update-page__gh-more">
-            更多协议相关项见
-            <RouterLink
-              class="update-page__link"
-              to="/common-config"
-            >通用配置</RouterLink>
-            → 选择「协议端 / Pallas Protocol」。
-          </p>
-        </div>
+      <ConsoleHubMasthead :icon="panelNavIcon">
+        <template #title>
+          更新
+        </template>
+        <template #lead>
+          {{ updateMastheadLead }}
+          <span
+            v-if="updateCheckedAtDisplay !== '—'"
+            class="update-page__checked-at muted"
+          > · 检查于 {{ updateCheckedAtDisplay }}</span>
+        </template>
+        <template #actions>
+          <RefreshIconButton
+            :busy="updateRefreshBusy"
+            label="重新检查"
+            @click="refreshAllUpdates"
+          />
+        </template>
+      </ConsoleHubMasthead>
+
+      <div class="update-page__overview">
+        <a
+          href="#console-update-webui"
+          class="update-page__overview-card"
+          :class="{ 'update-page__overview-card--warn': web?.has_update }"
+        >
+          <span class="update-page__overview-k">WebUI</span>
+          <span class="update-page__overview-v">{{ webCurrentDisplay }}</span>
+          <span class="update-page__overview-meta muted">
+            {{ web?.has_update ? `→ ${web?.latest_tag ?? "?"}` : "已是最新" }}
+          </span>
+        </a>
+        <a
+          href="#console-update-bot"
+          class="update-page__overview-card"
+          :class="{ 'update-page__overview-card--warn': bot?.has_update }"
+        >
+          <span class="update-page__overview-k">Bot</span>
+          <span class="update-page__overview-v">{{ botCurrentDisplay }}</span>
+          <span class="update-page__overview-meta muted">
+            {{ bot?.has_update ? `→ ${bot?.latest_tag ?? "?"}` : botDeployLabel }}
+          </span>
+        </a>
       </div>
 
-      <div
+      <UiCard
         id="console-update-webui"
-        class="panel update-page__panel"
+        tag="div"
+        glass
+        class="update-page__panel"
       >
         <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>WebUI
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />WebUI
             <RefreshIconButton
+                :show-label="false"
               :busy="refreshWebBusy"
               :disabled="busy"
               label="刷新 WebUI 更新检查"
               @click="refreshWeb"
             />
-            <span
+            <UiBadge
               v-if="web?.has_update"
-              class="badge badge--warn update-page__status-pill"
-            >有更新</span>
-            <span
+              class="update-page__status-pill"
+              variant="warn"
+            >
+              有更新
+            </UiBadge>
+            <UiBadge
               v-else
-              class="badge badge--ok update-page__status-pill"
-            >已是最新</span>
+              class="update-page__status-pill"
+              variant="ok"
+            >
+              已是最新
+            </UiBadge>
           </h2>
           <div class="row-actions">
-            <PanelSidebarAdd main-path="/update" />
           </div>
         </div>
         <div class="panel__bd update-page__bd update-page__bd--release">
@@ -477,14 +491,14 @@ onMounted(() => {
           </div>
 
           <div class="update-page__release-primary">
-            <button
-              type="button"
-              class="btn btn--primary"
+            <UiButton
+              variant="primary"
               :disabled="webApplyDisabled"
+              :busy="busy"
               @click="applyWeb"
             >
               应用 WebUI 更新
-            </button>
+            </UiButton>
             <a
               class="update-page__link update-page__release-ext-link"
               :href="(web?.release_url || '').trim() || WEBUI_RELEASES_PAGE"
@@ -550,37 +564,48 @@ onMounted(() => {
             由 Bot 从 GitHub 下载 <code>dist.zip</code> 并解压到控制台静态目录。
           </p>
         </div>
-      </div>
+      </UiCard>
 
-      <div
+      <UiCard
         id="console-update-bot"
-        class="panel update-page__panel"
+        tag="div"
+        glass
+        class="update-page__panel"
       >
         <div class="panel__hd panel__hd--split update-page__panel-hd-nowrap">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>Bot 本体
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />Bot 本体
             <RefreshIconButton
+                :show-label="false"
               :busy="refreshBotBusy"
               :disabled="busy"
               label="刷新 Bot 更新检查"
               @click="refreshBot"
             />
-            <span
+            <UiBadge
               v-if="bot?.has_update"
-              class="badge badge--warn update-page__status-pill"
-            >有更新</span>
-            <span
+              class="update-page__status-pill"
+              variant="warn"
+            >
+              有更新
+            </UiBadge>
+            <UiBadge
               v-else-if="bot?.development_build"
-              class="badge badge--dev update-page__status-pill"
+              class="update-page__status-pill"
+              variant="secondary"
               title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
-            >开发构建</span>
-            <span
+            >
+              开发构建
+            </UiBadge>
+            <UiBadge
               v-else
-              class="badge badge--ok update-page__status-pill"
-            >已是最新</span>
+              class="update-page__status-pill"
+              variant="ok"
+            >
+              已是最新
+            </UiBadge>
           </h2>
           <div class="row-actions">
-            <PanelSidebarAdd main-path="/update" />
           </div>
         </div>
         <div class="panel__bd update-page__bd update-page__bd--release">
@@ -611,15 +636,24 @@ onMounted(() => {
           </p>
 
           <div class="update-page__release-primary">
-            <button
+            <UiButton
               v-if="bot?.deployment_mode !== 'docker'"
-              type="button"
-              class="btn btn--primary"
+              variant="primary"
               :disabled="botApplyDisabled"
-              @click="applyBot"
+              :busy="busy"
+              @click="applyBot(false)"
             >
               应用 Bot 更新
-            </button>
+            </UiButton>
+            <UiButton
+              v-if="bot?.deployment_mode !== 'docker' && bot?.restart_available"
+              variant="outline"
+              :disabled="botApplyDisabled"
+              :busy="busy"
+              @click="applyBot(true)"
+            >
+              更新并重启
+            </UiButton>
             <a
               class="update-page__link update-page__release-ext-link"
               :href="(bot?.release_url || '').trim() || BOT_RELEASES_PAGE"
@@ -641,61 +675,6 @@ onMounted(() => {
           >
             {{ botCallout.text }}
           </div>
-
-          <section
-            v-if="configMigration?.show"
-            class="update-page__release-section"
-          >
-            <h3 class="update-page__release-section-title">配置迁移</h3>
-            <p class="muted">
-              新版本用 <code>pallas.toml</code> + <code>webui.json</code>；检测到
-              <strong>{{ configMigration.legacy_env_key_count }}</strong> 项遗留
-              <code>{{ configMigrationLegacyFiles }}</code>。
-              <span v-if="configMigration.can_migrate">可一键迁移。</span>
-              <span v-else-if="configMigration.suggest_cleanup_legacy_env">覆盖迁移请先备份。</span>
-            </p>
-            <p class="muted update-page__config-migrate-note">
-              迁移会把 Pallas 插件/通用配置写入 <code>webui.json</code>；根目录
-              <code>.env</code> 仍可保留，专放 nb/pip 插件环境变量（见仓库
-              <code>.env.example</code>）。同名键以 <code>webui.json</code> 为准，请勿重复。
-              pip 插件须在 <code>pyproject.toml</code> 的 <code>[tool.nonebot.plugins]</code> 注册后才会加载。
-            </p>
-            <div
-              v-if="configMigration.can_migrate || configMigration.needs_force"
-              class="update-page__config-migrate-actions"
-            >
-              <button
-                v-if="configMigration.can_migrate"
-                type="button"
-                class="btn btn--primary"
-                :disabled="configMigrationBusy || busy"
-                @click="applyConfigMigration(false)"
-              >
-                一键迁移
-              </button>
-              <button
-                v-if="configMigration.needs_force"
-                type="button"
-                class="btn"
-                :disabled="configMigrationBusy || busy"
-                @click="applyConfigMigration(true)"
-              >
-                覆盖并迁移
-              </button>
-            </div>
-            <p
-              v-if="configMigrationMsg"
-              class="alert alert--ok update-page__config-migrate-feedback"
-            >
-              {{ configMigrationMsg }}
-            </p>
-            <p
-              v-if="configMigrationErr"
-              class="alert alert--err update-page__config-migrate-feedback"
-            >
-              {{ configMigrationErr }}
-            </p>
-          </section>
 
           <section
             v-if="bot?.deployment_mode === 'docker'"
@@ -759,12 +738,153 @@ onMounted(() => {
             配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
           </p>
         </div>
-      </div>
+      </UiCard>
+
+      <details
+        id="console-update-github"
+        class="update-page__gh-fold"
+      >
+        <summary class="update-page__gh-fold-summary">
+          GitHub 令牌
+          <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
+        </summary>
+        <UiCard
+          tag="div"
+          glass
+          class="update-page__panel update-page__panel--gh"
+        >
+          <div class="panel__bd muted update-page__bd">
+            <p>
+              可选。用于 Release 检查与下载、协议端在线拉包等。也可在
+              <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_PROTOCOL_SECTION_ID } }">通用配置 → 协议端</RouterLink>
+              填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+            </p>
+            <div class="update-page__gh-row">
+              <input
+                v-model="ghTokenInput"
+                class="inp update-page__gh-inp"
+                type="password"
+                autocomplete="off"
+                placeholder="粘贴 fine-grained 或 classic PAT"
+                :disabled="ghTokenBusy"
+              >
+              <UiButton
+                variant="primary"
+                :disabled="ghTokenBusy"
+                :busy="ghTokenBusy"
+                @click="saveGithubToken"
+              >
+                {{ ghTokenBusy ? "保存中…" : "保存" }}
+              </UiButton>
+              <UiButton
+                v-if="ghTokenHadValue"
+                variant="outline"
+                :disabled="ghTokenBusy"
+                @click="clearGithubToken"
+              >
+                清除
+              </UiButton>
+            </div>
+            <div
+              v-if="ghTokenErr"
+              class="alert alert--err update-page__gh-alert"
+            >
+              {{ ghTokenErr }}
+            </div>
+            <div
+              v-if="ghTokenOk"
+              class="alert alert--ok update-page__gh-alert"
+            >
+              {{ ghTokenOk }}
+            </div>
+          </div>
+        </UiCard>
+      </details>
     </template>
   </div>
 </template>
 
 <style scoped>
+.update-page__overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.update-page__overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.update-page__overview-card:hover {
+  border-color: color-mix(in srgb, var(--foreground) 16%, var(--border));
+}
+
+.update-page__overview-card--warn {
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--border));
+  background: color-mix(in srgb, var(--warn) 8%, var(--bg-card));
+}
+
+.update-page__overview-k {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.update-page__overview-v {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.update-page__overview-meta {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.update-page__checked-at {
+  font-size: inherit;
+}
+
+.update-page__gh-fold {
+  margin-top: 14px;
+}
+
+.update-page__gh-fold-summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 2px;
+  list-style: none;
+}
+
+.update-page__gh-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.update-page__panel--gh {
+  margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .update-page__overview {
+    grid-template-columns: 1fr;
+  }
+}
+
 .update-page__panel + .update-page__panel {
   margin-top: 14px;
 }

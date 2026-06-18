@@ -51,6 +51,8 @@ npm run build  # vue-tsc + vite build
 
 **参考页面**：`FriendsGroupsPage.vue`（好友/入群申请标题栏）、`DatabaseBackupsPage.vue`（备份清理）、`InstancesPage.vue` / `ProtocolManagePage.vue`（实例双行标题）。
 
+**GS 路线窄屏清单**（P6）：[`docs/webui-gs-shadcn-narrow-screen-checklist.md`](docs/webui-gs-shadcn-narrow-screen-checklist.md)
+
 ### 提交与 PR
 
 - 推荐提交说明：`feat(scope): 中文说明` / `fix(scope): …`

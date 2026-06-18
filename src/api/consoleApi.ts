@@ -1,8 +1,10 @@
-import { DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
+import { isAxiosError } from "axios";
+import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type {
   UpdateCheckData,
+  UpdateCheckAllData,
   UpdateApplyData,
   BotUpdateCheckData,
   BotUpdateApplyData,
@@ -13,6 +15,7 @@ import type {
   BotRow,
   DbBackupInfo,
   DbBackupJobData,
+  DbBackupBrowseData,
   DbBackupDeleteResult,
   DbBackupRunsData,
   DbOverviewData,
@@ -27,6 +30,10 @@ import type {
   LogScope,
   LogsData,
   PluginRow,
+  OfficialExtensionRow,
+  OfficialExtensionInstallResult,
+  CommunityPluginStoreData,
+  CommunityPluginActionResult,
   SystemData,
   UserConfigPublic,
   AiExtensionConfig,
@@ -38,8 +45,17 @@ import type {
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
   PluginConfigData,
+  PluginCapabilitiesData,
+  PluginGovernanceBody,
+  PluginGovernanceData,
   PluginConfigCheckResult,
   CommonConfigSectionMeta,
+  LlmModelAdminModelResult,
+  LlmModelAdminStatus,
+  LlmProvidersConfig,
+  LlmProvidersSaveResult,
+  LlmTaskStatsData,
+  PersonaObserveData,
   MessageStatsData,
   CommunityStatsData,
   CommunityCorpusHotData,
@@ -181,6 +197,11 @@ async function fetchPluginsFromNetwork(): Promise<PluginRow[]> {
   return unwrap(data, "/plugins");
 }
 
+export async function fetchPluginCapabilities(): Promise<PluginCapabilitiesData> {
+  const { data } = await http.get<ApiOk<PluginCapabilitiesData>>("/plugins/capabilities");
+  return unwrap(data, "/plugins/capabilities");
+}
+
 export type FetchPluginsOptions = {
   bypassCache?: boolean;
 };
@@ -228,6 +249,115 @@ export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRo
       pluginsInflight = null;
     });
   return pluginsInflight;
+}
+
+export async function fetchOfficialExtensions(): Promise<OfficialExtensionRow[]> {
+  const { data } = await http.get<ApiOk<OfficialExtensionRow[]>>("/plugins/official-extensions");
+  return unwrap(data, "/plugins/official-extensions");
+}
+
+const EXTENSION_INSTALL_TIMEOUT_MS = 620_000;
+
+export async function installOfficialExtension(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<OfficialExtensionInstallResult> {
+  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+    "/plugins/official-extensions/install",
+    { package: packageName, restart: Boolean(options?.restart) },
+    { timeout: EXTENSION_INSTALL_TIMEOUT_MS },
+  );
+  const out = unwrap(data, "/plugins/official-extensions/install");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function uninstallOfficialExtension(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<OfficialExtensionInstallResult> {
+  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+    "/plugins/official-extensions/uninstall",
+    { package: packageName, restart: Boolean(options?.restart) },
+    { timeout: 120_000 },
+  );
+  const out = unwrap(data, "/plugins/official-extensions/uninstall");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function updateOfficialExtension(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<OfficialExtensionInstallResult> {
+  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+    "/plugins/official-extensions/update",
+    { package: packageName, restart: Boolean(options?.restart) },
+    { timeout: 600_000 },
+  );
+  const out = unwrap(data, "/plugins/official-extensions/update");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function fetchCommunityPluginStore(options?: { refresh?: boolean }): Promise<CommunityPluginStoreData> {
+  const { data } = await http.get<ApiOk<CommunityPluginStoreData>>("/plugins/community-store", {
+    params: options?.refresh ? { refresh: 1 } : undefined,
+  });
+  return unwrap(data, "/plugins/community-store");
+}
+
+const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;
+
+export async function installCommunityPlugin(
+  pluginId: string,
+  options?: { restart?: boolean; repositoryUrl?: string; ref?: string },
+): Promise<CommunityPluginActionResult> {
+  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+    "/plugins/community-plugins/install",
+    {
+      plugin_id: pluginId,
+      repository_url: options?.repositoryUrl,
+      ref: options?.ref,
+      restart: Boolean(options?.restart),
+    },
+    { timeout: COMMUNITY_INSTALL_TIMEOUT_MS },
+  );
+  const out = unwrap(data, "/plugins/community-plugins/install");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function uninstallCommunityPlugin(
+  pluginId: string,
+  options?: { restart?: boolean },
+): Promise<CommunityPluginActionResult> {
+  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+    "/plugins/community-plugins/uninstall",
+    { plugin_id: pluginId, restart: Boolean(options?.restart) },
+    { timeout: 120_000 },
+  );
+  const out = unwrap(data, "/plugins/community-plugins/uninstall");
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function updateCommunityPlugin(
+  pluginId: string,
+  options?: { restart?: boolean; ref?: string },
+): Promise<CommunityPluginActionResult> {
+  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+    "/plugins/community-plugins/update",
+    {
+      plugin_id: pluginId,
+      ref: options?.ref,
+      restart: Boolean(options?.restart),
+    },
+    { timeout: COMMUNITY_INSTALL_TIMEOUT_MS },
+  );
+  const out = unwrap(data, "/plugins/community-plugins/update");
+  invalidatePluginsCache();
+  return out;
 }
 
 let botsCache: { data: BotRow[]; ts: number } | null = null;
@@ -376,6 +506,26 @@ export async function postPluginConfigCheck(
   return unwrap(data, `/plugins/${pluginName}/config-check`);
 }
 
+export async function fetchPluginGovernance(pluginName: string): Promise<PluginGovernanceData> {
+  const { data } = await http.get<ApiOk<PluginGovernanceData>>(
+    `/plugins/${encodeURIComponent(pluginName)}/governance`,
+  );
+  return unwrap(data, `/plugins/${pluginName}/governance`);
+}
+
+export async function putPluginGovernance(
+  pluginName: string,
+  body: PluginGovernanceBody,
+): Promise<PluginGovernanceData> {
+  const { data } = await http.put<ApiOk<PluginGovernanceData>>(
+    `/plugins/${encodeURIComponent(pluginName)}/governance`,
+    body,
+  );
+  const out = unwrap(data, `/plugins/${pluginName}/governance`);
+  invalidatePluginsCache();
+  return out;
+}
+
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
   const { data } = await http.get<ApiOk<CommonConfigSectionMeta[]>>("/common-config/sections");
   return unwrap(data, "/common-config/sections");
@@ -406,6 +556,118 @@ export async function postServiceGatewaysConnectivityCheck(
     values ? { values } : {},
   );
   return unwrap(data, "/common-config/service_gateways/connectivity-check");
+}
+
+export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
+  const { data } = await http.get<ApiOk<LlmProvidersConfig>>("/common-config/llm/providers");
+  return unwrap(data, "/common-config/llm/providers");
+}
+
+export async function putLlmProvidersConfig(
+  body: LlmProvidersConfig,
+): Promise<LlmProvidersSaveResult> {
+  const { data } = await http.put<ApiOk<LlmProvidersSaveResult>>(
+    "/common-config/llm/providers",
+    body,
+  );
+  return unwrap(data, "/common-config/llm/providers");
+}
+
+export async function fetchLlmTaskStats(params?: {
+  start?: string;
+  end?: string;
+}): Promise<LlmTaskStatsData> {
+  const { data } = await http.get<ApiOk<LlmTaskStatsData>>("/common-config/llm/task-stats", {
+    params: {
+      ...(params?.start ? { start: params.start } : {}),
+      ...(params?.end ? { end: params.end } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/task-stats");
+}
+
+export async function fetchLlmPersonaObserve(params?: {
+  groupId?: number | null;
+  accounts?: number[];
+}): Promise<PersonaObserveData> {
+  const { data } = await http.get<ApiOk<PersonaObserveData>>("/common-config/llm/persona-observe", {
+    params: {
+      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params?.accounts?.length ? { accounts: params.accounts.join(",") } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/persona-observe");
+}
+
+export async function fetchLlmModelAdminStatus(): Promise<LlmModelAdminStatus> {
+  const { data } = await http.get<ApiOk<LlmModelAdminStatus>>("/common-config/llm/model-admin");
+  return unwrap(data, "/common-config/llm/model-admin");
+}
+
+export async function postLlmModelAdminSwitch(
+  model: string,
+  pull = true,
+): Promise<LlmModelAdminModelResult> {
+  const body = { model, pull };
+  const postPaths = [
+    "/common-config/llm/model-admin/switch",
+    "/common-config/llm/model-admin",
+  ] as const;
+  let lastErr: unknown;
+  for (const path of postPaths) {
+    try {
+      const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(path, body);
+      return unwrap(data, path);
+    } catch (e) {
+      lastErr = e;
+      if (!isAxiosError(e) || (e.response?.status !== 404 && e.response?.status !== 405)) {
+        throw e;
+      }
+    }
+  }
+  try {
+    const { data } = await http.put<ApiOk<LlmModelAdminModelResult>>(
+      "/common-config/llm/model-admin",
+      body,
+    );
+    return unwrap(data, "/common-config/llm/model-admin");
+  } catch (e) {
+    throw lastErr ?? e;
+  }
+}
+
+/** @deprecated 使用 postLlmModelAdminSwitch；部分环境 PUT 请求体可能被丢弃 */
+export async function putLlmModelAdminModel(
+  model: string,
+  pull = true,
+): Promise<LlmModelAdminModelResult> {
+  return postLlmModelAdminSwitch(model, pull);
+}
+
+export async function postLlmModelAdminReload(): Promise<LlmModelAdminModelResult> {
+  const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(
+    "/common-config/llm/model-admin/reload",
+    {},
+  );
+  return unwrap(data, "/common-config/llm/model-admin/reload");
+}
+
+export async function postLlmModelAdminUnload(): Promise<{ status: string }> {
+  const { data } = await http.post<ApiOk<{ status: string }>>(
+    "/common-config/llm/model-admin/unload",
+    {},
+  );
+  return unwrap(data, "/common-config/llm/model-admin/unload");
+}
+
+export async function postLlmModelAdminNumGpu(
+  numGpu: number,
+): Promise<LlmModelAdminModelResult> {
+  const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(
+    "/common-config/llm/model-admin/num-gpu",
+    { num_gpu: numGpu },
+  );
+  return unwrap(data, "/common-config/llm/model-admin/num-gpu");
 }
 
 export async function changeConsoleLogin(newPassword: string): Promise<{ message: string }> {
@@ -639,6 +901,8 @@ export async function postDbBackup(body: {
   label?: string;
   scope?: "full" | "important";
   pg_format?: "custom" | "plain" | "directory";
+  pg_tables?: string[];
+  mongo_collections?: string[];
 }): Promise<DbBackupJobData> {
   const { data } = await http.post<ApiOk<DbBackupJobData>>("/db/backup", body);
   return unwrap(data, "/db/backup");
@@ -660,12 +924,48 @@ export async function fetchDbBackupRuns(outputParent?: string | null): Promise<D
   return unwrap(data, "/db/backup/runs");
 }
 
+export async function fetchDbBackupBrowse(path?: string | null): Promise<DbBackupBrowseData> {
+  const params = path?.trim() ? { path: path.trim() } : undefined;
+  const { data } = await http.get<ApiOk<DbBackupBrowseData>>("/db/backup/browse", { params });
+  return unwrap(data, "/db/backup/browse");
+}
+
+export async function downloadDbBackupRun(params: {
+  path: string;
+  outputParent?: string | null;
+  onProgress?: (percent: number) => void;
+}): Promise<Blob> {
+  const query: Record<string, string> = { path: params.path };
+  if (params.outputParent?.trim()) {
+    query.output_parent = params.outputParent.trim();
+  }
+  const { data } = await http.get<Blob>("/db/backup/runs/download", {
+    params: query,
+    responseType: "blob",
+    timeout: DB_BACKUP_TIMEOUT_MS,
+    onDownloadProgress: (ev) => {
+      const total = ev.total ?? 0;
+      if (!total || !params.onProgress) return;
+      params.onProgress(Math.min(100, Math.round((ev.loaded / total) * 100)));
+    },
+  });
+  return data;
+}
+
 export async function postDbBackupRunsDelete(body: {
   paths: string[];
   output_parent?: string | null;
 }): Promise<DbBackupDeleteResult> {
   const { data } = await http.post<ApiOk<DbBackupDeleteResult>>("/db/backup/runs/delete", body);
   return unwrap(data, "/db/backup/runs/delete");
+}
+
+export async function postDbBackupRestore(body: {
+  path: string;
+  output_parent?: string | null;
+}): Promise<DbBackupJobData> {
+  const { data } = await http.post<ApiOk<DbBackupJobData>>("/db/backup/runs/restore", body);
+  return unwrap(data, "/db/backup/runs/restore");
 }
 
 export async function postMongoAggregate(body: {
@@ -982,6 +1282,20 @@ export async function postUpdateApply(): Promise<UpdateApplyData> {
 
 let botUpdateCheckInflight: Promise<BotUpdateCheckData> | null = null;
 
+let updateCheckAllInflight: Promise<UpdateCheckAllData> | null = null;
+
+export async function fetchUpdateCheckAll(): Promise<UpdateCheckAllData> {
+  if (!updateCheckAllInflight) {
+    updateCheckAllInflight = (async () => {
+      const { data } = await http.get<ApiOk<UpdateCheckAllData>>("/update/check-all");
+      return unwrap(data, "/update/check-all");
+    })().finally(() => {
+      updateCheckAllInflight = null;
+    });
+  }
+  return updateCheckAllInflight;
+}
+
 export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
   if (!botUpdateCheckInflight) {
     botUpdateCheckInflight = (async () => {
@@ -994,8 +1308,12 @@ export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
   return botUpdateCheckInflight;
 }
 
-export async function postBotUpdateApply(): Promise<BotUpdateApplyData> {
-  const { data } = await http.post<ApiOk<BotUpdateApplyData>>("/update/bot/apply");
+export async function postBotUpdateApply(options?: { restart?: boolean }): Promise<BotUpdateApplyData> {
+  const { data } = await http.post<ApiOk<BotUpdateApplyData>>(
+    "/update/bot/apply",
+    null,
+    { params: { restart: options?.restart ? "true" : "false" } },
+  );
   return unwrap(data, "/update/bot/apply");
 }
 

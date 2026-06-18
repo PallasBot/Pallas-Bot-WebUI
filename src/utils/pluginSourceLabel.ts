@@ -3,7 +3,8 @@ import type { PluginRow, PluginSourceKind } from "@/api/pallasTypes";
 export function pluginSourceLabel(source: PluginSourceKind | undefined): string {
   if (source === "local") return "站点 local";
   if (source === "pip") return "pip 包";
-  if (source === "main") return "主仓";
+  if (source === "extra") return "主仓扩展";
+  if (source === "core" || source === "main") return "主仓核心";
   return "";
 }
 

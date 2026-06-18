@@ -2,6 +2,8 @@
 import { computed, ref, watch } from "vue";
 import { fetchUserConfigById, putUserConfig } from "@/api/consoleApi";
 import type { UserConfigPublic } from "@/api/pallasTypes";
+import UiDialog from "@/components/ui/UiDialog.vue";
+import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
@@ -36,15 +38,6 @@ function resetState() {
 
 function close() {
   open.value = false;
-}
-
-function boolSelectVal(v: boolean): string {
-  return v ? "1" : "0";
-}
-
-function onUserBannedSelect(raw: string) {
-  if (!userDraft.value) return;
-  userDraft.value.banned = raw === "1";
 }
 
 async function loadConfig() {
@@ -98,9 +91,6 @@ useSaveHotkey(
 watch(
   () => open.value,
   (isOpen) => {
-    if (typeof document !== "undefined") {
-      document.body.style.overflow = isOpen ? "hidden" : "";
-    }
     if (isOpen) void loadConfig();
     else resetState();
   },
@@ -115,56 +105,43 @@ watch(
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="console-modal"
-      role="dialog"
-      :aria-modal="true"
-      aria-labelledby="user-policy-modal-title"
-    >
-      <div
-        class="console-modal__backdrop"
-        :aria-hidden="true"
+  <UiDialog
+    :open="open"
+    title-id="user-policy-modal-title"
+    @close="close"
+  >
+    <template #header>
+      <div class="console-modal__head-text">
+        <h2
+          id="user-policy-modal-title"
+          class="console-modal__title"
+        >
+          {{ defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置" }}
+        </h2>
+        <p class="console-modal__subtitle">
+          <span
+            v-if="userCfg"
+            class="console-modal__subtitle-strong"
+          >QQ {{ userCfg.user_id }}</span>
+          <span
+            v-else-if="userId"
+            class="console-modal__subtitle-strong"
+          >QQ {{ userId }}</span>
+          <span
+            v-if="subtitleUserNickname"
+            class="muted"
+          > · {{ subtitleUserNickname }}</span>
+        </p>
+      </div>
+      <button
+        type="button"
+        class="console-modal__close"
+        aria-label="关闭"
         @click="close"
-      />
-      <div
-        class="console-modal__dialog"
-        @click.stop
       >
-        <div class="console-modal__hd">
-          <div class="console-modal__head-text">
-            <h2
-              id="user-policy-modal-title"
-              class="console-modal__title"
-            >
-              {{ defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置" }}
-            </h2>
-            <p class="console-modal__subtitle">
-              <span
-                v-if="userCfg"
-                class="console-modal__subtitle-strong"
-              >QQ {{ userCfg.user_id }}</span>
-              <span
-                v-else-if="userId"
-                class="console-modal__subtitle-strong"
-              >QQ {{ userId }}</span>
-              <span
-                v-if="subtitleUserNickname"
-                class="muted"
-              > · {{ subtitleUserNickname }}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            class="console-modal__close"
-            aria-label="关闭"
-            @click="close"
-          >
-            ×
-          </button>
-        </div>
-        <div class="console-modal__bd">
+        ×
+      </button>
+    </template>
           <p
             v-if="loadBusy"
             class="muted"
@@ -189,18 +166,12 @@ watch(
             >
               {{ saveErr }}
             </p>
-            <div class="bot-config-edit__field">
-              <label>封禁</label>
-              <select
-                class="sel"
-                style="width: 100%"
-                :value="boolSelectVal(userDraft.banned)"
-                @change="onUserBannedSelect(($event.target as HTMLSelectElement).value)"
-              >
-                <option value="1">是</option>
-                <option value="0">否</option>
-              </select>
-            </div>
+            <FormBoolSwitchField
+              label="封禁"
+              label-style="yesno"
+              :model-value="userDraft.banned"
+              @update:model-value="userDraft.banned = $event"
+            />
             <div class="row-actions">
               <button
                 type="button"
@@ -220,8 +191,5 @@ watch(
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  </UiDialog>
 </template>
