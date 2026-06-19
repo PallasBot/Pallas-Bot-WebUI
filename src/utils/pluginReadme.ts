@@ -5,6 +5,8 @@ marked.use({ breaks: true, gfm: true });
 
 const README_PURIFY = {
   ALLOWED_TAGS: [
+    "div",
+    "span",
     "h1",
     "h2",
     "h3",
@@ -32,8 +34,22 @@ const README_PURIFY = {
     "th",
     "td",
     "img",
+    "details",
+    "summary",
+    "kbd",
   ],
-  ALLOWED_ATTR: ["href", "target", "rel", "class", "src", "alt", "title"],
+  ALLOWED_ATTR: [
+    "href",
+    "target",
+    "rel",
+    "class",
+    "src",
+    "alt",
+    "title",
+    "align",
+    "width",
+    "height",
+  ],
   ALLOW_DATA_ATTR: false,
 } as const;
 
@@ -76,6 +92,35 @@ function readmeRawAssetUrl(owner: string, repo: string, path: string, branch: "m
   return `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${clean}`;
 }
 
+function readmeBlobAssetUrl(owner: string, repo: string, path: string, branch: "main" | "master"): string {
+  const clean = path.replace(/^\.\//, "");
+  return `https://github.com/${owner}/${repo}/blob/${branch}/${clean}`;
+}
+
+function isRelativeReadmeUrl(value: string): boolean {
+  return Boolean(value) && !/^(?:[a-z]+:|#|\/\/)/i.test(value);
+}
+
+function rewriteHtmlAssetUrls(html: string, repositoryUrl: string): string {
+  const parsed = parseGithubRepo(repositoryUrl);
+  if (!parsed || typeof DOMParser === "undefined") return html;
+  const { owner, repo } = parsed;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const img of doc.querySelectorAll("img")) {
+    const rawSrc = (img.getAttribute("src") || "").trim();
+    if (!isRelativeReadmeUrl(rawSrc)) continue;
+    img.setAttribute("src", readmeRawAssetUrl(owner, repo, rawSrc, "main"));
+  }
+  for (const link of doc.querySelectorAll("a")) {
+    const rawHref = (link.getAttribute("href") || "").trim();
+    if (!isRelativeReadmeUrl(rawHref)) continue;
+    link.setAttribute("href", readmeBlobAssetUrl(owner, repo, rawHref, "main"));
+    link.setAttribute("target", "_blank");
+    link.setAttribute("rel", "noreferrer");
+  }
+  return doc.body.innerHTML;
+}
+
 export function resolveReadmeMarkdownAssets(markdown: string, repositoryUrl: string): string {
   const parsed = parseGithubRepo(repositoryUrl);
   if (!parsed) return markdown;
@@ -93,7 +138,10 @@ export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: strin
   if (repositoryUrl) {
     raw = resolveReadmeMarkdownAssets(raw, repositoryUrl);
   }
-  const parsed = marked.parse(raw) as string;
+  let parsed = marked.parse(raw) as string;
+  if (repositoryUrl) {
+    parsed = rewriteHtmlAssetUrls(parsed, repositoryUrl);
+  }
   return DOMPurify.sanitize(parsed, {
     ALLOWED_TAGS: [...README_PURIFY.ALLOWED_TAGS],
     ALLOWED_ATTR: [...README_PURIFY.ALLOWED_ATTR],

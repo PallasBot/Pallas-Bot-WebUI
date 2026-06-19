@@ -7,6 +7,7 @@ import {
   fetchPlugins,
   installCommunityPlugin,
   installOfficialExtension,
+  refreshPluginUpdateSnapshot,
   uninstallCommunityPlugin,
   uninstallOfficialExtension,
   updateCommunityPlugin,
@@ -15,8 +16,12 @@ import {
 import type {
   CommunityPluginRow,
   CommunityPluginStoreData,
+  CommunityPluginActionResult,
+  OfficialExtensionInstallResult,
   OfficialExtensionRow,
   PluginRow,
+  ExtensionActivationAction,
+  ExtensionActivationPolicy,
 } from "@/api/pallasTypes";
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
@@ -49,7 +54,6 @@ import {
 type StoreSection = "official" | "community" | "local";
 type StoreTab = "all" | "installed" | "available";
 type DetailKind = "official" | "community";
-type BadgeTone = "ok" | "warn" | "muted";
 
 const COMMUNITY_INDEX_REPO_URL = "https://github.com/PallasBot/community-plugin-index";
 
@@ -73,6 +77,7 @@ const panelNavIcon = usePanelNavIcon();
 const router = useRouter();
 const pageReady = ref(false);
 const loading = ref(false);
+const checkingUpdate = ref(false);
 const storeSection = ref<StoreSection>("official");
 const rows = ref<OfficialExtensionRow[]>([]);
 const communityStore = ref<CommunityPluginStoreData | null>(null);
@@ -84,6 +89,8 @@ const storeBusyPackage = ref("");
 const storeBusyPluginId = ref("");
 const searchQuery = ref("");
 const activeTab = ref<StoreTab>("all");
+const officialActionState = ref<Record<string, OfficialExtensionInstallResult>>({});
+const communityActionState = ref<Record<string, CommunityPluginActionResult>>({});
 
 const detailOpen = ref(false);
 const detailTarget = ref<StoreDetail | null>(null);
@@ -100,7 +107,7 @@ const gitInstallBusy = ref(false);
 const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 
 const sectionOptions: { value: StoreSection; label: string }[] = [
-  { value: "official", label: "官方扩展" },
+  { value: "official", label: "官方插件" },
   { value: "community", label: "社区插件" },
   { value: "local", label: "本地插件" },
 ];
@@ -187,22 +194,6 @@ function extensionInstalled(row: OfficialExtensionRow): boolean {
   );
 }
 
-function extensionStatusLabel(row: OfficialExtensionRow): string {
-  if (row.status === "installed" || row.installed) return "已加载";
-  if (row.status === "pip_installed" || row.pip_installed) return "已安装待重启";
-  if (row.status === "bundled_active" || row.bundled_load_enabled) return "仓内启用";
-  if (row.status === "bundled" || row.bundled_in_repo) return "迁移副本";
-  return "未安装";
-}
-
-function extensionStatusTone(row: OfficialExtensionRow): BadgeTone {
-  if (row.status === "installed" || row.installed) return "ok";
-  if (row.status === "pip_installed" || row.pip_installed) return "ok";
-  if (row.status === "bundled_active" || row.bundled_load_enabled) return "ok";
-  if (row.status === "bundled" || row.bundled_in_repo) return "warn";
-  return "muted";
-}
-
 function communityRowIconUrl(row: CommunityPluginRow): string {
   return resolveCommunityPluginIconUrlWithBust(row, communityIndexUpdatedAt.value);
 }
@@ -227,16 +218,46 @@ function communityInstalled(row: CommunityPluginRow): boolean {
   return Boolean(row.loaded || row.local_installed || row.status === "loaded" || row.status === "installed");
 }
 
-function communityStatusLabel(row: CommunityPluginRow): string {
-  if (row.status === "loaded" || row.loaded) return "已加载";
-  if (row.status === "installed" || row.local_installed) return "已安装待重启";
-  return "未安装";
+function extensionResultState(row: OfficialExtensionRow): OfficialExtensionInstallResult | null {
+  return officialActionState.value[row.package] ?? null;
 }
 
-function communityStatusTone(row: CommunityPluginRow): BadgeTone {
-  if (row.status === "loaded" || row.loaded) return "ok";
-  if (row.status === "installed" || row.local_installed) return "ok";
-  return "muted";
+function communityResultState(row: CommunityPluginRow): CommunityPluginActionResult | null {
+  return communityActionState.value[row.plugin_id] ?? null;
+}
+
+function resultNeedsRestart(result: { needs_restart?: boolean; restart_scheduled?: boolean } | null): boolean {
+  return Boolean(result?.needs_restart) && !Boolean(result?.restart_scheduled);
+}
+
+function resultAction(
+  result: { activation_action?: ExtensionActivationAction | null } | null,
+): ExtensionActivationAction | null {
+  return (result?.activation_action || null) as ExtensionActivationAction | null;
+}
+
+function officialInstalledVersionLabel(row: OfficialExtensionRow): string {
+  const result = extensionResultState(row);
+  if (resultAction(result) === "hot-reload" && row.latest_ref) return row.latest_ref;
+  return (row.installed_ref || "").trim();
+}
+
+function officialLatestVersionLabel(row: OfficialExtensionRow): string {
+  const result = extensionResultState(row);
+  if (resultAction(result) === "hot-reload") return "";
+  const latest = (row.latest_ref || "").trim();
+  const installed = officialInstalledVersionLabel(row);
+  return latest && latest !== installed ? latest : "";
+}
+
+function communityInstalledVersionLabel(row: CommunityPluginRow): string {
+  return (row.installed_ref || "").trim();
+}
+
+function communityLatestVersionLabel(row: CommunityPluginRow): string {
+  const latest = (row.latest_ref || "").trim();
+  const installed = communityInstalledVersionLabel(row);
+  return latest && latest !== installed ? latest : "";
 }
 
 const filteredRows = computed(() => {
@@ -279,6 +300,27 @@ const localRows = computed(() =>
   localPlugins.value.filter((p) => p.plugin_source === "local"),
 );
 
+/** 社区索引按 plugin_id 建表，用于识别「从社区商店下载」的本地插件。 */
+const communityRowById = computed(() => {
+  const map = new Map<string, CommunityPluginRow>();
+  for (const row of communityRows.value) {
+    const id = (row.plugin_id || "").trim();
+    if (id) map.set(id, row);
+  }
+  return map;
+});
+
+/** 本地插件若命中社区索引（按 ID 或 local/plugins/<id> 目录名），返回对应社区行。 */
+function localCommunityMatch(row: PluginRow): CommunityPluginRow | null {
+  const map = communityRowById.value;
+  if (!map.size) return null;
+  const byName = map.get((row.name || "").trim());
+  if (byName) return byName;
+  const dir = (row.plugin_source_dir || "").trim().replace(/\/+$/, "");
+  const base = dir.split("/").pop() || "";
+  return base ? map.get(base) ?? null : null;
+}
+
 const filteredLocalRows = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   let list = localRows.value;
@@ -301,9 +343,9 @@ const resultCount = computed(() => {
 const emptyHint = computed(() => {
   if (storeSection.value === "official") {
     if (searchQuery.value.trim()) return "试试更短的关键词，或切换「全部」筛选。";
-    if (activeTab.value === "installed") return "已安装的官方扩展会出现在这里。";
-    if (activeTab.value === "available") return "当前没有可一键安装的扩展包。";
-    return "官方扩展列表为空。";
+    if (activeTab.value === "installed") return "已安装的官方插件会出现在这里。";
+    if (activeTab.value === "available") return "当前没有可一键安装的官方插件。";
+    return "官方插件列表为空。";
   }
   if (storeSection.value === "community") {
     if (searchQuery.value.trim()) return "换个关键词，或切到「全部」。";
@@ -317,49 +359,121 @@ const emptyHint = computed(() => {
 });
 
 function localPluginTitle(row: PluginRow): string {
-  return row.metadata?.name || row.name;
+  return localCommunityMatch(row)?.name || row.metadata?.name || row.name;
 }
 
 function localPluginDescription(row: PluginRow): string {
-  return row.metadata?.description || row.module || "";
+  return (
+    localCommunityMatch(row)?.description ||
+    row.metadata?.description ||
+    row.module ||
+    ""
+  );
 }
 
+/** plugin_source_dir 已是仓库相对路径（如 local/plugins/draw），直接展示，勿再拼接前缀。 */
 function localPluginSourceDir(row: PluginRow): string {
-  return row.plugin_source_dir || "";
+  return (row.plugin_source_dir || "").trim();
 }
 
-function localStatusLabel(row: PluginRow): string {
-  if (row.loaded_in_process) return "已加载";
-  return "已注册";
+/** 社区来源的本地插件显示作者，否则回退到目录路径。 */
+function localPluginAuthor(row: PluginRow): string {
+  const community = localCommunityMatch(row);
+  if (community?.author) return `by ${community.author}`;
+  return localPluginSourceDir(row);
 }
 
-function localStatusTone(_row: PluginRow): BadgeTone {
-  return "ok";
+function localPluginIconUrl(row: PluginRow): string | null {
+  const community = localCommunityMatch(row);
+  return community ? communityRowIconUrl(community) || null : null;
+}
+
+function localPluginAvatarUrl(row: PluginRow): string | null {
+  const community = localCommunityMatch(row);
+  return community ? communityRowAvatarUrl(community) : null;
+}
+
+function localPluginRepoUrl(row: PluginRow): string | null {
+  const community = localCommunityMatch(row);
+  return community?.repository_url || null;
 }
 
 function officialUpdateEnabled(row: OfficialExtensionRow): boolean {
-  return Boolean(row.can_update);
+  const result = extensionResultState(row);
+  if (resultAction(result) === "hot-reload" || resultNeedsRestart(result)) return false;
+  return Boolean(row.can_update) && row.has_update === true;
 }
 
 function communityUpdateEnabled(row: CommunityPluginRow): boolean {
-  return Boolean(row.can_update);
+  if (resultNeedsRestart(communityResultState(row))) return false;
+  return Boolean(row.can_update) && row.has_update === true;
 }
 
-function officialTags(row: OfficialExtensionRow): string[] {
-  const title = extensionPackageTitle(row.package);
-  return row.plugin_ids.filter((id) => id !== title).slice(0, 6);
+/** 未检查（has_update 为 null/undefined）显示「待检查」，已检查且最新显示「最新」。 */
+function updateLatestLabel(row: { can_update?: boolean; has_update?: boolean | null }): string {
+  if (!row.can_update) return "最新";
+  return row.has_update == null ? "待检查" : "最新";
+}
+
+function actionStateLabel(
+  policy: ExtensionActivationPolicy | null | undefined,
+  result: { needs_restart?: boolean; restart_scheduled?: boolean; activation_action?: ExtensionActivationAction | null } | null,
+): string {
+  const action = resultAction(result);
+  if (action === "hot-reload") return "已热重载";
+  if (result?.restart_scheduled) return "已安排重启";
+  if (resultNeedsRestart(result)) {
+    if (policy === "workers-restart") return "待重启 Worker";
+    if (policy === "full-restart") return "待重启";
+    return "待重启";
+  }
+  return "";
+}
+
+function officialStatusLabel(row: OfficialExtensionRow): string {
+  const resultLabel = actionStateLabel(row.activation_policy, extensionResultState(row));
+  if (resultLabel) return resultLabel;
+  if (officialUpdateEnabled(row)) return "有新版本";
+  return updateLatestLabel(row);
+}
+
+function communityStatusLabel(row: CommunityPluginRow): string {
+  const resultLabel = actionStateLabel(row.activation_policy, communityResultState(row));
+  if (resultLabel) return resultLabel;
+  if (communityUpdateEnabled(row)) return "有新版本";
+  return updateLatestLabel(row);
+}
+
+function officialUpdateLabel(row: OfficialExtensionRow): string {
+  const result = extensionResultState(row);
+  return resultNeedsRestart(result) ? "待重启" : "更新";
+}
+
+function communityUpdateLabel(row: CommunityPluginRow): string {
+  return resultNeedsRestart(communityResultState(row)) ? "待重启" : "更新";
+}
+
+function officialActivationHint(row: OfficialExtensionRow): string {
+  if (row.activation_policy === "hot-reloadable") return "可热加载";
+  if (row.activation_policy === "workers-restart") return "重启生效";
+  if (row.activation_policy === "full-restart") return "全栈重启";
+  return "官方插件";
 }
 
 function officialMenuItems(row: OfficialExtensionRow): PluginStoreMenuItem[] {
   const items: PluginStoreMenuItem[] = [];
+  const result = extensionResultState(row);
   if (row.can_install && row.restart_available) {
     items.push({ id: "install-restart", label: "安装并重启" });
   }
   if (row.can_uninstall && row.restart_available) {
     items.push({ id: "uninstall-restart", label: "卸载并重启", danger: true });
   }
-  if (row.can_update && row.restart_available) {
+  if (officialUpdateEnabled(row) && row.restart_available) {
     items.push({ id: "update-restart", label: "更新并重启" });
+  }
+  if (resultNeedsRestart(result) && row.restart_available) {
+    items.push({ id: "restart-now", label: "立即重启" });
   }
   if (row.install_cli) {
     items.push({ id: "copy-cli", label: "复制安装命令" });
@@ -372,14 +486,18 @@ function officialMenuItems(row: OfficialExtensionRow): PluginStoreMenuItem[] {
 
 function communityMenuItems(row: CommunityPluginRow): PluginStoreMenuItem[] {
   const items: PluginStoreMenuItem[] = [];
+  const result = communityResultState(row);
   if (row.can_install && communityRestartAvailable.value) {
     items.push({ id: "install-restart", label: "安装并重启" });
   }
   if (row.can_uninstall && communityRestartAvailable.value) {
     items.push({ id: "uninstall-restart", label: "删除并重启", danger: true });
   }
-  if (row.can_update && communityRestartAvailable.value) {
+  if (communityUpdateEnabled(row) && communityRestartAvailable.value) {
     items.push({ id: "update-restart", label: "更新并重启" });
+  }
+  if (resultNeedsRestart(result) && communityRestartAvailable.value) {
+    items.push({ id: "restart-now", label: "立即重启" });
   }
   if (row.homepage) {
     items.push({ id: "open-homepage", label: "打开主页" });
@@ -400,7 +518,12 @@ async function refreshCommunityStore(force = false) {
 
 async function refreshLocalStore() {
   try {
-    localPlugins.value = await fetchPlugins();
+    // 并行拉社区索引，用于识别并复用社区下载插件的图标/作者/仓库信息。
+    const [plugins] = await Promise.all([
+      fetchPlugins(),
+      communityStore.value ? Promise.resolve() : refreshCommunityStore().catch(() => {}),
+    ]);
+    localPlugins.value = plugins;
   } catch {
     // keep previous list on error
   }
@@ -424,6 +547,28 @@ async function refreshStore(force = false) {
   }
 }
 
+async function checkUpdates() {
+  if (checkingUpdate.value) return;
+  storeErr.value = "";
+  storeActionHint.value = "";
+  checkingUpdate.value = true;
+  try {
+    const out = await refreshPluginUpdateSnapshot();
+    // 快照刷新后重新拉取列表，使 has_update 生效。
+    if (storeSection.value === "official") {
+      await refreshOfficialStore();
+    } else if (storeSection.value === "community") {
+      await refreshCommunityStore(true);
+    }
+    const n = (out.community_count ?? 0) + (out.official_count ?? 0);
+    storeActionHint.value = n ? `已检查 ${n} 个插件的版本。` : "已完成版本检查。";
+  } catch (e) {
+    storeErr.value = axiosErrorDetail(e);
+  } finally {
+    checkingUpdate.value = false;
+  }
+}
+
 async function installExtension(row: OfficialExtensionRow, restart = false) {
   if (storeBusyPackage.value) return;
   storeErr.value = "";
@@ -431,7 +576,8 @@ async function installExtension(row: OfficialExtensionRow, restart = false) {
   storeBusyPackage.value = row.package;
   try {
     const out = await installOfficialExtension(row.package, { restart });
-    storeActionHint.value = out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。");
+    officialActionState.value = { ...officialActionState.value, [row.package]: out };
+    storeActionHint.value = out.message || "安装完成。";
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -453,6 +599,7 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
   storeBusyPackage.value = row.package;
   try {
     const out = await uninstallOfficialExtension(row.package, { restart });
+    officialActionState.value = { ...officialActionState.value, [row.package]: out };
     storeActionHint.value = out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。");
     await refreshOfficialStore();
   } catch (e) {
@@ -469,7 +616,8 @@ async function updateExtension(row: OfficialExtensionRow, restart = false) {
   storeBusyPackage.value = row.package;
   try {
     const out = await updateOfficialExtension(row.package, { restart });
-    storeActionHint.value = out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。");
+    officialActionState.value = { ...officialActionState.value, [row.package]: out };
+    storeActionHint.value = out.message || "更新完成。";
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -502,7 +650,9 @@ async function installCommunityFromGit(restart = false) {
       repositoryUrl: gitRepositoryUrl.value.trim(),
       ref: gitRef.value.trim() || "main",
     });
-    storeActionHint.value = out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。");
+    communityActionState.value = { ...communityActionState.value, [gitPluginId.value.trim()]: out };
+    const base = out.message || "安装完成。";
+    storeActionHint.value = restart ? base : `${base} 请重启 Bot 后加载。`;
     gitInstallOpen.value = false;
     await refreshCommunityStore();
   } catch (e) {
@@ -524,6 +674,7 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
       repositoryUrl: row.repository_url || undefined,
       ref: row.ref,
     });
+    communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     storeActionHint.value = out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。");
     await refreshCommunityStore();
   } catch (e) {
@@ -546,6 +697,7 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
   storeBusyPluginId.value = row.plugin_id;
   try {
     const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
+    communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     storeActionHint.value = out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。");
     await refreshCommunityStore();
   } catch (e) {
@@ -565,6 +717,7 @@ async function updateCommunity(row: CommunityPluginRow, restart = false) {
       restart,
       ref: row.ref,
     });
+    communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     storeActionHint.value = out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。");
     await refreshCommunityStore();
   } catch (e) {
@@ -593,6 +746,7 @@ function handleOfficialMenu(row: OfficialExtensionRow, actionId: string) {
   if (actionId === "install-restart") void installExtension(row, true);
   if (actionId === "uninstall-restart") void uninstallExtension(row, true);
   if (actionId === "update-restart") void updateExtension(row, true);
+  if (actionId === "restart-now") void updateExtension(row, true);
   if (actionId === "copy-cli") void copyInstallCli(row);
   if (actionId === "open-repo" && row.repository_url) openExternalUrl(row.repository_url);
 }
@@ -601,6 +755,7 @@ function handleCommunityMenu(row: CommunityPluginRow, actionId: string) {
   if (actionId === "install-restart") void installCommunity(row, true);
   if (actionId === "uninstall-restart") void uninstallCommunity(row, true);
   if (actionId === "update-restart") void updateCommunity(row, true);
+  if (actionId === "restart-now") void updateCommunity(row, true);
   if (actionId === "open-homepage" && row.homepage) openExternalUrl(row.homepage);
   if (actionId === "open-repo" && row.repository_url) openExternalUrl(row.repository_url);
 }
@@ -693,7 +848,7 @@ onDeactivated(() => {
         </template>
         <template #lead>
           <template v-if="storeSection === 'official'">
-            浏览并安装 Pallas 官方扩展包（<span class="console-hub-chip">uv sync --extra</span>）。
+            浏览并安装 Pallas 官方插件（<span class="console-hub-chip">uv run pallas ext install</span>）。
             <template v-if="webuiInstallEnabled">
               <template v-if="restartAvailable">支持一键安装与重启。</template>
               <template v-else>安装后请重启 Bot 生效。</template>
@@ -709,7 +864,7 @@ onDeactivated(() => {
               target="_blank"
               rel="noopener noreferrer"
             >社区插件索引</a>
-            中的策展插件，或使用「从 Git 安装」粘贴仓库地址；同名时优先于官方扩展。
+            中的策展插件，或使用「从 Git 安装」粘贴仓库地址；同名时优先于官方插件。
           </template>
           <template v-else>
             <code>local/plugins/</code> 目录下已加载的本地插件；可直接放入插件文件夹，重启后生效。
@@ -725,9 +880,12 @@ onDeactivated(() => {
           </UiButton>
           <UiButton
             variant="outline"
-            @click="router.push({ name: 'plugins' })"
+            :busy="checkingUpdate"
+            :disabled="checkingUpdate || loading"
+            v-if="storeSection !== 'local'"
+            @click="checkUpdates"
           >
-            插件目录
+            {{ checkingUpdate ? "检查中…" : "检查更新" }}
           </UiButton>
           <RefreshIconButton
             :busy="loading"
@@ -881,23 +1039,25 @@ onDeactivated(() => {
             :title="extensionPackageTitle(row.package)"
             subtitle=""
             :description="officialRowDescription(row)"
-            :tags="officialTags(row)"
-            :badge-label="extensionStatusLabel(row)"
-            :badge-tone="extensionStatusTone(row)"
             :plugin-id="officialRowPluginId(row)"
             :icon-url="officialRowIconUrl(row)"
-            author="by TogetsuDo"
+            author="by PallasBot"
             :installed="extensionInstalled(row)"
             :busy="storeBusyPackage === row.package"
             :repo-url="row.repository_url || null"
+            meta-link-label="GitHub"
+            :meta-link-url="row.repository_url || null"
             :menu-items="officialMenuItems(row)"
             :show-install="Boolean(row.can_install)"
             :show-uninstall="Boolean(row.can_uninstall)"
             :show-update="officialUpdateEnabled(row)"
             install-label="安装"
             uninstall-label="卸载"
-            update-label="更新"
-            latest-label="最新"
+            :update-label="officialUpdateLabel(row)"
+            :latest-label="updateLatestLabel(row)"
+            :status-label="officialStatusLabel(row)"
+            :installed-version-label="officialInstalledVersionLabel(row)"
+            :latest-version-label="officialLatestVersionLabel(row)"
             detail-label="仓库"
             :can-open="Boolean(row.repository_url)"
             @open="openOfficialReadme(row)"
@@ -961,23 +1121,25 @@ onDeactivated(() => {
             subtitle=""
             :description="row.description || row.plugin_id"
             :author="row.author ? `by ${row.author}` : ''"
-            :tags="row.tags || []"
-            :badge-label="communityStatusLabel(row)"
-            :badge-tone="communityStatusTone(row)"
             :plugin-id="row.plugin_id"
             :icon-url="communityRowIconUrl(row)"
             :avatar-url="communityRowAvatarUrl(row)"
             :installed="communityInstalled(row)"
             :busy="storeBusyPluginId === row.plugin_id"
             :repo-url="row.repository_url || null"
+            meta-link-label="GitHub"
+            :meta-link-url="row.repository_url || row.homepage || null"
             :menu-items="communityMenuItems(row)"
             :show-install="Boolean(row.can_install)"
             :show-uninstall="Boolean(row.can_uninstall)"
             :show-update="communityUpdateEnabled(row)"
             install-label="安装"
             uninstall-label="删除"
-            update-label="更新"
-            latest-label="最新"
+            :update-label="communityUpdateLabel(row)"
+            :latest-label="updateLatestLabel(row)"
+            :status-label="communityStatusLabel(row)"
+            :installed-version-label="communityInstalledVersionLabel(row)"
+            :latest-version-label="communityLatestVersionLabel(row)"
             detail-label="仓库"
             :can-open="Boolean(row.repository_url)"
             @open="openCommunityReadme(row)"
@@ -1034,16 +1196,15 @@ onDeactivated(() => {
             :title="localPluginTitle(row)"
             subtitle=""
             :description="localPluginDescription(row)"
-            :author="localPluginSourceDir(row) ? `local/plugins/${localPluginSourceDir(row)}` : ''"
-            :tags="[]"
-            :badge-label="localStatusLabel(row)"
-            :badge-tone="localStatusTone(row)"
+            :author="localPluginAuthor(row)"
             :plugin-id="row.name"
-            :icon-url="null"
-            :avatar-url="null"
+            :icon-url="localPluginIconUrl(row)"
+            :avatar-url="localPluginAvatarUrl(row)"
             :installed="true"
             :busy="false"
-            :repo-url="null"
+            :repo-url="localPluginRepoUrl(row)"
+            meta-link-label="GitHub"
+            :meta-link-url="localPluginRepoUrl(row)"
             :menu-items="[]"
             :show-install="false"
             :show-uninstall="false"
@@ -1077,6 +1238,12 @@ onDeactivated(() => {
               v-if="detailTarget?.description"
               class="plugin-store-page__detail-sub"
             > · {{ detailTarget.description }}</span>
+          </p>
+          <p
+            v-if="detailTarget?.kind === 'official' && detailTarget.official"
+            class="plugin-store-page__detail-activation"
+          >
+            {{ officialActivationHint(detailTarget.official) }}
           </p>
         </div>
         <button
@@ -1134,7 +1301,7 @@ onDeactivated(() => {
               一键安装
             </UiButton>
             <UiButton
-              v-if="detailTarget.official.can_update"
+              v-if="officialUpdateEnabled(detailTarget.official)"
               variant="primary"
               :disabled="storeBusyPackage === detailTarget.official.package"
               @click="updateExtension(detailTarget.official, false)"
@@ -1160,7 +1327,7 @@ onDeactivated(() => {
               安装
             </UiButton>
             <UiButton
-              v-if="detailTarget.community.can_update"
+              v-if="communityUpdateEnabled(detailTarget.community)"
               variant="primary"
               :disabled="storeBusyPluginId === detailTarget.community.plugin_id"
               @click="updateCommunity(detailTarget.community, false)"

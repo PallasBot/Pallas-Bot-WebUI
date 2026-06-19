@@ -12,9 +12,9 @@
         <div class="plugin-store-card__skel plugin-store-card__skel--line plugin-store-card__skel--short" />
       </div>
     </div>
-    <div class="plugin-store-card__tags">
-      <span class="plugin-store-card__skel plugin-store-card__skel--tag" />
-      <span class="plugin-store-card__skel plugin-store-card__skel--tag" />
+    <div class="plugin-store-card__summary">
+      <div class="plugin-store-card__skel plugin-store-card__skel--line" />
+      <div class="plugin-store-card__skel plugin-store-card__skel--line plugin-store-card__skel--short" />
     </div>
     <footer class="plugin-store-card__foot">
       <div class="plugin-store-card__skel plugin-store-card__skel--btn" />

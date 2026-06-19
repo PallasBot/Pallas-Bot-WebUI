@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PluginIcon from "@/components/PluginIcon.vue";
-import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import type { UiBadgeVariant } from "@/components/ui/UiBadge.vue";
 
 export interface PluginStoreMenuItem {
   id: string;
@@ -19,9 +17,6 @@ const props = withDefaults(
     subtitle: string;
     description?: string;
     author?: string;
-    tags?: string[];
-    badgeLabel: string;
-    badgeTone?: "ok" | "warn" | "muted";
     pluginId: string;
     iconUrl?: string | null;
     avatarUrl?: string | null;
@@ -37,14 +32,17 @@ const props = withDefaults(
     uninstallLabel?: string;
     updateLabel?: string;
     latestLabel?: string;
+    statusLabel?: string;
+    installedVersionLabel?: string;
+    latestVersionLabel?: string;
     detailLabel?: string;
     canOpen?: boolean;
+    metaLinkLabel?: string;
+    metaLinkUrl?: string | null;
   }>(),
   {
     description: "",
     author: "",
-    tags: () => [],
-    badgeTone: "muted",
     iconUrl: null,
     avatarUrl: null,
     installed: false,
@@ -58,8 +56,13 @@ const props = withDefaults(
     uninstallLabel: "卸载",
     updateLabel: "更新",
     latestLabel: "最新",
+    statusLabel: "",
+    installedVersionLabel: "",
+    latestVersionLabel: "",
     detailLabel: "详情",
     canOpen: true,
+    metaLinkLabel: "",
+    metaLinkUrl: null,
   },
 );
 
@@ -80,8 +83,24 @@ const resolvedAvatarUrl = computed(() => {
   return (props.avatarUrl || "").trim() || null;
 });
 
-const visibleTags = computed(() => (props.tags || []).filter(Boolean).slice(0, 6));
 const hasMenu = computed(() => props.menuItems.some((item) => !item.disabled));
+const hasMetaLink = computed(() => Boolean((props.metaLinkLabel || "").trim() && (props.metaLinkUrl || "").trim()));
+const versionChips = computed(() => {
+  const chips: Array<{ key: string; value: string }> = [];
+  const installed = (props.installedVersionLabel || "").trim();
+  if (installed) {
+    chips.push({ key: "installed", value: installed });
+  }
+  return chips;
+});
+
+function shortVersionLabel(value: string): string {
+  const trimmed = value.trim();
+  if (/^[0-9a-f]{6,40}$/i.test(trimmed)) {
+    return trimmed.slice(0, 5);
+  }
+  return trimmed;
+}
 
 function onCardClick() {
   if (!props.canOpen) return;
@@ -108,12 +127,6 @@ function onDocumentClick(event: MouseEvent) {
   if (root && !root.contains(event.target as Node)) {
     closeMenu();
   }
-}
-
-function statusBadgeVariant(tone: "ok" | "warn" | "muted"): UiBadgeVariant {
-  if (tone === "ok") return "ok";
-  if (tone === "warn") return "warn";
-  return "muted";
 }
 
 onMounted(() => {
@@ -183,28 +196,7 @@ watch(
 
     <div class="plugin-store-card__body">
       <div class="plugin-store-card__media">
-        <a
-          v-if="repoUrl"
-          class="plugin-store-card__cover-link"
-          :href="repoUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          :aria-label="`${title} 仓库`"
-          @click.stop
-        >
-          <div class="plugin-store-card__cover">
-            <PluginIcon
-              :plugin-id="pluginId"
-              :label="title"
-              :icon-url="iconUrl"
-              size="xl"
-            />
-          </div>
-        </a>
-        <div
-          v-else
-          class="plugin-store-card__cover"
-        >
+        <div class="plugin-store-card__cover">
           <PluginIcon
             :plugin-id="pluginId"
             :label="title"
@@ -236,35 +228,42 @@ watch(
         >
           {{ author }}
         </p>
-        <p
-          v-if="description"
-          class="plugin-store-card__desc muted"
-          :title="description"
+        <div
+          v-if="hasMetaLink || versionChips.length"
+          class="plugin-store-card__meta-row"
         >
-          {{ description }}
-        </p>
+          <a
+            v-if="hasMetaLink"
+            class="plugin-store-card__meta-link"
+            :href="metaLinkUrl || undefined"
+            target="_blank"
+            rel="noopener noreferrer"
+            @click.stop
+          >
+            {{ metaLinkLabel }}
+          </a>
+          <span
+            v-for="chip in versionChips"
+            :key="chip.key"
+            class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+            :title="chip.value"
+          >
+            {{ shortVersionLabel(chip.value) }}
+          </span>
+        </div>
       </div>
     </div>
 
     <div
-      v-if="badgeLabel || visibleTags.length"
-      class="plugin-store-card__tags"
+      v-if="description"
+      class="plugin-store-card__summary"
     >
-      <UiBadge
-        v-if="badgeLabel"
-        class="plugin-store-card__tag plugin-store-card__tag--status"
-        :variant="statusBadgeVariant(badgeTone)"
+      <p
+        class="plugin-store-card__desc muted"
+        :title="description"
       >
-        {{ badgeLabel }}
-      </UiBadge>
-      <UiBadge
-        v-for="tag in visibleTags"
-        :key="tag"
-        class="plugin-store-card__tag"
-        variant="secondary"
-      >
-        {{ tag }}
-      </UiBadge>
+        {{ description }}
+      </p>
     </div>
 
     <template #footer>
