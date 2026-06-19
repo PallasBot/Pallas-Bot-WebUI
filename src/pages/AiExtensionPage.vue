@@ -37,7 +37,7 @@ const activeSection = computed((): AiConfigSectionId =>
 const sectionMeta = computed(() => aiConfigSectionMeta(activeSection.value));
 
 watch(
-  () => (route.name === "ai" ? route.params.section : null),
+  () => (route.name === "ai-config" ? route.params.section : null),
   (raw) => {
     if (raw === null) return;
     const id = typeof raw === "string" ? raw.trim() : "";

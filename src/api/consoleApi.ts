@@ -54,6 +54,8 @@ import type {
   LlmModelAdminStatus,
   LlmProvidersConfig,
   LlmProvidersSaveResult,
+  LlmHistorySessionDetailData,
+  LlmHistorySessionsData,
   LlmTaskStatsData,
   PersonaObserveData,
   MessageStatsData,
@@ -305,6 +307,21 @@ export async function fetchCommunityPluginStore(options?: { refresh?: boolean })
     params: options?.refresh ? { refresh: 1 } : undefined,
   });
   return unwrap(data, "/plugins/community-store");
+}
+
+export interface PluginUpdateSnapshotResult {
+  checked_at?: number | null;
+  community_count?: number;
+  official_count?: number;
+}
+
+export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapshotResult> {
+  const { data } = await http.post<ApiOk<PluginUpdateSnapshotResult>>(
+    "/plugins/update-snapshot/refresh",
+    {},
+    { timeout: 120_000 },
+  );
+  return unwrap(data, "/plugins/update-snapshot/refresh");
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;
@@ -584,6 +601,40 @@ export async function fetchLlmTaskStats(params?: {
     },
   });
   return unwrap(data, "/common-config/llm/task-stats");
+}
+
+export async function fetchLlmHistorySessions(params?: {
+  botId?: number | null;
+  groupId?: number | null;
+  userId?: number | null;
+  limit?: number;
+}): Promise<LlmHistorySessionsData> {
+  const { data } = await http.get<ApiOk<LlmHistorySessionsData>>("/common-config/llm/history/sessions", {
+    params: {
+      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+      ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+      ...(params?.userId != null && params.userId > 0 ? { user_id: params.userId } : {}),
+      ...(params?.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/history/sessions");
+}
+
+export async function fetchLlmHistorySession(params: {
+  botId: number;
+  groupId?: number | null;
+  userId: number;
+  limit?: number;
+}): Promise<LlmHistorySessionDetailData> {
+  const { data } = await http.get<ApiOk<LlmHistorySessionDetailData>>("/common-config/llm/history/session", {
+    params: {
+      bot_id: params.botId,
+      ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+      user_id: params.userId,
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/history/session");
 }
 
 export async function fetchLlmPersonaObserve(params?: {

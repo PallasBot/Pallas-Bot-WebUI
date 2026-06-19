@@ -69,8 +69,11 @@ function toggleSidebarGroup(groupId: string, children: SidebarNavMainRowView[]) 
 }
 
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
+  if (item.to.startsWith("/ai/")) {
+    return route.path === item.to || route.path.startsWith(`${item.to}/`);
+  }
   if (item.to === AI_CONFIG_SIDEBAR_PATH) {
-    return route.path === AI_CONFIG_SIDEBAR_PATH || route.path.startsWith("/ai/");
+    return route.path === AI_CONFIG_SIDEBAR_PATH || route.path.startsWith(`${AI_CONFIG_SIDEBAR_PATH}/`);
   }
   const atPath = route.path === item.to || (item.to !== "/" && route.path.startsWith(`${item.to}/`));
   if (!atPath) return false;
@@ -601,7 +604,6 @@ onUnmounted(() => {
                 />
                 <span class="shell__nav-text">
                   <span class="shell__nav-label">{{ entry.row.item.label }}</span>
-                  <span class="shell__nav-desc">{{ entry.row.item.description }}</span>
                 </span>
               </button>
             </RouterLink>
@@ -630,7 +632,6 @@ onUnmounted(() => {
                 />
                 <span class="shell__nav-text">
                   <span class="shell__nav-label">{{ entry.row.pin.label }}</span>
-                  <span class="shell__nav-desc">{{ entry.row.pin.description }}</span>
                 </span>
               </button>
             </RouterLink>
@@ -832,7 +833,6 @@ onUnmounted(() => {
                 />
                   <span class="shell__nav-text">
                     <span class="shell__nav-label">{{ entry.row.item.label }}</span>
-                    <span class="shell__nav-desc">{{ entry.row.item.description }}</span>
                   </span>
                 </button>
               </RouterLink>
@@ -859,7 +859,6 @@ onUnmounted(() => {
                 />
                   <span class="shell__nav-text">
                     <span class="shell__nav-label">{{ entry.row.pin.label }}</span>
-                    <span class="shell__nav-desc">{{ entry.row.pin.description }}</span>
                   </span>
                 </button>
               </RouterLink>

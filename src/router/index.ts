@@ -15,6 +15,9 @@ const DatabasePage = () => import("@/pages/DatabasePage.vue");
 const DatabaseBackupsPage = () => import("@/pages/DatabaseBackupsPage.vue");
 const UpdatePage = () => import("@/pages/UpdatePage.vue");
 const AiExtensionPage = () => import("@/pages/AiExtensionPage.vue");
+const AiHomePage = () => import("@/pages/AiHomePage.vue");
+const AiStatisticsPage = () => import("@/pages/AiStatisticsPage.vue");
+const AiHistoryPage = () => import("@/pages/AiHistoryPage.vue");
 const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
 const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
 const CommunityPage = () => import("@/pages/CommunityPage.vue");
@@ -97,10 +100,10 @@ const router = createRouter({
           redirect: (to) => {
             const id = String(to.params.sectionId ?? "").trim();
             if (id === "llm") {
-              return { name: "ai", params: { section: "model" } };
+              return { name: "ai-config", params: { section: "model" } };
             }
             if (id === "arknights_kb") {
-              return { name: "ai", params: { section: "knowledge" } };
+              return { name: "ai-config", params: { section: "knowledge" } };
             }
             if (id === "pallas_webui" || id === "pallas_protocol" || id === "help") {
               return { name: "plugins", params: { name: id } };
@@ -175,18 +178,55 @@ const router = createRouter({
           redirect: (to) => {
             const raw = to.query.section ?? to.query.tab;
             if (raw != null && String(raw).trim()) {
-              return { path: `/ai/${String(raw).trim()}` };
+              const id = String(raw).trim();
+              if (id === "runtime") return "/ai/home";
+              return { path: `/ai/config/${id}` };
             }
-            return "/ai/runtime";
+            return "/ai/home";
           },
         },
         {
-          path: "ai/:section",
-          name: "ai",
+          path: "ai/home",
+          name: "ai-home",
+          component: AiHomePage,
+          meta: {
+            title: "AI 首页",
+            description: "运行总览",
+          },
+        },
+        {
+          path: "ai/statistics",
+          name: "ai-statistics",
+          component: AiStatisticsPage,
+          meta: {
+            title: "AI 统计",
+            description: "指标与分布",
+          },
+        },
+        {
+          path: "ai/history",
+          name: "ai-history",
+          component: AiHistoryPage,
+          meta: {
+            title: "AI 历史",
+            description: "任务与会话",
+          },
+        },
+        {
+          path: "ai/runtime",
+          redirect: "/ai/home",
+        },
+        {
+          path: "ai/:legacySection(model|persona|knowledge|connection|ncm|logs)",
+          redirect: (to) => `/ai/config/${String(to.params.legacySection)}`,
+        },
+        {
+          path: "ai/config/:section?",
+          name: "ai-config",
           component: AiExtensionPage,
           meta: {
-            title: "AI配置",
-            description: "模型与知识库",
+            title: "AI 配置",
+            description: "模型与能力",
           },
         },
         {
@@ -225,8 +265,14 @@ router.afterEach((to) => {
   if (to.name === "plugins") {
     piece = (to.meta.title as string | undefined) ?? "插件目录";
   }
-  if (to.name === "ai") {
-    piece = "AI配置";
+  if (to.name === "ai-home") {
+    piece = "AI 首页";
+  } else if (to.name === "ai-statistics") {
+    piece = "AI 统计";
+  } else if (to.name === "ai-history") {
+    piece = "AI 历史";
+  } else if (to.name === "ai-config") {
+    piece = "AI 配置";
   }
   const title = typeof piece === "string" ? piece.trim() : "";
   document.title = title ? `${title} · ${consoleSurfaceTitle}` : consoleSurfaceTitle;

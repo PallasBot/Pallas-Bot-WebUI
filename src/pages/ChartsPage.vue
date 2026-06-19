@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, ref, watch } from "vue";
-import { fetchConsoleDailyStats, fetchInstances, fetchLlmTaskStats, fetchPluginRunStats } from "@/api/consoleApi";
+import { fetchConsoleDailyStats, fetchInstances, fetchPluginRunStats } from "@/api/consoleApi";
 import type {
   BotConfigPublic,
   ConsoleDailyStatRow,
   ConsoleDailyStatsData,
   InstancesData,
-  LlmTaskMetricRow,
-  LlmTaskStatsData,
 } from "@/api/pallasTypes";
 import ChartsDailyBarChart from "@/components/ChartsDailyBarChart.vue";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart.vue";
@@ -30,7 +28,6 @@ const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
 const err = ref("");
 const instances = ref<InstancesData | null>(null);
-const llmTaskStats = ref<LlmTaskStatsData | null>(null);
 const dailyStatsRange = ref<ConsoleDailyStatsData | null>(null);
 const rangeBusy = ref(false);
 
@@ -249,61 +246,6 @@ const matcherSparkValues = computed((): number[] => {
   return out;
 });
 
-function llmMetricSum(
-  slice: LlmTaskStatsData["bot"] | LlmTaskStatsData["ai"] | undefined,
-  key: keyof LlmTaskMetricRow,
-): number {
-  if (!slice?.by_task) return 0;
-  let sum = 0;
-  for (const row of Object.values(slice.by_task)) {
-    sum += Number(row[key]) || 0;
-  }
-  return sum;
-}
-
-
-const llmHistoryBotPoints = computed(() => {
-  const rows = llmTaskStats.value?.history?.rows ?? [];
-  return rows.map((r) => {
-    const by = r.bot?.by_task;
-    let sum = 0;
-    if (by) {
-      for (const row of Object.values(by)) {
-        sum += (row.submit_ok ?? 0) + (row.callback_ok ?? 0);
-      }
-    }
-    return { date: r.date, value: sum };
-  });
-});
-
-const llmHistoryAiPoints = computed(() => {
-  const rows = llmTaskStats.value?.history?.rows ?? [];
-  return rows.map((r) => {
-    const by = r.ai?.by_task;
-    let sum = 0;
-    if (by) {
-      for (const row of Object.values(by)) {
-        sum += row.task_ok ?? 0;
-      }
-    }
-    return { date: r.date, value: sum };
-  });
-});
-
-const llmPersistenceHint = computed(() => {
-  const p = llmTaskStats.value?.persistence;
-  if (!p) return "持久化状态未知";
-  const parts: string[] = [];
-  parts.push(p.bot_collecting ? "Bot 侧正在采集" : "Bot 侧暂无任务计数");
-  if (p.ai_reachable) {
-    parts.push(p.ai_collecting ? "AI 侧正在采集" : "AI 侧暂无任务计数");
-  } else {
-    parts.push("AI 侧不可达");
-  }
-  parts.push(`落盘 ${p.store_file || "llm_daily_stats.json"}`);
-  return parts.join(" · ");
-});
-
 const dashboardReady = computed(() => pageReady.value && !chartsBusy.value);
 
 async function loadDailyRange() {
@@ -323,17 +265,8 @@ async function loadDailyRange() {
   }
 }
 
-async function loadLlmStats() {
-  const { start, end } = queryRange.value;
-  try {
-    llmTaskStats.value = await fetchLlmTaskStats({ start, end });
-  } catch {
-    llmTaskStats.value = null;
-  }
-}
-
 async function loadRangeData() {
-  await Promise.all([loadDailyRange(), loadLlmStats()]);
+  await loadDailyRange();
 }
 
 async function load() {
@@ -587,59 +520,48 @@ onMounted(() => {
 
           <section
             id="charts-llm"
-            class="charts-page__section charts-page__section--llm"
+            class="charts-page__section"
           >
             <UiCard
               tag="div"
               glass
-              class="charts-page__panel"
+              class="charts-page__panel charts-page__ai-redirect"
             >
               <div class="panel__hd panel__hd--split">
                 <h2 class="panel__title">
                   <ConsoleNavIcon
                     class="panel__title-ico"
                     name="sparkles"
-                  />LLM 统计
+                  />AI 专项看板
                 </h2>
-                <div class="charts-page__llm-kpis">
-                  <div class="charts-page__llm-kpi">
-                    <span class="charts-page__llm-kpi-label">Bot</span>
-                    <span class="charts-page__llm-kpi-val">{{ llmMetricSum(llmTaskStats?.bot, 'submit_ok') }}</span>
-                    <span class="charts-page__llm-kpi-sep">/</span>
-                    <span class="charts-page__llm-kpi-val charts-page__llm-kpi-val--sec">{{ llmMetricSum(llmTaskStats?.bot, 'callback_ok') }}</span>
-                    <span class="charts-page__llm-kpi-hint">{{ llmTaskStats?.bot?.day_key ? `本日 ${llmTaskStats.bot.day_key}` : '' }}</span>
-                  </div>
-                  <div class="charts-page__llm-kpi">
-                    <span class="charts-page__llm-kpi-label">AI</span>
-                    <template v-if="llmTaskStats && !llmTaskStats.ai_reachable">
-                      <span class="charts-page__llm-kpi-err">不可达</span>
-                    </template>
-                    <template v-else>
-                      <span class="charts-page__llm-kpi-val">{{ llmMetricSum(llmTaskStats?.ai, 'task_ok') }}</span>
-                      <span class="charts-page__llm-kpi-sep">/</span>
-                      <span class="charts-page__llm-kpi-val charts-page__llm-kpi-val--sec">{{ llmMetricSum(llmTaskStats?.ai, 'task_fail') }}</span>
-                      <span class="charts-page__llm-kpi-hint">{{ llmTaskStats?.ai?.day_key ? `本日 ${llmTaskStats.ai.day_key}` : '' }}</span>
-                    </template>
-                  </div>
-                </div>
               </div>
               <div class="panel__bd">
                 <p class="muted charts-page__section-lead">
-                  {{ llmPersistenceHint }}
+                  AI 详细统计已拆分到独立页面，避免与 Bot/协议/插件总看板重复堆叠。
                 </p>
-                <ChartsDailyBarChart
-                  :points="llmHistoryBotPoints"
-                  title="Bot 提交+回调"
-                  unit="次"
-                  accent="#a78bfa"
-                />
-                <ChartsDailyBarChart
-                  :points="llmHistoryAiPoints"
-                  title="AI 任务成功"
-                  unit="次"
-                  accent="#22d3ee"
-                  :empty-text="llmTaskStats?.ai_reachable ? '所选区间暂无 AI 历史快照' : 'AI 不可达，无法采集 AI 侧统计'"
-                />
+                <div class="charts-page__ai-links">
+                  <a
+                    class="charts-page__ai-link"
+                    href="/ai/home"
+                  >
+                    <strong>AI 首页</strong>
+                    <span class="muted">运行态、异常、快速入口</span>
+                  </a>
+                  <a
+                    class="charts-page__ai-link"
+                    href="/ai/statistics"
+                  >
+                    <strong>AI 统计</strong>
+                    <span class="muted">失败、路由、provider/model、token</span>
+                  </a>
+                  <a
+                    class="charts-page__ai-link"
+                    href="/ai/history"
+                  >
+                    <strong>AI 历史</strong>
+                    <span class="muted">按日快照与时间窗路由历史</span>
+                  </a>
+                </div>
               </div>
             </UiCard>
           </section>
@@ -708,3 +630,32 @@ onMounted(() => {
     </template>
   </div>
 </template>
+
+<style scoped>
+.charts-page__ai-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.charts-page__ai-link {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+
+.charts-page__ai-link:hover {
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+@media (max-width: 960px) {
+  .charts-page__ai-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

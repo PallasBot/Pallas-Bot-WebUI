@@ -1,10 +1,11 @@
 import { computed, ref } from "vue";
 import {
   fetchAiExtensionConfig,
+  fetchLlmTaskStats,
   postAiExtensionTest,
   postServiceGatewaysConnectivityCheck,
 } from "@/api/consoleApi";
-import type { AiExtensionTestData, PluginConfigCheckResult } from "@/api/pallasTypes";
+import type { AiExtensionTestData, LlmTaskStatsData, PluginConfigCheckResult } from "@/api/pallasTypes";
 import type { AiRuntimePageAction, AiRuntimeQuickAction } from "@/utils/aiRuntimeTypes";
 import {
   buildAiRuntimeOverview,
@@ -32,6 +33,7 @@ export function useAiRuntimeSnapshot() {
   const err = ref("");
   const gatewayResults = ref<PluginConfigCheckResult["results"]>([]);
   const extensionTest = ref<AiExtensionTestData | null>(null);
+  const llmTaskStats = ref<LlmTaskStatsData | null>(null);
 
   const items = computed(() =>
     resolveAiRuntimeSnapshot({
@@ -83,6 +85,43 @@ export function useAiRuntimeSnapshot() {
 
   const ttsHealth = computed(() => extensionTest.value?.tts_health ?? null);
 
+  const llmRuntimeSummary = computed(() => {
+    const ai = llmTaskStats.value?.ai;
+    const stateCounts = ai?.state_counts ?? {};
+    const routeCounts = Object.values(ai?.by_task ?? {}).reduce<Record<string, number>>((acc, row) => {
+      for (const [route, count] of Object.entries(row.route_counts ?? {})) {
+        acc[route] = (acc[route] ?? 0) + (Number(count) || 0);
+      }
+      return acc;
+    }, {});
+    const providers = Object.entries(ai?.provider_stats ?? {})
+      .map(([key, row]) => ({
+        key,
+        requests: Number(row.requests ?? 0),
+        failed: Number(row.failed ?? 0),
+      }))
+      .filter((row) => row.requests > 0)
+      .sort((a, b) => b.requests - a.requests || b.failed - a.failed || a.key.localeCompare(b.key))
+      .slice(0, 3);
+    const failures = Object.entries(ai?.failure_counts ?? {})
+      .map(([key, count]) => ({
+        key,
+        count: Number(count) || 0,
+      }))
+      .filter((row) => row.count > 0)
+      .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+      .slice(0, 3);
+    return {
+      queued: Number(stateCounts.queued ?? 0),
+      running: Number(stateCounts.running ?? 0),
+      failed: Number(stateCounts.failed ?? 0),
+      succeeded: Number(stateCounts.succeeded ?? 0),
+      routeCounts,
+      providers,
+      failures,
+    };
+  });
+
   const pageActions = computed<AiRuntimePageAction[]>(() => {
     const actions: AiRuntimePageAction[] = [
       {
@@ -108,12 +147,20 @@ export function useAiRuntimeSnapshot() {
     err.value = "";
     try {
       await fetchAiExtensionConfig();
-      const [gateway, extension] = await Promise.all([
+      const [gatewayResult, extensionResult, llmStatsResult] = await Promise.allSettled([
         postServiceGatewaysConnectivityCheck(),
         postAiExtensionTest(),
+        fetchLlmTaskStats(),
       ]);
-      gatewayResults.value = gateway.results;
-      extensionTest.value = extension;
+      if (gatewayResult.status !== "fulfilled") {
+        throw gatewayResult.reason;
+      }
+      if (extensionResult.status !== "fulfilled") {
+        throw extensionResult.reason;
+      }
+      gatewayResults.value = gatewayResult.value.results;
+      extensionTest.value = extensionResult.value;
+      llmTaskStats.value = llmStatsResult.status === "fulfilled" ? llmStatsResult.value : null;
     } catch (e) {
       err.value = e instanceof Error ? e.message : String(e);
     } finally {
@@ -133,6 +180,7 @@ export function useAiRuntimeSnapshot() {
     mediaTaskQueue,
     mediaTaskCapabilities,
     llmProviderStatus,
+    llmRuntimeSummary,
     ttsHealth,
     refresh,
   };

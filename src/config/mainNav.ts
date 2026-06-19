@@ -1,8 +1,9 @@
 import { isSidebarPinToken, SIDEBAR_PIN_DEFINITIONS } from "./sidebarPins";
 import {
-  AI_CONFIG_MAIN_NAV_ITEM,
   AI_CONFIG_SECTION_PATHS,
   AI_CONFIG_SIDEBAR_PATH,
+  AI_TOP_LEVEL_NAV,
+  AI_TOP_LEVEL_PATHS,
 } from "./aiConfigSections";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import { resolveConsoleNavIcon } from "@/config/consoleNavIcons";
@@ -27,7 +28,13 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/plugins", label: "插件", icon: "blocks", description: "已加载", section: "模块与配置" },
   { to: "/plugin-store", label: "插件商店", icon: "store", description: "官方扩展与社区插件", section: "模块与配置" },
   { to: "/common-config", label: "通用配置", icon: "settings", description: "公共项", section: "模块与配置" },
-  AI_CONFIG_MAIN_NAV_ITEM,
+  ...AI_TOP_LEVEL_NAV.map((item) => ({
+    to: item.path,
+    label: item.label,
+    icon: item.icon,
+    description: item.lead,
+    section: "AI",
+  })),
   { to: "/friends-groups", label: "好友与群聊", icon: "users", description: "列表审批", section: "对话与对象" },
   { to: "/database", label: "数据库", icon: "database", description: "存储明细", section: "数据与扩展" },
   { to: "/database/backups", label: "备份管理", icon: "backup", description: "创建与清理", section: "数据与扩展" },
@@ -49,8 +56,9 @@ export function mainNavIconForPath(routePath: string, routeHash?: string): Conso
   if (path === "/plugin-store") {
     return MAIN_NAV_ITEMS.find((i) => i.to === "/plugin-store")?.icon ?? "store";
   }
-  if (path === AI_CONFIG_SIDEBAR_PATH || path.startsWith("/ai/")) {
-    return AI_CONFIG_MAIN_NAV_ITEM.icon;
+  const aiRow = MAIN_NAV_ITEMS.find((i) => path === i.to || path.startsWith(`${i.to}/`));
+  if (aiRow && path.startsWith("/ai/")) {
+    return aiRow.icon;
   }
   if (path === "/database/backups" || path.startsWith("/database/backups/")) {
     return "backup";
@@ -75,7 +83,13 @@ function canonicalNavPath(path: string): string {
   if (p === "/bot-social-config") return "/friends-groups";
   if (p === "/corpus-config") return "/common-config";
   if (p === "/community-stats-config") return "/common-config";
-  if (p === "/ai" || p.startsWith("/ai/")) return AI_CONFIG_SIDEBAR_PATH;
+  if (p === "/ai") return "/ai/home";
+  if (p.startsWith("/ai/home")) return "/ai/home";
+  if (p.startsWith("/ai/runtime")) return "/ai/home";
+  if (p.startsWith("/ai/statistics")) return "/ai/statistics";
+  if (p.startsWith("/ai/history")) return "/ai/history";
+  if (p.startsWith("/ai/config/")) return AI_CONFIG_SIDEBAR_PATH;
+  if (p.startsWith("/ai/")) return AI_CONFIG_SIDEBAR_PATH;
   return p;
 }
 
@@ -148,7 +162,7 @@ export function migrateSidebarOrderCommunityPage(saved: string[] | undefined | n
     out.splice(idx + 1, 0, "/community");
     return out;
   }
-  const aiIdx = base.indexOf("/ai");
+  const aiIdx = base.indexOf("/ai/home");
   if (aiIdx >= 0) {
     const out = [...base];
     out.splice(aiIdx, 0, "/community");
@@ -185,12 +199,17 @@ export function migrateSidebarOrderDatabaseBackups(saved: string[] | undefined |
 /** WebUI AI 配置：拆为多页并置于「通用配置」之后（历史迁移 v7–v9） */
 export function migrateSidebarOrderAiConfig(saved: string[] | undefined | null): string[] {
   const base = normalizeMainNavOrder(saved);
-  const without = base.filter((t) => t !== "/ai" && !AI_CONFIG_SECTION_PATHS.includes(t));
+  const without = base.filter(
+    (t) =>
+      t !== "/ai"
+      && !AI_CONFIG_SECTION_PATHS.includes(t)
+      && !AI_TOP_LEVEL_PATHS.includes(t),
+  );
   const commonIdx = without.indexOf("/common-config");
   const insertAt = commonIdx >= 0 ? commonIdx + 1 : without.length;
   const slice = without.slice(0, insertAt);
   const tail = without.slice(insertAt);
-  return [...slice, ...AI_CONFIG_SECTION_PATHS, ...tail];
+  return [...slice, ...AI_TOP_LEVEL_PATHS, ...tail];
 }
 
 /** AI Hub：侧栏仅保留单入口「AI配置」 */
@@ -199,7 +218,7 @@ export function migrateSidebarOrderAiHubSingle(saved: string[] | undefined | nul
   const withoutAi = raw.filter((t) => {
     if (typeof t !== "string") return true;
     const p = t.trim();
-    return p !== AI_CONFIG_SIDEBAR_PATH && !p.startsWith("/ai/");
+    return p !== AI_CONFIG_SIDEBAR_PATH && !AI_TOP_LEVEL_PATHS.includes(p) && !p.startsWith("/ai/");
   });
   const base = normalizeMainNavOrder(withoutAi);
   if (base.includes(AI_CONFIG_SIDEBAR_PATH)) return base;

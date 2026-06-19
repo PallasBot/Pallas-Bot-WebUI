@@ -9,7 +9,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 
 const panelNavIcon = usePanelNavIcon();
-const { loading, err, groups, overview, focusItems, quickActions, pageActions, mediaTaskQueue, mediaTaskCapabilities, llmProviderStatus, ttsHealth, refresh } = useAiRuntimeSnapshot();
+const { loading, err, groups, overview, focusItems, quickActions, pageActions, mediaTaskQueue, mediaTaskCapabilities, llmProviderStatus, llmRuntimeSummary, ttsHealth, refresh } = useAiRuntimeSnapshot();
 
 function stateClass(state: AiRuntimeState): string {
   if (state === "healthy") return "tag--ok";
@@ -137,6 +137,77 @@ onMounted(() => {
           <strong>{{ item.health_state || (item.reachable ? "healthy" : "unknown") }}</strong>
         </span>
       </div>
+
+      <section class="ai-runtime-console__llm-brief">
+        <div class="ai-runtime-console__focus-head">
+          <h3>LLM 运行态摘要</h3>
+          <span class="muted">实时 task/provider 面板</span>
+        </div>
+        <div class="ai-runtime-console__llm-stats">
+          <div class="ai-runtime-console__llm-stat">
+            <span>排队</span>
+            <strong>{{ llmRuntimeSummary.queued }}</strong>
+          </div>
+          <div class="ai-runtime-console__llm-stat">
+            <span>执行中</span>
+            <strong>{{ llmRuntimeSummary.running }}</strong>
+          </div>
+          <div class="ai-runtime-console__llm-stat">
+            <span>成功</span>
+            <strong>{{ llmRuntimeSummary.succeeded }}</strong>
+          </div>
+          <div class="ai-runtime-console__llm-stat">
+            <span>失败</span>
+            <strong>{{ llmRuntimeSummary.failed }}</strong>
+          </div>
+        </div>
+        <div class="ai-runtime-console__llm-boards">
+          <div class="ai-runtime-console__llm-mini">
+            <div class="muted ai-runtime-console__llm-mini-title">热点 Provider</div>
+            <div
+              v-if="llmRuntimeSummary.providers.length"
+              class="ai-runtime-console__llm-mini-list"
+            >
+              <div
+                v-for="item in llmRuntimeSummary.providers"
+                :key="item.key"
+                class="ai-runtime-console__llm-mini-row"
+              >
+                <span>{{ item.key }}</span>
+                <strong>{{ item.requests }}</strong>
+              </div>
+            </div>
+            <p
+              v-else
+              class="muted ai-runtime-console__group-empty"
+            >
+              暂无 provider 请求统计。
+            </p>
+          </div>
+          <div class="ai-runtime-console__llm-mini">
+            <div class="muted ai-runtime-console__llm-mini-title">失败热点</div>
+            <div
+              v-if="llmRuntimeSummary.failures.length"
+              class="ai-runtime-console__llm-mini-list"
+            >
+              <div
+                v-for="item in llmRuntimeSummary.failures"
+                :key="item.key"
+                class="ai-runtime-console__llm-mini-row"
+              >
+                <span>{{ item.key }}</span>
+                <strong>{{ item.count }}</strong>
+              </div>
+            </div>
+            <p
+              v-else
+              class="muted ai-runtime-console__group-empty"
+            >
+              当前没有失败分布。
+            </p>
+          </div>
+        </div>
+      </section>
 
       <div
         v-if="ttsHealth"
@@ -397,6 +468,60 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.ai-runtime-console__llm-brief {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.ai-runtime-console__llm-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-runtime-console__llm-stat,
+.ai-runtime-console__llm-mini {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 88%, white 12%);
+}
+
+.ai-runtime-console__llm-stat {
+  display: grid;
+  gap: 4px;
+}
+
+.ai-runtime-console__llm-stat span,
+.ai-runtime-console__llm-mini-title {
+  font-size: 12px;
+}
+
+.ai-runtime-console__llm-stat strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.ai-runtime-console__llm-boards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-runtime-console__llm-mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-runtime-console__llm-mini-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
 .ai-runtime-console__content {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
@@ -521,6 +646,11 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
+  .ai-runtime-console__llm-stats,
+  .ai-runtime-console__llm-boards {
+    grid-template-columns: 1fr;
+  }
+
   .ai-runtime-console__hero,
   .ai-runtime-console__group-head,
   .ai-runtime-console__focus-head,

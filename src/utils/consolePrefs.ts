@@ -80,7 +80,7 @@ const defaults: ConsolePrefsState = {
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
-  sidebarNavLayoutVersion: 9,
+  sidebarNavLayoutVersion: 13,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
   databasePageGroupConfigsOpen: true,
@@ -143,6 +143,18 @@ function load(): ConsolePrefsState {
     if (layoutVerOut < 10) {
       nextOrder = migrateSidebarOrderAiHubSingle(nextOrder);
       layoutVerOut = 10;
+    }
+    if (layoutVerOut < 11) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 11;
+    }
+    if (layoutVerOut < 12) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 12;
+    }
+    if (layoutVerOut < 13) {
+      nextOrder = migrateSidebarOrderAiConfig(nextOrder);
+      layoutVerOut = 13;
     }
     const layoutMigrated = layoutVerOut !== layoutVer;
     merged.sidebarNavLayoutVersion = layoutVerOut;
