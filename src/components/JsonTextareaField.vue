@@ -184,12 +184,16 @@ onUnmounted(() => {
 .json-textarea-field__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .json-textarea-field__expand {
-  padding: 6px 12px;
-  font-size: 12px;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 76%, transparent);
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 96%, transparent);
 }
 
 .json-textarea-field__peek {
@@ -209,6 +213,7 @@ onUnmounted(() => {
 .json-textarea-field__dialog {
   max-width: min(960px, 96vw);
   width: 100%;
+  border-radius: 20px;
 }
 
 .json-textarea-field__editor {
@@ -218,6 +223,16 @@ onUnmounted(() => {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
+  border-radius: 16px;
+}
+
+.json-textarea-field__dialog :deep(.console-modal__hd) {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 56%, transparent);
+}
+
+.json-textarea-field__dialog :deep(.console-modal__bd) {
+  padding-top: 14px;
 }
 
 @media (max-width: 560px) {

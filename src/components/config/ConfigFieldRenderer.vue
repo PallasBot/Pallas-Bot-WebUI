@@ -18,12 +18,16 @@ const props = withDefaults(
   defineProps<{
     field: PluginConfigField;
     modelValue: string;
+    showLabel?: boolean;
     showMeta?: boolean;
+    showDescription?: boolean;
     jsonTitle?: string;
     inputMaxWidth?: string;
   }>(),
   {
+    showLabel: true,
     showMeta: true,
+    showDescription: true,
     inputMaxWidth: "520px",
   },
 );
@@ -65,7 +69,7 @@ function onBoolChange(checked: boolean) {
     :class="{ 'config-field-renderer--bool': usesBoolSwitch }"
   >
     <div
-      v-if="usesBoolSwitch"
+      v-if="usesBoolSwitch && showLabel"
       class="config-field-renderer__bool-head"
     >
       <div class="config-field-renderer__title form-field__label form-field__label--title">
@@ -81,8 +85,21 @@ function onBoolChange(checked: boolean) {
         @update:model-value="onBoolChange"
       />
     </div>
+    <div
+      v-else-if="usesBoolSwitch"
+      class="config-field-renderer__bool-only"
+    >
+      <ConsoleSwitch
+        :model-value="boolSwitchValue"
+        :label="boolSwitchLabelText"
+        @update:model-value="onBoolChange"
+      />
+    </div>
     <template v-else>
-      <div class="form-field__label form-field__label--title config-field-renderer__title">
+      <div
+        v-if="showLabel"
+        class="form-field__label form-field__label--title config-field-renderer__title"
+      >
         {{ fieldDisplayTitle(field) }}
         <span
           v-if="!field.label"
@@ -91,7 +108,7 @@ function onBoolChange(checked: boolean) {
       </div>
     </template>
     <div
-      v-if="field.description"
+      v-if="showDescription && field.description"
       class="muted common-config-field-desc config-field-renderer__desc"
     >
       {{ field.description }}
@@ -146,6 +163,18 @@ function onBoolChange(checked: boolean) {
   font-size: 13px;
   margin-bottom: 0;
 }
+.config-field-renderer__bool-only {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.config-field-renderer :deep(.form-field__control),
+.config-field-renderer :deep(.json-textarea-field),
+.config-field-renderer :deep(.sel),
+.config-field-renderer :deep(.inp) {
+  width: 100%;
+}
+
 .config-field-renderer :deep(.form-field__control),
 .config-field-renderer :deep(.json-textarea-field) {
   max-width: v-bind(inputMaxWidth);

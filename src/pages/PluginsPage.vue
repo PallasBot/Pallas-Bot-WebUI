@@ -81,6 +81,10 @@ function pluginIconUrl(name: string): string {
   return resolvePluginIconForRow(name, row?.plugin_source, iconByPlugin.value);
 }
 
+const selectedPluginRow = computed(
+  () => list.value.find((p) => p.name === selectedPluginName.value) ?? null,
+);
+
 function selectPlugin(name: string) {
   if (selectedPluginName.value !== name) {
     scrollSeq++;
@@ -184,14 +188,6 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
             {{ catalogProcessHint(catalogProcessRole) }}
           </p>
         </template>
-        <template #actions>
-          <UiButton
-            variant="primary"
-            @click="router.push({ name: 'plugin-store' })"
-          >
-            插件商店
-          </UiButton>
-        </template>
       </ConsoleHubMasthead>
 
       <ConsoleHubSearch
@@ -244,6 +240,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
         <PluginConfigWorkspace
           :plugin-name="selectedPluginName"
           :icon-url="pluginIconUrl(selectedPluginName)"
+          :initial-plugin-row="selectedPluginRow"
         />
       </div>
 
