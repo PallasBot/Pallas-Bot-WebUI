@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
+  fetchPluginStoreReadme,
   fetchPlugins,
   installCommunityPlugin,
   installOfficialExtension,
@@ -38,7 +39,6 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { axiosErrorDetail } from "@/api/http";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
-  fetchGithubReadme,
   readmeMarkdownToSafeHtml,
 } from "@/utils/pluginReadme";
 import {
@@ -775,13 +775,14 @@ async function loadDetailReadme(repositoryUrl: string | null) {
   detailReadmeLoading.value = true;
   detailReadmeHtml.value = "";
   detailReadmeErr.value = "";
-  if (!repositoryUrl) {
+  const target = detailTarget.value;
+  if (!repositoryUrl || !target) {
     detailReadmeErr.value = "该条目未提供仓库链接";
     detailReadmeLoading.value = false;
     return;
   }
   try {
-    const md = await fetchGithubReadme(repositoryUrl);
+    const md = await fetchPluginStoreReadme(target.kind, target.id);
     detailReadmeHtml.value = readmeMarkdownToSafeHtml(md, repositoryUrl);
   } catch (e) {
     detailReadmeErr.value = e instanceof Error ? e.message : String(e);

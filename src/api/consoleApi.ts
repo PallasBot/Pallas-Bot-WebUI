@@ -317,6 +317,12 @@ export interface PluginUpdateSnapshotResult {
   official_count?: number;
 }
 
+export interface PluginStoreReadmeResult {
+  kind: "official" | "community";
+  id: string;
+  markdown: string;
+}
+
 export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapshotResult> {
   const { data } = await http.post<ApiOk<PluginUpdateSnapshotResult>>(
     "/plugins/update-snapshot/refresh",
@@ -324,6 +330,16 @@ export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapsho
     { timeout: 120_000 },
   );
   return unwrap(data, "/plugins/update-snapshot/refresh");
+}
+
+export async function fetchPluginStoreReadme(
+  kind: "official" | "community",
+  id: string,
+): Promise<string> {
+  const { data } = await http.get<ApiOk<PluginStoreReadmeResult>>("/plugins/store/readme", {
+    params: { kind, id },
+  });
+  return unwrap(data, "/plugins/store/readme").markdown;
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;
