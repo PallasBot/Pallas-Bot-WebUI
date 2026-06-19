@@ -21,8 +21,6 @@ export const OFFICIAL_EXTENSION_COVER_REMOTE: Record<"bot" | "ai", string> = {
   ai: "https://github.com/user-attachments/assets/fe654813-bf37-4e5f-9c7d-98d867016618",
 };
 
-export const OFFICIAL_EXTENSION_AVATAR_URL = `https://avatars.githubusercontent.com/${OFFICIAL_EXTENSION_REPO_OWNER}?s=64`;
-
 function isOfficialIconSvg(url: string): boolean {
   return /\/official-extensions\/pallas-plugin-[^/]+\.svg(?:\?|$)/i.test(url.trim());
 }
@@ -64,7 +62,7 @@ export function officialExtensionCoverFallbacks(packageName: string, cover?: str
 }
 
 export function resolveOfficialExtensionAvatar(avatar?: string | null): string {
-  return (avatar || "").trim() || OFFICIAL_EXTENSION_AVATAR_URL;
+  return (avatar || "").trim();
 }
 
 export function resolveOfficialExtensionDescription(

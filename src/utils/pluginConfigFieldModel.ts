@@ -61,3 +61,43 @@ export function collectFieldValues(
   }
   return values;
 }
+
+/**
+ * 判断一个 json 字段是否适合用「标签输入」编辑：
+ * 其 default 与 current 若有值，必须是「字符串数组」（如群号列表、前缀列表）。
+ * 空数组也视为标签场景；含对象/嵌套/数字数组的结构化 json 走 textarea。
+ */
+export function isStringListField(field: PluginConfigField): boolean {
+  if (field.kind !== "json") return false;
+  const samples = [field.current, field.default];
+  let sawArray = false;
+  for (const sample of samples) {
+    if (sample === null || sample === undefined) continue;
+    if (!Array.isArray(sample)) return false;
+    sawArray = true;
+    if (!sample.every((item) => typeof item === "string")) return false;
+  }
+  return sawArray;
+}
+
+/** 把 json 字段的字符串值（JSON 文本）解析为字符串数组；失败回退空数组。 */
+export function tagsFromJsonText(raw: string): string[] {
+  const text = String(raw ?? "").trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed.map((x) => (x == null ? "" : String(x)));
+  } catch {
+    // 非合法 JSON（如用户手输），按换行/逗号兜底切分
+    return text
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/** 把字符串数组序列化回 json 字段所需的 JSON 文本。 */
+export function tagsToJsonText(tags: string[]): string {
+  return JSON.stringify(tags);
+}

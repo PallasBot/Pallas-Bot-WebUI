@@ -6,8 +6,10 @@ import ChartsDailyBarChart from "@/components/ChartsDailyBarChart.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { formatCompactDateTime } from "@/utils/formatDateTime";
 
 const panelNavIcon = usePanelNavIcon();
 const {
@@ -29,15 +31,18 @@ const sessionDetail = ref<LlmHistorySessionDetailData | null>(null);
 const historyBusy = ref(false);
 const historyErr = ref("");
 
-function formatDateTime(ts: number): string {
-  if (!ts) return "—";
-  return new Date(ts * 1000).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// 会话筛选：bot / group / user（空 = 不限）
+const filterBot = ref("");
+const filterGroup = ref("");
+const filterUser = ref("");
+
+function parseFilter(raw: string): number | null {
+  const n = Number(raw.trim());
+  return raw.trim() && Number.isFinite(n) ? n : null;
 }
+
+const combinedErr = computed(() => err.value || historyErr.value);
+const anyBusy = computed(() => loading.value || historyBusy.value);
 
 const selectedSession = computed(() =>
   sessions.value.find((item) => item.session_key === selectedSessionKey.value) ?? null,
@@ -47,7 +52,12 @@ async function refreshSessions() {
   historyBusy.value = true;
   historyErr.value = "";
   try {
-    const data = await fetchLlmHistorySessions({ limit: 20 });
+    const data = await fetchLlmHistorySessions({
+      botId: parseFilter(filterBot.value),
+      groupId: parseFilter(filterGroup.value),
+      userId: parseFilter(filterUser.value),
+      limit: AI_STATS_LIMITS.historySessions,
+    });
     sessions.value = data.items;
     if (!selectedSessionKey.value || !sessions.value.some((item) => item.session_key === selectedSessionKey.value)) {
       selectedSessionKey.value = sessions.value[0]?.session_key ?? "";
@@ -74,7 +84,7 @@ async function refreshSessionDetail() {
       botId: summary.bot_id,
       groupId: summary.group_id,
       userId: summary.user_id,
-      limit: 40,
+      limit: AI_STATS_LIMITS.historyTurns,
     });
   } catch (e) {
     sessionDetail.value = null;
@@ -129,14 +139,14 @@ onMounted(() => {
           <span>结束</span>
           <input v-model="end" class="inp" type="date">
         </label>
-        <UiButton variant="primary" :busy="loading || historyBusy" @click="refreshAll">刷新</UiButton>
+        <UiButton variant="primary" :busy="anyBusy" @click="refreshAll">刷新</UiButton>
       </template>
       <template #extra>
         <p class="muted ai-history-page__hint">{{ persistenceHint }}</p>
       </template>
     </ConsoleHubMasthead>
 
-    <div v-if="err || historyErr" class="alert alert--err">{{ err || historyErr }}</div>
+    <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
     <section class="ai-history-page__overview">
       <UiCard class="ai-history-page__panel">
@@ -148,7 +158,7 @@ onMounted(() => {
           :points="historyDailyRows.map((row) => ({ date: row.date, value: row.aiOk + row.aiFail }))"
           title=""
           unit="次"
-          accent="#14b8a6"
+          accent="var(--accent)"
           empty-text="当前时间窗暂无历史快照。"
         />
       </UiCard>
@@ -177,6 +187,21 @@ onMounted(() => {
           <h3 class="ai-head__title">最近会话</h3>
           <span class="ai-head__hint">按最后消息时间排序</span>
         </div>
+        <div class="ai-history-page__filters">
+          <label class="ai-history-page__filter">
+            <span>Bot</span>
+            <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <label class="ai-history-page__filter">
+            <span>群号</span>
+            <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <label class="ai-history-page__filter">
+            <span>用户</span>
+            <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
+        </div>
         <div v-if="sessions.length" class="ai-history-page__session-list">
           <button
             v-for="item in sessions"
@@ -188,7 +213,7 @@ onMounted(() => {
           >
             <div class="ai-history-page__session-top">
               <strong>{{ item.group_id === 0 ? `私聊 ${item.user_id}` : `群 ${item.group_id} · 用户 ${item.user_id}` }}</strong>
-              <span class="muted ai-history-page__session-time">{{ formatDateTime(item.last_created_at) }}</span>
+              <span class="muted ai-history-page__session-time">{{ formatCompactDateTime(item.last_created_at) }}</span>
             </div>
             <div class="muted ai-history-page__session-meta">Bot {{ item.bot_id }} · {{ item.turn_count }} 条对话</div>
             <p class="ai-history-page__session-preview">{{ item.last_content || "（空消息）" }}</p>
@@ -219,8 +244,8 @@ onMounted(() => {
             :class="turn.role === 'assistant' ? 'is-assistant' : 'is-user'"
           >
             <div class="ai-history-page__turn-head">
-              <strong>{{ turn.role === "assistant" ? "牛牛" : `用户 ${turn.user_id}` }}</strong>
-              <span class="muted">{{ formatDateTime(turn.created_at) }}</span>
+              <strong>{{ turn.role === "assistant" ? AI_ASSISTANT_NAME : `用户 ${turn.user_id}` }}</strong>
+              <span class="muted">{{ formatCompactDateTime(turn.created_at) }}</span>
             </div>
             <p>{{ turn.content }}</p>
           </article>
@@ -297,6 +322,25 @@ onMounted(() => {
 .ai-history-page__detail {
   display: grid;
   gap: 10px;
+}
+
+.ai-history-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.ai-history-page__filter {
+  display: grid;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ai-history-page__filter .inp {
+  width: 96px;
 }
 
 .ai-history-page__session {

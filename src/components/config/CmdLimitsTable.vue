@@ -59,31 +59,29 @@ const emit = defineEmits<{
 
 <style scoped>
 .cmd-limit-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .cmd-limit-section__title {
-  font-size: 15px;
-  margin: 0 0 10px;
+  font-size: 14px;
+  margin: 0 0 8px;
   font-weight: 700;
 }
 
 .cmd-limit-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cmd-limit-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 13px 14px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 78%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 68%, transparent), transparent 66%),
-    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.016)) 99%, transparent);
 }
 
 .cmd-limit-card__main {
@@ -100,24 +98,24 @@ const emit = defineEmits<{
 
 .cmd-limit-card__label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .cmd-limit-card__id {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
+  min-height: 18px;
+  padding: 0 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 95%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 76%, transparent);
-  font-size: 11px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  font-size: 10px;
   word-break: break-all;
 }
 
 .cmd-limit-card__default {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: 4px 0 0;
+  font-size: 10px;
   line-height: 1.5;
 }
 
@@ -129,7 +127,7 @@ const emit = defineEmits<{
 }
 
 .cmd-limit-card__input {
-  width: 96px;
+  width: 82px;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

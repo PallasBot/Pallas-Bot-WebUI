@@ -9,6 +9,7 @@ import type { AiExtensionConfig, AiExtensionTestData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { AI_EXTENSION_DEFAULTS } from "@/config/aiConstants";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
@@ -19,13 +20,13 @@ const saving = ref(false);
 const testOut = ref<AiExtensionTestData | null>(null);
 
 const baseScheme = ref<"http" | "https">("http");
-const baseHostPort = ref("127.0.0.1:9099");
-const apiPrefix = ref("/api");
+const baseHostPort = ref<string>(AI_EXTENSION_DEFAULTS.hostPort);
+const apiPrefix = ref<string>(AI_EXTENSION_DEFAULTS.apiPrefix);
 const token = ref("");
-const healthPathsText = ref("/health\n/api/health");
+const healthPathsText = ref<string>(AI_EXTENSION_DEFAULTS.healthPaths.join("\n"));
 const uvicornLogFile = ref("");
 const celeryLogFile = ref("");
-const timeoutSec = ref(8);
+const timeoutSec = ref<number>(AI_EXTENSION_DEFAULTS.timeoutSec);
 
 function parseBaseUrlParts(raw: string): { scheme: "http" | "https"; hostPort: string } {
   const s = (raw || "").trim();
@@ -39,12 +40,12 @@ function parseBaseUrlParts(raw: string): { scheme: "http" | "https"; hostPort: s
     const hostPart = t.split("/")[0] ?? "";
     if (hostPart) return { scheme: "http", hostPort: hostPart };
   }
-  return { scheme: "http", hostPort: "127.0.0.1:9099" };
+  return { scheme: "http", hostPort: AI_EXTENSION_DEFAULTS.hostPort };
 }
 
 function buildBaseUrl(scheme: "http" | "https", hostPort: string): string {
   const hp = hostPort.trim().replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!hp) return `${scheme}://127.0.0.1:9099`;
+  if (!hp) return `${scheme}://${AI_EXTENSION_DEFAULTS.hostPort}`;
   return `${scheme}://${hp}`;
 }
 
@@ -52,12 +53,12 @@ function hydrateFromConfig(c: AiExtensionConfig): void {
   const { scheme, hostPort } = parseBaseUrlParts(c.base_url);
   baseScheme.value = scheme;
   baseHostPort.value = hostPort;
-  apiPrefix.value = c.api_prefix || "/api";
+  apiPrefix.value = c.api_prefix || AI_EXTENSION_DEFAULTS.apiPrefix;
   token.value = c.token || "";
-  healthPathsText.value = (c.health_paths?.length ? c.health_paths : ["/health", "/api/health"]).join("\n");
+  healthPathsText.value = (c.health_paths?.length ? c.health_paths : AI_EXTENSION_DEFAULTS.healthPaths).join("\n");
   uvicornLogFile.value = c.uvicorn_log_file || "";
   celeryLogFile.value = c.celery_log_file || "";
-  timeoutSec.value = c.timeout_sec ?? 8;
+  timeoutSec.value = c.timeout_sec ?? AI_EXTENSION_DEFAULTS.timeoutSec;
 }
 
 function buildConfigPayload(): AiExtensionConfig {
@@ -67,12 +68,15 @@ function buildConfigPayload(): AiExtensionConfig {
     .filter(Boolean);
   const ap = apiPrefix.value.trim();
   const api_prefix = ap.startsWith("/") ? ap : `/${ap}`;
-  const t = Math.min(30, Math.max(2, Math.floor(Number(timeoutSec.value)) || 8));
+  const t = Math.min(
+    AI_EXTENSION_DEFAULTS.timeoutMax,
+    Math.max(AI_EXTENSION_DEFAULTS.timeoutMin, Math.floor(Number(timeoutSec.value)) || AI_EXTENSION_DEFAULTS.timeoutSec),
+  );
   return {
     base_url: buildBaseUrl(baseScheme.value, baseHostPort.value),
     api_prefix,
     token: token.value,
-    health_paths: paths.length ? paths : ["/health", "/api/health"],
+    health_paths: paths.length ? paths : [...AI_EXTENSION_DEFAULTS.healthPaths],
     uvicorn_log_file: uvicornLogFile.value.trim(),
     celery_log_file: celeryLogFile.value.trim(),
     timeout_sec: t,
@@ -230,8 +234,8 @@ defineExpose({ save, canSave: () => !saving.value, saving });
             v-model.number="timeoutSec"
             class="inp ai-config-connection__inp--timeout"
             type="number"
-            min="2"
-            max="30"
+            :min="AI_EXTENSION_DEFAULTS.timeoutMin"
+            :max="AI_EXTENSION_DEFAULTS.timeoutMax"
           >
         </div>
         <div class="form-field">

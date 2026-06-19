@@ -590,6 +590,9 @@ export interface PluginRow {
   extra_package?: string | null;
   /** 相对仓库根的目录，如 local/plugins/draw */
   plugin_source_dir?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  avatar?: string | null;
   metadata: {
     name?: string;
     description?: string;
@@ -633,6 +636,14 @@ export interface PluginConfigField {
   choices?: string[];
   /** 枚举选项展示文案；键为内部值，缺省时前端本地映射 */
   choice_labels?: Record<string, string>;
+  /** string 字段密钥语义：前端打码 + 眼睛切换 */
+  secret?: boolean;
+  /** string 字段多行：前端用 textarea */
+  multiline?: boolean;
+  /** int/float 字段下界（含），由 Pydantic ge/gt 推导 */
+  min_value?: number;
+  /** int/float 字段上界（含），由 Pydantic le/lt 推导 */
+  max_value?: number;
 }
 
 /** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
@@ -751,6 +762,23 @@ export interface LlmProvidersSaveResult {
   providers_file: string;
   provider_status?: LlmProviderStatusRow[];
   task_routing?: Record<string, string>;
+}
+
+/** Provider 在线模型发现结果（经 BFF 代理 AI 仓拉取）。 */
+export interface LlmProviderModelsResult {
+  provider_id: string;
+  ok: boolean;
+  models: string[];
+  source: string;
+  error?: string;
+}
+
+/** Provider 实时连通性测试结果（经 BFF 代理 AI 仓 ping）。 */
+export interface LlmProviderTestResult {
+  provider_id: string;
+  reachable: boolean;
+  latency_ms?: number | null;
+  error?: string;
 }
 
 export interface LlmModelAdminStatus {

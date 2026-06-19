@@ -17,15 +17,9 @@ export interface AiTopLevelNavDef {
 
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
-    id: "runtime",
-    label: "运行态总览",
-    lead: "一屏查看 LLM、画画、MAA、点歌与扩展连接是否正常。",
-    icon: "activity",
-  },
-  {
     id: "model",
     label: "模型与对话",
-    lead: "切换 Ollama 模型、配置 Provider 路由，并控制 Bot 的 LLM 开关。",
+    lead: "管理 Ollama 模型、配置 Provider 与 task 路由，并调整 Bot 的对话策略。",
     icon: "sparkles",
   },
   {
@@ -111,12 +105,15 @@ export function aiConfigSectionPath(id: AiConfigSectionId): string {
 
 export const AI_CONFIG_MAIN_NAV_ITEM = AI_TOP_LEVEL_NAV[3];
 
-/** 兼容旧 ?tab= / ?section= 与非法值 */
+/** 兼容旧 ?tab= / ?section= 与非法值；旧的 runtime 分区已并入 AI 首页。 */
 export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   const s = typeof raw === "string" ? raw.trim() : "";
   if (SECTION_IDS.has(s)) return s as AiConfigSectionId;
-  return "runtime";
+  return "model";
 }
+
+/** 旧 runtime 分区已移除，其内容并入 AI 首页 /ai/home。 */
+export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/home";
 
 export function aiConfigSectionMeta(id: AiConfigSectionId): AiConfigSectionDef {
   return SECTION_BY_ID.get(id) ?? AI_CONFIG_SECTIONS[0];

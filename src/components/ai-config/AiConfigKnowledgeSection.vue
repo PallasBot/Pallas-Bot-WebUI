@@ -1,66 +1,20 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { fetchCommonConfig, putCommonConfig } from "@/api/consoleApi";
-import type { PluginConfigData } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { useCommonConfigSection } from "@/composables/useCommonConfigSection";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
-import {
-  fieldValuesFromConfig,
-  parsePluginConfigField,
-} from "@/utils/pluginConfigFieldModel";
 
-const ARKNIGHTS_KB_SECTION_ID = "arknights_kb";
 const panelNavIcon = usePanelNavIcon();
 const router = useRouter();
-const err = ref("");
-const data = ref<PluginConfigData | null>(null);
-const fieldValues = ref<Record<string, string>>({});
-const saving = ref(false);
-
-watch(data, (d) => {
-  if (d) fieldValues.value = fieldValuesFromConfig(d.fields);
+const { err, data, fieldValues, saving, setFieldValue, save, canSave } = useCommonConfigSection({
+  sectionId: "arknights_kb",
+  savedMessage: "方舟知识库配置已保存",
 });
 
-async function load() {
-  err.value = "";
-  try {
-    data.value = await fetchCommonConfig(ARKNIGHTS_KB_SECTION_ID);
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-    data.value = null;
-  }
-}
-
-async function save() {
-  if (!data.value) return;
-  saving.value = true;
-  err.value = "";
-  try {
-    const values: Record<string, unknown> = {};
-    for (const f of data.value.fields) {
-      const raw = fieldValues.value[f.name] ?? "";
-      values[f.name] = parsePluginConfigField(f, raw);
-    }
-    data.value = await putCommonConfig(ARKNIGHTS_KB_SECTION_ID, values);
-    toastSaveSuccess("方舟知识库配置已保存");
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-    toastApiError(e, "保存失败");
-  } finally {
-    saving.value = false;
-  }
-}
-
-onMounted(() => {
-  void load();
-});
-
-defineExpose({ save, canSave: () => Boolean(data.value) && !saving.value, saving });
+defineExpose({ save, canSave, saving });
 </script>
 
 <template>
@@ -108,7 +62,7 @@ defineExpose({ save, canSave: () => Boolean(data.value) && !saving.value, saving
             :field="f"
             :model-value="fieldValues[f.name] ?? ''"
             :show-meta="false"
-            @update:model-value="(v) => (fieldValues = { ...fieldValues, [f.name]: v })"
+            @update:model-value="(v) => setFieldValue(f.name, v)"
           />
         </template>
       </div>

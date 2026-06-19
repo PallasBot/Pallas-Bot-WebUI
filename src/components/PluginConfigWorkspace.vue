@@ -47,12 +47,16 @@ import {
 import {
   collectFieldValues,
   fieldValuesFromConfig,
+  isStringListField,
 } from "@/utils/pluginConfigFieldModel";
+import { pluginConfigFieldIcon } from "@/utils/pluginConfigFieldIcon";
 import {
   buildGroupSummary,
+  fieldCompactMeta,
   fieldDisplayName,
+  fieldHelpDefaultValue,
   fieldTypeLabel,
-  summarizeFieldValue,
+  resolveInitialPluginConfigTab,
 } from "@/utils/pluginConfigWorkspaceModel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
@@ -188,6 +192,7 @@ const showFleetWhitelistEditor = computed(
 const showRuntimePanel = computed(() => Boolean(pluginResolvedId.value));
 const hasPermConfig = computed(() => Boolean(permPlugin.value));
 const hasLimitConfig = computed(() => Boolean(limitsPlugin.value));
+const hasConfigFields = computed(() => Boolean(data.value?.fields.length));
 
 watch(
   () => props.initialPluginRow,
@@ -474,9 +479,11 @@ const configFieldGroups = computed((): ConfigGroupView[] => {
 const groupOpen = ref<Record<string, boolean>>({});
 const fieldPopoverHost = ref<HTMLElement | null>(null);
 const activeFieldPopoverName = ref<string | null>(null);
-const activeFieldPopoverMode = ref<"edit" | "help">("edit");
+const activeFieldPopoverMode = ref<"help">("help");
 const fieldPopoverStyle = ref<Record<string, string>>({});
-const fieldPopoverDraft = ref("");
+// 悬停打开为临时态，点击则固定（pinned）：固定后移开鼠标不收起，便于复制说明。
+const fieldPopoverPinned = ref(false);
+let helpHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
 const activeFieldPopover = computed(() => {
   const name = activeFieldPopoverName.value;
@@ -491,42 +498,89 @@ const activeFieldPopover = computed(() => {
 function updateFieldPopoverPosition(anchor: HTMLElement) {
   if (typeof window === "undefined") return;
   const rect = anchor.getBoundingClientRect();
-  const maxWidth = Math.min(360, window.innerWidth - 16);
-  const left = Math.min(
-    Math.max(8, rect.left),
-    Math.max(8, window.innerWidth - maxWidth - 8),
-  );
+  const isMobile = window.innerWidth <= 560;
+  const maxWidth = Math.min(380, window.innerWidth - 16);
+  if (isMobile) {
+    fieldPopoverStyle.value = {
+      position: "fixed",
+      left: "8px",
+      right: "8px",
+      bottom: "8px",
+      width: "calc(100vw - 16px)",
+      maxHeight: "min(72vh, 640px)",
+    };
+    return;
+  }
+  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - maxWidth - 8));
   const top = Math.min(rect.bottom + 10, window.innerHeight - 16);
   fieldPopoverStyle.value = {
     position: "fixed",
     top: `${top}px`,
     left: `${left}px`,
     width: `min(${maxWidth}px, calc(100vw - 16px))`,
+    maxHeight: "min(72vh, 640px)",
   };
 }
 
-function openFieldPopover(fieldName: string, mode: "edit" | "help", event: MouseEvent) {
+function openFieldPopover(fieldName: string, mode: "help", event: MouseEvent) {
   const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   if (!anchor) return;
-  if (activeFieldPopoverName.value === fieldName && activeFieldPopoverMode.value === mode) {
+  // 点击已固定的同一字段 → 收起；否则固定到该字段。
+  if (
+    activeFieldPopoverName.value === fieldName &&
+    activeFieldPopoverMode.value === mode &&
+    fieldPopoverPinned.value
+  ) {
     closeFieldPopover();
     return;
   }
+  if (helpHoverCloseTimer) {
+    clearTimeout(helpHoverCloseTimer);
+    helpHoverCloseTimer = null;
+  }
   activeFieldPopoverName.value = fieldName;
   activeFieldPopoverMode.value = mode;
-  fieldPopoverDraft.value = fieldValues.value[fieldName] ?? "";
+  fieldPopoverPinned.value = true;
   updateFieldPopoverPosition(anchor);
+}
+
+function onHelpHover(fieldName: string, mode: "help", event: MouseEvent) {
+  const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  if (!anchor) return;
+  if (helpHoverCloseTimer) {
+    clearTimeout(helpHoverCloseTimer);
+    helpHoverCloseTimer = null;
+  }
+  // 已固定时不被悬停打断
+  if (fieldPopoverPinned.value && activeFieldPopoverName.value !== fieldName) return;
+  activeFieldPopoverName.value = fieldName;
+  activeFieldPopoverMode.value = mode;
+  fieldPopoverPinned.value = false;
+  updateFieldPopoverPosition(anchor);
+}
+
+function onHelpHoverLeave() {
+  if (fieldPopoverPinned.value) return;
+  if (helpHoverCloseTimer) clearTimeout(helpHoverCloseTimer);
+  helpHoverCloseTimer = setTimeout(() => {
+    if (!fieldPopoverPinned.value) closeFieldPopover();
+  }, 120);
+}
+
+function onPopoverEnter() {
+  if (helpHoverCloseTimer) {
+    clearTimeout(helpHoverCloseTimer);
+    helpHoverCloseTimer = null;
+  }
 }
 
 function closeFieldPopover() {
   activeFieldPopoverName.value = null;
-}
-
-function saveFieldPopoverValue() {
-  const field = activeFieldPopover.value;
-  if (!field) return;
-  fieldValues.value = { ...fieldValues.value, [field.name]: fieldPopoverDraft.value };
-  closeFieldPopover();
+  fieldPopoverPinned.value = false;
+  if (helpHoverCloseTimer) {
+    clearTimeout(helpHoverCloseTimer);
+    helpHoverCloseTimer = null;
+  }
 }
 
 watch(
@@ -545,6 +599,15 @@ watch(
 
 function toggleConfigGroup(id: string) {
   groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
+}
+
+function isWideConfigField(field: PluginConfigField) {
+  // 字符串数组用标签输入，较紧凑，无需占整行
+  if (field.kind === "json" && !isStringListField(field)) return true;
+  if (field.multiline) return true;
+  if ((field.description || "").trim().length >= 56) return true;
+  if ((field.label || field.name).trim().length >= 16) return true;
+  return false;
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
@@ -622,6 +685,10 @@ onBeforeUnmount(() => {
   for (const timer of Object.values(limitDebounceTimers.value)) {
     clearTimeout(timer);
   }
+  if (helpHoverCloseTimer) {
+    clearTimeout(helpHoverCloseTimer);
+    helpHoverCloseTimer = null;
+  }
 });
 
 useSaveHotkey(
@@ -639,20 +706,40 @@ const configGroupViewModels = computed((): ConfigGroupViewModel[] =>
 );
 
 watch(
-  data,
-  (d) => {
-    fieldValues.value = d ? fieldValuesFromConfig(d.fields) : {};
-    if (activeFieldPopover.value) {
-      fieldPopoverDraft.value = d ? fieldValuesFromConfig(d.fields)[activeFieldPopover.value.name] ?? "" : "";
+  [hasPermConfig, hasLimitConfig, hasConfigFields],
+  ([nextHasPerm, nextHasLimit, nextHasConfig]) => {
+    const next = resolveInitialPluginConfigTab({
+      hasPermConfig: nextHasPerm,
+      hasLimitConfig: nextHasLimit,
+      hasConfigFields: nextHasConfig,
+    });
+    const active = pluginConfigTab.value;
+    if (active === "perm" && !nextHasPerm) {
+      pluginConfigTab.value = next;
+      return;
+    }
+    if (active === "limit" && !nextHasLimit) {
+      pluginConfigTab.value = next;
+      return;
+    }
+    if (active === "config" && !nextHasConfig) {
+      pluginConfigTab.value = next;
+      return;
+    }
+    if (active === "runtime" && next !== "runtime") {
+      pluginConfigTab.value = next;
     }
   },
   { immediate: true },
 );
 
-watch(activeFieldPopover, (field) => {
-  if (!field) return;
-  fieldPopoverDraft.value = fieldValues.value[field.name] ?? "";
-});
+watch(
+  data,
+  (d) => {
+    fieldValues.value = d ? fieldValuesFromConfig(d.fields) : {};
+  },
+  { immediate: true },
+);
 
 async function runConfigCheck() {
   if (!data.value || !supportsConfigCheck.value) return;
@@ -774,20 +861,17 @@ async function save() {
         v-else-if="data"
         class="plugin-config-page__card-bd"
       >
-          <div class="plugin-config-page__tabs">
-            <button
-              type="button"
-              class="plugin-config-page__tab"
-              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'runtime' }"
-              @click="pluginConfigTab = 'runtime'"
-            >
-              运行控制
-            </button>
+          <div
+            class="console-view-toggle plugin-config-page__tabs"
+            role="tablist"
+            aria-label="插件工作区"
+          >
             <button
               v-if="hasPermConfig"
               type="button"
-              class="plugin-config-page__tab"
-              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'perm' }"
+              role="tab"
+              :class="{ 'is-on': pluginConfigTab === 'perm' }"
+              :aria-selected="pluginConfigTab === 'perm'"
               @click="pluginConfigTab = 'perm'"
             >
               权限
@@ -795,19 +879,30 @@ async function save() {
             <button
               v-if="hasLimitConfig"
               type="button"
-              class="plugin-config-page__tab"
-              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'limit' }"
+              role="tab"
+              :class="{ 'is-on': pluginConfigTab === 'limit' }"
+              :aria-selected="pluginConfigTab === 'limit'"
               @click="pluginConfigTab = 'limit'"
             >
               冷却
             </button>
             <button
               type="button"
-              class="plugin-config-page__tab"
-              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'config' }"
+              role="tab"
+              :class="{ 'is-on': pluginConfigTab === 'config' }"
+              :aria-selected="pluginConfigTab === 'config'"
               @click="pluginConfigTab = 'config'"
             >
               插件配置
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :class="{ 'is-on': pluginConfigTab === 'runtime' }"
+              :aria-selected="pluginConfigTab === 'runtime'"
+              @click="pluginConfigTab = 'runtime'"
+            >
+              运行控制
             </button>
           </div>
 
@@ -1123,51 +1218,72 @@ async function save() {
                 </div>
               </button>
 
-              <div v-show="groupOpen[group.id] ?? true" class="plugin-config-field-list">
-                <section
+              <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">
+                <div
                   v-for="f in group.fields"
                   :key="f.name"
-                  class="plugin-config-field-card"
+                  class="plugin-config-form-item"
+                  :class="{
+                    'plugin-config-form-item--wide': isWideConfigField(f),
+                    'plugin-config-form-item--json': f.kind === 'json',
+                  }"
                 >
-                  <div class="plugin-config-field-card__row">
-                    <div class="plugin-config-field-card__main">
-                      <div class="plugin-config-field-card__head">
-                        <div class="plugin-config-field-card__title-wrap">
-                          <div class="plugin-config-field-card__name-wrap">
-                            <h4 class="plugin-config-field-card__title">
-                              {{ fieldDisplayName(f) }}
-                            </h4>
-                            <span
-                              v-if="f.required"
-                              class="plugin-config-field-card__required"
-                            >必填</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          class="plugin-config-field-card__help-btn"
-                          :aria-expanded="activeFieldPopoverName === f.name && activeFieldPopoverMode === 'help'"
-                          :aria-label="`查看 ${fieldDisplayName(f)} 说明`"
-                          @click.stop="openFieldPopover(f.name, 'help', $event)"
-                        >
-                          ?
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      class="plugin-config-field-card__editor-button"
-                      :aria-expanded="activeFieldPopoverName === f.name && activeFieldPopoverMode === 'edit'"
-                      @click.stop="openFieldPopover(f.name, 'edit', $event)"
-                    >
-                      <span class="plugin-config-field-card__editor-value">
-                        {{ summarizeFieldValue(f, fieldValues[f.name] ?? "") }}
+                  <div class="plugin-config-form-item__label-row">
+                    <label class="plugin-config-form-item__label">
+                      <span
+                        class="plugin-config-form-item__icon"
+                        aria-hidden="true"
+                      >{{ pluginConfigFieldIcon(f) }}</span>
+                      <span class="plugin-config-form-item__label-text">
+                        {{ fieldDisplayName(f) }}
                       </span>
-                      <span class="plugin-config-field-card__editor-action">编辑</span>
-                    </button>
+                      <span
+                        v-if="f.required"
+                        class="plugin-config-form-item__required"
+                      >*</span>
+                    </label>
+                    <div class="plugin-config-form-item__label-side">
+                      <div class="plugin-config-form-item__meta-list">
+                        <span
+                          v-if="f.secret"
+                          class="plugin-config-form-item__meta-pill plugin-config-form-item__meta-pill--secret"
+                        >
+                          密钥
+                        </span>
+                        <span
+                          v-for="meta in fieldCompactMeta(f)"
+                          :key="`${f.name}-${meta}`"
+                          class="plugin-config-form-item__meta-pill"
+                        >
+                          {{ meta }}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        class="plugin-config-form-item__help-btn"
+                        :class="{ 'plugin-config-form-item__help-btn--has-desc': f.description }"
+                        :aria-expanded="activeFieldPopoverName === f.name"
+                        :aria-label="`查看 ${fieldDisplayName(f)} 说明`"
+                        @click.stop="openFieldPopover(f.name, 'help', $event)"
+                        @mouseenter="onHelpHover(f.name, 'help', $event)"
+                        @mouseleave="onHelpHoverLeave"
+                      >
+                        ?
+                      </button>
+                    </div>
                   </div>
-                </section>
+                  <div class="plugin-config-form-item__control">
+                    <ConfigFieldRenderer
+                      :field="f"
+                      :model-value="fieldValues[f.name] ?? ''"
+                      :show-label="false"
+                      :show-meta="false"
+                      :show-description="false"
+                      input-max-width="100%"
+                      @update:model-value="fieldValues = { ...fieldValues, [f.name]: $event }"
+                    />
+                  </div>
+                </div>
               </div>
             </section>
           </section>
@@ -1178,70 +1294,39 @@ async function save() {
               class="plugin-config-field-popover"
               :style="fieldPopoverStyle"
               @click.stop
+              @mouseenter="onPopoverEnter"
+              @mouseleave="onHelpHoverLeave"
             >
-              <template v-if="activeFieldPopoverMode === 'help'">
-                <div class="plugin-config-field-popover__section">
-                  <div class="plugin-config-field-popover__eyebrow">配置说明</div>
-                  <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
-                  <p
-                    v-if="activeFieldPopover.description"
-                    class="plugin-config-field-popover__desc"
-                  >
-                    {{ activeFieldPopover.description }}
-                  </p>
-                  <p
-                    v-else
-                    class="plugin-config-field-popover__desc plugin-config-field-popover__desc--muted"
-                  >
-                    暂无详细说明。
-                  </p>
+              <div class="plugin-config-field-popover__section">
+                <div class="plugin-config-field-popover__eyebrow">配置说明</div>
+                <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
+                <p
+                  v-if="activeFieldPopover.description"
+                  class="plugin-config-field-popover__desc"
+                >
+                  {{ activeFieldPopover.description }}
+                </p>
+                <p
+                  v-else
+                  class="plugin-config-field-popover__desc plugin-config-field-popover__desc--muted"
+                >
+                  暂无详细说明。
+                </p>
+              </div>
+              <dl class="plugin-config-field-popover__meta">
+                <div>
+                  <dt>类型</dt>
+                  <dd>{{ fieldTypeLabel(activeFieldPopover) }}</dd>
                 </div>
-                <dl class="plugin-config-field-popover__meta">
-                  <div>
-                    <dt>类型</dt>
-                    <dd>{{ fieldTypeLabel(activeFieldPopover) }}</dd>
-                  </div>
-                  <div>
-                    <dt>默认值</dt>
-                    <dd><code>{{ JSON.stringify(activeFieldPopover.default) }}</code></dd>
-                  </div>
-                  <div>
-                    <dt>环境键</dt>
-                    <dd><code>{{ activeFieldPopover.env_key }}</code></dd>
-                  </div>
-                </dl>
-              </template>
-              <template v-else>
-                <div class="plugin-config-field-popover__section">
-                  <div class="plugin-config-field-popover__eyebrow">编辑配置</div>
-                  <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
+                <div>
+                  <dt>默认值</dt>
+                  <dd><code>{{ fieldHelpDefaultValue(activeFieldPopover) }}</code></dd>
                 </div>
-                <ConfigFieldRenderer
-                  :field="activeFieldPopover"
-                  :model-value="fieldPopoverDraft"
-                  :show-label="false"
-                  :show-meta="false"
-                  :show-description="false"
-                  input-max-width="100%"
-                  @update:model-value="fieldPopoverDraft = $event"
-                />
-                <div class="plugin-config-field-popover__actions">
-                  <button
-                    type="button"
-                    class="btn btn--primary"
-                    @click="saveFieldPopoverValue"
-                  >
-                    确定
-                  </button>
-                  <button
-                    type="button"
-                    class="btn"
-                    @click="closeFieldPopover"
-                  >
-                    取消
-                  </button>
+                <div>
+                  <dt>环境键</dt>
+                  <dd><code>{{ activeFieldPopover.env_key }}</code></dd>
                 </div>
-              </template>
+              </dl>
             </div>
           </Teleport>
       </div>
@@ -1316,32 +1401,23 @@ async function save() {
     width: 100%;
   }
 
-  .plugin-config-field-card {
-    padding: 12px;
-    border-radius: 16px;
-  }
-
-  .plugin-config-field-card__row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .plugin-config-field-card__head {
-    align-items: flex-start;
-  }
-
-  .plugin-config-field-card__title-wrap,
-  .plugin-config-field-card__name-wrap {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
   .plugin-config-group-card__hero-main {
     width: 100%;
   }
 
-  .plugin-config-field-card__summary {
-    white-space: normal;
+  .plugin-config-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plugin-config-form-item__label-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plugin-config-form-item__label-side,
+  .plugin-config-form-item__meta-list {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .plugin-config-page__panel-head {
@@ -1383,7 +1459,7 @@ async function save() {
 }
 
 .plugin-config-page__tabs {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
@@ -1447,63 +1523,26 @@ async function save() {
   gap: 12px;
 }
 
-.plugin-config-page__tab {
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 74%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 70%, transparent), transparent 72%),
-    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.018)) 99%, transparent);
-  color: var(--text-muted, rgba(255, 255, 255, 0.74));
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
-  transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.plugin-config-page__tab--active {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 9%, white 2%), transparent 78%),
-    color-mix(in srgb, var(--accent, #ec4899) 7%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 84%, var(--text, #fff) 10%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
-    0 4px 12px color-mix(in srgb, var(--accent, #ec4899) 8%, transparent);
-}
-
-.plugin-config-page__tab:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 62%, transparent);
-}
-
-.plugin-config-field-list {
+.plugin-config-form-grid {
   display: grid;
-  gap: 12px;
+  gap: 18px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
 }
 
 .plugin-config-groups {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .plugin-config-group-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 68%, transparent), transparent 64%),
-    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 78%, transparent);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow, rgba(15, 23, 42, 0.08)) 24%, transparent);
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 99%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  box-shadow: none;
 }
 
 .plugin-config-group-card__hero {
@@ -1532,14 +1571,14 @@ async function save() {
 
 .plugin-config-group-card__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
   font-weight: 700;
 }
 
 .plugin-config-group-card__desc {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.55;
   color: var(--text-muted, rgba(255, 255, 255, 0.68));
 }
@@ -1547,7 +1586,7 @@ async function save() {
 .plugin-config-group-card__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-end;
 }
 
@@ -1561,167 +1600,181 @@ async function save() {
 .plugin-config-group-card__chip {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
+  min-height: 20px;
+  padding: 0 8px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 10%);
-  background: color-mix(in srgb, var(--accent, #ec4899) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent, #ec4899) 18%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.76));
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.025)) 98%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 82%, transparent);
 }
 
 .plugin-config-group-card__chip--soft {
-  color: var(--text-muted, rgba(255, 255, 255, 0.72));
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.06)) 92%, transparent);
-  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 84%, transparent);
+  opacity: 0.88;
 }
 
 .plugin-config-group-card__toggle {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted, rgba(255, 255, 255, 0.72));
   white-space: nowrap;
 }
 
-.plugin-config-field-card {
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 76%, transparent);
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 72%, transparent), transparent 66%),
-    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.018)) 98%, transparent);
-  padding: 14px 16px;
-}
-
-.plugin-config-field-card__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 42%);
-  gap: 10px;
-  align-items: start;
-}
-
-.plugin-config-field-card__main { min-width: 0; }
-
-.plugin-config-field-card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.plugin-config-field-card__title-wrap {
-  display: grid;
-  gap: 4px;
+.plugin-config-form-item {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
   min-width: 0;
-  flex: 1 1 auto;
+  display: grid;
+  gap: 6px;
+  align-content: start;
 }
 
-.plugin-config-field-card__name-wrap {
+.plugin-config-form-item--wide,
+.plugin-config-form-item--json {
+  grid-column: 1 / -1;
+}
+
+.plugin-config-form-item__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 20px;
+}
+
+.plugin-config-form-item__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted, rgba(255, 255, 255, 0.82));
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.plugin-config-form-item__label-text {
+  min-width: 0;
+}
+
+.plugin-config-form-item__icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.plugin-config-form-item__meta-pill--secret {
+  color: color-mix(in srgb, #f59e0b 84%, var(--text, #fff) 8%);
+  border-color: color-mix(in srgb, #f59e0b 42%, transparent);
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  font-weight: 700;
+}
+
+.plugin-config-form-item__required {
+  color: color-mix(in srgb, var(--danger, #ef4444) 80%, var(--text, #fff) 10%);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.plugin-config-form-item__label-side {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
-.plugin-config-field-card__title {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.35;
-  font-weight: 700;
+.plugin-config-form-item__meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
-.plugin-config-field-card__summary {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-muted, rgba(255, 255, 255, 0.7));
-}
-
-.plugin-config-field-card__required {
+.plugin-config-form-item__meta-pill {
   display: inline-flex;
   align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
   border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  background: transparent;
+  font-size: 10px;
   line-height: 1;
-  color: #7b2717;
-  background: rgba(255, 214, 163, 0.9);
+  color: var(--text-muted, rgba(255, 255, 255, 0.72));
 }
 
-.plugin-config-field-card__help-btn {
-  width: 26px;
-  height: 26px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 82%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.035)) 95%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 72%, var(--text, #fff) 18%);
-  font-size: 12px;
-  font-weight: 700;
+.plugin-config-form-item__help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
 
-.plugin-config-field-card__help-btn:hover,
-.plugin-config-field-card__help-btn[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 20%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 8%, transparent);
+.plugin-config-form-item__help-btn:hover,
+.plugin-config-form-item__help-btn[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
+  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
+  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 8%);
 }
 
-.plugin-config-field-card__editor-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 82%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 95%, transparent);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease;
-}
-
-.plugin-config-field-card__editor-button:hover,
-.plugin-config-field-card__editor-button[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 22%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 5%, transparent), transparent 76%),
-    color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 95%, transparent);
-}
-
-.plugin-config-field-card__editor-value {
+.plugin-config-form-item__control {
   min-width: 0;
-  flex: 1 1 auto;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--text, #fff);
 }
 
-.plugin-config-field-card__editor-action {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--accent, #ec4899) 76%, var(--text, #fff) 16%);
+.plugin-config-form-item__control :deep(.config-field-renderer) {
+  gap: 0;
+}
+
+.plugin-config-form-item__control :deep(.form-field__control),
+.plugin-config-form-item__control :deep(.inp),
+.plugin-config-form-item__control :deep(.sel),
+.plugin-config-form-item__control :deep(.textarea),
+.plugin-config-form-item__control :deep(.json-textarea-field__peek) {
+  border-radius: 8px;
+  min-height: 38px;
+}
+
+.plugin-config-form-item__control :deep(.json-textarea-field__peek) {
+  min-height: 132px;
+}
+
+.plugin-config-form-item__control :deep(.json-textarea-field__expand) {
+  min-height: 30px;
+}
+
+.plugin-config-form-item__help-btn--has-desc {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 22%, transparent);
+  color: color-mix(in srgb, var(--accent, #ec4899) 78%, var(--text, #fff) 12%);
 }
 
 .plugin-config-field-popover {
   z-index: 60;
   display: grid;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 78%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 4%, transparent), transparent 82%),
-    color-mix(in srgb, var(--surface, rgba(20, 22, 32, 0.96)) 98%, rgba(10, 12, 18, 0.9));
-  color: var(--text, #fff);
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.32),
-    0 2px 10px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(18px);
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(120, 120, 140, 0.28)) 90%, transparent);
+  background: var(--popover, var(--bg-card, #1b1d27));
+  color: var(--popover-foreground, var(--text, inherit));
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow, rgba(0, 0, 0, 0.35)) 60%, transparent);
+  backdrop-filter: blur(14px);
+  overflow: auto;
+  min-width: 240px;
 }
 
 .plugin-config-field-popover__section {
@@ -1730,24 +1783,24 @@ async function save() {
 }
 
 .plugin-config-field-popover__eyebrow {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  color: color-mix(in srgb, var(--accent, #ec4899) 74%, var(--text, #fff) 14%);
+  color: var(--text-muted, rgba(255, 255, 255, 0.62));
 }
 
 .plugin-config-field-popover__title {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.35;
   font-weight: 700;
 }
 
 .plugin-config-field-popover__desc {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
@@ -1757,10 +1810,10 @@ async function save() {
 
 .plugin-config-field-popover__meta {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   padding-top: 2px;
-  border-top: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 60%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
 }
 
 .plugin-config-field-popover__meta > div {
@@ -1777,7 +1830,7 @@ async function save() {
 
 .plugin-config-field-popover__meta dd {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.55;
   word-break: break-word;
 }
@@ -1795,9 +1848,7 @@ async function save() {
 .plugin-config-field-popover :deep(.textarea),
 .plugin-config-field-popover :deep(.json-textarea-field__peek) {
   color: var(--text, #fff);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.05)) 75%, transparent), transparent 78%),
-    color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 98%, transparent);
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 99%, transparent);
 }
 
 .plugin-config-field-popover :deep(.form-field__control::placeholder),
@@ -1808,14 +1859,20 @@ async function save() {
 
 @media (max-width: 560px) {
   .plugin-config-field-popover {
-    gap: 12px;
+    gap: 10px;
     padding: 12px;
-    border-radius: 16px;
+    border-radius: 18px;
   }
 
   .plugin-config-field-popover__meta > div {
     grid-template-columns: 48px 1fr;
     gap: 8px;
+  }
+}
+
+@media (max-width: 920px) {
+  .plugin-config-form-grid {
+    grid-template-columns: 1fr;
   }
 }
 

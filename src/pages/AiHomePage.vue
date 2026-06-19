@@ -6,7 +6,9 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
+import { AI_STATS_LIMITS } from "@/config/aiConstants";
 
 const panelNavIcon = usePanelNavIcon();
 const {
@@ -22,12 +24,7 @@ const {
   refresh,
 } = useAiRuntimeSnapshot();
 
-function dotClass(state: AiRuntimeState): string {
-  if (state === "healthy") return "ai-dot--ok";
-  if (state === "degraded") return "ai-dot--warn";
-  if (state === "disabled") return "";
-  return "ai-dot--warn";
-}
+const dotClass = runtimeStateDotClass;
 
 function stateLabel(state: AiRuntimeState): string {
   if (state === "healthy") return "正常运行";
@@ -41,7 +38,7 @@ const routeRows = computed(() =>
     .map(([key, count]) => ({ key, count: Number(count) || 0 }))
     .filter((row) => row.count > 0)
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
-    .slice(0, 6),
+    .slice(0, AI_STATS_LIMITS.topRoutes),
 );
 
 onMounted(() => {

@@ -94,31 +94,29 @@ function commandTrigger(commandId: string): string {
 
 <style scoped>
 .cmd-perm-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .cmd-perm-section__title {
-  font-size: 15px;
-  margin: 0 0 10px;
+  font-size: 14px;
+  margin: 0 0 8px;
   font-weight: 700;
 }
 
 .cmd-perm-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cmd-perm-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 13px 14px;
-  border-radius: 16px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 78%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 68%, transparent), transparent 66%),
-    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.016)) 99%, transparent);
 }
 
 .cmd-perm-card__main {
@@ -135,27 +133,27 @@ function commandTrigger(commandId: string): string {
 
 .cmd-perm-card__label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .cmd-perm-card__trigger {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: 4px 0 0;
+  font-size: 10px;
   line-height: 1.5;
 }
 
 .cmd-perm-card__desc {
-  margin: 6px 0 0;
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 11px;
   line-height: 1.55;
-  color: var(--text, #fff);
+  color: var(--text-muted, rgba(255, 255, 255, 0.76));
 }
 
 .cmd-perm-card__choices {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
   max-width: 26rem;
 }
@@ -164,18 +162,18 @@ function commandTrigger(commandId: string): string {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 80%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.025)) 98%, transparent);
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
   cursor: pointer;
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
 
 .cmd-perm-choice--active {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 20%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 9%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
+  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
   color: color-mix(in srgb, var(--accent, #ec4899) 84%, var(--text, #fff) 10%);
 }
 
@@ -187,7 +185,7 @@ function commandTrigger(commandId: string): string {
 }
 
 .cmd-perm-choice__label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 

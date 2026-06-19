@@ -18,7 +18,7 @@ import PluginConfigWorkspace from "@/components/PluginConfigWorkspace.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames } from "@/utils/pluginFavorites";
-import { buildPluginIconMap, resolvePluginIconForRow } from "@/utils/pluginIconUrl";
+import { buildPluginIconMap, resolvePluginIconForRow, shouldShowPluginAvatar } from "@/utils/pluginIconUrl";
 import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
@@ -78,7 +78,16 @@ function scrollToPluginOverview(behavior: ScrollBehavior = "smooth") {
 
 function pluginIconUrl(name: string): string {
   const row = list.value.find((p) => p.name === name);
-  return resolvePluginIconForRow(name, row?.plugin_source, iconByPlugin.value);
+  if (!row) return "";
+  return resolvePluginIconForRow(row, iconByPlugin.value);
+}
+
+function pluginAvatarUrl(name: string): string {
+  const row = list.value.find((p) => p.name === name);
+  if (!row) return "";
+  const avatar = (row.avatar || "").trim();
+  const icon = pluginIconUrl(name);
+  return shouldShowPluginAvatar(icon, avatar) ? avatar : "";
 }
 
 const selectedPluginRow = computed(
@@ -226,6 +235,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
             :key="p.name"
             :plugin="p"
             :icon-url="pluginIconUrl(p.name)"
+            :avatar-url="pluginAvatarUrl(p.name)"
             :active="selectedPluginName === p.name"
             @select="selectPlugin(p.name)"
           />

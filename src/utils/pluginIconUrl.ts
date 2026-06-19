@@ -1,4 +1,4 @@
-import type { CommunityPluginRow, OfficialExtensionRow, PluginSourceKind } from "@/api/pallasTypes";
+import type { CommunityPluginRow, OfficialExtensionRow, PluginRow, PluginSourceKind } from "@/api/pallasTypes";
 import brandAvatarHdUrl from "@/assets/brand-avatar-hd.png?url";
 
 /** 文档站同款牛牛 mascot（1024 透明 PNG，经构建 hash 后挂载于 /pallas/assets/） */
@@ -30,8 +30,12 @@ export function isPallasBrandedPlugin(pluginId: string, pluginSource?: PluginSou
 }
 
 export function resolveOfficialExtensionIconUrl(
-  _row: Pick<OfficialExtensionRow, "package" | "icon">,
+  row: Pick<OfficialExtensionRow, "package" | "icon" | "avatar" | "cover">,
 ): string {
+  const cover = (row.cover || "").trim();
+  if (cover) return cover;
+  const avatar = (row.avatar || "").trim();
+  if (avatar) return avatar;
   return PALLAS_MASCOT_ICON_URL;
 }
 
@@ -82,9 +86,10 @@ export function buildPluginIconMap(
 ): Record<string, string> {
   const map: Record<string, string> = {};
   for (const row of official) {
+    const icon = resolveOfficialExtensionIconUrl(row);
     for (const pid of row.plugin_ids || []) {
       const id = (pid || "").trim();
-      if (id) map[id] = PALLAS_MASCOT_ICON_URL;
+      if (id && icon) map[id] = icon;
     }
   }
   const indexUpdatedAt = options?.indexUpdatedAt;
@@ -97,14 +102,40 @@ export function buildPluginIconMap(
 }
 
 export function resolvePluginIconForRow(
-  pluginId: string,
-  pluginSource: PluginSourceKind | undefined,
+  row: Pick<PluginRow, "name" | "icon" | "plugin_source" | "extra_package">,
   iconMap: Record<string, string>,
 ): string {
-  const id = (pluginId || "").trim();
+  const id = (row.name || "").trim();
   if (!id) return "";
+  const mappedIcon = (iconMap[id] || "").trim();
+  if ((row.extra_package || "").trim() && mappedIcon) {
+    return mappedIcon;
+  }
+  const rowIcon = (row.icon || "").trim();
+  if (rowIcon) return rowIcon;
+  const pluginSource = row.plugin_source;
   if (isPallasBrandedPlugin(id, pluginSource)) {
     return PALLAS_MASCOT_ICON_URL;
   }
-  return (iconMap[id] || "").trim();
+  return mappedIcon;
+}
+
+function normalizeComparableImageUrl(url: string): string {
+  const raw = (url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    parsed.searchParams.delete("pb_icon_v");
+    return parsed.toString();
+  } catch {
+    return raw.replace(/([?&])pb_icon_v=[^&]+&?/, "$1").replace(/[?&]$/, "");
+  }
+}
+
+export function shouldShowPluginAvatar(iconUrl?: string | null, avatarUrl?: string | null): boolean {
+  const avatar = (avatarUrl || "").trim();
+  if (!avatar) return false;
+  const icon = (iconUrl || "").trim();
+  if (!icon) return true;
+  return normalizeComparableImageUrl(icon) !== normalizeComparableImageUrl(avatar);
 }

@@ -87,7 +87,7 @@ export const AI_RUNTIME_GROUPS: AiRuntimeGroupDef[] = [
     title: "自动化能力",
     description: "MAA 等自动执行能力与任务型链路。",
     icon: "activity",
-    section: "runtime",
+    section: "connection",
   },
 ];
 
@@ -131,12 +131,12 @@ export const AI_RUNTIME_CAPABILITIES: AiRuntimeCapabilityDef[] = [
     description: "Draw 能力与图像生成链路。",
     groupId: "media",
     icon: "palette",
-    section: "runtime",
+    section: "connection",
     aliases: ["draw", "image", "paint", "画", "绘图", "图像"],
     sourceKinds: ["service_gateway"],
     statusCopy: DEFAULT_STATUS_COPY,
     defaultActions: [
-      { idSuffix: "open-runtime", label: "留在运行态", section: "runtime", priority: 40, surfaces: ["card"] },
+      { idSuffix: "open-connection", label: "查看扩展连接", section: "connection", priority: 40, surfaces: ["card"] },
       { idSuffix: "open-ncm", label: "查看媒体侧页", section: "ncm", priority: 68, surfaces: ["quick"] },
     ],
   },
@@ -152,7 +152,7 @@ export const AI_RUNTIME_CAPABILITIES: AiRuntimeCapabilityDef[] = [
     statusCopy: DEFAULT_STATUS_COPY,
     defaultActions: [
       { idSuffix: "open-ncm", label: "去网易云页", section: "ncm", priority: 82, surfaces: ["page", "card", "quick"] },
-      { idSuffix: "open-runtime", label: "回运行态", section: "runtime", priority: 36, surfaces: ["card"] },
+      { idSuffix: "open-connection", label: "查看扩展连接", section: "connection", priority: 36, surfaces: ["card"] },
     ],
   },
   {
@@ -161,12 +161,12 @@ export const AI_RUNTIME_CAPABILITIES: AiRuntimeCapabilityDef[] = [
     description: "MAA 与任务型自动执行能力。",
     groupId: "automation",
     icon: "activity",
-    section: "runtime",
+    section: "connection",
     aliases: ["maa", "automation", "auto", "自动", "任务"],
     sourceKinds: ["service_gateway"],
     statusCopy: DEFAULT_STATUS_COPY,
     defaultActions: [
-      { idSuffix: "open-runtime", label: "留在运行态", section: "runtime", priority: 45, surfaces: ["card"] },
+      { idSuffix: "open-connection", label: "查看扩展连接", section: "connection", priority: 45, surfaces: ["card"] },
       { idSuffix: "open-connection", label: "查看扩展连接", section: "connection", priority: 74, surfaces: ["quick"] },
     ],
   },

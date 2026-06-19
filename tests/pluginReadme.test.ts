@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
+import { extractReadmeAvatarUrl, readmeMarkdownToSafeHtml } from "../src/utils/pluginReadme";
 
 describe("readmeMarkdownToSafeHtml", () => {
   it("keeps centered html hero blocks and rewrites relative image sources", () => {
@@ -26,5 +26,25 @@ describe("readmeMarkdownToSafeHtml", () => {
     );
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noreferrer"');
+  });
+});
+
+describe("extractReadmeAvatarUrl", () => {
+  it("resolves first html image from readme", () => {
+    const md = `
+<p align="center">
+  <img src="./assets/avatar.png" width="128" height="128" />
+</p>
+`;
+    expect(extractReadmeAvatarUrl(md, "https://github.com/acme/demo")).toBe(
+      "https://raw.githubusercontent.com/acme/demo/refs/heads/main/assets/avatar.png",
+    );
+  });
+
+  it("falls back to markdown image", () => {
+    const md = "![logo](assets/icon.png)";
+    expect(extractReadmeAvatarUrl(md, "https://github.com/acme/demo")).toBe(
+      "https://raw.githubusercontent.com/acme/demo/refs/heads/main/assets/icon.png",
+    );
   });
 });

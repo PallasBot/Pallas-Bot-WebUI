@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import ChartsDailyBarChart from "@/components/ChartsDailyBarChart.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import StatTable, { type StatColumn } from "@/components/ai-config/stats/StatTable.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { installChartThemeWatcher, readChartPalette } from "@/utils/chartTheme";
 
 const panelNavIcon = usePanelNavIcon();
 const {
@@ -33,6 +36,37 @@ const {
   resetMonthRange,
 } = useAiTaskStatsPage();
 
+const palette = ref(readChartPalette(4));
+const botAccent = computed(() => palette.value[0] ?? "#38bdf8");
+const aiAccent = computed(() => palette.value[2] ?? "#34d399");
+
+type DimRow = (typeof providerRows.value)[number];
+type TokenRow = (typeof tokenProviderRows.value)[number];
+
+const dimColumns = (head: string): StatColumn<DimRow>[] => [
+  {
+    key: "name",
+    label: head,
+    value: (r) => r.key,
+    sub: (r) => (r.recentFailureClass ? `最近失败：${r.recentFailureClass}` : ""),
+  },
+  { key: "requests", label: "请求", value: (r) => r.requests.toLocaleString(), align: "right" },
+  {
+    key: "ratio",
+    label: "成功 / 失败",
+    value: (r) => `${r.succeeded.toLocaleString()} / ${r.failed.toLocaleString()}`,
+    align: "right",
+  },
+  { key: "latency", label: "均延迟", value: (r) => (r.avgLatencyMs != null ? `${r.avgLatencyMs} ms` : "—"), align: "right" },
+];
+
+const tokenColumns = (head: string): StatColumn<TokenRow>[] => [
+  { key: "name", label: head, value: (r) => r.key },
+  { key: "total", label: "总计", value: (r) => r.totalTokens.toLocaleString(), align: "right" },
+  { key: "prompt", label: "提示", value: (r) => r.promptTokens.toLocaleString(), align: "right" },
+  { key: "completion", label: "补全", value: (r) => r.completionTokens.toLocaleString(), align: "right" },
+];
+
 watch(month, () => {
   resetMonthRange();
   void refresh();
@@ -42,9 +76,18 @@ watch([start, end], () => {
   void refresh();
 });
 
+let stopThemeWatch: (() => void) | null = null;
+
 onMounted(() => {
   resetMonthRange();
   void refresh();
+  stopThemeWatch = installChartThemeWatcher(() => {
+    palette.value = readChartPalette(4);
+  });
+});
+
+onUnmounted(() => {
+  stopThemeWatch?.();
 });
 </script>
 
@@ -118,7 +161,7 @@ onMounted(() => {
           :points="historyBotPoints"
           title=""
           unit="次"
-          accent="#3b82f6"
+          :accent="botAccent"
           empty-text="所选时间窗暂无 Bot 侧历史快照。"
         />
       </UiCard>
@@ -132,7 +175,7 @@ onMounted(() => {
           :points="historyAiPoints"
           title=""
           unit="次"
-          accent="#0ea5e9"
+          :accent="aiAccent"
           :empty-text="stats?.ai_reachable ? '所选时间窗暂无 AI 历史快照。' : 'AI 当前不可达，无法获取 AI 历史快照。'"
         />
       </UiCard>
@@ -145,7 +188,7 @@ onMounted(() => {
           <span class="ai-head__hint">出现最多的失败原因</span>
         </div>
         <div v-if="failureRows.length" class="ai-rows">
-          <div v-for="row in failureRows.slice(0, 8)" :key="row.key" class="ai-row">
+          <div v-for="row in failureRows.slice(0, AI_STATS_LIMITS.topRows)" :key="row.key" class="ai-row">
             <span class="ai-row__key">{{ row.label }}</span>
             <strong class="ai-row__val">{{ row.count.toLocaleString() }}</strong>
           </div>
@@ -175,105 +218,45 @@ onMounted(() => {
     </section>
 
     <section class="ai-stats-page__boards">
-      <UiCard class="ai-stats-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">Provider 视图</h3>
-          <span class="ai-head__hint">请求量、成功 / 失败与平均延迟</span>
-        </div>
-        <div v-if="providerRows.length" class="table-wrap">
-          <table class="tbl">
-            <thead>
-              <tr><th>Provider</th><th>请求</th><th>成功 / 失败</th><th>均延迟</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in providerRows.slice(0, 8)" :key="row.key">
-                <td>
-                  <div>{{ row.key }}</div>
-                  <div v-if="row.recentFailureClass" class="ai-subcell">最近失败：{{ row.recentFailureClass }}</div>
-                </td>
-                <td>{{ row.requests.toLocaleString() }}</td>
-                <td>{{ row.succeeded.toLocaleString() }} / {{ row.failed.toLocaleString() }}</td>
-                <td>{{ row.avgLatencyMs != null ? `${row.avgLatencyMs} ms` : "—" }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="ai-empty"><span>暂无 Provider 统计</span></div>
-      </UiCard>
-
-      <UiCard class="ai-stats-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">模型视图</h3>
-          <span class="ai-head__hint">按模型拆分的请求与错误</span>
-        </div>
-        <div v-if="modelRows.length" class="table-wrap">
-          <table class="tbl">
-            <thead>
-              <tr><th>模型</th><th>请求</th><th>成功 / 失败</th><th>均延迟</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in modelRows.slice(0, 8)" :key="row.key">
-                <td>
-                  <div>{{ row.key }}</div>
-                  <div v-if="row.recentFailureClass" class="ai-subcell">最近失败：{{ row.recentFailureClass }}</div>
-                </td>
-                <td>{{ row.requests.toLocaleString() }}</td>
-                <td>{{ row.succeeded.toLocaleString() }} / {{ row.failed.toLocaleString() }}</td>
-                <td>{{ row.avgLatencyMs != null ? `${row.avgLatencyMs} ms` : "—" }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="ai-empty"><span>暂无模型统计</span></div>
-      </UiCard>
+      <StatTable
+        title="Provider 视图"
+        hint="请求量、成功 / 失败与平均延迟"
+        :rows="providerRows"
+        :columns="dimColumns('Provider')"
+        :page-size="AI_STATS_LIMITS.topRows"
+        :row-key="(r) => r.key"
+        empty-text="暂无 Provider 统计"
+      />
+      <StatTable
+        title="模型视图"
+        hint="按模型拆分的请求与错误"
+        :rows="modelRows"
+        :columns="dimColumns('模型')"
+        :page-size="AI_STATS_LIMITS.topRows"
+        :row-key="(r) => r.key"
+        empty-text="暂无模型统计"
+      />
     </section>
 
     <section class="ai-stats-page__boards">
-      <UiCard class="ai-stats-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">Token · 按 Provider</h3>
-          <span class="ai-head__hint">各 Provider 的 Token 消耗</span>
-        </div>
-        <div v-if="tokenProviderRows.length" class="table-wrap">
-          <table class="tbl">
-            <thead>
-              <tr><th>Provider</th><th>总计</th><th>提示</th><th>补全</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in tokenProviderRows.slice(0, 8)" :key="row.key">
-                <td>{{ row.key }}</td>
-                <td>{{ row.totalTokens.toLocaleString() }}</td>
-                <td>{{ row.promptTokens.toLocaleString() }}</td>
-                <td>{{ row.completionTokens.toLocaleString() }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="ai-empty"><span>暂无 Token 统计</span></div>
-      </UiCard>
-
-      <UiCard class="ai-stats-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">Token · 按模型</h3>
-          <span class="ai-head__hint">各模型的 Token 消耗</span>
-        </div>
-        <div v-if="tokenModelRows.length" class="table-wrap">
-          <table class="tbl">
-            <thead>
-              <tr><th>模型</th><th>总计</th><th>提示</th><th>补全</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in tokenModelRows.slice(0, 8)" :key="row.key">
-                <td>{{ row.key }}</td>
-                <td>{{ row.totalTokens.toLocaleString() }}</td>
-                <td>{{ row.promptTokens.toLocaleString() }}</td>
-                <td>{{ row.completionTokens.toLocaleString() }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="ai-empty"><span>暂无 Token 统计</span></div>
-      </UiCard>
+      <StatTable
+        title="Token · 按 Provider"
+        hint="各 Provider 的 Token 消耗"
+        :rows="tokenProviderRows"
+        :columns="tokenColumns('Provider')"
+        :page-size="AI_STATS_LIMITS.topRows"
+        :row-key="(r) => r.key"
+        empty-text="暂无 Token 统计"
+      />
+      <StatTable
+        title="Token · 按模型"
+        hint="各模型的 Token 消耗"
+        :rows="tokenModelRows"
+        :columns="tokenColumns('模型')"
+        :page-size="AI_STATS_LIMITS.topRows"
+        :row-key="(r) => r.key"
+        empty-text="暂无 Token 统计"
+      />
     </section>
   </div>
 </template>

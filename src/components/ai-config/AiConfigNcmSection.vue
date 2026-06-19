@@ -12,15 +12,17 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { AI_NCM_DEFAULTS } from "@/config/aiConstants";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import { proxyCodeEquals, proxyDataRecord, proxyString } from "@/utils/aiProxyResult";
 import { slicePage } from "@/utils/paginate";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const ncmPhone = ref("");
-const ncmCtcode = ref(86);
+const ncmCtcode = ref<number>(AI_NCM_DEFAULTS.countryCode);
 const ncmCaptcha = ref("");
 const ncmStatus = ref<AiProxyResult | null>(null);
 const ncmBusy = ref(false);
@@ -34,21 +36,14 @@ const tablePageSize = computed({
   },
 });
 
-const ncmPayload = computed<Record<string, unknown>>(() => {
-  const d = ncmStatus.value?.data;
-  if (d && typeof d === "object" && !Array.isArray(d)) return d as Record<string, unknown>;
-  return {};
-});
+const ncmPayload = computed<Record<string, unknown>>(() => proxyDataRecord(ncmStatus.value));
 
 const ncmLoggedIn = computed(() => {
   const p = ncmPayload.value;
   return Boolean(p.success) && (typeof p.session === "string" ? p.session.length > 0 : Boolean(p.session));
 });
 
-const ncmStatusMessage = computed(() => {
-  const m = ncmPayload.value.message;
-  return typeof m === "string" ? m : "";
-});
+const ncmStatusMessage = computed(() => proxyString(ncmPayload.value, "message"));
 
 const ncmExtraLine = computed(() => {
   const m = ncmStatusMessage.value.trim();
@@ -87,7 +82,7 @@ async function refreshNcmStatus() {
 
 async function sendNcmSms() {
   const phone = ncmPhone.value.trim();
-  if (phone.length < 5) {
+  if (phone.length < AI_NCM_DEFAULTS.phoneMinLength) {
     err.value = "请输入有效手机号。";
     return;
   }
@@ -95,12 +90,11 @@ async function sendNcmSms() {
   ncmLastNote.value = "";
   err.value = "";
   try {
-    const r = await postAiNcmSendSms({ phone, ctcode: Number(ncmCtcode.value) || 86 });
+    const r = await postAiNcmSendSms({ phone, ctcode: Number(ncmCtcode.value) || AI_NCM_DEFAULTS.countryCode });
     ncmStatus.value = r;
-    const d = r.data as Record<string, unknown>;
-    const msg = typeof d.message === "string" ? d.message : "";
-    const code = d.code;
-    if (r.ok && (code === 200 || code === "200")) {
+    const d = proxyDataRecord(r);
+    const msg = proxyString(d, "message");
+    if (r.ok && proxyCodeEquals(d, 200)) {
       ncmLastNote.value = msg || "验证码已发送，请查收短信。";
     } else {
       err.value = msg || r.error || "发送验证码失败。";
@@ -115,7 +109,7 @@ async function sendNcmSms() {
 async function verifyNcmSms() {
   const phone = ncmPhone.value.trim();
   const captcha = ncmCaptcha.value.trim();
-  if (phone.length < 5 || captcha.length < 2) {
+  if (phone.length < AI_NCM_DEFAULTS.phoneMinLength || captcha.length < AI_NCM_DEFAULTS.captchaMinLength) {
     err.value = "请填写手机号与短信验证码。";
     return;
   }
@@ -123,16 +117,16 @@ async function verifyNcmSms() {
   ncmLastNote.value = "";
   err.value = "";
   try {
-    const r = await postAiNcmVerifySms({ phone, captcha, ctcode: Number(ncmCtcode.value) || 86 });
+    const r = await postAiNcmVerifySms({ phone, captcha, ctcode: Number(ncmCtcode.value) || AI_NCM_DEFAULTS.countryCode });
     ncmStatus.value = r;
-    const d = r.data as Record<string, unknown>;
+    const d = proxyDataRecord(r);
     if (r.ok && d.success === true) {
       err.value = "";
-      pushConsoleToast(typeof d.message === "string" && d.message.trim() ? d.message : "登录成功");
+      pushConsoleToast(proxyString(d, "message").trim() || "登录成功");
       ncmCaptcha.value = "";
       await refreshNcmStatus();
     } else {
-      err.value = typeof d.message === "string" ? d.message : r.error || "登录失败。";
+      err.value = proxyString(d, "message") || r.error || "登录失败。";
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -148,13 +142,13 @@ async function logoutNcm() {
   try {
     const r = await postAiNcmLogout();
     ncmStatus.value = r;
-    const d = r.data as Record<string, unknown>;
+    const d = proxyDataRecord(r);
     if (r.ok && d.success === true) {
       err.value = "";
-      pushConsoleToast(typeof d.message === "string" && d.message.trim() ? d.message : "已登出");
+      pushConsoleToast(proxyString(d, "message").trim() || "已登出");
       await refreshNcmStatus();
     } else {
-      err.value = typeof d.message === "string" ? d.message : r.error || "登出失败。";
+      err.value = proxyString(d, "message") || r.error || "登出失败。";
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);

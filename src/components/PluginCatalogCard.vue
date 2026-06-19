@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref, watch } from "vue";
 import type { PluginRow } from "@/api/pallasTypes";
 import PluginIcon from "@/components/PluginIcon.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
@@ -12,15 +13,23 @@ import {
 } from "@/utils/pluginLoadRoleLabel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
-defineProps<{
+const props = defineProps<{
   plugin: PluginRow;
   iconUrl?: string | null;
+  avatarUrl?: string | null;
   active?: boolean;
 }>();
 
 const emit = defineEmits<{
   select: [];
 }>();
+
+const avatarImageFailed = ref(false);
+
+const resolvedAvatarUrl = computed(() => {
+  if (avatarImageFailed.value) return null;
+  return (props.avatarUrl || "").trim() || null;
+});
 
 function displayTitle(p: PluginRow): string {
   return p.metadata?.name || p.nb_plugin_name || p.name;
@@ -33,6 +42,13 @@ function pluginId(p: PluginRow): string {
 function isFavorite(name: string): boolean {
   return pluginFavoriteNames.value.has(name);
 }
+
+watch(
+  () => [props.iconUrl, props.avatarUrl],
+  () => {
+    avatarImageFailed.value = false;
+  },
+);
 </script>
 
 <template>
@@ -48,12 +64,25 @@ function isFavorite(name: string): boolean {
         class="plugin-catalog-card__main"
         @click="emit('select')"
       >
-        <PluginIcon
-          :plugin-id="pluginId(plugin)"
-          :label="displayTitle(plugin)"
-          :icon-url="iconUrl"
-          size="md"
-        />
+        <div class="plugin-catalog-card__media">
+          <PluginIcon
+            :plugin-id="pluginId(plugin)"
+            :label="displayTitle(plugin)"
+            :icon-url="iconUrl"
+            size="md"
+          />
+          <span
+            v-if="resolvedAvatarUrl"
+            class="plugin-catalog-card__avatar"
+          >
+            <img
+              :src="resolvedAvatarUrl"
+              :alt="displayTitle(plugin)"
+              loading="lazy"
+              @error="avatarImageFailed = true"
+            >
+          </span>
+        </div>
         <div class="plugin-catalog-card__text">
           <div class="plugin-catalog-card__title-row">
             <h3 class="plugin-catalog-card__title" :title="displayTitle(plugin)">
@@ -124,3 +153,33 @@ function isFavorite(name: string): boolean {
     </template>
   </UiCard>
 </template>
+
+<style scoped>
+.plugin-catalog-card__media {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.plugin-catalog-card__avatar {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 2px solid var(--surface);
+  background: var(--surface);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.plugin-catalog-card__avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+</style>

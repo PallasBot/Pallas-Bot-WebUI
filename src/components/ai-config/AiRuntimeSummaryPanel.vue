@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
-import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import { AI_TOP_LEVEL_NAV } from "@/config/aiConfigSections";
 import type { AiRuntimeOverview, AiRuntimeSnapshotGroup } from "@/utils/aiRuntimeTypes";
+import { runtimeStateClass, runtimeStateLabel } from "@/utils/aiRuntimeState";
 import { RouterLink } from "vue-router";
 
 withDefaults(
@@ -20,19 +20,6 @@ withDefaults(
     showHubLink: false,
   },
 );
-
-function runtimeStateClass(state: AiRuntimeState): string {
-  if (state === "healthy") return "tag--ok";
-  if (state === "degraded") return "tag--warn";
-  return "tag--muted";
-}
-
-function runtimeStateLabel(state: AiRuntimeState): string {
-  if (state === "healthy") return "正常";
-  if (state === "degraded") return "降级";
-  if (state === "disabled") return "未启用";
-  return "待确认";
-}
 </script>
 
 <template>
@@ -60,7 +47,7 @@ function runtimeStateLabel(state: AiRuntimeState): string {
       class="ai-runtime-summary__hub-link muted"
     >
       完整运行态与队列观测见
-      <RouterLink :to="aiConfigSectionPath('runtime')">AI配置</RouterLink>。
+      <RouterLink :to="AI_TOP_LEVEL_NAV[0].path">AI 首页</RouterLink>。
     </p>
 
     <div

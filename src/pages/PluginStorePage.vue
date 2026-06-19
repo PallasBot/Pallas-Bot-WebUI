@@ -188,6 +188,10 @@ function officialRowIconUrl(row: OfficialExtensionRow): string {
   return resolveOfficialExtensionIconUrl(row);
 }
 
+function officialRowAvatarUrl(_row: OfficialExtensionRow): string | null {
+  return null;
+}
+
 function extensionInstalled(row: OfficialExtensionRow): boolean {
   return Boolean(
     row.installed || row.status === "installed" || row.pip_installed || row.status === "pip_installed",
@@ -1041,6 +1045,7 @@ onDeactivated(() => {
             :description="officialRowDescription(row)"
             :plugin-id="officialRowPluginId(row)"
             :icon-url="officialRowIconUrl(row)"
+            :avatar-url="officialRowAvatarUrl(row)"
             author="by PallasBot"
             :installed="extensionInstalled(row)"
             :busy="storeBusyPackage === row.package"

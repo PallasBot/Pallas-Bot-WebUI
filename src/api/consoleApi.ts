@@ -54,6 +54,8 @@ import type {
   LlmModelAdminStatus,
   LlmProvidersConfig,
   LlmProvidersSaveResult,
+  LlmProviderModelsResult,
+  LlmProviderTestResult,
   LlmHistorySessionDetailData,
   LlmHistorySessionsData,
   LlmTaskStatsData,
@@ -588,6 +590,24 @@ export async function putLlmProvidersConfig(
     body,
   );
   return unwrap(data, "/common-config/llm/providers");
+}
+
+/** 在线发现指定 Provider 的可用模型（经 BFF 代理 AI 仓）。 */
+export async function fetchLlmProviderModels(
+  providerId: string,
+): Promise<LlmProviderModelsResult> {
+  const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/models`;
+  const { data } = await http.get<ApiOk<LlmProviderModelsResult>>(path);
+  return unwrap(data, path);
+}
+
+/** 实时测试指定 Provider 的连通性（经 BFF 代理 AI 仓 ping）。 */
+export async function postLlmProviderTest(
+  providerId: string,
+): Promise<LlmProviderTestResult> {
+  const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/test`;
+  const { data } = await http.post<ApiOk<LlmProviderTestResult>>(path, {});
+  return unwrap(data, path);
 }
 
 export async function fetchLlmTaskStats(params?: {

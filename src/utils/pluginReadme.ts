@@ -87,6 +87,13 @@ export async function fetchGithubReadme(repositoryUrl: string): Promise<string> 
   throw new Error("未找到 README.md");
 }
 
+function readmeAssetCandidates(owner: string, repo: string, path: string): string[] {
+  return [
+    readmeRawAssetUrl(owner, repo, path, "main"),
+    readmeRawAssetUrl(owner, repo, path, "master"),
+  ];
+}
+
 function readmeRawAssetUrl(owner: string, repo: string, path: string, branch: "main" | "master"): string {
   const clean = path.replace(/^\.\//, "");
   return `https://raw.githubusercontent.com/${owner}/${repo}/refs/heads/${branch}/${clean}`;
@@ -130,6 +137,38 @@ export function resolveReadmeMarkdownAssets(markdown: string, repositoryUrl: str
     if (!value || /^(https?:|data:)/i.test(value)) return match;
     return `![${alt}](${readmeRawAssetUrl(owner, repo, value, "main")})`;
   });
+}
+
+function firstNonEmpty(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const trimmed = String(value || "").trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+function resolveReadmeImageUrl(src: string, repositoryUrl: string): string | null {
+  const value = src.trim();
+  if (!value) return null;
+  if (/^(https?:|data:)/i.test(value)) return value;
+  const parsed = parseGithubRepo(repositoryUrl);
+  if (!parsed) return null;
+  if (!isRelativeReadmeUrl(value)) return null;
+  return firstNonEmpty(...readmeAssetCandidates(parsed.owner, parsed.repo, value));
+}
+
+export function extractReadmeAvatarUrl(markdown: string, repositoryUrl: string): string | null {
+  const raw = (markdown || "").trim();
+  if (!raw) return null;
+  const htmlImg = raw.match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i);
+  if (htmlImg?.[1]) {
+    return resolveReadmeImageUrl(htmlImg[1], repositoryUrl);
+  }
+  const mdImg = raw.match(/!\[[^\]]*]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/i);
+  if (mdImg?.[1]) {
+    return resolveReadmeImageUrl(mdImg[1], repositoryUrl);
+  }
+  return null;
 }
 
 export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: string | null): string {
