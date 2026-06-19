@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchPluginConfig,
@@ -26,10 +26,9 @@ import type {
   PluginGovernanceMenuItem,
   PluginRow,
 } from "@/api/pallasTypes";
-import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
-import ConfigFieldGroupPanel from "@/components/config/ConfigFieldGroupPanel.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
+import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
@@ -49,11 +48,18 @@ import {
   collectFieldValues,
   fieldValuesFromConfig,
 } from "@/utils/pluginConfigFieldModel";
+import {
+  buildGroupSummary,
+  fieldDisplayName,
+  fieldTypeLabel,
+  summarizeFieldValue,
+} from "@/utils/pluginConfigWorkspaceModel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 
 const props = defineProps<{
   pluginName: string;
   iconUrl?: string | null;
+  initialPluginRow?: PluginRow | null;
 }>();
 
 const err = ref("");
@@ -64,7 +70,7 @@ const checkLines = ref<string[]>([]);
 const checkResults = ref<PluginConfigCheckResult["results"]>([]);
 const checkErr = ref("");
 const data = ref<PluginConfigData | null>(null);
-const pluginRow = ref<PluginRow | null>(null);
+const pluginRow = ref<PluginRow | null>(props.initialPluginRow ?? null);
 const helpMenuHiddenList = ref<string[]>([]);
 const helpMenuIgnoredList = ref<string[]>([]);
 const helpMenuBusy = ref(false);
@@ -86,13 +92,14 @@ const governanceSaving = ref(false);
 const governanceErr = ref("");
 const permSelections = ref<Record<string, string>>({});
 const limitSelections = ref<Record<string, string>>({});
-const commandsPanelOpen = ref(true);
 const limitDebounceTimers = ref<Record<string, ReturnType<typeof setTimeout>>>({});
+const pluginConfigTab = ref<"runtime" | "perm" | "limit" | "config">("runtime");
 
 const pluginName = computed(() => props.pluginName.trim());
+const pluginResolvedId = computed(() => (pluginRow.value?.resolved_plugin_id || pluginName.value).trim());
 
 const displayTitle = computed(
-  () => pluginRow.value?.metadata?.name || data.value?.plugin || pluginName.value,
+  () => pluginRow.value?.metadata?.name || data.value?.plugin || pluginResolvedId.value,
 );
 
 const displayDescription = computed(() => {
@@ -103,11 +110,12 @@ const displayDescription = computed(() => {
 
 const metaLine = computed(() => {
   const parts: string[] = [];
-  if (pluginName.value && pluginName.value !== displayTitle.value) {
-    parts.push(pluginName.value);
+  if (pluginResolvedId.value && pluginResolvedId.value !== displayTitle.value) {
+    parts.push(pluginResolvedId.value);
   }
-  if (data.value?.module && data.value.module !== displayDescription.value) {
-    parts.push(data.value.module);
+  const resolvedModule = (pluginRow.value?.resolved_module || data.value?.module || "").trim();
+  if (resolvedModule && resolvedModule !== displayDescription.value) {
+    parts.push(resolvedModule);
   }
   if (pluginRow.value && hasPluginSource(pluginRow.value)) {
     parts.push(`来源：${pluginSourceLabel(pluginRow.value.plugin_source)}`);
@@ -152,6 +160,9 @@ const commandsWithMenu = computed(() => {
   const menuByPerm = new Map<string, PluginGovernanceMenuItem>();
   for (const m of governanceData.value.menu_items) {
     if (m.command_permission) menuByPerm.set(m.command_permission, m);
+    for (const id of m.command_permissions ?? []) {
+      if (id) menuByPerm.set(id, m);
+    }
   }
   return governanceData.value.commands.map((cmd) => ({
     ...cmd,
@@ -174,9 +185,22 @@ const commandMenuMap = computed(() => {
 const showFleetWhitelistEditor = computed(
   () => isGloballyDisabled.value || whitelistedGroupIds.value.length > 0,
 );
+const showRuntimePanel = computed(() => Boolean(pluginResolvedId.value));
+const hasPermConfig = computed(() => Boolean(permPlugin.value));
+const hasLimitConfig = computed(() => Boolean(limitsPlugin.value));
+
+watch(
+  () => props.initialPluginRow,
+  (row) => {
+    if (row && (row.resolved_plugin_id || row.name) === pluginName.value) {
+      pluginRow.value = row;
+    }
+  },
+  { immediate: true },
+);
 
 async function loadHelpMenuState() {
-  const name = pluginName.value;
+  const name = pluginResolvedId.value;
   if (!name) return;
   helpMenuBusy.value = true;
   helpMenuErr.value = "";
@@ -187,7 +211,7 @@ async function loadHelpMenuState() {
       fetchPluginsGlobalDisable(),
       fetchPluginsGroupFleetWhitelist(),
     ]);
-    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
     helpMenuHiddenList.value = [...vis.hidden_plugins];
     helpMenuIgnoredList.value = [...vis.ignored_plugins];
     globalDisabledList.value = [...globalDisable.disabled_plugins];
@@ -227,7 +251,7 @@ async function persistFleetWhitelist(entries: GroupFleetWhitelistEntry[]) {
 }
 
 async function addGroupToFleetWhitelist() {
-  const name = pluginName.value;
+  const name = pluginResolvedId.value;
   if (!name || fleetWhitelistBusy.value) return;
   whitelistGroupAddHint.value = "";
   const raw = addWhitelistGroupInput.value.trim();
@@ -257,7 +281,7 @@ async function addGroupToFleetWhitelist() {
 }
 
 async function removeGroupFromFleetWhitelist(groupId: number) {
-  const name = pluginName.value;
+  const name = pluginResolvedId.value;
   if (!name || fleetWhitelistBusy.value) return;
   const entries = cloneFleetWhitelistEntries()
     .map((entry) => {
@@ -272,7 +296,7 @@ async function removeGroupFromFleetWhitelist(groupId: number) {
 }
 
 async function toggleGlobalDisable(wantDisabled: boolean) {
-  const name = pluginName.value;
+  const name = pluginResolvedId.value;
   if (!name || !pluginRow.value?.name) return;
   if (pluginRow.value.global_disable_protected) return;
   globalDisableBusy.value = true;
@@ -284,7 +308,7 @@ async function toggleGlobalDisable(wantDisabled: boolean) {
     const out = await putPluginsGlobalDisable([...set].sort((a, b) => a.localeCompare(b)));
     globalDisabledList.value = [...out.disabled_plugins];
     const rows = await fetchPlugins({ bypassCache: true });
-    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
   } catch (e) {
     globalDisableErr.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -293,7 +317,7 @@ async function toggleGlobalDisable(wantDisabled: boolean) {
 }
 
 async function toggleHelpMenuVisible(wantVisible: boolean) {
-  const name = pluginName.value;
+  const name = pluginResolvedId.value;
   if (!name || !pluginRow.value?.name) return;
   if (pluginRow.value.help_ignored) return;
   helpMenuBusy.value = true;
@@ -305,7 +329,7 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
     const out = await putPluginsHelpMenuVisibility([...set]);
     helpMenuHiddenList.value = [...out.hidden_plugins];
     const rows = await fetchPlugins({ bypassCache: true });
-    pluginRow.value = rows.find((r) => r.name === name) ?? null;
+    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
   } catch (e) {
     helpMenuErr.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -316,11 +340,11 @@ async function toggleHelpMenuVisible(wantVisible: boolean) {
 // ── Governance functions ─────────────────────────────────
 
 async function loadGovernance() {
-  if (!pluginName.value) return;
+  if (!pluginResolvedId.value) return;
   governanceLoading.value = true;
   governanceErr.value = "";
   try {
-    const g = await fetchPluginGovernance(pluginName.value);
+    const g = await fetchPluginGovernance(pluginResolvedId.value);
     governanceData.value = g;
     const permNext: Record<string, string> = {};
     const permPlugins = g.perm_ui_filtered?.plugins;
@@ -378,7 +402,7 @@ async function persistGovernance() {
       global_disable: isGloballyDisabled.value,
       help_hidden: !showInHelpMenu.value,
     };
-    const result = await putPluginGovernance(pluginName.value, body);
+    const result = await putPluginGovernance(pluginResolvedId.value, body);
     governanceData.value = { ...governanceData.value, ...result };
   } catch (e) {
     governanceErr.value = e instanceof Error ? e.message : String(e);
@@ -400,8 +424,8 @@ function onLimitInput(commandId: string, raw: string) {
   }, 800);
 }
 
-const supportsConfigCheck = computed(() => pluginName.value === "draw");
-const usesGatewayEditor = computed(() => pluginName.value === "draw");
+const supportsConfigCheck = computed(() => pluginResolvedId.value === "draw");
+const usesGatewayEditor = computed(() => pluginResolvedId.value === "draw");
 
 const visibleFields = computed(() => {
   if (!data.value) return [];
@@ -414,6 +438,10 @@ interface ConfigGroupView {
   id: string;
   title: string;
   fields: PluginConfigField[];
+}
+
+interface ConfigGroupViewModel extends ConfigGroupView {
+  summary: ReturnType<typeof buildGroupSummary>;
 }
 
 function fieldsForGroup(group: PluginConfigFieldGroup, fields: PluginConfigField[]): PluginConfigField[] {
@@ -444,11 +472,61 @@ const configFieldGroups = computed((): ConfigGroupView[] => {
 });
 
 const groupOpen = ref<Record<string, boolean>>({});
-const runtimePanelOpen = ref(true);
+const fieldPopoverHost = ref<HTMLElement | null>(null);
+const activeFieldPopoverName = ref<string | null>(null);
+const activeFieldPopoverMode = ref<"edit" | "help">("edit");
+const fieldPopoverStyle = ref<Record<string, string>>({});
+const fieldPopoverDraft = ref("");
 
-function fieldGridCellClass(field: PluginConfigField): string {
-  if (field.kind === "json") return "plugin-config-page__field-cell plugin-config-page__field-cell--wide";
-  return "plugin-config-page__field-cell";
+const activeFieldPopover = computed(() => {
+  const name = activeFieldPopoverName.value;
+  if (!name) return null;
+  for (const group of configGroupViewModels.value) {
+    const field = group.fields.find((item) => item.name === name);
+    if (field) return field;
+  }
+  return null;
+});
+
+function updateFieldPopoverPosition(anchor: HTMLElement) {
+  if (typeof window === "undefined") return;
+  const rect = anchor.getBoundingClientRect();
+  const maxWidth = Math.min(360, window.innerWidth - 16);
+  const left = Math.min(
+    Math.max(8, rect.left),
+    Math.max(8, window.innerWidth - maxWidth - 8),
+  );
+  const top = Math.min(rect.bottom + 10, window.innerHeight - 16);
+  fieldPopoverStyle.value = {
+    position: "fixed",
+    top: `${top}px`,
+    left: `${left}px`,
+    width: `min(${maxWidth}px, calc(100vw - 16px))`,
+  };
+}
+
+function openFieldPopover(fieldName: string, mode: "edit" | "help", event: MouseEvent) {
+  const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  if (!anchor) return;
+  if (activeFieldPopoverName.value === fieldName && activeFieldPopoverMode.value === mode) {
+    closeFieldPopover();
+    return;
+  }
+  activeFieldPopoverName.value = fieldName;
+  activeFieldPopoverMode.value = mode;
+  fieldPopoverDraft.value = fieldValues.value[fieldName] ?? "";
+  updateFieldPopoverPosition(anchor);
+}
+
+function closeFieldPopover() {
+  activeFieldPopoverName.value = null;
+}
+
+function saveFieldPopoverValue() {
+  const field = activeFieldPopover.value;
+  if (!field) return;
+  fieldValues.value = { ...fieldValues.value, [field.name]: fieldPopoverDraft.value };
+  closeFieldPopover();
 }
 
 watch(
@@ -465,12 +543,26 @@ watch(
   { immediate: true },
 );
 
-function toggleRuntimePanel() {
-  runtimePanelOpen.value = !runtimePanelOpen.value;
-}
-
 function toggleConfigGroup(id: string) {
   groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
+}
+
+function onWindowKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape") {
+    closeFieldPopover();
+  }
+}
+
+function onWindowPointerdown(event: MouseEvent) {
+  if (!activeFieldPopover.value) return;
+  const target = event.target as Node | null;
+  if (!target) return;
+  if (fieldPopoverHost.value?.contains(target)) return;
+  closeFieldPopover();
+}
+
+function onWindowResize() {
+  closeFieldPopover();
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -478,11 +570,11 @@ function onGatewayFieldValues(next: Record<string, string>) {
 }
 
 async function load() {
-  if (!pluginName.value) {
+  if (!pluginResolvedId.value) {
     data.value = null;
     return;
   }
-  const requestName = pluginName.value;
+  const requestName = pluginResolvedId.value;
   loading.value = true;
   err.value = "";
   checkLines.value = [];
@@ -491,14 +583,14 @@ async function load() {
   data.value = null;
   try {
     const next = await fetchPluginConfig(requestName);
-    if (pluginName.value !== requestName) return;
+    if (pluginResolvedId.value !== requestName) return;
     data.value = next;
   } catch (e) {
-    if (pluginName.value !== requestName) return;
+    if (pluginResolvedId.value !== requestName) return;
     err.value = axiosErrorDetail(e);
     data.value = null;
   } finally {
-    if (pluginName.value !== requestName) return;
+    if (pluginResolvedId.value !== requestName) return;
     loading.value = false;
   }
   void loadHelpMenuState();
@@ -515,7 +607,21 @@ watch(
 );
 
 onMounted(() => {
+  window.addEventListener("keydown", onWindowKeydown);
+  window.addEventListener("mousedown", onWindowPointerdown);
+  window.addEventListener("resize", onWindowResize);
+  window.addEventListener("scroll", onWindowResize, true);
   void load();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onWindowKeydown);
+  window.removeEventListener("mousedown", onWindowPointerdown);
+  window.removeEventListener("resize", onWindowResize);
+  window.removeEventListener("scroll", onWindowResize, true);
+  for (const timer of Object.values(limitDebounceTimers.value)) {
+    clearTimeout(timer);
+  }
 });
 
 useSaveHotkey(
@@ -525,13 +631,28 @@ useSaveHotkey(
 
 const fieldValues = ref<Record<string, string>>({});
 
+const configGroupViewModels = computed((): ConfigGroupViewModel[] =>
+  configFieldGroups.value.map((group) => ({
+    ...group,
+    summary: buildGroupSummary(group.fields, fieldValues.value),
+  })),
+);
+
 watch(
   data,
   (d) => {
     fieldValues.value = d ? fieldValuesFromConfig(d.fields) : {};
+    if (activeFieldPopover.value) {
+      fieldPopoverDraft.value = d ? fieldValuesFromConfig(d.fields)[activeFieldPopover.value.name] ?? "" : "";
+    }
   },
   { immediate: true },
 );
+
+watch(activeFieldPopover, (field) => {
+  if (!field) return;
+  fieldPopoverDraft.value = fieldValues.value[field.name] ?? "";
+});
 
 async function runConfigCheck() {
   if (!data.value || !supportsConfigCheck.value) return;
@@ -541,7 +662,7 @@ async function runConfigCheck() {
   checkResults.value = [];
   try {
     const values = collectFieldValues(data.value.fields, fieldValues.value);
-    const r = await postPluginConfigCheck(pluginName.value, values);
+    const r = await postPluginConfigCheck(pluginResolvedId.value, values);
     checkLines.value = r.lines;
     checkResults.value = r.results;
     toastProbeLines(r.lines);
@@ -559,7 +680,7 @@ async function save() {
   err.value = "";
   try {
     const values = collectFieldValues(data.value.fields, fieldValues.value);
-    data.value = await putPluginConfig(pluginName.value, values);
+    data.value = await putPluginConfig(pluginResolvedId.value, values);
     toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = axiosErrorDetail(e);
@@ -583,7 +704,7 @@ async function save() {
       <div class="plugin-config-page__hero">
         <div class="plugin-config-page__hero-main">
           <PluginIcon
-            :plugin-id="pluginName"
+            :plugin-id="pluginResolvedId"
             :label="displayTitle"
             :icon-url="iconUrl"
             size="lg"
@@ -653,14 +774,45 @@ async function save() {
         v-else-if="data"
         class="plugin-config-page__card-bd"
       >
+          <div class="plugin-config-page__tabs">
+            <button
+              type="button"
+              class="plugin-config-page__tab"
+              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'runtime' }"
+              @click="pluginConfigTab = 'runtime'"
+            >
+              运行控制
+            </button>
+            <button
+              v-if="hasPermConfig"
+              type="button"
+              class="plugin-config-page__tab"
+              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'perm' }"
+              @click="pluginConfigTab = 'perm'"
+            >
+              权限
+            </button>
+            <button
+              v-if="hasLimitConfig"
+              type="button"
+              class="plugin-config-page__tab"
+              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'limit' }"
+              @click="pluginConfigTab = 'limit'"
+            >
+              冷却
+            </button>
+            <button
+              type="button"
+              class="plugin-config-page__tab"
+              :class="{ 'plugin-config-page__tab--active': pluginConfigTab === 'config' }"
+              @click="pluginConfigTab = 'config'"
+            >
+              插件配置
+            </button>
+          </div>
+
           <p
-            v-if="data.fields.length"
-            class="muted plugin-config-page__fields-lead"
-          >
-            共 <strong style="color: var(--text)">{{ data.fields.length }}</strong> 个可配置项；保存后立即由服务端校验并落盘。
-          </p>
-          <p
-            v-else
+            v-if="pluginConfigTab === 'config' && !data.fields.length"
             class="muted plugin-config-page__fields-lead"
           >
             该插件未暴露可调参数或未注册 schema。
@@ -707,12 +859,18 @@ async function save() {
             />
             <RuntimeCheckResults :results="checkResults" />
           </div>
-          <ConfigFieldGroupPanel
-            v-if="pluginRow"
-            title="运行控制"
-            :open="runtimePanelOpen"
-            @toggle="toggleRuntimePanel"
+          <section
+            v-if="pluginConfigTab === 'runtime' && showRuntimePanel"
+            class="plugin-config-page__tab-panel plugin-runtime-panel"
           >
+            <header class="plugin-config-page__panel-head">
+              <div>
+                <h3 class="plugin-config-page__panel-title">运行控制</h3>
+                <p class="muted plugin-config-page__panel-desc">
+                  控制插件是否参与运行，以及是否出现在帮助菜单中。
+                </p>
+              </div>
+            </header>
             <p
               v-if="helpMenuBusy && !pluginRow"
               class="muted"
@@ -720,16 +878,24 @@ async function save() {
               加载帮助菜单状态…
             </p>
             <div
+              v-else-if="!pluginRow"
+              class="alert alert--err"
+            >
+              未能加载插件运行控制信息。
+            </div>
+            <div
               v-else-if="helpMenuErr"
               class="alert alert--err"
             >
               {{ helpMenuErr }}
             </div>
-            <template v-else>
+            <div
+              v-else
+              class="plugin-runtime-panel__list"
+            >
               <div
                 v-if="globalDisableErr"
                 class="alert alert--err"
-                style="margin-bottom: 10px"
               >
                 {{ globalDisableErr }}
               </div>
@@ -846,56 +1012,64 @@ async function save() {
                   变更立即写入服务端；下一条「牛牛帮助」即按新列表渲染。
                 </p>
               </PluginRuntimeSwitchRow>
-            </template>
-          </ConfigFieldGroupPanel>
-          <ConfigFieldGroupPanel
-            v-if="governanceData"
-            title="命令与能力"
-            :open="commandsPanelOpen"
-            @toggle="commandsPanelOpen = !commandsPanelOpen"
+            </div>
+          </section>
+          <section
+            v-if="pluginConfigTab === 'perm' || pluginConfigTab === 'limit'"
+            class="plugin-config-page__tab-panel plugin-governance-panel"
           >
+            <header class="plugin-config-page__panel-head">
+              <div>
+                <h3 class="plugin-config-page__panel-title">
+                  {{ pluginConfigTab === "perm" ? "命令权限" : "命令冷却" }}
+                </h3>
+                <p class="muted plugin-config-page__panel-desc">
+                  共 <strong style="color: var(--text)">{{ commandsWithMenu.length }}</strong> 个命令；
+                  修改后自动保存并热重载。
+                </p>
+              </div>
+              <span
+                v-if="governanceData?.reload_policy"
+                class="plugin-config-page__panel-badge"
+              >
+                {{ governanceData.reload_policy }}
+              </span>
+            </header>
             <p v-if="governanceLoading" class="muted">加载命令配置…</p>
             <div v-else-if="governanceErr" class="alert alert--err">{{ governanceErr }}</div>
+            <p
+              v-else-if="!governanceData"
+              class="muted plugin-config-page__governance-empty"
+            >
+              该插件暂无命令权限或冷却声明。
+            </p>
             <template v-else>
-              <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.55">
-                共 <strong style="color: var(--text)">{{ commandsWithMenu.length }}</strong> 个命令 · 热重载策略：<strong style="color: var(--text)">{{ governanceData.reload_policy ?? '无' }}</strong>；修改即自动保存。
-              </p>
-
-              <!-- 权限矩阵 -->
-              <div v-if="permPlugin" style="margin-bottom: 20px">
-                <h4 style="font-size: 14px; margin: 0 0 8px; font-weight: 700">命令权限</h4>
-                <CmdPermMatrix
-                  :levels="permLevels"
-                  :plugins="[permPlugin]"
-                  :selections="permSelections"
-                  :command-menu-map="commandMenuMap"
-                  :disabled="governanceSaving"
-                  @change="onPermChange"
-                />
-              </div>
-
-              <!-- CD 表 -->
-              <div v-if="limitsPlugin">
-                <h4 style="font-size: 14px; margin: 0 0 8px; font-weight: 700">命令冷却</h4>
-                <CmdLimitsTable
-                  :plugins="[limitsPlugin]"
-                  :selections="limitSelections"
-                  :disabled="governanceSaving"
-                  @input="(cmdId, val) => onLimitInput(cmdId, val)"
-                />
-              </div>
-
+              <CmdPermMatrix
+                v-if="pluginConfigTab === 'perm' && permPlugin"
+                :levels="permLevels"
+                :plugins="[permPlugin]"
+                :selections="permSelections"
+                :command-menu-map="commandMenuMap"
+                :disabled="governanceSaving"
+                @change="onPermChange"
+              />
+              <CmdLimitsTable
+                v-if="pluginConfigTab === 'limit' && limitsPlugin"
+                :plugins="[limitsPlugin]"
+                :selections="limitSelections"
+                :disabled="governanceSaving"
+                @input="(cmdId, val) => onLimitInput(cmdId, val)"
+              />
               <p
                 v-if="governanceSaving"
-                class="muted"
-                style="margin-top: 10px; font-size: 12px"
+                class="muted plugin-config-page__governance-saving"
               >
                 保存中…
               </p>
             </template>
-          </ConfigFieldGroupPanel>
+          </section>
           <p
-            v-if="usesGatewayEditor"
+            v-if="pluginConfigTab === 'config' && usesGatewayEditor"
             class="muted"
             style="margin: 0 0 16px; line-height: 1.55; font-size: 13px"
           >
@@ -904,33 +1078,172 @@ async function save() {
             本页「配置检测」仅探测画画网关。
           </p>
           <PallasImageGatewaysEditor
-            v-if="usesGatewayEditor"
+            v-if="pluginConfigTab === 'config' && usesGatewayEditor"
             :field-values="fieldValues"
             @update:field-values="onGatewayFieldValues"
           />
-          <ConfigFieldGroupPanel
-            v-for="group in configFieldGroups"
-            :key="group.id"
-            :title="group.title"
-            :open="groupOpen[group.id] ?? true"
-            :field-count="group.fields.length"
-            grid
-            @toggle="toggleConfigGroup(group.id)"
-          >
-            <div
-              v-for="f in group.fields"
-              :key="f.name"
-              :class="fieldGridCellClass(f)"
+          <section v-if="pluginConfigTab === 'config'" class="plugin-config-groups">
+            <section
+              v-for="group in configGroupViewModels"
+              :key="group.id"
+              class="plugin-config-group-card"
             >
-              <ConfigFieldRenderer
-                :field="f"
-                :model-value="fieldValues[f.name] ?? ''"
-                :json-title="`${data.plugin} · ${f.name}（JSON）`"
-                input-max-width="100%"
-                @update:model-value="(v) => (fieldValues[f.name] = v)"
-              />
+              <button
+                type="button"
+                class="plugin-config-group-card__hero"
+                :aria-expanded="groupOpen[group.id] ?? true"
+                @click="toggleConfigGroup(group.id)"
+              >
+                  <div class="plugin-config-group-card__hero-main">
+                  <div class="plugin-config-group-card__hero-text">
+                    <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
+                    <p class="plugin-config-group-card__desc">
+                      共 {{ group.summary.total }} 项，已填写 {{ group.summary.filled }} 项
+                      <template v-if="group.summary.required">
+                        · 必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
+                      </template>
+                    </p>
+                  </div>
+                </div>
+                <div class="plugin-config-group-card__hero-side">
+                  <div class="plugin-config-group-card__chips">
+                    <span class="plugin-config-group-card__chip">
+                      {{ group.summary.filled ? "已配置" : "待配置" }}
+                    </span>
+                    <span
+                      v-if="group.summary.required"
+                      class="plugin-config-group-card__chip plugin-config-group-card__chip--soft"
+                    >
+                      必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
+                    </span>
+                  </div>
+                  <span class="plugin-config-group-card__toggle">
+                    {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
+                  </span>
+                </div>
+              </button>
+
+              <div v-show="groupOpen[group.id] ?? true" class="plugin-config-field-list">
+                <section
+                  v-for="f in group.fields"
+                  :key="f.name"
+                  class="plugin-config-field-card"
+                >
+                  <div class="plugin-config-field-card__row">
+                    <div class="plugin-config-field-card__main">
+                      <div class="plugin-config-field-card__head">
+                        <div class="plugin-config-field-card__title-wrap">
+                          <div class="plugin-config-field-card__name-wrap">
+                            <h4 class="plugin-config-field-card__title">
+                              {{ fieldDisplayName(f) }}
+                            </h4>
+                            <span
+                              v-if="f.required"
+                              class="plugin-config-field-card__required"
+                            >必填</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          class="plugin-config-field-card__help-btn"
+                          :aria-expanded="activeFieldPopoverName === f.name && activeFieldPopoverMode === 'help'"
+                          :aria-label="`查看 ${fieldDisplayName(f)} 说明`"
+                          @click.stop="openFieldPopover(f.name, 'help', $event)"
+                        >
+                          ?
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="plugin-config-field-card__editor-button"
+                      :aria-expanded="activeFieldPopoverName === f.name && activeFieldPopoverMode === 'edit'"
+                      @click.stop="openFieldPopover(f.name, 'edit', $event)"
+                    >
+                      <span class="plugin-config-field-card__editor-value">
+                        {{ summarizeFieldValue(f, fieldValues[f.name] ?? "") }}
+                      </span>
+                      <span class="plugin-config-field-card__editor-action">编辑</span>
+                    </button>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </section>
+          <Teleport to="body">
+            <div
+              v-if="activeFieldPopover"
+              ref="fieldPopoverHost"
+              class="plugin-config-field-popover"
+              :style="fieldPopoverStyle"
+              @click.stop
+            >
+              <template v-if="activeFieldPopoverMode === 'help'">
+                <div class="plugin-config-field-popover__section">
+                  <div class="plugin-config-field-popover__eyebrow">配置说明</div>
+                  <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
+                  <p
+                    v-if="activeFieldPopover.description"
+                    class="plugin-config-field-popover__desc"
+                  >
+                    {{ activeFieldPopover.description }}
+                  </p>
+                  <p
+                    v-else
+                    class="plugin-config-field-popover__desc plugin-config-field-popover__desc--muted"
+                  >
+                    暂无详细说明。
+                  </p>
+                </div>
+                <dl class="plugin-config-field-popover__meta">
+                  <div>
+                    <dt>类型</dt>
+                    <dd>{{ fieldTypeLabel(activeFieldPopover) }}</dd>
+                  </div>
+                  <div>
+                    <dt>默认值</dt>
+                    <dd><code>{{ JSON.stringify(activeFieldPopover.default) }}</code></dd>
+                  </div>
+                  <div>
+                    <dt>环境键</dt>
+                    <dd><code>{{ activeFieldPopover.env_key }}</code></dd>
+                  </div>
+                </dl>
+              </template>
+              <template v-else>
+                <div class="plugin-config-field-popover__section">
+                  <div class="plugin-config-field-popover__eyebrow">编辑配置</div>
+                  <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
+                </div>
+                <ConfigFieldRenderer
+                  :field="activeFieldPopover"
+                  :model-value="fieldPopoverDraft"
+                  :show-label="false"
+                  :show-meta="false"
+                  :show-description="false"
+                  input-max-width="100%"
+                  @update:model-value="fieldPopoverDraft = $event"
+                />
+                <div class="plugin-config-field-popover__actions">
+                  <button
+                    type="button"
+                    class="btn btn--primary"
+                    @click="saveFieldPopoverValue"
+                  >
+                    确定
+                  </button>
+                  <button
+                    type="button"
+                    class="btn"
+                    @click="closeFieldPopover"
+                  >
+                    取消
+                  </button>
+                </div>
+              </template>
             </div>
-          </ConfigFieldGroupPanel>
+          </Teleport>
       </div>
     </UiCard>
   </div>
@@ -992,24 +1305,52 @@ async function save() {
     padding: 6px 12px;
     font-size: 12px;
   }
-}
 
-.plugin-config-page__module {
-  margin: 0 0 12px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.plugin-config-page__source-kind {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--accent);
-}
-.plugin-config-page__source-path {
-  margin-top: 2px;
-  font-size: 11px;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  word-break: break-all;
-  opacity: 0.88;
+  .plugin-config-group-card__hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .plugin-config-group-card__hero-side,
+  .plugin-config-group-card__chips {
+    width: 100%;
+  }
+
+  .plugin-config-field-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .plugin-config-field-card__row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .plugin-config-field-card__head {
+    align-items: flex-start;
+  }
+
+  .plugin-config-field-card__title-wrap,
+  .plugin-config-field-card__name-wrap {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .plugin-config-group-card__hero-main {
+    width: 100%;
+  }
+
+  .plugin-config-field-card__summary {
+    white-space: normal;
+  }
+
+  .plugin-config-page__panel-head {
+    flex-direction: column;
+  }
+
+  .plugin-config-page__panel-badge {
+    align-self: flex-start;
+  }
 }
 
 .plugin-config-page__save-feedback {
@@ -1039,6 +1380,443 @@ async function save() {
 
 .plugin-config-page__runtime-summary {
   margin-bottom: 14px;
+}
+
+.plugin-config-page__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.plugin-config-page__tab-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 78%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.05)) 70%, transparent), transparent 62%),
+    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow, rgba(15, 23, 42, 0.08)) 30%, transparent);
+}
+
+.plugin-config-page__panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plugin-config-page__panel-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-config-page__panel-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plugin-config-page__panel-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 10%);
+  background: color-mix(in srgb, var(--accent, #ec4899) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #ec4899) 18%, transparent);
+}
+
+.plugin-config-page__governance-empty,
+.plugin-config-page__governance-saving {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.plugin-runtime-panel__list {
+  display: grid;
+  gap: 12px;
+}
+
+.plugin-config-page__tab {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 74%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 70%, transparent), transparent 72%),
+    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.018)) 99%, transparent);
+  color: var(--text-muted, rgba(255, 255, 255, 0.74));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.plugin-config-page__tab--active {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 9%, white 2%), transparent 78%),
+    color-mix(in srgb, var(--accent, #ec4899) 7%, transparent);
+  color: color-mix(in srgb, var(--accent, #ec4899) 84%, var(--text, #fff) 10%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    0 4px 12px color-mix(in srgb, var(--accent, #ec4899) 8%, transparent);
+}
+
+.plugin-config-page__tab:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 62%, transparent);
+}
+
+.plugin-config-field-list {
+  display: grid;
+  gap: 12px;
+}
+
+.plugin-config-groups {
+  display: grid;
+  gap: 14px;
+}
+
+.plugin-config-group-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 68%, transparent), transparent 64%),
+    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 78%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow, rgba(15, 23, 42, 0.08)) 24%, transparent);
+}
+
+.plugin-config-group-card__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.plugin-config-group-card__hero-main {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.plugin-config-group-card__hero-text {
+  min-width: 0;
+}
+
+.plugin-config-group-card__title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-config-group-card__desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted, rgba(255, 255, 255, 0.68));
+}
+
+.plugin-config-group-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.plugin-config-group-card__hero-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.plugin-config-group-card__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 10%);
+  background: color-mix(in srgb, var(--accent, #ec4899) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #ec4899) 18%, transparent);
+}
+
+.plugin-config-group-card__chip--soft {
+  color: var(--text-muted, rgba(255, 255, 255, 0.72));
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.06)) 92%, transparent);
+  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 84%, transparent);
+}
+
+.plugin-config-group-card__toggle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.72));
+  white-space: nowrap;
+}
+
+.plugin-config-field-card {
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 76%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 72%, transparent), transparent 66%),
+    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.018)) 98%, transparent);
+  padding: 14px 16px;
+}
+
+.plugin-config-field-card__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 42%);
+  gap: 10px;
+  align-items: start;
+}
+
+.plugin-config-field-card__main { min-width: 0; }
+
+.plugin-config-field-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plugin-config-field-card__title-wrap {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.plugin-config-field-card__name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plugin-config-field-card__title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-config-field-card__summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+}
+
+.plugin-config-field-card__required {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1;
+  color: #7b2717;
+  background: rgba(255, 214, 163, 0.9);
+}
+
+.plugin-config-field-card__help-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.035)) 95%, transparent);
+  color: color-mix(in srgb, var(--accent, #ec4899) 72%, var(--text, #fff) 18%);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.plugin-config-field-card__help-btn:hover,
+.plugin-config-field-card__help-btn[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 20%, transparent);
+  background: color-mix(in srgb, var(--accent, #ec4899) 8%, transparent);
+}
+
+.plugin-config-field-card__editor-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 82%, transparent);
+  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 95%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.plugin-config-field-card__editor-button:hover,
+.plugin-config-field-card__editor-button[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 22%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 5%, transparent), transparent 76%),
+    color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.03)) 95%, transparent);
+}
+
+.plugin-config-field-card__editor-value {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text, #fff);
+}
+
+.plugin-config-field-card__editor-action {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent, #ec4899) 76%, var(--text, #fff) 16%);
+}
+
+.plugin-config-field-popover {
+  z-index: 60;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 78%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent, #ec4899) 4%, transparent), transparent 82%),
+    color-mix(in srgb, var(--surface, rgba(20, 22, 32, 0.96)) 98%, rgba(10, 12, 18, 0.9));
+  color: var(--text, #fff);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.32),
+    0 2px 10px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.plugin-config-field-popover__section {
+  display: grid;
+  gap: 6px;
+}
+
+.plugin-config-field-popover__eyebrow {
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--accent, #ec4899) 74%, var(--text, #fff) 14%);
+}
+
+.plugin-config-field-popover__title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-config-field-popover__desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.plugin-config-field-popover__desc--muted {
+  color: var(--text-muted, rgba(255, 255, 255, 0.66));
+}
+
+.plugin-config-field-popover__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 60%, transparent);
+}
+
+.plugin-config-field-popover__meta > div {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+}
+
+.plugin-config-field-popover__meta dt {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted, rgba(255, 255, 255, 0.64));
+}
+
+.plugin-config-field-popover__meta dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.plugin-config-field-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.plugin-config-field-popover :deep(.form-field__control),
+.plugin-config-field-popover :deep(.inp),
+.plugin-config-field-popover :deep(.sel),
+.plugin-config-field-popover :deep(.textarea),
+.plugin-config-field-popover :deep(.json-textarea-field__peek) {
+  color: var(--text, #fff);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.05)) 75%, transparent), transparent 78%),
+    color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.04)) 98%, transparent);
+}
+
+.plugin-config-field-popover :deep(.form-field__control::placeholder),
+.plugin-config-field-popover :deep(.inp::placeholder),
+.plugin-config-field-popover :deep(.textarea::placeholder) {
+  color: var(--text-muted, rgba(255, 255, 255, 0.54));
+}
+
+@media (max-width: 560px) {
+  .plugin-config-field-popover {
+    gap: 12px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .plugin-config-field-popover__meta > div {
+    grid-template-columns: 48px 1fr;
+    gap: 8px;
+  }
 }
 
 </style>

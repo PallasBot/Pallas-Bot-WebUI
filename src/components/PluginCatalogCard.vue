@@ -26,6 +26,10 @@ function displayTitle(p: PluginRow): string {
   return p.metadata?.name || p.nb_plugin_name || p.name;
 }
 
+function pluginId(p: PluginRow): string {
+  return (p.resolved_plugin_id || p.name || "").trim();
+}
+
 function isFavorite(name: string): boolean {
   return pluginFavoriteNames.value.has(name);
 }
@@ -45,7 +49,7 @@ function isFavorite(name: string): boolean {
         @click="emit('select')"
       >
         <PluginIcon
-          :plugin-id="plugin.name"
+          :plugin-id="pluginId(plugin)"
           :label="displayTitle(plugin)"
           :icon-url="iconUrl"
           size="md"
@@ -70,7 +74,7 @@ function isFavorite(name: string): boolean {
             </UiBadge>
           </div>
           <p
-            v-if="plugin.nb_plugin_name && plugin.nb_plugin_name !== plugin.name && displayTitle(plugin) !== plugin.nb_plugin_name"
+            v-if="plugin.nb_plugin_name && plugin.nb_plugin_name !== pluginId(plugin) && displayTitle(plugin) !== plugin.nb_plugin_name"
             class="muted plugin-catalog-card__id"
           >
             {{ plugin.nb_plugin_name }}
@@ -101,10 +105,10 @@ function isFavorite(name: string): boolean {
       <button
         type="button"
         class="plugin-catalog-card__fav"
-        :aria-pressed="isFavorite(plugin.name)"
-        :title="isFavorite(plugin.name) ? '取消收藏' : '收藏'"
-        :aria-label="isFavorite(plugin.name) ? `取消收藏「${displayTitle(plugin)}」` : `收藏「${displayTitle(plugin)}」`"
-        @click.stop="toggleFavoritePlugin(plugin.name)"
+        :aria-pressed="isFavorite(pluginId(plugin))"
+        :title="isFavorite(pluginId(plugin)) ? '取消收藏' : '收藏'"
+        :aria-label="isFavorite(pluginId(plugin)) ? `取消收藏「${displayTitle(plugin)}」` : `收藏「${displayTitle(plugin)}」`"
+        @click.stop="toggleFavoritePlugin(pluginId(plugin))"
       >
         ★
       </button>

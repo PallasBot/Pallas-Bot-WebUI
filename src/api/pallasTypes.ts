@@ -379,6 +379,10 @@ export type OfficialExtensionStatus =
   | "bundled_active"
   | "external";
 
+export type ExtensionActivationPolicy = "hot-reloadable" | "workers-restart" | "full-restart";
+
+export type ExtensionActivationAction = "none" | "hot-reload" | "workers-restart" | "full-restart";
+
 export interface OfficialExtensionRow {
   package: string;
   plugin_ids: string[];
@@ -398,9 +402,16 @@ export interface OfficialExtensionRow {
   install_local_dir?: string;
   webui_install?: boolean;
   restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
   can_install?: boolean;
   can_uninstall?: boolean;
   can_update?: boolean;
+  /** 版本快照判定：是否有新版本；null/undefined 表示尚未检查 */
+  has_update?: boolean | null;
+  /** 已安装版本（官方为 PyPI 版本号） */
+  installed_ref?: string | null;
+  /** 远端最新版本（官方为 PyPI 版本号） */
+  latest_ref?: string | null;
   status?: OfficialExtensionStatus;
 }
 
@@ -412,6 +423,8 @@ export interface OfficialExtensionInstallResult {
   already_installed?: boolean;
   already_removed?: boolean;
   restart_scheduled?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  activation_action?: ExtensionActivationAction | null;
   message?: string;
   stdout_tail?: string;
 }
@@ -439,9 +452,16 @@ export interface CommunityPluginRow {
   extra_plugin_dirs_ready?: boolean;
   webui_install?: boolean;
   restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
   can_install?: boolean;
   can_uninstall?: boolean;
   can_update?: boolean;
+  /** 版本快照判定：是否有新版本；null/undefined 表示尚未检查 */
+  has_update?: boolean | null;
+  /** 已安装 commit（短哈希） */
+  installed_ref?: string | null;
+  /** 远端最新 commit（短哈希） */
+  latest_ref?: string | null;
   status?: CommunityPluginStatus;
 }
 
@@ -452,6 +472,9 @@ export interface CommunityPluginStoreData {
   extra_plugin_dirs_ready?: boolean;
   webui_install?: boolean;
   restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  /** 插件更新快照检查时间（秒）；null 表示从未检查 */
+  update_checked_at?: number | null;
   plugins: CommunityPluginRow[];
 }
 
@@ -463,6 +486,7 @@ export interface CommunityPluginActionResult {
   already_removed?: boolean;
   extra_plugin_dirs_ready?: boolean;
   restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
   restart_scheduled?: boolean;
   message?: string;
   stdout_tail?: string;
@@ -514,6 +538,7 @@ export interface PluginGovernanceMenuItem {
   brief_des?: string;
   detail_des?: string;
   command_permission?: string;
+  command_permissions?: string[];
 }
 
 export interface PluginGovernanceRuntime {
@@ -542,6 +567,8 @@ export interface PluginGovernanceBody {
 export interface PluginRow {
   name: string;
   module: string;
+  resolved_plugin_id?: string;
+  resolved_module?: string;
   nb_plugin_name?: string;
   load_role?: PluginLoadRole;
   loaded_in_process?: boolean;
@@ -550,6 +577,7 @@ export interface PluginRow {
   /** 是否应在 catalog_process_role 进程中加载 */
   expected_in_catalog_process?: boolean;
   has_config?: boolean;
+  configurable?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;
   help_hidden?: boolean;
@@ -747,6 +775,8 @@ export interface LlmModelAdminModelResult {
 }
 
 export interface LlmTaskMetricRow {
+  queued?: number;
+  running?: number;
   submit_ok?: number;
   submit_skip?: number;
   callback_ok?: number;
@@ -755,6 +785,13 @@ export interface LlmTaskMetricRow {
   task_fail?: number;
   reply_gate_skip?: number;
   reply_gate_defer?: number;
+  route_counts?: Record<string, number>;
+}
+
+export interface LlmTokenMetricBreakdownRow {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 export interface LlmTokenMetricsSlice {
@@ -764,7 +801,9 @@ export interface LlmTokenMetricsSlice {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-  by_task: Record<string, { prompt_tokens?: number; completion_tokens?: number }>;
+  by_task: Record<string, LlmTokenMetricBreakdownRow>;
+  by_provider?: Record<string, LlmTokenMetricBreakdownRow>;
+  by_model?: Record<string, LlmTokenMetricBreakdownRow>;
 }
 
 export interface LlmClassificationTotals {
@@ -783,10 +822,23 @@ export interface LlmTaskMetricsSlice {
   updated_at?: number;
   by_task: Record<string, LlmTaskMetricRow>;
   totals: Record<string, number>;
+  state_counts?: Record<string, number>;
+  failure_counts?: Record<string, number>;
+  provider_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
+  model_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
   tokens?: LlmTokenMetricsSlice;
   classification?: {
     totals: LlmClassificationTotals;
   };
+}
+
+export interface LlmRuntimeDimensionStatsRow {
+  requests?: number;
+  succeeded?: number;
+  failed?: number;
+  total_latency_ms?: number;
+  avg_latency_ms?: number | null;
+  recent_failure_class?: string | null;
 }
 
 export interface LlmTaskStatsHistoryRow {
@@ -817,6 +869,35 @@ export interface LlmTaskStatsData {
     rows: LlmTaskStatsHistoryRow[];
     server_date: string;
   };
+}
+
+export interface LlmHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+  user_id: number;
+  created_at: number;
+}
+
+export interface LlmHistorySessionSummary {
+  session_key: string;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  turn_count: number;
+  first_created_at: number;
+  last_created_at: number;
+  last_role: "user" | "assistant";
+  last_content: string;
+}
+
+export interface LlmHistorySessionsData {
+  items: LlmHistorySessionSummary[];
+  limit: number;
+}
+
+export interface LlmHistorySessionDetailData {
+  session: LlmHistorySessionSummary;
+  turns: LlmHistoryTurn[];
 }
 
 export interface PersonaAxisSnapshot {
@@ -1285,6 +1366,7 @@ export interface BotUpdateCheckData {
   dirty_file_count?: number;
   current_branch?: string;
   restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
 }
 
 export interface BotUpdateApplyData {
