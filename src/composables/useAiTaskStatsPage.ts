@@ -48,6 +48,11 @@ function stateCount(slice: LlmTaskMetricsSlice | undefined, key: string): number
   return Number(slice?.state_counts?.[key] ?? 0);
 }
 
+function taskMetricValue(slice: LlmTaskMetricsSlice | undefined, task: string, key: keyof LlmTaskMetricRow): number {
+  const row = slice?.by_task?.[task];
+  return Number(row?.[key] ?? 0);
+}
+
 function dimensionRows(
   source: Record<string, LlmRuntimeDimensionStatsRow> | undefined,
 ): Array<{
@@ -106,6 +111,33 @@ function routeRows(slice: LlmTaskMetricsSlice | undefined): Array<{ key: string;
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
 }
 
+function dailyRouteHeatmap(rows: Array<{ date: string; ai?: LlmTaskMetricsSlice | null }>) {
+  return rows
+    .map((row) => ({
+      date: row.date,
+      value: routeRows(row.ai ?? undefined).reduce((sum, item) => sum + item.count, 0),
+    }))
+    .filter((row) => row.date);
+}
+
+export function buildPersistenceHint(p: {
+  bot_collecting?: boolean;
+  ai_collecting?: boolean;
+  ai_reachable?: boolean;
+  store_file?: string;
+} | null | undefined): string {
+  if (!p) return "统计持久化状态暂时未知。";
+  const parts: string[] = [];
+  parts.push(p.bot_collecting ? "Bot 侧正在持续记录任务变化" : "Bot 侧暂时没有新的任务统计");
+  if (p.ai_reachable) {
+    parts.push(p.ai_collecting ? "AI 侧正在持续记录调用结果" : "AI 侧暂时没有新的调用统计");
+  } else {
+    parts.push("AI 侧当前不可达，本页只显示已保存的历史趋势");
+  }
+  parts.push("统计会按天自动保存，刷新页面或服务重启后仍可查看近期趋势");
+  return parts.join(" · ");
+}
+
 export function useAiTaskStatsPage() {
   const loading = ref(false);
   const err = ref("");
@@ -160,6 +192,41 @@ export function useAiTaskStatsPage() {
       value: metricSum(row.ai ?? undefined, "task_ok"),
     })),
   );
+  const historyAiFailPoints = computed(() =>
+    historyRows.value.map((row) => ({
+      date: row.date,
+      value: metricSum(row.ai ?? undefined, "task_fail"),
+    })),
+  );
+  const historyPlainLlmChatPoints = computed(() =>
+    historyRows.value.map((row) => {
+      const ok = taskMetricValue(row.ai ?? undefined, "plain_llm_chat", "task_ok");
+      const fail = taskMetricValue(row.ai ?? undefined, "plain_llm_chat", "task_fail");
+      return {
+        date: row.date,
+        value: ok + fail,
+      };
+    }),
+  );
+  const historyPlainLlmChatSuccessPoints = computed(() =>
+    historyRows.value.map((row) => ({
+      date: row.date,
+      value: taskMetricValue(row.ai ?? undefined, "plain_llm_chat", "task_ok"),
+    })),
+  );
+  const historyPlainLlmChatFailPoints = computed(() =>
+    historyRows.value.map((row) => ({
+      date: row.date,
+      value: taskMetricValue(row.ai ?? undefined, "plain_llm_chat", "task_fail"),
+    })),
+  );
+  const historyBotCallbackPoints = computed(() =>
+    historyRows.value.map((row) => ({
+      date: row.date,
+      value: metricSum(row.bot ?? undefined, "callback_ok"),
+    })),
+  );
+  const historyRouteHeatPoints = computed(() => dailyRouteHeatmap(historyRows.value));
   const historyDailyRows = computed(() =>
     historyRows.value.map((row) => ({
       date: row.date,
@@ -174,17 +241,7 @@ export function useAiTaskStatsPage() {
   );
 
   const persistenceHint = computed(() => {
-    const p = stats.value?.persistence;
-    if (!p) return "持久化状态未知";
-    const parts: string[] = [];
-    parts.push(p.bot_collecting ? "Bot 侧正在采集" : "Bot 侧暂无任务计数");
-    if (p.ai_reachable) {
-      parts.push(p.ai_collecting ? "AI 侧正在采集" : "AI 侧暂无任务计数");
-    } else {
-      parts.push("AI 侧不可达");
-    }
-    parts.push(`落盘 ${p.store_file || "llm_daily_stats.json"}`);
-    return parts.join(" · ");
+    return buildPersistenceHint(stats.value?.persistence);
   });
 
   async function refresh() {
@@ -226,7 +283,13 @@ export function useAiTaskStatsPage() {
     tokenModelRows,
     routeRowsTop,
     historyBotPoints,
+    historyBotCallbackPoints,
     historyAiPoints,
+    historyAiFailPoints,
+    historyPlainLlmChatPoints,
+    historyPlainLlmChatSuccessPoints,
+    historyPlainLlmChatFailPoints,
+    historyRouteHeatPoints,
     historyDailyRows,
     persistenceHint,
     refresh,
