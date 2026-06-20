@@ -1,8 +1,8 @@
 import type { CommunityPluginRow, OfficialExtensionRow, PluginRow, PluginSourceKind } from "@/api/pallasTypes";
-import brandAvatarHdUrl from "@/assets/brand-avatar-hd.png?url";
+import brandAvatarUrl from "@/assets/brand-avatar.png?url";
 
 /** 文档站同款牛牛 mascot（1024 透明 PNG，经构建 hash 后挂载于 /pallas/assets/） */
-export const PALLAS_MASCOT_ICON_URL = brandAvatarHdUrl;
+export const PALLAS_MASCOT_ICON_URL = brandAvatarUrl;
 
 /** 与 Bot `plugin_matrix.CORE_PLUGIN_NAMES` 对齐 */
 const CORE_PLUGIN_IDS = new Set([

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
@@ -32,6 +33,29 @@ const statusById = computed(() => {
   const map = new Map<string, (typeof providerStatus.value)[number]>();
   for (const row of providerStatus.value) map.set(row.id, row);
   return map;
+});
+const providerSummary = computed(() => {
+  let enabledCount = 0;
+  let reachableCount = 0;
+  let unreachableCount = 0;
+  let disabledCount = 0;
+  for (const row of providers.value) {
+    if (!row.enabled) {
+      disabledCount += 1;
+      continue;
+    }
+    enabledCount += 1;
+    const status = statusById.value.get(row.id);
+    if (status?.reachable === true) reachableCount += 1;
+    else if (status?.reachable === false) unreachableCount += 1;
+  }
+  return [
+    { label: "Provider 总数", value: String(providers.value.length), accent: true },
+    { label: "已启用", value: String(enabledCount) },
+    { label: "可达", value: String(reachableCount), tone: reachableCount > 0 ? "ok" : undefined },
+    { label: "异常/不可达", value: String(unreachableCount), tone: unreachableCount > 0 ? "warn" : undefined },
+    { label: "已停用", value: String(disabledCount), tone: disabledCount > 0 ? "muted" : undefined },
+  ];
 });
 
 function openAdd() {
@@ -113,16 +137,44 @@ onMounted(() => {
     </div>
 
     <div class="panel__bd">
-      <p class="muted provider-manager__intro">
-        配置本地与远程 LLM Provider 及各 task 的路由；保存写入 AI 服务
-        <code>providers.toml</code>，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。
-      </p>
+      <div class="provider-manager__summary">
+        <div
+          v-for="item in providerSummary"
+          :key="item.label"
+          class="provider-manager__summary-item"
+        >
+          <span class="provider-manager__summary-label">{{ item.label }}</span>
+          <strong
+            class="provider-manager__summary-value"
+            :class="[
+              item.accent ? 'provider-manager__summary-value--accent' : '',
+              item.tone === 'ok' ? 'ok' : '',
+              item.tone === 'warn' ? 'warn' : '',
+              item.tone === 'muted' ? 'muted' : '',
+            ]"
+          >
+            {{ item.value }}
+          </strong>
+        </div>
+      </div>
 
-      <div
-        v-if="err"
-        class="alert alert--err provider-manager__alert"
-      >
-        {{ err }}
+      <div class="provider-manager__meta">
+        <p class="muted provider-manager__intro">
+          配置本地与远程 LLM Provider 及各 task 的路由；保存写入 AI 服务
+          <code>providers.toml</code>，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。
+        </p>
+        <div class="row-actions provider-manager__links">
+          <RouterLink to="/ai/home">运行态总览</RouterLink>
+          <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
+          <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+        </div>
+
+        <div
+          v-if="err"
+          class="alert alert--err provider-manager__alert"
+        >
+          {{ err }}
+        </div>
       </div>
 
       <div class="provider-manager__list-head">
@@ -246,13 +298,65 @@ onMounted(() => {
 
 <style scoped>
 .provider-manager__intro {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   line-height: 1.6;
 }
 
+.provider-manager__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.provider-manager__summary-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 18%, var(--border));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 5%, var(--card, var(--bg-card)));
+}
+
+.provider-manager__summary-label {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-muted, #64748b);
+}
+
+.provider-manager__summary-value {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.provider-manager__summary-value--accent {
+  font-size: 1.08rem;
+}
+
+.provider-manager__summary-value.ok {
+  color: var(--ok, #3d9a5c);
+}
+
+.provider-manager__summary-value.warn {
+  color: var(--warn, #c9a227);
+}
+
+.provider-manager__summary-value.muted {
+  color: var(--text-muted, #64748b);
+}
+
+.provider-manager__meta {
+  margin: 0 0 12px;
+}
+
 .provider-manager__alert {
   margin-bottom: 12px;
+}
+
+.provider-manager__links {
+  margin: 0 0 12px;
+  flex-wrap: wrap;
 }
 
 .provider-manager__list-head {

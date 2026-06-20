@@ -27,6 +27,7 @@ const emit = defineEmits<{ close: []; confirm: [] }>();
       <div class="ai-confirm-dialog__footer">
         <UiButton
           variant="ghost"
+          size="sm"
           :disabled="busy"
           @click="emit('close')"
         >
@@ -34,6 +35,7 @@ const emit = defineEmits<{ close: []; confirm: [] }>();
         </UiButton>
         <UiButton
           :variant="tone === 'danger' ? 'destructive' : 'primary'"
+          size="sm"
           :busy="busy"
           @click="emit('confirm')"
         >
@@ -54,6 +56,25 @@ const emit = defineEmits<{ close: []; confirm: [] }>();
 .ai-confirm-dialog__footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+  padding-right: 2px;
+}
+
+.ai-confirm-dialog__footer :deep(.ui-btn) {
+  min-width: 0;
+  padding-inline: 10px;
+  border-radius: 10px;
+}
+
+@media (max-width: 560px) {
+  .ai-confirm-dialog__footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-confirm-dialog__footer :deep(.ui-btn) {
+    width: 100%;
+  }
 }
 </style>

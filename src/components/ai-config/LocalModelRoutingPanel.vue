@@ -1,16 +1,46 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { fetchLlmModelAdminStatus, fetchLlmProvidersConfig } from "@/api/consoleApi";
+import {
+  fetchLlmLocalRoutingConfig,
+  fetchLlmProvidersConfig,
+  putLlmLocalRoutingConfig,
+} from "@/api/consoleApi";
 import { axiosErrorDetail } from "@/api/http";
-import type { LlmModelAdminStatus, LlmProviderConfigRow } from "@/api/pallasTypes";
+import type {
+  LlmLocalRoutingConfig,
+  LlmProviderConfigRow,
+} from "@/api/pallasTypes";
+import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
+import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+
+function emptyRouting(): LlmLocalRoutingConfig {
+  return {
+    llm_model: "",
+    local_multi_model_enabled: false,
+    moe_models: { simple: "", medium: "", complex: "", vision: "" },
+    task_models: {
+      llm_chat: "",
+      drunk: "",
+      repeater_fallback: "",
+      repeater_polish: "",
+      repeater_polish_lite: "",
+      repeater_select: "",
+    },
+    env_file: "",
+  };
+}
 
 const loading = ref(false);
+const saving = ref(false);
 const err = ref("");
-const status = ref<LlmModelAdminStatus | null>(null);
+const baseline = ref("");
+const draft = ref<LlmLocalRoutingConfig>(emptyRouting());
 const providers = ref<LlmProviderConfigRow[]>([]);
 
+const dirty = computed(() => JSON.stringify(draft.value) !== baseline.value);
 const localProviders = computed(() => providers.value.filter((row) => row.kind === "local"));
 const localProviderDefaults = computed(() =>
   localProviders.value

@@ -58,7 +58,10 @@ import type {
   LlmProviderModelsResult,
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
+  LlmHistoryBehaviorRun,
   LlmHistorySessionsData,
+  LlmRepeaterFeedbackData,
+  LlmRepeaterFeedbackSummary,
   LlmTaskStatsData,
   PersonaObserveData,
   MessageStatsData,
@@ -316,6 +319,11 @@ export interface PluginUpdateSnapshotResult {
   checked_at?: number | null;
   community_count?: number;
   official_count?: number;
+}
+
+export interface PluginStoreRefreshResult {
+  store_assets: PluginUpdateSnapshotResult;
+  update_snapshot: PluginUpdateSnapshotResult;
 }
 
 export interface PluginStoreReadmeResult {
@@ -608,6 +616,21 @@ export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
   return unwrap(data, "/common-config/llm/providers");
 }
 
+export async function fetchLlmLocalRoutingConfig(): Promise<LlmLocalRoutingConfig> {
+  const { data } = await http.get<ApiOk<LlmLocalRoutingConfig>>("/common-config/llm/local-routing");
+  return unwrap(data, "/common-config/llm/local-routing");
+}
+
+export async function putLlmLocalRoutingConfig(
+  body: LlmLocalRoutingConfig,
+): Promise<LlmLocalRoutingConfig> {
+  const { data } = await http.put<ApiOk<LlmLocalRoutingConfig>>(
+    "/common-config/llm/local-routing",
+    body,
+  );
+  return unwrap(data, "/common-config/llm/local-routing");
+}
+
 export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
@@ -697,6 +720,32 @@ export async function postLlmHistoryBehaviorAnnotate(body: {
     ...(typeof body.disabled === "boolean" ? { disabled: body.disabled } : {}),
   });
   return unwrap(data, path);
+}
+
+export async function fetchLlmRepeaterFeedback(params: {
+  groupId: number;
+  limit?: number;
+}): Promise<LlmRepeaterFeedbackData> {
+  const { data } = await http.get<ApiOk<LlmRepeaterFeedbackData>>("/llm/repeater-feedback", {
+    params: {
+      group_id: params.groupId,
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return unwrap(data, "/llm/repeater-feedback");
+}
+
+export async function fetchLlmRepeaterFeedbackSummary(params: {
+  groupId: number;
+  limit?: number;
+}): Promise<LlmRepeaterFeedbackSummary> {
+  const { data } = await http.get<ApiOk<LlmRepeaterFeedbackSummary>>("/llm/repeater-feedback/summary", {
+    params: {
+      group_id: params.groupId,
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return unwrap(data, "/llm/repeater-feedback/summary");
 }
 
 export async function fetchLlmPersonaObserve(params?: {

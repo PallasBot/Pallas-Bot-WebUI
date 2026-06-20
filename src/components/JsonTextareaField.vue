@@ -234,14 +234,18 @@ onUnmounted(() => {
 
 .json-textarea-field__dialog-shell {
   position: absolute;
-  top: min(11vh, 84px);
+  top: min(6vh, 48px);
   left: 50%;
   transform: translateX(-50%);
-  width: min(760px, calc(100vw - 24px));
+  width: min(1040px, calc(100vw - 32px));
+  max-height: calc(100vh - 72px);
 }
 
 .json-textarea-field__dialog {
   width: 100%;
+  max-height: inherit;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 86%, transparent);
   background: color-mix(in srgb, var(--surface, rgba(255, 255, 255, 0.04)) 99%, transparent);
@@ -294,13 +298,16 @@ onUnmounted(() => {
 
 .json-textarea-field__body {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 12px;
   padding: 12px 14px 14px;
+  min-height: 0;
 }
 
 .json-textarea-field__editor {
   width: 100%;
-  min-height: min(58vh, 480px);
+  min-height: min(68vh, 720px);
+  max-height: calc(100vh - 210px);
   resize: vertical;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
@@ -312,6 +319,7 @@ onUnmounted(() => {
 .json-textarea-field__actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -325,9 +333,10 @@ onUnmounted(() => {
   }
 
   .json-textarea-field__dialog-shell {
-    top: auto;
+    top: 8px;
     bottom: 8px;
     width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
     transform: translateX(-50%);
   }
 
@@ -349,12 +358,15 @@ onUnmounted(() => {
   }
 
   .json-textarea-field__editor {
-    min-height: min(46vh, 300px);
+    min-height: min(62vh, 520px);
+    max-height: calc(100vh - 190px);
     font-size: 12px;
     padding: 10px 11px;
   }
 
   .json-textarea-field__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 }

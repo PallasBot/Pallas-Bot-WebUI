@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
 import { fetchAiExtensionLogs } from "@/api/consoleApi";
 import type { AiExtensionLogsData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -77,6 +78,10 @@ async function copyLogs() {
       >
         选择日志类型与行数后点「拉取」，读取扩展服务最近若干行日志。路径在「扩展连接」配置。
       </p>
+      <div v-if="!logData && !logErr" class="ai-logs__links">
+        <RouterLink to="/ai/config/connection">前往扩展连接</RouterLink>
+        <RouterLink to="/ai/home">查看运行态总览</RouterLink>
+      </div>
       <div
         v-if="logErr"
         class="alert alert--err ai-logs__err"
@@ -107,6 +112,14 @@ async function copyLogs() {
 
 .ai-logs__err {
   margin-bottom: 10px;
+}
+
+.ai-logs__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
 }
 
 .ai-logs__meta {

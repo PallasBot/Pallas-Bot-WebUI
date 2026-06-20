@@ -1687,6 +1687,14 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link {
   color: color-mix(in srgb, var(--foreground) 84%, var(--text-muted));
 }
 
+html[data-layout="hub"] .shell__nav-group-toggle {
+  font-weight: 650;
+}
+
+html[data-layout="hub"] .shell__nav-group-toggle .shell__nav-label {
+  font-weight: 650;
+}
+
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-desc {
   display: none;
 }
@@ -1708,6 +1716,19 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
   color: color-mix(in srgb, var(--primary) 92%, var(--foreground));
   box-shadow: var(--shadow-sm);
   font-weight: 620;
+}
+
+html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-label {
+  font-weight: 640;
+}
+
+html[data-layout="hub"] nav.shell__nav .shell__nav-link.shell__nav-link--heavy .shell__nav-label,
+html[data-layout="hub"] .shell-mobile-nav__link.shell__nav-link--heavy .shell__nav-label {
+  font-weight: 720;
+}
+
+html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell__nav-label {
+  font-weight: 740;
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
@@ -2238,11 +2259,17 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
 }
 
 .ai-stat__value {
-  font-size: 1.5rem;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  font-size: clamp(1.1rem, 1rem + 0.65vw, 1.5rem);
   font-weight: 680;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: balance;
 }
 
 .ai-stat__value--accent {

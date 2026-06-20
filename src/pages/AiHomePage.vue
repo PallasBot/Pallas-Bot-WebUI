@@ -9,6 +9,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
+import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 
 const panelNavIcon = usePanelNavIcon();
 const {
@@ -40,6 +41,44 @@ const routeRows = computed(() =>
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
     .slice(0, AI_STATS_LIMITS.topRoutes),
 );
+const homeHeroStats = computed(() => [
+  {
+    label: "正常能力",
+    value: overview.value.healthyCount,
+    accent: true,
+  },
+  {
+    label: "降级能力",
+    value: overview.value.degradedCount,
+    tone: overview.value.degradedCount > 0 ? "warn" : undefined,
+  },
+  {
+    label: "未启用",
+    value: overview.value.disabledCount,
+  },
+  {
+    label: "媒体任务排队",
+    value: mediaTaskQueue.value?.queue_depth ?? 0,
+  },
+  {
+    label: "LLM 失败",
+    value: llmRuntimeSummary.value.failed,
+    tone: llmRuntimeSummary.value.failed > 0 ? "danger" : undefined,
+  },
+  {
+    label: "配置回退策略",
+    value: overview.value.fallbackCount,
+  },
+]);
+const heroQuickLinks = [
+  { to: "/ai/statistics", label: "查看统计" },
+  { to: "/ai/history", label: "查看历史" },
+  { to: "/ai/config/model", label: "进入配置" },
+];
+
+function primaryNavigateAction(item: AiRuntimeSnapshotItem) {
+  return item.actions.find((action) => action.kind === "navigate" && action.to) ?? null;
+}
 
 onMounted(() => {
   void refresh();
@@ -59,8 +98,12 @@ onMounted(() => {
         <UiButton variant="primary" :busy="loading" @click="refresh">
           刷新状态
         </UiButton>
-        <UiButton variant="ghost" href="/ai/statistics">查看统计</UiButton>
-        <UiButton variant="ghost" href="/ai/config/model">进入配置</UiButton>
+        <RouterLink to="/ai/statistics">
+          <UiButton variant="ghost">查看统计</UiButton>
+        </RouterLink>
+        <RouterLink to="/ai/config/model">
+          <UiButton variant="ghost">进入配置</UiButton>
+        </RouterLink>
       </template>
     </ConsoleHubMasthead>
 
@@ -68,37 +111,42 @@ onMounted(() => {
 
     <UiCard class="ai-home-page__hero">
       <div class="ai-home-page__hero-head">
-        <div class="ai-home-page__hero-state">
-          <span class="ai-dot" :class="dotClass(overview.state)" />
-          <span class="ai-home-page__hero-state-text">{{ stateLabel(overview.state) }}</span>
+        <div class="ai-home-page__hero-copy">
+          <div class="ai-home-page__hero-state">
+            <span class="ai-dot" :class="dotClass(overview.state)" />
+            <span class="ai-home-page__hero-state-text">{{ stateLabel(overview.state) }}</span>
+          </div>
+          <h3 class="ai-home-page__hero-title">{{ overview.title }}</h3>
+          <p class="muted ai-home-page__hero-lead">{{ overview.lead }}</p>
         </div>
-        <h3 class="ai-home-page__hero-title">{{ overview.title }}</h3>
-        <p class="muted ai-home-page__hero-lead">{{ overview.lead }}</p>
+        <div class="ai-home-page__hero-links">
+          <RouterLink
+            v-for="link in heroQuickLinks"
+            :key="link.to"
+            :to="link.to"
+            class="ai-home-page__hero-link"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </div>
       </div>
       <div class="ai-stat-grid ai-home-page__hero-stats">
-        <div class="ai-stat">
-          <span class="ai-stat__label">正常能力</span>
-          <strong class="ai-stat__value ai-stat__value--accent">{{ overview.healthyCount }}</strong>
-        </div>
-        <div class="ai-stat">
-          <span class="ai-stat__label">降级能力</span>
-          <strong class="ai-stat__value" :class="{ 'ai-stat__value--warn': overview.degradedCount > 0 }">{{ overview.degradedCount }}</strong>
-        </div>
-        <div class="ai-stat">
-          <span class="ai-stat__label">未启用</span>
-          <strong class="ai-stat__value">{{ overview.disabledCount }}</strong>
-        </div>
-        <div class="ai-stat">
-          <span class="ai-stat__label">媒体任务排队</span>
-          <strong class="ai-stat__value">{{ mediaTaskQueue?.queue_depth ?? 0 }}</strong>
-        </div>
-        <div class="ai-stat">
-          <span class="ai-stat__label">LLM 失败</span>
-          <strong class="ai-stat__value" :class="{ 'ai-stat__value--danger': llmRuntimeSummary.failed > 0 }">{{ llmRuntimeSummary.failed }}</strong>
-        </div>
-        <div class="ai-stat">
-          <span class="ai-stat__label">配置回退策略</span>
-          <strong class="ai-stat__value">{{ overview.fallbackCount }}</strong>
+        <div
+          v-for="item in homeHeroStats"
+          :key="item.label"
+          class="ai-stat ai-home-page__hero-stat"
+        >
+          <span class="ai-stat__label">{{ item.label }}</span>
+          <strong
+            class="ai-stat__value"
+            :class="{
+              'ai-stat__value--accent': item.accent,
+              'ai-stat__value--warn': item.tone === 'warn',
+              'ai-stat__value--danger': item.tone === 'danger',
+            }"
+          >
+            {{ item.value }}
+          </strong>
         </div>
       </div>
     </UiCard>
@@ -121,6 +169,16 @@ onMounted(() => {
               <span class="muted ai-home-page__focus-tag">{{ item.state === "degraded" ? "降级" : item.state === "disabled" ? "未启用" : "正常" }}</span>
             </div>
             <p class="muted ai-home-page__focus-desc">{{ item.description }}</p>
+            <div v-if="primaryNavigateAction(item)" class="ai-home-page__focus-actions">
+              <RouterLink :to="primaryNavigateAction(item)?.to || '/ai/home'">
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                >
+                {{ primaryNavigateAction(item)?.label || "前往处理" }}
+                </UiButton>
+              </RouterLink>
+            </div>
           </article>
         </div>
         <div v-else class="ai-empty">
@@ -134,20 +192,20 @@ onMounted(() => {
           <h3 class="ai-head__title">LLM 调用</h3>
           <span class="ai-head__hint">本时间窗内的任务状态与回复路径</span>
         </div>
-        <div class="ai-stat-grid ai-home-page__mini" style="--ai-stat-cols: 4">
-          <div class="ai-stat">
+        <div class="ai-home-page__runtime-grid">
+          <div class="ai-stat ai-home-page__runtime-stat">
             <span class="ai-stat__label">排队</span>
             <strong class="ai-stat__value">{{ llmRuntimeSummary.queued }}</strong>
           </div>
-          <div class="ai-stat">
+          <div class="ai-stat ai-home-page__runtime-stat">
             <span class="ai-stat__label">执行中</span>
             <strong class="ai-stat__value">{{ llmRuntimeSummary.running }}</strong>
           </div>
-          <div class="ai-stat">
+          <div class="ai-stat ai-home-page__runtime-stat">
             <span class="ai-stat__label">成功</span>
             <strong class="ai-stat__value ai-stat__value--accent">{{ llmRuntimeSummary.succeeded }}</strong>
           </div>
-          <div class="ai-stat">
+          <div class="ai-stat ai-home-page__runtime-stat">
             <span class="ai-stat__label">失败</span>
             <strong class="ai-stat__value" :class="{ 'ai-stat__value--danger': llmRuntimeSummary.failed > 0 }">{{ llmRuntimeSummary.failed }}</strong>
           </div>
@@ -222,8 +280,45 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-home-page__hero {
+  display: grid;
+  gap: 18px;
+}
+
 .ai-home-page__hero-head {
-  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.ai-home-page__hero-copy {
+  min-width: 0;
+}
+
+.ai-home-page__hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.ai-home-page__hero-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-home-page__hero-link:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--bg-card));
 }
 
 .ai-home-page__hero-state {
@@ -257,10 +352,38 @@ onMounted(() => {
 
 .ai-home-page__panel {
   height: 100%;
+  min-width: 0;
+}
+
+.ai-home-page__hero-stats {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.ai-home-page__hero-stat {
+  min-width: 0;
+  padding: 14px 15px;
+}
+
+.ai-home-page__routes .ai-row__key,
+.ai-home-page__group-title {
+  min-width: 0;
+  word-break: break-word;
 }
 
 .ai-home-page__mini {
   margin-bottom: 14px;
+}
+
+.ai-home-page__runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ai-home-page__runtime-stat {
+  min-width: 0;
+  padding: 12px 14px;
 }
 
 .ai-home-page__focus {
@@ -270,6 +393,10 @@ onMounted(() => {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--text) 2.5%, transparent);
+}
+
+.ai-home-page__focus-actions {
+  margin-top: 4px;
 }
 
 .ai-home-page__focus-head {
@@ -297,6 +424,20 @@ onMounted(() => {
 
 @media (max-width: 960px) {
   .ai-home-page__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-home-page__hero-head {
+    flex-direction: column;
+  }
+
+  .ai-home-page__hero-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .ai-home-page__runtime-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

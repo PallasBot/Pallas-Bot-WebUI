@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import AiConfigConnectionSection from "@/components/ai-config/AiConfigConnectionSection.vue";
 import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSection.vue";
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
@@ -10,9 +10,11 @@ import AiConfigPersonaSection from "@/components/ai-config/AiConfigPersonaSectio
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
 import {
   AI_CONFIG_HUB_LEAD,
   AI_CONFIG_SECTIONS,
+  AI_TOP_LEVEL_NAV,
   aiConfigSectionMeta,
   aiConfigSectionPath,
   normalizeAiConfigSection,
@@ -87,6 +89,17 @@ onMounted(() => {
         </template>
         <template #lead>
           {{ AI_CONFIG_HUB_LEAD }}
+        </template>
+        <template #actions>
+          <RouterLink :to="AI_TOP_LEVEL_NAV[0].path">
+            <UiButton variant="ghost">AI 首页</UiButton>
+          </RouterLink>
+          <RouterLink :to="AI_TOP_LEVEL_NAV[1].path">
+            <UiButton variant="ghost">AI 统计</UiButton>
+          </RouterLink>
+          <RouterLink :to="AI_TOP_LEVEL_NAV[2].path">
+            <UiButton variant="ghost">AI 历史</UiButton>
+          </RouterLink>
         </template>
       </ConsoleHubMasthead>
 

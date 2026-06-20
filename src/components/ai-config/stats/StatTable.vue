@@ -98,8 +98,62 @@ function keyOf(row: T, index: number): string {
 </template>
 
 <style scoped>
+.table-wrap {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
+}
+
+.tbl {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.tbl td,
+.tbl th {
+  word-break: break-word;
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.tbl td:first-child,
+.tbl th:first-child {
+  width: 34%;
+}
+
+.tbl thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-card) 94%, var(--text) 6%);
+}
+
+.tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tbl tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
 .tbl__cell--right {
   text-align: right;
+}
+
+.ai-subcell {
+  margin-top: 4px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: normal;
+  word-break: break-word;
 }
 
 .stat-table__pager {
@@ -113,5 +167,17 @@ function keyOf(row: T, index: number): string {
 .stat-table__pager-label {
   font-size: 0.8rem;
   color: var(--muted, #94a3b8);
+}
+
+@media (max-width: 560px) {
+  .tbl td,
+  .tbl th {
+    padding: 10px 11px;
+  }
+
+  .tbl td:first-child,
+  .tbl th:first-child {
+    width: 44%;
+  }
 }
 </style>

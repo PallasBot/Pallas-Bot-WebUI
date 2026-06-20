@@ -540,27 +540,27 @@ onMounted(() => {
                   AI 详细统计已拆分到独立页面，避免与 Bot/协议/插件总看板重复堆叠。
                 </p>
                 <div class="charts-page__ai-links">
-                  <a
+                  <RouterLink
                     class="charts-page__ai-link"
-                    href="/ai/home"
+                    to="/ai/home"
                   >
                     <strong>AI 首页</strong>
                     <span class="muted">运行态、异常、快速入口</span>
-                  </a>
-                  <a
+                  </RouterLink>
+                  <RouterLink
                     class="charts-page__ai-link"
-                    href="/ai/statistics"
+                    to="/ai/statistics"
                   >
                     <strong>AI 统计</strong>
                     <span class="muted">失败、路由、provider/model、token</span>
-                  </a>
-                  <a
+                  </RouterLink>
+                  <RouterLink
                     class="charts-page__ai-link"
-                    href="/ai/history"
+                    to="/ai/history"
                   >
                     <strong>AI 历史</strong>
                     <span class="muted">按日快照与时间窗路由历史</span>
-                  </a>
+                  </RouterLink>
                 </div>
               </div>
             </UiCard>

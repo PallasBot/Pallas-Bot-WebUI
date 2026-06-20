@@ -8,6 +8,7 @@ import {
   fetchPlugins,
   installCommunityPlugin,
   installOfficialExtension,
+  refreshPluginStore,
   refreshPluginUpdateSnapshot,
   uninstallCommunityPlugin,
   uninstallOfficialExtension,
@@ -537,7 +538,16 @@ async function refreshStore(force = false) {
   loading.value = true;
   storeErr.value = "";
   try {
-    if (storeSection.value === "official") {
+    if (force && storeSection.value !== "local") {
+      const out = await refreshPluginStore();
+      if (storeSection.value === "official") {
+        await refreshOfficialStore();
+      } else {
+        await refreshCommunityStore(false);
+      }
+      const n = (out.store_assets.community_count ?? 0) + (out.store_assets.official_count ?? 0);
+      storeActionHint.value = n ? `已同步 ${n} 个插件的商店资源。` : "已完成插件商店刷新。";
+    } else if (storeSection.value === "official") {
       await refreshOfficialStore();
     } else if (storeSection.value === "community") {
       await refreshCommunityStore(force);

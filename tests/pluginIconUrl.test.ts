@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPluginIconMap,
+  PALLAS_MASCOT_ICON_URL,
   resolveOfficialExtensionIconUrl,
   resolvePluginIconForRow,
   shouldShowPluginAvatar,
@@ -57,5 +58,24 @@ describe("pluginIconUrl", () => {
         },
       ),
     ).toBe("https://raw.githubusercontent.com/acme/duel/main/assets/brand-avatar.png");
+  });
+
+  it("uses the shell brand avatar as the mascot fallback", () => {
+    expect(PALLAS_MASCOT_ICON_URL).toContain("brand-avatar.png");
+    expect(PALLAS_MASCOT_ICON_URL).not.toContain("brand-avatar-hd");
+  });
+
+  it("uses the shell brand avatar for core plugins when no backend icon is available", () => {
+    expect(
+      resolvePluginIconForRow(
+        {
+          name: "help",
+          icon: "",
+          plugin_source: "core",
+          extra_package: "",
+        } as never,
+        {},
+      ),
+    ).toBe(PALLAS_MASCOT_ICON_URL);
   });
 });

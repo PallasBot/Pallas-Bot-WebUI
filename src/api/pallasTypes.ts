@@ -795,6 +795,34 @@ export interface LlmModelAdminStatus {
   categorizer_model?: string;
   tools_selective?: boolean;
   moe_tier_routing?: boolean;
+  local_multi_model_enabled?: boolean;
+  local_model_policy?: string;
+  local_task_models?: Record<string, string>;
+  local_moe_models?: Record<string, string>;
+}
+
+export interface LlmLocalRoutingModels {
+  simple: string;
+  medium: string;
+  complex: string;
+  vision: string;
+}
+
+export interface LlmLocalRoutingTaskModels {
+  llm_chat: string;
+  drunk: string;
+  repeater_fallback: string;
+  repeater_polish: string;
+  repeater_polish_lite: string;
+  repeater_select: string;
+}
+
+export interface LlmLocalRoutingConfig {
+  llm_model: string;
+  local_multi_model_enabled: boolean;
+  moe_models: LlmLocalRoutingModels;
+  task_models: LlmLocalRoutingTaskModels;
+  env_file: string;
 }
 
 export interface LlmModelAdminModelResult {
@@ -942,6 +970,34 @@ export interface LlmHistoryBehaviorRun {
   score_delta?: number;
   manual_labels: string[];
   disabled?: boolean;
+}
+
+export interface LlmRepeaterFeedbackEntry {
+  entry_id: string;
+  created_at: number;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  request_id: string;
+  user_text: string;
+  reply_text: string;
+  behavior_scene?: string;
+  behavior_actions?: string[];
+  llm_route?: string;
+  source_tags?: string[];
+  eligible_for_bias?: boolean;
+  eligible_for_writeback?: boolean;
+}
+
+export interface LlmRepeaterFeedbackData {
+  items: LlmRepeaterFeedbackEntry[];
+  limit: number;
+}
+
+export interface LlmRepeaterFeedbackSummary {
+  count: number;
+  top_replies: string[];
+  scenes: string[];
 }
 
 export interface PersonaAxisSnapshot {

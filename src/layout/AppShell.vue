@@ -556,6 +556,7 @@ onUnmounted(() => {
                     type="button"
                     class="shell__nav-link shell__nav-link--child"
                     :class="{
+                      'shell__nav-link--heavy': ['/logs', '/instances', '/plugins', '/database'].includes(child.item.to),
                       'is-router-active': isMainLinkActiveForPath(child.item),
                       'is-router-exact': isMainLinkExact(child.item),
                     }"
@@ -590,6 +591,7 @@ onUnmounted(() => {
                 class="shell__nav-link"
                 :class="{
                   'shell__nav-link--root': entry.row.item.to === '/',
+                  'shell__nav-link--heavy': ['/logs', '/instances', '/plugins', '/database'].includes(entry.row.item.to),
                   'is-router-active': isMainLinkActiveForPath(entry.row.item),
                   'is-router-exact': isMainLinkExact(entry.row.item),
                 }"
@@ -786,7 +788,10 @@ onUnmounted(() => {
                     <button
                       type="button"
                       class="shell-mobile-nav__link shell__nav-link--child"
-                      :class="{ 'is-router-active': isMainLinkActiveForPath(child.item) }"
+                      :class="{
+                        'shell__nav-link--heavy': ['/logs', '/instances', '/plugins', '/database'].includes(child.item.to),
+                        'is-router-active': isMainLinkActiveForPath(child.item),
+                      }"
                       :aria-current="isMainLinkExact(child.item) ? 'page' : undefined"
                       @click="
                         navigate();
@@ -817,6 +822,7 @@ onUnmounted(() => {
                   class="shell-mobile-nav__link"
                   :class="{
                     'shell__nav-link--root': entry.row.item.to === '/',
+                    'shell__nav-link--heavy': ['/logs', '/instances', '/plugins', '/database'].includes(entry.row.item.to),
                     'is-router-active': isMainLinkActiveForPath(entry.row.item),
                     'is-router-exact': isMainLinkExact(entry.row.item),
                   }"

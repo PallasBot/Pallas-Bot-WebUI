@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
 import {
   fetchAiExtensionConfig,
   postAiExtensionTest,
@@ -175,6 +176,11 @@ defineExpose({ save, canSave: () => !saving.value, saving });
         Bot 访问 Pallas-Bot-AI 扩展服务所用的地址与鉴权；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
         统一健康状态请优先查看「运行态总览」，这里的结果仅用于排查当前连接参数。
       </p>
+      <div class="ai-config-connection__links">
+        <RouterLink to="/ai/home">运行态总览</RouterLink>
+        <RouterLink to="/ai/config/logs">扩展日志</RouterLink>
+        <RouterLink to="/ai/config/ncm">网易云登录</RouterLink>
+      </div>
       <div class="ai-config-connection__form">
         <div class="ai-config-connection__url-row">
           <div class="ai-config-connection__scheme form-field">
@@ -310,6 +316,14 @@ defineExpose({ save, canSave: () => !saving.value, saving });
 </template>
 
 <style scoped>
+.ai-config-connection__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 0.8125rem;
+}
+
 .ai-config-connection__form {
   display: flex;
   flex-direction: column;

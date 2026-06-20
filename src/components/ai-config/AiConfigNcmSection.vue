@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import {
   fetchAiNcmStatus,
   postAiNcmLogout,
@@ -234,6 +235,11 @@ onMounted(() => {
       >
         登录后扩展服务可代查网易云接口；验证码仅用于本次登录，不会写入 Bot 配置。
       </p>
+      <div class="ai-ncm-links">
+        <RouterLink to="/ai/config/connection">扩展连接</RouterLink>
+        <RouterLink to="/ai/config/logs">扩展日志</RouterLink>
+        <RouterLink to="/ai/home">AI 首页</RouterLink>
+      </div>
 
       <div class="ai-ncm-form">
         <div class="ai-ncm-form__grid">
@@ -321,6 +327,14 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-ncm-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 0.8125rem;
+}
+
 .ai-ncm-form {
   display: flex;
   flex-direction: column;

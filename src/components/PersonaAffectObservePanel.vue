@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import { fetchLlmPersonaObserve } from "@/api/consoleApi";
 import type { PersonaAxisSnapshot, PersonaObserveBotRow, PersonaObserveData } from "@/api/pallasTypes";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
@@ -33,6 +34,27 @@ const bots = computed(() => data.value?.bots ?? []);
 const groupSnapshot = computed(() => data.value?.group_style_snapshot ?? null);
 const affectRefine = computed(() => data.value?.affect_refine ?? null);
 const affectTriggers = computed(() => data.value?.affect_triggers ?? []);
+const overviewStats = computed(() => [
+  {
+    label: "Bot 数量",
+    value: String(bots.value.length),
+    accent: true,
+  },
+  {
+    label: "当前群号",
+    value: groupIdParsed.value ? String(groupIdParsed.value) : "仅看基线",
+  },
+  {
+    label: "数据来源",
+    value: legacyMode.value ? "降级展示" : "运行时接口",
+    tone: legacyMode.value ? "warn" : "ok",
+  },
+  {
+    label: "群画像",
+    value: groupSnapshot.value ? (groupSnapshot.value.ready ? "可用" : "样本不足") : "未选择群",
+    tone: groupSnapshot.value ? (groupSnapshot.value.ready ? "ok" : "warn") : "muted",
+  },
+]);
 
 const axisDefs = [
   { key: "warmth" as const, label: "温和度", positive: "热络", negative: "冷淡" },
@@ -150,9 +172,26 @@ onMounted(() => {
         <h2 class="panel__title">
           牛格情感观测
         </h2>
-        <p class="muted persona-observe-panel__lede">
-          查看各 bot 的情感轴基线与群合并结果；数据只读，由 persona 运行时解析。
-        </p>
+        <div class="persona-observe-panel__summary">
+          <div
+            v-for="item in overviewStats"
+            :key="item.label"
+            class="persona-observe-panel__summary-item"
+          >
+            <span class="persona-observe-panel__summary-label">{{ item.label }}</span>
+            <strong
+              class="persona-observe-panel__summary-value"
+              :class="[
+                item.accent ? 'persona-observe-panel__summary-value--accent' : '',
+                item.tone === 'ok' ? 'ok' : '',
+                item.tone === 'warn' ? 'warn' : '',
+                item.tone === 'muted' ? 'muted' : '',
+              ]"
+            >
+              {{ item.value }}
+            </strong>
+          </div>
+        </div>
       </div>
       <div class="row-actions persona-observe-panel__hd-actions">
         <label class="persona-observe-panel__group-field">
@@ -176,6 +215,15 @@ onMounted(() => {
     </div>
 
     <div class="panel__bd">
+      <p class="muted persona-observe-panel__lede">
+        查看各 bot 的情感轴基线与群合并结果；数据只读，由 persona 运行时解析。
+      </p>
+      <div class="row-actions persona-observe-panel__links">
+        <RouterLink to="/ai/home">AI 首页</RouterLink>
+        <RouterLink to="/ai/config/model">模型与对话</RouterLink>
+        <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+      </div>
+
       <p
         v-if="err"
         class="alert"
@@ -419,9 +467,57 @@ onMounted(() => {
 }
 
 .persona-observe-panel__lede {
-  margin: 6px 0 0;
+  margin: 0 0 10px;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.persona-observe-panel__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.persona-observe-panel__summary-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 18%, var(--border));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 5%, var(--card, var(--bg-card)));
+}
+
+.persona-observe-panel__summary-label {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-muted, #64748b);
+}
+
+.persona-observe-panel__summary-value {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.persona-observe-panel__summary-value--accent {
+  font-size: 1.06rem;
+}
+
+.persona-observe-panel__summary-value.ok {
+  color: var(--ok, #3d9a5c);
+}
+
+.persona-observe-panel__summary-value.warn {
+  color: var(--warn, #c9a227);
+}
+
+.persona-observe-panel__summary-value.muted {
+  color: var(--text-muted, #64748b);
+}
+
+.persona-observe-panel__links {
+  margin: 0 0 12px;
+  flex-wrap: wrap;
 }
 
 .persona-observe-panel__hd-actions {

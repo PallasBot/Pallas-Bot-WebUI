@@ -513,7 +513,7 @@ function showConfigField(f: PluginConfigField): boolean {
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
             <router-link to="/plugins/draw">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
             统一 AI 运行态与媒体任务队列见
-            <router-link to="/ai/runtime">AI配置</router-link>。
+            <router-link to="/ai/home">AI 首页</router-link>。
           </p>
           <p
             v-if="showDevModeHotReloadHint"

@@ -383,6 +383,7 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.
 
 .ui-dialog__ft {
   flex-shrink: 0;
+  padding: 0 20px 16px;
 }
 
 /* Toast 进出场（TransitionGroup） */
