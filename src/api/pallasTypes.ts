@@ -926,6 +926,22 @@ export interface LlmHistorySessionsData {
 export interface LlmHistorySessionDetailData {
   session: LlmHistorySessionSummary;
   turns: LlmHistoryTurn[];
+  behavior_runs: LlmHistoryBehaviorRun[];
+}
+
+export interface LlmHistoryBehaviorRun {
+  request_id: string;
+  group_id?: number | null;
+  user_id?: number | null;
+  bot_id?: number | null;
+  scene: string;
+  selected_pattern_ids: string[];
+  selected_actions: string[];
+  behavior_hint_text: string;
+  final_outcome?: string | null;
+  score_delta?: number;
+  manual_labels: string[];
+  disabled?: boolean;
 }
 
 export interface PersonaAxisSnapshot {
@@ -1559,7 +1575,3 @@ export interface FriendListData {
   limit: number;
   error: string | null;
 }
-  local_multi_model_enabled?: boolean;
-  local_model_policy?: string;
-  local_task_models?: Record<string, string>;
-  local_moe_models?: Record<string, string>;

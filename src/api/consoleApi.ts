@@ -52,6 +52,7 @@ import type {
   CommonConfigSectionMeta,
   LlmModelAdminModelResult,
   LlmModelAdminStatus,
+  LlmLocalRoutingConfig,
   LlmProvidersConfig,
   LlmProvidersSaveResult,
   LlmProviderModelsResult,
@@ -330,6 +331,15 @@ export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapsho
     { timeout: 120_000 },
   );
   return unwrap(data, "/plugins/update-snapshot/refresh");
+}
+
+export async function refreshPluginStore(): Promise<PluginStoreRefreshResult> {
+  const { data } = await http.post<ApiOk<PluginStoreRefreshResult>>(
+    "/plugins/store/refresh",
+    {},
+    { timeout: 120_000 },
+  );
+  return unwrap(data, "/plugins/store/refresh");
 }
 
 export async function fetchPluginStoreReadme(
@@ -671,6 +681,22 @@ export async function fetchLlmHistorySession(params: {
     },
   });
   return unwrap(data, "/common-config/llm/history/session");
+}
+
+export async function postLlmHistoryBehaviorAnnotate(body: {
+  requestId: string;
+  labels: string[];
+  finalOutcome?: string | null;
+  disabled?: boolean;
+}): Promise<LlmHistoryBehaviorRun> {
+  const path = "/common-config/llm/history/behavior/annotate";
+  const { data } = await http.post<ApiOk<LlmHistoryBehaviorRun>>(path, {
+    request_id: body.requestId,
+    labels: body.labels,
+    ...(body.finalOutcome ? { final_outcome: body.finalOutcome } : {}),
+    ...(typeof body.disabled === "boolean" ? { disabled: body.disabled } : {}),
+  });
+  return unwrap(data, path);
 }
 
 export async function fetchLlmPersonaObserve(params?: {
