@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
 import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
 import ProviderManager from "@/components/ai-config/providers/ProviderManager.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -51,6 +53,8 @@ defineExpose({ save, canSave, saving });
 
     <ModelAdminPanel />
 
+    <LocalModelRoutingPanel />
+
     <ProviderManager />
 
     <UiCard
@@ -82,6 +86,11 @@ defineExpose({ save, canSave, saving });
         <p class="muted ai-config-section__intro">
           Bot 侧总开关、接话模式与限流；保存后热载。Ollama 模型与 Provider 路由见上方面板。
         </p>
+        <div class="ai-config-model-fields__links">
+          <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
+          <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+          <RouterLink to="/ai/home">返回 AI 首页</RouterLink>
+        </div>
         <section
           v-for="group in groupedFieldViews.groups"
           :key="group.title"
@@ -131,6 +140,13 @@ defineExpose({ save, canSave, saving });
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.ai-config-model-fields__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.8125rem;
 }
 
 .ai-config-model-fields__group-title {

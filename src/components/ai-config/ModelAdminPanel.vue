@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { RouterLink } from "vue-router";
 import {
   fetchLlmModelAdminStatus,
   postLlmModelAdminNumGpu,
@@ -35,6 +36,26 @@ const confirm = reactive<{ open: boolean; action: ConfirmAction | null; title: s
 });
 
 const reachable = computed(() => status.value?.ai_reachable ?? false);
+const statusSummary = computed(() => [
+  {
+    label: "当前模型",
+    value: loading.value ? "读取中…" : status.value?.model || "—",
+    accent: true,
+  },
+  {
+    label: "GPU 层数",
+    value: loading.value ? "…" : status.value?.num_gpu ?? "—",
+  },
+  {
+    label: "AI 服务",
+    value: loading.value ? "检测中…" : reachable.value ? "可达" : "不可达",
+    tone: loading.value ? "muted" : reachable.value ? "ok" : "warn",
+  },
+  {
+    label: "路由模式",
+    value: status.value?.provider_mode || "—",
+  },
+]);
 
 async function refresh() {
   loading.value = true;
@@ -155,27 +176,25 @@ onMounted(() => {
     </div>
 
     <div class="panel__bd">
-      <p class="muted model-admin__intro">
-        热切换本地 Ollama 模型、GPU 层数，或从 .env 重载；均<strong>无需重启 Celery</strong>。Provider 与 task 路由在下方面板配置。
-      </p>
-
-      <div
-        v-if="err"
-        class="alert alert--err model-admin__alert"
-        role="alert"
-      >
-        {{ err }}
-      </div>
-
-      <div class="model-admin__current">
-        <span class="model-admin__current-label">当前模型</span>
-        <strong class="model-admin__current-value">{{ loading ? "读取中…" : status?.model || "—" }}</strong>
-        <span class="muted model-admin__current-meta">
-          GPU {{ loading ? "…" : status?.num_gpu ?? "—" }} · AI 服务
-          <span :class="reachable ? 'ok' : 'warn'">
-            {{ loading ? "检测中…" : reachable ? "可达" : "不可达" }}
-          </span>
-        </span>
+      <div class="model-admin__summary">
+        <div
+          v-for="item in statusSummary"
+          :key="item.label"
+          class="model-admin__summary-item"
+        >
+          <span class="model-admin__summary-label">{{ item.label }}</span>
+          <strong
+            class="model-admin__summary-value"
+            :class="[
+              item.accent ? 'model-admin__summary-value--accent' : '',
+              item.tone === 'ok' ? 'ok' : '',
+              item.tone === 'warn' ? 'warn' : '',
+              item.tone === 'muted' ? 'muted' : '',
+            ]"
+          >
+            {{ item.value }}
+          </strong>
+        </div>
       </div>
 
       <dl
@@ -203,7 +222,37 @@ onMounted(() => {
           <dt>按难度选模型</dt>
           <dd>已启用</dd>
         </div>
+        <div
+          v-if="status?.local_model_policy"
+          class="model-admin__status-row"
+        >
+          <dt>本地模型策略</dt>
+          <dd>{{ status.local_model_policy === "single_runtime" ? "单模型：当前运行模型优先" : "多模型：任务/MoE 可分流" }}</dd>
+        </div>
       </dl>
+
+      <p class="muted model-admin__intro">
+        热切换本地 Ollama 模型、GPU 层数，或从 .env 重载；均<strong>无需重启 Celery</strong>。Provider 与 task 路由在下方面板配置。
+      </p>
+      <p
+        v-if="status?.local_multi_model_enabled"
+        class="muted model-admin__hint"
+      >
+        当前启用了本地多模型路由：切换上方“当前模型”后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
+      </p>
+      <div class="row-actions model-admin__links">
+        <RouterLink to="/ai/home">运行态总览</RouterLink>
+        <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
+        <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+      </div>
+
+      <div
+        v-if="err"
+        class="alert alert--err model-admin__alert"
+        role="alert"
+      >
+        {{ err }}
+      </div>
 
       <div class="model-admin__form">
         <label class="form-field">
@@ -307,43 +356,57 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.model-admin__alert {
-  margin-bottom: 12px;
+.model-admin__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
 }
 
-.model-admin__current {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 0 14px;
+.model-admin__summary-item {
+  display: grid;
+  gap: 6px;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 28%, var(--border));
-  background: color-mix(in srgb, var(--primary, var(--accent)) 8%, var(--card, var(--bg-card)));
+  border: 1px solid color-mix(in srgb, var(--primary, var(--accent)) 20%, var(--border));
+  background: color-mix(in srgb, var(--primary, var(--accent)) 6%, var(--card, var(--bg-card)));
 }
 
-.model-admin__current-label {
+.model-admin__summary-label {
   font-size: 12px;
   font-weight: 650;
   color: var(--text-muted, #64748b);
 }
 
-.model-admin__current-value {
-  font-size: 1.05rem;
+.model-admin__summary-value {
+  font-size: 0.98rem;
   font-weight: 700;
   word-break: break-word;
 }
 
-.model-admin__current-meta {
-  font-size: 12px;
+.model-admin__summary-value--accent {
+  font-size: 1.05rem;
 }
 
-.model-admin__current-meta .ok {
+.model-admin__summary-value.ok {
   color: var(--ok, #3d9a5c);
 }
 
-.model-admin__current-meta .warn {
+.model-admin__summary-value.warn {
   color: var(--warn, #c9a227);
+}
+
+.model-admin__summary-value.muted {
+  color: var(--text-muted, #64748b);
+}
+
+.model-admin__alert {
+  margin-bottom: 12px;
+}
+
+.model-admin__links {
+  margin: 0 0 12px;
+  flex-wrap: wrap;
 }
 
 .model-admin__status {

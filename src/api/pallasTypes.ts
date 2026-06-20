@@ -1559,3 +1559,7 @@ export interface FriendListData {
   limit: number;
   error: string | null;
 }
+  local_multi_model_enabled?: boolean;
+  local_model_policy?: string;
+  local_task_models?: Record<string, string>;
+  local_moe_models?: Record<string, string>;
