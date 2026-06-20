@@ -60,7 +60,7 @@ npm run build
 
 该命令会执行类型检查（`vue-tsc -b`）、Vite 打包，并运行 `scripts/write-console-version.mjs` 写入控制台版本元数据。
 
-将生成的 **`dist/`** 交由主仓 `pallas_webui` 使用（拷贝到主仓约定目录或通过主仓 Release / 自动下载流程拉取 `dist.zip`）。更新静态资源后需**重启** Pallas-Bot。
+将生成的 **`dist/`** 交由主仓 `pb_webui` 使用。当前运行产物目录以 Bot 仓实际部署为准，直接同步到 **`/data/pb_webui/`**（若该目录下区分 `public/`，则同步 `dist/` 内容到对应静态子目录）。也可通过主仓 Release / 自动下载流程拉取 `dist.zip`。更新静态资源后需**重启** Pallas-Bot。
 
 ## 与后端的约定
 

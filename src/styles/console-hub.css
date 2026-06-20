@@ -1855,7 +1855,7 @@ html[data-layout="hub"] .shell__nav-group-toggle {
   background: transparent;
   color: color-mix(in srgb, var(--foreground) 84%, var(--text-muted));
   font-size: var(--shell-nav-label-size);
-  font-weight: 560;
+  font-weight: 650;
   cursor: pointer;
   text-align: left;
 }
@@ -1868,7 +1868,7 @@ html[data-layout="hub"] .shell__nav-group-toggle:hover {
 
 html[data-layout="hub"] .shell__nav-group--open > .shell__nav-group-toggle {
   color: var(--text);
-  font-weight: 620;
+  font-weight: 700;
 }
 
 html[data-layout="hub"] .shell__nav-group-chevron {
