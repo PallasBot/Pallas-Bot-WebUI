@@ -964,10 +964,28 @@ export interface LlmHistoryBehaviorAutoFeedbackPayload {
   observed_turn_count?: number;
 }
 
+export interface LlmBehaviorPattern {
+  pattern_id: string;
+  scene: string;
+  action: string;
+  scope_group_id?: number | null;
+  success_score?: number;
+  manual_score?: number;
+  disabled?: boolean;
+  persona_affinity?: string;
+  trigger_features?: string[];
+  reference_examples?: string[];
+}
+
 export interface LlmBehaviorRunsData {
   items: LlmHistoryBehaviorRun[];
   count: number;
   limit: number;
+}
+
+export interface LlmBehaviorPatternsData {
+  items: LlmBehaviorPattern[];
+  count: number;
 }
 
 export interface LlmHistoryBehaviorRun {

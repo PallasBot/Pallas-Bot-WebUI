@@ -59,6 +59,8 @@ import type {
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
   LlmHistoryBehaviorRun,
+  LlmBehaviorPattern,
+  LlmBehaviorPatternsData,
   LlmBehaviorRunsData,
   LlmHistorySessionsData,
   LlmRepeaterFeedbackData,
@@ -740,6 +742,35 @@ export async function fetchLlmBehaviorRuns(params?: {
     },
   });
   return unwrap(data, "/common-config/llm/behavior/runs");
+}
+
+export async function fetchLlmBehaviorPatterns(params?: {
+  groupId?: number | null;
+  scene?: string | null;
+  includeDisabled?: boolean;
+}): Promise<LlmBehaviorPatternsData> {
+  const { data } = await http.get<ApiOk<LlmBehaviorPatternsData>>("/common-config/llm/behavior/patterns", {
+    params: {
+      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params?.scene ? { scene: params.scene } : {}),
+      ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/behavior/patterns");
+}
+
+export async function postLlmBehaviorPatternUpsert(
+  body: LlmBehaviorPattern,
+): Promise<LlmBehaviorPattern> {
+  const path = "/common-config/llm/behavior/patterns/upsert";
+  const { data } = await http.post<ApiOk<LlmBehaviorPattern>>(path, body);
+  return unwrap(data, path);
+}
+
+export async function postLlmBehaviorPatternDelete(patternId: string): Promise<{ pattern_id: string }> {
+  const path = "/common-config/llm/behavior/patterns/delete";
+  const { data } = await http.post<ApiOk<{ pattern_id: string }>>(path, { pattern_id: patternId });
+  return unwrap(data, path);
 }
 
 export async function fetchLlmRepeaterFeedback(params: {

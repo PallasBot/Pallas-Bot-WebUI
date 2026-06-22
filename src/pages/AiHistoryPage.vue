@@ -2,13 +2,17 @@
 import { computed, onMounted, ref, watch } from "vue";
 import {
   fetchLlmBehaviorRuns,
+  fetchLlmBehaviorPatterns,
   fetchLlmHistorySession,
   fetchLlmHistorySessions,
   fetchLlmRepeaterFeedback,
   fetchLlmRepeaterFeedbackSummary,
+  postLlmBehaviorPatternDelete,
+  postLlmBehaviorPatternUpsert,
   postLlmHistoryBehaviorAnnotate,
 } from "@/api/consoleApi";
 import type {
+  LlmBehaviorPattern,
   LlmHistoryBehaviorRun,
   LlmHistoryBehaviorAutoFeedbackPayload,
   LlmHistorySessionDetailData,
@@ -60,6 +64,27 @@ const behaviorRunsGroupTouched = ref(false);
 const behaviorRunsScene = ref("");
 const behaviorRunsOutcome = ref("");
 const behaviorRunsIncludeDisabled = ref(false);
+const patternBusy = ref(false);
+const patternErr = ref("");
+const patternsItems = ref<LlmBehaviorPattern[]>([]);
+const patternsGroup = ref("");
+const patternsGroupTouched = ref(false);
+const patternsScene = ref("");
+const patternsIncludeDisabled = ref(false);
+const patternEditor = ref<LlmBehaviorPattern>({
+  pattern_id: "",
+  scene: "smalltalk",
+  action: "ack_then_short_reply",
+  scope_group_id: null,
+  success_score: 0,
+  manual_score: 0,
+  disabled: false,
+  persona_affinity: "",
+  trigger_features: [],
+  reference_examples: [],
+});
+const patternEditorMode = ref<"create" | "edit">("create");
+const patternSaveBusy = ref(false);
 
 // 会话筛选：bot / group / user（空 = 不限）
 const filterBot = ref("");
@@ -80,6 +105,16 @@ const BEHAVIOR_SCENE_OPTIONS = [
   { label: "group_threading", value: "group_threading" },
   { label: "light_help", value: "light_help" },
 ] as const;
+const BEHAVIOR_ACTION_OPTIONS = [
+  { label: "light_tease_and_close", value: "light_tease_and_close" },
+  { label: "ack_then_short_reply", value: "ack_then_short_reply" },
+  { label: "follow_joke_once", value: "follow_joke_once" },
+  { label: "ack_emotion_no_lecture", value: "ack_emotion_no_lecture" },
+  { label: "stay_on_current_topic", value: "stay_on_current_topic" },
+  { label: "avoid_forced_topic_shift", value: "avoid_forced_topic_shift" },
+  { label: "brief_multi_party_anchor", value: "brief_multi_party_anchor" },
+  { label: "short_help_then_stop", value: "short_help_then_stop" },
+] as const;
 const BEHAVIOR_OUTCOME_OPTIONS = [
   { label: "未判定", value: "" },
   { label: "接住了", value: "engaged" },
@@ -98,6 +133,7 @@ const combinedErr = computed(() => err.value || historyErr.value);
 const anyBusy = computed(() => loading.value || historyBusy.value);
 const feedbackGroupId = computed(() => parseFilter(feedbackGroup.value));
 const behaviorRunsGroupId = computed(() => parseFilter(behaviorRunsGroup.value));
+const patternsGroupId = computed(() => parseFilter(patternsGroup.value));
 const historySummary = computed(() => [
   {
     label: "每日快照",
@@ -130,6 +166,21 @@ const behaviorRunsOverview = computed(() => [
   {
     label: "筛选结果",
     value: behaviorRunsOutcome.value || "全部",
+  },
+]);
+const patternsOverview = computed(() => [
+  {
+    label: "Pattern",
+    value: String(patternsItems.value.length),
+    accent: true,
+  },
+  {
+    label: "群号筛选",
+    value: patternsGroupId.value ? String(patternsGroupId.value) : "全部",
+  },
+  {
+    label: "Scene",
+    value: patternsScene.value || "全部",
   },
 ]);
 const feedbackOverview = computed(() => [
@@ -226,6 +277,53 @@ function formatBehaviorSignal(payload?: LlmHistoryBehaviorAutoFeedbackPayload | 
 
 function formatBehaviorTokens(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): string {
   return payload?.matched_tokens?.length ? payload.matched_tokens.join(" / ") : "无";
+}
+
+function parseLineList(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function patternEditorTriggerText(): string {
+  return (patternEditor.value.trigger_features ?? []).join("\n");
+}
+
+function patternEditorExampleText(): string {
+  return (patternEditor.value.reference_examples ?? []).join("\n");
+}
+
+function resetPatternEditor(): void {
+  patternEditorMode.value = "create";
+  patternEditor.value = {
+    pattern_id: "",
+    scene: "smalltalk",
+    action: "ack_then_short_reply",
+    scope_group_id: patternsGroupId.value,
+    success_score: 0,
+    manual_score: 0,
+    disabled: false,
+    persona_affinity: "",
+    trigger_features: [],
+    reference_examples: [],
+  };
+}
+
+function editPattern(item: LlmBehaviorPattern): void {
+  patternEditorMode.value = "edit";
+  patternEditor.value = {
+    pattern_id: item.pattern_id,
+    scene: item.scene,
+    action: item.action,
+    scope_group_id: item.scope_group_id ?? null,
+    success_score: item.success_score ?? 0,
+    manual_score: item.manual_score ?? 0,
+    disabled: !!item.disabled,
+    persona_affinity: item.persona_affinity ?? "",
+    trigger_features: [...(item.trigger_features ?? [])],
+    reference_examples: [...(item.reference_examples ?? [])],
+  };
 }
 
 async function saveBehaviorRun(
@@ -378,6 +476,79 @@ async function refreshBehaviorRuns() {
   }
 }
 
+async function refreshPatterns() {
+  patternBusy.value = true;
+  patternErr.value = "";
+  try {
+    const data = await fetchLlmBehaviorPatterns({
+      groupId: patternsGroupId.value,
+      scene: patternsScene.value || null,
+      includeDisabled: patternsIncludeDisabled.value,
+    });
+    patternsItems.value = data.items;
+  } catch (e) {
+    patternsItems.value = [];
+    patternErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    patternBusy.value = false;
+  }
+}
+
+async function savePattern() {
+  if (!patternEditor.value.pattern_id.trim()) {
+    patternErr.value = "pattern_id 不能为空";
+    return;
+  }
+  patternSaveBusy.value = true;
+  patternErr.value = "";
+  try {
+    const updated = await postLlmBehaviorPatternUpsert({
+      ...patternEditor.value,
+      pattern_id: patternEditor.value.pattern_id.trim(),
+      scene: patternEditor.value.scene || "smalltalk",
+      action: patternEditor.value.action || "ack_then_short_reply",
+      trigger_features: [...(patternEditor.value.trigger_features ?? [])],
+      reference_examples: [...(patternEditor.value.reference_examples ?? [])],
+    });
+    const exists = patternsItems.value.some((item) => item.pattern_id === updated.pattern_id);
+    patternsItems.value = exists
+      ? patternsItems.value.map((item) => (item.pattern_id === updated.pattern_id ? updated : item))
+      : [updated, ...patternsItems.value];
+    resetPatternEditor();
+    await refreshPatterns();
+  } catch (e) {
+    patternErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    patternSaveBusy.value = false;
+  }
+}
+
+async function deletePattern(item: LlmBehaviorPattern) {
+  const ok = window.confirm(`确定删除 pattern ${item.pattern_id}？此操作不可恢复。`);
+  if (!ok) return;
+  patternErr.value = "";
+  try {
+    await postLlmBehaviorPatternDelete(item.pattern_id);
+    patternsItems.value = patternsItems.value.filter((row) => row.pattern_id !== item.pattern_id);
+    if (patternEditor.value.pattern_id === item.pattern_id) {
+      resetPatternEditor();
+    }
+  } catch (e) {
+    patternErr.value = e instanceof Error ? e.message : String(e);
+  }
+}
+
+async function togglePatternDisabled(item: LlmBehaviorPattern) {
+  patternEditorMode.value = "edit";
+  patternEditor.value = {
+    ...item,
+    disabled: !item.disabled,
+    trigger_features: [...(item.trigger_features ?? [])],
+    reference_examples: [...(item.reference_examples ?? [])],
+  };
+  await savePattern();
+}
+
 watch(month, () => {
   resetMonthRange();
   showAllDailyRows.value = false;
@@ -410,6 +581,10 @@ watch(selectedSession, (session) => {
     behaviorRunsGroup.value = next;
     void refreshBehaviorRuns();
   }
+  if (!patternsGroupTouched.value && next.trim()) {
+    patternsGroup.value = next;
+    void refreshPatterns();
+  }
 });
 
 onMounted(() => {
@@ -417,7 +592,10 @@ onMounted(() => {
   void refreshAll();
   feedbackGroup.value = filterGroup.value;
   behaviorRunsGroup.value = filterGroup.value;
+  patternsGroup.value = filterGroup.value;
   void refreshBehaviorRuns();
+  void refreshPatterns();
+  resetPatternEditor();
 });
 </script>
 
@@ -827,6 +1005,196 @@ onMounted(() => {
         <div v-else class="ai-empty">
           <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
           <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
+        </div>
+      </UiCard>
+    </section>
+
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">Behavior Pattern 管理</h3>
+          <span class="ai-head__hint">先做最小可用维护面：筛选、编辑、禁用、删除</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>Pattern 筛选</strong>
+            <span class="muted">默认跟随当前选中会话的群号</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input
+                v-model="patternsGroup"
+                class="inp"
+                inputmode="numeric"
+                placeholder="全部"
+                @input="patternsGroupTouched = true"
+                @keyup.enter="refreshPatterns"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>Scene</span>
+              <select v-model="patternsScene" class="inp">
+                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`pattern-${item.value || 'empty'}`" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__behavior-check">
+              <input v-model="patternsIncludeDisabled" type="checkbox">
+              <span>包含 disabled</span>
+            </label>
+            <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
+              读取 Pattern
+            </UiButton>
+            <UiButton size="sm" variant="ghost" @click="resetPatternEditor">
+              新建 Pattern
+            </UiButton>
+          </div>
+        </div>
+        <div v-if="patternErr" class="alert alert--err">{{ patternErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in patternsOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+
+        <div class="ai-history-page__pattern-editor">
+          <div class="ai-history-page__filters-head">
+            <strong>{{ patternEditorMode === "edit" ? "编辑 Pattern" : "新建 Pattern" }}</strong>
+            <span class="muted">`trigger_features` 与 `reference_examples` 按行输入</span>
+          </div>
+          <div class="ai-history-page__pattern-form">
+            <label class="ai-history-page__filter">
+              <span>pattern_id</span>
+              <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
+            </label>
+            <label class="ai-history-page__filter">
+              <span>scene</span>
+              <select v-model="patternEditor.scene" class="inp">
+                <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
+                  {{ item.value }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__filter">
+              <span>action</span>
+              <select v-model="patternEditor.action" class="inp">
+                <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__filter">
+              <span>scope_group_id</span>
+              <input
+                :value="patternEditor.scope_group_id ?? ''"
+                class="inp"
+                inputmode="numeric"
+                placeholder="留空表示全局"
+                @input="patternEditor.scope_group_id = parseFilter(($event.target as HTMLInputElement).value)"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>success_score</span>
+              <input
+                :value="patternEditor.success_score ?? 0"
+                class="inp"
+                inputmode="numeric"
+                @input="patternEditor.success_score = Number(($event.target as HTMLInputElement).value || 0)"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>manual_score</span>
+              <input
+                :value="patternEditor.manual_score ?? 0"
+                class="inp"
+                inputmode="numeric"
+                @input="patternEditor.manual_score = Number(($event.target as HTMLInputElement).value || 0)"
+              >
+            </label>
+            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+              <span>persona_affinity</span>
+              <input v-model="patternEditor.persona_affinity" class="inp" placeholder="可留空">
+            </label>
+            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+              <span>trigger_features</span>
+              <textarea
+                class="inp ai-history-page__pattern-textarea"
+                :value="patternEditorTriggerText()"
+                placeholder="每行一个特征"
+                @input="patternEditor.trigger_features = parseLineList(($event.target as HTMLTextAreaElement).value)"
+              ></textarea>
+            </label>
+            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+              <span>reference_examples</span>
+              <textarea
+                class="inp ai-history-page__pattern-textarea"
+                :value="patternEditorExampleText()"
+                placeholder="每行一个示例"
+                @input="patternEditor.reference_examples = parseLineList(($event.target as HTMLTextAreaElement).value)"
+              ></textarea>
+            </label>
+            <label class="ai-history-page__behavior-check">
+              <input v-model="patternEditor.disabled" type="checkbox">
+              <span>保存为 disabled</span>
+            </label>
+          </div>
+          <div class="row-actions ai-history-page__pattern-actions">
+            <UiButton size="sm" :busy="patternSaveBusy" @click="savePattern">
+              {{ patternEditorMode === "edit" ? "保存修改" : "创建 Pattern" }}
+            </UiButton>
+            <UiButton size="sm" variant="ghost" @click="resetPatternEditor">
+              清空表单
+            </UiButton>
+          </div>
+        </div>
+
+        <div v-if="patternsItems.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="item in patternsItems"
+            :key="item.pattern_id"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong>{{ item.pattern_id }}</strong>
+              <span class="muted">{{ item.scene }} / {{ item.action }}</span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>群：{{ item.scope_group_id || "全局" }}</span>
+              <span>success：{{ item.success_score ?? 0 }}</span>
+              <span>manual：{{ item.manual_score ?? 0 }}</span>
+              <span>disabled：{{ item.disabled ? "是" : "否" }}</span>
+            </div>
+            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">persona：{{ item.persona_affinity }}</p>
+            <p class="ai-history-page__feedback-user">features：{{ item.trigger_features?.join(" / ") || "无" }}</p>
+            <p class="ai-history-page__feedback-user">examples：{{ item.reference_examples?.join(" / ") || "无" }}</p>
+            <div class="row-actions ai-history-page__pattern-actions">
+              <UiButton size="sm" variant="outline" @click="editPattern(item)">
+                编辑
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
+                @click="togglePatternDisabled(item)"
+              >
+                {{ item.disabled ? "启用" : "禁用" }}
+              </UiButton>
+              <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
+                删除
+              </UiButton>
+            </div>
+          </article>
+        </div>
+        <div v-else class="ai-empty">
+          <span>{{ patternBusy ? "正在读取 Pattern" : "当前筛选下暂无 Pattern" }}</span>
+          <span class="ai-empty__hint">这块先承接最基础的 pattern 维护，后续再考虑更强的 run 联动和人工纠偏。</span>
         </div>
       </UiCard>
     </section>
@@ -1303,6 +1671,36 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+.ai-history-page__pattern-editor {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+}
+
+.ai-history-page__pattern-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.ai-history-page__pattern-form-span {
+  grid-column: 1 / -1;
+}
+
+.ai-history-page__pattern-textarea {
+  min-height: 96px;
+  width: 100%;
+  resize: vertical;
+}
+
+.ai-history-page__pattern-actions {
+  gap: 8px;
+}
+
 .ai-history-page__feedback-list {
   display: grid;
   gap: 10px;
@@ -1356,6 +1754,10 @@ onMounted(() => {
   .ai-history-page__daily-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .ai-history-page__pattern-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
@@ -1397,6 +1799,15 @@ onMounted(() => {
 
   .ai-history-page__behavior-check {
     min-height: auto;
+  }
+
+  .ai-history-page__pattern-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-history-page__pattern-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
