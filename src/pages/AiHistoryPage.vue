@@ -471,6 +471,9 @@ async function saveBehaviorRun(
       finalOutcome: patch.finalOutcome ?? run.final_outcome ?? "",
       disabled: typeof patch.disabled === "boolean" ? patch.disabled : !!run.disabled,
     });
+    behaviorRunsItems.value = behaviorRunsItems.value.map((item) => (
+      item.request_id === updated.request_id ? updated : item
+    ));
     if (sessionDetail.value) {
       sessionDetail.value = {
         ...sessionDetail.value,
@@ -1217,11 +1220,11 @@ onMounted(() => {
             class="ai-history-page__feedback-card"
           >
             <div class="ai-history-page__feedback-top">
-              <strong>{{ item.reply_text || "（空回复）" }}</strong>
-              <span class="muted">{{ formatCompactDateTime(item.created_at) }}</span>
+              <strong class="ai-history-page__feedback-reply">{{ item.reply_text || "（空回复）" }}</strong>
+              <span class="ai-history-page__scene-pill">{{ item.behavior_scene || "未标注" }}</span>
             </div>
             <div class="ai-history-page__feedback-meta">
-              <span>scene：{{ item.behavior_scene || "未标注" }}</span>
+              <span>{{ formatCompactDateTime(item.created_at) }}</span>
               <span>route：{{ item.llm_route || "未知" }}</span>
               <span>bias：{{ item.eligible_for_bias ? "可用" : "过滤" }}</span>
             </div>
@@ -1298,7 +1301,7 @@ onMounted(() => {
           <article
             v-for="run in behaviorRunsItems"
             :key="run.request_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior ai-history-page__observe-run"
           >
             <div class="ai-history-page__feedback-top">
               <strong>{{ run.scene }}</strong>
@@ -1339,6 +1342,44 @@ onMounted(() => {
               <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
             </div>
             <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
+            <div class="ai-history-page__observe-annotate">
+              <div class="ai-history-page__behavior-labels">
+                <button
+                  v-for="label in BEHAVIOR_LABEL_OPTIONS"
+                  :key="`observe-${run.request_id}-${label}`"
+                  type="button"
+                  class="ai-history-page__behavior-chip"
+                  :class="{ 'is-on': hasBehaviorLabel(run, label) }"
+                  :disabled="isBehaviorBusy(run.request_id)"
+                  @click="toggleBehaviorLabel(run, label)"
+                >
+                  {{ label }}
+                </button>
+              </div>
+              <div class="ai-history-page__behavior-actions">
+                <label class="ai-history-page__behavior-select">
+                  <span>人工结果</span>
+                  <select
+                    class="inp"
+                    :value="run.final_outcome || ''"
+                    :disabled="isBehaviorBusy(run.request_id)"
+                    @change="changeBehaviorOutcome(run, $event)"
+                  >
+                    <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="`observe-outcome-${item.value || 'empty'}`" :value="item.value">
+                      {{ item.label }}
+                    </option>
+                  </select>
+                </label>
+                <UiButton
+                  size="sm"
+                  variant="ghost"
+                  :busy="isBehaviorBusy(run.request_id)"
+                  @click="toggleBehaviorDisabled(run)"
+                >
+                  {{ run.disabled ? "恢复样本" : "禁用样本" }}
+                </UiButton>
+              </div>
+            </div>
             <div class="row-actions ai-history-page__pattern-actions">
               <UiButton
                 v-if="buildSessionKey(run.bot_id, run.group_id, run.user_id)"
@@ -1415,7 +1456,53 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="patternsItems.length" class="ai-history-page__feedback-list">
+        <div v-if="patternsItems.length" class="table-wrap ai-history-page__pattern-table-wrap">
+          <table class="ai-history-page__pattern-table">
+            <thead>
+              <tr>
+                <th>pattern_id</th>
+                <th>scene / action</th>
+                <th>群</th>
+                <th>分数</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in patternsItems"
+                :key="`table-${item.pattern_id}`"
+                :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
+              >
+                <td class="ai-history-page__pattern-id">{{ item.pattern_id }}</td>
+                <td>{{ item.scene }} / {{ item.action }}</td>
+                <td>{{ item.scope_group_id || "全局" }}</td>
+                <td>{{ item.success_score ?? 0 }} / {{ item.manual_score ?? 0 }}</td>
+                <td>{{ item.disabled ? "disabled" : "active" }}</td>
+                <td>
+                  <div class="row-actions ai-history-page__pattern-actions ai-history-page__pattern-actions--table">
+                    <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
+                      编辑
+                    </UiButton>
+                    <UiButton
+                      size="sm"
+                      variant="ghost"
+                      :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
+                      @click="togglePatternDisabled(item)"
+                    >
+                      {{ item.disabled ? "启用" : "禁用" }}
+                    </UiButton>
+                    <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
+                      删除
+                    </UiButton>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="patternsItems.length" class="ai-history-page__pattern-cards ai-history-page__feedback-list">
           <article
             v-for="item in patternsItems"
             :key="item.pattern_id"
@@ -1670,6 +1757,72 @@ onMounted(() => {
 .ai-history-page__feedback-card.is-editing {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.ai-history-page__scene-pill {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  white-space: nowrap;
+}
+
+.ai-history-page__feedback-reply {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ai-history-page__observe-run {
+  gap: 10px;
+}
+
+.ai-history-page__observe-annotate {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.ai-history-page__pattern-table-wrap {
+  margin-bottom: 12px;
+}
+
+.ai-history-page__pattern-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.ai-history-page__pattern-table th,
+.ai-history-page__pattern-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ai-history-page__pattern-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.ai-history-page__pattern-table tr.is-editing td {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.ai-history-page__pattern-id {
+  word-break: break-word;
+}
+
+.ai-history-page__pattern-cards {
+  display: none;
+}
+
+.ai-history-page__pattern-actions--table {
+  flex-wrap: wrap;
 }
 
 .ai-history-page__pattern-dialog {
@@ -2224,7 +2377,8 @@ onMounted(() => {
 
   .ai-history-page__behavior-actions,
   .ai-history-page__behavior-labels,
-  .ai-history-page__behavior-evidence {
+  .ai-history-page__behavior-evidence,
+  .ai-history-page__observe-annotate {
     display: grid;
   }
 
@@ -2238,6 +2392,14 @@ onMounted(() => {
 
   .ai-history-page__pattern-form {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-history-page__pattern-table-wrap {
+    display: none;
+  }
+
+  .ai-history-page__pattern-cards {
+    display: grid;
   }
 
   .ai-history-page__pattern-actions {
