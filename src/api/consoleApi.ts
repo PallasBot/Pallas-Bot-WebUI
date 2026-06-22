@@ -59,6 +59,7 @@ import type {
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
   LlmHistoryBehaviorRun,
+  LlmBehaviorRunsData,
   LlmHistorySessionsData,
   LlmRepeaterFeedbackData,
   LlmRepeaterFeedbackSummary,
@@ -720,6 +721,25 @@ export async function postLlmHistoryBehaviorAnnotate(body: {
     ...(typeof body.disabled === "boolean" ? { disabled: body.disabled } : {}),
   });
   return unwrap(data, path);
+}
+
+export async function fetchLlmBehaviorRuns(params?: {
+  groupId?: number | null;
+  scene?: string | null;
+  finalOutcome?: string | null;
+  includeDisabled?: boolean;
+  limit?: number;
+}): Promise<LlmBehaviorRunsData> {
+  const { data } = await http.get<ApiOk<LlmBehaviorRunsData>>("/common-config/llm/behavior/runs", {
+    params: {
+      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params?.scene ? { scene: params.scene } : {}),
+      ...(params?.finalOutcome ? { final_outcome: params.finalOutcome } : {}),
+      ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
+      ...(params?.limit ? { limit: params.limit } : {}),
+    },
+  });
+  return unwrap(data, "/common-config/llm/behavior/runs");
 }
 
 export async function fetchLlmRepeaterFeedback(params: {

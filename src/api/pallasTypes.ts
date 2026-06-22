@@ -957,6 +957,19 @@ export interface LlmHistorySessionDetailData {
   behavior_runs: LlmHistoryBehaviorRun[];
 }
 
+export interface LlmHistoryBehaviorAutoFeedbackPayload {
+  source?: "session" | "ambient" | "mixed" | "timeout" | string;
+  matched_signal?: string;
+  matched_tokens?: string[];
+  observed_turn_count?: number;
+}
+
+export interface LlmBehaviorRunsData {
+  items: LlmHistoryBehaviorRun[];
+  count: number;
+  limit: number;
+}
+
 export interface LlmHistoryBehaviorRun {
   request_id: string;
   group_id?: number | null;
@@ -968,6 +981,7 @@ export interface LlmHistoryBehaviorRun {
   behavior_hint_text: string;
   final_outcome?: string | null;
   score_delta?: number;
+  auto_feedback_payload?: LlmHistoryBehaviorAutoFeedbackPayload;
   manual_labels: string[];
   disabled?: boolean;
 }

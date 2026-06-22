@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import {
+  fetchLlmBehaviorRuns,
   fetchLlmHistorySession,
   fetchLlmHistorySessions,
   fetchLlmRepeaterFeedback,
@@ -9,6 +10,7 @@ import {
 } from "@/api/consoleApi";
 import type {
   LlmHistoryBehaviorRun,
+  LlmHistoryBehaviorAutoFeedbackPayload,
   LlmHistorySessionDetailData,
   LlmHistorySessionSummary,
   LlmRepeaterFeedbackEntry,
@@ -50,6 +52,14 @@ const feedbackGroup = ref("");
 const feedbackItems = ref<LlmRepeaterFeedbackEntry[]>([]);
 const feedbackSummary = ref<LlmRepeaterFeedbackSummary | null>(null);
 const feedbackGroupTouched = ref(false);
+const behaviorRunsBusy = ref(false);
+const behaviorRunsErr = ref("");
+const behaviorRunsItems = ref<LlmHistoryBehaviorRun[]>([]);
+const behaviorRunsGroup = ref("");
+const behaviorRunsGroupTouched = ref(false);
+const behaviorRunsScene = ref("");
+const behaviorRunsOutcome = ref("");
+const behaviorRunsIncludeDisabled = ref(false);
 
 // 会话筛选：bot / group / user（空 = 不限）
 const filterBot = ref("");
@@ -61,6 +71,15 @@ const showAllSessions = ref(false);
 const behaviorBusy = ref<Record<string, boolean>>({});
 
 const BEHAVIOR_LABEL_OPTIONS = ["像人", "模板感强", "姿态不对", "带偏话题", "作为参考保留"] as const;
+const BEHAVIOR_SCENE_OPTIONS = [
+  { label: "全部 Scene", value: "" },
+  { label: "provocation", value: "provocation" },
+  { label: "banter", value: "banter" },
+  { label: "smalltalk", value: "smalltalk" },
+  { label: "venting", value: "venting" },
+  { label: "group_threading", value: "group_threading" },
+  { label: "light_help", value: "light_help" },
+] as const;
 const BEHAVIOR_OUTCOME_OPTIONS = [
   { label: "未判定", value: "" },
   { label: "接住了", value: "engaged" },
@@ -78,6 +97,7 @@ function parseFilter(raw: string): number | null {
 const combinedErr = computed(() => err.value || historyErr.value);
 const anyBusy = computed(() => loading.value || historyBusy.value);
 const feedbackGroupId = computed(() => parseFilter(feedbackGroup.value));
+const behaviorRunsGroupId = computed(() => parseFilter(behaviorRunsGroup.value));
 const historySummary = computed(() => [
   {
     label: "每日快照",
@@ -95,6 +115,21 @@ const historySummary = computed(() => [
   {
     label: "回复路径",
     value: routeRowsTop.value.length ? `${routeRowsTop.value.length} 种` : "暂无",
+  },
+]);
+const behaviorRunsOverview = computed(() => [
+  {
+    label: "最近记录",
+    value: String(behaviorRunsItems.value.length),
+    accent: true,
+  },
+  {
+    label: "筛选群号",
+    value: behaviorRunsGroupId.value ? String(behaviorRunsGroupId.value) : "全部",
+  },
+  {
+    label: "筛选结果",
+    value: behaviorRunsOutcome.value || "全部",
   },
 ]);
 const feedbackOverview = computed(() => [
@@ -166,6 +201,31 @@ function hasBehaviorLabel(run: LlmHistoryBehaviorRun, label: string): boolean {
 
 function isBehaviorBusy(requestId: string): boolean {
   return !!behaviorBusy.value[requestId];
+}
+
+function formatBehaviorSource(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): string {
+  const source = payload?.source || "";
+  if (source === "ambient") return "群环境";
+  if (source === "session") return "同会话";
+  if (source === "mixed") return "混合";
+  if (source === "timeout") return "超时";
+  return "未知";
+}
+
+function formatBehaviorSignal(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): string {
+  const signal = payload?.matched_signal || "";
+  if (signal === "derailed_token") return "命中跑题信号";
+  if (signal === "negative_token") return "命中负反馈信号";
+  if (signal === "engaged_token") return "命中接话信号";
+  if (signal === "ambient_continued_without_pickup") return "群里继续聊但没接 bot";
+  if (signal === "timeout_without_followup") return "窗口内无人承接";
+  if (signal === "followup_outside_window") return "有后续但超出观察窗";
+  if (signal === "default_neutral") return "默认一般";
+  return signal || "未标注";
+}
+
+function formatBehaviorTokens(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): string {
+  return payload?.matched_tokens?.length ? payload.matched_tokens.join(" / ") : "无";
 }
 
 async function saveBehaviorRun(
@@ -298,6 +358,26 @@ async function refreshFeedback() {
   }
 }
 
+async function refreshBehaviorRuns() {
+  behaviorRunsBusy.value = true;
+  behaviorRunsErr.value = "";
+  try {
+    const data = await fetchLlmBehaviorRuns({
+      groupId: behaviorRunsGroupId.value,
+      scene: behaviorRunsScene.value || null,
+      finalOutcome: behaviorRunsOutcome.value || null,
+      includeDisabled: behaviorRunsIncludeDisabled.value,
+      limit: 20,
+    });
+    behaviorRunsItems.value = data.items;
+  } catch (e) {
+    behaviorRunsItems.value = [];
+    behaviorRunsErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    behaviorRunsBusy.value = false;
+  }
+}
+
 watch(month, () => {
   resetMonthRange();
   showAllDailyRows.value = false;
@@ -326,12 +406,18 @@ watch(selectedSession, (session) => {
   if (!feedbackGroupTouched.value && next.trim()) {
     void refreshFeedback();
   }
+  if (!behaviorRunsGroupTouched.value && next.trim()) {
+    behaviorRunsGroup.value = next;
+    void refreshBehaviorRuns();
+  }
 });
 
 onMounted(() => {
   resetMonthRange();
   void refreshAll();
   feedbackGroup.value = filterGroup.value;
+  behaviorRunsGroup.value = filterGroup.value;
+  void refreshBehaviorRuns();
 });
 </script>
 
@@ -514,6 +600,12 @@ onMounted(() => {
                 <span>Pattern：{{ run.selected_pattern_ids.join(", ") || "无" }}</span>
                 <span>结果：{{ run.final_outcome || "未判定" }}</span>
               </div>
+              <div v-if="run.auto_feedback_payload" class="ai-history-page__behavior-evidence">
+                <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
+                <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
+                <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
+                <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
+              </div>
               <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
               <div class="ai-history-page__behavior-labels">
                 <button
@@ -644,6 +736,97 @@ onMounted(() => {
         <div v-else class="ai-empty">
           <span>{{ feedbackGroupId ? "当前群暂无反馈样本" : "输入群号查看反馈" }}</span>
           <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
+        </div>
+      </UiCard>
+    </section>
+
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">近期 Behavior 记录</h3>
+          <span class="ai-head__hint">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>记录筛选</strong>
+            <span class="muted">默认跟随当前选中会话的群号</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input
+                v-model="behaviorRunsGroup"
+                class="inp"
+                inputmode="numeric"
+                placeholder="全部"
+                @input="behaviorRunsGroupTouched = true"
+                @keyup.enter="refreshBehaviorRuns"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>Scene</span>
+              <select v-model="behaviorRunsScene" class="inp">
+                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__filter">
+              <span>结果</span>
+              <select v-model="behaviorRunsOutcome" class="inp">
+                <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__behavior-check">
+              <input v-model="behaviorRunsIncludeDisabled" type="checkbox">
+              <span>包含 disabled</span>
+            </label>
+            <UiButton size="sm" variant="outline" :busy="behaviorRunsBusy" @click="refreshBehaviorRuns">
+              读取记录
+            </UiButton>
+          </div>
+        </div>
+        <div v-if="behaviorRunsErr" class="alert alert--err">{{ behaviorRunsErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in behaviorRunsOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+        <div v-if="behaviorRunsItems.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="run in behaviorRunsItems"
+            :key="run.request_id"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong>{{ run.scene }}</strong>
+              <span class="muted">{{ run.final_outcome || "未判定" }}</span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>群：{{ run.group_id || "私聊" }}</span>
+              <span>用户：{{ run.user_id || "—" }}</span>
+              <span>score：{{ run.score_delta ?? 0 }}</span>
+              <span>disabled：{{ run.disabled ? "是" : "否" }}</span>
+            </div>
+            <div class="ai-history-page__behavior-evidence">
+              <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
+              <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
+              <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
+              <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
+            </div>
+            <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
+          </article>
+        </div>
+        <div v-else class="ai-empty">
+          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
+          <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
         </div>
       </UiCard>
     </section>
@@ -812,6 +995,14 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.ai-history-page__behavior-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .ai-history-page__behavior-hint {
   margin: 0;
   font-size: 0.82rem;
@@ -902,6 +1093,19 @@ onMounted(() => {
 
 .ai-history-page__filter .inp {
   width: 96px;
+}
+
+.ai-history-page__behavior-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--ui-ctrl-height);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ai-history-page__behavior-check input {
+  margin: 0;
 }
 
 .ai-history-page__session {
@@ -1115,6 +1319,10 @@ onMounted(() => {
     color-mix(in srgb, var(--text) 2.5%, transparent);
 }
 
+.ai-history-page__feedback-card--behavior {
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+
 .ai-history-page__feedback-top {
   display: flex;
   align-items: baseline;
@@ -1178,12 +1386,17 @@ onMounted(() => {
   }
 
   .ai-history-page__behavior-actions,
-  .ai-history-page__behavior-labels {
+  .ai-history-page__behavior-labels,
+  .ai-history-page__behavior-evidence {
     display: grid;
   }
 
   .ai-history-page__behavior-select {
     min-width: 0;
+  }
+
+  .ai-history-page__behavior-check {
+    min-height: auto;
   }
 }
 </style>
