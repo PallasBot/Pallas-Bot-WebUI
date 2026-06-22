@@ -89,6 +89,9 @@ const patternSaveBusy = ref(false);
 const patternEditorOpen = ref(false);
 const observeGroup = ref("");
 const observeGroupTouched = ref(false);
+const observeScene = ref("");
+const expandedObserveKeys = ref<Record<string, boolean>>({});
+const patternSortKey = ref<"success_score" | "manual_score" | "pattern_id">("success_score");
 
 type AiHistoryWorkspace = "sessions" | "observe" | "rules" | "stats";
 const WORKSPACE_TABS = [
@@ -229,6 +232,23 @@ const selectedSession = computed(() =>
   sessions.value.find((item) => item.session_key === selectedSessionKey.value) ?? null,
 );
 
+const visibleFeedbackItems = computed(() => {
+  const scene = observeScene.value.trim();
+  if (!scene) return feedbackItems.value;
+  return feedbackItems.value.filter((item) => (item.behavior_scene || "") === scene);
+});
+
+const sortedPatternsItems = computed(() => {
+  const rows = [...patternsItems.value];
+  if (patternSortKey.value === "pattern_id") {
+    return rows.sort((a, b) => a.pattern_id.localeCompare(b.pattern_id));
+  }
+  if (patternSortKey.value === "manual_score") {
+    return rows.sort((a, b) => (b.manual_score ?? 0) - (a.manual_score ?? 0));
+  }
+  return rows.sort((a, b) => (b.success_score ?? 0) - (a.success_score ?? 0));
+});
+
 const visibleDailyRows = computed(() =>
   showAllDailyRows.value ? historyDailyRows.value : historyDailyRows.value.slice(0, 7),
 );
@@ -259,6 +279,31 @@ function turnKey(createdAt: string | number, index: number): string {
 
 function isLongTurn(content: string): boolean {
   return content.length > 220 || content.split("\n").length > 6;
+}
+
+function isLongObserveText(content: string): boolean {
+  return content.length > 120 || content.split("\n").length > 3;
+}
+
+function observeTextKey(kind: string, id: string): string {
+  return `${kind}-${id}`;
+}
+
+function isObserveTextExpanded(key: string): boolean {
+  return !!expandedObserveKeys.value[key];
+}
+
+function toggleObserveText(key: string): void {
+  expandedObserveKeys.value = {
+    ...expandedObserveKeys.value,
+    [key]: !expandedObserveKeys.value[key],
+  };
+}
+
+function applyObserveScene(scene: string) {
+  observeScene.value = scene;
+  behaviorRunsScene.value = scene;
+  void refreshBehaviorRuns();
 }
 
 function isTurnExpanded(key: string): boolean {
@@ -719,6 +764,12 @@ watch(selectedSession, (session) => {
   }
 });
 
+watch(behaviorRunsScene, (next) => {
+  if (observeScene.value !== next) {
+    observeScene.value = next;
+  }
+});
+
 onMounted(() => {
   resetMonthRange();
   void refreshAll();
@@ -726,6 +777,7 @@ onMounted(() => {
   behaviorRunsGroup.value = filterGroup.value;
   patternsGroup.value = filterGroup.value;
   observeGroup.value = filterGroup.value;
+  observeScene.value = behaviorRunsScene.value;
   void refreshBehaviorRuns();
   void refreshPatterns();
   resetPatternEditor();
@@ -1171,6 +1223,18 @@ onMounted(() => {
             @keyup.enter="refreshObservePanels"
           >
         </label>
+        <label class="ai-history-page__filter">
+          <span>Scene</span>
+          <select
+            v-model="observeScene"
+            class="inp"
+            @change="behaviorRunsScene = observeScene; refreshBehaviorRuns()"
+          >
+            <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`observe-scene-${item.value || 'empty'}`" :value="item.value">
+              {{ item.label }}
+            </option>
+          </select>
+        </label>
         <UiButton size="sm" variant="primary" :busy="feedbackBusy || behaviorRunsBusy" @click="refreshObservePanels">
           刷新观测
         </UiButton>
@@ -1213,26 +1277,52 @@ onMounted(() => {
             <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
           </div>
         </div>
-        <div v-if="feedbackItems.length" class="ai-history-page__feedback-list">
+        <div v-if="visibleFeedbackItems.length" class="ai-history-page__feedback-list">
           <article
-            v-for="item in feedbackItems"
+            v-for="item in visibleFeedbackItems"
             :key="item.entry_id || item.request_id"
             class="ai-history-page__feedback-card"
           >
             <div class="ai-history-page__feedback-top">
-              <strong class="ai-history-page__feedback-reply">{{ item.reply_text || "（空回复）" }}</strong>
-              <span class="ai-history-page__scene-pill">{{ item.behavior_scene || "未标注" }}</span>
+              <strong
+                class="ai-history-page__feedback-reply"
+                :class="{ 'is-clamped': isLongObserveText(item.reply_text || '') && !isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) }"
+              >
+                {{ item.reply_text || "（空回复）" }}
+              </strong>
+              <button
+                v-if="item.behavior_scene"
+                type="button"
+                class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
+                @click="applyObserveScene(item.behavior_scene || '')"
+              >
+                {{ item.behavior_scene }}
+              </button>
+              <span v-else class="ai-history-page__scene-pill">未标注</span>
             </div>
             <div class="ai-history-page__feedback-meta">
               <span>{{ formatCompactDateTime(item.created_at) }}</span>
               <span>route：{{ item.llm_route || "未知" }}</span>
               <span>bias：{{ item.eligible_for_bias ? "可用" : "过滤" }}</span>
             </div>
-            <p class="ai-history-page__feedback-user">用户：{{ item.user_text || "（空）" }}</p>
+            <p
+              class="ai-history-page__feedback-user"
+              :class="{ 'is-clamped': isLongObserveText(item.user_text || '') && !isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) }"
+            >
+              用户：{{ item.user_text || "（空）" }}
+            </p>
+            <button
+              v-if="isLongObserveText(item.reply_text || '') || isLongObserveText(item.user_text || '')"
+              type="button"
+              class="ai-history-page__turn-toggle"
+              @click="toggleObserveText(observeTextKey('card', item.entry_id || item.request_id))"
+            >
+              {{ isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) ? "收起" : "展开全文" }}
+            </button>
           </article>
         </div>
         <div v-else class="ai-empty">
-          <span>{{ feedbackGroupId ? "当前群暂无反馈样本" : "输入群号查看反馈" }}</span>
+          <span>{{ feedbackGroupId ? (observeScene ? "当前群与 scene 下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
           <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
         </div>
       </UiCard>
@@ -1304,7 +1394,13 @@ onMounted(() => {
             class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior ai-history-page__observe-run"
           >
             <div class="ai-history-page__feedback-top">
-              <strong>{{ run.scene }}</strong>
+              <button
+                type="button"
+                class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
+                @click="applyObserveScene(run.scene)"
+              >
+                {{ run.scene }}
+              </button>
               <span
                 class="ai-history-page__outcome-badge"
                 :class="outcomeClass(run.final_outcome)"
@@ -1318,8 +1414,28 @@ onMounted(() => {
               <span>score：{{ run.score_delta ?? 0 }}</span>
               <span>disabled：{{ run.disabled ? "是" : "否" }}</span>
             </div>
-            <p v-if="run.user_text" class="ai-history-page__feedback-user">用户：{{ run.user_text }}</p>
-            <p v-if="run.reply_text" class="ai-history-page__feedback-user">回复：{{ run.reply_text }}</p>
+            <p
+              v-if="run.user_text"
+              class="ai-history-page__feedback-user"
+              :class="{ 'is-clamped': isLongObserveText(run.user_text) && !isObserveTextExpanded(observeTextKey('card', run.request_id)) }"
+            >
+              用户：{{ run.user_text }}
+            </p>
+            <p
+              v-if="run.reply_text"
+              class="ai-history-page__feedback-user"
+              :class="{ 'is-clamped': isLongObserveText(run.reply_text) && !isObserveTextExpanded(observeTextKey('card', run.request_id)) }"
+            >
+              回复：{{ run.reply_text }}
+            </p>
+            <button
+              v-if="isLongObserveText(run.user_text || '') || isLongObserveText(run.reply_text || '')"
+              type="button"
+              class="ai-history-page__turn-toggle"
+              @click="toggleObserveText(observeTextKey('card', run.request_id))"
+            >
+              {{ isObserveTextExpanded(observeTextKey('card', run.request_id)) ? "收起" : "展开全文" }}
+            </button>
             <div
               v-if="run.selected_pattern_ids?.length"
               class="ai-history-page__pattern-links ai-history-page__pattern-links--inline"
@@ -1436,6 +1552,14 @@ onMounted(() => {
               <input v-model="patternsIncludeDisabled" type="checkbox">
               <span>包含 disabled</span>
             </label>
+            <label class="ai-history-page__filter">
+              <span>排序</span>
+              <select v-model="patternSortKey" class="inp">
+                <option value="success_score">success 优先</option>
+                <option value="manual_score">manual 优先</option>
+                <option value="pattern_id">ID 字母序</option>
+              </select>
+            </label>
             <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
               读取 Pattern
             </UiButton>
@@ -1456,7 +1580,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-if="patternsItems.length" class="table-wrap ai-history-page__pattern-table-wrap">
+        <div v-if="sortedPatternsItems.length" class="table-wrap ai-history-page__pattern-table-wrap">
           <table class="ai-history-page__pattern-table">
             <thead>
               <tr>
@@ -1470,7 +1594,7 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr
-                v-for="item in patternsItems"
+                v-for="item in sortedPatternsItems"
                 :key="`table-${item.pattern_id}`"
                 :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
               >
@@ -1502,9 +1626,9 @@ onMounted(() => {
           </table>
         </div>
 
-        <div v-if="patternsItems.length" class="ai-history-page__pattern-cards ai-history-page__feedback-list">
+        <div v-if="sortedPatternsItems.length" class="ai-history-page__pattern-cards ai-history-page__feedback-list">
           <article
-            v-for="item in patternsItems"
+            v-for="item in sortedPatternsItems"
             :key="item.pattern_id"
             class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
             :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
@@ -1767,6 +1891,18 @@ onMounted(() => {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   white-space: nowrap;
+}
+
+.ai-history-page__scene-pill--btn {
+  cursor: pointer;
+}
+
+.ai-history-page__feedback-reply.is-clamped,
+.ai-history-page__feedback-user.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .ai-history-page__feedback-reply {
