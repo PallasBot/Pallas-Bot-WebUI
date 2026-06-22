@@ -24,6 +24,7 @@ import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vu
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiDialog from "@/components/ui/UiDialog.vue";
 import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -85,6 +86,18 @@ const patternEditor = ref<LlmBehaviorPattern>({
 });
 const patternEditorMode = ref<"create" | "edit">("create");
 const patternSaveBusy = ref(false);
+const patternEditorOpen = ref(false);
+const observeGroup = ref("");
+const observeGroupTouched = ref(false);
+
+type AiHistoryWorkspace = "sessions" | "observe" | "rules" | "stats";
+const WORKSPACE_TABS = [
+  { label: "会话", value: "sessions" as const },
+  { label: "观测", value: "observe" as const },
+  { label: "规则", value: "rules" as const },
+  { label: "统计", value: "stats" as const },
+];
+const activeWorkspace = ref<AiHistoryWorkspace>("sessions");
 
 // 会话筛选：bot / group / user（空 = 不限）
 const filterBot = ref("");
@@ -183,6 +196,19 @@ const patternsOverview = computed(() => [
     value: patternsScene.value || "全部",
   },
 ]);
+const workspaceTabBadges = computed(() => ({
+  sessions: sessions.value.length,
+  observe: behaviorRunsItems.value.length,
+  rules: patternsItems.value.length,
+  stats: historyDailyRows.value.length,
+}));
+const workspaceContextLabel = computed(() => {
+  const session = selectedSession.value;
+  if (!session) return "";
+  return session.group_id === 0
+    ? `私聊 · 用户 ${session.user_id} · Bot ${session.bot_id}`
+    : `群 ${session.group_id} · 用户 ${session.user_id} · Bot ${session.bot_id}`;
+});
 const feedbackOverview = computed(() => [
   {
     label: "样本数",
@@ -279,6 +305,25 @@ function formatBehaviorTokens(payload?: LlmHistoryBehaviorAutoFeedbackPayload | 
   return payload?.matched_tokens?.length ? payload.matched_tokens.join(" / ") : "无";
 }
 
+function formatOutcomeLabel(outcome?: string | null): string {
+  const hit = BEHAVIOR_OUTCOME_OPTIONS.find((item) => item.value === (outcome || ""));
+  return hit?.label || outcome || "未判定";
+}
+
+function outcomeClass(outcome?: string | null): string {
+  const value = outcome || "";
+  if (value === "engaged") return "is-engaged";
+  if (value === "ignored") return "is-ignored";
+  if (value === "derailed" || value === "awkward") return "is-bad";
+  if (value === "neutral") return "is-neutral";
+  return "is-pending";
+}
+
+function buildSessionKey(botId?: number | null, groupId?: number | null, userId?: number | null): string {
+  if (!botId || userId == null) return "";
+  return `${botId}:${groupId ?? 0}:${userId}`;
+}
+
 function parseLineList(raw: string): string[] {
   return raw
     .split("\n")
@@ -310,6 +355,21 @@ function resetPatternEditor(): void {
   };
 }
 
+function openPatternEditorCreate(): void {
+  resetPatternEditor();
+  patternEditorOpen.value = true;
+}
+
+function openPatternEditorEdit(item: LlmBehaviorPattern): void {
+  editPattern(item);
+  patternEditorOpen.value = true;
+}
+
+function closePatternEditor(): void {
+  if (patternSaveBusy.value) return;
+  patternEditorOpen.value = false;
+}
+
 function editPattern(item: LlmBehaviorPattern): void {
   patternEditorMode.value = "edit";
   patternEditor.value = {
@@ -324,6 +384,71 @@ function editPattern(item: LlmBehaviorPattern): void {
     trigger_features: [...(item.trigger_features ?? [])],
     reference_examples: [...(item.reference_examples ?? [])],
   };
+}
+
+async function focusPattern(patternId: string, scene?: string, groupId?: number | null) {
+  activeWorkspace.value = "rules";
+  if (groupId != null && groupId > 0) {
+    patternsGroup.value = String(groupId);
+    patternsGroupTouched.value = true;
+  }
+  if (scene) {
+    patternsScene.value = scene;
+  }
+  await refreshPatterns();
+  const found = patternsItems.value.find((item) => item.pattern_id === patternId);
+  if (found) {
+    openPatternEditorEdit(found);
+    return;
+  }
+  patternEditorMode.value = "create";
+  patternEditor.value = {
+    pattern_id: patternId,
+    scene: scene || "smalltalk",
+    action: "ack_then_short_reply",
+    scope_group_id: groupId ?? patternsGroupId.value,
+    success_score: 0,
+    manual_score: 0,
+    disabled: false,
+    persona_affinity: "",
+    trigger_features: [],
+    reference_examples: [],
+  };
+  patternEditorOpen.value = true;
+}
+
+function openObserveWorkspace(groupId?: number | null) {
+  activeWorkspace.value = "observe";
+  if (groupId != null && groupId > 0) {
+    const next = String(groupId);
+    observeGroup.value = next;
+    feedbackGroup.value = next;
+    behaviorRunsGroup.value = next;
+    patternsGroup.value = next;
+    observeGroupTouched.value = true;
+    feedbackGroupTouched.value = true;
+    behaviorRunsGroupTouched.value = true;
+    patternsGroupTouched.value = true;
+    void refreshFeedback();
+    void refreshBehaviorRuns();
+    void refreshPatterns();
+  }
+}
+
+async function openRunInSession(run: LlmHistoryBehaviorRun) {
+  const key = buildSessionKey(run.bot_id, run.group_id, run.user_id);
+  if (!key) return;
+  activeWorkspace.value = "sessions";
+  if (!sessions.value.some((item) => item.session_key === key)) {
+    await refreshSessions();
+  }
+  if (sessions.value.some((item) => item.session_key === key)) {
+    selectedSessionKey.value = key;
+  }
+}
+
+async function refreshObservePanels() {
+  await Promise.all([refreshFeedback(), refreshBehaviorRuns()]);
 }
 
 async function saveBehaviorRun(
@@ -515,6 +640,7 @@ async function savePattern() {
       ? patternsItems.value.map((item) => (item.pattern_id === updated.pattern_id ? updated : item))
       : [updated, ...patternsItems.value];
     resetPatternEditor();
+    patternEditorOpen.value = false;
     await refreshPatterns();
   } catch (e) {
     patternErr.value = e instanceof Error ? e.message : String(e);
@@ -585,6 +711,9 @@ watch(selectedSession, (session) => {
     patternsGroup.value = next;
     void refreshPatterns();
   }
+  if (!observeGroupTouched.value && next.trim()) {
+    observeGroup.value = next;
+  }
 });
 
 onMounted(() => {
@@ -593,6 +722,7 @@ onMounted(() => {
   feedbackGroup.value = filterGroup.value;
   behaviorRunsGroup.value = filterGroup.value;
   patternsGroup.value = filterGroup.value;
+  observeGroup.value = filterGroup.value;
   void refreshBehaviorRuns();
   void refreshPatterns();
   resetPatternEditor();
@@ -606,7 +736,7 @@ onMounted(() => {
         AI 历史
       </template>
       <template #lead>
-        左侧按时间窗看每日走势与回复路径，下面浏览最近的 AI 会话，点开任意会话即可看到完整的来回对话。
+        按工作区浏览：会话对话、观测反馈、规则维护与统计趋势；选中会话后会自动同步群号到观测与规则筛选。
       </template>
       <template #actions>
         <label class="ai-date-field">
@@ -630,6 +760,54 @@ onMounted(() => {
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
+    <nav class="ai-history-page__workspace-tabs" aria-label="AI 历史工作区">
+      <div class="console-view-toggle" role="tablist">
+        <button
+          v-for="tab in WORKSPACE_TABS"
+          :key="tab.value"
+          type="button"
+          role="tab"
+          class="ai-history-page__workspace-tab"
+          :class="{ 'is-on': activeWorkspace === tab.value }"
+          :aria-selected="activeWorkspace === tab.value"
+          @click="activeWorkspace = tab.value"
+        >
+          <span>{{ tab.label }}</span>
+          <span
+            v-if="workspaceTabBadges[tab.value] > 0"
+            class="ai-history-page__workspace-badge"
+          >
+            {{ workspaceTabBadges[tab.value] }}
+          </span>
+        </button>
+      </div>
+    </nav>
+
+    <div
+      v-if="workspaceContextLabel"
+      class="ai-history-page__context-strip"
+    >
+      <span class="muted">当前会话</span>
+      <strong>{{ workspaceContextLabel }}</strong>
+      <div class="row-actions ai-history-page__context-actions">
+        <UiButton
+          size="sm"
+          variant="outline"
+          @click="openObserveWorkspace(selectedSession?.group_id || null)"
+        >
+          观测此群
+        </UiButton>
+        <UiButton
+          size="sm"
+          variant="ghost"
+          @click="activeWorkspace = 'rules'"
+        >
+          规则
+        </UiButton>
+      </div>
+    </div>
+
+    <div v-show="activeWorkspace === 'stats'" class="ai-history-page__workspace">
     <section class="ai-history-page__summary">
       <UiCard class="ai-history-page__panel ai-history-page__summary-card">
         <div class="ai-head">
@@ -678,524 +856,6 @@ onMounted(() => {
           ]"
           empty-text="当前时间窗暂无历史快照。"
         />
-      </UiCard>
-    </section>
-
-    <section class="ai-history-page__sessions">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">最近会话</h3>
-          <span class="ai-head__hint">按最后消息时间排序</span>
-        </div>
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>会话筛选</strong>
-            <span class="muted">留空表示不过滤</span>
-          </div>
-          <div class="ai-history-page__filters">
-            <label class="ai-history-page__filter">
-              <span>Bot</span>
-              <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <label class="ai-history-page__filter">
-              <span>用户</span>
-              <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
-          </div>
-        </div>
-        <div v-if="sessions.length" class="ai-history-page__session-list">
-          <button
-            v-for="item in visibleSessions"
-            :key="item.session_key"
-            type="button"
-            class="ai-history-page__session"
-            :class="{ 'is-on': selectedSessionKey === item.session_key }"
-            @click="selectedSessionKey = item.session_key"
-          >
-            <div class="ai-history-page__session-top">
-              <strong>{{ item.group_id === 0 ? `私聊 ${item.user_id}` : `群 ${item.group_id} · 用户 ${item.user_id}` }}</strong>
-              <span class="muted ai-history-page__session-time">{{ formatCompactDateTime(item.last_created_at) }}</span>
-            </div>
-            <div class="muted ai-history-page__session-meta">Bot {{ item.bot_id }} · {{ item.turn_count }} 条对话</div>
-            <p class="ai-history-page__session-preview">{{ item.last_content || "（空消息）" }}</p>
-          </button>
-          <button
-            v-if="sessions.length > visibleSessions.length"
-            type="button"
-            class="ai-history-page__more"
-            @click="showAllSessions = true"
-          >
-            展开其余 {{ sessions.length - visibleSessions.length }} 个会话
-          </button>
-          <button
-            v-else-if="sessions.length > 8"
-            type="button"
-            class="ai-history-page__more"
-            @click="showAllSessions = false"
-          >
-            收起到前 8 个会话
-          </button>
-        </div>
-        <div v-else class="ai-empty">
-          <span>暂无会话记录</span>
-          <span class="ai-empty__hint">AI 产生对话后会显示在这里。</span>
-        </div>
-      </UiCard>
-
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">会话明细</h3>
-          <span class="ai-head__hint">{{ sessionDetail ? "当前选中会话的完整对话" : "选择左侧会话查看" }}</span>
-        </div>
-        <div v-if="sessionDetail" class="ai-history-page__detail">
-          <div class="ai-history-page__detail-summary">
-            <span>Bot {{ sessionDetail.session.bot_id }}</span>
-            <span>{{ sessionDetail.session.group_id === 0 ? "私聊" : `群 ${sessionDetail.session.group_id}` }}</span>
-            <span>用户 {{ sessionDetail.session.user_id }}</span>
-            <span>{{ sessionDetail.session.turn_count }} 条对话</span>
-          </div>
-          <section v-if="sessionDetail.behavior_runs?.length" class="ai-history-page__behavior">
-            <div class="ai-head ai-history-page__behavior-head">
-              <h4 class="ai-head__title">Behavior 参考</h4>
-              <span class="ai-head__hint">在历史对话里校正姿态、结果和保留样本</span>
-            </div>
-            <article
-              v-for="run in sessionDetail.behavior_runs"
-              :key="run.request_id"
-              class="ai-history-page__behavior-card"
-            >
-              <div class="ai-history-page__behavior-top">
-                <strong>{{ run.scene }}</strong>
-                <span class="muted">请求 {{ run.request_id }}</span>
-              </div>
-              <div class="ai-history-page__behavior-meta">
-                <span>动作：{{ run.selected_actions.join(" / ") || "未选" }}</span>
-                <span>Pattern：{{ run.selected_pattern_ids.join(", ") || "无" }}</span>
-                <span>结果：{{ run.final_outcome || "未判定" }}</span>
-              </div>
-              <div v-if="run.auto_feedback_payload" class="ai-history-page__behavior-evidence">
-                <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
-                <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
-                <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
-                <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
-              </div>
-              <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
-              <div class="ai-history-page__behavior-labels">
-                <button
-                  v-for="label in BEHAVIOR_LABEL_OPTIONS"
-                  :key="label"
-                  type="button"
-                  class="ai-history-page__behavior-chip"
-                  :class="{ 'is-on': hasBehaviorLabel(run, label) }"
-                  :disabled="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorLabel(run, label)"
-                >
-                  {{ label }}
-                </button>
-              </div>
-              <div class="ai-history-page__behavior-actions">
-                <label class="ai-history-page__behavior-select">
-                  <span>结果</span>
-                  <select
-                    class="inp"
-                    :value="run.final_outcome || ''"
-                    :disabled="isBehaviorBusy(run.request_id)"
-                    @change="changeBehaviorOutcome(run, $event)"
-                  >
-                    <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                      {{ item.label }}
-                    </option>
-                  </select>
-                </label>
-                <UiButton
-                  variant="outline"
-                  class="ai-history-page__behavior-action-btn"
-                  :busy="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorDisabled(run)"
-                >
-                  {{ run.disabled ? "恢复样本" : "禁用样本" }}
-                </UiButton>
-              </div>
-            </article>
-          </section>
-          <article
-            v-for="(turn, idx) in sessionDetail.turns"
-            :key="turnKey(turn.created_at, idx)"
-            class="ai-history-page__turn"
-            :class="turn.role === 'assistant' ? 'is-assistant' : 'is-user'"
-          >
-            <div class="ai-history-page__turn-head">
-              <strong>{{ turn.role === "assistant" ? AI_ASSISTANT_NAME : `用户 ${turn.user_id}` }}</strong>
-              <span class="muted">{{ formatCompactDateTime(turn.created_at) }}</span>
-            </div>
-            <div
-              class="ai-history-page__turn-body"
-              :class="{ 'is-expanded': isTurnExpanded(turnKey(turn.created_at, idx)) }"
-            >
-              <p>{{ turn.content }}</p>
-            </div>
-            <button
-              v-if="isLongTurn(turn.content)"
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleTurnExpanded(turnKey(turn.created_at, idx))"
-            >
-              {{ isTurnExpanded(turnKey(turn.created_at, idx)) ? "收起" : "展开全文" }}
-            </button>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>未选择会话</span>
-          <span class="ai-empty__hint">点左侧任意会话查看完整对话。</span>
-        </div>
-      </UiCard>
-    </section>
-
-    <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">闲聊反哺接话</h3>
-          <span class="ai-head__hint">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
-        </div>
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>反馈筛选</strong>
-            <span class="muted">按群号查看最近沉淀的反馈样本</span>
-          </div>
-          <div class="ai-history-page__filters">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input
-                v-model="feedbackGroup"
-                class="inp"
-                inputmode="numeric"
-                placeholder="必填"
-                @input="feedbackGroupTouched = true"
-                @keyup.enter="refreshFeedback"
-              >
-            </label>
-            <UiButton size="sm" variant="outline" :busy="feedbackBusy" @click="refreshFeedback">读取反馈</UiButton>
-          </div>
-        </div>
-        <div v-if="feedbackErr" class="alert alert--err">{{ feedbackErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in feedbackOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-        <div v-if="feedbackItems.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in feedbackItems"
-            :key="item.entry_id || item.request_id"
-            class="ai-history-page__feedback-card"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong>{{ item.reply_text || "（空回复）" }}</strong>
-              <span class="muted">{{ formatCompactDateTime(item.created_at) }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>scene：{{ item.behavior_scene || "未标注" }}</span>
-              <span>route：{{ item.llm_route || "未知" }}</span>
-              <span>bias：{{ item.eligible_for_bias ? "可用" : "过滤" }}</span>
-            </div>
-            <p class="ai-history-page__feedback-user">用户：{{ item.user_text || "（空）" }}</p>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ feedbackGroupId ? "当前群暂无反馈样本" : "输入群号查看反馈" }}</span>
-          <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
-        </div>
-      </UiCard>
-    </section>
-
-    <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">近期 Behavior 记录</h3>
-          <span class="ai-head__hint">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
-        </div>
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>记录筛选</strong>
-            <span class="muted">默认跟随当前选中会话的群号</span>
-          </div>
-          <div class="ai-history-page__filters">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input
-                v-model="behaviorRunsGroup"
-                class="inp"
-                inputmode="numeric"
-                placeholder="全部"
-                @input="behaviorRunsGroupTouched = true"
-                @keyup.enter="refreshBehaviorRuns"
-              >
-            </label>
-            <label class="ai-history-page__filter">
-              <span>Scene</span>
-              <select v-model="behaviorRunsScene" class="inp">
-                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </select>
-            </label>
-            <label class="ai-history-page__filter">
-              <span>结果</span>
-              <select v-model="behaviorRunsOutcome" class="inp">
-                <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </select>
-            </label>
-            <label class="ai-history-page__behavior-check">
-              <input v-model="behaviorRunsIncludeDisabled" type="checkbox">
-              <span>包含 disabled</span>
-            </label>
-            <UiButton size="sm" variant="outline" :busy="behaviorRunsBusy" @click="refreshBehaviorRuns">
-              读取记录
-            </UiButton>
-          </div>
-        </div>
-        <div v-if="behaviorRunsErr" class="alert alert--err">{{ behaviorRunsErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in behaviorRunsOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-        <div v-if="behaviorRunsItems.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="run in behaviorRunsItems"
-            :key="run.request_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong>{{ run.scene }}</strong>
-              <span class="muted">{{ run.final_outcome || "未判定" }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>群：{{ run.group_id || "私聊" }}</span>
-              <span>用户：{{ run.user_id || "—" }}</span>
-              <span>score：{{ run.score_delta ?? 0 }}</span>
-              <span>disabled：{{ run.disabled ? "是" : "否" }}</span>
-            </div>
-            <div class="ai-history-page__behavior-evidence">
-              <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
-              <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
-              <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
-              <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
-            </div>
-            <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
-          <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
-        </div>
-      </UiCard>
-    </section>
-
-    <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">Behavior Pattern 管理</h3>
-          <span class="ai-head__hint">先做最小可用维护面：筛选、编辑、禁用、删除</span>
-        </div>
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>Pattern 筛选</strong>
-            <span class="muted">默认跟随当前选中会话的群号</span>
-          </div>
-          <div class="ai-history-page__filters">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input
-                v-model="patternsGroup"
-                class="inp"
-                inputmode="numeric"
-                placeholder="全部"
-                @input="patternsGroupTouched = true"
-                @keyup.enter="refreshPatterns"
-              >
-            </label>
-            <label class="ai-history-page__filter">
-              <span>Scene</span>
-              <select v-model="patternsScene" class="inp">
-                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`pattern-${item.value || 'empty'}`" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </select>
-            </label>
-            <label class="ai-history-page__behavior-check">
-              <input v-model="patternsIncludeDisabled" type="checkbox">
-              <span>包含 disabled</span>
-            </label>
-            <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
-              读取 Pattern
-            </UiButton>
-            <UiButton size="sm" variant="ghost" @click="resetPatternEditor">
-              新建 Pattern
-            </UiButton>
-          </div>
-        </div>
-        <div v-if="patternErr" class="alert alert--err">{{ patternErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in patternsOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-
-        <div class="ai-history-page__pattern-editor">
-          <div class="ai-history-page__filters-head">
-            <strong>{{ patternEditorMode === "edit" ? "编辑 Pattern" : "新建 Pattern" }}</strong>
-            <span class="muted">`trigger_features` 与 `reference_examples` 按行输入</span>
-          </div>
-          <div class="ai-history-page__pattern-form">
-            <label class="ai-history-page__filter">
-              <span>pattern_id</span>
-              <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
-            </label>
-            <label class="ai-history-page__filter">
-              <span>scene</span>
-              <select v-model="patternEditor.scene" class="inp">
-                <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
-                  {{ item.value }}
-                </option>
-              </select>
-            </label>
-            <label class="ai-history-page__filter">
-              <span>action</span>
-              <select v-model="patternEditor.action" class="inp">
-                <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </select>
-            </label>
-            <label class="ai-history-page__filter">
-              <span>scope_group_id</span>
-              <input
-                :value="patternEditor.scope_group_id ?? ''"
-                class="inp"
-                inputmode="numeric"
-                placeholder="留空表示全局"
-                @input="patternEditor.scope_group_id = parseFilter(($event.target as HTMLInputElement).value)"
-              >
-            </label>
-            <label class="ai-history-page__filter">
-              <span>success_score</span>
-              <input
-                :value="patternEditor.success_score ?? 0"
-                class="inp"
-                inputmode="numeric"
-                @input="patternEditor.success_score = Number(($event.target as HTMLInputElement).value || 0)"
-              >
-            </label>
-            <label class="ai-history-page__filter">
-              <span>manual_score</span>
-              <input
-                :value="patternEditor.manual_score ?? 0"
-                class="inp"
-                inputmode="numeric"
-                @input="patternEditor.manual_score = Number(($event.target as HTMLInputElement).value || 0)"
-              >
-            </label>
-            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-              <span>persona_affinity</span>
-              <input v-model="patternEditor.persona_affinity" class="inp" placeholder="可留空">
-            </label>
-            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-              <span>trigger_features</span>
-              <textarea
-                class="inp ai-history-page__pattern-textarea"
-                :value="patternEditorTriggerText()"
-                placeholder="每行一个特征"
-                @input="patternEditor.trigger_features = parseLineList(($event.target as HTMLTextAreaElement).value)"
-              ></textarea>
-            </label>
-            <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-              <span>reference_examples</span>
-              <textarea
-                class="inp ai-history-page__pattern-textarea"
-                :value="patternEditorExampleText()"
-                placeholder="每行一个示例"
-                @input="patternEditor.reference_examples = parseLineList(($event.target as HTMLTextAreaElement).value)"
-              ></textarea>
-            </label>
-            <label class="ai-history-page__behavior-check">
-              <input v-model="patternEditor.disabled" type="checkbox">
-              <span>保存为 disabled</span>
-            </label>
-          </div>
-          <div class="row-actions ai-history-page__pattern-actions">
-            <UiButton size="sm" :busy="patternSaveBusy" @click="savePattern">
-              {{ patternEditorMode === "edit" ? "保存修改" : "创建 Pattern" }}
-            </UiButton>
-            <UiButton size="sm" variant="ghost" @click="resetPatternEditor">
-              清空表单
-            </UiButton>
-          </div>
-        </div>
-
-        <div v-if="patternsItems.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in patternsItems"
-            :key="item.pattern_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong>{{ item.pattern_id }}</strong>
-              <span class="muted">{{ item.scene }} / {{ item.action }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>群：{{ item.scope_group_id || "全局" }}</span>
-              <span>success：{{ item.success_score ?? 0 }}</span>
-              <span>manual：{{ item.manual_score ?? 0 }}</span>
-              <span>disabled：{{ item.disabled ? "是" : "否" }}</span>
-            </div>
-            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">persona：{{ item.persona_affinity }}</p>
-            <p class="ai-history-page__feedback-user">features：{{ item.trigger_features?.join(" / ") || "无" }}</p>
-            <p class="ai-history-page__feedback-user">examples：{{ item.reference_examples?.join(" / ") || "无" }}</p>
-            <div class="row-actions ai-history-page__pattern-actions">
-              <UiButton size="sm" variant="outline" @click="editPattern(item)">
-                编辑
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
-                @click="togglePatternDisabled(item)"
-              >
-                {{ item.disabled ? "启用" : "禁用" }}
-              </UiButton>
-              <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
-                删除
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ patternBusy ? "正在读取 Pattern" : "当前筛选下暂无 Pattern" }}</span>
-          <span class="ai-empty__hint">这块先承接最基础的 pattern 维护，后续再考虑更强的 run 联动和人工纠偏。</span>
-        </div>
       </UiCard>
     </section>
 
@@ -1274,6 +934,628 @@ onMounted(() => {
         </div>
       </div>
     </UiCard>
+    </div>
+
+    <div v-show="activeWorkspace === 'sessions'" class="ai-history-page__workspace ai-history-page__workspace--sessions">
+    <section class="ai-history-page__sessions">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">最近会话</h3>
+          <span class="ai-head__hint">按最后消息时间排序</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>会话筛选</strong>
+            <span class="muted">留空表示不过滤</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>Bot</span>
+              <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+            </label>
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+            </label>
+            <label class="ai-history-page__filter">
+              <span>用户</span>
+              <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+            </label>
+            <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
+          </div>
+        </div>
+        <div v-if="sessions.length" class="ai-history-page__session-list ai-history-page__session-list--scroll">
+          <button
+            v-for="item in visibleSessions"
+            :key="item.session_key"
+            type="button"
+            class="ai-history-page__session"
+            :class="{ 'is-on': selectedSessionKey === item.session_key }"
+            @click="selectedSessionKey = item.session_key"
+          >
+            <div class="ai-history-page__session-top">
+              <strong>{{ item.group_id === 0 ? `私聊 ${item.user_id}` : `群 ${item.group_id} · 用户 ${item.user_id}` }}</strong>
+              <span class="muted ai-history-page__session-time">{{ formatCompactDateTime(item.last_created_at) }}</span>
+            </div>
+            <div class="muted ai-history-page__session-meta">Bot {{ item.bot_id }} · {{ item.turn_count }} 条对话</div>
+            <p class="ai-history-page__session-preview">{{ item.last_content || "（空消息）" }}</p>
+          </button>
+          <button
+            v-if="sessions.length > visibleSessions.length"
+            type="button"
+            class="ai-history-page__more"
+            @click="showAllSessions = true"
+          >
+            展开其余 {{ sessions.length - visibleSessions.length }} 个会话
+          </button>
+          <button
+            v-else-if="sessions.length > 8"
+            type="button"
+            class="ai-history-page__more"
+            @click="showAllSessions = false"
+          >
+            收起到前 8 个会话
+          </button>
+        </div>
+        <div v-else class="ai-empty">
+          <span>暂无会话记录</span>
+          <span class="ai-empty__hint">AI 产生对话后会显示在这里。</span>
+        </div>
+      </UiCard>
+
+      <UiCard class="ai-history-page__panel ai-history-page__detail-panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">会话明细</h3>
+          <span class="ai-head__hint">{{ sessionDetail ? workspaceContextLabel || "当前选中会话" : "选择左侧会话查看" }}</span>
+        </div>
+        <div v-if="sessionDetail" class="ai-history-page__detail">
+          <div class="ai-history-page__detail-summary">
+            <span>Bot {{ sessionDetail.session.bot_id }}</span>
+            <span>{{ sessionDetail.session.group_id === 0 ? "私聊" : `群 ${sessionDetail.session.group_id}` }}</span>
+            <span>用户 {{ sessionDetail.session.user_id }}</span>
+            <span>{{ sessionDetail.session.turn_count }} 条对话</span>
+          </div>
+          <section v-if="sessionDetail.behavior_runs?.length" class="ai-history-page__behavior">
+            <div class="ai-head ai-history-page__behavior-head">
+              <h4 class="ai-head__title">Behavior 参考</h4>
+              <span class="ai-head__hint">在历史对话里校正姿态、结果和保留样本</span>
+            </div>
+            <div class="row-actions ai-history-page__behavior-jump">
+              <UiButton
+                size="sm"
+                variant="outline"
+                @click="openObserveWorkspace(sessionDetail.session.group_id || null)"
+              >
+                打开观测
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                @click="activeWorkspace = 'rules'"
+              >
+                管理规则
+              </UiButton>
+            </div>
+            <article
+              v-for="run in sessionDetail.behavior_runs"
+              :key="run.request_id"
+              class="ai-history-page__behavior-card"
+            >
+              <div class="ai-history-page__behavior-top">
+                <strong>{{ run.scene }}</strong>
+                <span
+                  class="ai-history-page__outcome-badge"
+                  :class="outcomeClass(run.final_outcome)"
+                >
+                  {{ formatOutcomeLabel(run.final_outcome) }}
+                </span>
+              </div>
+              <div class="ai-history-page__behavior-meta">
+                <span>动作：{{ run.selected_actions.join(" / ") || "未选" }}</span>
+                <span class="ai-history-page__pattern-links">
+                  Pattern：
+                  <template v-if="run.selected_pattern_ids.length">
+                    <button
+                      v-for="patternId in run.selected_pattern_ids"
+                      :key="`${run.request_id}-${patternId}`"
+                      type="button"
+                      class="ai-history-page__pattern-link"
+                      @click="focusPattern(patternId, run.scene, run.group_id)"
+                    >
+                      {{ patternId }}
+                    </button>
+                  </template>
+                  <template v-else>无</template>
+                </span>
+                <span>结果：{{ run.final_outcome || "未判定" }}</span>
+              </div>
+              <div v-if="run.auto_feedback_payload" class="ai-history-page__behavior-evidence">
+                <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
+                <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
+                <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
+                <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
+              </div>
+              <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
+              <div class="ai-history-page__behavior-labels">
+                <button
+                  v-for="label in BEHAVIOR_LABEL_OPTIONS"
+                  :key="label"
+                  type="button"
+                  class="ai-history-page__behavior-chip"
+                  :class="{ 'is-on': hasBehaviorLabel(run, label) }"
+                  :disabled="isBehaviorBusy(run.request_id)"
+                  @click="toggleBehaviorLabel(run, label)"
+                >
+                  {{ label }}
+                </button>
+              </div>
+              <div class="ai-history-page__behavior-actions">
+                <label class="ai-history-page__behavior-select">
+                  <span>结果</span>
+                  <select
+                    class="inp"
+                    :value="run.final_outcome || ''"
+                    :disabled="isBehaviorBusy(run.request_id)"
+                    @change="changeBehaviorOutcome(run, $event)"
+                  >
+                    <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                      {{ item.label }}
+                    </option>
+                  </select>
+                </label>
+                <UiButton
+                  variant="outline"
+                  class="ai-history-page__behavior-action-btn"
+                  :busy="isBehaviorBusy(run.request_id)"
+                  @click="toggleBehaviorDisabled(run)"
+                >
+                  {{ run.disabled ? "恢复样本" : "禁用样本" }}
+                </UiButton>
+              </div>
+            </article>
+          </section>
+          <div class="ai-history-page__thread">
+          <article
+            v-for="(turn, idx) in sessionDetail.turns"
+            :key="turnKey(turn.created_at, idx)"
+            class="ai-history-page__turn"
+            :class="turn.role === 'assistant' ? 'is-assistant' : 'is-user'"
+          >
+            <div class="ai-history-page__turn-head">
+              <strong>{{ turn.role === "assistant" ? AI_ASSISTANT_NAME : `用户 ${turn.user_id}` }}</strong>
+              <span class="muted">{{ formatCompactDateTime(turn.created_at) }}</span>
+            </div>
+            <div
+              class="ai-history-page__turn-body"
+              :class="{ 'is-expanded': isTurnExpanded(turnKey(turn.created_at, idx)) }"
+            >
+              <p>{{ turn.content }}</p>
+            </div>
+            <button
+              v-if="isLongTurn(turn.content)"
+              type="button"
+              class="ai-history-page__turn-toggle"
+              @click="toggleTurnExpanded(turnKey(turn.created_at, idx))"
+            >
+              {{ isTurnExpanded(turnKey(turn.created_at, idx)) ? "收起" : "展开全文" }}
+            </button>
+          </article>
+          </div>
+        </div>
+        <div v-else class="ai-empty">
+          <span>未选择会话</span>
+          <span class="ai-empty__hint">点左侧任意会话查看完整对话。</span>
+        </div>
+      </UiCard>
+    </section>
+    </div>
+
+    <div v-show="activeWorkspace === 'observe'" class="ai-history-page__workspace ai-history-page__workspace--observe">
+    <UiCard class="ai-history-page__panel ai-history-page__observe-toolbar">
+      <div class="ai-history-page__filters-head">
+        <strong>观测筛选</strong>
+        <span class="muted">群号会同时作用于反馈样本与 behavior 记录</span>
+      </div>
+      <div class="ai-history-page__filters">
+        <label class="ai-history-page__filter">
+          <span>群号</span>
+          <input
+            v-model="observeGroup"
+            class="inp"
+            inputmode="numeric"
+            placeholder="全部 / 必填反馈"
+            @input="observeGroupTouched = true; feedbackGroup = observeGroup; behaviorRunsGroup = observeGroup; feedbackGroupTouched = true; behaviorRunsGroupTouched = true"
+            @keyup.enter="refreshObservePanels"
+          >
+        </label>
+        <UiButton size="sm" variant="primary" :busy="feedbackBusy || behaviorRunsBusy" @click="refreshObservePanels">
+          刷新观测
+        </UiButton>
+      </div>
+    </UiCard>
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">闲聊反哺接话</h3>
+          <span class="ai-head__hint">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>反馈筛选</strong>
+            <span class="muted">按群号查看最近沉淀的反馈样本</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input
+                v-model="feedbackGroup"
+                class="inp"
+                inputmode="numeric"
+                placeholder="必填"
+                @input="feedbackGroupTouched = true; observeGroup = feedbackGroup; observeGroupTouched = true"
+                @keyup.enter="refreshFeedback"
+              >
+            </label>
+            <UiButton size="sm" variant="outline" :busy="feedbackBusy" @click="refreshFeedback">读取反馈</UiButton>
+          </div>
+        </div>
+        <div v-if="feedbackErr" class="alert alert--err">{{ feedbackErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in feedbackOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+        <div v-if="feedbackItems.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="item in feedbackItems"
+            :key="item.entry_id || item.request_id"
+            class="ai-history-page__feedback-card"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong>{{ item.reply_text || "（空回复）" }}</strong>
+              <span class="muted">{{ formatCompactDateTime(item.created_at) }}</span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>scene：{{ item.behavior_scene || "未标注" }}</span>
+              <span>route：{{ item.llm_route || "未知" }}</span>
+              <span>bias：{{ item.eligible_for_bias ? "可用" : "过滤" }}</span>
+            </div>
+            <p class="ai-history-page__feedback-user">用户：{{ item.user_text || "（空）" }}</p>
+          </article>
+        </div>
+        <div v-else class="ai-empty">
+          <span>{{ feedbackGroupId ? "当前群暂无反馈样本" : "输入群号查看反馈" }}</span>
+          <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
+        </div>
+      </UiCard>
+    </section>
+
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">近期 Behavior 记录</h3>
+          <span class="ai-head__hint">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>记录筛选</strong>
+            <span class="muted">默认跟随当前选中会话的群号</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input
+                v-model="behaviorRunsGroup"
+                class="inp"
+                inputmode="numeric"
+                placeholder="全部"
+                @input="behaviorRunsGroupTouched = true; observeGroup = behaviorRunsGroup; observeGroupTouched = true"
+                @keyup.enter="refreshBehaviorRuns"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>Scene</span>
+              <select v-model="behaviorRunsScene" class="inp">
+                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__filter">
+              <span>结果</span>
+              <select v-model="behaviorRunsOutcome" class="inp">
+                <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__behavior-check">
+              <input v-model="behaviorRunsIncludeDisabled" type="checkbox">
+              <span>包含 disabled</span>
+            </label>
+            <UiButton size="sm" variant="outline" :busy="behaviorRunsBusy" @click="refreshBehaviorRuns">
+              读取记录
+            </UiButton>
+          </div>
+        </div>
+        <div v-if="behaviorRunsErr" class="alert alert--err">{{ behaviorRunsErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in behaviorRunsOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+        <div v-if="behaviorRunsItems.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="run in behaviorRunsItems"
+            :key="run.request_id"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong>{{ run.scene }}</strong>
+              <span
+                class="ai-history-page__outcome-badge"
+                :class="outcomeClass(run.final_outcome)"
+              >
+                {{ formatOutcomeLabel(run.final_outcome) }}
+              </span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>群：{{ run.group_id || "私聊" }}</span>
+              <span>用户：{{ run.user_id || "—" }}</span>
+              <span>score：{{ run.score_delta ?? 0 }}</span>
+              <span>disabled：{{ run.disabled ? "是" : "否" }}</span>
+            </div>
+            <p v-if="run.user_text" class="ai-history-page__feedback-user">用户：{{ run.user_text }}</p>
+            <p v-if="run.reply_text" class="ai-history-page__feedback-user">回复：{{ run.reply_text }}</p>
+            <div
+              v-if="run.selected_pattern_ids?.length"
+              class="ai-history-page__pattern-links ai-history-page__pattern-links--inline"
+            >
+              <span>Pattern</span>
+              <button
+                v-for="patternId in run.selected_pattern_ids"
+                :key="`${run.request_id}-observe-${patternId}`"
+                type="button"
+                class="ai-history-page__pattern-link"
+                @click="focusPattern(patternId, run.scene, run.group_id)"
+              >
+                {{ patternId }}
+              </button>
+            </div>
+            <div class="ai-history-page__behavior-evidence">
+              <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
+              <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
+              <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
+              <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
+            </div>
+            <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
+            <div class="row-actions ai-history-page__pattern-actions">
+              <UiButton
+                v-if="buildSessionKey(run.bot_id, run.group_id, run.user_id)"
+                size="sm"
+                variant="outline"
+                @click="openRunInSession(run)"
+              >
+                查看会话
+              </UiButton>
+            </div>
+          </article>
+        </div>
+        <div v-else class="ai-empty">
+          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
+          <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
+        </div>
+      </UiCard>
+    </section>
+    </div>
+
+    <div v-show="activeWorkspace === 'rules'" class="ai-history-page__workspace">
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">Behavior Pattern 管理</h3>
+          <span class="ai-head__hint">先做最小可用维护面：筛选、编辑、禁用、删除</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>Pattern 筛选</strong>
+            <span class="muted">默认跟随当前选中会话的群号</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__filter">
+              <span>群号</span>
+              <input
+                v-model="patternsGroup"
+                class="inp"
+                inputmode="numeric"
+                placeholder="全部"
+                @input="patternsGroupTouched = true"
+                @keyup.enter="refreshPatterns"
+              >
+            </label>
+            <label class="ai-history-page__filter">
+              <span>Scene</span>
+              <select v-model="patternsScene" class="inp">
+                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`pattern-${item.value || 'empty'}`" :value="item.value">
+                  {{ item.label }}
+                </option>
+              </select>
+            </label>
+            <label class="ai-history-page__behavior-check">
+              <input v-model="patternsIncludeDisabled" type="checkbox">
+              <span>包含 disabled</span>
+            </label>
+            <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
+              读取 Pattern
+            </UiButton>
+            <UiButton size="sm" variant="ghost" @click="openPatternEditorCreate">
+              新建 Pattern
+            </UiButton>
+          </div>
+        </div>
+        <div v-if="patternErr" class="alert alert--err">{{ patternErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in patternsOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+
+        <div v-if="patternsItems.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="item in patternsItems"
+            :key="item.pattern_id"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+            :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong>{{ item.pattern_id }}</strong>
+              <span class="muted">{{ item.scene }} / {{ item.action }}</span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>群：{{ item.scope_group_id || "全局" }}</span>
+              <span>success：{{ item.success_score ?? 0 }}</span>
+              <span>manual：{{ item.manual_score ?? 0 }}</span>
+              <span>disabled：{{ item.disabled ? "是" : "否" }}</span>
+            </div>
+            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">persona：{{ item.persona_affinity }}</p>
+            <p class="ai-history-page__feedback-user">features：{{ item.trigger_features?.join(" / ") || "无" }}</p>
+            <p class="ai-history-page__feedback-user">examples：{{ item.reference_examples?.join(" / ") || "无" }}</p>
+            <div class="row-actions ai-history-page__pattern-actions">
+              <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
+                编辑
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
+                @click="togglePatternDisabled(item)"
+              >
+                {{ item.disabled ? "启用" : "禁用" }}
+              </UiButton>
+              <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
+                删除
+              </UiButton>
+            </div>
+          </article>
+        </div>
+        <div v-else class="ai-empty">
+          <span>{{ patternBusy ? "正在读取 Pattern" : "当前筛选下暂无 Pattern" }}</span>
+          <span class="ai-empty__hint">这块先承接最基础的 pattern 维护，后续再考虑更强的 run 联动和人工纠偏。</span>
+        </div>
+      </UiCard>
+    </section>
+    </div>
+
+    <UiDialog
+      :open="patternEditorOpen"
+      :title="patternEditorMode === 'edit' ? '编辑 Pattern' : '新建 Pattern'"
+      :subtitle="'trigger_features 与 reference_examples 按行输入'"
+      :busy="patternSaveBusy"
+      panel-class="ai-history-page__pattern-dialog"
+      @close="closePatternEditor"
+    >
+      <div class="ai-history-page__pattern-form">
+        <label class="ai-history-page__filter">
+          <span>pattern_id</span>
+          <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
+        </label>
+        <label class="ai-history-page__filter">
+          <span>scene</span>
+          <select v-model="patternEditor.scene" class="inp">
+            <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
+              {{ item.value }}
+            </option>
+          </select>
+        </label>
+        <label class="ai-history-page__filter">
+          <span>action</span>
+          <select v-model="patternEditor.action" class="inp">
+            <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
+              {{ item.label }}
+            </option>
+          </select>
+        </label>
+        <label class="ai-history-page__filter">
+          <span>scope_group_id</span>
+          <input
+            :value="patternEditor.scope_group_id ?? ''"
+            class="inp"
+            inputmode="numeric"
+            placeholder="留空表示全局"
+            @input="patternEditor.scope_group_id = parseFilter(($event.target as HTMLInputElement).value)"
+          >
+        </label>
+        <label class="ai-history-page__filter">
+          <span>success_score</span>
+          <input
+            :value="patternEditor.success_score ?? 0"
+            class="inp"
+            inputmode="numeric"
+            @input="patternEditor.success_score = Number(($event.target as HTMLInputElement).value || 0)"
+          >
+        </label>
+        <label class="ai-history-page__filter">
+          <span>manual_score</span>
+          <input
+            :value="patternEditor.manual_score ?? 0"
+            class="inp"
+            inputmode="numeric"
+            @input="patternEditor.manual_score = Number(($event.target as HTMLInputElement).value || 0)"
+          >
+        </label>
+        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+          <span>persona_affinity</span>
+          <input v-model="patternEditor.persona_affinity" class="inp" placeholder="可留空">
+        </label>
+        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+          <span>trigger_features</span>
+          <textarea
+            class="inp ai-history-page__pattern-textarea"
+            :value="patternEditorTriggerText()"
+            placeholder="每行一个特征"
+            @input="patternEditor.trigger_features = parseLineList(($event.target as HTMLTextAreaElement).value)"
+          ></textarea>
+        </label>
+        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
+          <span>reference_examples</span>
+          <textarea
+            class="inp ai-history-page__pattern-textarea"
+            :value="patternEditorExampleText()"
+            placeholder="每行一个示例"
+            @input="patternEditor.reference_examples = parseLineList(($event.target as HTMLTextAreaElement).value)"
+          ></textarea>
+        </label>
+        <label class="ai-history-page__behavior-check">
+          <input v-model="patternEditor.disabled" type="checkbox">
+          <span>保存为 disabled</span>
+        </label>
+      </div>
+      <template #footer>
+        <div class="row-actions ai-history-page__pattern-actions">
+          <UiButton size="sm" :busy="patternSaveBusy" @click="savePattern">
+            {{ patternEditorMode === "edit" ? "保存修改" : "创建 Pattern" }}
+          </UiButton>
+          <UiButton size="sm" variant="ghost" :disabled="patternSaveBusy" @click="closePatternEditor">
+            取消
+          </UiButton>
+        </div>
+      </template>
+    </UiDialog>
   </div>
 </template>
 
@@ -1281,6 +1563,147 @@ onMounted(() => {
 .ai-history-page__hint {
   margin-top: 8px;
   font-size: 0.75rem;
+}
+
+.ai-history-page__workspace-tabs {
+  margin-bottom: 4px;
+}
+
+.ai-history-page__workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-history-page__workspace-badge {
+  min-width: 1.25rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.ai-history-page__context-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.ai-history-page__context-actions {
+  margin-left: auto;
+  gap: 8px;
+}
+
+.ai-history-page__workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.ai-history-page__workspace--observe {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ai-history-page__workspace--observe .ai-history-page__observe-toolbar {
+  grid-column: 1 / -1;
+}
+
+.ai-history-page__workspace--sessions .ai-history-page__sessions {
+  align-items: stretch;
+}
+
+.ai-history-page__session-list--scroll {
+  max-height: min(68vh, 720px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.ai-history-page__detail-panel {
+  min-height: min(68vh, 720px);
+}
+
+.ai-history-page__thread {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 560px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.ai-history-page__outcome-badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ai-history-page__outcome-badge.is-engaged {
+  border-color: color-mix(in srgb, #22c55e 40%, var(--border));
+  color: #22c55e;
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+}
+
+.ai-history-page__outcome-badge.is-ignored,
+.ai-history-page__outcome-badge.is-pending {
+  border-color: color-mix(in srgb, var(--text-muted) 30%, var(--border));
+}
+
+.ai-history-page__outcome-badge.is-bad {
+  border-color: color-mix(in srgb, #fb7185 40%, var(--border));
+  color: #fb7185;
+  background: color-mix(in srgb, #fb7185 10%, transparent);
+}
+
+.ai-history-page__outcome-badge.is-neutral {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: var(--accent);
+}
+
+.ai-history-page__feedback-card.is-editing {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.ai-history-page__pattern-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.ai-history-page__behavior-jump {
+  gap: 8px;
+}
+
+.ai-history-page__pattern-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-history-page__pattern-links--inline {
+  display: flex;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ai-history-page__pattern-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .ai-history-page__summary {
@@ -1747,7 +2170,8 @@ onMounted(() => {
 
 @media (max-width: 860px) {
   .ai-history-page__overview,
-  .ai-history-page__sessions {
+  .ai-history-page__sessions,
+  .ai-history-page__workspace--observe {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1767,6 +2191,17 @@ onMounted(() => {
   .ai-history-page__feedback-top {
     display: grid;
     gap: 4px;
+  }
+
+  .ai-history-page__context-strip {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ai-history-page__context-actions {
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ai-history-page__filters-head {

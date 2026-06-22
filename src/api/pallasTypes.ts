@@ -993,7 +993,10 @@ export interface LlmHistoryBehaviorRun {
   group_id?: number | null;
   user_id?: number | null;
   bot_id?: number | null;
+  created_at?: number;
   scene: string;
+  user_text?: string;
+  reply_text?: string;
   selected_pattern_ids: string[];
   selected_actions: string[];
   behavior_hint_text: string;
