@@ -3,7 +3,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchPluginConfig,
+  fetchPluginBundledReadme,
   fetchPluginGovernance,
+  fetchPluginStoreReadme,
   fetchPlugins,
   fetchPluginsGlobalDisable,
   fetchPluginsGroupFleetWhitelist,
@@ -55,19 +57,31 @@ import {
   fieldHelpDefaultValue,
   fieldTypeLabel,
   resolveInitialPluginConfigTab,
+  type PluginConfigTab,
 } from "@/utils/pluginConfigWorkspaceModel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
+import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
+import { readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
 import {
   AI_ENTRY_PLUGIN_CONFIG_CHECK,
   AI_ENTRY_RUNTIME,
   AI_ENTRY_SITE_GATEWAY_CHECK,
 } from "@/config/aiEntrySemantics";
+import { PALLAS_BOT_REPO } from "@/utils/pallasExternalLinks";
 
-const props = defineProps<{
-  pluginName: string;
-  iconUrl?: string | null;
-  initialPluginRow?: PluginRow | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    pluginName: string;
+    iconUrl?: string | null;
+    initialPluginRow?: PluginRow | null;
+    presentation?: "page" | "dialog";
+    readmeTarget?: PluginReadmeTarget | null;
+  }>(),
+  {
+    presentation: "page",
+    readmeTarget: null,
+  },
+);
 
 const err = ref("");
 const loading = ref(false);
@@ -100,7 +114,13 @@ const governanceErr = ref("");
 const permSelections = ref<Record<string, string>>({});
 const limitSelections = ref<Record<string, string>>({});
 const limitDebounceTimers = ref<Record<string, ReturnType<typeof setTimeout>>>({});
-const pluginConfigTab = ref<"runtime" | "perm" | "limit" | "config">("runtime");
+const pluginConfigTab = ref<PluginConfigTab>("runtime");
+const readmeHtml = ref("");
+const readmeLoading = ref(false);
+const readmeErr = ref("");
+
+const isDialogPresentation = computed(() => props.presentation === "dialog");
+const showReadmeTab = computed(() => isDialogPresentation.value);
 
 const pluginName = computed(() => props.pluginName.trim());
 const pluginResolvedId = computed(() => (pluginRow.value?.resolved_plugin_id || pluginName.value).trim());
@@ -697,12 +717,52 @@ async function load() {
   void loadGovernance();
 }
 
+async function loadReadme() {
+  readmeLoading.value = true;
+  readmeErr.value = "";
+  readmeHtml.value = "";
+  const pluginId = pluginResolvedId.value;
+  try {
+    try {
+      const bundled = await fetchPluginBundledReadme(pluginId);
+      if (bundled.markdown.trim()) {
+        const normalized = bundled.markdown.replace(/\.\.\/assets\//g, "docs/assets/");
+        readmeHtml.value = readmeMarkdownToSafeHtml(normalized, PALLAS_BOT_REPO);
+        return;
+      }
+    } catch {
+      // fall through to store readme
+    }
+
+    const target = props.readmeTarget;
+    if (!target) {
+      readmeErr.value = "暂无 README 来源";
+      return;
+    }
+    const md = await fetchPluginStoreReadme(target.kind, target.id);
+    readmeHtml.value = readmeMarkdownToSafeHtml(md, target.repositoryUrl);
+  } catch (e) {
+    readmeErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    readmeLoading.value = false;
+  }
+}
+
 watch(
   () => props.pluginName,
   () => {
     pluginRow.value = null;
     governanceData.value = null;
+    readmeHtml.value = "";
+    readmeErr.value = "";
     void load();
+  },
+);
+
+watch(
+  () => [pluginConfigTab.value, props.readmeTarget?.kind, props.readmeTarget?.id] as const,
+  ([tab]) => {
+    if (tab === "readme") void loadReadme();
   },
 );
 
@@ -765,6 +825,10 @@ watch(
     }
     if (active === "runtime" && next !== "runtime") {
       pluginConfigTab.value = next;
+      return;
+    }
+    if (active === "readme" && !showReadmeTab.value) {
+      pluginConfigTab.value = next;
     }
   },
   { immediate: true },
@@ -815,17 +879,34 @@ async function save() {
     saving.value = false;
   }
 }
+
+defineExpose({
+  save,
+  runConfigCheck,
+  saving,
+  checking,
+  loading,
+  data,
+  supportsConfigCheck,
+  displayTitle,
+});
 </script>
 
 <template>
-  <div class="plugin-config-page plugin-config-workspace">
+  <div
+    class="plugin-config-page plugin-config-workspace"
+    :class="{ 'plugin-config-workspace--dialog': isDialogPresentation }"
+  >
     <UiCard
       v-if="pluginName"
       class="plugin-config-page__card"
-      :class="{ 'plugin-config-page__card--loading': loading }"
+      :class="{ 'plugin-config-page__card--loading': loading, 'plugin-config-page__card--dialog': isDialogPresentation }"
       glass
     >
-      <div class="plugin-config-page__hero">
+      <div
+        v-if="!isDialogPresentation"
+        class="plugin-config-page__hero"
+      >
         <div class="plugin-config-page__hero-main">
           <PluginIcon
             :plugin-id="pluginResolvedId"
@@ -940,6 +1021,16 @@ async function save() {
               @click="pluginConfigTab = 'runtime'"
             >
               运行控制
+            </button>
+            <button
+              v-if="showReadmeTab"
+              type="button"
+              role="tab"
+              :class="{ 'is-on': pluginConfigTab === 'readme' }"
+              :aria-selected="pluginConfigTab === 'readme'"
+              @click="pluginConfigTab = 'readme'"
+            >
+              README
             </button>
           </div>
 
@@ -1199,6 +1290,44 @@ async function save() {
                 保存中…
               </p>
             </template>
+          </section>
+          <section
+            v-if="pluginConfigTab === 'readme'"
+            class="plugin-config-page__tab-panel plugin-readme-panel"
+          >
+            <header class="plugin-config-page__panel-head">
+              <div>
+                <h3 class="plugin-config-page__panel-title">
+                  README
+                </h3>
+                <p class="muted plugin-config-page__panel-desc">
+                  来自插件仓库说明；配置与运行项请切换其他分栏。
+                </p>
+              </div>
+            </header>
+            <p
+              v-if="readmeLoading"
+              class="muted plugin-readme-panel__status"
+            >
+              加载 README…
+            </p>
+            <p
+              v-else-if="readmeErr"
+              class="muted plugin-readme-panel__status"
+            >
+              {{ readmeErr }}
+            </p>
+            <div
+              v-else-if="readmeHtml"
+              class="plugin-readme-panel__body markdown-body"
+              v-html="readmeHtml"
+            />
+            <p
+              v-else
+              class="muted plugin-readme-panel__status"
+            >
+              暂无 README 内容
+            </p>
           </section>
           <p
             v-if="pluginConfigTab === 'config' && usesGatewayEditor"

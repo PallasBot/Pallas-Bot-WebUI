@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
-import { computed, nextTick, onActivated, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   fetchCommunityPluginStore,
@@ -9,12 +9,17 @@ import {
   fetchPlugins,
   peekPluginsCache,
 } from "@/api/consoleApi";
-import type { PluginCapabilitiesRow, PluginRow } from "@/api/pallasTypes";
+import type {
+  CommunityPluginRow,
+  OfficialExtensionRow,
+  PluginCapabilitiesRow,
+  PluginRow,
+} from "@/api/pallasTypes";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PluginCatalogCard from "@/components/PluginCatalogCard.vue";
-import PluginConfigWorkspace from "@/components/PluginConfigWorkspace.vue";
+import PluginConfigDialog from "@/components/PluginConfigDialog.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames } from "@/utils/pluginFavorites";
@@ -36,6 +41,9 @@ const searchQuery = ref("");
 const capabilities = ref<PluginCapabilitiesRow[]>([]);
 const capabilitiesOverviewOpen = ref(false);
 const iconByPlugin = ref<Record<string, string>>({});
+const officialExtensions = ref<OfficialExtensionRow[]>([]);
+const communityPlugins = ref<CommunityPluginRow[]>([]);
+const configDialogOpen = ref(false);
 
 const selectedPluginName = computed(() => String(route.params.name || "").trim());
 
@@ -63,19 +71,6 @@ const filteredPlugins = computed(() => {
   });
 });
 
-const configWorkspaceRef = ref<HTMLElement | null>(null);
-let scrollSeq = 0;
-
-function scrollToPluginOverview(behavior: ScrollBehavior = "smooth") {
-  const seq = ++scrollSeq;
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      if (seq !== scrollSeq) return;
-      configWorkspaceRef.value?.scrollIntoView({ behavior, block: "start" });
-    });
-  });
-}
-
 function pluginIconUrl(name: string): string {
   const row = list.value.find((p) => p.name === name);
   if (!row) return "";
@@ -95,14 +90,15 @@ const selectedPluginRow = computed(
 );
 
 function selectPlugin(name: string) {
-  if (selectedPluginName.value !== name) {
-    scrollSeq++;
-    void router.push({ name: "plugins", params: { name } }).then(() => {
-      scrollToPluginOverview("smooth");
-    });
-    return;
+  if (selectedPluginName.value === name && configDialogOpen.value) return;
+  void router.push({ name: "plugins", params: { name } });
+}
+
+function closeConfigDialog() {
+  configDialogOpen.value = false;
+  if (selectedPluginName.value) {
+    void router.replace({ name: "plugins" });
   }
-  scrollToPluginOverview("smooth");
 }
 
 const capabilitiesSorted = computed(() =>
@@ -115,18 +111,21 @@ const catalogProcessRole = computed(
   () => list.value.find((p) => p.catalog_process_role)?.catalog_process_role,
 );
 
-function syncSelectedPluginRoute() {
-  // keep-alive 下组件仍存活；离开 /plugins 后 route 已变，勿再 replace 回插件页
+function syncPluginDialogRoute() {
   if (route.name !== "plugins") return;
-  if (!pageReady.value || !sortedPlugins.value.length) return;
+  if (!pageReady.value) return;
   const name = selectedPluginName.value;
-  const visible = filteredPlugins.value;
-  const fallbackPool = visible.length ? visible : sortedPlugins.value;
-  if (name && fallbackPool.some((p) => p.name === name)) return;
-  const next = fallbackPool[0]?.name;
-  if (!next) return;
-  if (name === next) return;
-  void router.replace({ name: "plugins", params: { name: next } });
+  if (!name) {
+    configDialogOpen.value = false;
+    return;
+  }
+  const pool = filteredPlugins.value.length ? filteredPlugins.value : sortedPlugins.value;
+  if (pool.some((p) => p.name === name)) {
+    configDialogOpen.value = true;
+    return;
+  }
+  configDialogOpen.value = false;
+  void router.replace({ name: "plugins" });
 }
 
 onMounted(() => {
@@ -134,7 +133,7 @@ onMounted(() => {
 });
 
 onActivated(() => {
-  syncSelectedPluginRoute();
+  syncPluginDialogRoute();
   void loadPluginsPage(true);
 });
 
@@ -148,6 +147,8 @@ async function loadPluginsPage(refreshCommunityIndex = false) {
     ]);
     list.value = rows;
     capabilities.value = caps.plugins ?? [];
+    officialExtensions.value = official;
+    communityPlugins.value = community?.plugins ?? [];
     const indexUpdatedAt =
       community?.meta && typeof community.meta === "object"
         ? String((community.meta as { updated_at?: unknown }).updated_at ?? "").trim()
@@ -160,7 +161,7 @@ async function loadPluginsPage(refreshCommunityIndex = false) {
   }
 }
 
-watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelectedPluginRoute, {
+watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPluginDialogRoute, {
   immediate: true,
 });
 </script>
@@ -187,7 +188,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
           插件管理
         </template>
         <template #lead>
-          从下方卡片选择插件并编辑配置；「全实例禁用」与帮助菜单显示可在各插件「运行控制」中调整。
+          点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。
         </template>
         <template #extra>
           <p
@@ -236,23 +237,11 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
             :plugin="p"
             :icon-url="pluginIconUrl(p.name)"
             :avatar-url="pluginAvatarUrl(p.name)"
-            :active="selectedPluginName === p.name"
+            :active="selectedPluginName === p.name && configDialogOpen"
             @select="selectPlugin(p.name)"
           />
         </div>
       </section>
-
-      <div
-        v-if="selectedPluginName"
-        ref="configWorkspaceRef"
-        class="plugins-page__config-workspace"
-      >
-        <PluginConfigWorkspace
-          :plugin-name="selectedPluginName"
-          :icon-url="pluginIconUrl(selectedPluginName)"
-          :initial-plugin-row="selectedPluginRow"
-        />
-      </div>
 
       <div
         v-if="capabilitiesSorted.length"
@@ -351,5 +340,15 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncSelec
         </div>
       </div>
     </div>
+
+    <PluginConfigDialog
+      :open="configDialogOpen"
+      :plugin-name="selectedPluginName"
+      :plugin-row="selectedPluginRow"
+      :icon-url="selectedPluginName ? pluginIconUrl(selectedPluginName) : null"
+      :official-extensions="officialExtensions"
+      :community-plugins="communityPlugins"
+      @close="closeConfigDialog"
+    />
   </div>
 </template>

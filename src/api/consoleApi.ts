@@ -335,6 +335,20 @@ export interface PluginStoreReadmeResult {
   markdown: string;
 }
 
+export interface PluginBundledReadmeResult {
+  plugin: string;
+  relative_path: string;
+  markdown: string;
+  source: "bundled";
+}
+
+export async function fetchPluginBundledReadme(pluginName: string): Promise<PluginBundledReadmeResult> {
+  const { data } = await http.get<ApiOk<PluginBundledReadmeResult>>(
+    `/plugins/${encodeURIComponent(pluginName)}/readme`,
+  );
+  return unwrap(data, `/plugins/${pluginName}/readme`);
+}
+
 export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapshotResult> {
   const { data } = await http.post<ApiOk<PluginUpdateSnapshotResult>>(
     "/plugins/update-snapshot/refresh",

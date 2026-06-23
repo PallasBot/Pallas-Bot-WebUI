@@ -10520,6 +10520,62 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   display: flex;
   flex-direction: column;
 }
+
+.plugin-config-dialog {
+  width: min(960px, 96vw);
+  max-height: min(90vh, 920px);
+  display: flex;
+  flex-direction: column;
+}
+
+.plugin-config-dialog__bd {
+  flex: 1;
+  overflow: auto;
+  min-height: 240px;
+  padding: 0;
+}
+
+.plugin-config-dialog__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.plugin-config-dialog__head-text {
+  min-width: 0;
+}
+
+.plugin-config-dialog__foot {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.plugin-config-dialog__foot > .ui-btn {
+  min-width: 0;
+}
+
+.plugin-config-page__card--dialog {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.plugin-config-workspace--dialog .plugin-config-page__card-bd {
+  padding: 0 16px 16px;
+}
+
+.plugin-readme-panel__body {
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.plugin-readme-panel__status {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
 .plugin-store-page__detail-bd {
   flex: 1;
   overflow: auto;
@@ -11457,6 +11513,19 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
 
   .plugin-config-page__card-bd {
     padding: 14px;
+  }
+
+  .plugin-config-dialog__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plugin-config-dialog__foot > .ui-btn {
+    width: 100%;
+  }
+
+  .plugin-config-workspace--dialog .plugin-config-page__card-bd {
+    padding: 0 12px 12px;
   }
 
   .plugins-page__plugin-tab-group .plugins-page__plugin-tab-btn {

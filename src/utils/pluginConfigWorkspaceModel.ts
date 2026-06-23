@@ -7,7 +7,7 @@ export interface PluginConfigGroupSummary {
   requiredFilled: number;
 }
 
-export type PluginConfigTab = "runtime" | "perm" | "limit" | "config";
+export type PluginConfigTab = "runtime" | "perm" | "limit" | "config" | "readme";
 
 export function fieldDisplayName(field: PluginConfigField): string {
   return (field.label || field.name).trim();
