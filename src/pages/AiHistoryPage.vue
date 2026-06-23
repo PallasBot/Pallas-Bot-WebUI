@@ -113,6 +113,12 @@ const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
+type ObservePanelKey = "feedback" | "promotion" | "behavior";
+const observePanelExpanded = ref<Record<ObservePanelKey, boolean>>({
+  feedback: true,
+  promotion: false,
+  behavior: false,
+});
 const patternSortKey = ref<"success_score" | "manual_score" | "pattern_id">("success_score");
 
 type AiHistoryWorkspace = "sessions" | "observe" | "rules" | "stats";
@@ -370,6 +376,48 @@ const visibleFeedbackItems = computed(() => {
 const pendingPromotionCandidates = computed(() =>
   promotionCandidates.value.filter((item) => !item.promoted && !String(item.rejected_reason || "").trim()),
 );
+
+const feedbackPanelSummary = computed(() => {
+  if (!feedbackGroupId.value) return "未填群号";
+  if (feedbackBusy.value) return "读取中…";
+  const count = visibleFeedbackItems.value.length;
+  const pending = feedbackSummary.value?.promotion_candidate_count ?? 0;
+  if (!count) return observeScene.value ? "当前 scene 下暂无样本" : "当前群暂无样本";
+  return `样本 ${count}${pending ? ` · 待晋升 ${pending}` : ""}`;
+});
+
+const promotionPanelSummary = computed(() => {
+  if (!feedbackGroupId.value) return "需先填群号";
+  if (promotionCandidatesBusy.value) return "读取中…";
+  const pending = pendingPromotionCandidates.value.length;
+  const total = promotionCandidates.value.length;
+  if (!total) return "暂无候选";
+  return `待审批 ${pending} / 共 ${total}`;
+});
+
+const behaviorPanelSummary = computed(() => {
+  if (behaviorRunsBusy.value) return "读取中…";
+  const count = behaviorRunsItems.value.length;
+  if (!count) return "当前筛选下暂无记录";
+  const group = behaviorRunsGroupId.value ? `群 ${behaviorRunsGroupId.value}` : "全部群";
+  const scene = behaviorRunsScene.value || "全部 scene";
+  const outcome = behaviorRunsOutcome.value;
+  const outcomeLabel = outcome
+    ? BEHAVIOR_OUTCOME_OPTIONS.find((item) => item.value === outcome)?.label || outcome
+    : "";
+  return `${count} 条 · ${group} · ${scene}${outcomeLabel ? ` · ${outcomeLabel}` : ""}`;
+});
+
+function isObservePanelExpanded(key: ObservePanelKey): boolean {
+  return observePanelExpanded.value[key];
+}
+
+function toggleObservePanel(key: ObservePanelKey): void {
+  observePanelExpanded.value = {
+    ...observePanelExpanded.value,
+    [key]: !observePanelExpanded.value[key],
+  };
+}
 
 function promotionCandidateStatusLabel(item: LlmPromotionCandidate): string {
   if (item.promoted) return "已晋升";
@@ -1041,6 +1089,12 @@ watch(month, () => {
 watch([start, end], () => {
   showAllDailyRows.value = false;
   void refresh();
+});
+
+watch(pendingPromotionCandidates, (items) => {
+  if (items.length > 0) {
+    observePanelExpanded.value = { ...observePanelExpanded.value, promotion: true };
+  }
 });
 
 watch(selectedSessionKey, () => {
@@ -1745,10 +1799,24 @@ onMounted(() => {
     </section>
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">闲聊反哺接话</h3>
-          <span class="ai-head__hint">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
+        <div class="ai-history-page__observe-panel-hd">
+          <div class="ai-history-page__observe-panel-hd-text">
+            <h3 class="ai-history-page__observe-panel-title">闲聊反哺接话</h3>
+            <p class="ai-history-page__observe-panel-sub">
+              <span v-if="isObservePanelExpanded('feedback')">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
+              <span v-else class="muted">{{ feedbackPanelSummary }}</span>
+            </p>
+          </div>
+          <UiButton
+            size="sm"
+            variant="outline"
+            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
+            @click="toggleObservePanel('feedback')"
+          >
+            {{ isObservePanelExpanded('feedback') ? "收起" : "展开" }}
+          </UiButton>
         </div>
+        <div v-show="isObservePanelExpanded('feedback')" class="ai-history-page__observe-panel-body">
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>反馈筛选</strong>
@@ -1830,15 +1898,30 @@ onMounted(() => {
           <span>{{ feedbackGroupId ? (observeScene ? "当前群与 scene 下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
           <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
         </div>
+        </div>
       </UiCard>
     </section>
 
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">写回晋升候选</h3>
-          <span class="ai-head__hint">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
+        <div class="ai-history-page__observe-panel-hd">
+          <div class="ai-history-page__observe-panel-hd-text">
+            <h3 class="ai-history-page__observe-panel-title">写回晋升候选</h3>
+            <p class="ai-history-page__observe-panel-sub">
+              <span v-if="isObservePanelExpanded('promotion')">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
+              <span v-else class="muted">{{ promotionPanelSummary }}</span>
+            </p>
+          </div>
+          <UiButton
+            size="sm"
+            variant="outline"
+            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
+            @click="toggleObservePanel('promotion')"
+          >
+            {{ isObservePanelExpanded('promotion') ? "收起" : "展开" }}
+          </UiButton>
         </div>
+        <div v-show="isObservePanelExpanded('promotion')" class="ai-history-page__observe-panel-body">
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>候选筛选</strong>
@@ -1950,15 +2033,30 @@ onMounted(() => {
         <p v-else class="muted ai-history-page__empty-hint">
           <span>{{ promotionCandidatesBusy ? "正在读取候选…" : (feedbackGroupId ? "当前群暂无晋升候选" : "请先输入群号并读取反馈") }}</span>
         </p>
+        </div>
       </UiCard>
     </section>
 
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">近期 Behavior 记录</h3>
-          <span class="ai-head__hint">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
+        <div class="ai-history-page__observe-panel-hd">
+          <div class="ai-history-page__observe-panel-hd-text">
+            <h3 class="ai-history-page__observe-panel-title">近期 Behavior 记录</h3>
+            <p class="ai-history-page__observe-panel-sub">
+              <span v-if="isObservePanelExpanded('behavior')">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
+              <span v-else class="muted">{{ behaviorPanelSummary }}</span>
+            </p>
+          </div>
+          <UiButton
+            size="sm"
+            variant="outline"
+            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
+            @click="toggleObservePanel('behavior')"
+          >
+            {{ isObservePanelExpanded('behavior') ? "收起" : "展开" }}
+          </UiButton>
         </div>
+        <div v-show="isObservePanelExpanded('behavior')" class="ai-history-page__observe-panel-body">
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>记录筛选</strong>
@@ -2151,6 +2249,7 @@ onMounted(() => {
         <div v-else class="ai-empty">
           <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
           <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
+        </div>
         </div>
       </UiCard>
     </section>
@@ -2419,6 +2518,43 @@ onMounted(() => {
   margin-top: 10px;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.ai-history-page__observe-panel-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ai-history-page__observe-panel-hd-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ai-history-page__observe-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ai-history-page__observe-panel-sub {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+  flex-shrink: 0;
+}
+
+.ai-history-page__observe-panel-body {
+  display: grid;
+  gap: 0;
 }
 
 @media (max-width: 560px) {
@@ -3304,6 +3440,15 @@ onMounted(() => {
     margin-left: 0;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ai-history-page__observe-panel-hd {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+    width: 100%;
   }
 
   .ai-history-page__filters-head {
