@@ -66,6 +66,8 @@ import type {
   LlmHistorySessionsData,
   LlmRepeaterFeedbackData,
   LlmRepeaterFeedbackSummary,
+  LlmPromotionCandidate,
+  LlmPromotionCandidatesData,
   ConversationKernelStatus,
   ConversationKernelTracesData,
   LlmTaskStatsData,
@@ -814,6 +816,38 @@ export async function fetchLlmRepeaterFeedbackSummary(params: {
     },
   });
   return unwrap(data, "/llm/repeater-feedback/summary");
+}
+
+export async function fetchLlmPromotionCandidates(params: {
+  groupId: number;
+  limit?: number;
+  includeResolved?: boolean;
+}): Promise<LlmPromotionCandidatesData> {
+  const { data } = await http.get<ApiOk<LlmPromotionCandidatesData>>(
+    "/llm/repeater-feedback/promotion-candidates",
+    {
+      params: {
+        group_id: params.groupId,
+        limit: params.limit ?? 20,
+        include_resolved: Boolean(params.includeResolved),
+      },
+    },
+  );
+  return unwrap(data, "/llm/repeater-feedback/promotion-candidates");
+}
+
+export async function postLlmPromotionCandidateResolve(body: {
+  candidateId: string;
+  action: "promote" | "reject";
+  reason?: string;
+}): Promise<LlmPromotionCandidate> {
+  const path = "/llm/repeater-feedback/promotion-candidates/resolve";
+  const { data } = await http.post<ApiOk<LlmPromotionCandidate>>(path, {
+    candidate_id: body.candidateId,
+    action: body.action,
+    reason: body.reason ?? "",
+  });
+  return unwrap(data, path);
 }
 
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {

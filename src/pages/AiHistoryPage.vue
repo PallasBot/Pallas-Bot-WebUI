@@ -9,6 +9,8 @@ import {
   fetchLlmHistorySessions,
   fetchLlmRepeaterFeedback,
   fetchLlmRepeaterFeedbackSummary,
+  fetchLlmPromotionCandidates,
+  postLlmPromotionCandidateResolve,
   postLlmBehaviorPatternDelete,
   postLlmBehaviorPatternUpsert,
   postLlmHistoryBehaviorAnnotate,
@@ -21,6 +23,7 @@ import type {
   LlmHistorySessionSummary,
   LlmRepeaterFeedbackEntry,
   LlmRepeaterFeedbackSummary,
+  LlmPromotionCandidate,
   ConversationKernelStatus,
   ConversationKernelTraceRow,
 } from "@/api/pallasTypes";
@@ -61,6 +64,11 @@ const feedbackGroup = ref("");
 const feedbackItems = ref<LlmRepeaterFeedbackEntry[]>([]);
 const feedbackSummary = ref<LlmRepeaterFeedbackSummary | null>(null);
 const feedbackGroupTouched = ref(false);
+const promotionCandidates = ref<LlmPromotionCandidate[]>([]);
+const promotionCandidatesBusy = ref(false);
+const promotionCandidatesErr = ref("");
+const promotionIncludeResolved = ref(false);
+const promotionResolveBusyId = ref("");
 const behaviorRunsBusy = ref(false);
 const behaviorRunsErr = ref("");
 const behaviorRunsItems = ref<LlmHistoryBehaviorRun[]>([]);
@@ -267,6 +275,13 @@ const feedbackOverview = computed(() => [
     accent: true,
   },
   {
+    label: "待晋升",
+    value: feedbackSummary.value?.promotion_candidate_count != null
+      ? String(feedbackSummary.value.promotion_candidate_count)
+      : "—",
+    accent: Boolean(feedbackSummary.value?.promotion_candidate_count),
+  },
+  {
     label: "高频回复",
     value: feedbackSummary.value?.top_replies?.length ? feedbackSummary.value.top_replies.slice(0, 2).join(" / ") : "暂无",
   },
@@ -285,6 +300,16 @@ const visibleFeedbackItems = computed(() => {
   if (!scene) return feedbackItems.value;
   return feedbackItems.value.filter((item) => (item.behavior_scene || "") === scene);
 });
+
+const pendingPromotionCandidates = computed(() =>
+  promotionCandidates.value.filter((item) => !item.promoted && !String(item.rejected_reason || "").trim()),
+);
+
+function promotionCandidateStatusLabel(item: LlmPromotionCandidate): string {
+  if (item.promoted) return "已晋升";
+  if (String(item.rejected_reason || "").trim()) return "已拒绝";
+  return "待审批";
+}
 
 const sortedPatternsItems = computed(() => {
   const rows = [...patternsItems.value];
@@ -691,6 +716,7 @@ async function refreshFeedback() {
   if (feedbackGroupId.value == null || feedbackGroupId.value <= 0) {
     feedbackItems.value = [];
     feedbackSummary.value = null;
+    promotionCandidates.value = [];
     feedbackErr.value = feedbackGroup.value.trim() ? "群号须为正整数" : "";
     return;
   }
@@ -703,12 +729,62 @@ async function refreshFeedback() {
     ]);
     feedbackItems.value = itemsData.items;
     feedbackSummary.value = summaryData;
+    await refreshPromotionCandidates();
   } catch (e) {
     feedbackItems.value = [];
     feedbackSummary.value = null;
+    promotionCandidates.value = [];
     feedbackErr.value = e instanceof Error ? e.message : String(e);
   } finally {
     feedbackBusy.value = false;
+  }
+}
+
+async function refreshPromotionCandidates() {
+  if (feedbackGroupId.value == null || feedbackGroupId.value <= 0) {
+    promotionCandidates.value = [];
+    promotionCandidatesErr.value = "";
+    return;
+  }
+  promotionCandidatesBusy.value = true;
+  promotionCandidatesErr.value = "";
+  try {
+    const data = await fetchLlmPromotionCandidates({
+      groupId: feedbackGroupId.value,
+      limit: 20,
+      includeResolved: promotionIncludeResolved.value,
+    });
+    promotionCandidates.value = data.items;
+  } catch (e) {
+    promotionCandidates.value = [];
+    promotionCandidatesErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    promotionCandidatesBusy.value = false;
+  }
+}
+
+async function resolvePromotionCandidate(
+  candidate: LlmPromotionCandidate,
+  action: "promote" | "reject",
+) {
+  if (promotionResolveBusyId.value) return;
+  const prompt = action === "promote"
+    ? `批准将「${candidate.reply_text}」标记为晋升候选？\n（语料实际写回尚未接通，仅记录审批结果）`
+    : `拒绝候选「${candidate.reply_text}」？`;
+  if (!confirm(prompt)) return;
+  promotionResolveBusyId.value = candidate.candidate_id;
+  promotionCandidatesErr.value = "";
+  try {
+    await postLlmPromotionCandidateResolve({
+      candidateId: candidate.candidate_id,
+      action,
+      reason: action === "reject" ? "webui_reject" : "",
+    });
+    await Promise.all([refreshPromotionCandidates(), refreshFeedback()]);
+  } catch (e) {
+    promotionCandidatesErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    promotionResolveBusyId.value = "";
   }
 }
 
@@ -1322,7 +1398,7 @@ onMounted(() => {
         <UiButton
           size="sm"
           variant="primary"
-          :busy="kernelStatusBusy || kernelTracesBusy || feedbackBusy || behaviorRunsBusy"
+          :busy="kernelStatusBusy || kernelTracesBusy || feedbackBusy || promotionCandidatesBusy || behaviorRunsBusy"
           @click="refreshObservePanels"
         >
           刷新观测
@@ -1488,6 +1564,104 @@ onMounted(() => {
           <span>{{ feedbackGroupId ? (observeScene ? "当前群与 scene 下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
           <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
         </div>
+      </UiCard>
+    </section>
+
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">写回晋升候选</h3>
+          <span class="ai-head__hint">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
+        </div>
+        <div class="ai-history-page__filters-card">
+          <div class="ai-history-page__filters-head">
+            <strong>候选筛选</strong>
+            <span class="muted">与上方反馈共用群号；需开启 writeback 开关后才会生成候选</span>
+          </div>
+          <div class="ai-history-page__filters">
+            <label class="ai-history-page__behavior-check">
+              <input
+                v-model="promotionIncludeResolved"
+                type="checkbox"
+                @change="refreshPromotionCandidates"
+              >
+              显示已处理
+            </label>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :busy="promotionCandidatesBusy"
+              :disabled="!feedbackGroupId"
+              @click="refreshPromotionCandidates"
+            >
+              刷新候选
+            </UiButton>
+          </div>
+        </div>
+        <div v-if="promotionCandidatesErr" class="alert alert--err">{{ promotionCandidatesErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div class="ai-stat ai-history-page__summary-stat">
+            <span class="ai-stat__label">待审批</span>
+            <strong class="ai-stat__value ai-stat__value--accent">{{ pendingPromotionCandidates.length }}</strong>
+          </div>
+          <div class="ai-stat ai-history-page__summary-stat">
+            <span class="ai-stat__label">列表条目</span>
+            <strong class="ai-stat__value">{{ promotionCandidates.length }}</strong>
+          </div>
+        </div>
+        <div v-if="promotionCandidates.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="item in promotionCandidates"
+            :key="item.candidate_id"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong class="ai-history-page__feedback-reply">{{ item.reply_text }}</strong>
+              <span
+                class="ai-history-page__outcome-badge"
+                :class="{
+                  'is-engaged': item.promoted,
+                  'is-bad': Boolean(item.rejected_reason),
+                  'is-pending': !item.promoted && !item.rejected_reason,
+                }"
+              >
+                {{ promotionCandidateStatusLabel(item) }}
+              </span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span>支持 {{ item.support_count }} 次</span>
+              <span v-if="item.behavior_scene">{{ item.behavior_scene }}</span>
+              <span>{{ formatCompactDateTime(item.last_seen_at) }}</span>
+            </div>
+            <p class="ai-history-page__feedback-user">触发：{{ item.trigger_text || "—" }}</p>
+            <div
+              v-if="!item.promoted && !item.rejected_reason"
+              class="row-actions ai-history-page__promotion-actions"
+            >
+              <UiButton
+                size="sm"
+                variant="primary"
+                :busy="promotionResolveBusyId === item.candidate_id"
+                :disabled="Boolean(promotionResolveBusyId)"
+                @click="resolvePromotionCandidate(item, 'promote')"
+              >
+                批准晋升
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :busy="promotionResolveBusyId === item.candidate_id"
+                :disabled="Boolean(promotionResolveBusyId)"
+                @click="resolvePromotionCandidate(item, 'reject')"
+              >
+                拒绝
+              </UiButton>
+            </div>
+          </article>
+        </div>
+        <p v-else class="muted ai-history-page__empty-hint">
+          <span>{{ promotionCandidatesBusy ? "正在读取候选…" : (feedbackGroupId ? "当前群暂无晋升候选" : "请先输入群号并读取反馈") }}</span>
+        </p>
       </UiCard>
     </section>
 
@@ -1934,6 +2108,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-history-page__promotion-actions {
+  margin-top: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .ai-history-page__promotion-actions > .btn,
+  .ai-history-page__promotion-actions > :deep(.ui-btn) {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+}
+
 .ai-history-page__kernel-policy {
   margin: 0 0 4px;
   font-size: 13px;

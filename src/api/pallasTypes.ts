@@ -1033,6 +1033,25 @@ export interface LlmRepeaterFeedbackSummary {
   count: number;
   top_replies: string[];
   scenes: string[];
+  promotion_candidate_count?: number;
+}
+
+export interface LlmPromotionCandidate {
+  candidate_id: string;
+  group_id: number;
+  trigger_text: string;
+  reply_text: string;
+  support_count: number;
+  last_seen_at: number;
+  promoted: boolean;
+  rejected_reason: string;
+  behavior_scene: string;
+  source_request_id: string;
+}
+
+export interface LlmPromotionCandidatesData {
+  items: LlmPromotionCandidate[];
+  limit: number;
 }
 
 export interface ConversationKernelMemoryPolicy {
