@@ -10,6 +10,7 @@ import { AI_LOG_DEFAULTS } from "@/config/aiConstants";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
+import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
 const panelNavIcon = usePanelNavIcon();
 const logKind = ref<"uvicorn" | "celery">("uvicorn");
@@ -80,7 +81,7 @@ async function copyLogs() {
       </p>
       <div v-if="!logData && !logErr" class="ai-logs__links">
         <RouterLink to="/ai/config/connection">前往扩展连接</RouterLink>
-        <RouterLink to="/ai/home">查看运行态总览</RouterLink>
+        <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
       </div>
       <div
         v-if="logErr"

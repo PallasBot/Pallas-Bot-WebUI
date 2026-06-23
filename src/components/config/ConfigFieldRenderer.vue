@@ -24,12 +24,14 @@ const props = withDefaults(
     showMeta?: boolean;
     showDescription?: boolean;
     jsonTitle?: string;
+    showJsonExpandButton?: boolean;
     inputMaxWidth?: string;
   }>(),
   {
     showLabel: true,
     showMeta: true,
     showDescription: true,
+    showJsonExpandButton: true,
     inputMaxWidth: "520px",
   },
 );
@@ -207,6 +209,7 @@ function onTagsChange(tags: string[]) {
       :model-value="modelValue"
       :title="jsonTitle || `${field.name}（JSON）`"
       :rows="6"
+      :show-expand-button="showJsonExpandButton"
       @update:model-value="setValue"
     />
     <div

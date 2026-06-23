@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import {
   isStringListField,
+  resolveConfigFieldLayout,
   tagsFromJsonText,
   tagsToJsonText,
 } from "@/utils/pluginConfigFieldModel";
@@ -37,6 +38,44 @@ describe("isStringListField", () => {
 
   it("only applies to json kind", () => {
     expect(isStringListField(makeField({ kind: "string", current: ["a"] }))).toBe(false);
+  });
+});
+
+describe("resolveConfigFieldLayout", () => {
+  it("uses compact for bool and tag-list json", () => {
+    expect(resolveConfigFieldLayout(makeField({ kind: "bool" }))).toBe("compact");
+    expect(resolveConfigFieldLayout(makeField({ current: ["a"], default: [] }))).toBe("compact");
+    expect(
+      resolveConfigFieldLayout(
+        makeField({
+          kind: "enum",
+          choices: ["true", "false"],
+        }),
+      ),
+    ).toBe("compact");
+  });
+
+  it("uses tall for structured json and multiline string", () => {
+    expect(resolveConfigFieldLayout(makeField({ current: { a: 1 }, default: {} }))).toBe("tall");
+    expect(
+      resolveConfigFieldLayout(
+        makeField({ kind: "string", multiline: true, current: "", default: "" }),
+      ),
+    ).toBe("tall");
+  });
+
+  it("uses standard for typical single-line fields", () => {
+    expect(resolveConfigFieldLayout(makeField({ kind: "string", current: "", default: "" }))).toBe(
+      "standard",
+    );
+    expect(resolveConfigFieldLayout(makeField({ kind: "int", current: 0, default: 0 }))).toBe(
+      "standard",
+    );
+    expect(
+      resolveConfigFieldLayout(
+        makeField({ kind: "enum", choices: ["a", "b", "c"], current: "a", default: "a" }),
+      ),
+    ).toBe("standard");
   });
 });
 

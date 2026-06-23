@@ -100,7 +100,7 @@ const router = createRouter({
           redirect: (to) => {
             const id = String(to.params.sectionId ?? "").trim();
             if (id === "llm") {
-              return { name: "ai-config", params: { section: "model" } };
+              return { name: "ai-config", params: { section: "strategy" } };
             }
             if (id === "arknights_kb") {
               return { name: "ai-config", params: { section: "knowledge" } };
@@ -217,8 +217,16 @@ const router = createRouter({
           redirect: "/ai/home",
         },
         {
-          path: "ai/:legacySection(model|persona|knowledge|connection|ncm|logs)",
-          redirect: (to) => `/ai/config/${String(to.params.legacySection)}`,
+          path: "ai/config/model",
+          redirect: "/ai/config/runtime",
+        },
+        {
+          path: "ai/:legacySection(model|runtime|provider|routing|strategy|persona|knowledge|connection|ncm|logs)",
+          redirect: (to) => {
+            const raw = String(to.params.legacySection ?? "").trim();
+            if (raw === "model") return "/ai/config/runtime";
+            return `/ai/config/${raw}`;
+          },
         },
         {
           path: "ai/config/:section?",

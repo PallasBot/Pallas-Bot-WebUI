@@ -9,6 +9,7 @@ import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
+import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
 const store = useLlmProviders();
 const {
@@ -164,7 +165,7 @@ onMounted(() => {
           <code>providers.toml</code>，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。
         </p>
         <div class="row-actions provider-manager__links">
-          <RouterLink to="/ai/home">运行态总览</RouterLink>
+          <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
           <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
           <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
         </div>

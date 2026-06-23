@@ -14,6 +14,7 @@ import AiConfirmDialog from "@/components/ai-config/AiConfirmDialog.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
@@ -232,7 +233,10 @@ onMounted(() => {
       </dl>
 
       <p class="muted model-admin__intro">
-        热切换本地 Ollama 模型、GPU 层数，或从 .env 重载；均<strong>无需重启 Celery</strong>。Provider 与 task 路由在下方面板配置。
+        热切换本地 Ollama 模型、GPU 层数，或从 .env 重载；均<strong>无需重启 Celery</strong>。上游端点与 task 路由分别在
+        <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>
+        与
+        <RouterLink :to="AI_CONFIG_LAYER_LINKS.routing.path">{{ AI_CONFIG_LAYER_LINKS.routing.label }}</RouterLink>。
       </p>
       <p
         v-if="status?.local_multi_model_enabled"
@@ -241,7 +245,7 @@ onMounted(() => {
         当前启用了本地多模型路由：切换上方“当前模型”后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
       </p>
       <div class="row-actions model-admin__links">
-        <RouterLink to="/ai/home">运行态总览</RouterLink>
+        <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
         <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
         <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
       </div>

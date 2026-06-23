@@ -18,6 +18,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { proxyCodeEquals, proxyDataRecord, proxyString } from "@/utils/aiProxyResult";
 import { slicePage } from "@/utils/paginate";
+import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const panelNavIcon = usePanelNavIcon();
@@ -238,7 +239,7 @@ onMounted(() => {
       <div class="ai-ncm-links">
         <RouterLink to="/ai/config/connection">扩展连接</RouterLink>
         <RouterLink to="/ai/config/logs">扩展日志</RouterLink>
-        <RouterLink to="/ai/home">AI 首页</RouterLink>
+        <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
       </div>
 
       <div class="ai-ncm-form">

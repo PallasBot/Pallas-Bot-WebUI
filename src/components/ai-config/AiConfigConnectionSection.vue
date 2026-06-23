@@ -14,6 +14,7 @@ import { AI_EXTENSION_DEFAULTS } from "@/config/aiConstants";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+import { AI_ENTRY_CONNECTION_DIAG, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
@@ -174,10 +175,10 @@ defineExpose({ save, canSave: () => !saving.value, saving });
       </div>
       <p class="muted ai-config-section__intro">
         Bot 访问 Pallas-Bot-AI 扩展服务所用的地址与鉴权；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
-        统一健康状态请优先查看「运行态总览」，这里的结果仅用于排查当前连接参数。
+        <strong>{{ AI_ENTRY_CONNECTION_DIAG.label }}</strong>：{{ AI_ENTRY_CONNECTION_DIAG.shortLead }}
       </p>
       <div class="ai-config-connection__links">
-        <RouterLink to="/ai/home">运行态总览</RouterLink>
+        <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
         <RouterLink to="/ai/config/logs">扩展日志</RouterLink>
         <RouterLink to="/ai/config/ncm">网易云登录</RouterLink>
       </div>

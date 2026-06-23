@@ -220,7 +220,7 @@ onMounted(() => {
       </p>
       <div class="row-actions persona-observe-panel__links">
         <RouterLink to="/ai/home">AI 首页</RouterLink>
-        <RouterLink to="/ai/config/model">模型与对话</RouterLink>
+        <RouterLink to="/ai/config/runtime">运行模型</RouterLink>
         <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
       </div>
 

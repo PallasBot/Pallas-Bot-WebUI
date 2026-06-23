@@ -28,7 +28,8 @@ import type {
 } from "@/api/pallasTypes";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
-import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
+import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
@@ -47,18 +48,20 @@ import {
 import {
   collectFieldValues,
   fieldValuesFromConfig,
-  isStringListField,
 } from "@/utils/pluginConfigFieldModel";
-import { pluginConfigFieldIcon } from "@/utils/pluginConfigFieldIcon";
 import {
   buildGroupSummary,
-  fieldCompactMeta,
   fieldDisplayName,
   fieldHelpDefaultValue,
   fieldTypeLabel,
   resolveInitialPluginConfigTab,
 } from "@/utils/pluginConfigWorkspaceModel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
+import {
+  AI_ENTRY_PLUGIN_CONFIG_CHECK,
+  AI_ENTRY_RUNTIME,
+  AI_ENTRY_SITE_GATEWAY_CHECK,
+} from "@/config/aiEntrySemantics";
 
 const props = defineProps<{
   pluginName: string;
@@ -476,24 +479,27 @@ const configFieldGroups = computed((): ConfigGroupView[] => {
   return [{ id: "all", title: "配置项", fields }];
 });
 
+function findFieldByName(name: string | null): PluginConfigField | null {
+  if (!name) return null;
+  return visibleFields.value.find((field) => field.name === name) ?? null;
+}
+
 const groupOpen = ref<Record<string, boolean>>({});
 const fieldPopoverHost = ref<HTMLElement | null>(null);
 const activeFieldPopoverName = ref<string | null>(null);
-const activeFieldPopoverMode = ref<"help">("help");
 const fieldPopoverStyle = ref<Record<string, string>>({});
+const activeFieldDialogName = ref<string | null>(null);
+const activeFieldDialogMode = ref<"help" | "edit">("help");
 // 悬停打开为临时态，点击则固定（pinned）：固定后移开鼠标不收起，便于复制说明。
 const fieldPopoverPinned = ref(false);
 let helpHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-const activeFieldPopover = computed(() => {
-  const name = activeFieldPopoverName.value;
-  if (!name) return null;
-  for (const group of configGroupViewModels.value) {
-    const field = group.fields.find((item) => item.name === name);
-    if (field) return field;
-  }
-  return null;
-});
+const activeFieldPopover = computed(() => findFieldByName(activeFieldPopoverName.value));
+const activeFieldDialog = computed(() => findFieldByName(activeFieldDialogName.value));
+
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.innerWidth <= 560;
+}
 
 function updateFieldPopoverPosition(anchor: HTMLElement) {
   if (typeof window === "undefined") return;
@@ -522,15 +528,11 @@ function updateFieldPopoverPosition(anchor: HTMLElement) {
   };
 }
 
-function openFieldPopover(fieldName: string, mode: "help", event: MouseEvent) {
+function openFieldPopover(fieldName: string, event: MouseEvent) {
   const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   if (!anchor) return;
   // 点击已固定的同一字段 → 收起；否则固定到该字段。
-  if (
-    activeFieldPopoverName.value === fieldName &&
-    activeFieldPopoverMode.value === mode &&
-    fieldPopoverPinned.value
-  ) {
+  if (activeFieldPopoverName.value === fieldName && fieldPopoverPinned.value) {
     closeFieldPopover();
     return;
   }
@@ -539,12 +541,11 @@ function openFieldPopover(fieldName: string, mode: "help", event: MouseEvent) {
     helpHoverCloseTimer = null;
   }
   activeFieldPopoverName.value = fieldName;
-  activeFieldPopoverMode.value = mode;
   fieldPopoverPinned.value = true;
   updateFieldPopoverPosition(anchor);
 }
 
-function onHelpHover(fieldName: string, mode: "help", event: MouseEvent) {
+function onHelpHover(fieldName: string, event: MouseEvent) {
   const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
   if (!anchor) return;
   if (helpHoverCloseTimer) {
@@ -554,7 +555,6 @@ function onHelpHover(fieldName: string, mode: "help", event: MouseEvent) {
   // 已固定时不被悬停打断
   if (fieldPopoverPinned.value && activeFieldPopoverName.value !== fieldName) return;
   activeFieldPopoverName.value = fieldName;
-  activeFieldPopoverMode.value = mode;
   fieldPopoverPinned.value = false;
   updateFieldPopoverPosition(anchor);
 }
@@ -597,17 +597,50 @@ watch(
   { immediate: true },
 );
 
+watch(visibleFields, () => {
+  if (activeFieldDialogName.value && !findFieldByName(activeFieldDialogName.value)) {
+    closeFieldDialog();
+  }
+  if (activeFieldPopoverName.value && !findFieldByName(activeFieldPopoverName.value)) {
+    closeFieldPopover();
+  }
+});
+
 function toggleConfigGroup(id: string) {
   groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
 }
 
-function isWideConfigField(field: PluginConfigField) {
-  // 字符串数组用标签输入，较紧凑，无需占整行
-  if (field.kind === "json" && !isStringListField(field)) return true;
-  if (field.multiline) return true;
-  if ((field.description || "").trim().length >= 56) return true;
-  if ((field.label || field.name).trim().length >= 16) return true;
-  return false;
+function closeFieldDialog() {
+  activeFieldDialogName.value = null;
+  activeFieldDialogMode.value = "help";
+}
+
+function openFieldDialog(fieldName: string, mode: "help" | "edit") {
+  closeFieldPopover();
+  activeFieldDialogName.value = fieldName;
+  activeFieldDialogMode.value = mode;
+}
+
+function onFieldHelpClick(fieldName: string, event: MouseEvent) {
+  if (isMobileViewport()) {
+    openFieldDialog(fieldName, "help");
+    return;
+  }
+  openFieldPopover(fieldName, event);
+}
+
+function onFieldHelpHover(fieldName: string, event: MouseEvent) {
+  if (isMobileViewport()) return;
+  onHelpHover(fieldName, event);
+}
+
+function onFieldEditClick(fieldName: string) {
+  openFieldDialog(fieldName, "edit");
+}
+
+function onFieldDialogEditRequest() {
+  if (!activeFieldDialog.value) return;
+  activeFieldDialogMode.value = "edit";
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
@@ -635,11 +668,15 @@ function onGatewayFieldValues(next: Record<string, string>) {
 async function load() {
   if (!pluginResolvedId.value) {
     data.value = null;
+    closeFieldDialog();
+    closeFieldPopover();
     return;
   }
   const requestName = pluginResolvedId.value;
   loading.value = true;
   err.value = "";
+  closeFieldDialog();
+  closeFieldPopover();
   checkLines.value = [];
   checkResults.value = [];
   checkErr.value = "";
@@ -822,7 +859,7 @@ async function save() {
             :busy="checking"
             @click="runConfigCheck"
           >
-            {{ checking ? "检测中…" : "配置检测" }}
+            {{ checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label }}
           </UiButton>
           <UiButton
             variant="primary"
@@ -1168,9 +1205,11 @@ async function save() {
             class="muted"
             style="margin: 0 0 16px; line-height: 1.55; font-size: 13px"
           >
-            网关与全链路连通检测亦可前往
-            <router-link to="/common-config?section=service_gateways">通用配置 → 服务网关</router-link>；
-            本页「配置检测」仅探测画画网关。
+            <strong>{{ AI_ENTRY_PLUGIN_CONFIG_CHECK.label }}</strong>：{{ AI_ENTRY_PLUGIN_CONFIG_CHECK.shortLead }}
+            站点级批量探测见
+            <router-link :to="AI_ENTRY_SITE_GATEWAY_CHECK.path">通用配置 → 服务网关</router-link>；
+            {{ AI_ENTRY_RUNTIME.label }}见
+            <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
           </p>
           <PallasImageGatewaysEditor
             v-if="pluginConfigTab === 'config' && usesGatewayEditor"
@@ -1219,71 +1258,18 @@ async function save() {
               </button>
 
               <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">
-                <div
+                <PluginConfigFieldShell
                   v-for="f in group.fields"
                   :key="f.name"
-                  class="plugin-config-form-item"
-                  :class="{
-                    'plugin-config-form-item--wide': isWideConfigField(f),
-                    'plugin-config-form-item--json': f.kind === 'json',
-                  }"
-                >
-                  <div class="plugin-config-form-item__label-row">
-                    <label class="plugin-config-form-item__label">
-                      <span
-                        class="plugin-config-form-item__icon"
-                        aria-hidden="true"
-                      >{{ pluginConfigFieldIcon(f) }}</span>
-                      <span class="plugin-config-form-item__label-text">
-                        {{ fieldDisplayName(f) }}
-                      </span>
-                      <span
-                        v-if="f.required"
-                        class="plugin-config-form-item__required"
-                      >*</span>
-                    </label>
-                    <div class="plugin-config-form-item__label-side">
-                      <div class="plugin-config-form-item__meta-list">
-                        <span
-                          v-if="f.secret"
-                          class="plugin-config-form-item__meta-pill plugin-config-form-item__meta-pill--secret"
-                        >
-                          密钥
-                        </span>
-                        <span
-                          v-for="meta in fieldCompactMeta(f)"
-                          :key="`${f.name}-${meta}`"
-                          class="plugin-config-form-item__meta-pill"
-                        >
-                          {{ meta }}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        class="plugin-config-form-item__help-btn"
-                        :class="{ 'plugin-config-form-item__help-btn--has-desc': f.description }"
-                        :aria-expanded="activeFieldPopoverName === f.name"
-                        :aria-label="`查看 ${fieldDisplayName(f)} 说明`"
-                        @click.stop="openFieldPopover(f.name, 'help', $event)"
-                        @mouseenter="onHelpHover(f.name, 'help', $event)"
-                        @mouseleave="onHelpHoverLeave"
-                      >
-                        ?
-                      </button>
-                    </div>
-                  </div>
-                  <div class="plugin-config-form-item__control">
-                    <ConfigFieldRenderer
-                      :field="f"
-                      :model-value="fieldValues[f.name] ?? ''"
-                      :show-label="false"
-                      :show-meta="false"
-                      :show-description="false"
-                      input-max-width="100%"
-                      @update:model-value="fieldValues = { ...fieldValues, [f.name]: $event }"
-                    />
-                  </div>
-                </div>
+                  :field="f"
+                  :model-value="fieldValues[f.name] ?? ''"
+                  :help-expanded="activeFieldPopoverName === f.name"
+                  @update:model-value="fieldValues = { ...fieldValues, [f.name]: $event }"
+                  @help-click="onFieldHelpClick(f.name, $event)"
+                  @help-hover="onFieldHelpHover(f.name, $event)"
+                  @help-hover-leave="onHelpHoverLeave"
+                  @edit-click="onFieldEditClick(f.name)"
+                />
               </div>
             </section>
           </section>
@@ -1329,6 +1315,18 @@ async function save() {
               </dl>
             </div>
           </Teleport>
+          <PluginConfigFieldDialog
+            :open="!!activeFieldDialog"
+            :field="activeFieldDialog"
+            :mode="activeFieldDialogMode"
+            :model-value="activeFieldDialog ? (fieldValues[activeFieldDialog.name] ?? '') : ''"
+            :json-title="activeFieldDialog ? `${pluginResolvedId} · ${activeFieldDialog.name}（JSON）` : undefined"
+            @close="closeFieldDialog"
+            @edit-request="onFieldDialogEditRequest"
+            @update:model-value="
+              activeFieldDialog && (fieldValues = { ...fieldValues, [activeFieldDialog.name]: $event })
+            "
+          />
       </div>
     </UiCard>
   </div>
@@ -1407,17 +1405,6 @@ async function save() {
 
   .plugin-config-form-grid {
     grid-template-columns: 1fr;
-  }
-
-  .plugin-config-form-item__label-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .plugin-config-form-item__label-side,
-  .plugin-config-form-item__meta-list {
-    width: 100%;
-    justify-content: flex-start;
   }
 
   .plugin-config-page__panel-head {
@@ -1619,147 +1606,6 @@ async function save() {
   font-weight: 600;
   color: var(--text-muted, rgba(255, 255, 255, 0.72));
   white-space: nowrap;
-}
-
-.plugin-config-form-item {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-
-.plugin-config-form-item--wide,
-.plugin-config-form-item--json {
-  grid-column: 1 / -1;
-}
-
-.plugin-config-form-item__label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 20px;
-}
-
-.plugin-config-form-item__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text-muted, rgba(255, 255, 255, 0.82));
-  font-size: 12px;
-  line-height: 1.35;
-  font-weight: 600;
-}
-
-.plugin-config-form-item__label-text {
-  min-width: 0;
-}
-
-.plugin-config-form-item__icon {
-  flex: 0 0 auto;
-  font-size: 13px;
-  line-height: 1;
-}
-
-.plugin-config-form-item__meta-pill--secret {
-  color: color-mix(in srgb, #f59e0b 84%, var(--text, #fff) 8%);
-  border-color: color-mix(in srgb, #f59e0b 42%, transparent);
-  background: color-mix(in srgb, #f59e0b 8%, transparent);
-  font-weight: 700;
-}
-
-.plugin-config-form-item__required {
-  color: color-mix(in srgb, var(--danger, #ef4444) 80%, var(--text, #fff) 10%);
-  font-size: 12px;
-  line-height: 1;
-}
-
-.plugin-config-form-item__label-side {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.plugin-config-form-item__meta-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
-.plugin-config-form-item__meta-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
-  background: transparent;
-  font-size: 10px;
-  line-height: 1;
-  color: var(--text-muted, rgba(255, 255, 255, 0.72));
-}
-
-.plugin-config-form-item__help-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
-  color: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
-}
-
-.plugin-config-form-item__help-btn:hover,
-.plugin-config-form-item__help-btn[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 8%);
-}
-
-.plugin-config-form-item__control {
-  min-width: 0;
-}
-
-.plugin-config-form-item__control :deep(.config-field-renderer) {
-  gap: 0;
-}
-
-.plugin-config-form-item__control :deep(.form-field__control),
-.plugin-config-form-item__control :deep(.inp),
-.plugin-config-form-item__control :deep(.sel),
-.plugin-config-form-item__control :deep(.textarea),
-.plugin-config-form-item__control :deep(.json-textarea-field__peek) {
-  border-radius: 8px;
-  min-height: 38px;
-}
-
-.plugin-config-form-item__control :deep(.json-textarea-field__peek) {
-  min-height: 132px;
-}
-
-.plugin-config-form-item__control :deep(.json-textarea-field__expand) {
-  min-height: 30px;
-}
-
-.plugin-config-form-item__help-btn--has-desc {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 22%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 78%, var(--text, #fff) 12%);
 }
 
 .plugin-config-field-popover {

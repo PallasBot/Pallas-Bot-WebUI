@@ -9,6 +9,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
+import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_RUNTIME, AI_ENTRY_SITE_GATEWAY_CHECK } from "@/config/aiEntrySemantics";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 
 const panelNavIcon = usePanelNavIcon();
@@ -73,7 +74,8 @@ const homeHeroStats = computed(() => [
 const heroQuickLinks = [
   { to: "/ai/statistics", label: "查看统计" },
   { to: "/ai/history", label: "查看历史" },
-  { to: "/ai/config/model", label: "进入配置" },
+  { to: AI_CONFIG_LAYER_LINKS.runtime.path, label: "进入配置" },
+  { to: AI_ENTRY_SITE_GATEWAY_CHECK.path, label: AI_ENTRY_SITE_GATEWAY_CHECK.label },
 ];
 
 function primaryNavigateAction(item: AiRuntimeSnapshotItem) {
@@ -92,7 +94,7 @@ onMounted(() => {
         AI 首页
       </template>
       <template #lead>
-        AI 能力的运行总览：先看整体是否健康、有没有需要处理的降级项，再看 LLM 调用走向，最后进入统计或配置。
+        {{ AI_ENTRY_RUNTIME.shortLead }}先看整体是否健康、有没有需要处理的降级项，再看 LLM 调用走向；配置与站点级检测请从下方入口进入，不要与本页混用。
       </template>
       <template #actions>
         <UiButton variant="primary" :busy="loading" @click="refresh">
@@ -101,7 +103,7 @@ onMounted(() => {
         <RouterLink to="/ai/statistics">
           <UiButton variant="ghost">查看统计</UiButton>
         </RouterLink>
-        <RouterLink to="/ai/config/model">
+        <RouterLink :to="AI_CONFIG_LAYER_LINKS.runtime.path">
           <UiButton variant="ghost">进入配置</UiButton>
         </RouterLink>
       </template>

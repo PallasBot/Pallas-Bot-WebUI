@@ -1,4 +1,17 @@
 import type { PluginConfigField } from "@/api/pallasTypes";
+import { isBinaryBoolEnum } from "@/utils/configFieldDisplay";
+
+/** 配置字段在列表/grid 中的行型：紧凑开关、标准单行、高块（JSON/多行）。 */
+export type ConfigFieldLayout = "compact" | "standard" | "tall";
+
+export function resolveConfigFieldLayout(field: PluginConfigField): ConfigFieldLayout {
+  if (field.kind === "bool") return "compact";
+  if (field.kind === "enum" && isBinaryBoolEnum(field)) return "compact";
+  if (field.kind === "json" && isStringListField(field)) return "compact";
+  if (field.kind === "json") return "tall";
+  if (field.kind === "string" && field.multiline) return "tall";
+  return "standard";
+}
 
 export function fieldModel(f: PluginConfigField): string {
   const v = f.current;

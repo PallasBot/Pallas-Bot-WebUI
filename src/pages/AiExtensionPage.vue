@@ -4,19 +4,22 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import AiConfigConnectionSection from "@/components/ai-config/AiConfigConnectionSection.vue";
 import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSection.vue";
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
-import AiConfigModelSection from "@/components/ai-config/AiConfigModelSection.vue";
 import AiConfigNcmSection from "@/components/ai-config/AiConfigNcmSection.vue";
 import AiConfigPersonaSection from "@/components/ai-config/AiConfigPersonaSection.vue";
+import AiConfigProviderSection from "@/components/ai-config/AiConfigProviderSection.vue";
+import AiConfigRoutingSection from "@/components/ai-config/AiConfigRoutingSection.vue";
+import AiConfigRuntimeSection from "@/components/ai-config/AiConfigRuntimeSection.vue";
+import AiConfigStrategySection from "@/components/ai-config/AiConfigStrategySection.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import {
   AI_CONFIG_HUB_LEAD,
-  AI_CONFIG_SECTIONS,
   AI_TOP_LEVEL_NAV,
   aiConfigSectionMeta,
   aiConfigSectionPath,
+  aiConfigSectionsByGroup,
   normalizeAiConfigSection,
   type AiConfigSectionId,
 } from "@/config/aiConfigSections";
@@ -27,8 +30,10 @@ const route = useRoute();
 const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
+const navGroups = aiConfigSectionsByGroup();
 
-const modelSectionRef = ref<InstanceType<typeof AiConfigModelSection> | null>(null);
+const providerSectionRef = ref<InstanceType<typeof AiConfigProviderSection> | null>(null);
+const strategySectionRef = ref<InstanceType<typeof AiConfigStrategySection> | null>(null);
 const knowledgeSectionRef = ref<InstanceType<typeof AiConfigKnowledgeSection> | null>(null);
 const connectionSectionRef = ref<InstanceType<typeof AiConfigConnectionSection> | null>(null);
 
@@ -44,7 +49,7 @@ watch(
     if (raw === null) return;
     const id = typeof raw === "string" ? raw.trim() : "";
     if (id && normalizeAiConfigSection(id) === id) return;
-    void router.replace(aiConfigSectionPath("model"));
+    void router.replace(aiConfigSectionPath(normalizeAiConfigSection(id)));
   },
   { immediate: true },
 );
@@ -56,13 +61,15 @@ function selectSection(id: AiConfigSectionId) {
 
 useSaveHotkey(
   () => {
-    if (activeSection.value === "model") return modelSectionRef.value?.canSave?.() ?? false;
+    if (activeSection.value === "provider") return providerSectionRef.value?.canSave?.() ?? false;
+    if (activeSection.value === "strategy") return strategySectionRef.value?.canSave?.() ?? false;
     if (activeSection.value === "knowledge") return knowledgeSectionRef.value?.canSave?.() ?? false;
     if (activeSection.value === "connection") return connectionSectionRef.value?.canSave?.() ?? false;
     return false;
   },
   () => {
-    if (activeSection.value === "model") void modelSectionRef.value?.save?.();
+    if (activeSection.value === "provider") void providerSectionRef.value?.save?.();
+    else if (activeSection.value === "strategy") void strategySectionRef.value?.save?.();
     else if (activeSection.value === "knowledge") void knowledgeSectionRef.value?.save?.();
     else if (activeSection.value === "connection") void connectionSectionRef.value?.save?.();
   },
@@ -109,22 +116,31 @@ onMounted(() => {
           role="tablist"
           aria-label="AI 配置分区"
         >
-          <button
-            v-for="sec in AI_CONFIG_SECTIONS"
-            :key="sec.id"
-            type="button"
-            role="tab"
-            class="ai-config-page__rail-item"
-            :class="{ 'is-on': activeSection === sec.id }"
-            :aria-selected="activeSection === sec.id"
-            @click="selectSection(sec.id)"
+          <div
+            v-for="group in navGroups"
+            :key="group.group.id"
+            class="ai-config-page__rail-group"
           >
-            <ConsoleNavIcon :name="sec.icon" :size="18" />
-            <span class="ai-config-page__rail-text">
-              <span class="ai-config-page__rail-label">{{ sec.label }}</span>
-              <span class="ai-config-page__rail-lead">{{ sec.lead }}</span>
-            </span>
-          </button>
+            <div class="ai-config-page__rail-group-label">
+              {{ group.group.label }}
+            </div>
+            <button
+              v-for="sec in group.sections"
+              :key="sec.id"
+              type="button"
+              role="tab"
+              class="ai-config-page__rail-item"
+              :class="{ 'is-on': activeSection === sec.id }"
+              :aria-selected="activeSection === sec.id"
+              @click="selectSection(sec.id)"
+            >
+              <ConsoleNavIcon :name="sec.icon" :size="18" />
+              <span class="ai-config-page__rail-text">
+                <span class="ai-config-page__rail-label">{{ sec.label }}</span>
+                <span class="ai-config-page__rail-lead">{{ sec.lead }}</span>
+              </span>
+            </button>
+          </div>
         </nav>
 
         <div class="ai-config-page__detail">
@@ -137,9 +153,15 @@ onMounted(() => {
           </header>
 
           <div class="ai-config-page__content">
-            <AiConfigModelSection
-              v-if="activeSection === 'model'"
-              ref="modelSectionRef"
+            <AiConfigRuntimeSection v-if="activeSection === 'runtime'" />
+            <AiConfigProviderSection
+              v-else-if="activeSection === 'provider'"
+              ref="providerSectionRef"
+            />
+            <AiConfigRoutingSection v-else-if="activeSection === 'routing'" />
+            <AiConfigStrategySection
+              v-else-if="activeSection === 'strategy'"
+              ref="strategySectionRef"
             />
             <AiConfigPersonaSection v-else-if="activeSection === 'persona'" />
             <AiConfigKnowledgeSection
@@ -170,9 +192,24 @@ onMounted(() => {
 .ai-config-page__rail {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
   position: sticky;
   top: 16px;
+}
+
+.ai-config-page__rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-config-page__rail-group-label {
+  padding: 0 12px;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .ai-config-page__rail-item {
@@ -240,12 +277,23 @@ onMounted(() => {
 
   .ai-config-page__rail {
     position: static;
+  }
+
+  .ai-config-page__rail-group {
     flex-direction: row;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ai-config-page__rail-group-label {
+    flex: 0 0 100%;
+    padding: 0 4px;
   }
 
   .ai-config-page__rail-item {
     flex: 1 1 auto;
+    min-width: min(100%, 140px);
   }
 
   .ai-config-page__rail-lead {

@@ -11,6 +11,7 @@ const props = withDefaults(
     expandLabel?: string;
     /** 为 true 时页内文本框可直接编辑，仍保留「弹窗编辑」 */
     inlineEditable?: boolean;
+    showExpandButton?: boolean;
   }>(),
   {
     rows: 6,
@@ -18,6 +19,7 @@ const props = withDefaults(
     placeholder: undefined,
     expandLabel: "弹窗编辑",
     inlineEditable: true,
+    showExpandButton: true,
   },
 );
 
@@ -101,7 +103,10 @@ onUnmounted(() => {
       :aria-label="title"
       @input="onPeekInput"
     />
-    <div class="json-textarea-field__toolbar">
+    <div
+      v-if="showExpandButton"
+      class="json-textarea-field__toolbar"
+    >
       <button
         type="button"
         class="btn json-textarea-field__expand"

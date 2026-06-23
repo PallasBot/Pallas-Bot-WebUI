@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import { AI_ENTRY_RUNTIME, AI_ENTRY_SITE_GATEWAY_CHECK } from "@/config/aiEntrySemantics";
 import { useRoute, useRouter } from "vue-router";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
@@ -19,6 +20,7 @@ import type {
 } from "@/api/pallasTypes";
 import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
@@ -29,6 +31,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { usePluginConfigFieldPopover } from "@/composables/usePluginConfigFieldPopover";
 import { axiosErrorDetail } from "@/api/http";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
 import { pluginConfigRouteFromPath } from "@/utils/pluginConfigRoute";
@@ -65,6 +68,12 @@ const CONTROL_PLANE_SECTION_ID = "control_plane";
 const LLM_SECTION_ID = "llm";
 const ARKNIGHTS_KB_SECTION_ID = "arknights_kb";
 const AI_MANAGED_SECTION_IDS = new Set([LLM_SECTION_ID, ARKNIGHTS_KB_SECTION_ID]);
+const SHELL_FIELD_SECTION_IDS = new Set([
+  SERVICE_GATEWAYS_SECTION_ID,
+  CORPUS_FEDERATION_SECTION_ID,
+  PALLAS_WEBUI_SECTION_ID,
+  COMMUNITY_STATS_SECTION_ID,
+]);
 
 const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDERATION_SECTION_ID);
 const isCommunityStatsSection = computed(() => currentId.value === COMMUNITY_STATS_SECTION_ID);
@@ -85,6 +94,7 @@ const showCommandLimitsTable = computed(
 );
 const isCmdPermSection = computed(() => currentId.value === CMD_PERM_SECTION_ID);
 const isMessageScrubSection = computed(() => currentId.value === "message_scrub");
+const useShellFieldLayout = computed(() => SHELL_FIELD_SECTION_IDS.has(currentId.value));
 const gatewayFieldNameSet = computed(() => new Set<string>(PALLAS_IMAGE_GATEWAY_FIELD_NAMES));
 
 const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_groups ?? []);
@@ -119,6 +129,36 @@ function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
   const names = new Set(group.field_names);
   return data.value.fields.filter((f) => names.has(f.name));
 }
+
+function isFieldHiddenInGroup(f: PluginConfigField, group: PluginConfigFieldGroup): boolean {
+  if (!showConfigField(f)) return true;
+  if (group.id === "draw" && showGatewayEditor.value && gatewayFieldNameSet.value.has(f.name)) {
+    return true;
+  }
+  return false;
+}
+
+function visibleFieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
+  return fieldsInGroup(group).filter((f) => !isFieldHiddenInGroup(f, group));
+}
+
+const visibleGenericFields = computed(() =>
+  genericFields.value.filter((f) => showConfigField(f)),
+);
+
+const {
+  fieldPopoverHost,
+  activeFieldPopoverName,
+  activeFieldPopover,
+  fieldPopoverStyle,
+  fieldDisplayName,
+  fieldHelpDefaultValue,
+  fieldTypeLabel,
+  onFieldHelpClick,
+  onFieldHelpHover,
+  onHelpHoverLeave,
+  onPopoverEnter,
+} = usePluginConfigFieldPopover(() => data.value?.fields ?? []);
 
 function fieldGroupPluginRoute(group: PluginConfigFieldGroup) {
   const sectionPlugin = isPallasWebuiSection.value ? PALLAS_WEBUI_SECTION_ID : undefined;
@@ -224,7 +264,7 @@ async function loadSections() {
     const raw = await fetchCommonConfigSections();
     const q = route.query.section;
     if (typeof q === "string" && q.trim() === LLM_SECTION_ID) {
-      await router.replace(aiConfigSectionPath("model"));
+      await router.replace(aiConfigSectionPath("strategy"));
       return;
     }
     if (typeof q === "string" && q.trim() === ARKNIGHTS_KB_SECTION_ID) {
@@ -273,7 +313,7 @@ watch(
     if (typeof q !== "string" || !q.trim()) return;
     const sid = q.trim();
     if (sid === LLM_SECTION_ID) {
-      void router.replace(aiConfigSectionPath("model"));
+      void router.replace(aiConfigSectionPath("strategy"));
       return;
     }
     if (sid === ARKNIGHTS_KB_SECTION_ID) {
@@ -511,9 +551,10 @@ function showConfigField(f: PluginConfigField): boolean {
             class="muted common-config-page__intro"
           >
             集中配置画画主/备网关、MAA 对外端点与点歌服务地址；保存后写入运行配置并热重载。完整参数仍可在各
-            <router-link to="/plugins/draw">插件配置</router-link> 页编辑；画画插件页另提供<strong>仅网关</strong>检测。
-            统一 AI 运行态与媒体任务队列见
-            <router-link to="/ai/home">AI 首页</router-link>。
+            <router-link to="/plugins/draw">插件配置</router-link> 页编辑。
+            本页「连通性检测」属于<strong>{{ AI_ENTRY_SITE_GATEWAY_CHECK.label }}</strong>：{{ AI_ENTRY_SITE_GATEWAY_CHECK.shortLead }}
+            {{ AI_ENTRY_RUNTIME.label }}见
+            <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
           </p>
           <p
             v-if="showDevModeHotReloadHint"
@@ -620,33 +661,110 @@ function showConfigField(f: PluginConfigField): boolean {
                 :field-values="fieldValues"
                 @update:field-values="onGatewayFieldValues"
               />
-              <ConfigFieldRenderer
-                v-for="f in fieldsInGroup(group)"
-                v-show="
-                  showConfigField(f)
-                    && !(group.id === 'draw' && showGatewayEditor && gatewayFieldNameSet.has(f.name))
-                "
-                :key="f.name"
-                :field="f"
-                :model-value="fieldValues[f.name] ?? ''"
-                :show-meta="false"
-                :json-title="`${currentId} · ${f.name}（JSON）`"
-                @update:model-value="(v) => updateFieldValue(f.name, v)"
-              />
+              <div
+                v-if="useShellFieldLayout && visibleFieldsInGroup(group).length"
+                class="plugin-config-form-grid"
+              >
+                <PluginConfigFieldShell
+                  v-for="f in visibleFieldsInGroup(group)"
+                  :key="f.name"
+                  :field="f"
+                  :model-value="fieldValues[f.name] ?? ''"
+                  :help-expanded="activeFieldPopoverName === f.name"
+                  :json-title="`${currentId} · ${f.name}（JSON）`"
+                  @update:model-value="(v) => updateFieldValue(f.name, v)"
+                  @help-click="onFieldHelpClick(f.name, $event)"
+                  @help-hover="onFieldHelpHover(f.name, $event)"
+                  @help-hover-leave="onHelpHoverLeave"
+                />
+              </div>
+              <template v-else>
+                <ConfigFieldRenderer
+                  v-for="f in fieldsInGroup(group)"
+                  v-show="!isFieldHiddenInGroup(f, group)"
+                  :key="f.name"
+                  :field="f"
+                  :model-value="fieldValues[f.name] ?? ''"
+                  :show-meta="false"
+                  :json-title="`${currentId} · ${f.name}（JSON）`"
+                  @update:model-value="(v) => updateFieldValue(f.name, v)"
+                />
+              </template>
             </section>
           </template>
-          <ConfigFieldRenderer
-            v-for="f in genericFields"
-            v-show="showConfigField(f)"
-            :key="f.name"
-            :field="f"
-            :model-value="fieldValues[f.name] ?? ''"
-            :show-meta="false"
-            :json-title="`${currentId} · ${f.name}（JSON）`"
-            @update:model-value="(v) => updateFieldValue(f.name, v)"
-          />
+          <div
+            v-if="useShellFieldLayout && visibleGenericFields.length"
+            class="plugin-config-form-grid"
+          >
+            <PluginConfigFieldShell
+              v-for="f in visibleGenericFields"
+              :key="f.name"
+              :field="f"
+              :model-value="fieldValues[f.name] ?? ''"
+              :help-expanded="activeFieldPopoverName === f.name"
+              :json-title="`${currentId} · ${f.name}（JSON）`"
+              @update:model-value="(v) => updateFieldValue(f.name, v)"
+              @help-click="onFieldHelpClick(f.name, $event)"
+              @help-hover="onFieldHelpHover(f.name, $event)"
+              @help-hover-leave="onHelpHoverLeave"
+            />
+          </div>
+          <template v-else>
+            <ConfigFieldRenderer
+              v-for="f in genericFields"
+              v-show="showConfigField(f)"
+              :key="f.name"
+              :field="f"
+              :model-value="fieldValues[f.name] ?? ''"
+              :show-meta="false"
+              :json-title="`${currentId} · ${f.name}（JSON）`"
+              @update:model-value="(v) => updateFieldValue(f.name, v)"
+            />
+          </template>
         </div>
       </UiCard>
+      <Teleport to="body">
+        <div
+          v-if="useShellFieldLayout && activeFieldPopover"
+          ref="fieldPopoverHost"
+          class="plugin-config-field-popover"
+          :style="fieldPopoverStyle"
+          @click.stop
+          @mouseenter="onPopoverEnter"
+          @mouseleave="onHelpHoverLeave"
+        >
+          <div class="plugin-config-field-popover__section">
+            <div class="plugin-config-field-popover__eyebrow">配置说明</div>
+            <h4 class="plugin-config-field-popover__title">{{ fieldDisplayName(activeFieldPopover) }}</h4>
+            <p
+              v-if="activeFieldPopover.description"
+              class="plugin-config-field-popover__desc"
+            >
+              {{ activeFieldPopover.description }}
+            </p>
+            <p
+              v-else
+              class="plugin-config-field-popover__desc plugin-config-field-popover__desc--muted"
+            >
+              暂无详细说明。
+            </p>
+          </div>
+          <dl class="plugin-config-field-popover__meta">
+            <div>
+              <dt>类型</dt>
+              <dd>{{ fieldTypeLabel(activeFieldPopover) }}</dd>
+            </div>
+            <div>
+              <dt>默认值</dt>
+              <dd><code>{{ fieldHelpDefaultValue(activeFieldPopover) }}</code></dd>
+            </div>
+            <div>
+              <dt>环境键</dt>
+              <dd><code>{{ activeFieldPopover.env_key }}</code></dd>
+            </div>
+          </dl>
+        </div>
+      </Teleport>
     </div>
   </div>
 </template>
@@ -675,5 +793,84 @@ function showConfigField(f: PluginConfigField): boolean {
 
 .common-config-page__runtime-summary {
   margin-bottom: 14px;
+}
+
+.plugin-config-form-grid {
+  display: grid;
+  gap: 18px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+@media (max-width: 920px) {
+  .plugin-config-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plugin-config-field-popover {
+  z-index: 1200;
+  overflow: auto;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--panel-bg, #1a1d24);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.plugin-config-field-popover__section {
+  margin-bottom: 12px;
+}
+
+.plugin-config-field-popover__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted, #9aa3b2);
+  margin-bottom: 4px;
+}
+
+.plugin-config-field-popover__title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.plugin-config-field-popover__desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.plugin-config-field-popover__desc--muted {
+  color: var(--muted, #9aa3b2);
+}
+
+.plugin-config-field-popover__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.plugin-config-field-popover__meta div {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.plugin-config-field-popover__meta dt {
+  margin: 0;
+  color: var(--muted, #9aa3b2);
+}
+
+.plugin-config-field-popover__meta dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.plugin-config-field-popover__meta code {
+  font-size: 11px;
 }
 </style>

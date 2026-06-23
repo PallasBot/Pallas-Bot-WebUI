@@ -12,7 +12,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
   { id: "logs", label: "日志", icon: "logs", paths: ["/logs", "/log-errors"] },
   { id: "instances", label: "实例", icon: "server", paths: ["/instances", "/protocol"] },
   { id: "plugins", label: "插件", icon: "blocks", paths: ["/plugins", "/plugin-store"] },
-  { id: "ai", label: "AI", icon: "sparkles", paths: ["/ai/home", "/ai/statistics", "/ai/history", "/ai/config/model"] },
+  { id: "ai", label: "AI", icon: "sparkles", paths: ["/ai/home", "/ai/statistics", "/ai/history", "/ai/config/runtime"] },
   { id: "database", label: "数据库", icon: "database", paths: ["/database", "/database/backups"] },
 ];
 

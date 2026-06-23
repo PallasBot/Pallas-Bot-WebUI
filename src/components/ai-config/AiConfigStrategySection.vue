@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { RouterLink } from "vue-router";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
-import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
-import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
-import ProviderManager from "@/components/ai-config/providers/ProviderManager.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { LLM_BOT_FIELD_GROUPS } from "@/config/configFieldLabels";
+import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 import { useCommonConfigSection } from "@/composables/useCommonConfigSection";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -42,20 +39,13 @@ defineExpose({ save, canSave, saving });
 </script>
 
 <template>
-  <div class="ai-config-section ai-config-section--model">
+  <div class="ai-config-section ai-config-section--strategy">
     <div
       v-if="err"
       class="alert alert--err"
-      style="margin-bottom: 12px"
     >
       {{ err }}
     </div>
-
-    <ModelAdminPanel />
-
-    <LocalModelRoutingPanel />
-
-    <ProviderManager />
 
     <UiCard
       v-if="data"
@@ -82,21 +72,24 @@ defineExpose({ save, canSave, saving });
           </UiButton>
         </div>
       </div>
-      <div class="panel__bd ai-config-model-fields">
+      <div class="panel__bd ai-config-strategy-fields">
         <p class="muted ai-config-section__intro">
-          Bot 侧总开关、接话模式与限流；保存后热载。Ollama 模型与 Provider 路由见上方面板。
+          本页只管 Bot 侧总开关、接话模式与限流；模型端点与路由分别在
+          <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>
+          与
+          <RouterLink :to="AI_CONFIG_LAYER_LINKS.routing.path">{{ AI_CONFIG_LAYER_LINKS.routing.label }}</RouterLink>。
         </p>
-        <div class="ai-config-model-fields__links">
+        <div class="ai-config-strategy-fields__links">
+          <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
           <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
           <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
-          <RouterLink to="/ai/home">返回 AI 首页</RouterLink>
         </div>
         <section
           v-for="group in groupedFieldViews.groups"
           :key="group.title"
-          class="ai-config-model-fields__group"
+          class="ai-config-strategy-fields__group"
         >
-          <h3 class="ai-config-model-fields__group-title">
+          <h3 class="ai-config-strategy-fields__group-title">
             {{ group.title }}
           </h3>
           <ConfigFieldRenderer
@@ -124,32 +117,32 @@ defineExpose({ save, canSave, saving });
 </template>
 
 <style scoped>
-.ai-config-section--model {
+.ai-config-section--strategy {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.ai-config-model-fields {
+.ai-config-strategy-fields {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
-.ai-config-model-fields__group {
+.ai-config-strategy-fields__group {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.ai-config-model-fields__links {
+.ai-config-strategy-fields__links {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
   font-size: 0.8125rem;
 }
 
-.ai-config-model-fields__group-title {
+.ai-config-strategy-fields__group-title {
   margin: 0;
   font-size: 13px;
   font-weight: 650;
