@@ -1,30 +1,13 @@
 import { describe, expect, it } from "vitest";
-
-type ActivationPolicy = "hot-reloadable" | "workers-restart" | "full-restart" | null | undefined;
-type ActivationAction = "none" | "hot-reload" | "workers-restart" | "full-restart" | null | undefined;
-
-function resultNeedsRestart(result: { needs_restart?: boolean; restart_scheduled?: boolean } | null): boolean {
-  return Boolean(result?.needs_restart) && !Boolean(result?.restart_scheduled);
-}
-
-function actionStateLabel(
-  policy: ActivationPolicy,
-  result: { needs_restart?: boolean; restart_scheduled?: boolean; activation_action?: ActivationAction } | null,
-): string {
-  const action = result?.activation_action || null;
-  if (action === "hot-reload") return "已热重载";
-  if (result?.restart_scheduled) return "已安排重启";
-  if (resultNeedsRestart(result)) {
-    if (policy === "workers-restart") return "待重启 Worker";
-    return "待重启";
-  }
-  return "";
-}
+import {
+  extensionActionStateLabel,
+  extensionResultNeedsRestart,
+} from "@/config/extensionActivationSemantics";
 
 function officialInstalledVersionLabel(
   latestRef: string | null | undefined,
   installedRef: string | null | undefined,
-  result: { activation_action?: ActivationAction } | null,
+  result: { activation_action?: "hot-reload" | null } | null,
 ): string {
   if (result?.activation_action === "hot-reload" && latestRef) return latestRef;
   return (installedRef || "").trim();
@@ -32,7 +15,7 @@ function officialInstalledVersionLabel(
 
 describe("plugin store action state", () => {
   it("marks hot-reload result as loaded instead of pending restart", () => {
-    expect(actionStateLabel("hot-reloadable", {
+    expect(extensionActionStateLabel("hot-reloadable", {
       needs_restart: false,
       restart_scheduled: false,
       activation_action: "hot-reload",
@@ -40,11 +23,34 @@ describe("plugin store action state", () => {
   });
 
   it("marks worker restart plugins as pending worker restart", () => {
-    expect(actionStateLabel("workers-restart", {
+    expect(extensionActionStateLabel("workers-restart", {
       needs_restart: true,
       restart_scheduled: false,
       activation_action: "none",
     })).toBe("待重启 Worker");
+  });
+
+  it("marks full restart plugins as pending full restart", () => {
+    expect(extensionActionStateLabel("full-restart", {
+      needs_restart: true,
+      restart_scheduled: false,
+      activation_action: "none",
+    })).toBe("待全栈重启");
+  });
+
+  it("distinguishes scheduled worker restart from generic restart", () => {
+    expect(extensionActionStateLabel("workers-restart", {
+      needs_restart: true,
+      restart_scheduled: true,
+      activation_action: "workers-restart",
+    })).toBe("已安排 Worker 重启");
+  });
+
+  it("treats scheduled restart as not pending manual restart", () => {
+    expect(extensionResultNeedsRestart({
+      needs_restart: true,
+      restart_scheduled: true,
+    })).toBe(false);
   });
 
   it("uses latest ref as current version after hot reload", () => {

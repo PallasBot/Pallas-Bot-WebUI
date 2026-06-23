@@ -22,9 +22,13 @@ import type {
   OfficialExtensionInstallResult,
   OfficialExtensionRow,
   PluginRow,
-  ExtensionActivationAction,
-  ExtensionActivationPolicy,
 } from "@/api/pallasTypes";
+import {
+  extensionActionStateLabel,
+  extensionActivationDetailHint,
+  extensionResultAction,
+  extensionResultNeedsRestart,
+} from "@/config/extensionActivationSemantics";
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -231,14 +235,23 @@ function communityResultState(row: CommunityPluginRow): CommunityPluginActionRes
   return communityActionState.value[row.plugin_id] ?? null;
 }
 
-function resultNeedsRestart(result: { needs_restart?: boolean; restart_scheduled?: boolean } | null): boolean {
-  return Boolean(result?.needs_restart) && !Boolean(result?.restart_scheduled);
+function resultNeedsRestart(result: Parameters<typeof extensionResultNeedsRestart>[0]): boolean {
+  return extensionResultNeedsRestart(result);
 }
 
-function resultAction(
-  result: { activation_action?: ExtensionActivationAction | null } | null,
-): ExtensionActivationAction | null {
-  return (result?.activation_action || null) as ExtensionActivationAction | null;
+function resultAction(result: Parameters<typeof extensionResultAction>[0]) {
+  return extensionResultAction(result);
+}
+
+function actionStateLabel(
+  policy: Parameters<typeof extensionActionStateLabel>[0],
+  result: Parameters<typeof extensionActionStateLabel>[1],
+): string {
+  return extensionActionStateLabel(policy, result);
+}
+
+function officialActivationHint(row: OfficialExtensionRow): string {
+  return extensionActivationDetailHint(row.activation_policy);
 }
 
 function officialInstalledVersionLabel(row: OfficialExtensionRow): string {
@@ -420,21 +433,6 @@ function updateLatestLabel(row: { can_update?: boolean; has_update?: boolean | n
   return row.has_update == null ? "待检查" : "最新";
 }
 
-function actionStateLabel(
-  policy: ExtensionActivationPolicy | null | undefined,
-  result: { needs_restart?: boolean; restart_scheduled?: boolean; activation_action?: ExtensionActivationAction | null } | null,
-): string {
-  const action = resultAction(result);
-  if (action === "hot-reload") return "已热重载";
-  if (result?.restart_scheduled) return "已安排重启";
-  if (resultNeedsRestart(result)) {
-    if (policy === "workers-restart") return "待重启 Worker";
-    if (policy === "full-restart") return "待重启";
-    return "待重启";
-  }
-  return "";
-}
-
 function officialStatusLabel(row: OfficialExtensionRow): string {
   const resultLabel = actionStateLabel(row.activation_policy, extensionResultState(row));
   if (resultLabel) return resultLabel;
@@ -456,13 +454,6 @@ function officialUpdateLabel(row: OfficialExtensionRow): string {
 
 function communityUpdateLabel(row: CommunityPluginRow): string {
   return resultNeedsRestart(communityResultState(row)) ? "待重启" : "更新";
-}
-
-function officialActivationHint(row: OfficialExtensionRow): string {
-  if (row.activation_policy === "hot-reloadable") return "可热加载";
-  if (row.activation_policy === "workers-restart") return "重启生效";
-  if (row.activation_policy === "full-restart") return "全栈重启";
-  return "官方插件";
 }
 
 function officialMenuItems(row: OfficialExtensionRow): PluginStoreMenuItem[] {
@@ -865,8 +856,10 @@ onDeactivated(() => {
           <template v-if="storeSection === 'official'">
             浏览并安装 Pallas 官方插件（<span class="console-hub-chip">uv run pallas ext install</span>）。
             <template v-if="webuiInstallEnabled">
-              <template v-if="restartAvailable">支持一键安装与重启。</template>
-              <template v-else>安装后请重启 Bot 生效。</template>
+              <template v-if="restartAvailable">
+                支持一键安装；结果会按扩展生效策略提示（可热加载 / Worker 重启 / 全栈重启）。
+              </template>
+              <template v-else>安装后请按页面提示重启或手动生效。</template>
             </template>
             <template v-else>
               当前环境不支持 WebUI 安装，可复制命令或放入 <span class="console-hub-chip">local/plugins/</span>。
