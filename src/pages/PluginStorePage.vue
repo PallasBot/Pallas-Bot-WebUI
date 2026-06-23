@@ -41,6 +41,7 @@ import PluginStoreCard from "@/components/PluginStoreCard.vue";
 import type { PluginStoreMenuItem } from "@/components/PluginStoreCard.vue";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { axiosErrorDetail } from "@/api/http";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
@@ -90,6 +91,34 @@ const localPlugins = ref<PluginRow[]>([]);
 const storeErr = ref("");
 const storeCopyHint = ref("");
 const storeActionHint = ref("");
+const storeActionNeedsRestart = ref(false);
+const {
+  restartBusy,
+  restartAvailable: systemRestartAvailable,
+  ensureRestartContext,
+  restartBot,
+} = useBotSystemRestart();
+async function restartBotNow() {
+  storeErr.value = "";
+  const ok = await restartBot(false);
+  if (ok) {
+    storeActionNeedsRestart.value = false;
+    storeActionHint.value = "已安排 Bot 重启，数秒后生效。";
+  }
+}
+
+async function noteStoreActionResult(
+  message: string,
+  result: { needs_restart?: boolean; restart_scheduled?: boolean } | null,
+) {
+  await ensureRestartContext();
+  storeActionHint.value = message;
+  storeActionNeedsRestart.value = Boolean(
+    systemRestartAvailable.value
+    && result
+    && extensionResultNeedsRestart(result),
+  );
+}
 const storeBusyPackage = ref("");
 const storeBusyPluginId = ref("");
 const searchQuery = ref("");
@@ -578,11 +607,12 @@ async function installExtension(row: OfficialExtensionRow, restart = false) {
   if (storeBusyPackage.value) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   try {
     const out = await installOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    storeActionHint.value = out.message || "安装完成。";
+    noteStoreActionResult(out.message || "安装完成。", out);
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -601,11 +631,15 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
   if (!ok) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   try {
     const out = await uninstallOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    storeActionHint.value = out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。");
+    noteStoreActionResult(
+      out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"),
+      out,
+    );
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -618,11 +652,12 @@ async function updateExtension(row: OfficialExtensionRow, restart = false) {
   if (storeBusyPackage.value) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   try {
     const out = await updateOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    storeActionHint.value = out.message || "更新完成。";
+    noteStoreActionResult(out.message || "更新完成。", out);
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -647,6 +682,7 @@ async function installCommunityFromGit(restart = false) {
   if (gitInstallBusy.value || !gitInstallValid.value) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   gitInstallBusy.value = true;
   storeBusyPluginId.value = gitPluginId.value.trim();
   try {
@@ -657,7 +693,7 @@ async function installCommunityFromGit(restart = false) {
     });
     communityActionState.value = { ...communityActionState.value, [gitPluginId.value.trim()]: out };
     const base = out.message || "安装完成。";
-    storeActionHint.value = restart ? base : `${base} 请重启 Bot 后加载。`;
+    noteStoreActionResult(restart ? base : `${base} 请重启 Bot 后加载。`, out);
     gitInstallOpen.value = false;
     await refreshCommunityStore();
   } catch (e) {
@@ -672,6 +708,7 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
   if (storeBusyPluginId.value) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   try {
     const out = await installCommunityPlugin(row.plugin_id, {
@@ -680,7 +717,10 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
       ref: row.ref,
     });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    storeActionHint.value = out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。");
+    noteStoreActionResult(
+      out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。"),
+      out,
+    );
     await refreshCommunityStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -699,11 +739,15 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
   if (!ok) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   try {
     const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    storeActionHint.value = out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。");
+    noteStoreActionResult(
+      out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"),
+      out,
+    );
     await refreshCommunityStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -716,6 +760,7 @@ async function updateCommunity(row: CommunityPluginRow, restart = false) {
   if (storeBusyPluginId.value) return;
   storeErr.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   try {
     const out = await updateCommunityPlugin(row.plugin_id, {
@@ -723,7 +768,10 @@ async function updateCommunity(row: CommunityPluginRow, restart = false) {
       ref: row.ref,
     });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    storeActionHint.value = out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。");
+    noteStoreActionResult(
+      out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。"),
+      out,
+    );
     await refreshCommunityStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -751,7 +799,7 @@ function handleOfficialMenu(row: OfficialExtensionRow, actionId: string) {
   if (actionId === "install-restart") void installExtension(row, true);
   if (actionId === "uninstall-restart") void uninstallExtension(row, true);
   if (actionId === "update-restart") void updateExtension(row, true);
-  if (actionId === "restart-now") void updateExtension(row, true);
+  if (actionId === "restart-now") void restartBotNow();
   if (actionId === "copy-cli") void copyInstallCli(row);
   if (actionId === "open-repo" && row.repository_url) openExternalUrl(row.repository_url);
 }
@@ -760,7 +808,7 @@ function handleCommunityMenu(row: CommunityPluginRow, actionId: string) {
   if (actionId === "install-restart") void installCommunity(row, true);
   if (actionId === "uninstall-restart") void uninstallCommunity(row, true);
   if (actionId === "update-restart") void updateCommunity(row, true);
-  if (actionId === "restart-now") void updateCommunity(row, true);
+  if (actionId === "restart-now") void restartBotNow();
   if (actionId === "open-homepage" && row.homepage) openExternalUrl(row.homepage);
   if (actionId === "open-repo" && row.repository_url) openExternalUrl(row.repository_url);
 }
@@ -824,11 +872,13 @@ watch(storeSection, () => {
   activeTab.value = "all";
   searchQuery.value = "";
   storeActionHint.value = "";
+  storeActionNeedsRestart.value = false;
   closeDetail();
   void refreshStore();
 });
 
 onMounted(async () => {
+  void ensureRestartContext();
   try {
     await refreshOfficialStore();
   } finally {
@@ -987,13 +1037,24 @@ onDeactivated(() => {
       >
         索引加载失败：{{ communityIndexError }}
       </p>
-      <p
+      <div
         v-if="storeActionHint"
-        class="muted plugin-store-page__hint plugin-store-page__hint--ok"
+        class="plugin-store-page__action-hint"
         role="status"
       >
-        {{ storeActionHint }}
-      </p>
+        <p class="muted plugin-store-page__hint plugin-store-page__hint--ok">
+          {{ storeActionHint }}
+        </p>
+        <UiButton
+          v-if="storeActionNeedsRestart"
+          variant="outline"
+          :busy="restartBusy"
+          :disabled="restartBusy"
+          @click="restartBotNow"
+        >
+          立即重启 Bot
+        </UiButton>
+      </div>
       <p
         v-if="storeCopyHint"
         class="muted plugin-store-page__hint plugin-store-page__hint--ok"
@@ -1465,3 +1526,26 @@ onDeactivated(() => {
     </UiDialog>
   </div>
 </template>
+
+<style scoped>
+.plugin-store-page__action-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 8px;
+}
+.plugin-store-page__action-hint .plugin-store-page__hint {
+  margin: 0;
+  flex: 1 1 auto;
+}
+@media (max-width: 560px) {
+  .plugin-store-page__action-hint {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .plugin-store-page__action-hint > .btn {
+    width: 100%;
+  }
+}
+</style>

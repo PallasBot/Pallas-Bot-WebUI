@@ -8,7 +8,6 @@ import {
   fetchUpdateCheck,
   fetchUpdateCheckAll,
   postBotUpdateApply,
-  postSystemRestart,
   postUpdateApply,
   putCommonConfig,
 } from "@/api/consoleApi";
@@ -19,6 +18,7 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { axiosErrorDetail } from "@/api/http";
@@ -194,8 +194,16 @@ const botApplyDisabled = computed(
 );
 
 const busy = ref(false);
-const restartBusy = ref(false);
 const msg = ref("");
+const {
+  restartBusy,
+  restartErr,
+  restartMsg,
+  restartAvailable,
+  shardedRuntime,
+  ensureRestartContext,
+  restartBot,
+} = useBotSystemRestart({ botUpdateCheck: bot });
 const refreshWebBusy = ref(false);
 const refreshBotBusy = ref(false);
 
@@ -365,21 +373,11 @@ async function applyBot(restart = false) {
   }
 }
 
-async function restartBot(workersOnly = false) {
-  const prompt = workersOnly
-    ? "确定仅重启分片 worker 进程？Hub 与其它组件不受影响。"
-    : "确定重启 Bot 进程？数秒内连接会短暂中断。";
-  if (!confirm(prompt)) return;
-  restartBusy.value = true;
+async function triggerBotRestart(workersOnly = false) {
   err.value = "";
-  try {
-    const r = await postSystemRestart({ workersOnly });
-    msg.value = r.message || "已安排重启。";
-  } catch (e) {
-    err.value = axiosErrorDetail(e);
-  } finally {
-    restartBusy.value = false;
-  }
+  const ok = await restartBot(workersOnly);
+  if (ok) msg.value = restartMsg.value || "已安排重启。";
+  else if (restartErr.value) err.value = restartErr.value;
 }
 
 watch(
@@ -390,7 +388,7 @@ watch(
 );
 
 onMounted(() => {
-  void load();
+  void load().then(() => ensureRestartContext());
 });
 </script>
 
@@ -760,7 +758,7 @@ onMounted(() => {
       </UiCard>
 
       <UiCard
-        v-if="bot?.restart_available && bot?.deployment_mode !== 'docker'"
+        v-if="restartAvailable"
         id="console-update-restart"
         glass
         class="update-page__panel update-page__panel--ops"
@@ -776,15 +774,25 @@ onMounted(() => {
         <div class="panel__bd update-page__bd">
           <p class="muted update-page__ops-lead">
             安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
+            <template v-if="shardedRuntime">分片部署下可选择仅重启 Worker 或全栈重启。</template>
           </p>
           <div class="row-actions update-page__ops-actions">
+            <UiButton
+              v-if="shardedRuntime"
+              variant="outline"
+              :disabled="restartBusy"
+              :busy="restartBusy"
+              @click="triggerBotRestart(true)"
+            >
+              重启 Worker
+            </UiButton>
             <UiButton
               variant="destructive"
               :disabled="restartBusy"
               :busy="restartBusy"
-              @click="restartBot(false)"
+              @click="triggerBotRestart(false)"
             >
-              重启 Bot
+              {{ shardedRuntime ? "全栈重启" : "重启 Bot" }}
             </UiButton>
           </div>
         </div>

@@ -42,6 +42,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomeLazyReveal from "@/components/HomeLazyReveal.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
+import UiButton from "@/components/ui/UiButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
@@ -57,6 +58,7 @@ import {
   pallasBotVersionLabel,
 } from "@/utils/versionDisplay";
 import { patchConsoleMeta, consoleMetaBotUpdate, consoleMetaHealth, consoleMetaWebUpdate } from "@/state/consoleMeta";
+import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
@@ -90,6 +92,15 @@ function writeSavedHomeAccount(acc: number | null) {
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
+const {
+  restartBusy,
+  restartErr,
+  restartMsg,
+  restartAvailable,
+  shardedRuntime,
+  ensureRestartContext,
+  restartBot,
+} = useBotSystemRestart({ botUpdateCheck });
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const system = ref<SystemData | null>(null);
 const communityStats = ref<CommunityStatsData | null>(null);
@@ -875,6 +886,12 @@ const selectedConnDateDisplay = computed(() => {
   }
 });
 
+async function triggerHomeRestart(workersOnly = false) {
+  restartErr.value = "";
+  restartMsg.value = "";
+  await restartBot(workersOnly);
+}
+
 function startHomeConnDurationTick() {
   if (typeof window === "undefined") return;
   if (homeConnDurationPollId != null) return;
@@ -919,6 +936,7 @@ async function loadHomeDeferred(refreshMeta: boolean) {
     const h = consoleMetaHealth.value ?? health.value;
     if (h) health.value = h;
     patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
+    if (botUpdateCheck.value) void ensureRestartContext();
   } finally {
     homeDeferredBusy.value = false;
   }
@@ -1393,6 +1411,46 @@ onUnmounted(() => {
                   <div class="home-ver-dl__row"><dt>系统</dt><dd><span class="home-ver-dl__val">{{ osFamilyDisplay }}</span></dd></div>
                   <div class="home-ver-dl__row"><dt>主机</dt><dd><span class="home-ver-dl__val">{{ hostnameDisplay }}</span></dd></div>
                 </dl>
+                <div
+                  v-if="restartAvailable"
+                  class="home-ops-restart"
+                >
+                  <p
+                    v-if="restartMsg"
+                    class="home-ops-restart__msg muted"
+                    role="status"
+                  >
+                    {{ restartMsg }}
+                  </p>
+                  <p
+                    v-if="restartErr"
+                    class="home-ops-restart__msg alert alert--err"
+                    role="alert"
+                  >
+                    {{ restartErr }}
+                  </p>
+                  <div class="row-actions home-ops-restart__actions">
+                    <UiButton
+                      v-if="shardedRuntime"
+                      variant="outline"
+                      size="sm"
+                      :disabled="restartBusy"
+                      :busy="restartBusy"
+                      @click="triggerHomeRestart(true)"
+                    >
+                      重启 Worker
+                    </UiButton>
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      :disabled="restartBusy"
+                      :busy="restartBusy"
+                      @click="triggerHomeRestart(false)"
+                    >
+                      {{ shardedRuntime ? "全栈重启" : "重启 Bot" }}
+                    </UiButton>
+                  </div>
+                </div>
               </HomeLazyReveal>
             </div>
           </div>
@@ -1412,6 +1470,27 @@ onUnmounted(() => {
   flex-shrink: 0;
   border: 1px solid var(--border);
   background: var(--bg-muted);
+}
+
+/* Favorite star */
+.home-ops-restart {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.home-ops-restart__msg {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.home-ops-restart__actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .home-ops-restart__actions > .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
 }
 
 /* Favorite star */
