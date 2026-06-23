@@ -236,8 +236,21 @@ const kernelStatusOverview = computed(() => {
     { label: "反哺收集", value: kernelFlagLabel(status.feedback_collect_active), accent: status.feedback_collect_active },
     { label: "反哺加权", value: kernelFlagLabel(status.feedback_bias_active), accent: status.feedback_bias_active },
     { label: "写回晋升", value: kernelFlagLabel(status.writeback_active), accent: status.writeback_active },
+    { label: "最近 trace", value: String(kernelTraces.value.length), accent: kernelTraces.value.length > 0 },
   ];
 });
+
+function kernelMemoryPolicyLine(status: ConversationKernelStatus | null): string {
+  if (!status) return "";
+  const policy = status.memory_policy || {};
+  const flags = [
+    `read_session=${policy.read_session ? "是" : "否"}`,
+    `read_group_style=${policy.read_group_style ? "是" : "否"}`,
+    `read_affect=${policy.read_affect ? "是" : "否"}`,
+    `write_session=${policy.write_session ? "是" : "否"}`,
+  ];
+  return `repeater ${status.llm_repeater_mode || "—"} · memory ${flags.join(" / ")}`;
+}
 
 function kernelTraceKey(row: ConversationKernelTraceRow, index: number): string {
   return `${row.group_id ?? 0}-${row.bot_id ?? 0}-${row.created_at ?? index}-${row.action ?? ""}`;
@@ -693,16 +706,22 @@ async function openRunInSession(run: LlmHistoryBehaviorRun) {
   }
   if (sessions.value.some((item) => item.session_key === key)) {
     selectedSessionKey.value = key;
+    await nextTick();
+    scrollSessionDetailIntoView();
   }
 }
 
 async function refreshObservePanels() {
-  await Promise.all([
+  const tasks = [
     refreshKernelStatus(),
     refreshKernelTraces(),
     refreshFeedback(),
     refreshBehaviorRuns(),
-  ]);
+  ];
+  if (feedbackGroupId.value != null && feedbackGroupId.value > 0) {
+    tasks.push(refreshPromotionCandidates());
+  }
+  await Promise.all(tasks);
 }
 
 async function refreshKernelStatus() {
@@ -1139,6 +1158,13 @@ onMounted(() => {
       <span class="muted">当前会话</span>
       <strong>{{ workspaceContextLabel }}</strong>
       <div class="row-actions ai-history-page__context-actions">
+        <UiButton
+          size="sm"
+          variant="ghost"
+          @click="activeWorkspace = 'sessions'"
+        >
+          会话
+        </UiButton>
         <UiButton
           size="sm"
           variant="outline"
@@ -1638,13 +1664,14 @@ onMounted(() => {
         </div>
       </div>
     </UiCard>
-    <section class="ai-history-page__feedback">
+    <section class="ai-history-page__feedback ai-history-page__kernel-panel">
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">Conversation Kernel 运行态</h3>
-          <span class="ai-head__hint">查看功能层级、反哺开关与 memory 策略是否生效</span>
+          <h3 class="ai-head__title">Conversation Kernel</h3>
+          <span class="ai-head__hint">运行态、memory 策略与最近决策 trace</span>
         </div>
         <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
+        <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
         <div class="ai-stat-grid ai-history-page__feedback-summary">
           <div
             v-for="item in kernelStatusOverview"
@@ -1654,76 +1681,66 @@ onMounted(() => {
             <span class="ai-stat__label">{{ item.label }}</span>
             <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
           </div>
-        </div>
-        <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
-          repeater 模式 {{ kernelStatus.llm_repeater_mode || "—" }}
-          · memory read_session={{ kernelStatus.memory_policy?.read_session ? "是" : "否" }}
-        </p>
-        <p v-else-if="kernelStatusBusy" class="muted ai-history-page__kernel-policy">正在读取 kernel 状态…</p>
-      </UiCard>
-    </section>
-    <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">决策 Trace</h3>
-          <span class="ai-head__hint">repeater 机会判定与 conversation_decision_trace 最近记录</span>
-        </div>
-        <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div class="ai-stat ai-history-page__summary-stat">
-            <span class="ai-stat__label">最近 trace</span>
-            <strong class="ai-stat__value ai-stat__value--accent">{{ kernelTraces.length }}</strong>
-          </div>
           <div class="ai-stat ai-history-page__summary-stat">
             <span class="ai-stat__label">筛选群号</span>
             <strong class="ai-stat__value">{{ observeGroupId ? String(observeGroupId) : "全部" }}</strong>
           </div>
         </div>
-        <div v-if="kernelTraces.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="(row, index) in kernelTraces"
-            :key="kernelTraceKey(row, index)"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
-              <span
-                class="ai-history-page__outcome-badge"
-                :class="kernelTraceOpportunityClass(row)"
-              >
-                {{ kernelTraceOpportunityLabel(row) }}
-              </span>
-              <span class="ai-history-page__scene-pill">{{ row.kind || "trace" }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span v-if="row.group_id">群 {{ row.group_id }}</span>
-              <span v-if="row.bot_id">Bot {{ row.bot_id }}</span>
-              <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
-            </div>
-            <div v-if="kernelTraceHighlights(row).length" class="ai-history-page__trace-highlights">
-              <span
-                v-for="item in kernelTraceHighlights(row)"
-                :key="`${kernelTraceKey(row, index)}-${item.label}`"
-              >
-                {{ item.label }}：{{ item.value }}
-              </span>
-            </div>
-            <pre
-              v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
-              class="ai-history-page__kernel-trace-json"
-            >{{ JSON.stringify(row, null, 2) }}</pre>
-            <button
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
-            >
-              {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起原始 JSON" : "查看原始 JSON" }}
-            </button>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">
-          <span>{{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}</span>
+        <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
+          {{ kernelMemoryPolicyLine(kernelStatus) }}
         </p>
+        <p v-else-if="kernelStatusBusy" class="muted ai-history-page__kernel-policy">正在读取 kernel 状态…</p>
+        <div class="ai-history-page__kernel-trace-block">
+          <div class="ai-head ai-history-page__kernel-trace-head">
+            <h4 class="ai-head__title">决策 Trace</h4>
+            <span class="ai-head__hint">repeater 机会判定与 conversation_decision_trace</span>
+          </div>
+          <div v-if="kernelTraces.length" class="ai-history-page__feedback-list ai-history-page__kernel-trace-list">
+            <article
+              v-for="(row, index) in kernelTraces"
+              :key="kernelTraceKey(row, index)"
+              class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+            >
+              <div class="ai-history-page__feedback-top">
+                <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
+                <span
+                  class="ai-history-page__outcome-badge"
+                  :class="kernelTraceOpportunityClass(row)"
+                >
+                  {{ kernelTraceOpportunityLabel(row) }}
+                </span>
+                <span class="ai-history-page__scene-pill">{{ row.kind || "trace" }}</span>
+              </div>
+              <div class="ai-history-page__feedback-meta">
+                <span v-if="row.group_id">群 {{ row.group_id }}</span>
+                <span v-if="row.bot_id">Bot {{ row.bot_id }}</span>
+                <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
+              </div>
+              <div v-if="kernelTraceHighlights(row).length" class="ai-history-page__trace-highlights">
+                <span
+                  v-for="item in kernelTraceHighlights(row)"
+                  :key="`${kernelTraceKey(row, index)}-${item.label}`"
+                >
+                  {{ item.label }}：{{ item.value }}
+                </span>
+              </div>
+              <pre
+                v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
+                class="ai-history-page__kernel-trace-json"
+              >{{ JSON.stringify(row, null, 2) }}</pre>
+              <button
+                type="button"
+                class="ai-history-page__turn-toggle"
+                @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
+              >
+                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起原始 JSON" : "查看原始 JSON" }}
+              </button>
+            </article>
+          </div>
+          <p v-else class="muted ai-history-page__empty-hint">
+            <span>{{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}</span>
+          </p>
+        </div>
       </UiCard>
     </section>
     <section class="ai-history-page__feedback">
@@ -2502,6 +2519,22 @@ onMounted(() => {
   grid-column: 1 / -1;
 }
 
+.ai-history-page__workspace--observe .ai-history-page__kernel-panel {
+  grid-column: 1 / -1;
+}
+
+.ai-history-page__kernel-trace-block {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-history-page__kernel-trace-head {
+  margin-top: 2px;
+}
+
 .ai-history-page__workspace--sessions .ai-history-page__sessions {
   align-items: stretch;
 }
@@ -3270,7 +3303,7 @@ onMounted(() => {
   .ai-history-page__context-actions {
     margin-left: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .ai-history-page__filters-head {
