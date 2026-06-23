@@ -8,6 +8,7 @@ import {
   fetchUpdateCheck,
   fetchUpdateCheckAll,
   postBotUpdateApply,
+  postSystemRestart,
   postUpdateApply,
   putCommonConfig,
 } from "@/api/consoleApi";
@@ -193,6 +194,7 @@ const botApplyDisabled = computed(
 );
 
 const busy = ref(false);
+const restartBusy = ref(false);
 const msg = ref("");
 const refreshWebBusy = ref(false);
 const refreshBotBusy = ref(false);
@@ -360,6 +362,23 @@ async function applyBot(restart = false) {
     err.value = axiosErrorDetail(e);
   } finally {
     busy.value = false;
+  }
+}
+
+async function restartBot(workersOnly = false) {
+  const prompt = workersOnly
+    ? "确定仅重启分片 worker 进程？Hub 与其它组件不受影响。"
+    : "确定重启 Bot 进程？数秒内连接会短暂中断。";
+  if (!confirm(prompt)) return;
+  restartBusy.value = true;
+  err.value = "";
+  try {
+    const r = await postSystemRestart({ workersOnly });
+    msg.value = r.message || "已安排重启。";
+  } catch (e) {
+    err.value = axiosErrorDetail(e);
+  } finally {
+    restartBusy.value = false;
   }
 }
 
@@ -737,6 +756,37 @@ onMounted(() => {
           >
             配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
           </p>
+        </div>
+      </UiCard>
+
+      <UiCard
+        v-if="bot?.restart_available && bot?.deployment_mode !== 'docker'"
+        id="console-update-restart"
+        glass
+        class="update-page__panel update-page__panel--ops"
+      >
+        <div class="panel__hd panel__hd--split update-page__ops-hd">
+          <h2 class="panel__title">
+            <ConsoleNavIcon
+              class="panel__title-ico"
+              name="server"
+            />运维
+          </h2>
+        </div>
+        <div class="panel__bd update-page__bd">
+          <p class="muted update-page__ops-lead">
+            安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
+          </p>
+          <div class="row-actions update-page__ops-actions">
+            <UiButton
+              variant="destructive"
+              :disabled="restartBusy"
+              :busy="restartBusy"
+              @click="restartBot(false)"
+            >
+              重启 Bot
+            </UiButton>
+          </div>
         </div>
       </UiCard>
 
@@ -1228,6 +1278,16 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.update-page__ops-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.update-page__ops-actions {
+  justify-content: flex-start;
+}
+
 @media (max-width: 560px) {
   .update-page__gh-row {
     flex-direction: column;
@@ -1245,6 +1305,15 @@ onMounted(() => {
     font-size: 13px;
     line-height: 1.25;
     min-height: 0;
+  }
+
+  .update-page__ops-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .update-page__ops-actions > .ui-btn {
+    width: 100%;
   }
 }
 </style>

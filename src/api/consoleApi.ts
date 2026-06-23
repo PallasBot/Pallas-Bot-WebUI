@@ -8,6 +8,7 @@ import type {
   UpdateApplyData,
   BotUpdateCheckData,
   BotUpdateApplyData,
+  SystemRestartData,
   BotConfigMigrationCheckData,
   BotConfigMigrationApplyData,
   ApiOk,
@@ -1542,6 +1543,15 @@ export async function postBotUpdateApply(options?: { restart?: boolean }): Promi
     { params: { restart: options?.restart ? "true" : "false" } },
   );
   return unwrap(data, "/update/bot/apply");
+}
+
+export async function postSystemRestart(options?: {
+  workersOnly?: boolean;
+}): Promise<SystemRestartData> {
+  const { data } = await http.post<ApiOk<SystemRestartData>>("/system/restart", {
+    workers_only: Boolean(options?.workersOnly),
+  });
+  return unwrap(data, "/system/restart");
 }
 
 export async function fetchBotConfigMigrationCheck(): Promise<BotConfigMigrationCheckData> {

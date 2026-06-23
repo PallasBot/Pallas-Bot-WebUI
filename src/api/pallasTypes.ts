@@ -1510,6 +1510,14 @@ export interface BotUpdateApplyData {
   restart_scheduled?: boolean;
 }
 
+export interface SystemRestartData {
+  scheduled: boolean;
+  mode: "full-restart" | "workers-restart";
+  workers_only: boolean;
+  bot_runtime_mode: string;
+  message: string;
+}
+
 /** Bot .env → pallas.toml / webui.json 迁移检查 */
 export interface BotConfigMigrationCheckData {
   show: boolean;
