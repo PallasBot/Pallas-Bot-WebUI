@@ -1073,6 +1073,13 @@ export interface LlmPromotionCandidatesData {
 }
 
 export interface ConversationKernelMemoryPolicy {
+  allow_runtime_state?: boolean;
+  allow_persistent_memory?: boolean;
+  allow_corpus_foundation?: boolean;
+  allow_behavioral_learning?: boolean;
+  allow_writeback?: boolean;
+  runtime_state_summary_enabled?: boolean;
+  read_persistent_memory?: boolean;
   read_session?: boolean;
   read_group_style?: boolean;
   read_affect?: boolean;
@@ -1090,6 +1097,7 @@ export interface ConversationKernelStatus {
   feedback_collect_active: boolean;
   feedback_bias_active: boolean;
   writeback_active: boolean;
+  runtime_state_summary_active?: boolean;
   memory_policy: ConversationKernelMemoryPolicy;
 }
 

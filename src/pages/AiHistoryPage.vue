@@ -244,6 +244,11 @@ const kernelStatusOverview = computed(() => {
     { label: "反哺收集", value: kernelFlagLabel(status.feedback_collect_active), accent: status.feedback_collect_active },
     { label: "反哺加权", value: kernelFlagLabel(status.feedback_bias_active), accent: status.feedback_bias_active },
     { label: "写回晋升", value: kernelFlagLabel(status.writeback_active), accent: status.writeback_active },
+    {
+      label: "会话摘要",
+      value: kernelFlagLabel(Boolean(status.runtime_state_summary_active)),
+      accent: Boolean(status.runtime_state_summary_active),
+    },
     { label: "最近 trace", value: String(kernelTraces.value.length), accent: kernelTraces.value.length > 0 },
   ];
 });
@@ -251,11 +256,16 @@ const kernelStatusOverview = computed(() => {
 function kernelMemoryPolicyLine(status: ConversationKernelStatus | null): string {
   if (!status) return "";
   const policy = status.memory_policy || {};
+  const readSession = policy.read_session ?? policy.allow_runtime_state;
+  const readPersistent = policy.read_persistent_memory ?? policy.allow_persistent_memory;
+  const readAffect = policy.read_affect ?? policy.allow_behavioral_learning;
+  const writeSession = policy.write_session ?? policy.runtime_state_summary_enabled;
   const flags = [
-    `read_session=${policy.read_session ? "是" : "否"}`,
+    `read_session=${readSession ? "是" : "否"}`,
+    `read_persistent=${readPersistent ? "是" : "否"}`,
     `read_group_style=${policy.read_group_style ? "是" : "否"}`,
-    `read_affect=${policy.read_affect ? "是" : "否"}`,
-    `write_session=${policy.write_session ? "是" : "否"}`,
+    `read_affect=${readAffect ? "是" : "否"}`,
+    `write_session=${writeSession ? "是" : "否"}`,
   ];
   return `repeater ${status.llm_repeater_mode || "—"} · memory ${flags.join(" / ")}`;
 }
