@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import {
   fieldDisplayName,
@@ -11,13 +11,21 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
   const activeFieldPopoverName = ref<string | null>(null);
   const fieldPopoverStyle = ref<Record<string, string>>({});
   const fieldPopoverPinned = ref(false);
+  const activeFieldDialogName = ref<string | null>(null);
+  const activeFieldDialogMode = ref<"help" | "edit">("help");
   let helpHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const activeFieldPopover = computed(() => {
-    const name = activeFieldPopoverName.value;
+  function findField(name: string | null): PluginConfigField | null {
     if (!name) return null;
     return fields().find((item) => item.name === name) ?? null;
-  });
+  }
+
+  const activeFieldPopover = computed(() => findField(activeFieldPopoverName.value));
+  const activeFieldDialog = computed(() => findField(activeFieldDialogName.value));
+
+  function isMobileViewport(): boolean {
+    return typeof window !== "undefined" && window.innerWidth <= 560;
+  }
 
   function updateFieldPopoverPosition(anchor: HTMLElement) {
     if (typeof window === "undefined") return;
@@ -55,13 +63,20 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
     }
   }
 
+  function closeFieldDialog() {
+    activeFieldDialogName.value = null;
+    activeFieldDialogMode.value = "help";
+  }
+
+  function closeFieldInteraction() {
+    closeFieldPopover();
+    closeFieldDialog();
+  }
+
   function openFieldPopover(fieldName: string, event: MouseEvent) {
     const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     if (!anchor) return;
-    if (
-      activeFieldPopoverName.value === fieldName &&
-      fieldPopoverPinned.value
-    ) {
+    if (activeFieldPopoverName.value === fieldName && fieldPopoverPinned.value) {
       closeFieldPopover();
       return;
     }
@@ -72,6 +87,12 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
     activeFieldPopoverName.value = fieldName;
     fieldPopoverPinned.value = true;
     updateFieldPopoverPosition(anchor);
+  }
+
+  function openFieldDialog(fieldName: string, mode: "help" | "edit") {
+    closeFieldPopover();
+    activeFieldDialogName.value = fieldName;
+    activeFieldDialogMode.value = mode;
   }
 
   function onHelpHover(fieldName: string, event: MouseEvent) {
@@ -103,15 +124,29 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
   }
 
   function onFieldHelpClick(fieldName: string, event: MouseEvent) {
+    if (isMobileViewport()) {
+      openFieldDialog(fieldName, "help");
+      return;
+    }
     openFieldPopover(fieldName, event);
   }
 
   function onFieldHelpHover(fieldName: string, event: MouseEvent) {
+    if (isMobileViewport()) return;
     onHelpHover(fieldName, event);
   }
 
+  function onFieldEditClick(fieldName: string) {
+    openFieldDialog(fieldName, "edit");
+  }
+
+  function onFieldDialogEditRequest() {
+    if (!activeFieldDialog.value) return;
+    activeFieldDialogMode.value = "edit";
+  }
+
   function onWindowKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") closeFieldPopover();
+    if (event.key === "Escape") closeFieldInteraction();
   }
 
   function onWindowPointerdown(event: MouseEvent) {
@@ -125,6 +160,15 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
   function onWindowResize() {
     closeFieldPopover();
   }
+
+  watch(fields, () => {
+    if (activeFieldDialogName.value && !findField(activeFieldDialogName.value)) {
+      closeFieldDialog();
+    }
+    if (activeFieldPopoverName.value && !findField(activeFieldPopoverName.value)) {
+      closeFieldPopover();
+    }
+  });
 
   onMounted(() => {
     window.addEventListener("keydown", onWindowKeydown);
@@ -148,14 +192,20 @@ export function usePluginConfigFieldPopover(fields: () => PluginConfigField[]) {
     fieldPopoverHost,
     activeFieldPopoverName,
     activeFieldPopover,
+    activeFieldDialog,
+    activeFieldDialogMode,
     fieldPopoverStyle,
     fieldDisplayName,
     fieldHelpDefaultValue,
     fieldTypeLabel,
     onFieldHelpClick,
     onFieldHelpHover,
+    onFieldEditClick,
     onHelpHoverLeave,
     onPopoverEnter,
+    onFieldDialogEditRequest,
     closeFieldPopover,
+    closeFieldDialog,
+    closeFieldInteraction,
   };
 }

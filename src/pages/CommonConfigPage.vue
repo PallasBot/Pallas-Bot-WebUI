@@ -20,6 +20,7 @@ import type {
 } from "@/api/pallasTypes";
 import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
@@ -150,14 +151,20 @@ const {
   fieldPopoverHost,
   activeFieldPopoverName,
   activeFieldPopover,
+  activeFieldDialog,
+  activeFieldDialogMode,
   fieldPopoverStyle,
   fieldDisplayName,
   fieldHelpDefaultValue,
   fieldTypeLabel,
   onFieldHelpClick,
   onFieldHelpHover,
+  onFieldEditClick,
   onHelpHoverLeave,
   onPopoverEnter,
+  onFieldDialogEditRequest,
+  closeFieldDialog,
+  closeFieldInteraction,
 } = usePluginConfigFieldPopover(() => data.value?.fields ?? []);
 
 function fieldGroupPluginRoute(group: PluginConfigFieldGroup) {
@@ -304,6 +311,7 @@ async function loadSection() {
 }
 
 watch(currentId, () => {
+  closeFieldInteraction();
   void loadSection();
 });
 
@@ -676,6 +684,7 @@ function showConfigField(f: PluginConfigField): boolean {
                   @help-click="onFieldHelpClick(f.name, $event)"
                   @help-hover="onFieldHelpHover(f.name, $event)"
                   @help-hover-leave="onHelpHoverLeave"
+                  @edit-click="onFieldEditClick(f.name)"
                 />
               </div>
               <template v-else>
@@ -707,6 +716,7 @@ function showConfigField(f: PluginConfigField): boolean {
               @help-click="onFieldHelpClick(f.name, $event)"
               @help-hover="onFieldHelpHover(f.name, $event)"
               @help-hover-leave="onHelpHoverLeave"
+              @edit-click="onFieldEditClick(f.name)"
             />
           </div>
           <template v-else>
@@ -765,6 +775,19 @@ function showConfigField(f: PluginConfigField): boolean {
           </dl>
         </div>
       </Teleport>
+      <PluginConfigFieldDialog
+        v-if="useShellFieldLayout"
+        :open="!!activeFieldDialog"
+        :field="activeFieldDialog"
+        :mode="activeFieldDialogMode"
+        :model-value="activeFieldDialog ? (fieldValues[activeFieldDialog.name] ?? '') : ''"
+        :json-title="activeFieldDialog ? `${currentId} · ${activeFieldDialog.name}（JSON）` : undefined"
+        @close="closeFieldDialog"
+        @edit-request="onFieldDialogEditRequest"
+        @update:model-value="
+          activeFieldDialog && updateFieldValue(activeFieldDialog.name, $event)
+        "
+      />
     </div>
   </div>
 </template>

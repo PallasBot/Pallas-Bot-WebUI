@@ -51,11 +51,9 @@ import {
   collectFieldValues,
   fieldValuesFromConfig,
 } from "@/utils/pluginConfigFieldModel";
+import { usePluginConfigFieldPopover } from "@/composables/usePluginConfigFieldPopover";
 import {
   buildGroupSummary,
-  fieldDisplayName,
-  fieldHelpDefaultValue,
-  fieldTypeLabel,
   resolveInitialPluginConfigTab,
   type PluginConfigTab,
 } from "@/utils/pluginConfigWorkspaceModel";
@@ -499,109 +497,26 @@ const configFieldGroups = computed((): ConfigGroupView[] => {
   return [{ id: "all", title: "配置项", fields }];
 });
 
-function findFieldByName(name: string | null): PluginConfigField | null {
-  if (!name) return null;
-  return visibleFields.value.find((field) => field.name === name) ?? null;
-}
-
 const groupOpen = ref<Record<string, boolean>>({});
-const fieldPopoverHost = ref<HTMLElement | null>(null);
-const activeFieldPopoverName = ref<string | null>(null);
-const fieldPopoverStyle = ref<Record<string, string>>({});
-const activeFieldDialogName = ref<string | null>(null);
-const activeFieldDialogMode = ref<"help" | "edit">("help");
-// 悬停打开为临时态，点击则固定（pinned）：固定后移开鼠标不收起，便于复制说明。
-const fieldPopoverPinned = ref(false);
-let helpHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
-
-const activeFieldPopover = computed(() => findFieldByName(activeFieldPopoverName.value));
-const activeFieldDialog = computed(() => findFieldByName(activeFieldDialogName.value));
-
-function isMobileViewport(): boolean {
-  return typeof window !== "undefined" && window.innerWidth <= 560;
-}
-
-function updateFieldPopoverPosition(anchor: HTMLElement) {
-  if (typeof window === "undefined") return;
-  const rect = anchor.getBoundingClientRect();
-  const isMobile = window.innerWidth <= 560;
-  const maxWidth = Math.min(380, window.innerWidth - 16);
-  if (isMobile) {
-    fieldPopoverStyle.value = {
-      position: "fixed",
-      left: "8px",
-      right: "8px",
-      bottom: "8px",
-      width: "calc(100vw - 16px)",
-      maxHeight: "min(72vh, 640px)",
-    };
-    return;
-  }
-  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - maxWidth - 8));
-  const top = Math.min(rect.bottom + 10, window.innerHeight - 16);
-  fieldPopoverStyle.value = {
-    position: "fixed",
-    top: `${top}px`,
-    left: `${left}px`,
-    width: `min(${maxWidth}px, calc(100vw - 16px))`,
-    maxHeight: "min(72vh, 640px)",
-  };
-}
-
-function openFieldPopover(fieldName: string, event: MouseEvent) {
-  const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-  if (!anchor) return;
-  // 点击已固定的同一字段 → 收起；否则固定到该字段。
-  if (activeFieldPopoverName.value === fieldName && fieldPopoverPinned.value) {
-    closeFieldPopover();
-    return;
-  }
-  if (helpHoverCloseTimer) {
-    clearTimeout(helpHoverCloseTimer);
-    helpHoverCloseTimer = null;
-  }
-  activeFieldPopoverName.value = fieldName;
-  fieldPopoverPinned.value = true;
-  updateFieldPopoverPosition(anchor);
-}
-
-function onHelpHover(fieldName: string, event: MouseEvent) {
-  const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-  if (!anchor) return;
-  if (helpHoverCloseTimer) {
-    clearTimeout(helpHoverCloseTimer);
-    helpHoverCloseTimer = null;
-  }
-  // 已固定时不被悬停打断
-  if (fieldPopoverPinned.value && activeFieldPopoverName.value !== fieldName) return;
-  activeFieldPopoverName.value = fieldName;
-  fieldPopoverPinned.value = false;
-  updateFieldPopoverPosition(anchor);
-}
-
-function onHelpHoverLeave() {
-  if (fieldPopoverPinned.value) return;
-  if (helpHoverCloseTimer) clearTimeout(helpHoverCloseTimer);
-  helpHoverCloseTimer = setTimeout(() => {
-    if (!fieldPopoverPinned.value) closeFieldPopover();
-  }, 120);
-}
-
-function onPopoverEnter() {
-  if (helpHoverCloseTimer) {
-    clearTimeout(helpHoverCloseTimer);
-    helpHoverCloseTimer = null;
-  }
-}
-
-function closeFieldPopover() {
-  activeFieldPopoverName.value = null;
-  fieldPopoverPinned.value = false;
-  if (helpHoverCloseTimer) {
-    clearTimeout(helpHoverCloseTimer);
-    helpHoverCloseTimer = null;
-  }
-}
+const {
+  fieldPopoverHost,
+  activeFieldPopoverName,
+  activeFieldPopover,
+  activeFieldDialog,
+  activeFieldDialogMode,
+  fieldPopoverStyle,
+  fieldDisplayName,
+  fieldHelpDefaultValue,
+  fieldTypeLabel,
+  onFieldHelpClick,
+  onFieldHelpHover,
+  onFieldEditClick,
+  onHelpHoverLeave,
+  onPopoverEnter,
+  onFieldDialogEditRequest,
+  closeFieldDialog,
+  closeFieldInteraction,
+} = usePluginConfigFieldPopover(() => visibleFields.value);
 
 watch(
   configFieldGroups,
@@ -617,68 +532,8 @@ watch(
   { immediate: true },
 );
 
-watch(visibleFields, () => {
-  if (activeFieldDialogName.value && !findFieldByName(activeFieldDialogName.value)) {
-    closeFieldDialog();
-  }
-  if (activeFieldPopoverName.value && !findFieldByName(activeFieldPopoverName.value)) {
-    closeFieldPopover();
-  }
-});
-
 function toggleConfigGroup(id: string) {
   groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
-}
-
-function closeFieldDialog() {
-  activeFieldDialogName.value = null;
-  activeFieldDialogMode.value = "help";
-}
-
-function openFieldDialog(fieldName: string, mode: "help" | "edit") {
-  closeFieldPopover();
-  activeFieldDialogName.value = fieldName;
-  activeFieldDialogMode.value = mode;
-}
-
-function onFieldHelpClick(fieldName: string, event: MouseEvent) {
-  if (isMobileViewport()) {
-    openFieldDialog(fieldName, "help");
-    return;
-  }
-  openFieldPopover(fieldName, event);
-}
-
-function onFieldHelpHover(fieldName: string, event: MouseEvent) {
-  if (isMobileViewport()) return;
-  onHelpHover(fieldName, event);
-}
-
-function onFieldEditClick(fieldName: string) {
-  openFieldDialog(fieldName, "edit");
-}
-
-function onFieldDialogEditRequest() {
-  if (!activeFieldDialog.value) return;
-  activeFieldDialogMode.value = "edit";
-}
-
-function onWindowKeydown(event: KeyboardEvent) {
-  if (event.key === "Escape") {
-    closeFieldPopover();
-  }
-}
-
-function onWindowPointerdown(event: MouseEvent) {
-  if (!activeFieldPopover.value) return;
-  const target = event.target as Node | null;
-  if (!target) return;
-  if (fieldPopoverHost.value?.contains(target)) return;
-  closeFieldPopover();
-}
-
-function onWindowResize() {
-  closeFieldPopover();
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -688,15 +543,13 @@ function onGatewayFieldValues(next: Record<string, string>) {
 async function load() {
   if (!pluginResolvedId.value) {
     data.value = null;
-    closeFieldDialog();
-    closeFieldPopover();
+    closeFieldInteraction();
     return;
   }
   const requestName = pluginResolvedId.value;
   loading.value = true;
   err.value = "";
-  closeFieldDialog();
-  closeFieldPopover();
+  closeFieldInteraction();
   checkLines.value = [];
   checkResults.value = [];
   checkErr.value = "";
@@ -767,24 +620,12 @@ watch(
 );
 
 onMounted(() => {
-  window.addEventListener("keydown", onWindowKeydown);
-  window.addEventListener("mousedown", onWindowPointerdown);
-  window.addEventListener("resize", onWindowResize);
-  window.addEventListener("scroll", onWindowResize, true);
   void load();
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", onWindowKeydown);
-  window.removeEventListener("mousedown", onWindowPointerdown);
-  window.removeEventListener("resize", onWindowResize);
-  window.removeEventListener("scroll", onWindowResize, true);
   for (const timer of Object.values(limitDebounceTimers.value)) {
     clearTimeout(timer);
-  }
-  if (helpHoverCloseTimer) {
-    clearTimeout(helpHoverCloseTimer);
-    helpHoverCloseTimer = null;
   }
 });
 
