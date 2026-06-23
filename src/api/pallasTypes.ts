@@ -1035,6 +1035,42 @@ export interface LlmRepeaterFeedbackSummary {
   scenes: string[];
 }
 
+export interface ConversationKernelMemoryPolicy {
+  read_session?: boolean;
+  read_group_style?: boolean;
+  read_affect?: boolean;
+  write_session?: boolean;
+}
+
+export interface ConversationKernelStatus {
+  feature_level: string;
+  llm_chat_enabled: boolean;
+  conversation_feature_level_raw?: string;
+  llm_repeater_mode?: string;
+  llm_repeater_feedback_enabled?: boolean;
+  llm_repeater_bias_enabled?: boolean;
+  llm_repeater_writeback_enabled?: boolean;
+  feedback_collect_active: boolean;
+  feedback_bias_active: boolean;
+  writeback_active: boolean;
+  memory_policy: ConversationKernelMemoryPolicy;
+}
+
+export interface ConversationKernelTraceRow {
+  kind?: string;
+  group_id?: number;
+  bot_id?: number;
+  action?: string;
+  opportunity_accepted?: boolean;
+  created_at?: number;
+  [key: string]: unknown;
+}
+
+export interface ConversationKernelTracesData {
+  items: ConversationKernelTraceRow[];
+  limit: number;
+}
+
 export interface PersonaAxisSnapshot {
   source?: string;
   preset_label?: string;

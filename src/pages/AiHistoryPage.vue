@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import {
+  fetchConversationKernelStatus,
+  fetchConversationKernelTraces,
   fetchLlmBehaviorRuns,
   fetchLlmBehaviorPatterns,
   fetchLlmHistorySession,
@@ -19,6 +21,8 @@ import type {
   LlmHistorySessionSummary,
   LlmRepeaterFeedbackEntry,
   LlmRepeaterFeedbackSummary,
+  ConversationKernelStatus,
+  ConversationKernelTraceRow,
 } from "@/api/pallasTypes";
 import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
@@ -90,6 +94,13 @@ const patternEditorOpen = ref(false);
 const observeGroup = ref("");
 const observeGroupTouched = ref(false);
 const observeScene = ref("");
+const kernelStatus = ref<ConversationKernelStatus | null>(null);
+const kernelStatusBusy = ref(false);
+const kernelStatusErr = ref("");
+const kernelTraces = ref<ConversationKernelTraceRow[]>([]);
+const kernelTracesBusy = ref(false);
+const kernelTracesErr = ref("");
+const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveKeys = ref<Record<string, boolean>>({});
 const patternSortKey = ref<"success_score" | "manual_score" | "pattern_id">("success_score");
 
@@ -148,6 +159,7 @@ function parseFilter(raw: string): number | null {
 const combinedErr = computed(() => err.value || historyErr.value);
 const anyBusy = computed(() => loading.value || historyBusy.value);
 const feedbackGroupId = computed(() => parseFilter(feedbackGroup.value));
+const observeGroupId = computed(() => parseFilter(observeGroup.value));
 const behaviorRunsGroupId = computed(() => parseFilter(behaviorRunsGroup.value));
 const patternsGroupId = computed(() => parseFilter(patternsGroup.value));
 const historySummary = computed(() => [
@@ -199,6 +211,42 @@ const patternsOverview = computed(() => [
     value: patternsScene.value || "全部",
   },
 ]);
+
+function kernelFlagLabel(active: boolean): string {
+  return active ? "已生效" : "未生效";
+}
+
+const kernelStatusOverview = computed(() => {
+  const status = kernelStatus.value;
+  if (!status) return [];
+  return [
+    { label: "功能层级", value: status.feature_level, accent: true },
+    { label: "llm_chat", value: status.llm_chat_enabled ? "开" : "关" },
+    { label: "反哺收集", value: kernelFlagLabel(status.feedback_collect_active), accent: status.feedback_collect_active },
+    { label: "反哺加权", value: kernelFlagLabel(status.feedback_bias_active), accent: status.feedback_bias_active },
+    { label: "写回晋升", value: kernelFlagLabel(status.writeback_active), accent: status.writeback_active },
+  ];
+});
+
+function kernelTraceKey(row: ConversationKernelTraceRow, index: number): string {
+  return `${row.group_id ?? 0}-${row.bot_id ?? 0}-${row.created_at ?? index}-${row.action ?? ""}`;
+}
+
+function kernelTraceSummary(row: ConversationKernelTraceRow): string {
+  const parts: string[] = [];
+  if (row.action) parts.push(`决策 ${row.action}`);
+  if (row.opportunity_accepted === true) parts.push("机会通过");
+  if (row.opportunity_accepted === false) parts.push("机会未通过");
+  return parts.join(" · ") || "conversation_decision_trace";
+}
+
+function toggleKernelTraceExpanded(key: string) {
+  expandedKernelTraceKeys.value = {
+    ...expandedKernelTraceKeys.value,
+    [key]: !expandedKernelTraceKeys.value[key],
+  };
+}
+
 const workspaceTabBadges = computed(() => ({
   sessions: sessions.value.length,
   observe: behaviorRunsItems.value.length,
@@ -493,7 +541,42 @@ async function openRunInSession(run: LlmHistoryBehaviorRun) {
 }
 
 async function refreshObservePanels() {
-  await Promise.all([refreshFeedback(), refreshBehaviorRuns()]);
+  await Promise.all([
+    refreshKernelStatus(),
+    refreshKernelTraces(),
+    refreshFeedback(),
+    refreshBehaviorRuns(),
+  ]);
+}
+
+async function refreshKernelStatus() {
+  kernelStatusBusy.value = true;
+  kernelStatusErr.value = "";
+  try {
+    kernelStatus.value = await fetchConversationKernelStatus();
+  } catch (e) {
+    kernelStatus.value = null;
+    kernelStatusErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    kernelStatusBusy.value = false;
+  }
+}
+
+async function refreshKernelTraces() {
+  kernelTracesBusy.value = true;
+  kernelTracesErr.value = "";
+  try {
+    const data = await fetchConversationKernelTraces({
+      groupId: observeGroupId.value,
+      limit: 30,
+    });
+    kernelTraces.value = data.items;
+  } catch (e) {
+    kernelTraces.value = [];
+    kernelTracesErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    kernelTracesBusy.value = false;
+  }
 }
 
 async function saveBehaviorRun(
@@ -778,6 +861,7 @@ onMounted(() => {
   patternsGroup.value = filterGroup.value;
   observeGroup.value = filterGroup.value;
   observeScene.value = behaviorRunsScene.value;
+  void refreshKernelStatus();
   void refreshBehaviorRuns();
   void refreshPatterns();
   resetPatternEditor();
@@ -1209,7 +1293,7 @@ onMounted(() => {
     <UiCard class="ai-history-page__panel ai-history-page__observe-toolbar">
       <div class="ai-history-page__filters-head">
         <strong>观测筛选</strong>
-        <span class="muted">群号会同时作用于反馈样本与 behavior 记录</span>
+        <span class="muted">群号会同时作用于决策 trace、反馈样本与 behavior 记录</span>
       </div>
       <div class="ai-history-page__filters">
         <label class="ai-history-page__filter">
@@ -1235,11 +1319,90 @@ onMounted(() => {
             </option>
           </select>
         </label>
-        <UiButton size="sm" variant="primary" :busy="feedbackBusy || behaviorRunsBusy" @click="refreshObservePanels">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :busy="kernelStatusBusy || kernelTracesBusy || feedbackBusy || behaviorRunsBusy"
+          @click="refreshObservePanels"
+        >
           刷新观测
         </UiButton>
       </div>
     </UiCard>
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">Conversation Kernel 运行态</h3>
+          <span class="ai-head__hint">查看功能层级、反哺开关与 memory 策略是否生效</span>
+        </div>
+        <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div
+            v-for="item in kernelStatusOverview"
+            :key="item.label"
+            class="ai-stat ai-history-page__summary-stat"
+          >
+            <span class="ai-stat__label">{{ item.label }}</span>
+            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
+          </div>
+        </div>
+        <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
+          repeater 模式 {{ kernelStatus.llm_repeater_mode || "—" }}
+          · memory read_session={{ kernelStatus.memory_policy?.read_session ? "是" : "否" }}
+        </p>
+        <p v-else-if="kernelStatusBusy" class="muted ai-history-page__kernel-policy">正在读取 kernel 状态…</p>
+      </UiCard>
+    </section>
+    <section class="ai-history-page__feedback">
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">决策 Trace</h3>
+          <span class="ai-head__hint">repeater 机会判定与 conversation_decision_trace 最近记录</span>
+        </div>
+        <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
+        <div class="ai-stat-grid ai-history-page__feedback-summary">
+          <div class="ai-stat ai-history-page__summary-stat">
+            <span class="ai-stat__label">最近 trace</span>
+            <strong class="ai-stat__value ai-stat__value--accent">{{ kernelTraces.length }}</strong>
+          </div>
+          <div class="ai-stat ai-history-page__summary-stat">
+            <span class="ai-stat__label">筛选群号</span>
+            <strong class="ai-stat__value">{{ observeGroupId ? String(observeGroupId) : "全部" }}</strong>
+          </div>
+        </div>
+        <div v-if="kernelTraces.length" class="ai-history-page__feedback-list">
+          <article
+            v-for="(row, index) in kernelTraces"
+            :key="kernelTraceKey(row, index)"
+            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+          >
+            <div class="ai-history-page__feedback-top">
+              <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
+              <span class="ai-history-page__scene-pill">{{ row.kind || "trace" }}</span>
+            </div>
+            <div class="ai-history-page__feedback-meta">
+              <span v-if="row.group_id">群 {{ row.group_id }}</span>
+              <span v-if="row.bot_id">Bot {{ row.bot_id }}</span>
+              <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
+            </div>
+            <pre
+              v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
+              class="ai-history-page__kernel-trace-json"
+            >{{ JSON.stringify(row, null, 2) }}</pre>
+            <button
+              type="button"
+              class="ai-history-page__turn-toggle"
+              @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
+            >
+              {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起详情" : "展开详情" }}
+            </button>
+          </article>
+        </div>
+        <p v-else class="muted ai-history-page__empty-hint">
+          <span>{{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}</span>
+        </p>
+      </UiCard>
+    </section>
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
@@ -1771,6 +1934,29 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-history-page__kernel-policy {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.ai-history-page__kernel-trace-json {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-history-page__empty-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
 .ai-history-page__hint {
   margin-top: 8px;
   font-size: 0.75rem;

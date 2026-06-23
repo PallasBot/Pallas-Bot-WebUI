@@ -66,6 +66,8 @@ import type {
   LlmHistorySessionsData,
   LlmRepeaterFeedbackData,
   LlmRepeaterFeedbackSummary,
+  ConversationKernelStatus,
+  ConversationKernelTracesData,
   LlmTaskStatsData,
   PersonaObserveData,
   MessageStatsData,
@@ -812,6 +814,28 @@ export async function fetchLlmRepeaterFeedbackSummary(params: {
     },
   });
   return unwrap(data, "/llm/repeater-feedback/summary");
+}
+
+export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {
+  const { data } = await http.get<ApiOk<ConversationKernelStatus>>("/llm/conversation-kernel/status");
+  return unwrap(data, "/llm/conversation-kernel/status");
+}
+
+export async function fetchConversationKernelTraces(params?: {
+  groupId?: number | null;
+  botId?: number | null;
+  kind?: string;
+  limit?: number;
+}): Promise<ConversationKernelTracesData> {
+  const { data } = await http.get<ApiOk<ConversationKernelTracesData>>("/llm/conversation-kernel/traces", {
+    params: {
+      kind: params?.kind || "decision",
+      limit: params?.limit ?? 30,
+      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+    },
+  });
+  return unwrap(data, "/llm/conversation-kernel/traces");
 }
 
 export async function fetchLlmPersonaObserve(params?: {
