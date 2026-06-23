@@ -17,6 +17,7 @@ import {
 } from "@/api/consoleApi";
 import type {
   LlmBehaviorPattern,
+  LlmHistoryBehaviorAgentTrace,
   LlmHistoryBehaviorRun,
   LlmHistoryBehaviorAutoFeedbackPayload,
   LlmHistorySessionDetailData,
@@ -110,6 +111,7 @@ const kernelTraces = ref<ConversationKernelTraceRow[]>([]);
 const kernelTracesBusy = ref(false);
 const kernelTracesErr = ref("");
 const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
+const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
@@ -306,6 +308,13 @@ function toggleKernelTraceExpanded(key: string) {
   expandedKernelTraceKeys.value = {
     ...expandedKernelTraceKeys.value,
     [key]: !expandedKernelTraceKeys.value[key],
+  };
+}
+
+function toggleBehaviorTraceExpanded(key: string) {
+  expandedBehaviorTraceKeys.value = {
+    ...expandedBehaviorTraceKeys.value,
+    [key]: !expandedBehaviorTraceKeys.value[key],
   };
 }
 
@@ -535,6 +544,42 @@ function formatBehaviorSignal(payload?: LlmHistoryBehaviorAutoFeedbackPayload | 
 
 function formatBehaviorTokens(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): string {
   return payload?.matched_tokens?.length ? payload.matched_tokens.join(" / ") : "无";
+}
+
+function behaviorAgentTrace(payload?: LlmHistoryBehaviorAutoFeedbackPayload | null): LlmHistoryBehaviorAgentTrace | null {
+  if (!payload?.agent_trace || typeof payload.agent_trace !== "object") return null;
+  return payload.agent_trace;
+}
+
+function behaviorAgentTraceKey(scope: string, requestId: string): string {
+  return `${scope}:${requestId}`;
+}
+
+function behaviorAgentTraceHighlights(
+  trace?: LlmHistoryBehaviorAgentTrace | null,
+): Array<{ label: string; value: string }> {
+  if (!trace) return [];
+  const items: Array<{ label: string; value: string }> = [];
+  if (trace.agent_stage_plan?.length) {
+    items.push({ label: "阶段", value: trace.agent_stage_plan.join(" -> ") });
+  }
+  if (typeof trace.tool_call_count === "number") {
+    items.push({ label: "工具调用", value: String(trace.tool_call_count) });
+  }
+  if (typeof trace.tool_schema_count === "number") {
+    items.push({ label: "可用工具", value: String(trace.tool_schema_count) });
+  }
+  if (trace.prefetched_tool) {
+    items.push({ label: "预取", value: trace.prefetched_tool });
+  }
+  if (trace.final_stage) {
+    items.push({ label: "结束阶段", value: trace.final_stage });
+  }
+  const rounds = Array.isArray(trace.rounds) ? trace.rounds.length : 0;
+  if (rounds > 0) {
+    items.push({ label: "轮次", value: String(rounds) });
+  }
+  return items;
 }
 
 function formatOutcomeLabel(outcome?: string | null): string {
@@ -1539,6 +1584,27 @@ onMounted(() => {
                     <span>命中词：{{ formatBehaviorTokens(row.behaviorRun.auto_feedback_payload) }}</span>
                     <span>观察消息：{{ row.behaviorRun.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
                   </div>
+                  <template v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)">
+                    <div class="ai-history-page__trace-highlights">
+                      <span
+                        v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
+                        :key="`${row.behaviorRun.request_id}-${item.label}`"
+                      >
+                        {{ item.label }}：{{ item.value }}
+                      </span>
+                    </div>
+                    <pre
+                      v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)]"
+                      class="ai-history-page__kernel-trace-json"
+                    >{{ JSON.stringify(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload), null, 2) }}</pre>
+                    <button
+                      type="button"
+                      class="ai-history-page__turn-toggle"
+                      @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                    >
+                      {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                    </button>
+                  </template>
                   <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">
                     {{ row.behaviorRun.behavior_hint_text }}
                   </p>
@@ -1627,6 +1693,27 @@ onMounted(() => {
                 <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
                 <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
               </div>
+              <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
+                <div class="ai-history-page__trace-highlights">
+                  <span
+                    v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
+                    :key="`${run.request_id}-orphan-${item.label}`"
+                  >
+                    {{ item.label }}：{{ item.value }}
+                  </span>
+                </div>
+                <pre
+                  v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)]"
+                  class="ai-history-page__kernel-trace-json"
+                >{{ JSON.stringify(behaviorAgentTrace(run.auto_feedback_payload), null, 2) }}</pre>
+                <button
+                  type="button"
+                  class="ai-history-page__turn-toggle"
+                  @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
+                >
+                  {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                </button>
+              </template>
               <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
               <div class="ai-history-page__behavior-labels">
                 <button
@@ -2185,6 +2272,27 @@ onMounted(() => {
               <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
               <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
             </div>
+            <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
+              <div class="ai-history-page__trace-highlights">
+                <span
+                  v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
+                  :key="`${run.request_id}-observe-${item.label}`"
+                >
+                  {{ item.label }}：{{ item.value }}
+                </span>
+              </div>
+              <pre
+                v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)]"
+                class="ai-history-page__kernel-trace-json"
+              >{{ JSON.stringify(behaviorAgentTrace(run.auto_feedback_payload), null, 2) }}</pre>
+              <button
+                type="button"
+                class="ai-history-page__turn-toggle"
+                @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('observe', run.request_id))"
+              >
+                {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+              </button>
+            </template>
             <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
             <button
               type="button"

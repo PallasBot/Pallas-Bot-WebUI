@@ -962,6 +962,24 @@ export interface LlmHistoryBehaviorAutoFeedbackPayload {
   matched_signal?: string;
   matched_tokens?: string[];
   observed_turn_count?: number;
+  agent_trace?: LlmHistoryBehaviorAgentTrace;
+}
+
+export interface LlmHistoryBehaviorAgentTraceRound {
+  round?: number;
+  tool_calls?: string[];
+  used_prefetch?: boolean;
+}
+
+export interface LlmHistoryBehaviorAgentTrace {
+  agent_stage_plan?: string[];
+  planner_enabled?: boolean;
+  tool_loop_enabled?: boolean;
+  tool_schema_count?: number;
+  tool_call_count?: number;
+  rounds?: LlmHistoryBehaviorAgentTraceRound[];
+  prefetched_tool?: string | null;
+  final_stage?: string | null;
 }
 
 export interface LlmBehaviorPattern {
