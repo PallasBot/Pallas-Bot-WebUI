@@ -763,6 +763,17 @@ export async function fetchLlmBehaviorRuns(params?: {
   return unwrap(data, "/common-config/llm/behavior/runs");
 }
 
+export async function fetchLlmRuntimeReplay(
+  requestId: string,
+  mode = "mock_tools",
+): Promise<Record<string, unknown>> {
+  const path = `/common-config/llm/runtime-debug/${encodeURIComponent(requestId)}/replay`;
+  const { data } = await http.get<ApiOk<Record<string, unknown>>>(path, {
+    params: { mode },
+  });
+  return unwrap(data, path);
+}
+
 export async function fetchLlmBehaviorPatterns(params?: {
   groupId?: number | null;
   scene?: string | null;

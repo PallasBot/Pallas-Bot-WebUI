@@ -10,6 +10,7 @@ import {
   fetchLlmRepeaterFeedback,
   fetchLlmRepeaterFeedbackSummary,
   fetchLlmPromotionCandidates,
+  fetchLlmRuntimeReplay,
   postLlmPromotionCandidateResolve,
   postLlmBehaviorPatternDelete,
   postLlmBehaviorPatternUpsert,
@@ -328,6 +329,22 @@ function toggleBehaviorTraceExpanded(key: string) {
   };
 }
 
+const replayCopyBusy = ref<Record<string, boolean>>({});
+
+async function copyReplayPayload(requestId: string) {
+  const key = requestId.trim();
+  if (!key || replayCopyBusy.value[key]) return;
+  replayCopyBusy.value = { ...replayCopyBusy.value, [key]: true };
+  try {
+    const payload = await fetchLlmRuntimeReplay(key);
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+  } catch {
+    // 忽略复制失败，避免打断历史页浏览
+  } finally {
+    replayCopyBusy.value = { ...replayCopyBusy.value, [key]: false };
+  }
+}
+
 function isObserveAnnotateExpanded(requestId: string): boolean {
   return !!expandedObserveAnnotateIds.value[requestId];
 }
@@ -584,6 +601,17 @@ function behaviorAgentTraceHighlights(
   }
   if (trace.final_stage) {
     items.push({ label: "结束阶段", value: trace.final_stage });
+  }
+  if (trace.request_snapshot_id) {
+    items.push({ label: "Snapshot", value: trace.request_snapshot_id });
+  }
+  if (trace.stages?.length) {
+    items.push({
+      label: "Stage",
+      value: trace.stages
+        .map((stage) => [stage.stage, stage.status, stage.model].filter(Boolean).join(":"))
+        .join(" / "),
+    });
   }
   const rounds = Array.isArray(trace.rounds) ? trace.rounds.length : 0;
   if (rounds > 0) {
@@ -1613,6 +1641,14 @@ onMounted(() => {
                       @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
                     >
                       {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                    </button>
+                    <button
+                      type="button"
+                      class="ai-history-page__turn-toggle"
+                      :disabled="replayCopyBusy[row.behaviorRun.request_id]"
+                      @click="copyReplayPayload(row.behaviorRun.request_id)"
+                    >
+                      复制 Replay Payload
                     </button>
                   </template>
                   <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">

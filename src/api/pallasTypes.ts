@@ -971,15 +971,38 @@ export interface LlmHistoryBehaviorAgentTraceRound {
   used_prefetch?: boolean;
 }
 
+export interface LlmHistoryBehaviorAgentTraceToolCall {
+  tool?: string;
+  args_keys?: string[];
+  ok?: boolean;
+  error?: string | null;
+  result_preview?: string | null;
+}
+
+export interface LlmHistoryBehaviorAgentTraceStage {
+  stage?: string;
+  status?: string;
+  provider?: string;
+  model?: string;
+  latency_ms?: number;
+  tool_calls?: LlmHistoryBehaviorAgentTraceToolCall[];
+}
+
 export interface LlmHistoryBehaviorAgentTrace {
+  version?: string;
   agent_stage_plan?: string[];
   planner_enabled?: boolean;
+  retrieve_enabled?: boolean;
   tool_loop_enabled?: boolean;
   tool_schema_count?: number;
   tool_call_count?: number;
+  request_snapshot_id?: string | null;
+  tool_catalog_version?: string | null;
   rounds?: LlmHistoryBehaviorAgentTraceRound[];
+  stages?: LlmHistoryBehaviorAgentTraceStage[];
   prefetched_tool?: string | null;
   final_stage?: string | null;
+  status?: string | null;
 }
 
 export interface LlmBehaviorPattern {
