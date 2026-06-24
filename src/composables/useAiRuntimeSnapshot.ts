@@ -85,13 +85,17 @@ export function useAiRuntimeSnapshot() {
 
   const mediaTaskQueue = computed(() => extensionTest.value?.media_tasks ?? null);
 
-  const mediaTaskCapabilities = computed(
-    () => extensionTest.value?.media_tasks?.capabilities ?? [],
-  );
+  const mediaTaskCapabilities = computed(() => {
+    const fromOverview = runtimeOverview.value?.health?.media_tasks?.capabilities;
+    if (fromOverview?.length) return fromOverview;
+    return extensionTest.value?.media_tasks?.capabilities ?? [];
+  });
 
-  const llmProviderStatus = computed(
-    () => extensionTest.value?.llm_health?.provider_status ?? [],
-  );
+  const llmProviderStatus = computed(() => {
+    const fromOverview = runtimeOverview.value?.health?.llm_health?.provider_status;
+    if (fromOverview?.length) return fromOverview;
+    return extensionTest.value?.llm_health?.provider_status ?? [];
+  });
 
   const ttsHealth = computed(() => extensionTest.value?.tts_health ?? null);
 

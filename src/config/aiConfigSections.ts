@@ -14,7 +14,7 @@ export interface AiConfigSectionDef {
 }
 
 export interface AiTopLevelNavDef {
-  id: "home" | "statistics" | "history" | "config";
+  id: "runtime" | "home" | "statistics" | "history" | "config";
   label: string;
   lead: string;
   icon: ConsoleNavIconId;
@@ -102,6 +102,13 @@ const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
 
 export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
+    id: "runtime",
+    label: "Runtime 总览",
+    lead: "一屏查看 LLM / 绘图 / 点歌 health、队列、降级与熔断。",
+    icon: "activity",
+    path: "/ai/runtime",
+  },
+  {
     id: "home",
     label: "AI 首页",
     lead: "运行总览、需要处理的降级项、LLM 调用走向与快速入口。",
@@ -148,7 +155,8 @@ export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;
 }
 
-export const AI_CONFIG_MAIN_NAV_ITEM = AI_TOP_LEVEL_NAV[3];
+export const AI_CONFIG_MAIN_NAV_ITEM =
+  AI_TOP_LEVEL_NAV.find((item) => item.id === "config") ?? AI_TOP_LEVEL_NAV[AI_TOP_LEVEL_NAV.length - 1];
 
 export function aiConfigNavGroupMeta(groupId: string): AiConfigNavGroupDef {
   return GROUP_BY_ID.get(groupId) ?? AI_CONFIG_NAV_GROUPS[0];
@@ -162,8 +170,8 @@ export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   return "runtime";
 }
 
-/** 旧 runtime 分区已移除，其内容并入 AI 首页 /ai/home。 */
-export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/home";
+/** 旧 runtime 分区已移除，其内容并入 Runtime 总览 /ai/runtime。 */
+export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/runtime";
 
 export function aiConfigSectionMeta(id: AiConfigSectionId): AiConfigSectionDef {
   return SECTION_BY_ID.get(id) ?? AI_CONFIG_SECTIONS[0];

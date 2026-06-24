@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { AI_TOP_LEVEL_NAV } from "@/config/aiConfigSections";
 import type { AiRuntimeOverview, AiRuntimeSnapshotGroup } from "@/utils/aiRuntimeTypes";
 import { runtimeStateClass, runtimeStateLabel } from "@/utils/aiRuntimeState";
 import { RouterLink } from "vue-router";
@@ -47,7 +46,7 @@ withDefaults(
       class="ai-runtime-summary__hub-link muted"
     >
       完整运行态与队列观测见
-      <RouterLink :to="AI_TOP_LEVEL_NAV[0].path">AI 首页</RouterLink>。
+      <RouterLink :to="'/ai/runtime'">Runtime 总览</RouterLink>。
     </p>
 
     <div

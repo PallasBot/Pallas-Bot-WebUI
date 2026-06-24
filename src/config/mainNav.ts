@@ -85,7 +85,7 @@ function canonicalNavPath(path: string): string {
   if (p === "/community-stats-config") return "/common-config";
   if (p === "/ai") return "/ai/home";
   if (p.startsWith("/ai/home")) return "/ai/home";
-  if (p.startsWith("/ai/runtime")) return "/ai/home";
+  if (p.startsWith("/ai/runtime")) return "/ai/runtime";
   if (p.startsWith("/ai/statistics")) return "/ai/statistics";
   if (p.startsWith("/ai/history")) return "/ai/history";
   if (p.startsWith("/ai/config/")) return AI_CONFIG_SIDEBAR_PATH;

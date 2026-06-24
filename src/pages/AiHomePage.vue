@@ -74,6 +74,7 @@ const homeHeroStats = computed(() => [
   },
 ]);
 const heroQuickLinks = [
+  { to: "/ai/runtime", label: "Runtime 总览" },
   { to: "/ai/statistics", label: "查看统计" },
   { to: "/ai/history", label: "查看历史" },
   { to: AI_CONFIG_LAYER_LINKS.runtime.path, label: "进入配置" },

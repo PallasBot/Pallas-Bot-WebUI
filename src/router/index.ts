@@ -20,6 +20,7 @@ const AiHomePage = () => import("@/pages/AiHomePage.vue");
 const AiStatisticsPage = () => import("@/pages/AiStatisticsPage.vue");
 const AiHistoryPage = () => import("@/pages/AiHistoryPage.vue");
 const AiWizardPage = () => import("@/pages/AiWizardPage.vue");
+const AiRuntimeOverviewPage = () => import("@/pages/AiRuntimeOverviewPage.vue");
 const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
 const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
 const SetupWizardPage = () => import("@/pages/SetupWizardPage.vue");
@@ -182,7 +183,7 @@ const router = createRouter({
             const raw = to.query.section ?? to.query.tab;
             if (raw != null && String(raw).trim()) {
               const id = String(raw).trim();
-              if (id === "runtime") return "/ai/home";
+              if (id === "runtime") return "/ai/runtime";
               return { path: `/ai/config/${id}` };
             }
             return "/ai/home";
@@ -226,7 +227,12 @@ const router = createRouter({
         },
         {
           path: "ai/runtime",
-          redirect: "/ai/home",
+          name: "ai-runtime",
+          component: AiRuntimeOverviewPage,
+          meta: {
+            title: "Runtime 总览",
+            description: "health / queue / circuit",
+          },
         },
         {
           path: "setup",
