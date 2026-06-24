@@ -105,7 +105,10 @@ function readmeBlobAssetUrl(owner: string, repo: string, path: string, branch: "
 }
 
 function isRelativeReadmeUrl(value: string): boolean {
-  return Boolean(value) && !/^(?:[a-z]+:|#|\/\/)/i.test(value);
+  const trimmed = (value || "").trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("/")) return false;
+  return !/^(?:[a-z]+:|#|\/\/)/i.test(trimmed);
 }
 
 function rewriteHtmlAssetUrls(html: string, repositoryUrl: string): string {
@@ -134,7 +137,7 @@ export function resolveReadmeMarkdownAssets(markdown: string, repositoryUrl: str
   const { owner, repo } = parsed;
   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
     const value = String(src || "").trim();
-    if (!value || /^(https?:|data:)/i.test(value)) return match;
+    if (!value || /^(https?:|data:|\/)/i.test(value)) return match;
     return `![${alt}](${readmeRawAssetUrl(owner, repo, value, "main")})`;
   });
 }
@@ -186,6 +189,12 @@ export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: strin
     ALLOWED_ATTR: [...README_PURIFY.ALLOWED_ATTR],
     ALLOW_DATA_ATTR: README_PURIFY.ALLOW_DATA_ATTR,
   });
+}
+
+export function normalizeBundledReadmeMarkdown(markdown: string): string {
+  return (markdown || "")
+    .replace(/\.\.\/assets\//g, "/pallas/assets/")
+    .replace(/docs\/assets\//g, "/pallas/assets/");
 }
 
 export function pluginCoverHue(seed: string): number {

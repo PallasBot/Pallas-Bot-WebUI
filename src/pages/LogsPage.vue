@@ -24,6 +24,10 @@ import {
   persistLogsEnabledLevels,
   stripYearFromLogLine,
 } from "@/utils/logDisplay";
+import {
+  loadLogsLastEventId,
+  persistLogsLastEventId,
+} from "@/utils/logStreamResume";
 
 const panelNavIcon = usePanelNavIcon();
 const liveTick = useThrottledVersion(100);
@@ -47,6 +51,7 @@ const enabledLevels = ref<Set<LogEntryLevel>>(loadLogsEnabledLevels());
 const liveEntries = ref<LogEntry[]>([]);
 const MAX_LIVE_ENTRIES = 1200;
 const streamReconnectCount = ref(0);
+const streamReconnecting = ref(false);
 const lastStreamEventId = ref(0);
 let streamReconnectTimer: number | null = null;
 
@@ -171,11 +176,13 @@ function pushLiveEntry(raw: LogEntry) {
 function startLogStream() {
   stopLogStreamConnection();
   streamLive.value = false;
+  streamReconnecting.value = false;
   try {
     const resumeId = lastStreamEventId.value > 0 ? lastStreamEventId.value : undefined;
     logEs = openLogsEventSource(scope.value, logSource.value, resumeId);
     logEs.onopen = () => {
       streamLive.value = true;
+      streamReconnecting.value = false;
     };
     logEs.onmessage = (ev) => {
       if (!ev.data) return;
@@ -185,9 +192,13 @@ function startLogStream() {
         if (row.message != null) {
           if (typeof row.id === "number" && row.id > 0) {
             lastStreamEventId.value = row.id;
+            persistLogsLastEventId(scope.value, logSource.value, row.id);
           } else if (ev.lastEventId) {
             const parsed = Number(ev.lastEventId);
-            if (Number.isFinite(parsed) && parsed > 0) lastStreamEventId.value = parsed;
+            if (Number.isFinite(parsed) && parsed > 0) {
+              lastStreamEventId.value = parsed;
+              persistLogsLastEventId(scope.value, logSource.value, parsed);
+            }
           }
           pushLiveEntry(row);
         }
@@ -199,6 +210,7 @@ function startLogStream() {
       streamLive.value = false;
       stopLogStreamConnection();
       if (streamReconnectTimer != null) return;
+      streamReconnecting.value = true;
       streamReconnectTimer = window.setTimeout(() => {
         streamReconnectTimer = null;
         streamReconnectCount.value += 1;
@@ -307,11 +319,24 @@ const activeFilterCount = computed(() => {
   return count;
 });
 
+const streamBadgeLabel = computed(() => {
+  if (streamLive.value) return "实时";
+  if (streamReconnecting.value) return "重连中";
+  return "连接中";
+});
+
+const streamBadgeClass = computed(() => {
+  if (streamLive.value) return "logs-page__badge--live";
+  if (streamReconnecting.value) return "logs-page__badge--reconnect";
+  return "logs-page__badge--pending";
+});
+
 const statusDetail = computed(() => {
   const parts: string[] = [];
   if (payload.value?.max != null) parts.push(`单次拉取上限 ${payload.value.max} 条`);
   parts.push(`历史条目 ${historyEntryCount.value} 条`);
   if (liveExtraCount.value) parts.push(`SSE 追加 ${liveExtraCount.value} 条（去重后）`);
+  if (lastStreamEventId.value > 0) parts.push(`续传 ID ${lastStreamEventId.value}`);
   if (view.value === "feed") {
     parts.push(`级别筛选后 ${levelFilteredEntries.value.length} 条`);
   } else {
@@ -353,6 +378,14 @@ watch(
     scheduleScrollActiveLogToBottom();
   },
   { flush: "post" },
+);
+
+watch(
+  () => [scope.value, logSource.value] as const,
+  () => {
+    lastStreamEventId.value = loadLogsLastEventId(scope.value, logSource.value);
+  },
+  { immediate: true },
 );
 
 watch(
@@ -518,9 +551,9 @@ onUnmounted(() => {
           >
             <span
               class="logs-page__badge"
-              :class="streamLive ? 'logs-page__badge--live' : 'logs-page__badge--pending'"
+              :class="streamBadgeClass"
             >
-              {{ streamLive ? "实时" : "连接中" }}
+              {{ streamBadgeLabel }}
             </span>
             <span class="logs-page__badge">历史 {{ historyEntryCount }}</span>
             <span

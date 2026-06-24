@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { AI_ENTRY_RUNTIME, AI_ENTRY_SITE_GATEWAY_CHECK } from "@/config/aiEntrySemantics";
@@ -7,9 +7,11 @@ import { useRoute, useRouter } from "vue-router";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchCommonConfig,
+  fetchCommonConfigRaw,
   fetchCommonConfigSections,
   postServiceGatewaysConnectivityCheck,
   putCommonConfig,
+  putCommonConfigRaw,
 } from "@/api/consoleApi";
 import type {
   CommonConfigSectionMeta,
@@ -20,6 +22,7 @@ import type {
 } from "@/api/pallasTypes";
 import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
@@ -146,6 +149,67 @@ function visibleFieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[
 const visibleGenericFields = computed(() =>
   genericFields.value.filter((f) => showConfigField(f)),
 );
+
+type ConfigEditMode = "form" | "raw";
+
+const configEditMode = ref<ConfigEditMode>("form");
+const rawToml = ref("");
+const savedRawToml = ref("");
+
+const supportsRawToml = computed(
+  () =>
+    Boolean(data.value?.fields?.length) &&
+    !isServiceGateways.value &&
+    !isCorpusFederationSection.value &&
+    !isCommunityStatsSection.value &&
+    !isControlPlaneSection.value,
+);
+
+function savedFormFingerprint(): string {
+  if (!data.value) return "";
+  const vals: Record<string, unknown> = {};
+  for (const f of data.value.fields) {
+    vals[f.name] = f.current;
+  }
+  return JSON.stringify(vals);
+}
+
+const configDirty = computed(() => {
+  if (!data.value) return false;
+  if (configEditMode.value === "raw") {
+    return rawToml.value !== savedRawToml.value;
+  }
+  return JSON.stringify(collectValues()) !== savedFormFingerprint();
+});
+
+async function ensureRawTomlLoaded() {
+  if (!currentId.value) return;
+  const text = await fetchCommonConfigRaw(currentId.value);
+  rawToml.value = text;
+  savedRawToml.value = text;
+}
+
+async function switchConfigEditMode(mode: ConfigEditMode) {
+  if (mode === configEditMode.value) return;
+  if (configDirty.value) {
+    const ok = window.confirm("当前有未保存的修改，切换编辑模式将丢弃这些更改。继续？");
+    if (!ok) return;
+  }
+  configEditMode.value = mode;
+  if (mode === "raw") {
+    await ensureRawTomlLoaded();
+    return;
+  }
+  if (data.value) {
+    fieldValues.value = fieldValuesFromConfig(data.value.fields);
+  }
+}
+
+function onConfigBeforeUnload(ev: BeforeUnloadEvent) {
+  if (!configDirty.value) return;
+  ev.preventDefault();
+  ev.returnValue = "";
+}
 
 const {
   fieldPopoverHost,
@@ -311,6 +375,9 @@ async function loadSection() {
 }
 
 watch(currentId, () => {
+  configEditMode.value = "form";
+  rawToml.value = "";
+  savedRawToml.value = "";
   closeFieldInteraction();
   void loadSection();
 });
@@ -335,12 +402,17 @@ watch(
 );
 
 onMounted(async () => {
+  window.addEventListener("beforeunload", onConfigBeforeUnload);
   try {
     await loadSections();
     await loadSection();
   } finally {
     pageReady.value = true;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", onConfigBeforeUnload);
 });
 
 useSaveHotkey(
@@ -378,26 +450,34 @@ const DEV_MODE_ENABLE_CONFIRM =
 
 async function save() {
   if (!data.value) return;
-  if (isPallasWebuiSection.value) {
-    const values = collectValues();
-    const prev = data.value.fields.find((f) => f.name === "pallas_webui_dev_mode")?.current === true;
-    const next = values.pallas_webui_dev_mode === true;
-    if (!prev && next && !window.confirm(DEV_MODE_ENABLE_CONFIRM)) return;
-  }
-  if (isCorpusFederationSection.value) {
-    const values = collectValues();
-    const prev = data.value.fields.find((f) => f.name === "corpus_backfill_enabled")?.current === true;
-    const next = values.corpus_backfill_enabled === true;
-    if (!prev && next && !window.confirm(BACKFILL_ENABLE_CONFIRM)) return;
+  if (configEditMode.value === "form") {
+    if (isPallasWebuiSection.value) {
+      const values = collectValues();
+      const prev = data.value.fields.find((f) => f.name === "pallas_webui_dev_mode")?.current === true;
+      const next = values.pallas_webui_dev_mode === true;
+      if (!prev && next && !window.confirm(DEV_MODE_ENABLE_CONFIRM)) return;
+    }
+    if (isCorpusFederationSection.value) {
+      const values = collectValues();
+      const prev = data.value.fields.find((f) => f.name === "corpus_backfill_enabled")?.current === true;
+      const next = values.corpus_backfill_enabled === true;
+      if (!prev && next && !window.confirm(BACKFILL_ENABLE_CONFIRM)) return;
+    }
   }
   saving.value = true;
   err.value = "";
   try {
-    const saved = await putCommonConfig(currentId.value, collectValues());
+    const saved =
+      configEditMode.value === "raw"
+        ? await putCommonConfigRaw(currentId.value, rawToml.value)
+        : await putCommonConfig(currentId.value, collectValues());
     if (!saved?.fields?.length) {
       throw new Error("保存响应缺少 fields，请刷新页面后重试");
     }
     data.value = saved;
+    if (configEditMode.value === "raw") {
+      savedRawToml.value = rawToml.value;
+    }
     toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -564,6 +644,45 @@ function showConfigField(f: PluginConfigField): boolean {
             {{ AI_ENTRY_RUNTIME.label }}见
             <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
           </p>
+          <div
+            v-if="supportsRawToml"
+            class="plugin-config-page__mode-toggle console-view-toggle"
+            role="tablist"
+            aria-label="配置编辑模式"
+          >
+            <button
+              type="button"
+              role="tab"
+              :class="{ 'is-on': configEditMode === 'form' }"
+              :aria-selected="configEditMode === 'form'"
+              @click="void switchConfigEditMode('form')"
+            >
+              表单
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :class="{ 'is-on': configEditMode === 'raw' }"
+              :aria-selected="configEditMode === 'raw'"
+              @click="void switchConfigEditMode('raw')"
+            >
+              Raw TOML
+            </button>
+          </div>
+          <p
+            v-if="supportsRawToml && configDirty"
+            class="alert alert--warn plugin-config-page__dirty-hint"
+          >
+            有未保存的修改
+          </p>
+          <textarea
+            v-if="supportsRawToml && configEditMode === 'raw'"
+            v-model="rawToml"
+            class="inp plugin-config-page__raw-toml"
+            spellcheck="false"
+            :disabled="saving || checking"
+          />
+          <template v-if="!supportsRawToml || configEditMode === 'form'">
           <p
             v-if="showDevModeHotReloadHint"
             class="muted common-config-page__intro"
@@ -719,17 +838,18 @@ function showConfigField(f: PluginConfigField): boolean {
               @edit-click="onFieldEditClick(f.name)"
             />
           </div>
-          <template v-else>
-            <ConfigFieldRenderer
-              v-for="f in genericFields"
-              v-show="showConfigField(f)"
-              :key="f.name"
-              :field="f"
-              :model-value="fieldValues[f.name] ?? ''"
-              :show-meta="false"
-              :json-title="`${currentId} · ${f.name}（JSON）`"
-              @update:model-value="(v) => updateFieldValue(f.name, v)"
-            />
+          <DynamicConfigPanel
+            v-else-if="visibleGenericFields.length"
+            :fields="visibleGenericFields"
+            :unexpected-keys="data?.unexpected_keys"
+            :model-value="fieldValues"
+            :active-field-popover-name="activeFieldPopoverName"
+            @update:model-value="(v) => (fieldValues = v)"
+            @help-click="onFieldHelpClick"
+            @help-hover="onFieldHelpHover"
+            @help-hover-leave="onHelpHoverLeave"
+            @edit-click="onFieldEditClick"
+          />
           </template>
         </div>
       </UiCard>

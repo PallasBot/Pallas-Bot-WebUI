@@ -199,6 +199,8 @@ const {
   restartBusy,
   restartErr,
   restartMsg,
+  restartProgressLabel,
+  restartInProgress,
   restartAvailable,
   shardedRuntime,
   ensureRestartContext,
@@ -375,8 +377,9 @@ async function applyBot(restart = false) {
 
 async function triggerBotRestart(workersOnly = false) {
   err.value = "";
+  msg.value = "";
   const ok = await restartBot(workersOnly);
-  if (ok) msg.value = restartMsg.value || "已安排重启。";
+  if (ok) msg.value = restartProgressLabel.value || restartMsg.value || "Bot 已恢复在线。";
   else if (restartErr.value) err.value = restartErr.value;
 }
 
@@ -776,23 +779,37 @@ onMounted(() => {
             安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
             <template v-if="shardedRuntime">分片部署下可选择仅重启 Worker 或全栈重启。</template>
           </p>
+          <p
+            v-if="restartInProgress || restartMsg"
+            class="muted update-page__ops-lead"
+            role="status"
+          >
+            {{ restartProgressLabel || restartMsg }}
+          </p>
+          <p
+            v-if="restartErr"
+            class="alert alert--err update-page__ops-lead"
+            role="alert"
+          >
+            {{ restartErr }}
+          </p>
           <div class="row-actions update-page__ops-actions">
             <UiButton
               v-if="shardedRuntime"
               variant="outline"
-              :disabled="restartBusy"
-              :busy="restartBusy"
+              :disabled="restartBusy || restartInProgress"
+              :busy="restartBusy || restartInProgress"
               @click="triggerBotRestart(true)"
             >
               重启 Worker
             </UiButton>
             <UiButton
               variant="destructive"
-              :disabled="restartBusy"
-              :busy="restartBusy"
+              :disabled="restartBusy || restartInProgress"
+              :busy="restartBusy || restartInProgress"
               @click="triggerBotRestart(false)"
             >
-              {{ shardedRuntime ? "全栈重启" : "重启 Bot" }}
+              {{ restartInProgress ? "重启中…" : shardedRuntime ? "全栈重启" : "重启 Bot" }}
             </UiButton>
           </div>
         </div>

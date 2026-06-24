@@ -309,13 +309,18 @@ export async function installOfficialExtensionAsync(
   return unwrap(data, "/plugins/official-extensions/install-async");
 }
 
-export function openExtensionInstallJobEventSource(jobId: string): EventSource {
+export function openPluginInstallJobEventSource(jobId: string): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
   const apiBase = `${root}/api`;
   return new EventSource(
-    `${apiBase}/plugins/official-extensions/install-jobs/${encodeURIComponent(jobId)}/stream`,
+    `${apiBase}/plugins/install-jobs/${encodeURIComponent(jobId)}/stream`,
     { withCredentials: true },
   );
+}
+
+/** @deprecated 使用 openPluginInstallJobEventSource */
+export function openExtensionInstallJobEventSource(jobId: string): EventSource {
+  return openPluginInstallJobEventSource(jobId);
 }
 
 export async function uninstallOfficialExtension(
@@ -413,6 +418,22 @@ export async function fetchPluginStoreReadme(
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;
+
+export async function installCommunityPluginAsync(
+  pluginId: string,
+  options?: { restart?: boolean; repositoryUrl?: string; ref?: string },
+): Promise<ExtensionInstallJobData> {
+  const { data } = await http.post<ApiOk<ExtensionInstallJobData>>(
+    "/plugins/community-plugins/install-async",
+    {
+      plugin_id: pluginId,
+      repository_url: options?.repositoryUrl,
+      ref: options?.ref,
+      restart: Boolean(options?.restart),
+    },
+  );
+  return unwrap(data, "/plugins/community-plugins/install-async");
+}
 
 export async function installCommunityPlugin(
   pluginId: string,
@@ -668,6 +689,21 @@ export async function putCommonConfig(
     values,
   });
   return unwrap(data, `/common-config/${sectionId}`);
+}
+
+export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
+  const { data } = await http.get<ApiOk<{ toml: string }>>(
+    `/common-config/${encodeURIComponent(sectionId)}/raw`,
+  );
+  return unwrap(data, `/common-config/${sectionId}/raw`).toml;
+}
+
+export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginConfigData> {
+  const { data } = await http.put<ApiOk<PluginConfigData>>(
+    `/common-config/${encodeURIComponent(sectionId)}/raw`,
+    { toml },
+  );
+  return unwrap(data, `/common-config/${sectionId}/raw`);
 }
 
 export async function postServiceGatewaysConnectivityCheck(

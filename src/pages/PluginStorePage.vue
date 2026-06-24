@@ -6,9 +6,9 @@ import {
   fetchOfficialExtensions,
   fetchPluginStoreReadme,
   fetchPlugins,
-  installCommunityPlugin,
+  installCommunityPluginAsync,
   installOfficialExtensionAsync,
-  openExtensionInstallJobEventSource,
+  openPluginInstallJobEventSource,
   refreshPluginStore,
   refreshPluginUpdateSnapshot,
   uninstallCommunityPlugin,
@@ -45,6 +45,7 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { axiosErrorDetail } from "@/api/http";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import { waitForInstallJob } from "@/utils/installJobStream";
 import {
   readmeMarkdownToSafeHtml,
 } from "@/utils/pluginReadme";
@@ -95,6 +96,9 @@ const storeActionHint = ref("");
 const storeActionNeedsRestart = ref(false);
 const {
   restartBusy,
+  restartErr,
+  restartProgressLabel,
+  restartInProgress,
   restartAvailable: systemRestartAvailable,
   ensureRestartContext,
   restartBot,
@@ -104,7 +108,9 @@ async function restartBotNow() {
   const ok = await restartBot(false);
   if (ok) {
     storeActionNeedsRestart.value = false;
-    storeActionHint.value = "已安排 Bot 重启，数秒后生效。";
+    storeActionHint.value = restartProgressLabel.value || "Bot 已恢复在线。";
+  } else if (restartErr.value) {
+    storeErr.value = restartErr.value;
   }
 }
 
@@ -613,47 +619,16 @@ async function installExtension(row: OfficialExtensionRow, restart = false) {
   try {
     const job = await installOfficialExtensionAsync(row.package, { restart });
     storeActionHint.value = `安装中：${job.package}`;
-    await new Promise<void>((resolve, reject) => {
-      const installStream = openExtensionInstallJobEventSource(job.job_id);
-      const closeStream = () => installStream.close();
-      installStream.onmessage = (ev) => {
-        if (!ev.data) return;
-        try {
-          const payload = JSON.parse(ev.data) as {
-            type?: string;
-            phase?: string;
-            message?: string;
-            error?: string;
-            result?: OfficialExtensionInstallResult;
-          };
-          if (payload.type === "progress" && payload.message) {
-            storeActionHint.value = payload.message;
-          }
-          if (payload.type === "complete") {
-            if (payload.phase === "failed") {
-              closeStream();
-              reject(new Error(payload.error || payload.message || "安装失败"));
-              return;
-            }
-            const result = payload.result;
-            if (result) {
-              officialActionState.value = { ...officialActionState.value, [row.package]: result };
-              noteStoreActionResult(result.message || payload.message || "安装完成。", result);
-            } else {
-              noteStoreActionResult(payload.message || "安装完成。", null);
-            }
-            closeStream();
-            resolve();
-          }
-        } catch {
-          /* ignore malformed */
-        }
-      };
-      installStream.onerror = () => {
-        closeStream();
-        reject(new Error("安装进度连接中断"));
-      };
+    const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
+      storeActionHint.value = message;
     });
+    const result = payload.result as OfficialExtensionInstallResult | undefined;
+    if (result) {
+      officialActionState.value = { ...officialActionState.value, [row.package]: result };
+      noteStoreActionResult(result.message || payload.message || "安装完成。", result);
+    } else {
+      noteStoreActionResult(payload.message || "安装完成。", null);
+    }
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -722,18 +697,23 @@ function closeGitInstallDialog() {
 async function installCommunityFromGit(restart = false) {
   if (gitInstallBusy.value || !gitInstallValid.value) return;
   storeErr.value = "";
-  storeActionHint.value = "";
+  storeActionHint.value = "正在排队安装…";
   storeActionNeedsRestart.value = false;
   gitInstallBusy.value = true;
   storeBusyPluginId.value = gitPluginId.value.trim();
+  const pluginId = gitPluginId.value.trim();
   try {
-    const out = await installCommunityPlugin(gitPluginId.value.trim(), {
+    const job = await installCommunityPluginAsync(pluginId, {
       restart,
       repositoryUrl: gitRepositoryUrl.value.trim(),
       ref: gitRef.value.trim() || "main",
     });
-    communityActionState.value = { ...communityActionState.value, [gitPluginId.value.trim()]: out };
-    const base = out.message || "安装完成。";
+    const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
+      storeActionHint.value = message;
+    });
+    const out = (payload.result ?? {}) as CommunityPluginActionResult;
+    communityActionState.value = { ...communityActionState.value, [pluginId]: out };
+    const base = out.message || payload.message || "安装完成。";
     noteStoreActionResult(restart ? base : `${base} 请重启 Bot 后加载。`, out);
     gitInstallOpen.value = false;
     await refreshCommunityStore();
@@ -748,18 +728,22 @@ async function installCommunityFromGit(restart = false) {
 async function installCommunity(row: CommunityPluginRow, restart = false) {
   if (storeBusyPluginId.value) return;
   storeErr.value = "";
-  storeActionHint.value = "";
+  storeActionHint.value = "正在排队安装…";
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   try {
-    const out = await installCommunityPlugin(row.plugin_id, {
+    const job = await installCommunityPluginAsync(row.plugin_id, {
       restart,
       repositoryUrl: row.repository_url || undefined,
       ref: row.ref,
     });
+    const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
+      storeActionHint.value = message;
+    });
+    const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     noteStoreActionResult(
-      out.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。"),
+      out.message || payload.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。"),
       out,
     );
     await refreshCommunityStore();
@@ -1084,16 +1068,16 @@ onDeactivated(() => {
         role="status"
       >
         <p class="muted plugin-store-page__hint plugin-store-page__hint--ok">
-          {{ storeActionHint }}
+          {{ restartInProgress ? (restartProgressLabel || storeActionHint) : storeActionHint }}
         </p>
         <UiButton
           v-if="storeActionNeedsRestart"
           variant="outline"
-          :busy="restartBusy"
-          :disabled="restartBusy"
+          :busy="restartBusy || restartInProgress"
+          :disabled="restartBusy || restartInProgress"
           @click="restartBotNow"
         >
-          立即重启 Bot
+          {{ restartInProgress ? "重启中…" : "立即重启 Bot" }}
         </UiButton>
       </div>
       <p

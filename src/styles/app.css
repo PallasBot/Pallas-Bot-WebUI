@@ -1996,6 +1996,12 @@ html[data-theme="light"] .shell-back-top {
   background: color-mix(in srgb, var(--warn) 10%, var(--bg-card));
 }
 
+.logs-page__badge--reconnect {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+}
+
 .logs-page__badge--accent {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));

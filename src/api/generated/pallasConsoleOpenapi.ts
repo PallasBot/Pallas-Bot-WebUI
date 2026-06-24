@@ -416,6 +416,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/plugins/official-extensions/install-async": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plugins Official Extensions Install Async */
+        post: operations["_plugins_official_extensions_install_async_pallas_api_plugins_official_extensions_install_async_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/plugins/official-extensions/install-jobs/{job_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugins Official Extensions Install Job Stream */
+        get: operations["_plugins_official_extensions_install_job_stream_pallas_api_plugins_official_extensions_install_jobs__job_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/plugins/install-jobs/{job_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugins Install Job Stream */
+        get: operations["_plugins_install_job_stream_pallas_api_plugins_install_jobs__job_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/plugins/official-extensions/uninstall": {
         parameters: {
             query?: never;
@@ -555,6 +606,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/plugins/community-plugins/install-async": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plugins Community Plugins Install Async */
+        post: operations["_plugins_community_plugins_install_async_pallas_api_plugins_community_plugins_install_async_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/plugins/community-plugins/uninstall": {
         parameters: {
             query?: never;
@@ -661,6 +729,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/plugins/{plugin_name}/config/raw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugin Config Raw Get */
+        get: operations["_plugin_config_raw_get_pallas_api_plugins__plugin_name__config_raw_get"];
+        /** Plugin Config Raw Put */
+        put: operations["_plugin_config_raw_put_pallas_api_plugins__plugin_name__config_raw_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/plugins/{plugin_name}/config-check": {
         parameters: {
             query?: never;
@@ -706,6 +792,24 @@ export interface paths {
         get: operations["_common_config_get_pallas_api_common_config__section_id__get"];
         /** Common Config Put */
         put: operations["_common_config_put_pallas_api_common_config__section_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/{section_id}/raw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Common Config Raw Get */
+        get: operations["_common_config_raw_get_pallas_api_common_config__section_id__raw_get"];
+        /** Common Config Raw Put */
+        put: operations["_common_config_raw_put_pallas_api_common_config__section_id__raw_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2099,6 +2203,20 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IngressDispatchData */
+        IngressDispatchData: {
+            /**
+             * Sharded
+             * @default false
+             */
+            sharded: boolean;
+            /** Workers */
+            workers?: {
+                [key: string]: unknown;
+            }[];
+        } & {
+            [key: string]: unknown;
+        };
         /** LlmReplayRunBody */
         LlmReplayRunBody: {
             /**
@@ -2106,6 +2224,164 @@ export interface components {
              * @default mock_tools
              */
             mode: string;
+        };
+        /** LogEntryData */
+        LogEntryData: {
+            /** Id */
+            id: number;
+            /**
+             * Time
+             * @default
+             */
+            time: string;
+            /**
+             * Level
+             * @default info
+             */
+            level: string;
+            /**
+             * Scope
+             * @default
+             */
+            scope: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** LogsData */
+        LogsData: {
+            /** Lines */
+            lines?: string[];
+            /** Entries */
+            entries?: components["schemas"]["LogEntryData"][];
+            /**
+             * Max
+             * @default 0
+             */
+            max: number;
+            /** Scope */
+            scope?: string | null;
+            /** Source */
+            source?: string | null;
+            /**
+             * Sharded Logs
+             * @default false
+             */
+            sharded_logs: boolean;
+            /** Log Sources */
+            log_sources?: string[];
+        };
+        /** PluginConfigData */
+        PluginConfigData: {
+            /** Plugin */
+            plugin: string;
+            /**
+             * Module
+             * @default
+             */
+            module: string;
+            /** Fields */
+            fields?: {
+                [key: string]: unknown;
+            }[];
+            /** Unexpected Keys */
+            unexpected_keys?: {
+                [key: string]: string;
+            }[];
+        };
+        /** PluginGovernanceData */
+        PluginGovernanceData: {
+            /** Plugin */
+            plugin: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** Commands */
+            commands?: {
+                [key: string]: unknown;
+            }[];
+            /** Menu Items */
+            menu_items?: {
+                [key: string]: unknown;
+            }[];
+            runtime: components["schemas"]["PluginGovernanceRuntimeData"];
+            /** Perm Ui Filtered */
+            perm_ui_filtered?: {
+                [key: string]: unknown;
+            };
+            /** Limits Ui Filtered */
+            limits_ui_filtered?: {
+                [key: string]: unknown;
+            };
+            /** Reload Policy */
+            reload_policy?: string | null;
+            /** Activation Policy */
+            activation_policy?: string | null;
+        };
+        /** PluginGovernanceRuntimeData */
+        PluginGovernanceRuntimeData: {
+            /**
+             * Global Disable
+             * @default false
+             */
+            global_disable: boolean;
+            /**
+             * Help Hidden
+             * @default false
+             */
+            help_hidden: boolean;
+            /**
+             * Global Disable Protected
+             * @default false
+             */
+            global_disable_protected: boolean;
+            /**
+             * Help Ignored
+             * @default false
+             */
+            help_ignored: boolean;
+        };
+        /** ShardObservabilityData */
+        ShardObservabilityData: {
+            /**
+             * Sharded
+             * @default false
+             */
+            sharded: boolean;
+            /** Ingress Cluster */
+            ingress_cluster?: {
+                [key: string]: unknown;
+            } | null;
+            /** Ingress Process */
+            ingress_process?: {
+                [key: string]: unknown;
+            } | null;
+            /** Repeater Ingress Cluster */
+            repeater_ingress_cluster?: {
+                [key: string]: unknown;
+            } | null;
+            /** Repeater Ingress Process */
+            repeater_ingress_process?: {
+                [key: string]: unknown;
+            } | null;
+            /** Coord Pending Live */
+            coord_pending_live?: {
+                [key: string]: unknown;
+            } | null;
+            /** Workers */
+            workers?: {
+                [key: string]: unknown;
+            }[];
+            /** Pg Pool */
+            pg_pool?: {
+                [key: string]: unknown;
+            } | null;
+        } & {
+            [key: string]: unknown;
         };
         /** ValidationError */
         ValidationError: {
@@ -2195,6 +2471,56 @@ export interface components {
              * @default 86
              */
             ctcode: number;
+        };
+        /** _ApiOkResponse[IngressDispatchData] */
+        _ApiOkResponse_IngressDispatchData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["IngressDispatchData"];
+        };
+        /** _ApiOkResponse[LogsData] */
+        _ApiOkResponse_LogsData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["LogsData"];
+        };
+        /** _ApiOkResponse[PluginConfigData] */
+        _ApiOkResponse_PluginConfigData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["PluginConfigData"];
+        };
+        /** _ApiOkResponse[PluginGovernanceData] */
+        _ApiOkResponse_PluginGovernanceData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["PluginGovernanceData"];
+        };
+        /** _ApiOkResponse[ShardObservabilityData] */
+        _ApiOkResponse_ShardObservabilityData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["ShardObservabilityData"];
         };
         /** _ApiOkResponse[_AiExtensionTestData] */
         _ApiOkResponse__AiExtensionTestData_: {
@@ -2471,6 +2797,8 @@ export interface components {
             circuit_state?: string | null;
             /** Recent Failure Class */
             recent_failure_class?: string | null;
+            /** Consecutive Failures */
+            consecutive_failures?: number | null;
             /** Provider Status */
             provider_status?: components["schemas"]["_LlmHealthProviderRow"][];
         };
@@ -2751,6 +3079,10 @@ export interface components {
             conversation_kernel?: {
                 [key: string]: unknown;
             };
+            /** Task Routing Preview */
+            task_routing_preview?: {
+                [key: string]: unknown;
+            };
         };
         /** _LlmRuntimeOverviewHealthData */
         _LlmRuntimeOverviewHealthData: {
@@ -2771,9 +3103,17 @@ export interface components {
             /** Llm Runtime Detail */
             llm_runtime_detail?: string | null;
             llm_health?: components["schemas"]["_LlmHealthSummaryData"] | null;
+            /** Llm Circuit */
+            llm_circuit?: {
+                [key: string]: unknown;
+            } | null;
             image_health?: components["schemas"]["_LlmImageHealthData"] | null;
             tts_health?: components["schemas"]["_LlmTtsHealthData"] | null;
             media_tasks?: components["schemas"]["_LlmMediaTasksHealthData"] | null;
+            /** Submit Gate */
+            submit_gate?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** _LlmTtsHealthData */
         _LlmTtsHealthData: {
@@ -2862,6 +3202,14 @@ export interface components {
              * @default false
              */
             restart: boolean;
+        };
+        /** _PluginConfigRawBody */
+        _PluginConfigRawBody: {
+            /**
+             * Toml
+             * @default
+             */
+            toml: string;
         };
         /** _PluginConfigUpdateBody */
         _PluginConfigUpdateBody: {
@@ -3180,7 +3528,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_ShardObservabilityData_"];
                 };
             };
             /** @description Validation Error */
@@ -3247,7 +3595,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_IngressDispatchData_"];
                 };
             };
             /** @description Validation Error */
@@ -3697,7 +4045,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginGovernanceData_"];
                 };
             };
             /** @description Validation Error */
@@ -3834,6 +4182,113 @@ export interface operations {
                 "application/json": components["schemas"]["_OfficialExtensionPackageBody"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_official_extensions_install_async_pallas_api_plugins_official_extensions_install_async_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_OfficialExtensionPackageBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_official_extensions_install_job_stream_pallas_api_plugins_official_extensions_install_jobs__job_id__stream_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_install_job_stream_pallas_api_plugins_install_jobs__job_id__stream_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4101,6 +4556,43 @@ export interface operations {
         };
     };
     _plugins_community_plugins_install_pallas_api_plugins_community_plugins_install_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_CommunityPluginActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_community_plugins_install_async_pallas_api_plugins_community_plugins_install_async_post: {
         parameters: {
             query?: {
                 token?: string | null;
@@ -4442,7 +4934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */
@@ -4472,6 +4964,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_PluginConfigUpdateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugin_config_raw_get_pallas_api_plugins__plugin_name__config_raw_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                plugin_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugin_config_raw_put_pallas_api_plugins__plugin_name__config_raw_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                plugin_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PluginConfigRawBody"];
             };
         };
         responses: {
@@ -4618,6 +5184,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_PluginConfigUpdateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _common_config_raw_get_pallas_api_common_config__section_id__raw_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _common_config_raw_put_pallas_api_common_config__section_id__raw_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PluginConfigRawBody"];
             };
         };
         responses: {
@@ -6133,7 +6773,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_LogsData_"];
                 };
             };
             /** @description Validation Error */
@@ -6154,9 +6794,12 @@ export interface operations {
                 scope?: "all" | "webui" | "protocol";
                 /** @description 分片来源：all|hub|worker-N（与 GET /logs 一致） */
                 source?: string | null;
+                /** @description 断点续传：仅发送 id 大于该值的日志条目 */
+                last_event_id?: number | null;
                 token?: string | null;
             };
             header?: {
+                "Last-Event-ID"?: number | null;
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;

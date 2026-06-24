@@ -1839,6 +1839,17 @@ export interface ShardObservabilityData {
   pg_pool?: ShardPgPoolEstimate;
 }
 
+/** OpenAPI 第二波：codegen 与手写类型对齐锚点（逐步迁移 UI 引用） */
+export type OpenapiShardObservabilityData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/shard-observability"]["get"]>;
+export type OpenapiIngressDispatchData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>;
+export type OpenapiLogsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>;
+export type OpenapiPluginGovernanceData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>;
+export type OpenapiPluginConfigData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>;
+
 export interface FriendListData {
   self_id: string;
   connection_key: string;

@@ -3,6 +3,7 @@ import { computed, onMounted } from "vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
 import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
@@ -20,6 +21,28 @@ const {
 
 const headline = computed(() => runtimeOverviewHeadline(runtimeOverview.value));
 const rows = computed(() => buildRuntimeOverviewRows(runtimeOverview.value));
+const submitGate = computed(() => runtimeOverview.value?.health?.submit_gate);
+const taskRoutingRows = computed(() => {
+  const preview = runtimeOverview.value?.task_routing_preview;
+  if (!preview || typeof preview !== "object") return [];
+  return Object.entries(preview).map(([task, raw]) => {
+    const row = raw as {
+      primary_model?: string | null;
+      chain?: Array<{ resolved_model?: string | null }>;
+    };
+    const chain = Array.isArray(row.chain) ? row.chain : [];
+    const fallbacks = chain
+      .slice(1)
+      .map((item) => String(item.resolved_model ?? "").trim())
+      .filter(Boolean);
+    return {
+      task,
+      label: LLM_TASK_ROUTE_LABELS[task as keyof typeof LLM_TASK_ROUTE_LABELS] ?? task,
+      primary: String(row.primary_model ?? chain[0]?.resolved_model ?? "").trim() || "—",
+      fallbacks,
+    };
+  });
+});
 const dotClass = runtimeStateDotClass;
 
 function healthTone(state: string): string {
@@ -59,6 +82,9 @@ onMounted(() => {
         <RouterLink to="/ai/wizard">
           <UiButton variant="ghost">体检向导</UiButton>
         </RouterLink>
+        <RouterLink to="/ai/statistics">
+          <UiButton variant="ghost">调用统计</UiButton>
+        </RouterLink>
         <RouterLink to="/ai/home">
           <UiButton variant="ghost">AI 首页</UiButton>
         </RouterLink>
@@ -78,6 +104,12 @@ onMounted(() => {
             <strong>{{ headline.title }}</strong>
           </div>
           <p class="muted ai-runtime-page__hero-detail">{{ headline.detail }}</p>
+          <p
+            v-if="submitGate && submitGate.allowed === false"
+            class="alert alert--warn ai-runtime-page__gate-hint"
+          >
+            当前拒接新 LLM 请求：{{ submitGate.status || "unknown" }}
+          </p>
           <p v-if="runtimeOverview?.health?.url" class="muted ai-runtime-page__hero-url">
             探活 {{ runtimeOverview.health.url }}
             <template v-if="runtimeOverview.health.status_code != null">
@@ -151,6 +183,36 @@ onMounted(() => {
       </div>
     </UiCard>
 
+    <UiCard v-if="taskRoutingRows.length" class="ai-runtime-page__routing-card">
+      <div class="ai-head">
+        <h3 class="ai-head__title">任务路由与 Fallback 链</h3>
+        <span class="ai-head__hint">Bot 提交时将按主模型 → fallback 顺序尝试</span>
+      </div>
+      <div class="ai-runtime-page__table-wrap">
+        <table class="ai-runtime-page__table">
+          <thead>
+            <tr>
+              <th>任务</th>
+              <th>主模型</th>
+              <th>Fallback</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in taskRoutingRows" :key="row.task">
+              <td data-label="任务">
+                <strong>{{ row.label }}</strong>
+                <span class="muted ai-runtime-page__row-id">{{ row.task }}</span>
+              </td>
+              <td data-label="主模型"><code>{{ row.primary }}</code></td>
+              <td data-label="Fallback" class="muted">
+                {{ row.fallbacks.length ? row.fallbacks.join(" → ") : "—" }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </UiCard>
+
     <UiCard v-if="focusItems.length" class="ai-runtime-page__focus-card">
       <div class="ai-head">
         <h3 class="ai-head__title">网关探活需处理</h3>
@@ -198,6 +260,11 @@ onMounted(() => {
   margin: 8px 0 0;
   font-size: 0.8125rem;
   line-height: 1.5;
+}
+
+.ai-runtime-page__gate-hint {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
 }
 
 .ai-runtime-page__hero-stats {

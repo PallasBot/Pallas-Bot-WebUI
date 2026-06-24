@@ -1984,6 +1984,7 @@ html[data-layout="hub"] .logs-page__badge {
 
 html[data-layout="hub"] .logs-page__badge--live,
 html[data-layout="hub"] .logs-page__badge--pending,
+html[data-layout="hub"] .logs-page__badge--reconnect,
 html[data-layout="hub"] .logs-page__badge--accent,
 html[data-layout="hub"] .logs-page__badge--muted {
   background: none;

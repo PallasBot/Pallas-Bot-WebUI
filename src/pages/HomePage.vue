@@ -96,6 +96,8 @@ const {
   restartBusy,
   restartErr,
   restartMsg,
+  restartProgressLabel,
+  restartInProgress,
   restartAvailable,
   shardedRuntime,
   ensureRestartContext,
@@ -1416,11 +1418,11 @@ onUnmounted(() => {
                   class="home-ops-restart"
                 >
                   <p
-                    v-if="restartMsg"
+                    v-if="restartInProgress || restartMsg"
                     class="home-ops-restart__msg muted"
                     role="status"
                   >
-                    {{ restartMsg }}
+                    {{ restartProgressLabel || restartMsg }}
                   </p>
                   <p
                     v-if="restartErr"
@@ -1434,8 +1436,8 @@ onUnmounted(() => {
                       v-if="shardedRuntime"
                       variant="outline"
                       size="sm"
-                      :disabled="restartBusy"
-                      :busy="restartBusy"
+                      :disabled="restartBusy || restartInProgress"
+                      :busy="restartBusy || restartInProgress"
                       @click="triggerHomeRestart(true)"
                     >
                       重启 Worker
@@ -1443,8 +1445,8 @@ onUnmounted(() => {
                     <UiButton
                       variant="outline"
                       size="sm"
-                      :disabled="restartBusy"
-                      :busy="restartBusy"
+                      :disabled="restartBusy || restartInProgress"
+                      :busy="restartBusy || restartInProgress"
                       @click="triggerHomeRestart(false)"
                     >
                       {{ shardedRuntime ? "全栈重启" : "重启 Bot" }}

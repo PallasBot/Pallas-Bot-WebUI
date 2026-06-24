@@ -16,7 +16,13 @@ export interface HealthResponse {
 
 let healthInflight: Promise<HealthResponse> | null = null;
 
-export async function fetchHealth(): Promise<HealthResponse> {
+export async function fetchHealth(options?: { bypassCache?: boolean }): Promise<HealthResponse> {
+  if (options?.bypassCache) {
+    const { data } = await http.get<HealthResponse>("/health", {
+      params: { _ts: Date.now() },
+    });
+    return data;
+  }
   if (!healthInflight) {
     healthInflight = (async () => {
       const { data } = await http.get<HealthResponse>("/health");

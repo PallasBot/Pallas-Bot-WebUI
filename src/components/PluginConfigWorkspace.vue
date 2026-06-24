@@ -52,13 +52,15 @@ import {
 } from "@/utils/pluginConfigWorkspaceModel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
-import { readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
+import {
+  normalizeBundledReadmeMarkdown,
+  readmeMarkdownToSafeHtml,
+} from "@/utils/pluginReadme";
 import {
   AI_ENTRY_PLUGIN_CONFIG_CHECK,
   AI_ENTRY_RUNTIME,
   AI_ENTRY_SITE_GATEWAY_CHECK,
 } from "@/config/aiEntrySemantics";
-import { PALLAS_BOT_REPO } from "@/utils/pallasExternalLinks";
 
 const props = withDefaults(
   defineProps<{
@@ -541,8 +543,8 @@ async function loadReadme() {
     try {
       const bundled = await fetchPluginBundledReadme(pluginId);
       if (bundled.markdown.trim()) {
-        const normalized = bundled.markdown.replace(/\.\.\/assets\//g, "docs/assets/");
-        readmeHtml.value = readmeMarkdownToSafeHtml(normalized, PALLAS_BOT_REPO);
+        const normalized = normalizeBundledReadmeMarkdown(bundled.markdown);
+        readmeHtml.value = readmeMarkdownToSafeHtml(normalized);
         return;
       }
     } catch {

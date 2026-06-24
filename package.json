@@ -9,6 +9,7 @@
     "build": "vue-tsc -b && vite build && node ./scripts/write-console-version.mjs",
     "build:ci": "vue-tsc -b && vite build && node ./scripts/write-console-version.mjs",
     "gen:console-openapi-types": "node ./scripts/generate-console-openapi-types.mjs",
+    "check:console-openapi-types": "node ./scripts/check-console-openapi-types.mjs",
     "test:smoke": "vitest run",
     "optimize:standee": "node ./scripts/compress-standee.mjs",
     "sync:protocol-css": "node ./scripts/sync-protocol-console-css.mjs",

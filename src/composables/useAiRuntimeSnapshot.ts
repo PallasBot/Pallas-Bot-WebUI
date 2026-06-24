@@ -168,14 +168,16 @@ export function useAiRuntimeSnapshot() {
         fetchLlmRuntimeOverview(),
         fetchLlmWizardStatus(),
       ]);
-      if (gatewayResult.status !== "fulfilled") {
-        throw gatewayResult.reason;
+      if (gatewayResult.status === "fulfilled") {
+        gatewayResults.value = gatewayResult.value.results;
       }
-      if (extensionResult.status !== "fulfilled") {
+      if (extensionResult.status === "fulfilled") {
+        extensionTest.value = extensionResult.value;
+      } else if (gatewayResult.status !== "fulfilled") {
+        throw gatewayResult.reason;
+      } else {
         throw extensionResult.reason;
       }
-      gatewayResults.value = gatewayResult.value.results;
-      extensionTest.value = extensionResult.value;
       llmTaskStats.value = llmStatsResult.status === "fulfilled" ? llmStatsResult.value : null;
       runtimeOverview.value = runtimeOverviewResult.status === "fulfilled" ? runtimeOverviewResult.value : null;
       wizardStatus.value = wizardResult.status === "fulfilled" ? wizardResult.value : null;

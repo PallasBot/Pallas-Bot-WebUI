@@ -34,6 +34,7 @@ export function buildRuntimeOverviewRows(
       circuitState: labelOrDash(llm.circuit_state),
       degradedState: labelOrDash(llm.degraded_state),
       detail: `Provider ${reachable}/${providers.length} 可达`
+        + (llm.consecutive_failures ? ` · 连续失败 ${llm.consecutive_failures}` : "")
         + (llm.recent_failure_class ? ` · 最近失败 ${llm.recent_failure_class}` : ""),
     });
   }

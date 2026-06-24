@@ -1,14 +1,20 @@
-import { computed, ref, type Ref } from "vue";
+import { computed, ref } from "vue";
 import { fetchBotUpdateCheck, fetchShardObservability, postSystemRestart } from "@/api/consoleApi";
 import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
+import {
+  botRestartPhaseLabel,
+  waitForBotRestartOnline,
+  type BotRestartPhase,
+} from "@/utils/botRestartProgress";
 
 export function useBotSystemRestart(options?: {
-  botUpdateCheck?: Ref<BotUpdateCheckData | null>;
+  botUpdateCheck?: { value: BotUpdateCheckData | null };
 }) {
   const restartBusy = ref(false);
   const restartMsg = ref("");
   const restartErr = ref("");
+  const restartPhase = ref<BotRestartPhase>("idle");
   const shardedRuntime = ref<boolean | null>(null);
   const internalBotCheck = ref<BotUpdateCheckData | null>(null);
 
@@ -20,6 +26,17 @@ export function useBotSystemRestart(options?: {
     const b = effectiveBotCheck.value;
     return Boolean(b?.restart_available && b?.deployment_mode !== "docker");
   });
+
+  const restartProgressLabel = computed(() => botRestartPhaseLabel(restartPhase.value));
+
+  const restartInProgress = computed(
+    () =>
+      restartBusy.value
+      || (restartPhase.value !== "idle"
+        && restartPhase.value !== "online"
+        && restartPhase.value !== "timeout"
+        && restartPhase.value !== "failed"),
+  );
 
   async function ensureRestartContext(): Promise<void> {
     if (!options?.botUpdateCheck && !internalBotCheck.value) {
@@ -53,11 +70,26 @@ export function useBotSystemRestart(options?: {
     restartBusy.value = true;
     restartErr.value = "";
     restartMsg.value = "";
+    restartPhase.value = "idle";
     try {
       const r = await postSystemRestart({ workersOnly });
-      restartMsg.value = r.message || "已安排重启。";
-      return true;
+      restartPhase.value = "scheduled";
+      restartMsg.value = r.message || botRestartPhaseLabel("scheduled");
+      const online = await waitForBotRestartOnline({
+        onPhase: (phase) => {
+          restartPhase.value = phase;
+          const label = botRestartPhaseLabel(phase);
+          if (label) restartMsg.value = label;
+        },
+      });
+      if (online) {
+        restartErr.value = "";
+        return true;
+      }
+      restartErr.value = botRestartPhaseLabel("timeout");
+      return false;
     } catch (e) {
+      restartPhase.value = "failed";
       restartErr.value = axiosErrorDetail(e);
       return false;
     } finally {
@@ -69,6 +101,9 @@ export function useBotSystemRestart(options?: {
     restartBusy,
     restartMsg,
     restartErr,
+    restartPhase,
+    restartProgressLabel,
+    restartInProgress,
     restartAvailable,
     shardedRuntime,
     ensureRestartContext,
