@@ -1,5 +1,11 @@
 import { isAxiosError } from "axios";
 import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
+import {
+  consoleOpenapiGet,
+  consoleOpenapiPost,
+  consoleOpenapiPut,
+  type ConsoleOpenapiPaths,
+} from "./consoleOpenapiClient";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
 import type {
@@ -46,7 +52,6 @@ import type {
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
   PluginConfigData,
-  PluginConfigRawData,
   ExtensionInstallJobData,
   PluginCapabilitiesData,
   PluginGovernanceBody,
@@ -170,8 +175,7 @@ export function refreshInstancesCatalogGlobal(): Promise<InstancesData> {
 }
 
 async function fetchInstancesFromNetwork(): Promise<InstancesData> {
-  const { data } = await http.get<ApiOk<InstancesData>>("/instances");
-  return unwrap(data, "/instances");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/instances"]["get"]>("/instances")) as InstancesData;
 }
 
 export type FetchInstancesOptions = {
@@ -190,12 +194,12 @@ let systemInflight: Promise<SystemData> | null = null;
 
 export async function fetchSystem(): Promise<SystemData> {
   if (!systemInflight) {
-    systemInflight = (async () => {
-      const { data } = await http.get<ApiOk<SystemData>>("/system");
-      return unwrap(data, "/system");
-    })().finally(() => {
-      systemInflight = null;
-    });
+    systemInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/system"]["get"]>("/system")) as SystemData)().finally(
+      () => {
+        systemInflight = null;
+      },
+    );
   }
   return systemInflight;
 }
@@ -219,13 +223,13 @@ export function invalidatePluginsCache() {
 }
 
 async function fetchPluginsFromNetwork(): Promise<PluginRow[]> {
-  const { data } = await http.get<ApiOk<PluginRow[]>>("/plugins");
-  return unwrap(data, "/plugins");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>("/plugins")) as PluginRow[];
 }
 
 export async function fetchPluginCapabilities(): Promise<PluginCapabilitiesData> {
-  const { data } = await http.get<ApiOk<PluginCapabilitiesData>>("/plugins/capabilities");
-  return unwrap(data, "/plugins/capabilities");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/capabilities"]["get"]>(
+    "/plugins/capabilities",
+  )) as PluginCapabilitiesData;
 }
 
 export type FetchPluginsOptions = {
@@ -278,8 +282,9 @@ export async function fetchPlugins(opts?: FetchPluginsOptions): Promise<PluginRo
 }
 
 export async function fetchOfficialExtensions(): Promise<OfficialExtensionRow[]> {
-  const { data } = await http.get<ApiOk<OfficialExtensionRow[]>>("/plugins/official-extensions");
-  return unwrap(data, "/plugins/official-extensions");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions"]["get"]>(
+    "/plugins/official-extensions",
+  )) as OfficialExtensionRow[];
 }
 
 const EXTENSION_INSTALL_TIMEOUT_MS = 620_000;
@@ -352,10 +357,10 @@ export async function updateOfficialExtension(
 }
 
 export async function fetchCommunityPluginStore(options?: { refresh?: boolean }): Promise<CommunityPluginStoreData> {
-  const { data } = await http.get<ApiOk<CommunityPluginStoreData>>("/plugins/community-store", {
-    params: options?.refresh ? { refresh: 1 } : undefined,
-  });
-  return unwrap(data, "/plugins/community-store");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/community-store"]["get"]>(
+    "/plugins/community-store",
+    { params: options?.refresh ? { refresh: 1 } : undefined },
+  )) as CommunityPluginStoreData;
 }
 
 export interface PluginUpdateSnapshotResult {
@@ -505,8 +510,7 @@ export function invalidateBotsCache() {
 }
 
 async function fetchBotsFromNetwork(): Promise<BotRow[]> {
-  const { data } = await http.get<ApiOk<BotRow[]>>("/bots");
-  return unwrap(data, "/bots");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bots"]["get"]>("/bots")) as BotRow[];
 }
 
 export type FetchBotsOptions = {
@@ -559,81 +563,84 @@ export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
 }
 
 export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
-  const { data } = await http.get<ApiOk<HelpMenuVisibilityData>>("/plugins/help-menu-visibility");
-  return unwrap(data, "/plugins/help-menu-visibility");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/help-menu-visibility"]["get"]>(
+    "/plugins/help-menu-visibility",
+  )) as HelpMenuVisibilityData;
 }
 
 export async function putPluginsHelpMenuVisibility(hiddenPlugins: string[]): Promise<{ hidden_plugins: string[] }> {
-  const { data } = await http.put<ApiOk<{ hidden_plugins: string[] }>>("/plugins/help-menu-visibility", {
-    hidden_plugins: hiddenPlugins,
-  });
-  const out = unwrap(data, "/plugins/help-menu-visibility");
+  const out = await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/help-menu-visibility"]["put"]>(
+    "/plugins/help-menu-visibility",
+    { hidden_plugins: hiddenPlugins },
+  );
   invalidatePluginsCache();
   return out;
 }
 
 export async function fetchPluginsGlobalDisable(): Promise<GlobalPluginDisableData> {
-  const { data } = await http.get<ApiOk<GlobalPluginDisableData>>("/plugins/global-disable");
-  return unwrap(data, "/plugins/global-disable");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/global-disable"]["get"]>(
+    "/plugins/global-disable",
+  )) as GlobalPluginDisableData;
 }
 
 export async function putPluginsGlobalDisable(
   disabledPlugins: string[],
 ): Promise<GlobalPluginDisableData> {
-  const { data } = await http.put<ApiOk<GlobalPluginDisableData>>("/plugins/global-disable", {
-    disabled_plugins: disabledPlugins,
-  });
-  const out = unwrap(data, "/plugins/global-disable");
+  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/global-disable"]["put"]>(
+    "/plugins/global-disable",
+    { disabled_plugins: disabledPlugins },
+  )) as GlobalPluginDisableData;
   invalidatePluginsCache();
   return out;
 }
 
 export async function fetchPluginsGroupFleetWhitelist(): Promise<GroupFleetWhitelistData> {
-  const { data } = await http.get<ApiOk<GroupFleetWhitelistData>>("/plugins/group-fleet-whitelist");
-  return unwrap(data, "/plugins/group-fleet-whitelist");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/group-fleet-whitelist"]["get"]>(
+    "/plugins/group-fleet-whitelist",
+  )) as GroupFleetWhitelistData;
 }
 
 export async function putPluginsGroupFleetWhitelist(
   entries: GroupFleetWhitelistEntry[],
 ): Promise<GroupFleetWhitelistData> {
-  const { data } = await http.put<ApiOk<GroupFleetWhitelistData>>("/plugins/group-fleet-whitelist", {
-    entries,
-  });
-  const out = unwrap(data, "/plugins/group-fleet-whitelist");
+  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/group-fleet-whitelist"]["put"]>(
+    "/plugins/group-fleet-whitelist",
+    { entries },
+  )) as GroupFleetWhitelistData;
   invalidatePluginsCache();
   return out;
 }
 
 export async function fetchPluginConfig(pluginName: string): Promise<PluginConfigData> {
-  const { data } = await http.get<ApiOk<PluginConfigData>>(`/plugins/${encodeURIComponent(pluginName)}/config`);
-  return unwrap(data, `/plugins/${pluginName}/config`);
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>(
+    `/plugins/${encodeURIComponent(pluginName)}/config`,
+  )) as unknown as PluginConfigData;
 }
 
 export async function putPluginConfig(
   pluginName: string,
   values: Record<string, unknown>,
 ): Promise<PluginConfigData> {
-  const { data } = await http.put<ApiOk<PluginConfigData>>(`/plugins/${encodeURIComponent(pluginName)}/config`, {
-    values,
-  });
-  const out = unwrap(data, `/plugins/${pluginName}/config`);
+  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["put"]>(
+    `/plugins/${encodeURIComponent(pluginName)}/config`,
+    { values },
+  )) as unknown as PluginConfigData;
   invalidatePluginsCache();
   return out;
 }
 
 export async function fetchPluginConfigRaw(pluginName: string): Promise<string> {
-  const { data } = await http.get<ApiOk<PluginConfigRawData>>(
-    `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
-  );
-  return unwrap(data, `/plugins/${pluginName}/config/raw`).toml;
+  const out = await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["get"]
+  >(`/plugins/${encodeURIComponent(pluginName)}/config/raw`);
+  return out.toml;
 }
 
 export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginConfigData> {
-  const { data } = await http.put<ApiOk<PluginConfigData>>(
+  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
     { toml },
-  );
-  const out = unwrap(data, `/plugins/${pluginName}/config/raw`);
+  )) as unknown as PluginConfigData;
   invalidatePluginsCache();
   return out;
 }
@@ -642,83 +649,78 @@ export async function postPluginConfigCheck(
   pluginName: string,
   values?: Record<string, unknown>,
 ): Promise<PluginConfigCheckResult> {
-  const { data } = await http.post<ApiOk<PluginConfigCheckResult>>(
+  return (await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config-check"]["post"]>(
     `/plugins/${encodeURIComponent(pluginName)}/config-check`,
     values ? { values } : {},
-  );
-  return unwrap(data, `/plugins/${pluginName}/config-check`);
+  )) as PluginConfigCheckResult;
 }
 
 export async function fetchPluginGovernance(pluginName: string): Promise<PluginGovernanceData> {
-  const { data } = await http.get<ApiOk<PluginGovernanceData>>(
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
-  );
-  return unwrap(data, `/plugins/${pluginName}/governance`);
+  )) as unknown as PluginGovernanceData;
 }
 
 export async function putPluginGovernance(
   pluginName: string,
   body: PluginGovernanceBody,
 ): Promise<PluginGovernanceData> {
-  const { data } = await http.put<ApiOk<PluginGovernanceData>>(
+  const out = (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["put"]>(
     `/plugins/${encodeURIComponent(pluginName)}/governance`,
     body,
-  );
-  const out = unwrap(data, `/plugins/${pluginName}/governance`);
+  )) as unknown as PluginGovernanceData;
   invalidatePluginsCache();
   return out;
 }
 
 export async function fetchCommonConfigSections(): Promise<CommonConfigSectionMeta[]> {
-  const { data } = await http.get<ApiOk<CommonConfigSectionMeta[]>>("/common-config/sections");
-  return unwrap(data, "/common-config/sections");
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/sections"]["get"]>(
+    "/common-config/sections",
+  );
 }
 
 export async function fetchCommonConfig(sectionId: string): Promise<PluginConfigData> {
-  const { data } = await http.get<ApiOk<PluginConfigData>>(
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}`,
-  );
-  return unwrap(data, `/common-config/${sectionId}`);
+  )) as unknown as PluginConfigData;
 }
 
 export async function putCommonConfig(
   sectionId: string,
   values: Record<string, unknown>,
 ): Promise<PluginConfigData> {
-  const { data } = await http.put<ApiOk<PluginConfigData>>(`/common-config/${encodeURIComponent(sectionId)}`, {
-    values,
-  });
-  return unwrap(data, `/common-config/${sectionId}`);
+  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["put"]>(
+    `/common-config/${encodeURIComponent(sectionId)}`,
+    { values },
+  )) as unknown as PluginConfigData;
 }
 
 export async function fetchCommonConfigRaw(sectionId: string): Promise<string> {
-  const { data } = await http.get<ApiOk<{ toml: string }>>(
+  const out = await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
   );
-  return unwrap(data, `/common-config/${sectionId}/raw`).toml;
+  return out.toml;
 }
 
 export async function putCommonConfigRaw(sectionId: string, toml: string): Promise<PluginConfigData> {
-  const { data } = await http.put<ApiOk<PluginConfigData>>(
+  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["put"]>(
     `/common-config/${encodeURIComponent(sectionId)}/raw`,
     { toml },
-  );
-  return unwrap(data, `/common-config/${sectionId}/raw`);
+  )) as unknown as PluginConfigData;
 }
 
 export async function postServiceGatewaysConnectivityCheck(
   values?: Record<string, unknown>,
 ): Promise<PluginConfigCheckResult> {
-  const { data } = await http.post<ApiOk<PluginConfigCheckResult>>(
-    "/common-config/service_gateways/connectivity-check",
-    values ? { values } : {},
-  );
-  return unwrap(data, "/common-config/service_gateways/connectivity-check");
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/service_gateways/connectivity-check"]["post"]
+  >("/common-config/service_gateways/connectivity-check", values ? { values } : {})) as PluginConfigCheckResult;
 }
 
 export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
-  const { data } = await http.get<ApiOk<LlmProvidersConfig>>("/common-config/llm/providers");
-  return unwrap(data, "/common-config/llm/providers");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>(
+    "/common-config/llm/providers",
+  )) as LlmProvidersConfig;
 }
 
 export async function fetchLlmLocalRoutingConfig(): Promise<LlmLocalRoutingConfig> {
@@ -760,8 +762,10 @@ export async function postLlmProviderTest(
   providerId: string,
 ): Promise<LlmProviderTestResult> {
   const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/test`;
-  const { data } = await http.post<ApiOk<LlmProviderTestResult>>(path, {});
-  return unwrap(data, path);
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/test"]["post"]>(
+    path,
+    {},
+  );
 }
 
 export async function fetchLlmTaskStats(params?: {
@@ -778,13 +782,15 @@ export async function fetchLlmTaskStats(params?: {
 }
 
 export async function fetchLlmRuntimeOverview(): Promise<LlmRuntimeOverviewData> {
-  const { data } = await http.get<ApiOk<LlmRuntimeOverviewData>>("/common-config/llm/runtime-overview");
-  return unwrap(data, "/common-config/llm/runtime-overview");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>(
+    "/common-config/llm/runtime-overview",
+  )) as LlmRuntimeOverviewData;
 }
 
 export async function fetchLlmWizardStatus(): Promise<LlmWizardStatusData> {
-  const { data } = await http.get<ApiOk<LlmWizardStatusData>>("/common-config/llm/wizard/status");
-  return unwrap(data, "/common-config/llm/wizard/status");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/wizard/status"]["get"]>(
+    "/common-config/llm/wizard/status",
+  )) as LlmWizardStatusData;
 }
 
 export async function fetchLlmHistorySessions(params?: {
@@ -1132,15 +1138,14 @@ export async function postLlmModelAdminNumGpu(
 }
 
 export async function changeConsoleLogin(newPassword: string): Promise<ConsoleLoginChangeResult> {
-  const { data } = await http.post<ApiOk<ConsoleLoginChangeResult>>("/security/console-login", {
-    new_password: newPassword,
-  });
-  return unwrap(data, "/security/console-login");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/security/console-login"]["post"]>(
+    "/security/console-login",
+    { new_password: newPassword },
+  );
 }
 
 export async function fetchConsoleSetupStatus(): Promise<ConsoleSetupStatus> {
-  const { data } = await http.get<ApiOk<ConsoleSetupStatus>>("/auth/setup-status");
-  return unwrap(data, "/auth/setup-status");
+  return consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/auth/setup-status"]["get"]>("/auth/setup-status");
 }
 
 export async function fetchLogs(
@@ -1150,8 +1155,7 @@ export async function fetchLogs(
 ): Promise<LogsData> {
   const params: { n: number; scope: LogScope; source?: string } = { n, scope };
   if (source && source !== "all") params.source = source;
-  const { data } = await http.get<ApiOk<LogsData>>("/logs", { params });
-  return unwrap(data, "/logs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>("/logs", { params })) as LogsData;
 }
 
 /** 分片 hub 实时日志 SSE（合并 hub 环与各 worker 落盘增量） */
@@ -1274,10 +1278,10 @@ let shardObsInflight: Promise<ShardObservabilityData> | null = null;
 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {
   if (!shardObsInflight) {
-    shardObsInflight = (async () => {
-      const { data } = await http.get<ApiOk<ShardObservabilityData>>("/shard-observability");
-      return unwrap(data, "/shard-observability");
-    })().finally(() => {
+    shardObsInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/shard-observability"]["get"]>(
+        "/shard-observability",
+      )) as ShardObservabilityData)().finally(() => {
       shardObsInflight = null;
     });
   }
@@ -1288,10 +1292,10 @@ let ingressDispatchInflight: Promise<IngressDispatchData> | null = null;
 
 export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
   if (!ingressDispatchInflight) {
-    ingressDispatchInflight = (async () => {
-      const { data } = await http.get<ApiOk<IngressDispatchData>>("/ingress-dispatch");
-      return unwrap(data, "/ingress-dispatch");
-    })().finally(() => {
+    ingressDispatchInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>(
+        "/ingress-dispatch",
+      )) as IngressDispatchData)().finally(() => {
       ingressDispatchInflight = null;
     });
   }
@@ -1691,8 +1695,7 @@ export async function putAiExtensionConfig(body: AiExtensionConfig): Promise<AiE
 }
 
 export async function postAiExtensionTest(): Promise<AiExtensionTestData> {
-  const { data } = await http.post<ApiOk<AiExtensionTestData>>("/ai-extension/test");
-  return unwrap(data, "/ai-extension/test");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/ai-extension/test"]["post"]>("/ai-extension/test");
 }
 
 export async function fetchAiExtensionLogs(

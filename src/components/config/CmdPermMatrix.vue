@@ -134,6 +134,8 @@ function commandTrigger(commandId: string): string {
 .cmd-perm-card__label {
   font-weight: 600;
   font-size: 13px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cmd-perm-card__trigger {

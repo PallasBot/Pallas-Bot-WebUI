@@ -1840,6 +1840,18 @@ export interface ShardObservabilityData {
 }
 
 /** OpenAPI 第二波：codegen 与手写类型对齐锚点（逐步迁移 UI 引用） */
+export type OpenapiSystemData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/system"]["get"]>;
+export type OpenapiPluginsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>;
+export type OpenapiCommonConfigSectionsData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/sections"]["get"]>;
+export type OpenapiCommonConfigSectionData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>;
+export type OpenapiCommonConfigSectionRawData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>;
+export type OpenapiPluginConfigRawData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["get"]>;
+export type OpenapiPluginConfigCheckResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config-check"]["post"]>;
 export type OpenapiShardObservabilityData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/shard-observability"]["get"]>;
 export type OpenapiIngressDispatchData =

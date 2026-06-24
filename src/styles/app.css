@@ -11517,6 +11517,34 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     min-width: 0;
   }
 
+  .plugin-config-page__activation-hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .plugin-config-page__raw-toml {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    min-height: 220px;
+    font-size: 12px;
+  }
+
+  .plugin-config-page__mode-toggle {
+    width: 100%;
+  }
+
+  .plugin-config-page__mode-toggle button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .common-config-page__runtime-summary {
+    overflow-x: auto;
+  }
+
   .plugin-config-page__card-bd {
     padding: 14px;
   }
@@ -11541,6 +11569,25 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
 
   .plugins-page__plugin-tab-label {
     max-width: 6.5rem;
+  }
+
+  .plugin-store-page__detail-dialog {
+    width: min(100vw - 24px, 560px);
+    max-width: 100%;
+  }
+
+  .plugin-store-page__detail-bd {
+    overflow-x: auto;
+    word-break: break-word;
+  }
+
+  .plugin-store-page__detail-bd pre,
+  .plugin-store-page__detail-bd table,
+  .plugin-store-page__detail-bd .markdown-body pre,
+  .plugin-store-page__detail-bd .markdown-body table {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
   }
 
   .plugin-store-page__detail-foot {

@@ -61,6 +61,8 @@ import {
   AI_ENTRY_RUNTIME,
   AI_ENTRY_SITE_GATEWAY_CHECK,
 } from "@/config/aiEntrySemantics";
+import { extensionActivationDetailHint } from "@/config/extensionActivationSemantics";
+import type { ExtensionActivationPolicy } from "@/api/pallasTypes";
 
 const props = withDefaults(
   defineProps<{
@@ -136,6 +138,12 @@ const metaLine = computed(() => {
     if (dir) parts.push(dir);
   }
   return parts.join(" · ");
+});
+
+const activationPolicyHint = computed(() => {
+  const policy = governanceData.value?.activation_policy as ExtensionActivationPolicy | null | undefined;
+  if (!policy) return "";
+  return extensionActivationDetailHint(policy);
 });
 
 const showInHelpMenu = computed(() => {
@@ -733,6 +741,12 @@ defineExpose({
             >
               {{ metaLine }}
             </p>
+            <p
+              v-if="activationPolicyHint && !loading"
+              class="muted plugin-config-page__activation-hint"
+            >
+              生效方式：{{ activationPolicyHint }}
+            </p>
           </div>
         </div>
         <div class="row-actions plugin-config-page__hero-actions">
@@ -1211,6 +1225,28 @@ defineExpose({
   }
 
   .plugin-config-page__tabs :deep(button) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .plugin-config-page__tab-panel {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .plugin-config-page__raw-toml {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    min-height: 220px;
+    font-size: 12px;
+  }
+
+  .plugin-config-page__mode-toggle {
+    width: 100%;
+  }
+
+  .plugin-config-page__mode-toggle :deep(button) {
     flex: 1 1 0;
     min-width: 0;
   }

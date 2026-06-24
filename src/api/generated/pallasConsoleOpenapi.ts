@@ -2291,6 +2291,14 @@ export interface components {
                 [key: string]: string;
             }[];
         };
+        /** PluginConfigRawData */
+        PluginConfigRawData: {
+            /**
+             * Toml
+             * @default
+             */
+            toml: string;
+        };
         /** PluginGovernanceData */
         PluginGovernanceData: {
             /** Plugin */
@@ -2501,6 +2509,16 @@ export interface components {
              */
             ok: true;
             data: components["schemas"]["PluginConfigData"];
+        };
+        /** _ApiOkResponse[PluginConfigRawData] */
+        _ApiOkResponse_PluginConfigRawData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["PluginConfigRawData"];
         };
         /** _ApiOkResponse[PluginGovernanceData] */
         _ApiOkResponse_PluginGovernanceData_: {
@@ -5008,7 +5026,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigRawData_"];
                 };
             };
             /** @description Validation Error */
@@ -5047,7 +5065,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */
@@ -5228,7 +5246,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigRawData_"];
                 };
             };
             /** @description Validation Error */
@@ -5267,7 +5285,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */

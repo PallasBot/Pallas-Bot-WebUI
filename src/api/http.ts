@@ -8,8 +8,15 @@ const apiBase = `${base.replace(/\/$/, "")}/api`;
 export function axiosErrorDetail(err: unknown): string {
   if (isAxiosError(err)) {
     const d = err.response?.data;
-    if (d && typeof d === "object" && "detail" in d) {
-      const detail = (d as { detail: unknown }).detail;
+    if (d && typeof d === "object") {
+      if ("error" in d) {
+        const errorText = (d as { error: unknown }).error;
+        if (typeof errorText === "string" && errorText.trim()) {
+          return errorText.trim();
+        }
+      }
+      if ("detail" in d) {
+        const detail = (d as { detail: unknown }).detail;
         if (typeof detail === "string" && detail.trim()) {
           const text = detail.trim();
           if (text === "Method Not Allowed") return "请求方法不被允许，请重启牛牛并更新控制台静态资源后重试";
@@ -31,7 +38,8 @@ export function axiosErrorDetail(err: unknown): string {
               return "";
             })
             .filter(Boolean);
-        if (parts.length) return parts.join("；");
+          if (parts.length) return parts.join("；");
+        }
       }
     }
     return err.message;
