@@ -1,11 +1,19 @@
 import { computed, ref } from "vue";
 import {
   fetchAiExtensionConfig,
+  fetchLlmRuntimeOverview,
   fetchLlmTaskStats,
+  fetchLlmWizardStatus,
   postAiExtensionTest,
   postServiceGatewaysConnectivityCheck,
 } from "@/api/consoleApi";
-import type { AiExtensionTestData, LlmTaskStatsData, PluginConfigCheckResult } from "@/api/pallasTypes";
+import type {
+  AiExtensionTestData,
+  LlmRuntimeOverviewData,
+  LlmTaskStatsData,
+  LlmWizardStatusData,
+  PluginConfigCheckResult,
+} from "@/api/pallasTypes";
 import type { AiRuntimePageAction, AiRuntimeQuickAction } from "@/utils/aiRuntimeTypes";
 import {
   buildAiRuntimeOverview,
@@ -34,6 +42,8 @@ export function useAiRuntimeSnapshot() {
   const gatewayResults = ref<PluginConfigCheckResult["results"]>([]);
   const extensionTest = ref<AiExtensionTestData | null>(null);
   const llmTaskStats = ref<LlmTaskStatsData | null>(null);
+  const runtimeOverview = ref<LlmRuntimeOverviewData | null>(null);
+  const wizardStatus = ref<LlmWizardStatusData | null>(null);
 
   const items = computed(() =>
     resolveAiRuntimeSnapshot({
@@ -86,7 +96,7 @@ export function useAiRuntimeSnapshot() {
   const ttsHealth = computed(() => extensionTest.value?.tts_health ?? null);
 
   const llmRuntimeSummary = computed(() => {
-    const ai = llmTaskStats.value?.ai;
+    const ai = runtimeOverview.value?.task_stats?.ai ?? llmTaskStats.value?.ai;
     const stateCounts = ai?.state_counts ?? {};
     const routeCounts = Object.values(ai?.by_task ?? {}).reduce<Record<string, number>>((acc, row) => {
       for (const [route, count] of Object.entries(row.route_counts ?? {})) {
@@ -147,10 +157,12 @@ export function useAiRuntimeSnapshot() {
     err.value = "";
     try {
       await fetchAiExtensionConfig();
-      const [gatewayResult, extensionResult, llmStatsResult] = await Promise.allSettled([
+      const [gatewayResult, extensionResult, llmStatsResult, runtimeOverviewResult, wizardResult] = await Promise.allSettled([
         postServiceGatewaysConnectivityCheck(),
         postAiExtensionTest(),
         fetchLlmTaskStats(),
+        fetchLlmRuntimeOverview(),
+        fetchLlmWizardStatus(),
       ]);
       if (gatewayResult.status !== "fulfilled") {
         throw gatewayResult.reason;
@@ -161,6 +173,8 @@ export function useAiRuntimeSnapshot() {
       gatewayResults.value = gatewayResult.value.results;
       extensionTest.value = extensionResult.value;
       llmTaskStats.value = llmStatsResult.status === "fulfilled" ? llmStatsResult.value : null;
+      runtimeOverview.value = runtimeOverviewResult.status === "fulfilled" ? runtimeOverviewResult.value : null;
+      wizardStatus.value = wizardResult.status === "fulfilled" ? wizardResult.value : null;
     } catch (e) {
       err.value = e instanceof Error ? e.message : String(e);
     } finally {
@@ -181,6 +195,8 @@ export function useAiRuntimeSnapshot() {
     mediaTaskCapabilities,
     llmProviderStatus,
     llmRuntimeSummary,
+    runtimeOverview,
+    wizardStatus,
     ttsHealth,
     refresh,
   };

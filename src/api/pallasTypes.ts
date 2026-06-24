@@ -1,9 +1,16 @@
+import type { paths as ConsoleOpenapiPaths } from "./generated/pallasConsoleOpenapi";
+
 /** 标准响应结构 */
 
 export interface ApiOk<T> {
   ok: boolean;
   data: T;
 }
+
+type OpenapiJson200<TOperation> =
+  TOperation extends { responses: { 200: { content: { "application/json": infer TBody } } } } ? TBody : never;
+
+type OpenapiOkData<TOperation> = OpenapiJson200<TOperation> extends { data: infer TData } ? TData : never;
 
 export interface SystemData {
   nonebot2_driver: { host: string | null; port: number | null };
@@ -741,15 +748,21 @@ export interface LlmProviderStatusRow {
   reachable: boolean | null;
 }
 
-export interface LlmProvidersConfig {
-  providers: LlmProviderConfigRow[];
-  routing: {
-    chain_fallback: string[];
-    tasks: Record<string, string>;
+type GeneratedLlmProvidersConfig =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>;
+
+type GeneratedLlmProviderConfigRow = NonNullable<GeneratedLlmProvidersConfig["providers"]>[number];
+type GeneratedLlmProvidersRouting = NonNullable<GeneratedLlmProvidersConfig["routing"]>;
+
+export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
+  providers: Array<Omit<GeneratedLlmProviderConfigRow, "task_models"> & {
+    task_models: NonNullable<GeneratedLlmProviderConfigRow["task_models"]>;
+  }>;
+  routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
+    chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
+    tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
   };
-  providers_file: string;
-  file_exists: boolean;
-}
+};
 
 export interface LlmProviderConfigRow {
   id: string;
@@ -777,12 +790,8 @@ export interface LlmProviderModelsResult {
 }
 
 /** Provider 实时连通性测试结果（经 BFF 代理 AI 仓 ping）。 */
-export interface LlmProviderTestResult {
-  provider_id: string;
-  reachable: boolean;
-  latency_ms?: number | null;
-  error?: string;
-}
+export type LlmProviderTestResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/test"]["post"]>;
 
 export interface LlmModelAdminStatus {
   model: string;
@@ -803,6 +812,12 @@ export interface LlmModelAdminStatus {
   local_task_models?: Record<string, string>;
   local_moe_models?: Record<string, string>;
 }
+
+export type ConsoleLoginChangeResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/security/console-login"]["post"]>;
+
+export type ConsoleSetupStatus =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/auth/setup-status"]["get"]>;
 
 export interface LlmLocalRoutingModels {
   simple: string;
@@ -929,6 +944,35 @@ export interface LlmTaskStatsData {
     server_date: string;
   };
 }
+
+type GeneratedLlmWizardStatusData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/wizard/status"]["get"]>;
+
+export type LlmWizardCheckRow = NonNullable<GeneratedLlmWizardStatusData["checks"]>[number];
+
+export type LlmWizardStatusData = Omit<GeneratedLlmWizardStatusData, "checks"> & {
+  checks: LlmWizardCheckRow[];
+};
+
+type GeneratedLlmRuntimeOverviewData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>;
+
+export type LlmRuntimeOverviewHealthData = GeneratedLlmRuntimeOverviewData["health"] & {
+  llm_health?: AiExtensionTestData["llm_health"];
+  image_health?: AiExtensionTestData["image_circuit"];
+  tts_health?: AiExtensionTestData["tts_health"];
+  media_tasks?: AiExtensionTestData["media_tasks"];
+};
+
+export type LlmRuntimeOverviewData = Omit<
+  GeneratedLlmRuntimeOverviewData,
+  "health" | "model_admin" | "task_stats" | "conversation_kernel"
+> & {
+  health: LlmRuntimeOverviewHealthData;
+  model_admin?: Partial<LlmModelAdminStatus>;
+  task_stats?: Partial<LlmTaskStatsData>;
+  conversation_kernel?: Partial<ConversationKernelStatus>;
+};
 
 export interface LlmHistoryTurn {
   role: "user" | "assistant";
@@ -1534,78 +1578,16 @@ export interface AiExtensionConfig {
   timeout_sec: number;
 }
 
-export interface AiExtensionTestData {
-  ok: boolean;
-  status_code: number | null;
-  health_url: string;
-  tried_urls?: string[];
-  error: string | null;
-  media_tasks?: {
-    queue_depth: number;
-    active_tasks: number;
-    total_tasks: number;
-    health_state?: string | null;
-    degraded_state?: string | null;
-    circuit_state?: string | null;
-    recent_failure_class?: string | null;
-    capabilities?: Array<{
-      capability: string;
-      queue_depth: number;
-      active_tasks: number;
-      health_state?: string | null;
-    }>;
-  } | null;
-  llm_detail?: string | null;
-  llm_health?: {
-    health_state?: string | null;
-    degraded_state?: string | null;
-    circuit_state?: string | null;
-    recent_failure_class?: string | null;
-    provider_status?: Array<{
-      id: string;
-      kind?: string | null;
-      enabled?: boolean;
-      configured?: boolean;
-      reachable?: boolean | null;
-      health_state?: string | null;
-      circuit_state?: string | null;
-    }>;
-  } | null;
-  tts_health?: {
-    capability?: string | null;
-    health_state?: string | null;
-    degraded_state?: string | null;
-    circuit_state?: string | null;
-    celery_enabled?: boolean | null;
-  } | null;
-  image_circuit?: {
-    circuit_state?: string | null;
-    consecutive_failures?: number | null;
-    recent_failure_class?: string | null;
-    health_state?: string | null;
-    degraded_state?: string | null;
-  } | null;
-}
+export type AiExtensionTestData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/ai-extension/test"]["post"]>;
 
-export interface PluginConfigCheckResult {
-  lines: string[];
-  results: Array<{
-    category?: string;
-    site: string;
-    ok: boolean;
-    latency_ms: number | null;
-    status_code: number | null;
-    error: string | null;
-    label?: string;
-    runtime_state?: string | null;
-    runtime_detail?: string | null;
-    capability_id?: string | null;
-    queue_load_hint?: string | null;
-    circuit_state?: string | null;
-    consecutive_failures?: number | null;
-    recent_failure_class?: string | null;
-  }>;
-}
+type GeneratedPluginConfigCheckResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/service_gateways/connectivity-check"]["post"]>;
+
+export type PluginConfigCheckResult = Omit<GeneratedPluginConfigCheckResult, "lines" | "results"> & {
+  lines: NonNullable<GeneratedPluginConfigCheckResult["lines"]>;
+  results: NonNullable<GeneratedPluginConfigCheckResult["results"]>;
+};
 
 export interface AiExtensionLogsData {
   kind: "uvicorn" | "celery";

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onActivated, onMounted, ref, watch, computed } from "vue";
+import { RouterLink } from "vue-router";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
 import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
@@ -13,6 +14,7 @@ import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
 import type { AccentPreset, DensityMode, RadiusMode, SurfaceStyle, ThemeMode, UiPreset } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { consoleSetupStatus, loadConsoleSetupStatus } from "@/state/consoleSetup";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import { consoleMetaHealth, patchWebuiDevMode } from "@/state/consoleMeta";
 import { boolSwitchLabel } from "@/utils/configFieldDisplay";
@@ -91,6 +93,7 @@ async function submitPassword() {
     toastSaveSuccess("控制台口令已更新");
     p1.value = "";
     p2.value = "";
+    await loadSetupStatus(true);
   } catch (e) {
     pwdErr.value = e instanceof Error ? e.message : String(e);
     toastApiError(e, "更新失败");
@@ -103,10 +106,12 @@ useSaveHotkey(() => !pwdBusy.value, () => submitPassword());
 
 onMounted(() => {
   scrollToPasswordIfNeeded();
+  void loadSetupStatus();
 });
 
 onActivated(() => {
   scrollToPasswordIfNeeded();
+  void loadSetupStatus();
 });
 
 watch(
@@ -123,6 +128,10 @@ function scrollToPasswordIfNeeded() {
     });
   }
 }
+
+async function loadSetupStatus(force = false) {
+  await loadConsoleSetupStatus({ force });
+}
 </script>
 
 <template>
@@ -137,6 +146,15 @@ function scrollToPasswordIfNeeded() {
       <template #actions>
       </template>
     </ConsoleHubMasthead>
+
+    <div
+      v-if="consoleSetupStatus?.requires_setup"
+      class="alert alert--warn"
+    >
+      当前仍处于首次引导阶段，请先完成控制台口令改密。
+      <span v-if="consoleSetupStatus.default_password_active">默认口令仍有效，生产环境请勿继续保留。</span>
+      <RouterLink to="/setup" class="prefs-page__setup-link">打开 Setup Wizard</RouterLink>
+    </div>
 
     <div class="prefs-page__grid">
       <PrefsSettingCard

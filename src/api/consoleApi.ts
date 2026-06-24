@@ -53,6 +53,7 @@ import type {
   CommonConfigSectionMeta,
   LlmModelAdminModelResult,
   LlmModelAdminStatus,
+  LlmRuntimeOverviewData,
   LlmLocalRoutingConfig,
   LlmProvidersConfig,
   LlmProvidersSaveResult,
@@ -75,6 +76,7 @@ import type {
   ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
   LlmTaskStatsData,
+  LlmWizardStatusData,
   PersonaObserveData,
   MessageStatsData,
   CommunityStatsData,
@@ -88,6 +90,8 @@ import type {
   PluginRunStatsData,
   ShardObservabilityData,
   IngressDispatchData,
+  ConsoleLoginChangeResult,
+  ConsoleSetupStatus,
 } from "./pallasTypes";
 
 /**
@@ -698,6 +702,16 @@ export async function fetchLlmTaskStats(params?: {
   return unwrap(data, "/common-config/llm/task-stats");
 }
 
+export async function fetchLlmRuntimeOverview(): Promise<LlmRuntimeOverviewData> {
+  const { data } = await http.get<ApiOk<LlmRuntimeOverviewData>>("/common-config/llm/runtime-overview");
+  return unwrap(data, "/common-config/llm/runtime-overview");
+}
+
+export async function fetchLlmWizardStatus(): Promise<LlmWizardStatusData> {
+  const { data } = await http.get<ApiOk<LlmWizardStatusData>>("/common-config/llm/wizard/status");
+  return unwrap(data, "/common-config/llm/wizard/status");
+}
+
 export async function fetchLlmHistorySessions(params?: {
   botId?: number | null;
   groupId?: number | null;
@@ -1042,11 +1056,16 @@ export async function postLlmModelAdminNumGpu(
   return unwrap(data, "/common-config/llm/model-admin/num-gpu");
 }
 
-export async function changeConsoleLogin(newPassword: string): Promise<{ message: string }> {
-  const { data } = await http.post<ApiOk<{ message: string }>>("/security/console-login", {
+export async function changeConsoleLogin(newPassword: string): Promise<ConsoleLoginChangeResult> {
+  const { data } = await http.post<ApiOk<ConsoleLoginChangeResult>>("/security/console-login", {
     new_password: newPassword,
   });
   return unwrap(data, "/security/console-login");
+}
+
+export async function fetchConsoleSetupStatus(): Promise<ConsoleSetupStatus> {
+  const { data } = await http.get<ApiOk<ConsoleSetupStatus>>("/auth/setup-status");
+  return unwrap(data, "/auth/setup-status");
 }
 
 export async function fetchLogs(

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layout/AppShell.vue";
 import HomePage from "@/pages/HomePage.vue";
+import { installConsoleSetupGuard } from "@/router/consoleSetupGuard";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 
@@ -18,8 +19,10 @@ const AiExtensionPage = () => import("@/pages/AiExtensionPage.vue");
 const AiHomePage = () => import("@/pages/AiHomePage.vue");
 const AiStatisticsPage = () => import("@/pages/AiStatisticsPage.vue");
 const AiHistoryPage = () => import("@/pages/AiHistoryPage.vue");
+const AiWizardPage = () => import("@/pages/AiWizardPage.vue");
 const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
 const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
+const SetupWizardPage = () => import("@/pages/SetupWizardPage.vue");
 const CommunityPage = () => import("@/pages/CommunityPage.vue");
 const ChartsPage = () => import("@/pages/ChartsPage.vue");
 
@@ -213,8 +216,26 @@ const router = createRouter({
           },
         },
         {
+          path: "ai/wizard",
+          name: "ai-wizard",
+          component: AiWizardPage,
+          meta: {
+            title: "AI 体检向导",
+            description: "连通性与提供方检查",
+          },
+        },
+        {
           path: "ai/runtime",
           redirect: "/ai/home",
+        },
+        {
+          path: "setup",
+          name: "setup-wizard",
+          component: SetupWizardPage,
+          meta: {
+            title: "首次 Setup Wizard",
+            description: "初始化与跳转收口",
+          },
         },
         {
           path: "ai/config/model",
@@ -265,6 +286,8 @@ const router = createRouter({
 });
 
 const consoleSurfaceTitle = "控制台";
+
+installConsoleSetupGuard(router);
 
 router.afterEach((to) => {
   const h = (to.hash || "").trim();

@@ -98,7 +98,7 @@ function buildExtensionSource(test: AiExtensionTestData): AiRuntimeNormalizedSou
     category: "AI扩展",
     site: "健康检查",
     latencyMs: null,
-    statusCode: test.status_code,
+    statusCode: test.status_code ?? null,
     ok: test.ok,
     raw: test,
   };
@@ -110,8 +110,8 @@ function buildGatewaySource(row: RuntimeRow, capabilityId: AiRuntimeCapabilityId
     key: `${capabilityId}:${row.category || "service"}:${row.site}`,
     category: row.category,
     site: row.site,
-    latencyMs: row.latency_ms,
-    statusCode: row.status_code,
+    latencyMs: row.latency_ms ?? null,
+    statusCode: row.status_code ?? null,
     ok: row.ok,
     raw: row,
   };

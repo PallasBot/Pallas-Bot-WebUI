@@ -23,6 +23,8 @@ const {
   mediaTaskCapabilities,
   llmProviderStatus,
   llmRuntimeSummary,
+  runtimeOverview,
+  wizardStatus,
   refresh,
 } = useAiRuntimeSnapshot();
 
@@ -78,6 +80,21 @@ const heroQuickLinks = [
   { to: AI_ENTRY_SITE_GATEWAY_CHECK.path, label: AI_ENTRY_SITE_GATEWAY_CHECK.label },
 ];
 
+const wizardAlert = computed(() => {
+  const status = wizardStatus.value;
+  if (!status) return "";
+  if (status.next_step) return `AI 体检仍有未完成项：${status.next_step}`;
+  if (!status.ai_reachable) return "AI 服务暂不可达，请先检查扩展连接与地址配置。";
+  return "";
+});
+
+const runtimeHealthSummary = computed(() => {
+  const health = runtimeOverview.value?.health;
+  if (!health) return "";
+  if (!health.ok) return health.error || "AI Runtime 当前不可达";
+  return health.llm_runtime_detail || "AI Runtime 已接通";
+});
+
 function primaryNavigateAction(item: AiRuntimeSnapshotItem) {
   return item.actions.find((action) => action.kind === "navigate" && action.to) ?? null;
 }
@@ -110,6 +127,12 @@ onMounted(() => {
     </ConsoleHubMasthead>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
+    <div v-else-if="wizardAlert" class="alert alert--warn ai-home-page__wizard-alert">
+      <span>{{ wizardAlert }}</span>
+      <RouterLink to="/ai/wizard">
+        <UiButton variant="ghost" size="sm">打开体检向导</UiButton>
+      </RouterLink>
+    </div>
 
     <UiCard class="ai-home-page__hero">
       <div class="ai-home-page__hero-head">
@@ -120,6 +143,7 @@ onMounted(() => {
           </div>
           <h3 class="ai-home-page__hero-title">{{ overview.title }}</h3>
           <p class="muted ai-home-page__hero-lead">{{ overview.lead }}</p>
+          <p v-if="runtimeHealthSummary" class="muted ai-home-page__hero-runtime">{{ runtimeHealthSummary }}</p>
         </div>
         <div class="ai-home-page__hero-links">
           <RouterLink
@@ -346,6 +370,18 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.ai-home-page__hero-runtime {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+}
+
+.ai-home-page__wizard-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .ai-home-page__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -439,6 +475,11 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
+  .ai-home-page__wizard-alert {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .ai-home-page__runtime-grid {
     grid-template-columns: minmax(0, 1fr);
   }
