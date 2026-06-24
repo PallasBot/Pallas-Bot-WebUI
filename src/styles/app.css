@@ -11536,6 +11536,18 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
   .plugins-page__plugin-tab-label {
     max-width: 6.5rem;
   }
+
+  .plugin-store-page__detail-foot {
+    padding: 10px 12px;
+    margin-left: 0;
+  }
+
+  .plugin-store-page__detail-foot > .btn,
+  .plugin-store-page__detail-foot > .ui-btn {
+    flex: 1 1 calc(50% - 4px);
+    width: auto;
+    min-width: 0;
+  }
 }
 
 .plugin-card__actions {

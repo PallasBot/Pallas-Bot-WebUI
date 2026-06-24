@@ -1214,6 +1214,16 @@ defineExpose({
   .plugin-config-page__panel-badge {
     align-self: flex-start;
   }
+
+  .plugin-config-page__tabs {
+    display: flex;
+    width: 100%;
+  }
+
+  .plugin-config-page__tabs :deep(button) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 .plugin-config-page__save-feedback {

@@ -193,11 +193,19 @@ function commandTrigger(commandId: string): string {
   .cmd-perm-card {
     flex-direction: column;
     gap: 10px;
+    align-items: stretch;
   }
 
   .cmd-perm-card__choices {
+    width: 100%;
     max-width: none;
     justify-content: flex-start;
+  }
+
+  .cmd-perm-choice {
+    flex: 1 1 calc(50% - 3px);
+    justify-content: center;
+    min-width: 0;
   }
 }
 </style>

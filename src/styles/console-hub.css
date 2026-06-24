@@ -1051,7 +1051,12 @@ html[data-surface="glass"] .plugin-store-page__search-card {
     width: 100%;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
@@ -1061,14 +1066,26 @@ html[data-surface="glass"] .plugin-store-page__search-card {
     row-gap: 8px;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .panel__title {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .panel__title,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split
+    > .panel__title {
     grid-column: 1;
     grid-row: 1;
     width: auto;
     min-width: 0;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split
+    > .row-actions {
     grid-column: 1 / -1;
     grid-row: 2;
     flex-direction: row;
@@ -1077,19 +1094,42 @@ html[data-surface="glass"] .plugin-store-page__search-card {
     margin-left: 0;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions > .sel {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions > .sel,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split
+    > .row-actions
+    > .sel {
     flex: 1 1 100%;
     width: 100%;
     min-width: 0;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions > .btn {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions > .btn,
+  html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split > .row-actions > .ui-btn,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split
+    > .row-actions
+    > .btn,
+  html[data-layout="hub"]
+    .common-config-page
+    > .common-config-page__card.ui-card
+    > .ui-card__content
+    > .panel__hd.panel__hd--split
+    > .row-actions
+    > .ui-btn {
     flex: 1 1 calc(50% - 4px);
     width: auto;
     min-width: 0;
   }
 
-  html[data-layout="hub"] .common-config-page > .panel > .panel__bd {
+  html[data-layout="hub"] .common-config-page > .panel > .panel__bd,
+  html[data-layout="hub"] .common-config-page > .common-config-page__card.ui-card > .ui-card__content > .panel__bd {
     padding: 10px 12px;
   }
 
