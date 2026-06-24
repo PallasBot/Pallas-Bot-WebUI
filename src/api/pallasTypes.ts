@@ -544,6 +544,8 @@ export interface PluginGovernanceMenuItem {
 export interface PluginGovernanceRuntime {
   global_disable: boolean;
   help_hidden: boolean;
+  global_disable_protected?: boolean;
+  help_ignored?: boolean;
 }
 
 export interface PluginGovernanceData {
@@ -555,6 +557,7 @@ export interface PluginGovernanceData {
   perm_ui_filtered: CommandPermUiData;
   limits_ui_filtered: CommandLimitsUiData;
   reload_policy?: string | null;
+  activation_policy?: string | null;
 }
 
 export interface PluginGovernanceBody {
@@ -1005,6 +1008,16 @@ export interface LlmHistoryBehaviorAgentTrace {
   status?: string | null;
 }
 
+export interface LlmRuntimeReplayResult {
+  request_id?: string;
+  request_snapshot_id?: string | null;
+  mode?: string;
+  task?: string;
+  reply?: string;
+  trace?: LlmHistoryBehaviorAgentTrace | null;
+  assistant_message?: Record<string, unknown>;
+}
+
 export interface LlmBehaviorPattern {
   pattern_id: string;
   scene: string;
@@ -1137,6 +1150,59 @@ export interface ConversationKernelTraceRow {
 export interface ConversationKernelTracesData {
   items: ConversationKernelTraceRow[];
   limit: number;
+}
+
+export interface ConversationKernelMemoryEntry {
+  id: number;
+  bot_id: number;
+  group_id: number;
+  keywords?: string;
+  content: string;
+  source?: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface ConversationKernelRelationshipNote {
+  id: number;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  content: string;
+  source?: string;
+  weight?: number;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface ConversationKernelKnowledgeSource {
+  source_id: string;
+  title: string;
+  description?: string;
+  scope?: string;
+  retrieval_mode?: string;
+  origin?: string;
+  plugin_name?: string;
+  plugin_title?: string;
+  default?: boolean;
+  chunk_count?: number;
+}
+
+export interface ConversationKernelMemoryData {
+  items: ConversationKernelMemoryEntry[];
+  count: number;
+  limit: number;
+}
+
+export interface ConversationKernelRelationshipNotesData {
+  items: ConversationKernelRelationshipNote[];
+  count: number;
+  limit: number;
+}
+
+export interface ConversationKernelKnowledgeSourcesData {
+  items: ConversationKernelKnowledgeSource[];
+  count: number;
 }
 
 export interface PersonaAxisSnapshot {

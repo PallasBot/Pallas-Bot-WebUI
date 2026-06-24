@@ -60,6 +60,7 @@ import type {
   LlmProviderTestResult,
   LlmHistorySessionDetailData,
   LlmHistoryBehaviorRun,
+  LlmRuntimeReplayResult,
   LlmBehaviorPattern,
   LlmBehaviorPatternsData,
   LlmBehaviorRunsData,
@@ -69,6 +70,9 @@ import type {
   LlmPromotionCandidate,
   LlmPromotionCandidatesData,
   ConversationKernelStatus,
+  ConversationKernelKnowledgeSourcesData,
+  ConversationKernelMemoryData,
+  ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
   LlmTaskStatsData,
   PersonaObserveData,
@@ -774,6 +778,15 @@ export async function fetchLlmRuntimeReplay(
   return unwrap(data, path);
 }
 
+export async function postLlmRuntimeReplayRun(
+  requestId: string,
+  mode = "mock_tools",
+): Promise<LlmRuntimeReplayResult> {
+  const path = `/common-config/llm/runtime-debug/${encodeURIComponent(requestId)}/replay/run`;
+  const { data } = await http.post<ApiOk<LlmRuntimeReplayResult>>(path, { mode });
+  return unwrap(data, path);
+}
+
 export async function fetchLlmBehaviorPatterns(params?: {
   groupId?: number | null;
   scene?: string | null;
@@ -881,6 +894,68 @@ export async function fetchConversationKernelTraces(params?: {
     },
   });
   return unwrap(data, "/llm/conversation-kernel/traces");
+}
+
+export async function fetchConversationKernelMemory(params: {
+  botId: number;
+  groupId?: number | null;
+  query?: string;
+  limit?: number;
+}): Promise<ConversationKernelMemoryData> {
+  const { data } = await http.get<ApiOk<ConversationKernelMemoryData>>("/llm/conversation-kernel/memory", {
+    params: {
+      bot_id: params.botId,
+      ...(params.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params.query?.trim() ? { query: params.query.trim() } : {}),
+      limit: params.limit ?? 50,
+    },
+  });
+  return unwrap(data, "/llm/conversation-kernel/memory");
+}
+
+export async function postConversationKernelMemoryDelete(body: {
+  id: number;
+  botId: number;
+}): Promise<{ id: number }> {
+  const path = "/llm/conversation-kernel/memory/delete";
+  const { data } = await http.post<ApiOk<{ id: number }>>(path, { id: body.id, bot_id: body.botId });
+  return unwrap(data, path);
+}
+
+export async function fetchConversationKernelRelationshipNotes(params: {
+  botId: number;
+  groupId?: number | null;
+  query?: string;
+  limit?: number;
+}): Promise<ConversationKernelRelationshipNotesData> {
+  const { data } = await http.get<ApiOk<ConversationKernelRelationshipNotesData>>(
+    "/llm/conversation-kernel/relationship-notes",
+    {
+      params: {
+        bot_id: params.botId,
+        ...(params.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+        ...(params.query?.trim() ? { query: params.query.trim() } : {}),
+        limit: params.limit ?? 50,
+      },
+    },
+  );
+  return unwrap(data, "/llm/conversation-kernel/relationship-notes");
+}
+
+export async function postConversationKernelRelationshipNoteDelete(body: {
+  id: number;
+  botId: number;
+}): Promise<{ id: number }> {
+  const path = "/llm/conversation-kernel/relationship-notes/delete";
+  const { data } = await http.post<ApiOk<{ id: number }>>(path, { id: body.id, bot_id: body.botId });
+  return unwrap(data, path);
+}
+
+export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
+  const { data } = await http.get<ApiOk<ConversationKernelKnowledgeSourcesData>>(
+    "/llm/conversation-kernel/knowledge-sources",
+  );
+  return unwrap(data, "/llm/conversation-kernel/knowledge-sources");
 }
 
 export async function fetchLlmPersonaObserve(params?: {
