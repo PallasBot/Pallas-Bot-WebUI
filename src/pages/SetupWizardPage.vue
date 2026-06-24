@@ -98,7 +98,7 @@ onActivated(() => {
         首次 Setup Wizard
       </template>
       <template #lead>
-        先完成控制台口令改密，再继续进入其它页面；完成后可以顺手做一遍 AI 基础体检。
+        按三步完成首次引导：改密 → 协议端 → AI 体检；未完成改密前其它页面会收口到这里。
       </template>
       <template #actions>
         <UiButton variant="ghost" :busy="statusBusy" @click="refreshStatus(true)">
@@ -167,7 +167,30 @@ onActivated(() => {
       <UiCard class="setup-wizard-page__card">
         <div class="setup-wizard-page__card-head">
           <div>
-            <h3 class="setup-wizard-page__title">步骤 2 · 检查 AI 基础能力</h3>
+            <h3 class="setup-wizard-page__title">步骤 2 · 连接协议端</h3>
+            <p class="muted setup-wizard-page__lead">
+              在 NapCat / SnowLuma 等协议端创建账号并连上 Bot；无协议连接时牛牛无法收发消息。
+            </p>
+          </div>
+          <span class="setup-wizard-page__pill">推荐</span>
+        </div>
+
+        <div class="setup-wizard-page__action-stack">
+          <RouterLink v-if="canEnterAiFlow" to="/protocol">
+            <UiButton variant="outline" block>打开协议端管理</UiButton>
+          </RouterLink>
+          <UiButton v-else variant="outline" block disabled>完成改密后可配置协议端</UiButton>
+          <RouterLink v-if="canEnterAiFlow" to="/instances">
+            <UiButton variant="ghost" block>查看实例与连接</UiButton>
+          </RouterLink>
+          <UiButton v-else variant="ghost" block disabled>完成改密后可查看实例</UiButton>
+        </div>
+      </UiCard>
+
+      <UiCard class="setup-wizard-page__card">
+        <div class="setup-wizard-page__card-head">
+          <div>
+            <h3 class="setup-wizard-page__title">步骤 3 · 检查 AI 基础能力</h3>
             <p class="muted setup-wizard-page__lead">确认 AI 服务可达、Provider 已配置且智能对话总闸已开启。</p>
           </div>
           <span class="setup-wizard-page__pill">可选但推荐</span>
@@ -185,6 +208,35 @@ onActivated(() => {
         </div>
       </UiCard>
     </section>
+
+    <UiCard class="setup-wizard-page__card setup-wizard-page__card--notice">
+      <div class="setup-wizard-page__card-head">
+        <div>
+          <h3 class="setup-wizard-page__title">使用须知</h3>
+          <p class="muted setup-wizard-page__lead">
+            牛牛会学习群聊语料；管理员可用「不可以」或撤回处理不当发言。部署与配置详见仓库文档。
+          </p>
+        </div>
+      </div>
+      <div class="setup-wizard-page__actions">
+        <a
+          class="setup-wizard-page__doc-link"
+          href="https://github.com/PallasBot/Pallas-Bot/blob/dev-v2/docs/guide/4.0-start.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <UiButton variant="ghost">4.0 启动说明</UiButton>
+        </a>
+        <a
+          class="setup-wizard-page__doc-link"
+          href="https://github.com/PallasBot/Pallas-Bot/blob/dev-v2/docs/FAQ.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <UiButton variant="ghost">常见问题</UiButton>
+        </a>
+      </div>
+    </UiCard>
 
     <UiCard class="setup-wizard-page__card">
       <div class="setup-wizard-page__card-head">
@@ -215,6 +267,14 @@ onActivated(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.setup-wizard-page__card--notice {
+  margin-top: 0;
+}
+
+.setup-wizard-page__doc-link {
+  text-decoration: none;
 }
 
 .setup-wizard-page__card {

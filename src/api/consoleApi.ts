@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import {
+  consoleOpenapiDelete,
   consoleOpenapiGet,
   consoleOpenapiPost,
   consoleOpenapiPut,
@@ -17,7 +18,6 @@ import type {
   SystemRestartData,
   BotConfigMigrationCheckData,
   BotConfigMigrationApplyData,
-  ApiOk,
   BotConfigPublic,
   BotRow,
   DbBackupInfo,
@@ -183,13 +183,6 @@ export type FetchInstancesOptions = {
   bypassCache?: boolean;
 };
 
-function unwrap<T>(body: ApiOk<T> | (ApiOk<T> & Record<string, unknown>), path: string): T {
-  if (!body || typeof body !== "object" || !("ok" in body) || !body.ok) {
-    throw new Error(`${path}: 响应异常`);
-  }
-  return body.data;
-}
-
 let systemInflight: Promise<SystemData> | null = null;
 
 export async function fetchSystem(): Promise<SystemData> {
@@ -293,25 +286,27 @@ export async function installOfficialExtension(
   packageName: string,
   options?: { restart?: boolean },
 ): Promise<OfficialExtensionInstallResult> {
-  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/install"]["post"]
+  >(
     "/plugins/official-extensions/install",
     { package: packageName, restart: Boolean(options?.restart) },
     { timeout: EXTENSION_INSTALL_TIMEOUT_MS },
   );
-  const out = unwrap(data, "/plugins/official-extensions/install");
   invalidatePluginsCache();
-  return out;
+  return out as OfficialExtensionInstallResult;
 }
 
 export async function installOfficialExtensionAsync(
   packageName: string,
   options?: { restart?: boolean },
 ): Promise<ExtensionInstallJobData> {
-  const { data } = await http.post<ApiOk<ExtensionInstallJobData>>(
-    "/plugins/official-extensions/install-async",
-    { package: packageName, restart: Boolean(options?.restart) },
-  );
-  return unwrap(data, "/plugins/official-extensions/install-async");
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/install-async"]["post"]
+  >("/plugins/official-extensions/install-async", {
+    package: packageName,
+    restart: Boolean(options?.restart),
+  });
 }
 
 export function openPluginInstallJobEventSource(jobId: string): EventSource {
@@ -332,28 +327,30 @@ export async function uninstallOfficialExtension(
   packageName: string,
   options?: { restart?: boolean },
 ): Promise<OfficialExtensionInstallResult> {
-  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/uninstall"]["post"]
+  >(
     "/plugins/official-extensions/uninstall",
     { package: packageName, restart: Boolean(options?.restart) },
     { timeout: 120_000 },
   );
-  const out = unwrap(data, "/plugins/official-extensions/uninstall");
   invalidatePluginsCache();
-  return out;
+  return out as OfficialExtensionInstallResult;
 }
 
 export async function updateOfficialExtension(
   packageName: string,
   options?: { restart?: boolean },
 ): Promise<OfficialExtensionInstallResult> {
-  const { data } = await http.post<ApiOk<OfficialExtensionInstallResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/update"]["post"]
+  >(
     "/plugins/official-extensions/update",
     { package: packageName, restart: Boolean(options?.restart) },
     { timeout: 600_000 },
   );
-  const out = unwrap(data, "/plugins/official-extensions/update");
   invalidatePluginsCache();
-  return out;
+  return out as OfficialExtensionInstallResult;
 }
 
 export async function fetchCommunityPluginStore(options?: { refresh?: boolean }): Promise<CommunityPluginStoreData> {
@@ -388,38 +385,36 @@ export interface PluginBundledReadmeResult {
 }
 
 export async function fetchPluginBundledReadme(pluginName: string): Promise<PluginBundledReadmeResult> {
-  const { data } = await http.get<ApiOk<PluginBundledReadmeResult>>(
-    `/plugins/${encodeURIComponent(pluginName)}/readme`,
-  );
-  return unwrap(data, `/plugins/${pluginName}/readme`);
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/readme"]["get"]
+  >(`/plugins/${encodeURIComponent(pluginName)}/readme`)) as PluginBundledReadmeResult;
 }
 
 export async function refreshPluginUpdateSnapshot(): Promise<PluginUpdateSnapshotResult> {
-  const { data } = await http.post<ApiOk<PluginUpdateSnapshotResult>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/plugins/update-snapshot/refresh"]["post"]>(
     "/plugins/update-snapshot/refresh",
     {},
     { timeout: 120_000 },
   );
-  return unwrap(data, "/plugins/update-snapshot/refresh");
 }
 
 export async function refreshPluginStore(): Promise<PluginStoreRefreshResult> {
-  const { data } = await http.post<ApiOk<PluginStoreRefreshResult>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/plugins/store/refresh"]["post"]>(
     "/plugins/store/refresh",
     {},
     { timeout: 120_000 },
   );
-  return unwrap(data, "/plugins/store/refresh");
 }
 
 export async function fetchPluginStoreReadme(
   kind: "official" | "community",
   id: string,
 ): Promise<string> {
-  const { data } = await http.get<ApiOk<PluginStoreReadmeResult>>("/plugins/store/readme", {
-    params: { kind, id },
-  });
-  return unwrap(data, "/plugins/store/readme").markdown;
+  const data = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/store/readme"]["get"]>(
+    "/plugins/store/readme",
+    { params: { kind, id } },
+  )) as PluginStoreReadmeResult;
+  return data.markdown;
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;
@@ -428,23 +423,23 @@ export async function installCommunityPluginAsync(
   pluginId: string,
   options?: { restart?: boolean; repositoryUrl?: string; ref?: string },
 ): Promise<ExtensionInstallJobData> {
-  const { data } = await http.post<ApiOk<ExtensionInstallJobData>>(
-    "/plugins/community-plugins/install-async",
-    {
-      plugin_id: pluginId,
-      repository_url: options?.repositoryUrl,
-      ref: options?.ref,
-      restart: Boolean(options?.restart),
-    },
-  );
-  return unwrap(data, "/plugins/community-plugins/install-async");
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/install-async"]["post"]
+  >("/plugins/community-plugins/install-async", {
+    plugin_id: pluginId,
+    repository_url: options?.repositoryUrl,
+    ref: options?.ref,
+    restart: Boolean(options?.restart),
+  });
 }
 
 export async function installCommunityPlugin(
   pluginId: string,
   options?: { restart?: boolean; repositoryUrl?: string; ref?: string },
 ): Promise<CommunityPluginActionResult> {
-  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/install"]["post"]
+  >(
     "/plugins/community-plugins/install",
     {
       plugin_id: pluginId,
@@ -454,30 +449,32 @@ export async function installCommunityPlugin(
     },
     { timeout: COMMUNITY_INSTALL_TIMEOUT_MS },
   );
-  const out = unwrap(data, "/plugins/community-plugins/install");
   invalidatePluginsCache();
-  return out;
+  return out as CommunityPluginActionResult;
 }
 
 export async function uninstallCommunityPlugin(
   pluginId: string,
   options?: { restart?: boolean },
 ): Promise<CommunityPluginActionResult> {
-  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/uninstall"]["post"]
+  >(
     "/plugins/community-plugins/uninstall",
     { plugin_id: pluginId, restart: Boolean(options?.restart) },
     { timeout: 120_000 },
   );
-  const out = unwrap(data, "/plugins/community-plugins/uninstall");
   invalidatePluginsCache();
-  return out;
+  return out as CommunityPluginActionResult;
 }
 
 export async function updateCommunityPlugin(
   pluginId: string,
   options?: { restart?: boolean; ref?: string },
 ): Promise<CommunityPluginActionResult> {
-  const { data } = await http.post<ApiOk<CommunityPluginActionResult>>(
+  const out = await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/update"]["post"]
+  >(
     "/plugins/community-plugins/update",
     {
       plugin_id: pluginId,
@@ -486,9 +483,8 @@ export async function updateCommunityPlugin(
     },
     { timeout: COMMUNITY_INSTALL_TIMEOUT_MS },
   );
-  const out = unwrap(data, "/plugins/community-plugins/update");
   invalidatePluginsCache();
-  return out;
+  return out as CommunityPluginActionResult;
 }
 
 let botsCache: { data: BotRow[]; ts: number } | null = null;
@@ -724,28 +720,27 @@ export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
 }
 
 export async function fetchLlmLocalRoutingConfig(): Promise<LlmLocalRoutingConfig> {
-  const { data } = await http.get<ApiOk<LlmLocalRoutingConfig>>("/common-config/llm/local-routing");
-  return unwrap(data, "/common-config/llm/local-routing");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/local-routing"]["get"]>(
+    "/common-config/llm/local-routing",
+  )) as LlmLocalRoutingConfig;
 }
 
 export async function putLlmLocalRoutingConfig(
   body: LlmLocalRoutingConfig,
 ): Promise<LlmLocalRoutingConfig> {
-  const { data } = await http.put<ApiOk<LlmLocalRoutingConfig>>(
+  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/local-routing"]["put"]>(
     "/common-config/llm/local-routing",
     body,
-  );
-  return unwrap(data, "/common-config/llm/local-routing");
+  )) as LlmLocalRoutingConfig;
 }
 
 export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
-  const { data } = await http.put<ApiOk<LlmProvidersSaveResult>>(
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["put"]>(
     "/common-config/llm/providers",
     body,
   );
-  return unwrap(data, "/common-config/llm/providers");
 }
 
 /** 在线发现指定 Provider 的可用模型（经 BFF 代理 AI 仓）。 */
@@ -753,8 +748,9 @@ export async function fetchLlmProviderModels(
   providerId: string,
 ): Promise<LlmProviderModelsResult> {
   const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/models`;
-  const { data } = await http.get<ApiOk<LlmProviderModelsResult>>(path);
-  return unwrap(data, path);
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/models"]["get"]
+  >(path)) as LlmProviderModelsResult;
 }
 
 /** 实时测试指定 Provider 的连通性（经 BFF 代理 AI 仓 ping）。 */
@@ -772,13 +768,15 @@ export async function fetchLlmTaskStats(params?: {
   start?: string;
   end?: string;
 }): Promise<LlmTaskStatsData> {
-  const { data } = await http.get<ApiOk<LlmTaskStatsData>>("/common-config/llm/task-stats", {
-    params: {
-      ...(params?.start ? { start: params.start } : {}),
-      ...(params?.end ? { end: params.end } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/task-stats"]["get"]>(
+    "/common-config/llm/task-stats",
+    {
+      params: {
+        ...(params?.start ? { start: params.start } : {}),
+        ...(params?.end ? { end: params.end } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/task-stats");
+  )) as LlmTaskStatsData;
 }
 
 export async function fetchLlmRuntimeOverview(): Promise<LlmRuntimeOverviewData> {
@@ -799,15 +797,17 @@ export async function fetchLlmHistorySessions(params?: {
   userId?: number | null;
   limit?: number;
 }): Promise<LlmHistorySessionsData> {
-  const { data } = await http.get<ApiOk<LlmHistorySessionsData>>("/common-config/llm/history/sessions", {
-    params: {
-      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
-      ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
-      ...(params?.userId != null && params.userId > 0 ? { user_id: params.userId } : {}),
-      ...(params?.limit ? { limit: params.limit } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/sessions"]["get"]>(
+    "/common-config/llm/history/sessions",
+    {
+      params: {
+        ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+        ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+        ...(params?.userId != null && params.userId > 0 ? { user_id: params.userId } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/history/sessions");
+  )) as LlmHistorySessionsData;
 }
 
 export async function fetchLlmHistorySession(params: {
@@ -816,15 +816,17 @@ export async function fetchLlmHistorySession(params: {
   userId: number;
   limit?: number;
 }): Promise<LlmHistorySessionDetailData> {
-  const { data } = await http.get<ApiOk<LlmHistorySessionDetailData>>("/common-config/llm/history/session", {
-    params: {
-      bot_id: params.botId,
-      ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
-      user_id: params.userId,
-      ...(params.limit ? { limit: params.limit } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/session"]["get"]>(
+    "/common-config/llm/history/session",
+    {
+      params: {
+        bot_id: params.botId,
+        ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+        user_id: params.userId,
+        ...(params.limit ? { limit: params.limit } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/history/session");
+  )) as LlmHistorySessionDetailData;
 }
 
 export async function postLlmHistoryBehaviorAnnotate(body: {
@@ -833,14 +835,15 @@ export async function postLlmHistoryBehaviorAnnotate(body: {
   finalOutcome?: string | null;
   disabled?: boolean;
 }): Promise<LlmHistoryBehaviorRun> {
-  const path = "/common-config/llm/history/behavior/annotate";
-  const { data } = await http.post<ApiOk<LlmHistoryBehaviorRun>>(path, {
-    request_id: body.requestId,
-    labels: body.labels,
-    ...(body.finalOutcome ? { final_outcome: body.finalOutcome } : {}),
-    ...(typeof body.disabled === "boolean" ? { disabled: body.disabled } : {}),
-  });
-  return unwrap(data, path);
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/behavior/annotate"]["post"]>(
+    "/common-config/llm/history/behavior/annotate",
+    {
+      request_id: body.requestId,
+      labels: body.labels,
+      ...(body.finalOutcome ? { final_outcome: body.finalOutcome } : {}),
+      ...(typeof body.disabled === "boolean" ? { disabled: body.disabled } : {}),
+    },
+  );
 }
 
 export async function fetchLlmBehaviorRuns(params?: {
@@ -850,16 +853,18 @@ export async function fetchLlmBehaviorRuns(params?: {
   includeDisabled?: boolean;
   limit?: number;
 }): Promise<LlmBehaviorRunsData> {
-  const { data } = await http.get<ApiOk<LlmBehaviorRunsData>>("/common-config/llm/behavior/runs", {
-    params: {
-      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
-      ...(params?.scene ? { scene: params.scene } : {}),
-      ...(params?.finalOutcome ? { final_outcome: params.finalOutcome } : {}),
-      ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
-      ...(params?.limit ? { limit: params.limit } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/behavior/runs"]["get"]>(
+    "/common-config/llm/behavior/runs",
+    {
+      params: {
+        ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+        ...(params?.scene ? { scene: params.scene } : {}),
+        ...(params?.finalOutcome ? { final_outcome: params.finalOutcome } : {}),
+        ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/behavior/runs");
+  )) as LlmBehaviorRunsData;
 }
 
 export async function fetchLlmRuntimeReplay(
@@ -867,10 +872,9 @@ export async function fetchLlmRuntimeReplay(
   mode = "mock_tools",
 ): Promise<Record<string, unknown>> {
   const path = `/common-config/llm/runtime-debug/${encodeURIComponent(requestId)}/replay`;
-  const { data } = await http.get<ApiOk<Record<string, unknown>>>(path, {
-    params: { mode },
-  });
-  return unwrap(data, path);
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-debug/{request_id}/replay"]["get"]
+  >(path, { params: { mode } })) as Record<string, unknown>;
 }
 
 export async function postLlmRuntimeReplayRun(
@@ -878,8 +882,9 @@ export async function postLlmRuntimeReplayRun(
   mode = "mock_tools",
 ): Promise<LlmRuntimeReplayResult> {
   const path = `/common-config/llm/runtime-debug/${encodeURIComponent(requestId)}/replay/run`;
-  const { data } = await http.post<ApiOk<LlmRuntimeReplayResult>>(path, { mode });
-  return unwrap(data, path);
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-debug/{request_id}/replay/run"]["post"]
+  >(path, { mode });
 }
 
 export async function fetchLlmBehaviorPatterns(params?: {
@@ -887,54 +892,60 @@ export async function fetchLlmBehaviorPatterns(params?: {
   scene?: string | null;
   includeDisabled?: boolean;
 }): Promise<LlmBehaviorPatternsData> {
-  const { data } = await http.get<ApiOk<LlmBehaviorPatternsData>>("/common-config/llm/behavior/patterns", {
-    params: {
-      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
-      ...(params?.scene ? { scene: params.scene } : {}),
-      ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/behavior/patterns"]["get"]>(
+    "/common-config/llm/behavior/patterns",
+    {
+      params: {
+        ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+        ...(params?.scene ? { scene: params.scene } : {}),
+        ...(typeof params?.includeDisabled === "boolean" ? { include_disabled: params.includeDisabled } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/behavior/patterns");
+  )) as LlmBehaviorPatternsData;
 }
 
 export async function postLlmBehaviorPatternUpsert(
   body: LlmBehaviorPattern,
 ): Promise<LlmBehaviorPattern> {
-  const path = "/common-config/llm/behavior/patterns/upsert";
-  const { data } = await http.post<ApiOk<LlmBehaviorPattern>>(path, body);
-  return unwrap(data, path);
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/behavior/patterns/upsert"]["post"]
+  >("/common-config/llm/behavior/patterns/upsert", body);
 }
 
 export async function postLlmBehaviorPatternDelete(patternId: string): Promise<{ pattern_id: string }> {
-  const path = "/common-config/llm/behavior/patterns/delete";
-  const { data } = await http.post<ApiOk<{ pattern_id: string }>>(path, { pattern_id: patternId });
-  return unwrap(data, path);
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/behavior/patterns/delete"]["post"]
+  >("/common-config/llm/behavior/patterns/delete", { pattern_id: patternId });
 }
 
 export async function fetchLlmRepeaterFeedback(params: {
   groupId: number;
   limit?: number;
 }): Promise<LlmRepeaterFeedbackData> {
-  const { data } = await http.get<ApiOk<LlmRepeaterFeedbackData>>("/llm/repeater-feedback", {
-    params: {
-      group_id: params.groupId,
-      ...(params.limit ? { limit: params.limit } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback"]["get"]>(
+    "/llm/repeater-feedback",
+    {
+      params: {
+        group_id: params.groupId,
+        ...(params.limit ? { limit: params.limit } : {}),
+      },
     },
-  });
-  return unwrap(data, "/llm/repeater-feedback");
+  )) as LlmRepeaterFeedbackData;
 }
 
 export async function fetchLlmRepeaterFeedbackSummary(params: {
   groupId: number;
   limit?: number;
 }): Promise<LlmRepeaterFeedbackSummary> {
-  const { data } = await http.get<ApiOk<LlmRepeaterFeedbackSummary>>("/llm/repeater-feedback/summary", {
-    params: {
-      group_id: params.groupId,
-      ...(params.limit ? { limit: params.limit } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback/summary"]["get"]>(
+    "/llm/repeater-feedback/summary",
+    {
+      params: {
+        group_id: params.groupId,
+        ...(params.limit ? { limit: params.limit } : {}),
+      },
     },
-  });
-  return unwrap(data, "/llm/repeater-feedback/summary");
+  )) as LlmRepeaterFeedbackSummary;
 }
 
 export async function fetchLlmPromotionCandidates(params: {
@@ -942,17 +953,15 @@ export async function fetchLlmPromotionCandidates(params: {
   limit?: number;
   includeResolved?: boolean;
 }): Promise<LlmPromotionCandidatesData> {
-  const { data } = await http.get<ApiOk<LlmPromotionCandidatesData>>(
-    "/llm/repeater-feedback/promotion-candidates",
-    {
-      params: {
-        group_id: params.groupId,
-        limit: params.limit ?? 20,
-        include_resolved: Boolean(params.includeResolved),
-      },
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback/promotion-candidates"]["get"]
+  >("/llm/repeater-feedback/promotion-candidates", {
+    params: {
+      group_id: params.groupId,
+      limit: params.limit ?? 20,
+      include_resolved: Boolean(params.includeResolved),
     },
-  );
-  return unwrap(data, "/llm/repeater-feedback/promotion-candidates");
+  })) as LlmPromotionCandidatesData;
 }
 
 export async function postLlmPromotionCandidateResolve(body: {
@@ -960,18 +969,19 @@ export async function postLlmPromotionCandidateResolve(body: {
   action: "promote" | "reject";
   reason?: string;
 }): Promise<LlmPromotionCandidate> {
-  const path = "/llm/repeater-feedback/promotion-candidates/resolve";
-  const { data } = await http.post<ApiOk<LlmPromotionCandidate>>(path, {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/repeater-feedback/promotion-candidates/resolve"]["post"]
+  >("/llm/repeater-feedback/promotion-candidates/resolve", {
     candidate_id: body.candidateId,
     action: body.action,
     reason: body.reason ?? "",
   });
-  return unwrap(data, path);
 }
 
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {
-  const { data } = await http.get<ApiOk<ConversationKernelStatus>>("/llm/conversation-kernel/status");
-  return unwrap(data, "/llm/conversation-kernel/status");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/status"]["get"]>(
+    "/llm/conversation-kernel/status",
+  )) as ConversationKernelStatus;
 }
 
 export async function fetchConversationKernelTraces(params?: {
@@ -980,15 +990,17 @@ export async function fetchConversationKernelTraces(params?: {
   kind?: string;
   limit?: number;
 }): Promise<ConversationKernelTracesData> {
-  const { data } = await http.get<ApiOk<ConversationKernelTracesData>>("/llm/conversation-kernel/traces", {
-    params: {
-      kind: params?.kind || "decision",
-      limit: params?.limit ?? 30,
-      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
-      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/traces"]["get"]>(
+    "/llm/conversation-kernel/traces",
+    {
+      params: {
+        kind: params?.kind || "decision",
+        limit: params?.limit ?? 30,
+        ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+        ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+      },
     },
-  });
-  return unwrap(data, "/llm/conversation-kernel/traces");
+  )) as ConversationKernelTracesData;
 }
 
 export async function fetchConversationKernelMemory(params: {
@@ -997,34 +1009,8 @@ export async function fetchConversationKernelMemory(params: {
   query?: string;
   limit?: number;
 }): Promise<ConversationKernelMemoryData> {
-  const { data } = await http.get<ApiOk<ConversationKernelMemoryData>>("/llm/conversation-kernel/memory", {
-    params: {
-      bot_id: params.botId,
-      ...(params.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
-      ...(params.query?.trim() ? { query: params.query.trim() } : {}),
-      limit: params.limit ?? 50,
-    },
-  });
-  return unwrap(data, "/llm/conversation-kernel/memory");
-}
-
-export async function postConversationKernelMemoryDelete(body: {
-  id: number;
-  botId: number;
-}): Promise<{ id: number }> {
-  const path = "/llm/conversation-kernel/memory/delete";
-  const { data } = await http.post<ApiOk<{ id: number }>>(path, { id: body.id, bot_id: body.botId });
-  return unwrap(data, path);
-}
-
-export async function fetchConversationKernelRelationshipNotes(params: {
-  botId: number;
-  groupId?: number | null;
-  query?: string;
-  limit?: number;
-}): Promise<ConversationKernelRelationshipNotesData> {
-  const { data } = await http.get<ApiOk<ConversationKernelRelationshipNotesData>>(
-    "/llm/conversation-kernel/relationship-notes",
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory"]["get"]>(
+    "/llm/conversation-kernel/memory",
     {
       params: {
         bot_id: params.botId,
@@ -1033,42 +1019,70 @@ export async function fetchConversationKernelRelationshipNotes(params: {
         limit: params.limit ?? 50,
       },
     },
-  );
-  return unwrap(data, "/llm/conversation-kernel/relationship-notes");
+  )) as ConversationKernelMemoryData;
+}
+
+export async function postConversationKernelMemoryDelete(body: {
+  id: number;
+  botId: number;
+}): Promise<{ id: number }> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/delete"]["post"]
+  >("/llm/conversation-kernel/memory/delete", { id: body.id, bot_id: body.botId });
+}
+
+export async function fetchConversationKernelRelationshipNotes(params: {
+  botId: number;
+  groupId?: number | null;
+  query?: string;
+  limit?: number;
+}): Promise<ConversationKernelRelationshipNotesData> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/relationship-notes"]["get"]
+  >("/llm/conversation-kernel/relationship-notes", {
+    params: {
+      bot_id: params.botId,
+      ...(params.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+      ...(params.query?.trim() ? { query: params.query.trim() } : {}),
+      limit: params.limit ?? 50,
+    },
+  })) as ConversationKernelRelationshipNotesData;
 }
 
 export async function postConversationKernelRelationshipNoteDelete(body: {
   id: number;
   botId: number;
 }): Promise<{ id: number }> {
-  const path = "/llm/conversation-kernel/relationship-notes/delete";
-  const { data } = await http.post<ApiOk<{ id: number }>>(path, { id: body.id, bot_id: body.botId });
-  return unwrap(data, path);
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/relationship-notes/delete"]["post"]
+  >("/llm/conversation-kernel/relationship-notes/delete", { id: body.id, bot_id: body.botId });
 }
 
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
-  const { data } = await http.get<ApiOk<ConversationKernelKnowledgeSourcesData>>(
-    "/llm/conversation-kernel/knowledge-sources",
-  );
-  return unwrap(data, "/llm/conversation-kernel/knowledge-sources");
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources"]["get"]
+  >("/llm/conversation-kernel/knowledge-sources")) as ConversationKernelKnowledgeSourcesData;
 }
 
 export async function fetchLlmPersonaObserve(params?: {
   groupId?: number | null;
   accounts?: number[];
 }): Promise<PersonaObserveData> {
-  const { data } = await http.get<ApiOk<PersonaObserveData>>("/common-config/llm/persona-observe", {
-    params: {
-      ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
-      ...(params?.accounts?.length ? { accounts: params.accounts.join(",") } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona-observe"]["get"]>(
+    "/common-config/llm/persona-observe",
+    {
+      params: {
+        ...(params?.groupId != null && params.groupId > 0 ? { group_id: params.groupId } : {}),
+        ...(params?.accounts?.length ? { accounts: params.accounts.join(",") } : {}),
+      },
     },
-  });
-  return unwrap(data, "/common-config/llm/persona-observe");
+  )) as PersonaObserveData;
 }
 
 export async function fetchLlmModelAdminStatus(): Promise<LlmModelAdminStatus> {
-  const { data } = await http.get<ApiOk<LlmModelAdminStatus>>("/common-config/llm/model-admin");
-  return unwrap(data, "/common-config/llm/model-admin");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin"]["get"]>(
+    "/common-config/llm/model-admin",
+  )) as LlmModelAdminStatus;
 }
 
 export async function postLlmModelAdminSwitch(
@@ -1083,8 +1097,9 @@ export async function postLlmModelAdminSwitch(
   let lastErr: unknown;
   for (const path of postPaths) {
     try {
-      const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(path, body);
-      return unwrap(data, path);
+      return await consoleOpenapiPost<
+        ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin/switch"]["post"]
+      >(path, body);
     } catch (e) {
       lastErr = e;
       if (!isAxiosError(e) || (e.response?.status !== 404 && e.response?.status !== 405)) {
@@ -1093,11 +1108,10 @@ export async function postLlmModelAdminSwitch(
     }
   }
   try {
-    const { data } = await http.put<ApiOk<LlmModelAdminModelResult>>(
+    return await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin"]["put"]>(
       "/common-config/llm/model-admin",
       body,
     );
-    return unwrap(data, "/common-config/llm/model-admin");
   } catch (e) {
     throw lastErr ?? e;
   }
@@ -1112,29 +1126,26 @@ export async function putLlmModelAdminModel(
 }
 
 export async function postLlmModelAdminReload(): Promise<LlmModelAdminModelResult> {
-  const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin/reload"]["post"]>(
     "/common-config/llm/model-admin/reload",
     {},
   );
-  return unwrap(data, "/common-config/llm/model-admin/reload");
 }
 
 export async function postLlmModelAdminUnload(): Promise<{ status: string }> {
-  const { data } = await http.post<ApiOk<{ status: string }>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin/unload"]["post"]>(
     "/common-config/llm/model-admin/unload",
     {},
   );
-  return unwrap(data, "/common-config/llm/model-admin/unload");
 }
 
 export async function postLlmModelAdminNumGpu(
   numGpu: number,
 ): Promise<LlmModelAdminModelResult> {
-  const { data } = await http.post<ApiOk<LlmModelAdminModelResult>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/common-config/llm/model-admin/num-gpu"]["post"]>(
     "/common-config/llm/model-admin/num-gpu",
     { num_gpu: numGpu },
   );
-  return unwrap(data, "/common-config/llm/model-admin/num-gpu");
 }
 
 export async function changeConsoleLogin(newPassword: string): Promise<ConsoleLoginChangeResult> {
@@ -1173,10 +1184,10 @@ export function openLogsEventSource(
 }
 
 export async function fetchMessageStats(selfId?: number): Promise<MessageStatsData> {
-  const { data } = await http.get<ApiOk<MessageStatsData>>("/message-stats", {
-    params: selfId ? { self_id: selfId } : {},
-  });
-  return unwrap(data, "/message-stats");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/message-stats"]["get"]>(
+    "/message-stats",
+    { params: selfId ? { self_id: selfId } : {} },
+  )) as MessageStatsData;
 }
 
 const COMMUNITY_STATS_FRESH_MS = 60_000;
@@ -1192,8 +1203,9 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
   }
   if (!communityStatsInflight) {
     communityStatsInflight = (async () => {
-      const { data } = await http.get<ApiOk<CommunityStatsData>>("/community-stats");
-      const parsed = unwrap(data, "/community-stats");
+      const parsed = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/community-stats"]["get"]>(
+        "/community-stats",
+      )) as CommunityStatsData;
       communityStatsCache = { data: parsed, ts: Date.now() };
       return parsed;
     })().finally(() => {
@@ -1228,10 +1240,10 @@ export async function fetchCommunityCorpusHot(
   let inflight = corpusHotInflight.get(cacheKey);
   if (!inflight) {
     inflight = (async () => {
-      const { data } = await http.get<ApiOk<CommunityCorpusHotData>>("/community-corpus-hot", {
-        params: { mode, period, limit },
-      });
-      const parsed = unwrap(data, "/community-corpus-hot");
+      const parsed = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/community-corpus-hot"]["get"]>(
+        "/community-corpus-hot",
+        { params: { mode, period, limit } },
+      )) as CommunityCorpusHotData;
       corpusHotCache.set(cacheKey, { data: parsed, ts: Date.now() });
       return parsed;
     })().finally(() => {
@@ -1262,8 +1274,10 @@ export async function fetchLocalCorpusHot(
       if (scope === "group" && options?.groupId != null) {
         params.group_id = options.groupId;
       }
-      const { data } = await http.get<ApiOk<CommunityCorpusHotData>>("/local-corpus-hot", { params });
-      const parsed = unwrap(data, "/local-corpus-hot");
+      const parsed = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/local-corpus-hot"]["get"]>(
+        "/local-corpus-hot",
+        { params },
+      )) as CommunityCorpusHotData;
       localCorpusHotCache.set(cacheKey, { data: parsed, ts: Date.now() });
       return parsed;
     })().finally(() => {
@@ -1303,13 +1317,15 @@ export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
 }
 
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {
-  const { data } = await http.get<ApiOk<CorpusStatusData>>("/corpus-status");
-  return unwrap(data, "/corpus-status");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/corpus-status"]["get"]>(
+    "/corpus-status",
+  )) as CorpusStatusData;
 }
 
 export async function fetchFederationOnboarding(): Promise<FederationOnboardingData> {
-  const { data } = await http.get<ApiOk<FederationOnboardingData>>("/federation-onboarding");
-  return unwrap(data, "/federation-onboarding");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/federation-onboarding"]["get"]>(
+    "/federation-onboarding",
+  )) as FederationOnboardingData;
 }
 
 export async function fetchPluginRunStats(
@@ -1322,8 +1338,10 @@ export async function fetchPluginRunStats(
   if (logSource && logSource !== "all") params.log_source = logSource;
   const tbLimit = options?.tbLimit;
   if (tbLimit !== undefined) params.tb_limit = tbLimit;
-  const { data } = await http.get<ApiOk<PluginRunStatsData>>("/plugin-run-stats", { params });
-  return unwrap(data, "/plugin-run-stats");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugin-run-stats"]["get"]>(
+    "/plugin-run-stats",
+    { params },
+  )) as PluginRunStatsData;
 }
 
 export interface LogErrorsCleanupResult {
@@ -1332,8 +1350,10 @@ export interface LogErrorsCleanupResult {
 }
 
 export async function postLogErrorsCleanup(): Promise<LogErrorsCleanupResult> {
-  const { data } = await http.post<ApiOk<LogErrorsCleanupResult>>("/log-errors/cleanup");
-  return unwrap(data, "/log-errors/cleanup");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/log-errors/cleanup"]["post"]>(
+    "/log-errors/cleanup",
+    {},
+  );
 }
 
 export async function fetchConsoleDailyStats(params?: {
@@ -1341,31 +1361,36 @@ export async function fetchConsoleDailyStats(params?: {
   start?: string;
   end?: string;
 }): Promise<ConsoleDailyStatsData> {
-  const { data } = await http.get<ApiOk<ConsoleDailyStatsData>>("/console-daily-stats", {
-    params: {
-      ...(params?.selfId ? { self_id: params.selfId } : {}),
-      ...(params?.start ? { start: params.start } : {}),
-      ...(params?.end ? { end: params.end } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/console-daily-stats"]["get"]>(
+    "/console-daily-stats",
+    {
+      params: {
+        ...(params?.selfId ? { self_id: params.selfId } : {}),
+        ...(params?.start ? { start: params.start } : {}),
+        ...(params?.end ? { end: params.end } : {}),
+      },
     },
-  });
-  return unwrap(data, "/console-daily-stats");
+  )) as ConsoleDailyStatsData;
 }
 
 export async function fetchPluginConfigHint(): Promise<string> {
-  const { data } = await http.get<ApiOk<{ message: string }>>("/plugin-config-hint");
-  return unwrap(data, "/plugin-config-hint").message;
+  const data = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugin-config-hint"]["get"]>(
+    "/plugin-config-hint",
+  )) as { message: string };
+  return data.message;
 }
 
 export async function fetchDbOverview(): Promise<DbOverviewData> {
-  const { data } = await http.get<ApiOk<DbOverviewData>>("/db/overview", {
-    timeout: DB_HEAVY_READ_TIMEOUT_MS,
-  });
-  return unwrap(data, "/db/overview");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/overview"]["get"]>(
+    "/db/overview",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbOverviewData;
 }
 
 export async function fetchDbBackupInfo(): Promise<DbBackupInfo> {
-  const { data } = await http.get<ApiOk<DbBackupInfo>>("/db/backup/info");
-  return unwrap(data, "/db/backup/info");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backup/info"]["get"]>(
+    "/db/backup/info",
+  )) as DbBackupInfo;
 }
 
 export async function postDbBackup(body: {
@@ -1376,30 +1401,35 @@ export async function postDbBackup(body: {
   pg_tables?: string[];
   mongo_collections?: string[];
 }): Promise<DbBackupJobData> {
-  const { data } = await http.post<ApiOk<DbBackupJobData>>("/db/backup", body);
-  return unwrap(data, "/db/backup");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/backup"]["post"]>("/db/backup", body);
 }
 
 export async function fetchDbBackupJob(jobId: string): Promise<DbBackupJobData> {
-  const { data } = await http.get<ApiOk<DbBackupJobData>>(`/db/backup/jobs/${encodeURIComponent(jobId)}`);
-  return unwrap(data, `/db/backup/jobs/${jobId}`);
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/backup/jobs/{job_id}"]["get"]
+  >(`/db/backup/jobs/${encodeURIComponent(jobId)}`)) as DbBackupJobData;
 }
 
 export async function fetchActiveDbBackupJob(): Promise<DbBackupJobData | null> {
-  const { data } = await http.get<ApiOk<DbBackupJobData | null>>("/db/backup/jobs/active");
-  return unwrap(data, "/db/backup/jobs/active");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backup/jobs/active"]["get"]>(
+    "/db/backup/jobs/active",
+  )) as DbBackupJobData | null;
 }
 
 export async function fetchDbBackupRuns(outputParent?: string | null): Promise<DbBackupRunsData> {
   const params = outputParent?.trim() ? { output_parent: outputParent.trim() } : undefined;
-  const { data } = await http.get<ApiOk<DbBackupRunsData>>("/db/backup/runs", { params });
-  return unwrap(data, "/db/backup/runs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backup/runs"]["get"]>(
+    "/db/backup/runs",
+    { params },
+  )) as DbBackupRunsData;
 }
 
 export async function fetchDbBackupBrowse(path?: string | null): Promise<DbBackupBrowseData> {
   const params = path?.trim() ? { path: path.trim() } : undefined;
-  const { data } = await http.get<ApiOk<DbBackupBrowseData>>("/db/backup/browse", { params });
-  return unwrap(data, "/db/backup/browse");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backup/browse"]["get"]>(
+    "/db/backup/browse",
+    { params },
+  )) as DbBackupBrowseData;
 }
 
 export async function downloadDbBackupRun(params: {
@@ -1428,35 +1458,40 @@ export async function postDbBackupRunsDelete(body: {
   paths: string[];
   output_parent?: string | null;
 }): Promise<DbBackupDeleteResult> {
-  const { data } = await http.post<ApiOk<DbBackupDeleteResult>>("/db/backup/runs/delete", body);
-  return unwrap(data, "/db/backup/runs/delete");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/backup/runs/delete"]["post"]>(
+    "/db/backup/runs/delete",
+    body,
+  );
 }
 
 export async function postDbBackupRestore(body: {
   path: string;
   output_parent?: string | null;
 }): Promise<DbBackupJobData> {
-  const { data } = await http.post<ApiOk<DbBackupJobData>>("/db/backup/runs/restore", body);
-  return unwrap(data, "/db/backup/runs/restore");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/backup/runs/restore"]["post"]>(
+    "/db/backup/runs/restore",
+    body,
+  );
 }
 
 export async function postMongoAggregate(body: {
   collection: string;
   pipeline: unknown[];
 }): Promise<{ rows: Record<string, unknown>[]; truncated_to: number }> {
-  const { data } = await http.post<ApiOk<{ rows: Record<string, unknown>[]; truncated_to: number }>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/mongodb/aggregate"]["post"]>(
     "/db/mongodb/aggregate",
     body,
   );
-  return unwrap(data, "/db/mongodb/aggregate");
 }
 
 export async function fetchDbTableRow(params: {
   table: "config" | "bot_config" | "group_config" | "user_config";
   row_id: number;
 }): Promise<Record<string, unknown>> {
-  const { data } = await http.get<ApiOk<Record<string, unknown>>>("/db/table-row", { params });
-  return unwrap(data, "/db/table-row");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/table-row"]["get"]>(
+    "/db/table-row",
+    { params },
+  )) as Record<string, unknown>;
 }
 
 export async function putDbTableRow(body: {
@@ -1464,16 +1499,17 @@ export async function putDbTableRow(body: {
   row_id: number;
   data: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
-  const { data } = await http.put<ApiOk<Record<string, unknown>>>("/db/table-row", body);
-  return unwrap(data, "/db/table-row");
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/db/table-row"]["put"]>("/db/table-row", body);
 }
 
 export async function deleteDbTableRow(params: {
   table: "config" | "bot_config" | "group_config" | "user_config";
   row_id: number;
 }): Promise<{ deleted: boolean }> {
-  const { data } = await http.delete<ApiOk<{ deleted: boolean }>>("/db/table-row", { params });
-  return unwrap(data, "/db/table-row");
+  return consoleOpenapiDelete<ConsoleOpenapiPaths["/pallas/api/db/table-row"]["delete"]>(
+    "/db/table-row",
+    { params },
+  );
 }
 
 export async function fetchInstances(opts?: FetchInstancesOptions): Promise<InstancesData> {
@@ -1526,37 +1562,39 @@ export async function fetchFriendRequests(params?: {
   self_id?: number;
   doubt?: boolean;
 }): Promise<FriendOverviewData> {
-  const { data } = await http.get<ApiOk<FriendOverviewData>>("/friend-requests", { params });
-  return unwrap(data, "/friend-requests");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/friend-requests"]["get"]>(
+    "/friend-requests",
+    { params },
+  )) as FriendOverviewData;
 }
 
 /** 获取群列表（按账号实时拉取） */
 export async function fetchGroupList(selfId: number, limit = 1000): Promise<GroupListData> {
-  const { data } = await http.get<ApiOk<GroupListData>>("/group-list", {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/group-list"]["get"]>("/group-list", {
     params: { self_id: selfId, limit },
-  });
-  return unwrap(data, "/group-list");
+  })) as GroupListData;
 }
 
 /** 获取好友列表 */
 export async function fetchFriendList(selfId: number, limit = 800): Promise<FriendListData> {
-  const { data } = await http.get<ApiOk<FriendListData>>("/friend-list", {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/friend-list"]["get"]>("/friend-list", {
     params: { self_id: selfId, limit },
-  });
-  return unwrap(data, "/friend-list");
+  })) as FriendListData;
 }
 
 export async function fetchRequestOverview(params?: {
   selfId?: number;
   doubt?: boolean;
 }): Promise<RequestOverviewData> {
-  const { data } = await http.get<ApiOk<RequestOverviewData>>("/request-overview", {
-    params: {
-      ...(params?.selfId != null ? { self_id: params.selfId } : {}),
-      ...(params?.doubt != null ? { doubt: params.doubt } : {}),
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/request-overview"]["get"]>(
+    "/request-overview",
+    {
+      params: {
+        ...(params?.selfId != null ? { self_id: params.selfId } : {}),
+        ...(params?.doubt != null ? { doubt: params.doubt } : {}),
+      },
     },
-  });
-  return unwrap(data, "/request-overview");
+  )) as RequestOverviewData;
 }
 
 export async function postRequestAction(body: {
@@ -1567,8 +1605,10 @@ export async function postRequestAction(body: {
   user_id?: number;
   group_id?: number;
 }): Promise<{ handled: boolean }> {
-  const { data } = await http.post<ApiOk<{ handled: boolean }>>("/request-actions", body);
-  return unwrap(data, "/request-actions");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/request-actions"]["post"]>(
+    "/request-actions",
+    body,
+  );
 }
 
 export interface RequestActionsBatchError {
@@ -1594,13 +1634,16 @@ export async function postRequestActionsBatch(body: {
   friends: Array<{ self_id: number; user_id: number; source: "pending" | "doubt" }>;
   groups: Array<{ self_id: number; user_id: number; group_id: number }>;
 }): Promise<RequestActionsBatchResult> {
-  const { data } = await http.post<ApiOk<RequestActionsBatchResult>>("/request-actions/batch", body);
-  return unwrap(data, "/request-actions/batch");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/request-actions/batch"]["post"]>(
+    "/request-actions/batch",
+    body,
+  );
 }
 
 export async function fetchBotConfigs(): Promise<BotConfigPublic[]> {
-  const { data } = await http.get<ApiOk<BotConfigPublic[]>>("/bot-configs");
-  return unwrap(data, "/bot-configs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bot-configs"]["get"]>(
+    "/bot-configs",
+  )) as BotConfigPublic[];
 }
 
 export async function putBotConfig(
@@ -1614,8 +1657,9 @@ export async function putBotConfig(
     community_roster_show_qq: boolean;
   }>,
 ): Promise<BotConfigPublic> {
-  const { data } = await http.put<ApiOk<BotConfigPublic>>(`/bot-configs/${account}`, body);
-  const out = unwrap(data, `/bot-configs/${account}`);
+  const out = (await consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/bot-configs/{account}"]["put"]
+  >(`/bot-configs/${account}`, body)) as BotConfigPublic;
   invalidateInstancesCache();
   invalidateBotsCache();
   return out;
@@ -1631,21 +1675,22 @@ export async function deleteBotConfig(account: number): Promise<{ deleted: boole
 export async function fetchGroupConfigs(limit: number, selfId?: number): Promise<GroupConfigPublic[]> {
   const params: Record<string, unknown> = { limit };
   if (selfId !== undefined) params.self_id = selfId;
-  const { data } = await http.get<ApiOk<GroupConfigPublic[]>>("/group-configs", {
-    params,
-    timeout: DB_HEAVY_READ_TIMEOUT_MS,
-  });
-  return unwrap(data, "/group-configs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/group-configs"]["get"]>(
+    "/group-configs",
+    { params, timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as GroupConfigPublic[];
 }
 
 export async function fetchGroupConfigById(groupId: number): Promise<GroupConfigPublic> {
-  const { data } = await http.get<ApiOk<GroupConfigPublic>>(`/group-configs/${groupId}`);
-  return unwrap(data, `/group-configs/${groupId}`);
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/group-configs/{group_id}"]["get"]>(
+    `/group-configs/${groupId}`,
+  )) as GroupConfigPublic;
 }
 
 export async function fetchBotConfigById(account: number): Promise<BotConfigPublic> {
-  const { data } = await http.get<ApiOk<BotConfigPublic>>(`/bot-configs/${account}`);
-  return unwrap(data, `/bot-configs/${account}`);
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/bot-configs/{account}"]["get"]>(
+    `/bot-configs/${account}`,
+  )) as BotConfigPublic;
 }
 
 export async function putGroupConfig(
@@ -1657,21 +1702,23 @@ export async function putGroupConfig(
     blocked_user_ids: number[];
   }>,
 ): Promise<GroupConfigPublic> {
-  const { data } = await http.put<ApiOk<GroupConfigPublic>>(`/group-configs/${groupId}`, body);
-  return unwrap(data, `/group-configs/${groupId}`);
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/group-configs/{group_id}"]["put"]>(
+    `/group-configs/${groupId}`,
+    body,
+  );
 }
 
 export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
-  const { data } = await http.get<ApiOk<UserConfigPublic[]>>("/user-configs", {
-    params: { limit },
-    timeout: DB_HEAVY_READ_TIMEOUT_MS,
-  });
-  return unwrap(data, "/user-configs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/user-configs"]["get"]>(
+    "/user-configs",
+    { params: { limit }, timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as UserConfigPublic[];
 }
 
 export async function fetchUserConfigById(userId: number): Promise<UserConfigPublic> {
-  const { data } = await http.get<ApiOk<UserConfigPublic>>(`/user-configs/${userId}`);
-  return unwrap(data, `/user-configs/${userId}`);
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/user-configs/{user_id}"]["get"]>(
+    `/user-configs/${userId}`,
+  )) as UserConfigPublic;
 }
 
 export async function putUserConfig(
@@ -1680,18 +1727,23 @@ export async function putUserConfig(
     banned: boolean;
   }>,
 ): Promise<UserConfigPublic> {
-  const { data } = await http.put<ApiOk<UserConfigPublic>>(`/user-configs/${userId}`, body);
-  return unwrap(data, `/user-configs/${userId}`);
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/user-configs/{user_id}"]["put"]>(
+    `/user-configs/${userId}`,
+    body,
+  );
 }
 
 export async function fetchAiExtensionConfig(): Promise<AiExtensionConfig> {
-  const { data } = await http.get<ApiOk<AiExtensionConfig>>("/ai-extension/config");
-  return unwrap(data, "/ai-extension/config");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ai-extension/config"]["get"]>(
+    "/ai-extension/config",
+  )) as AiExtensionConfig;
 }
 
 export async function putAiExtensionConfig(body: AiExtensionConfig): Promise<AiExtensionConfig> {
-  const { data } = await http.put<ApiOk<AiExtensionConfig>>("/ai-extension/config", body);
-  return unwrap(data, "/ai-extension/config");
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/ai-extension/config"]["put"]>(
+    "/ai-extension/config",
+    body,
+  );
 }
 
 export async function postAiExtensionTest(): Promise<AiExtensionTestData> {
@@ -1702,20 +1754,23 @@ export async function fetchAiExtensionLogs(
   kind: "uvicorn" | "celery",
   n = 200,
 ): Promise<AiExtensionLogsData> {
-  const { data } = await http.get<ApiOk<AiExtensionLogsData>>("/ai-extension/logs", {
-    params: { kind, n },
-  });
-  return unwrap(data, "/ai-extension/logs");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ai-extension/logs"]["get"]>(
+    "/ai-extension/logs",
+    { params: { kind, n } },
+  )) as AiExtensionLogsData;
 }
 
 export async function fetchAiNcmStatus(): Promise<AiProxyResult> {
-  const { data } = await http.get<ApiOk<AiProxyResult>>("/ai-extension/ncm/status");
-  return unwrap(data, "/ai-extension/ncm/status");
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ai-extension/ncm/status"]["get"]>(
+    "/ai-extension/ncm/status",
+  )) as AiProxyResult;
 }
 
 export async function postAiNcmSendSms(body: { phone: string; ctcode: number }): Promise<AiProxyResult> {
-  const { data } = await http.post<ApiOk<AiProxyResult>>("/ai-extension/ncm/send-sms", body);
-  return unwrap(data, "/ai-extension/ncm/send-sms");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/ai-extension/ncm/send-sms"]["post"]>(
+    "/ai-extension/ncm/send-sms",
+    body,
+  );
 }
 
 export async function postAiNcmVerifySms(body: {
@@ -1723,23 +1778,27 @@ export async function postAiNcmVerifySms(body: {
   captcha: string;
   ctcode: number;
 }): Promise<AiProxyResult> {
-  const { data } = await http.post<ApiOk<AiProxyResult>>("/ai-extension/ncm/verify-sms", body);
-  return unwrap(data, "/ai-extension/ncm/verify-sms");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/ai-extension/ncm/verify-sms"]["post"]>(
+    "/ai-extension/ncm/verify-sms",
+    body,
+  );
 }
 
 export async function postAiNcmLogout(): Promise<AiProxyResult> {
-  const { data } = await http.post<ApiOk<AiProxyResult>>("/ai-extension/ncm/logout");
-  return unwrap(data, "/ai-extension/ncm/logout");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/ai-extension/ncm/logout"]["post"]>(
+    "/ai-extension/ncm/logout",
+    {},
+  );
 }
 
 let updateCheckInflight: Promise<UpdateCheckData> | null = null;
 
 export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
   if (!updateCheckInflight) {
-    updateCheckInflight = (async () => {
-      const { data } = await http.get<ApiOk<UpdateCheckData>>("/update/check");
-      return unwrap(data, "/update/check");
-    })().finally(() => {
+    updateCheckInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/update/check"]["get"]>(
+        "/update/check",
+      )) as UpdateCheckData)().finally(() => {
       updateCheckInflight = null;
     });
   }
@@ -1747,8 +1806,7 @@ export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
 }
 
 export async function postUpdateApply(): Promise<UpdateApplyData> {
-  const { data } = await http.post<ApiOk<UpdateApplyData>>("/update/apply");
-  return unwrap(data, "/update/apply");
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/update/apply"]["post"]>("/update/apply", {});
 }
 
 let botUpdateCheckInflight: Promise<BotUpdateCheckData> | null = null;
@@ -1757,10 +1815,10 @@ let updateCheckAllInflight: Promise<UpdateCheckAllData> | null = null;
 
 export async function fetchUpdateCheckAll(): Promise<UpdateCheckAllData> {
   if (!updateCheckAllInflight) {
-    updateCheckAllInflight = (async () => {
-      const { data } = await http.get<ApiOk<UpdateCheckAllData>>("/update/check-all");
-      return unwrap(data, "/update/check-all");
-    })().finally(() => {
+    updateCheckAllInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/update/check-all"]["get"]>(
+        "/update/check-all",
+      )) as UpdateCheckAllData)().finally(() => {
       updateCheckAllInflight = null;
     });
   }
@@ -1769,10 +1827,10 @@ export async function fetchUpdateCheckAll(): Promise<UpdateCheckAllData> {
 
 export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
   if (!botUpdateCheckInflight) {
-    botUpdateCheckInflight = (async () => {
-      const { data } = await http.get<ApiOk<BotUpdateCheckData>>("/update/bot/check");
-      return unwrap(data, "/update/bot/check");
-    })().finally(() => {
+    botUpdateCheckInflight = (async () =>
+      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/update/bot/check"]["get"]>(
+        "/update/bot/check",
+      )) as BotUpdateCheckData)().finally(() => {
       botUpdateCheckInflight = null;
     });
   }
@@ -1780,33 +1838,31 @@ export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
 }
 
 export async function postBotUpdateApply(options?: { restart?: boolean }): Promise<BotUpdateApplyData> {
-  const { data } = await http.post<ApiOk<BotUpdateApplyData>>(
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/update/bot/apply"]["post"]>(
     "/update/bot/apply",
     null,
     { params: { restart: options?.restart ? "true" : "false" } },
   );
-  return unwrap(data, "/update/bot/apply");
 }
 
 export async function postSystemRestart(options?: {
   workersOnly?: boolean;
 }): Promise<SystemRestartData> {
-  const { data } = await http.post<ApiOk<SystemRestartData>>("/system/restart", {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/system/restart"]["post"]>("/system/restart", {
     workers_only: Boolean(options?.workersOnly),
   });
-  return unwrap(data, "/system/restart");
 }
 
 export async function fetchBotConfigMigrationCheck(): Promise<BotConfigMigrationCheckData> {
-  const { data } = await http.get<ApiOk<BotConfigMigrationCheckData>>("/update/bot/config-migration/check");
-  return unwrap(data, "/update/bot/config-migration/check");
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/update/bot/config-migration/check"]["get"]
+  >("/update/bot/config-migration/check")) as BotConfigMigrationCheckData;
 }
 
 export async function postBotConfigMigrationApply(force = false): Promise<BotConfigMigrationApplyData> {
-  const { data } = await http.post<ApiOk<BotConfigMigrationApplyData>>(
-    "/update/bot/config-migration/apply",
-    null,
-    { params: { force: force ? "true" : "false" } },
-  );
-  return unwrap(data, "/update/bot/config-migration/apply");
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/update/bot/config-migration/apply"]["post"]
+  >("/update/bot/config-migration/apply", null, {
+    params: { force: force ? "true" : "false" },
+  });
 }
