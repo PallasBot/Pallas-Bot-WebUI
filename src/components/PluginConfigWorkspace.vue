@@ -34,7 +34,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import { PALLAS_IMAGE_GATEWAY_FIELD_NAMES } from "@/utils/pallasImageGateways";
-import { axiosErrorDetail } from "@/api/http";
+import { axiosErrorDetail, catchAllApiHint, isCatchAllApiError } from "@/api/http";
 import { toastApiError, toastProbeLines, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import {
   buildAiRuntimeOverview,
@@ -368,7 +368,9 @@ async function loadGovernance() {
     }
     limitSelections.value = limitNext;
   } catch (e) {
-    governanceErr.value = e instanceof Error ? e.message : String(e);
+    governanceErr.value = isCatchAllApiError(e)
+      ? catchAllApiHint()
+      : axiosErrorDetail(e);
   } finally {
     governanceLoading.value = false;
   }
@@ -564,7 +566,9 @@ async function loadReadme() {
       readmeErr.value = "暂无 README 来源";
       return;
     }
-    const md = await fetchPluginStoreReadme(target.kind, target.id);
+    const md = await fetchPluginStoreReadme(target.kind, target.id, {
+      repositoryUrl: target.repositoryUrl,
+    });
     readmeHtml.value = readmeMarkdownToSafeHtml(md, target.repositoryUrl);
   } catch (e) {
     readmeErr.value = e instanceof Error ? e.message : String(e);

@@ -84,17 +84,20 @@ function toggleRow(key: string) {
 }
 
 async function scrollToBottom(force = false) {
+  if (!force && !props.followTail) return;
   await nextTick();
   const el = scrollEl.value;
   if (!el) return;
-  if (!force && !props.followTail) return;
-  el.scrollTop = el.scrollHeight;
-  scrollTop.value = el.scrollTop;
-}
-
-function preferAutoTailScroll(): boolean {
-  if (typeof window === "undefined") return true;
-  return window.matchMedia("(min-width: 561px)").matches;
+  const apply = () => {
+    el.scrollTop = el.scrollHeight;
+    scrollTop.value = el.scrollTop;
+  };
+  apply();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      apply();
+    });
+  }
 }
 
 function bindViewport() {
@@ -111,20 +114,20 @@ function bindViewport() {
 watch(
   () => props.rows.length,
   () => {
-    if (props.followTail && preferAutoTailScroll()) void scrollToBottom(true);
+    if (props.followTail) void scrollToBottom(true);
   },
 );
 
 watch(
   () => props.followTail,
   (on) => {
-    if (on && preferAutoTailScroll()) void scrollToBottom(true);
+    if (on) void scrollToBottom(true);
   },
 );
 
 onMounted(() => {
   bindViewport();
-  if (preferAutoTailScroll()) void scrollToBottom(true);
+  void scrollToBottom(true);
 });
 
 onUnmounted(() => {

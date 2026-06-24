@@ -21,6 +21,10 @@ const props = withDefaults(
     iconUrl?: string | null;
     avatarUrl?: string | null;
     installed?: boolean;
+    installBusy?: boolean;
+    updateBusy?: boolean;
+    uninstallBusy?: boolean;
+    /** @deprecated 使用 installBusy / updateBusy / uninstallBusy */
     busy?: boolean;
     repoUrl?: string | null;
     menuItems?: PluginStoreMenuItem[];
@@ -46,6 +50,9 @@ const props = withDefaults(
     iconUrl: null,
     avatarUrl: null,
     installed: false,
+    installBusy: false,
+    updateBusy: false,
+    uninstallBusy: false,
     busy: false,
     repoUrl: null,
     menuItems: () => [],
@@ -83,6 +90,10 @@ const resolvedAvatarUrl = computed(() => {
   return (props.avatarUrl || "").trim() || null;
 });
 
+const cardBusy = computed(
+  () => Boolean(props.busy || props.installBusy || props.updateBusy || props.uninstallBusy),
+);
+const footLocked = computed(() => Boolean(props.updateBusy || props.uninstallBusy || props.installBusy || props.busy));
 const hasMenu = computed(() => props.menuItems.some((item) => !item.disabled));
 const hasMetaLink = computed(() => Boolean((props.metaLinkLabel || "").trim() && (props.metaLinkUrl || "").trim()));
 const versionChips = computed(() => {
@@ -151,7 +162,7 @@ watch(
     class="plugin-store-card"
     :class="{
       'plugin-store-card--installed': installed,
-      'plugin-store-card--busy': busy,
+      'plugin-store-card--busy': cardBusy,
       'plugin-store-card--clickable': canOpen,
     }"
     glass
@@ -169,7 +180,7 @@ watch(
         :aria-expanded="menuOpen"
         aria-haspopup="menu"
         aria-label="更多操作"
-        :disabled="busy"
+        :disabled="footLocked"
         @click.stop="toggleMenu"
       >
         ⋯
@@ -277,7 +288,8 @@ watch(
             class="plugin-store-card__foot-btn"
             :variant="showUpdate ? 'primary' : 'latest'"
             block
-            :disabled="busy || !showUpdate"
+            :disabled="footLocked || !showUpdate"
+            :busy="updateBusy"
             @click="showUpdate && emit('update')"
           >
             <svg
@@ -296,14 +308,14 @@ watch(
                 d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
               />
             </svg>
-            <span>{{ showUpdate ? (busy ? "处理中…" : updateLabel) : latestLabel }}</span>
+            <span>{{ updateBusy ? "更新中…" : showUpdate ? updateLabel : latestLabel }}</span>
           </UiButton>
           <UiButton
             class="plugin-store-card__foot-btn"
             variant="destructive"
             block
-            :disabled="busy"
-            :busy="busy"
+            :disabled="footLocked"
+            :busy="uninstallBusy"
             @click="emit('uninstall')"
           >
             <svg
@@ -322,7 +334,7 @@ watch(
                 d="M3 6h18M8 6V4h8v2m-1 14H9a2 2 0 0 1-2-2V8h10v10a2 2 0 0 1-2 2Z"
               />
             </svg>
-            <span>{{ busy ? "处理中…" : uninstallLabel }}</span>
+            <span>{{ uninstallBusy ? "卸载中…" : uninstallLabel }}</span>
           </UiButton>
         </template>
         <template v-else-if="showInstall">
@@ -330,8 +342,8 @@ watch(
             class="plugin-store-card__foot-btn"
             variant="primary"
             block
-            :disabled="busy"
-            :busy="busy"
+            :disabled="footLocked"
+            :busy="installBusy || busy"
             @click="emit('install')"
           >
             <svg
@@ -350,7 +362,7 @@ watch(
                 d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"
               />
             </svg>
-            <span>{{ busy ? "安装中…" : installLabel }}</span>
+            <span>{{ installBusy || busy ? "安装中…" : installLabel }}</span>
           </UiButton>
           <UiButton
             v-if="repoUrl"

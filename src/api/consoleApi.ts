@@ -409,12 +409,32 @@ export async function refreshPluginStore(): Promise<PluginStoreRefreshResult> {
 export async function fetchPluginStoreReadme(
   kind: "official" | "community",
   id: string,
+  options?: { repositoryUrl?: string | null },
 ): Promise<string> {
-  const data = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/store/readme"]["get"]>(
-    "/plugins/store/readme",
-    { params: { kind, id } },
-  )) as PluginStoreReadmeResult;
-  return data.markdown;
+  const repositoryUrl = (options?.repositoryUrl || "").trim();
+  let apiError: unknown = null;
+  try {
+    const data = (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/store/readme"]["get"]>(
+      "/plugins/store/readme",
+      {
+        params: {
+          kind,
+          id,
+          ...(repositoryUrl ? { repository_url: repositoryUrl } : {}),
+        },
+      },
+    )) as PluginStoreReadmeResult;
+    const markdown = (data.markdown || "").trim();
+    if (markdown) return data.markdown;
+  } catch (e) {
+    apiError = e;
+  }
+  if (repositoryUrl) {
+    const { fetchGithubReadme } = await import("@/utils/pluginReadme");
+    return fetchGithubReadme(repositoryUrl);
+  }
+  if (apiError) throw apiError;
+  throw new Error("README 不可用");
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;

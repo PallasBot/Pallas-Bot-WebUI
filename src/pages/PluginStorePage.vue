@@ -128,6 +128,12 @@ async function noteStoreActionResult(
 }
 const storeBusyPackage = ref("");
 const storeBusyPluginId = ref("");
+type StoreBusyAction = "" | "install" | "update" | "uninstall";
+const storeBusyOfficialAction = ref<StoreBusyAction>("");
+const storeBusyCommunityAction = ref<StoreBusyAction>("");
+const storeActionInProgress = computed(
+  () => Boolean(storeBusyOfficialAction.value || storeBusyCommunityAction.value || gitInstallBusy.value),
+);
 const searchQuery = ref("");
 const activeTab = ref<StoreTab>("all");
 const officialActionState = ref<Record<string, OfficialExtensionInstallResult>>({});
@@ -616,6 +622,7 @@ async function installExtension(row: OfficialExtensionRow, restart = false) {
   storeActionHint.value = "正在排队安装…";
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
+  storeBusyOfficialAction.value = "install";
   try {
     const job = await installOfficialExtensionAsync(row.package, { restart });
     storeActionHint.value = `安装中：${job.package}`;
@@ -634,6 +641,7 @@ async function installExtension(row: OfficialExtensionRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPackage.value = "";
+    storeBusyOfficialAction.value = "";
   }
 }
 
@@ -649,6 +657,8 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
   storeActionHint.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
+  storeBusyOfficialAction.value = "uninstall";
+  storeActionHint.value = `正在卸载 ${row.package}…`;
   try {
     const out = await uninstallOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
@@ -661,15 +671,17 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPackage.value = "";
+    storeBusyOfficialAction.value = "";
   }
 }
 
 async function updateExtension(row: OfficialExtensionRow, restart = false) {
   if (storeBusyPackage.value) return;
   storeErr.value = "";
-  storeActionHint.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
+  storeBusyOfficialAction.value = "update";
+  storeActionHint.value = `正在更新 ${row.package}…`;
   try {
     const out = await updateOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
@@ -679,6 +691,7 @@ async function updateExtension(row: OfficialExtensionRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPackage.value = "";
+    storeBusyOfficialAction.value = "";
   }
 }
 
@@ -731,6 +744,7 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
   storeActionHint.value = "正在排队安装…";
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
+  storeBusyCommunityAction.value = "install";
   try {
     const job = await installCommunityPluginAsync(row.plugin_id, {
       restart,
@@ -751,6 +765,7 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPluginId.value = "";
+    storeBusyCommunityAction.value = "";
   }
 }
 
@@ -766,6 +781,8 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
   storeActionHint.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
+  storeBusyCommunityAction.value = "uninstall";
+  storeActionHint.value = `正在删除 ${row.plugin_id}…`;
   try {
     const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
@@ -778,15 +795,17 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPluginId.value = "";
+    storeBusyCommunityAction.value = "";
   }
 }
 
 async function updateCommunity(row: CommunityPluginRow, restart = false) {
   if (storeBusyPluginId.value) return;
   storeErr.value = "";
-  storeActionHint.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
+  storeBusyCommunityAction.value = "update";
+  storeActionHint.value = `正在更新 ${row.plugin_id}…`;
   try {
     const out = await updateCommunityPlugin(row.plugin_id, {
       restart,
@@ -802,6 +821,7 @@ async function updateCommunity(row: CommunityPluginRow, restart = false) {
     storeErr.value = axiosErrorDetail(e);
   } finally {
     storeBusyPluginId.value = "";
+    storeBusyCommunityAction.value = "";
   }
 }
 
@@ -856,7 +876,9 @@ async function loadDetailReadme(repositoryUrl: string | null) {
     return;
   }
   try {
-    const md = await fetchPluginStoreReadme(target.kind, target.id);
+    const md = await fetchPluginStoreReadme(target.kind, target.id, {
+      repositoryUrl: repositoryUrl || target.repositoryUrl,
+    });
     detailReadmeHtml.value = readmeMarkdownToSafeHtml(md, repositoryUrl);
   } catch (e) {
     detailReadmeErr.value = e instanceof Error ? e.message : String(e);
@@ -1070,6 +1092,11 @@ onDeactivated(() => {
         <p class="muted plugin-store-page__hint plugin-store-page__hint--ok">
           {{ restartInProgress ? (restartProgressLabel || storeActionHint) : storeActionHint }}
         </p>
+        <div
+          v-if="storeActionInProgress && !restartInProgress"
+          class="plugin-store-page__action-progress"
+          aria-hidden="true"
+        />
         <UiButton
           v-if="storeActionNeedsRestart"
           variant="outline"
@@ -1138,7 +1165,9 @@ onDeactivated(() => {
             :avatar-url="officialRowAvatarUrl(row)"
             author="by PallasBot"
             :installed="extensionInstalled(row)"
-            :busy="storeBusyPackage === row.package"
+            :install-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'install'"
+            :update-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'update'"
+            :uninstall-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'uninstall'"
             :repo-url="row.repository_url || null"
             meta-link-label="GitHub"
             :meta-link-url="row.repository_url || null"
@@ -1220,7 +1249,9 @@ onDeactivated(() => {
             :icon-url="communityRowIconUrl(row)"
             :avatar-url="communityRowAvatarUrl(row)"
             :installed="communityInstalled(row)"
-            :busy="storeBusyPluginId === row.plugin_id"
+            :install-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'install'"
+            :update-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'update'"
+            :uninstall-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'uninstall'"
             :repo-url="row.repository_url || null"
             meta-link-label="GitHub"
             :meta-link-url="row.repository_url || row.homepage || null"
@@ -1563,6 +1594,27 @@ onDeactivated(() => {
 .plugin-store-page__action-hint .plugin-store-page__hint {
   margin: 0;
   flex: 1 1 auto;
+}
+.plugin-store-page__action-progress {
+  flex: 1 1 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  overflow: hidden;
+  position: relative;
+}
+.plugin-store-page__action-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: plugin-store-action-progress 1.1s ease-in-out infinite;
+}
+@keyframes plugin-store-action-progress {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(280%); }
 }
 @media (max-width: 560px) {
   .plugin-store-page__action-hint {

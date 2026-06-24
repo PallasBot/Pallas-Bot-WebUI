@@ -58,6 +58,7 @@ let streamReconnectTimer: number | null = null;
 let logEs: EventSource | null = null;
 
 const rawScrollEl = ref<HTMLElement | null>(null);
+const logFeedRef = ref<InstanceType<typeof LogVirtualFeed> | null>(null);
 const followLogTail = ref(true);
 const advancedOpen = ref(false);
 const streamLive = ref(false);
@@ -82,19 +83,25 @@ function onRawScroll(ev: Event) {
   followLogTail.value = isNearBottom(el);
 }
 
-async function scrollActiveLogToBottom() {
+async function scrollActiveLogToBottom(force = false) {
   await nextTick();
-  const el = view.value === "raw" ? rawScrollEl.value : null;
-  if (!el || !followLogTail.value) return;
+  if (view.value === "feed") {
+    if (force || followLogTail.value) {
+      await logFeedRef.value?.scrollToBottom(force || followLogTail.value);
+    }
+    return;
+  }
+  const el = rawScrollEl.value;
+  if (!el || (!force && !followLogTail.value)) return;
   el.scrollTop = el.scrollHeight;
 }
 
-function scheduleScrollActiveLogToBottom() {
+function scheduleScrollActiveLogToBottom(force = false) {
   if (typeof window === "undefined") return;
   if (logScrollBottomRaf) window.cancelAnimationFrame(logScrollBottomRaf);
   logScrollBottomRaf = window.requestAnimationFrame(() => {
     logScrollBottomRaf = 0;
-    void scrollActiveLogToBottom();
+    void scrollActiveLogToBottom(force);
   });
 }
 
@@ -237,6 +244,10 @@ async function load(opts?: { silent?: boolean }) {
   } finally {
     if (!silent) loading.value = false;
     pageReady.value = true;
+    if (!silent) {
+      followLogTail.value = true;
+      scheduleScrollActiveLogToBottom(true);
+    }
   }
 }
 
@@ -376,6 +387,14 @@ watch(
   [view, () => payload.value?.entries?.length, () => filtered.value.length, () => filteredRawLines.value.length],
   () => {
     scheduleScrollActiveLogToBottom();
+  },
+  { flush: "post" },
+);
+
+watch(
+  () => liveTick.version.value,
+  () => {
+    if (followLogTail.value) scheduleScrollActiveLogToBottom();
   },
   { flush: "post" },
 );
@@ -609,6 +628,7 @@ onUnmounted(() => {
               </div>
               <LogVirtualFeed
                 v-else
+                ref="logFeedRef"
                 :rows="filtered"
                 :follow-tail="followLogTail"
                 @scroll-state="onFeedScrollState"
