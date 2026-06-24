@@ -7,15 +7,11 @@ import {
   fetchPluginGovernance,
   fetchPluginStoreReadme,
   fetchPlugins,
-  fetchPluginsGlobalDisable,
   fetchPluginsGroupFleetWhitelist,
-  fetchPluginsHelpMenuVisibility,
   postPluginConfigCheck,
   putPluginConfig,
   putPluginGovernance,
-  putPluginsGlobalDisable,
   putPluginsGroupFleetWhitelist,
-  putPluginsHelpMenuVisibility,
 } from "@/api/consoleApi";
 import type {
   GroupFleetWhitelistEntry,
@@ -28,12 +24,10 @@ import type {
   PluginGovernanceMenuItem,
   PluginRow,
 } from "@/api/pallasTypes";
-import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
-import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
-import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
+import PluginGovernancePanel from "@/components/PluginGovernancePanel.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import PluginIcon from "@/components/PluginIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -90,13 +84,6 @@ const checkResults = ref<PluginConfigCheckResult["results"]>([]);
 const checkErr = ref("");
 const data = ref<PluginConfigData | null>(null);
 const pluginRow = ref<PluginRow | null>(props.initialPluginRow ?? null);
-const helpMenuHiddenList = ref<string[]>([]);
-const helpMenuIgnoredList = ref<string[]>([]);
-const helpMenuBusy = ref(false);
-const helpMenuErr = ref("");
-const globalDisabledList = ref<string[]>([]);
-const globalDisableBusy = ref(false);
-const globalDisableErr = ref("");
 const fleetWhitelistEntries = ref<GroupFleetWhitelistEntry[]>([]);
 const fleetWhitelistBusy = ref(false);
 const fleetWhitelistErr = ref("");
@@ -112,7 +99,7 @@ const governanceErr = ref("");
 const permSelections = ref<Record<string, string>>({});
 const limitSelections = ref<Record<string, string>>({});
 const limitDebounceTimers = ref<Record<string, ReturnType<typeof setTimeout>>>({});
-const pluginConfigTab = ref<PluginConfigTab>("runtime");
+const pluginConfigTab = ref<PluginConfigTab>("governance");
 const readmeHtml = ref("");
 const readmeLoading = ref(false);
 const readmeErr = ref("");
@@ -151,14 +138,18 @@ const metaLine = computed(() => {
 });
 
 const showInHelpMenu = computed(() => {
+  const runtime = governanceData.value?.runtime;
+  if (runtime?.help_ignored) return false;
+  if (runtime) return !runtime.help_hidden;
   if (!pluginRow.value) return false;
   if (pluginRow.value.help_ignored) return false;
   return Boolean(pluginRow.value.help_visible ?? !pluginRow.value.help_hidden);
 });
 
 const isGloballyDisabled = computed(() => {
-  const name = pluginName.value;
-  return Boolean(name && globalDisabledList.value.includes(name));
+  const runtime = governanceData.value?.runtime;
+  if (runtime) return runtime.global_disable;
+  return Boolean(pluginRow.value?.globally_disabled);
 });
 
 const whitelistedGroupIds = computed(() => {
@@ -177,6 +168,13 @@ const runtimeSnapshotItems = computed(() =>
 );
 const runtimeSnapshotGroups = computed(() => groupAiRuntimeSnapshot(runtimeSnapshotItems.value));
 const runtimeSnapshotOverview = computed(() => buildAiRuntimeOverview(runtimeSnapshotItems.value));
+const hasGovernanceTab = computed(() => Boolean(showRuntimePanel.value || hasPermConfig.value || hasLimitConfig.value));
+const globalDisableProtected = computed(
+  () => Boolean(governanceData.value?.runtime?.global_disable_protected ?? pluginRow.value?.global_disable_protected),
+);
+const helpIgnored = computed(
+  () => Boolean(governanceData.value?.runtime?.help_ignored ?? pluginRow.value?.help_ignored),
+);
 
 // ── Governance computed ──────────────────────────────────
 
@@ -195,7 +193,6 @@ const commandsWithMenu = computed(() => {
   }));
 });
 
-const permLevels = computed(() => governanceData.value?.perm_ui_filtered?.levels ?? []);
 const permPlugin = computed(() => governanceData.value?.perm_ui_filtered?.plugins?.[0] ?? null);
 const limitsPlugin = computed(() => governanceData.value?.limits_ui_filtered?.plugins?.[0] ?? null);
 
@@ -225,31 +222,22 @@ watch(
   { immediate: true },
 );
 
-async function loadHelpMenuState() {
+async function loadRuntimeContext() {
   const name = pluginResolvedId.value;
   if (!name) return;
-  helpMenuBusy.value = true;
-  helpMenuErr.value = "";
   try {
-    const [rows, vis, globalDisable, fleetWhitelist] = await Promise.all([
+    const [rows, fleetWhitelist] = await Promise.all([
       fetchPlugins(),
-      fetchPluginsHelpMenuVisibility(),
-      fetchPluginsGlobalDisable(),
       fetchPluginsGroupFleetWhitelist(),
     ]);
     pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
-    helpMenuHiddenList.value = [...vis.hidden_plugins];
-    helpMenuIgnoredList.value = [...vis.ignored_plugins];
-    globalDisabledList.value = [...globalDisable.disabled_plugins];
     fleetWhitelistEntries.value = fleetWhitelist.entries.map((entry) => ({
       group_id: entry.group_id,
       plugins: [...entry.plugins],
     }));
   } catch (e) {
-    helpMenuErr.value = e instanceof Error ? e.message : String(e);
+    governanceErr.value = governanceErr.value || (e instanceof Error ? e.message : String(e));
     pluginRow.value = null;
-  } finally {
-    helpMenuBusy.value = false;
   }
 }
 
@@ -321,45 +309,27 @@ async function removeGroupFromFleetWhitelist(groupId: number) {
   await persistFleetWhitelist(entries);
 }
 
-async function toggleGlobalDisable(wantDisabled: boolean) {
-  const name = pluginResolvedId.value;
-  if (!name || !pluginRow.value?.name) return;
-  if (pluginRow.value.global_disable_protected) return;
-  globalDisableBusy.value = true;
-  globalDisableErr.value = "";
-  try {
-    const set = new Set(globalDisabledList.value);
-    if (wantDisabled) set.add(name);
-    else set.delete(name);
-    const out = await putPluginsGlobalDisable([...set].sort((a, b) => a.localeCompare(b)));
-    globalDisabledList.value = [...out.disabled_plugins];
-    const rows = await fetchPlugins({ bypassCache: true });
-    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
-  } catch (e) {
-    globalDisableErr.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    globalDisableBusy.value = false;
-  }
-}
-
-async function toggleHelpMenuVisible(wantVisible: boolean) {
-  const name = pluginResolvedId.value;
-  if (!name || !pluginRow.value?.name) return;
-  if (pluginRow.value.help_ignored) return;
-  helpMenuBusy.value = true;
-  helpMenuErr.value = "";
-  try {
-    const set = new Set(helpMenuHiddenList.value);
-    if (wantVisible) set.delete(name);
-    else set.add(name);
-    const out = await putPluginsHelpMenuVisibility([...set]);
-    helpMenuHiddenList.value = [...out.hidden_plugins];
-    const rows = await fetchPlugins({ bypassCache: true });
-    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === name) ?? null;
-  } catch (e) {
-    helpMenuErr.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    helpMenuBusy.value = false;
+async function toggleGovernanceRuntime(kind: "global_disable" | "help_hidden", nextValue: boolean) {
+  if (!governanceData.value) return;
+  if (kind === "global_disable" && globalDisableProtected.value) return;
+  if (kind === "help_hidden" && helpIgnored.value) return;
+  const previous = governanceData.value.runtime[kind];
+  governanceData.value = {
+    ...governanceData.value,
+    runtime: {
+      ...governanceData.value.runtime,
+      [kind]: nextValue,
+    },
+  };
+  const ok = await persistGovernance();
+  if (!ok) {
+    governanceData.value = {
+      ...governanceData.value,
+      runtime: {
+        ...governanceData.value.runtime,
+        [kind]: previous,
+      },
+    };
   }
 }
 
@@ -395,8 +365,8 @@ async function loadGovernance() {
   }
 }
 
-async function persistGovernance() {
-  if (!governanceData.value || governanceSaving.value) return;
+async function persistGovernance(): Promise<boolean> {
+  if (!governanceData.value || governanceSaving.value) return false;
   governanceSaving.value = true;
   governanceErr.value = "";
   try {
@@ -425,13 +395,17 @@ async function persistGovernance() {
     const body: PluginGovernanceBody = {
       command_permission_overrides: permOverrides,
       command_limit_overrides: limitOverrides,
-      global_disable: isGloballyDisabled.value,
-      help_hidden: !showInHelpMenu.value,
+      global_disable: Boolean(governanceData.value.runtime.global_disable),
+      help_hidden: Boolean(governanceData.value.runtime.help_hidden),
     };
     const result = await putPluginGovernance(pluginResolvedId.value, body);
     governanceData.value = { ...governanceData.value, ...result };
+    const rows = await fetchPlugins({ bypassCache: true });
+    pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === pluginResolvedId.value) ?? null;
+    return true;
   } catch (e) {
     governanceErr.value = e instanceof Error ? e.message : String(e);
+    return false;
   } finally {
     governanceSaving.value = false;
   }
@@ -566,7 +540,7 @@ async function load() {
     if (pluginResolvedId.value !== requestName) return;
     loading.value = false;
   }
-  void loadHelpMenuState();
+  void loadRuntimeContext();
   void loadGovernance();
 }
 
@@ -644,27 +618,18 @@ const configGroupViewModels = computed((): ConfigGroupViewModel[] =>
 );
 
 watch(
-  [hasPermConfig, hasLimitConfig, hasConfigFields],
-  ([nextHasPerm, nextHasLimit, nextHasConfig]) => {
+  [hasGovernanceTab, hasConfigFields],
+  ([nextHasGovernance, nextHasConfig]) => {
     const next = resolveInitialPluginConfigTab({
-      hasPermConfig: nextHasPerm,
-      hasLimitConfig: nextHasLimit,
+      hasGovernance: nextHasGovernance,
       hasConfigFields: nextHasConfig,
     });
     const active = pluginConfigTab.value;
-    if (active === "perm" && !nextHasPerm) {
-      pluginConfigTab.value = next;
-      return;
-    }
-    if (active === "limit" && !nextHasLimit) {
+    if (active === "governance" && !nextHasGovernance) {
       pluginConfigTab.value = next;
       return;
     }
     if (active === "config" && !nextHasConfig) {
-      pluginConfigTab.value = next;
-      return;
-    }
-    if (active === "runtime" && next !== "runtime") {
       pluginConfigTab.value = next;
       return;
     }
@@ -826,24 +791,14 @@ defineExpose({
             aria-label="插件工作区"
           >
             <button
-              v-if="hasPermConfig"
+              v-if="hasGovernanceTab"
               type="button"
               role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'perm' }"
-              :aria-selected="pluginConfigTab === 'perm'"
-              @click="pluginConfigTab = 'perm'"
+              :class="{ 'is-on': pluginConfigTab === 'governance' }"
+              :aria-selected="pluginConfigTab === 'governance'"
+              @click="pluginConfigTab = 'governance'"
             >
-              权限
-            </button>
-            <button
-              v-if="hasLimitConfig"
-              type="button"
-              role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'limit' }"
-              :aria-selected="pluginConfigTab === 'limit'"
-              @click="pluginConfigTab = 'limit'"
-            >
-              冷却
+              治理
             </button>
             <button
               type="button"
@@ -853,15 +808,6 @@ defineExpose({
               @click="pluginConfigTab = 'config'"
             >
               插件配置
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'runtime' }"
-              :aria-selected="pluginConfigTab === 'runtime'"
-              @click="pluginConfigTab = 'runtime'"
-            >
-              运行控制
             </button>
             <button
               v-if="showReadmeTab"
@@ -924,213 +870,97 @@ defineExpose({
             <RuntimeCheckResults :results="checkResults" />
           </div>
           <section
-            v-if="pluginConfigTab === 'runtime' && showRuntimePanel"
-            class="plugin-config-page__tab-panel plugin-runtime-panel"
+            v-if="pluginConfigTab === 'governance' && hasGovernanceTab"
+            class="plugin-config-page__tab-panel"
           >
-            <header class="plugin-config-page__panel-head">
-              <div>
-                <h3 class="plugin-config-page__panel-title">运行控制</h3>
-                <p class="muted plugin-config-page__panel-desc">
-                  控制插件是否参与运行，以及是否出现在帮助菜单中。
-                </p>
-              </div>
-            </header>
-            <p
-              v-if="helpMenuBusy && !pluginRow"
-              class="muted"
-            >
-              加载帮助菜单状态…
-            </p>
+            <PluginGovernancePanel
+              :governance-data="governanceData"
+              :governance-loading="governanceLoading"
+              :governance-saving="governanceSaving"
+              :governance-err="governanceErr"
+              :command-menu-map="commandMenuMap"
+              :perm-selections="permSelections"
+              :limit-selections="limitSelections"
+              :global-disable="isGloballyDisabled"
+              :show-in-help-menu="showInHelpMenu"
+              :global-disable-protected="globalDisableProtected"
+              :help-ignored="helpIgnored"
+              @perm-change="onPermChange"
+              @limit-input="(cmdId, val) => onLimitInput(cmdId, val)"
+              @toggle-global-disable="void toggleGovernanceRuntime('global_disable', $event)"
+              @toggle-help-menu-visible="void toggleGovernanceRuntime('help_hidden', !$event)"
+            />
             <div
-              v-else-if="!pluginRow"
-              class="alert alert--err"
+              v-if="showFleetWhitelistEditor"
+              class="plugin-fleet-whitelist"
             >
-              未能加载插件运行控制信息。
-            </div>
-            <div
-              v-else-if="helpMenuErr"
-              class="alert alert--err"
-            >
-              {{ helpMenuErr }}
-            </div>
-            <div
-              v-else
-              class="plugin-runtime-panel__list"
-            >
-              <div
-                v-if="globalDisableErr"
-                class="alert alert--err"
-              >
-                {{ globalDisableErr }}
+              <div class="plugin-fleet-whitelist__title">
+                群白名单（豁免全实例禁用）
               </div>
-              <PluginRuntimeSwitchRow
-                title="全实例禁用（所有牛牛、所有群）"
-                :model-value="isGloballyDisabled"
-                :disabled="globalDisableBusy || Boolean(pluginRow.global_disable_protected)"
-                @update:model-value="void toggleGlobalDisable($event)"
-              >
-                <p
-                  v-if="pluginRow.global_disable_protected"
-                  class="muted"
-                  style="margin: 0; line-height: 1.55"
-                >
-                  基础设施插件，不可全实例禁用。
-                </p>
-                <p
-                  v-else
-                  class="muted"
-                  style="margin: 0; line-height: 1.55"
-                >
-                  开启后立即拦截该插件的 matcher，无需重启；与实例/群级「禁用插件」叠加生效。
-                </p>
-              </PluginRuntimeSwitchRow>
-              <div
-                v-if="showFleetWhitelistEditor"
-                class="plugin-fleet-whitelist"
-              >
-                <div class="plugin-fleet-whitelist__title">
-                  群白名单（豁免全实例禁用）
-                </div>
-                <p class="muted plugin-fleet-whitelist__hint">
-                  输入群号后点击添加；白名单群仍可使用本插件。超管私聊为指定群开启时也会自动写入。
-                </p>
-                <div
-                  v-if="fleetWhitelistErr"
-                  class="alert alert--err"
-                  style="margin-bottom: 10px"
-                >
-                  {{ fleetWhitelistErr }}
-                </div>
-                <div class="row-actions plugin-fleet-whitelist__add-row">
-                  <input
-                    v-model="addWhitelistGroupInput"
-                    class="inp"
-                    type="text"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    placeholder="群号"
-                    :disabled="fleetWhitelistBusy"
-                    @keydown.enter.prevent="void addGroupToFleetWhitelist()"
-                  >
-                  <UiButton
-                    variant="outline"
-                    :disabled="fleetWhitelistBusy"
-                    @click="void addGroupToFleetWhitelist()"
-                  >
-                    添加
-                  </UiButton>
-                </div>
-                <p
-                  v-if="whitelistGroupAddHint"
-                  class="alert alert--err plugin-fleet-whitelist__hint-alert"
-                >
-                  {{ whitelistGroupAddHint }}
-                </p>
-                <div
-                  v-if="whitelistedGroupIds.length"
-                  class="admin-chip-list"
-                >
-                  <div
-                    v-for="groupId in whitelistedGroupIds"
-                    :key="`fleet-whitelist-${pluginName}-${groupId}`"
-                    class="admin-chip"
-                  >
-                    <span class="admin-chip__id">{{ groupId }}</span>
-                    <button
-                      type="button"
-                      class="admin-chip__rm"
-                      :aria-label="`移除群白名单 ${groupId}`"
-                      title="移除"
-                      :disabled="fleetWhitelistBusy"
-                      @click="void removeGroupFromFleetWhitelist(groupId)"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <p
-                  v-else
-                  class="muted plugin-fleet-whitelist__empty"
-                >
-                  尚未添加群白名单。
-                </p>
-              </div>
-              <PluginRuntimeSwitchRow
-                title="在「牛牛帮助」总列表中显示该插件"
-                :model-value="showInHelpMenu"
-                :disabled="helpMenuBusy || Boolean(pluginRow.help_ignored)"
-                @update:model-value="void toggleHelpMenuVisible($event)"
-              >
-                <p
-                  v-if="pluginRow.help_ignored"
-                  class="muted"
-                  style="margin: 0; line-height: 1.55"
-                >
-                  该插件在帮助插件的 ignored_plugins 中，无法出现在帮助菜单。
-                </p>
-                <p
-                  v-else
-                  class="muted"
-                  style="margin: 0; line-height: 1.55"
-                >
-                  变更立即写入服务端；下一条「牛牛帮助」即按新列表渲染。
-                </p>
-              </PluginRuntimeSwitchRow>
-            </div>
-          </section>
-          <section
-            v-if="pluginConfigTab === 'perm' || pluginConfigTab === 'limit'"
-            class="plugin-config-page__tab-panel plugin-governance-panel"
-          >
-            <header class="plugin-config-page__panel-head">
-              <div>
-                <h3 class="plugin-config-page__panel-title">
-                  {{ pluginConfigTab === "perm" ? "命令权限" : "命令冷却" }}
-                </h3>
-                <p class="muted plugin-config-page__panel-desc">
-                  共 <strong style="color: var(--text)">{{ commandsWithMenu.length }}</strong> 个命令；
-                  修改后自动保存并热重载。
-                </p>
-              </div>
-              <span
-                v-if="governanceData?.reload_policy"
-                class="plugin-config-page__panel-badge"
-              >
-                {{ governanceData.reload_policy }}
-              </span>
-            </header>
-            <p v-if="governanceLoading" class="muted">加载命令配置…</p>
-            <div v-else-if="governanceErr" class="alert alert--err">{{ governanceErr }}</div>
-            <p
-              v-else-if="!governanceData"
-              class="muted plugin-config-page__governance-empty"
-            >
-              该插件暂无命令权限或冷却声明。
-            </p>
-            <template v-else>
-              <CmdPermMatrix
-                v-if="pluginConfigTab === 'perm' && permPlugin"
-                :levels="permLevels"
-                :plugins="[permPlugin]"
-                :selections="permSelections"
-                :command-menu-map="commandMenuMap"
-                :disabled="governanceSaving"
-                @change="onPermChange"
-              />
-              <CmdLimitsTable
-                v-if="pluginConfigTab === 'limit' && limitsPlugin"
-                :plugins="[limitsPlugin]"
-                :selections="limitSelections"
-                :disabled="governanceSaving"
-                @input="(cmdId, val) => onLimitInput(cmdId, val)"
-              />
-              <p
-                v-if="governanceSaving"
-                class="muted plugin-config-page__governance-saving"
-              >
-                保存中…
+              <p class="muted plugin-fleet-whitelist__hint">
+                输入群号后点击添加；白名单群仍可使用本插件。超管私聊为指定群开启时也会自动写入。
               </p>
-            </template>
+              <div
+                v-if="fleetWhitelistErr"
+                class="alert alert--err"
+                style="margin-bottom: 10px"
+              >
+                {{ fleetWhitelistErr }}
+              </div>
+              <div class="row-actions plugin-fleet-whitelist__add-row">
+                <input
+                  v-model="addWhitelistGroupInput"
+                  class="inp"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="群号"
+                  :disabled="fleetWhitelistBusy"
+                  @keydown.enter.prevent="void addGroupToFleetWhitelist()"
+                >
+                <UiButton
+                  variant="outline"
+                  :disabled="fleetWhitelistBusy"
+                  @click="void addGroupToFleetWhitelist()"
+                >
+                  添加
+                </UiButton>
+              </div>
+              <p
+                v-if="whitelistGroupAddHint"
+                class="alert alert--err plugin-fleet-whitelist__hint-alert"
+              >
+                {{ whitelistGroupAddHint }}
+              </p>
+              <div
+                v-if="whitelistedGroupIds.length"
+                class="admin-chip-list"
+              >
+                <div
+                  v-for="groupId in whitelistedGroupIds"
+                  :key="`fleet-whitelist-${pluginName}-${groupId}`"
+                  class="admin-chip"
+                >
+                  <span class="admin-chip__id">{{ groupId }}</span>
+                  <button
+                    type="button"
+                    class="admin-chip__rm"
+                    :aria-label="`移除群白名单 ${groupId}`"
+                    title="移除"
+                    :disabled="fleetWhitelistBusy"
+                    @click="void removeGroupFromFleetWhitelist(groupId)"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <p
+                v-else
+                class="muted plugin-fleet-whitelist__empty"
+              >
+                尚未添加群白名单。
+              </p>
+            </div>
           </section>
           <section
             v-if="pluginConfigTab === 'readme'"

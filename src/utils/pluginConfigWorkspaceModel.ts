@@ -7,7 +7,7 @@ export interface PluginConfigGroupSummary {
   requiredFilled: number;
 }
 
-export type PluginConfigTab = "runtime" | "perm" | "limit" | "config" | "readme";
+export type PluginConfigTab = "governance" | "config" | "readme";
 
 export function fieldDisplayName(field: PluginConfigField): string {
   return (field.label || field.name).trim();
@@ -99,12 +99,10 @@ export function buildGroupSummary(
 }
 
 export function resolveInitialPluginConfigTab(options: {
-  hasPermConfig: boolean;
-  hasLimitConfig: boolean;
+  hasGovernance: boolean;
   hasConfigFields: boolean;
 }): PluginConfigTab {
-  if (options.hasPermConfig) return "perm";
-  if (options.hasLimitConfig) return "limit";
+  if (options.hasGovernance) return "governance";
   if (options.hasConfigFields) return "config";
-  return "runtime";
+  return "governance";
 }
