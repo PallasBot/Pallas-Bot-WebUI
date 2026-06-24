@@ -31,7 +31,24 @@ const redirectTarget = computed(() => {
   if (typeof raw === "string" && raw.startsWith("/")) {
     return raw;
   }
-  return "/ai/home";
+  return "/";
+});
+
+const redirectTargetLabel = computed(() => {
+  const target = redirectTarget.value;
+  if (target === "/") {
+    return "仪表盘";
+  }
+  if (target === "/instances") {
+    return "实例与连接";
+  }
+  if (target.startsWith("/plugin")) {
+    return "插件";
+  }
+  if (target.startsWith("/ai")) {
+    return "AI 相关页";
+  }
+  return target;
 });
 
 const requiresSetup = computed(() => Boolean(consoleSetupStatus.value?.requires_setup));
@@ -98,14 +115,14 @@ onActivated(() => {
         首次 Setup Wizard
       </template>
       <template #lead>
-        按三步完成首次引导：改密 → 协议端 → AI 体检；未完成改密前其它页面会收口到这里。
+        改密为必做项；协议端与插件扩展为推荐项。智能对话体检仅在需要开启 LLM 时再配置。
       </template>
       <template #actions>
         <UiButton variant="ghost" :busy="statusBusy" @click="refreshStatus(true)">
           重新检查
         </UiButton>
-        <RouterLink v-if="canEnterAiFlow" to="/ai/wizard">
-          <UiButton variant="outline">AI 体检</UiButton>
+        <RouterLink v-if="canEnterAiFlow" to="/plugin-store">
+          <UiButton variant="outline">插件商店</UiButton>
         </RouterLink>
       </template>
     </ConsoleHubMasthead>
@@ -190,12 +207,37 @@ onActivated(() => {
       <UiCard class="setup-wizard-page__card">
         <div class="setup-wizard-page__card-head">
           <div>
-            <h3 class="setup-wizard-page__title">步骤 3 · 检查 AI 基础能力</h3>
-            <p class="muted setup-wizard-page__lead">确认 AI 服务可达、Provider 已配置且智能对话总闸已开启。</p>
+            <h3 class="setup-wizard-page__title">步骤 3 · 扩展与插件</h3>
+            <p class="muted setup-wizard-page__lead">
+              按需安装官方扩展（决斗、协议等）；语料复读与群玩法不依赖 AI 服务。
+            </p>
           </div>
-          <span class="setup-wizard-page__pill">可选但推荐</span>
+          <span class="setup-wizard-page__pill">推荐</span>
         </div>
 
+        <div class="setup-wizard-page__action-stack">
+          <RouterLink v-if="canEnterAiFlow" to="/plugin-store">
+            <UiButton variant="outline" block>打开插件商店</UiButton>
+          </RouterLink>
+          <UiButton v-else variant="outline" block disabled>完成改密后可安装扩展</UiButton>
+          <RouterLink v-if="canEnterAiFlow" to="/plugins">
+            <UiButton variant="ghost" block>查看已加载插件</UiButton>
+          </RouterLink>
+          <UiButton v-else variant="ghost" block disabled>完成改密后可查看插件</UiButton>
+        </div>
+      </UiCard>
+    </section>
+
+    <UiCard class="setup-wizard-page__card setup-wizard-page__card--optional">
+      <details class="setup-wizard-page__optional-fold">
+        <summary class="setup-wizard-page__optional-summary">
+          <span class="setup-wizard-page__optional-title">可选 · 智能对话（LLM）</span>
+          <span class="setup-wizard-page__pill setup-wizard-page__pill--optional">仅当需要 AI 回复时</span>
+        </summary>
+        <p class="muted setup-wizard-page__lead setup-wizard-page__optional-lead">
+          默认站点可不启 LLM。若要在群里使用智能对话，需单独部署 AI 服务、配置 Provider，并开启
+          <code>LLM_CHAT_ENABLED</code> 总闸后再做连通性体检。
+        </p>
         <div class="setup-wizard-page__action-stack">
           <RouterLink v-if="canEnterAiFlow" to="/ai/wizard">
             <UiButton variant="outline" block>打开 AI 体检向导</UiButton>
@@ -206,8 +248,8 @@ onActivated(() => {
           </RouterLink>
           <UiButton v-else variant="ghost" block disabled>完成改密后可查看 AI 首页</UiButton>
         </div>
-      </UiCard>
-    </section>
+      </details>
+    </UiCard>
 
     <UiCard class="setup-wizard-page__card setup-wizard-page__card--notice">
       <div class="setup-wizard-page__card-head">
@@ -247,7 +289,7 @@ onActivated(() => {
       </div>
       <div class="setup-wizard-page__actions">
         <UiButton variant="primary" :disabled="!canContinueAfterSetup" @click="continueAfterSetup">
-          继续到 {{ redirectTarget }}
+          继续到 {{ redirectTargetLabel }}
         </UiButton>
         <RouterLink to="/">
           <UiButton variant="ghost">回到仪表盘</UiButton>
@@ -269,8 +311,44 @@ onActivated(() => {
   gap: 16px;
 }
 
-.setup-wizard-page__card--notice {
+.setup-wizard-page__card--notice,
+.setup-wizard-page__card--optional {
   margin-top: 0;
+}
+
+.setup-wizard-page__optional-fold {
+  display: grid;
+  gap: 12px;
+}
+
+.setup-wizard-page__optional-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.setup-wizard-page__optional-summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-wizard-page__optional-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.setup-wizard-page__optional-lead {
+  margin: 0;
+}
+
+.setup-wizard-page__pill--optional {
+  font-weight: 500;
+}
+
+.setup-wizard-page__optional-lead code {
+  font-size: 0.8125rem;
 }
 
 .setup-wizard-page__doc-link {
