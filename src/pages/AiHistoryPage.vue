@@ -63,14 +63,29 @@ const {
   historyDailyRows,
   routeRowsTop,
   historyRouteHeatPoints,
+  failureRows,
   persistenceHint,
   refresh,
   resetMonthRange,
 } = useAiTaskStatsPage();
 
+const ROUTE_BAR_COLORS = ["var(--accent)", "#22c55e", "#38bdf8", "#a78bfa", "#fb7185", "#fbbf24", "#34d399", "#f472b6"];
+
+type CountRow = { count: number };
+
+function countBarWidth(row: CountRow, rows: CountRow[]): number {
+  const max = Math.max(1, ...rows.map((item) => item.count));
+  return Math.max(8, Math.round((row.count / max) * 100));
+}
+
+function routeBarColor(index: number): string {
+  return ROUTE_BAR_COLORS[index % ROUTE_BAR_COLORS.length] ?? "var(--accent)";
+}
+
 const sessions = ref<LlmHistorySessionSummary[]>([]);
 const selectedSessionKey = ref("");
 const sessionDetail = ref<LlmHistorySessionDetailData | null>(null);
+const sessionDecisionTraces = ref<ConversationKernelTraceRow[]>([]);
 const historyBusy = ref(false);
 const historyErr = ref("");
 const feedbackBusy = ref(false);
@@ -734,7 +749,50 @@ interface SessionTurnRow {
   turn: LlmHistoryTurn;
   index: number;
   behaviorRun: LlmHistoryBehaviorRun | null;
+  decisionTrace: ConversationKernelTraceRow | null;
   precedingUserText: string;
+}
+
+const DECISION_TRACE_MATCH_WINDOW_SEC = 120;
+
+function traceTimestamp(row: ConversationKernelTraceRow): number {
+  const createdAt = Number(row.created_at || 0);
+  if (createdAt > 0) return createdAt;
+  const ts = Number(row.ts || 0);
+  return ts > 0 ? ts : 0;
+}
+
+function decisionTraceStableKey(row: ConversationKernelTraceRow): string {
+  return `${row.group_id ?? 0}-${row.bot_id ?? 0}-${traceTimestamp(row)}-${row.action ?? ""}-${row.trace_reason ?? ""}`;
+}
+
+function matchDecisionTraceForAssistantTurn(
+  turn: LlmHistoryTurn,
+  traces: ConversationKernelTraceRow[],
+  consumed: Set<string>,
+): ConversationKernelTraceRow | null {
+  const turnAt = Number(turn.created_at || 0);
+  if (turnAt <= 0) return null;
+  let best: ConversationKernelTraceRow | null = null;
+  let bestScore = Infinity;
+  for (const row of traces) {
+    const key = decisionTraceStableKey(row);
+    if (consumed.has(key)) continue;
+    const ts = traceTimestamp(row);
+    if (ts <= 0) continue;
+    const delta = turnAt - ts;
+    if (Math.abs(delta) > DECISION_TRACE_MATCH_WINDOW_SEC) continue;
+    const score = delta >= 0 ? delta : Math.abs(delta) + 1000;
+    if (score < bestScore) {
+      best = row;
+      bestScore = score;
+    }
+  }
+  if (best) {
+    consumed.add(decisionTraceStableKey(best));
+    return best;
+  }
+  return null;
 }
 
 function matchBehaviorRunForAssistantTurn(
@@ -778,20 +836,23 @@ const sessionTurnRows = computed(() => {
     return { rows: [] as SessionTurnRow[], orphanRuns: [] as LlmHistoryBehaviorRun[] };
   }
   const runs = [...(detail.behavior_runs || [])];
-  const consumed = new Set<string>();
+  const runConsumed = new Set<string>();
+  const traceConsumed = new Set<string>();
+  const traces = [...sessionDecisionTraces.value];
   let lastUserText = "";
   const rows: SessionTurnRow[] = [];
   for (let index = 0; index < detail.turns.length; index += 1) {
     const turn = detail.turns[index];
     if (turn.role === "user") {
       lastUserText = turn.content;
-      rows.push({ turn, index, behaviorRun: null, precedingUserText: "" });
+      rows.push({ turn, index, behaviorRun: null, decisionTrace: null, precedingUserText: "" });
       continue;
     }
-    const behaviorRun = matchBehaviorRunForAssistantTurn(turn, lastUserText, runs, consumed);
-    rows.push({ turn, index, behaviorRun, precedingUserText: lastUserText });
+    const behaviorRun = matchBehaviorRunForAssistantTurn(turn, lastUserText, runs, runConsumed);
+    const decisionTrace = matchDecisionTraceForAssistantTurn(turn, traces, traceConsumed);
+    rows.push({ turn, index, behaviorRun, decisionTrace, precedingUserText: lastUserText });
   }
-  const orphanRuns = runs.filter((run) => !consumed.has(run.request_id));
+  const orphanRuns = runs.filter((run) => !runConsumed.has(run.request_id));
   return { rows, orphanRuns };
 });
 
@@ -1133,19 +1194,31 @@ async function refreshSessionDetail() {
   const summary = selectedSession.value;
   if (!summary) {
     sessionDetail.value = null;
+    sessionDecisionTraces.value = [];
     return;
   }
   historyBusy.value = true;
   historyErr.value = "";
   try {
-    sessionDetail.value = await fetchLlmHistorySession({
-      botId: summary.bot_id,
-      groupId: summary.group_id,
-      userId: summary.user_id,
-      limit: AI_STATS_LIMITS.historyTurns,
-    });
+    const [detail, tracesData] = await Promise.all([
+      fetchLlmHistorySession({
+        botId: summary.bot_id,
+        groupId: summary.group_id,
+        userId: summary.user_id,
+        limit: AI_STATS_LIMITS.historyTurns,
+      }),
+      fetchConversationKernelTraces({
+        groupId: summary.group_id > 0 ? summary.group_id : undefined,
+        botId: summary.bot_id,
+        kind: "decision",
+        limit: AI_STATS_LIMITS.historyTurns,
+      }),
+    ]);
+    sessionDetail.value = detail;
+    sessionDecisionTraces.value = tracesData.items;
   } catch (e) {
     sessionDetail.value = null;
+    sessionDecisionTraces.value = [];
     historyErr.value = e instanceof Error ? e.message : String(e);
   } finally {
     historyBusy.value = false;
@@ -1539,6 +1612,42 @@ onMounted(() => {
           empty-text="当前时间窗暂无历史快照。"
         />
       </UiCard>
+
+      <UiCard class="ai-history-page__panel">
+        <div class="ai-head">
+          <h3 class="ai-head__title">回复路径</h3>
+          <span class="ai-head__hint">当前区间最常命中的路径排行</span>
+        </div>
+        <AiDailyTrendChart
+          :series="[
+            { id: 'route-heat', label: '路径命中', color: '#22c55e', unit: '次', points: historyRouteHeatPoints },
+          ]"
+          :summary="[
+            `路径命中 ${historyRouteHeatPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
+            routeRowsTop[0] ? `当前最热 ${routeRowsTop[0].key} · ${routeRowsTop[0].count.toLocaleString()} 次` : '当前区间暂无热点路径',
+          ]"
+          empty-text="这段时间还没有产生回复路径统计。"
+        />
+        <div v-if="routeRowsTop.length" class="ai-dist-list ai-history-page__route-list">
+          <article
+            v-for="(row, index) in routeRowsTop"
+            :key="row.key"
+            class="ai-dist-row"
+          >
+            <div class="ai-dist-row__head">
+              <span class="ai-dist-row__label ai-history-page__route-key">{{ row.key }}</span>
+              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
+            </div>
+            <div class="ai-dist-row__track" aria-hidden="true">
+              <span
+                class="ai-dist-row__fill"
+                :style="{ width: `${countBarWidth(row, routeRowsTop)}%`, background: routeBarColor(index) }"
+              />
+            </div>
+          </article>
+        </div>
+        <p v-else class="muted ai-history-page__empty-hint">当前时间窗内暂无路径统计。</p>
+      </UiCard>
     </section>
 
     <UiCard class="ai-history-page__panel">
@@ -1614,6 +1723,31 @@ onMounted(() => {
           收起到最近 7 天
         </button>
         </div>
+      </div>
+    </UiCard>
+
+    <UiCard v-if="failureRows.length" class="ai-history-page__panel ai-history-page__failure-panel">
+      <div class="ai-head">
+        <h3 class="ai-head__title">失败分布</h3>
+        <span class="ai-head__hint">当前时间窗内 AI 任务失败原因排行</span>
+      </div>
+      <div class="ai-dist-list">
+        <article
+          v-for="row in failureRows"
+          :key="row.key"
+          class="ai-dist-row"
+        >
+          <div class="ai-dist-row__head">
+            <span class="ai-dist-row__label ai-history-page__route-key">{{ row.label }}</span>
+            <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
+          </div>
+          <div class="ai-dist-row__track" aria-hidden="true">
+            <span
+              class="ai-dist-row__fill ai-dist-row__fill--danger"
+              :style="{ width: `${countBarWidth(row, failureRows)}%` }"
+            />
+          </div>
+        </article>
       </div>
     </UiCard>
     </div>
@@ -1743,6 +1877,29 @@ onMounted(() => {
               >
                 {{ isTurnExpanded(turnKey(row.turn.created_at, row.index)) ? "收起" : "展开全文" }}
               </button>
+              <div v-if="row.decisionTrace" class="ai-history-page__turn-decision">
+                <div class="ai-history-page__turn-behavior-bar">
+                  <span class="ai-history-page__turn-behavior-tag">判定</span>
+                  <strong>{{ kernelTraceSummary(row.decisionTrace) }}</strong>
+                  <span
+                    class="ai-history-page__outcome-badge"
+                    :class="kernelTraceOpportunityClass(row.decisionTrace)"
+                  >
+                    {{ kernelTraceOpportunityLabel(row.decisionTrace) }}
+                  </span>
+                  <span v-if="traceTimestamp(row.decisionTrace)" class="muted">
+                    {{ formatCompactDateTime(traceTimestamp(row.decisionTrace)) }}
+                  </span>
+                </div>
+                <div v-if="kernelTraceHighlights(row.decisionTrace).length" class="ai-history-page__trace-highlights">
+                  <span
+                    v-for="item in kernelTraceHighlights(row.decisionTrace)"
+                    :key="`${turnKey(row.turn.created_at, row.index)}-${item.label}`"
+                  >
+                    {{ item.label }}：{{ item.value }}
+                  </span>
+                </div>
+              </div>
               <div v-if="row.behaviorRun" class="ai-history-page__turn-behavior">
                 <div class="ai-history-page__turn-behavior-bar">
                   <span class="ai-history-page__turn-behavior-tag">Behavior</span>
@@ -3246,6 +3403,10 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
+.ai-history-page__workspace-tabs .console-view-toggle {
+  max-width: 100%;
+}
+
 .ai-history-page__workspace-tab {
   display: inline-flex;
   align-items: center;
@@ -3498,6 +3659,76 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 16px;
+}
+
+.ai-history-page__route-list {
+  margin-top: 16px;
+}
+
+.ai-history-page__route-key {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ai-history-page__failure-panel {
+  margin-top: 16px;
+}
+
+.ai-dist-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-dist-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-dist-row__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-dist-row__label {
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.ai-dist-row__value {
+  flex-shrink: 0;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.ai-dist-row__track {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.ai-dist-row__fill {
+  height: 100%;
+  min-width: 10px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 78%, #ffffff), var(--accent));
+}
+
+.ai-dist-row__fill--danger {
+  background: linear-gradient(90deg, color-mix(in srgb, #fb7185 78%, #ffffff), #fb7185);
+}
+
+.ai-history-page__turn-decision {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
 .ai-history-page__sessions {
@@ -4049,6 +4280,36 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
+  .ai-history-page__workspace-tabs .console-view-toggle {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .ai-history-page__workspace-tabs .console-view-toggle button {
+    flex: 0 0 auto;
+  }
+
+  .ai-history-page__filters--aligned {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .ai-history-page__filter-action,
+  .ai-history-page__filter-action--check {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .ai-dist-row__head {
+    display: grid;
+    gap: 4px;
+  }
+
   .ai-history-page__session-top,
   .ai-history-page__turn-head,
   .ai-history-page__behavior-top,
@@ -4161,7 +4422,7 @@ onMounted(() => {
 
   .ai-history-page__pattern-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
