@@ -654,6 +654,17 @@ export interface PluginConfigField {
   min_value?: number;
   /** int/float 字段上界（含），由 Pydantic le/lt 推导 */
   max_value?: number;
+  /** DynamicConfigPanel 分组标题 */
+  ui_group?: string;
+  /** 组内排序，越小越靠前 */
+  ui_order?: number;
+  /** 进阶项，默认折叠 */
+  ui_hidden?: boolean;
+}
+
+export interface PluginConfigUnexpectedKey {
+  env_key: string;
+  value_preview: string;
 }
 
 /** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
@@ -722,6 +733,17 @@ export interface PluginConfigData {
   dev_mode_hot_reload?: boolean;
   /** 保存后无需重启即可生效（语料联邦等） */
   hot_reload?: boolean;
+  /** webui.json 中存在但 schema 未声明的键 */
+  unexpected_keys?: PluginConfigUnexpectedKey[];
+}
+
+export interface PluginConfigRawData {
+  toml: string;
+}
+
+export interface ExtensionInstallJobData {
+  job_id: string;
+  package: string;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */

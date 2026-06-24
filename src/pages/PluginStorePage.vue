@@ -7,7 +7,8 @@ import {
   fetchPluginStoreReadme,
   fetchPlugins,
   installCommunityPlugin,
-  installOfficialExtension,
+  installOfficialExtensionAsync,
+  openExtensionInstallJobEventSource,
   refreshPluginStore,
   refreshPluginUpdateSnapshot,
   uninstallCommunityPlugin,
@@ -606,13 +607,53 @@ async function checkUpdates() {
 async function installExtension(row: OfficialExtensionRow, restart = false) {
   if (storeBusyPackage.value) return;
   storeErr.value = "";
-  storeActionHint.value = "";
+  storeActionHint.value = "正在排队安装…";
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   try {
-    const out = await installOfficialExtension(row.package, { restart });
-    officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    noteStoreActionResult(out.message || "安装完成。", out);
+    const job = await installOfficialExtensionAsync(row.package, { restart });
+    storeActionHint.value = `安装中：${job.package}`;
+    await new Promise<void>((resolve, reject) => {
+      const installStream = openExtensionInstallJobEventSource(job.job_id);
+      const closeStream = () => installStream.close();
+      installStream.onmessage = (ev) => {
+        if (!ev.data) return;
+        try {
+          const payload = JSON.parse(ev.data) as {
+            type?: string;
+            phase?: string;
+            message?: string;
+            error?: string;
+            result?: OfficialExtensionInstallResult;
+          };
+          if (payload.type === "progress" && payload.message) {
+            storeActionHint.value = payload.message;
+          }
+          if (payload.type === "complete") {
+            if (payload.phase === "failed") {
+              closeStream();
+              reject(new Error(payload.error || payload.message || "安装失败"));
+              return;
+            }
+            const result = payload.result;
+            if (result) {
+              officialActionState.value = { ...officialActionState.value, [row.package]: result };
+              noteStoreActionResult(result.message || payload.message || "安装完成。", result);
+            } else {
+              noteStoreActionResult(payload.message || "安装完成。", null);
+            }
+            closeStream();
+            resolve();
+          }
+        } catch {
+          /* ignore malformed */
+        }
+      };
+      installStream.onerror = () => {
+        closeStream();
+        reject(new Error("安装进度连接中断"));
+      };
+    });
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);

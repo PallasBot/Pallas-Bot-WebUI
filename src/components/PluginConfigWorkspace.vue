@@ -4,12 +4,14 @@ import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import {
   fetchPluginConfig,
   fetchPluginBundledReadme,
+  fetchPluginConfigRaw,
   fetchPluginGovernance,
   fetchPluginStoreReadme,
   fetchPlugins,
   fetchPluginsGroupFleetWhitelist,
   postPluginConfigCheck,
   putPluginConfig,
+  putPluginConfigRaw,
   putPluginGovernance,
   putPluginsGroupFleetWhitelist,
 } from "@/api/consoleApi";
@@ -17,15 +19,13 @@ import type {
   GroupFleetWhitelistEntry,
   PluginConfigCheckResult,
   PluginConfigData,
-  PluginConfigField,
-  PluginConfigFieldGroup,
   PluginGovernanceBody,
   PluginGovernanceData,
   PluginGovernanceMenuItem,
   PluginRow,
 } from "@/api/pallasTypes";
 import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
-import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
+import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
@@ -47,7 +47,6 @@ import {
 } from "@/utils/pluginConfigFieldModel";
 import { usePluginConfigFieldPopover } from "@/composables/usePluginConfigFieldPopover";
 import {
-  buildGroupSummary,
   resolveInitialPluginConfigTab,
   type PluginConfigTab,
 } from "@/utils/pluginConfigWorkspaceModel";
@@ -434,44 +433,22 @@ const visibleFields = computed(() => {
   return data.value.fields.filter((f) => !hidden.has(f.name));
 });
 
-interface ConfigGroupView {
-  id: string;
-  title: string;
-  fields: PluginConfigField[];
-}
+type ConfigEditMode = "form" | "raw";
 
-interface ConfigGroupViewModel extends ConfigGroupView {
-  summary: ReturnType<typeof buildGroupSummary>;
-}
+const configEditMode = ref<ConfigEditMode>("form");
+const rawToml = ref("");
+const savedRawToml = ref("");
 
-function fieldsForGroup(group: PluginConfigFieldGroup, fields: PluginConfigField[]): PluginConfigField[] {
-  const byName = new Map(fields.map((f) => [f.name, f]));
-  const out: PluginConfigField[] = [];
-  for (const name of group.field_names) {
-    const field = byName.get(name);
-    if (field) out.push(field);
+const configDirty = computed(() => {
+  if (!data.value) return false;
+  if (configEditMode.value === "raw") {
+    return rawToml.value !== savedRawToml.value;
   }
-  return out;
-}
-
-const configFieldGroups = computed((): ConfigGroupView[] => {
-  const fields = visibleFields.value;
-  if (!fields.length) return [];
-  const groups = data.value?.field_groups;
-  if (groups?.length) {
-    const mapped = groups
-      .map((group) => ({
-        id: group.id,
-        title: group.title,
-        fields: fieldsForGroup(group, fields),
-      }))
-      .filter((group) => group.fields.length);
-    if (mapped.length) return mapped;
-  }
-  return [{ id: "all", title: "配置项", fields }];
+  const current = collectFieldValues(data.value.fields, fieldValues.value);
+  const baseline = fieldValuesFromConfig(data.value.fields);
+  return JSON.stringify(current) !== JSON.stringify(baseline);
 });
 
-const groupOpen = ref<Record<string, boolean>>({});
 const {
   fieldPopoverHost,
   activeFieldPopoverName,
@@ -492,22 +469,33 @@ const {
   closeFieldInteraction,
 } = usePluginConfigFieldPopover(() => visibleFields.value);
 
-watch(
-  configFieldGroups,
-  (groups) => {
-    const next = { ...groupOpen.value };
-    for (const group of groups) {
-      if (next[group.id] === undefined) {
-        next[group.id] = true;
-      }
-    }
-    groupOpen.value = next;
-  },
-  { immediate: true },
-);
+async function ensureRawTomlLoaded() {
+  if (!pluginResolvedId.value) return;
+  const text = await fetchPluginConfigRaw(pluginResolvedId.value);
+  rawToml.value = text;
+  savedRawToml.value = text;
+}
 
-function toggleConfigGroup(id: string) {
-  groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
+async function switchConfigEditMode(mode: ConfigEditMode) {
+  if (mode === configEditMode.value) return;
+  if (configDirty.value) {
+    const ok = window.confirm("当前有未保存的修改，切换编辑模式将丢弃这些更改。继续？");
+    if (!ok) return;
+  }
+  configEditMode.value = mode;
+  if (mode === "raw") {
+    await ensureRawTomlLoaded();
+    return;
+  }
+  if (data.value) {
+    fieldValues.value = fieldValuesFromConfig(data.value.fields);
+  }
+}
+
+function onConfigBeforeUnload(ev: BeforeUnloadEvent) {
+  if (!configDirty.value) return;
+  ev.preventDefault();
+  ev.returnValue = "";
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -594,10 +582,16 @@ watch(
 );
 
 onMounted(() => {
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", onConfigBeforeUnload);
+  }
   void load();
 });
 
 onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("beforeunload", onConfigBeforeUnload);
+  }
   for (const timer of Object.values(limitDebounceTimers.value)) {
     clearTimeout(timer);
   }
@@ -609,13 +603,6 @@ useSaveHotkey(
 );
 
 const fieldValues = ref<Record<string, string>>({});
-
-const configGroupViewModels = computed((): ConfigGroupViewModel[] =>
-  configFieldGroups.value.map((group) => ({
-    ...group,
-    summary: buildGroupSummary(group.fields, fieldValues.value),
-  })),
-);
 
 watch(
   [hasGovernanceTab, hasConfigFields],
@@ -644,6 +631,9 @@ watch(
   data,
   (d) => {
     fieldValues.value = d ? fieldValuesFromConfig(d.fields) : {};
+    configEditMode.value = "form";
+    rawToml.value = "";
+    savedRawToml.value = "";
   },
   { immediate: true },
 );
@@ -673,8 +663,13 @@ async function save() {
   saving.value = true;
   err.value = "";
   try {
-    const values = collectFieldValues(data.value.fields, fieldValues.value);
-    data.value = await putPluginConfig(pluginResolvedId.value, values);
+    if (configEditMode.value === "raw") {
+      data.value = await putPluginConfigRaw(pluginResolvedId.value, rawToml.value);
+      savedRawToml.value = rawToml.value;
+    } else {
+      const values = collectFieldValues(data.value.fields, fieldValues.value);
+      data.value = await putPluginConfig(pluginResolvedId.value, values);
+    }
     toastSaveSuccess("配置已保存");
   } catch (e) {
     err.value = axiosErrorDetail(e);
@@ -1012,67 +1007,60 @@ defineExpose({
             <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
           </p>
           <PallasImageGatewaysEditor
-            v-if="pluginConfigTab === 'config' && usesGatewayEditor"
+            v-if="pluginConfigTab === 'config' && usesGatewayEditor && configEditMode === 'form'"
             :field-values="fieldValues"
             @update:field-values="onGatewayFieldValues"
           />
-          <section v-if="pluginConfigTab === 'config'" class="plugin-config-groups">
-            <section
-              v-for="group in configGroupViewModels"
-              :key="group.id"
-              class="plugin-config-group-card"
+          <div
+            v-if="pluginConfigTab === 'config' && hasConfigFields"
+            class="plugin-config-page__mode-toggle console-view-toggle"
+            role="tablist"
+            aria-label="配置编辑模式"
+          >
+            <button
+              type="button"
+              role="tab"
+              :class="{ 'is-on': configEditMode === 'form' }"
+              :aria-selected="configEditMode === 'form'"
+              @click="void switchConfigEditMode('form')"
             >
-              <button
-                type="button"
-                class="plugin-config-group-card__hero"
-                :aria-expanded="groupOpen[group.id] ?? true"
-                @click="toggleConfigGroup(group.id)"
-              >
-                  <div class="plugin-config-group-card__hero-main">
-                  <div class="plugin-config-group-card__hero-text">
-                    <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
-                    <p class="plugin-config-group-card__desc">
-                      共 {{ group.summary.total }} 项，已填写 {{ group.summary.filled }} 项
-                      <template v-if="group.summary.required">
-                        · 必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
-                      </template>
-                    </p>
-                  </div>
-                </div>
-                <div class="plugin-config-group-card__hero-side">
-                  <div class="plugin-config-group-card__chips">
-                    <span class="plugin-config-group-card__chip">
-                      {{ group.summary.filled ? "已配置" : "待配置" }}
-                    </span>
-                    <span
-                      v-if="group.summary.required"
-                      class="plugin-config-group-card__chip plugin-config-group-card__chip--soft"
-                    >
-                      必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
-                    </span>
-                  </div>
-                  <span class="plugin-config-group-card__toggle">
-                    {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
-                  </span>
-                </div>
-              </button>
-
-              <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">
-                <PluginConfigFieldShell
-                  v-for="f in group.fields"
-                  :key="f.name"
-                  :field="f"
-                  :model-value="fieldValues[f.name] ?? ''"
-                  :help-expanded="activeFieldPopoverName === f.name"
-                  @update:model-value="fieldValues = { ...fieldValues, [f.name]: $event }"
-                  @help-click="onFieldHelpClick(f.name, $event)"
-                  @help-hover="onFieldHelpHover(f.name, $event)"
-                  @help-hover-leave="onHelpHoverLeave"
-                  @edit-click="onFieldEditClick(f.name)"
-                />
-              </div>
-            </section>
-          </section>
+              表单
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :class="{ 'is-on': configEditMode === 'raw' }"
+              :aria-selected="configEditMode === 'raw'"
+              @click="void switchConfigEditMode('raw')"
+            >
+              Raw TOML
+            </button>
+          </div>
+          <p
+            v-if="pluginConfigTab === 'config' && configDirty"
+            class="alert alert--warn plugin-config-page__dirty-hint"
+          >
+            有未保存的修改
+          </p>
+          <textarea
+            v-if="pluginConfigTab === 'config' && configEditMode === 'raw'"
+            v-model="rawToml"
+            class="inp plugin-config-page__raw-toml"
+            spellcheck="false"
+            :disabled="saving || loading"
+          />
+          <DynamicConfigPanel
+            v-else-if="pluginConfigTab === 'config' && configEditMode === 'form'"
+            :fields="visibleFields"
+            :field-groups="data.field_groups"
+            :unexpected-keys="data.unexpected_keys"
+            v-model="fieldValues"
+            :active-field-popover-name="activeFieldPopoverName"
+            @help-click="onFieldHelpClick"
+            @help-hover="onFieldHelpHover"
+            @help-hover-leave="onHelpHoverLeave"
+            @edit-click="onFieldEditClick"
+          />
           <Teleport to="body">
             <div
               v-if="activeFieldPopover"
@@ -1259,6 +1247,23 @@ defineExpose({
   display: inline-flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 16px;
+}
+
+.plugin-config-page__mode-toggle {
+  margin-bottom: 12px;
+}
+
+.plugin-config-page__dirty-hint {
+  margin: 0 0 12px;
+}
+
+.plugin-config-page__raw-toml {
+  width: 100%;
+  min-height: 280px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
   margin-bottom: 16px;
 }
 

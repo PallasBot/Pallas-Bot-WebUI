@@ -47,6 +47,7 @@ const enabledLevels = ref<Set<LogEntryLevel>>(loadLogsEnabledLevels());
 const liveEntries = ref<LogEntry[]>([]);
 const MAX_LIVE_ENTRIES = 1200;
 const streamReconnectCount = ref(0);
+const lastStreamEventId = ref(0);
 let streamReconnectTimer: number | null = null;
 
 let logEs: EventSource | null = null;
@@ -171,7 +172,8 @@ function startLogStream() {
   stopLogStreamConnection();
   streamLive.value = false;
   try {
-    logEs = openLogsEventSource(scope.value, logSource.value);
+    const resumeId = lastStreamEventId.value > 0 ? lastStreamEventId.value : undefined;
+    logEs = openLogsEventSource(scope.value, logSource.value, resumeId);
     logEs.onopen = () => {
       streamLive.value = true;
     };
@@ -180,7 +182,15 @@ function startLogStream() {
       try {
         const row = JSON.parse(ev.data) as LogEntry & { type?: string };
         if (row && typeof row === "object" && row.type === "ready") return;
-        if (row.message != null) pushLiveEntry(row);
+        if (row.message != null) {
+          if (typeof row.id === "number" && row.id > 0) {
+            lastStreamEventId.value = row.id;
+          } else if (ev.lastEventId) {
+            const parsed = Number(ev.lastEventId);
+            if (Number.isFinite(parsed) && parsed > 0) lastStreamEventId.value = parsed;
+          }
+          pushLiveEntry(row);
+        }
       } catch {
         /* ignore malformed */
       }

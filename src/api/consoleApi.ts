@@ -46,6 +46,8 @@ import type {
   GroupFleetWhitelistEntry,
   HelpMenuVisibilityData,
   PluginConfigData,
+  PluginConfigRawData,
+  ExtensionInstallJobData,
   PluginCapabilitiesData,
   PluginGovernanceBody,
   PluginGovernanceData,
@@ -294,6 +296,26 @@ export async function installOfficialExtension(
   const out = unwrap(data, "/plugins/official-extensions/install");
   invalidatePluginsCache();
   return out;
+}
+
+export async function installOfficialExtensionAsync(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJobData> {
+  const { data } = await http.post<ApiOk<ExtensionInstallJobData>>(
+    "/plugins/official-extensions/install-async",
+    { package: packageName, restart: Boolean(options?.restart) },
+  );
+  return unwrap(data, "/plugins/official-extensions/install-async");
+}
+
+export function openExtensionInstallJobEventSource(jobId: string): EventSource {
+  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
+  const apiBase = `${root}/api`;
+  return new EventSource(
+    `${apiBase}/plugins/official-extensions/install-jobs/${encodeURIComponent(jobId)}/stream`,
+    { withCredentials: true },
+  );
 }
 
 export async function uninstallOfficialExtension(
@@ -574,6 +596,23 @@ export async function putPluginConfig(
     values,
   });
   const out = unwrap(data, `/plugins/${pluginName}/config`);
+  invalidatePluginsCache();
+  return out;
+}
+
+export async function fetchPluginConfigRaw(pluginName: string): Promise<string> {
+  const { data } = await http.get<ApiOk<PluginConfigRawData>>(
+    `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
+  );
+  return unwrap(data, `/plugins/${pluginName}/config/raw`).toml;
+}
+
+export async function putPluginConfigRaw(pluginName: string, toml: string): Promise<PluginConfigData> {
+  const { data } = await http.put<ApiOk<PluginConfigData>>(
+    `/plugins/${encodeURIComponent(pluginName)}/config/raw`,
+    { toml },
+  );
+  const out = unwrap(data, `/plugins/${pluginName}/config/raw`);
   invalidatePluginsCache();
   return out;
 }
@@ -1083,11 +1122,13 @@ export async function fetchLogs(
 export function openLogsEventSource(
   scope: LogScope = "all",
   source?: string,
+  lastEventId?: number,
 ): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
   const apiBase = `${root}/api`;
   const qs = new URLSearchParams({ scope });
   if (source && source !== "all") qs.set("source", source);
+  if (lastEventId != null && lastEventId > 0) qs.set("last_event_id", String(lastEventId));
   return new EventSource(`${apiBase}/logs/stream?${qs.toString()}`, { withCredentials: true });
 }
 
