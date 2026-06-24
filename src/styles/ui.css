@@ -422,3 +422,35 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.
     transform: none;
   }
 }
+
+/* 面板收起/展开：与 panel-hd-collapse-btn 主题一致，覆盖 UiButton outline */
+.ui-btn.panel-hd-collapse-btn,
+.ui-btn.panel-hd-collapse-btn.ui-btn--outline {
+  min-height: 0;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--control-bg) 88%, transparent);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.ui-btn.panel-hd-collapse-btn:hover:not(:disabled),
+.ui-btn.panel-hd-collapse-btn.ui-btn--outline:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--bg-card-hover);
+}
+
+html[data-theme="light"] .ui-btn.panel-hd-collapse-btn,
+html[data-theme="light"] .ui-btn.panel-hd-collapse-btn.ui-btn--outline {
+  background: color-mix(in srgb, #fff 96%, var(--bg-deep) 4%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="light"] .ui-btn.panel-hd-collapse-btn:hover:not(:disabled),
+html[data-theme="light"] .ui-btn.panel-hd-collapse-btn.ui-btn--outline:hover:not(:disabled) {
+  background: #fff;
+}

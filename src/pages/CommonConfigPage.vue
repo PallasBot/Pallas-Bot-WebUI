@@ -675,13 +675,18 @@ function showConfigField(f: PluginConfigField): boolean {
           >
             有未保存的修改
           </p>
-          <textarea
+          <div
             v-if="supportsRawToml && configEditMode === 'raw'"
-            v-model="rawToml"
-            class="inp plugin-config-page__raw-toml"
-            spellcheck="false"
-            :disabled="saving || checking"
-          />
+            class="plugin-config-page__raw-toml-wrap"
+          >
+            <textarea
+              v-model="rawToml"
+              class="inp textarea plugin-config-page__raw-toml"
+              spellcheck="false"
+              rows="16"
+              :disabled="saving || checking"
+            />
+          </div>
           <template v-if="!supportsRawToml || configEditMode === 'form'">
           <p
             v-if="showDevModeHotReloadHint"

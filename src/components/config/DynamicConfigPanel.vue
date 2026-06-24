@@ -72,12 +72,7 @@ function updateField(name: string, value: string) {
       class="plugin-config-group-card"
       :class="{ 'plugin-config-group-card--advanced': group.advanced }"
     >
-      <button
-        type="button"
-        class="plugin-config-group-card__hero"
-        :aria-expanded="groupOpen[group.id] ?? true"
-        @click="toggleGroup(group.id)"
-      >
+      <header class="plugin-config-group-card__hero">
         <div class="plugin-config-group-card__hero-main">
           <div class="plugin-config-group-card__hero-text">
             <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
@@ -101,11 +96,17 @@ function updateField(name: string, value: string) {
               必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
             </span>
           </div>
-          <span class="plugin-config-group-card__toggle">
+          <button
+            type="button"
+            class="btn panel-hd-collapse-btn plugin-config-group-card__collapse"
+            :aria-expanded="groupOpen[group.id] ?? true"
+            :aria-label="`${(groupOpen[group.id] ?? true) ? '收起' : '展开'}${group.title}`"
+            @click="toggleGroup(group.id)"
+          >
             {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
-          </span>
+          </button>
         </div>
-      </button>
+      </header>
 
       <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">
         <PluginConfigFieldShell

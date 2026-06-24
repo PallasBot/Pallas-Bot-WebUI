@@ -260,6 +260,8 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
             </span>
             <UiButton
               variant="outline"
+              size="sm"
+              class="panel-hd-collapse-btn"
               @click="capabilitiesOverviewOpen = !capabilitiesOverviewOpen"
             >
               {{ capabilitiesOverviewOpen ? "收起" : "展开" }}

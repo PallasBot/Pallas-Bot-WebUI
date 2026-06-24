@@ -43,7 +43,9 @@ import {
 } from "@/utils/aiRuntimeResolver";
 import {
   collectFieldValues,
+  configValuesFingerprint,
   fieldValuesFromConfig,
+  savedConfigFingerprint,
 } from "@/utils/pluginConfigFieldModel";
 import { usePluginConfigFieldPopover } from "@/composables/usePluginConfigFieldPopover";
 import {
@@ -456,9 +458,10 @@ const configDirty = computed(() => {
   if (configEditMode.value === "raw") {
     return rawToml.value !== savedRawToml.value;
   }
-  const current = collectFieldValues(data.value.fields, fieldValues.value);
-  const baseline = fieldValuesFromConfig(data.value.fields);
-  return JSON.stringify(current) !== JSON.stringify(baseline);
+  return (
+    configValuesFingerprint(data.value.fields, fieldValues.value) !==
+    savedConfigFingerprint(data.value.fields)
+  );
 });
 
 const {
@@ -1062,13 +1065,18 @@ defineExpose({
           >
             有未保存的修改
           </p>
-          <textarea
+          <div
             v-if="pluginConfigTab === 'config' && configEditMode === 'raw'"
-            v-model="rawToml"
-            class="inp plugin-config-page__raw-toml"
-            spellcheck="false"
-            :disabled="saving || loading"
-          />
+            class="plugin-config-page__raw-toml-wrap"
+          >
+            <textarea
+              v-model="rawToml"
+              class="inp textarea plugin-config-page__raw-toml"
+              spellcheck="false"
+              rows="16"
+              :disabled="saving || loading"
+            />
+          </div>
           <DynamicConfigPanel
             v-else-if="pluginConfigTab === 'config' && configEditMode === 'form'"
             :fields="visibleFields"
@@ -1197,24 +1205,6 @@ defineExpose({
     font-size: 12px;
   }
 
-  .plugin-config-group-card__hero {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .plugin-config-group-card__hero-side,
-  .plugin-config-group-card__chips {
-    width: 100%;
-  }
-
-  .plugin-config-group-card__hero-main {
-    width: 100%;
-  }
-
-  .plugin-config-form-grid {
-    grid-template-columns: 1fr;
-  }
-
   .plugin-config-page__panel-head {
     flex-direction: column;
   }
@@ -1236,14 +1226,6 @@ defineExpose({
   .plugin-config-page__tab-panel {
     min-width: 0;
     padding: 12px;
-  }
-
-  .plugin-config-page__raw-toml {
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: auto;
-    min-height: 220px;
-    font-size: 12px;
   }
 
   .plugin-config-page__mode-toggle {
@@ -1298,15 +1280,6 @@ defineExpose({
 
 .plugin-config-page__dirty-hint {
   margin: 0 0 12px;
-}
-
-.plugin-config-page__raw-toml {
-  width: 100%;
-  min-height: 280px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 16px;
 }
 
 .plugin-config-page__tab-panel {
@@ -1365,104 +1338,6 @@ defineExpose({
 .plugin-runtime-panel__list {
   display: grid;
   gap: 12px;
-}
-
-.plugin-config-form-grid {
-  display: grid;
-  gap: 18px 24px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-}
-
-.plugin-config-groups {
-  display: grid;
-  gap: 12px;
-}
-
-.plugin-config-group-card {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 99%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
-  box-shadow: none;
-}
-
-.plugin-config-group-card__hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-}
-
-.plugin-config-group-card__hero-main {
-  display: flex;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.plugin-config-group-card__hero-text {
-  min-width: 0;
-}
-
-.plugin-config-group-card__title {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.35;
-  font-weight: 700;
-}
-
-.plugin-config-group-card__desc {
-  margin: 4px 0 0;
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--text-muted, rgba(255, 255, 255, 0.68));
-}
-
-.plugin-config-group-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
-
-.plugin-config-group-card__hero-side {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.plugin-config-group-card__chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted, rgba(255, 255, 255, 0.76));
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.025)) 98%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 82%, transparent);
-}
-
-.plugin-config-group-card__chip--soft {
-  opacity: 0.88;
-}
-
-.plugin-config-group-card__toggle {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted, rgba(255, 255, 255, 0.72));
-  white-space: nowrap;
 }
 
 .plugin-config-field-popover {

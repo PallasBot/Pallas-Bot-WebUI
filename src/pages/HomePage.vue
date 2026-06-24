@@ -59,6 +59,11 @@ import {
 } from "@/utils/versionDisplay";
 import { patchConsoleMeta, consoleMetaBotUpdate, consoleMetaHealth, consoleMetaWebUpdate } from "@/state/consoleMeta";
 import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
+import {
+  isHomeActionDismissed,
+  loadHomeActionDismissals,
+  saveHomeActionDismissal,
+} from "@/utils/homeActionDismissals";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
@@ -538,30 +543,48 @@ type HomeActionItem = {
   label: string;
   to?: RouteLocationRaw;
   level: "warn" | "err";
+  dismissToken: string;
 };
+
+const homeActionDismissals = ref<Record<string, string>>(loadHomeActionDismissals());
 
 const homeActionItems = computed((): HomeActionItem[] => {
   const items: HomeActionItem[] = [];
-  if (botUpdateCheck.value?.has_update) {
+  const bot = botUpdateCheck.value;
+  if (bot?.has_update) {
     items.push({
       key: "bot-update",
       label: "Pallas-Bot 有更新",
       to: { path: "/update", hash: "#console-update-bot" },
       level: "warn",
+      dismissToken: bot.latest_tag || bot.current_tag || "bot-update",
     });
   }
-  if (webUpdateCheck.value?.has_update) {
+  const web = webUpdateCheck.value;
+  if (web?.has_update) {
     items.push({
       key: "web-update",
       label: "控制台有更新",
       to: { path: "/update", hash: "#console-update-webui" },
       level: "warn",
+      dismissToken: web.latest_tag || web.current_tag || "web-update",
     });
   }
   return items;
 });
 
-const homeActionStripVisible = computed(() => homeActionItems.value.length > 0);
+const visibleHomeActionItems = computed(() =>
+  homeActionItems.value.filter(
+    (item) => !isHomeActionDismissed(homeActionDismissals.value, item.key, item.dismissToken),
+  ),
+);
+
+const homeActionStripVisible = computed(() => visibleHomeActionItems.value.length > 0);
+
+function dismissHomeActionItem(item: HomeActionItem) {
+  saveHomeActionDismissal(item.key, item.dismissToken);
+  homeActionDismissals.value = loadHomeActionDismissals();
+}
 
 const versionHasUpdate = computed(
   () => Boolean(botUpdateCheck.value?.has_update || webUpdateCheck.value?.has_update),
@@ -1189,18 +1212,30 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div v-if="homeActionStripVisible" class="home-action-strip" role="status" aria-label="可用更新">
-          <component
-            :is="item.to ? 'RouterLink' : 'span'"
-            v-for="item in homeActionItems"
+        <ul v-if="homeActionStripVisible" class="home-action-strip" role="status" aria-label="可用更新">
+          <li
+            v-for="item in visibleHomeActionItems"
             :key="item.key"
-            class="home-action-strip__item"
-            :class="`home-action-strip__item--${item.level}`"
-            v-bind="item.to ? { to: item.to } : {}"
+            class="home-action-strip__chip"
+            :class="`home-action-strip__chip--${item.level}`"
           >
-            {{ item.label }}
-          </component>
-        </div>
+            <component
+              :is="item.to ? 'RouterLink' : 'span'"
+              class="home-action-strip__item"
+              v-bind="item.to ? { to: item.to } : {}"
+            >
+              {{ item.label }}
+            </component>
+            <button
+              type="button"
+              class="home-action-strip__dismiss"
+              :aria-label="`关闭「${item.label}」提示`"
+              @click="dismissHomeActionItem(item)"
+            >
+              ×
+            </button>
+          </li>
+        </ul>
 
         <!-- ═══ Main Grid ═══ -->
         <div class="home-grid">

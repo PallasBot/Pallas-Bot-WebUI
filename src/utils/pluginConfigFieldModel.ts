@@ -75,6 +75,18 @@ export function collectFieldValues(
   return values;
 }
 
+/** 与 collectFieldValues 同一套解析规则，用于判断表单是否相对服务端有改动。 */
+export function configValuesFingerprint(
+  fields: PluginConfigField[],
+  fieldValues: Record<string, string>,
+): string {
+  return JSON.stringify(collectFieldValues(fields, fieldValues));
+}
+
+export function savedConfigFingerprint(fields: PluginConfigField[]): string {
+  return configValuesFingerprint(fields, fieldValuesFromConfig(fields));
+}
+
 /**
  * 判断一个 json 字段是否适合用「标签输入」编辑：
  * 其 default 与 current 若有值，必须是「字符串数组」（如群号列表、前缀列表）。

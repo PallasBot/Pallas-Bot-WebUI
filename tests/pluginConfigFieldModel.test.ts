@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import {
+  configValuesFingerprint,
   isStringListField,
   resolveConfigFieldLayout,
+  savedConfigFingerprint,
   tagsFromJsonText,
   tagsToJsonText,
 } from "@/utils/pluginConfigFieldModel";
@@ -76,6 +78,17 @@ describe("resolveConfigFieldLayout", () => {
         makeField({ kind: "enum", choices: ["a", "b", "c"], current: "a", default: "a" }),
       ),
     ).toBe("standard");
+  });
+});
+
+describe("config dirty fingerprint", () => {
+  it("matches saved values when form mirrors server current", () => {
+    const fields: PluginConfigField[] = [
+      makeField({ name: "enabled", kind: "bool", current: true, default: false }),
+      makeField({ name: "limit", kind: "int", current: 3, default: 0 }),
+    ];
+    const baseline = savedConfigFingerprint(fields);
+    expect(configValuesFingerprint(fields, { enabled: "true", limit: "3" })).toBe(baseline);
   });
 });
 
