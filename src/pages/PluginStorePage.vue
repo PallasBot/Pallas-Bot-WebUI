@@ -43,7 +43,7 @@ import PluginStoreCard from "@/components/PluginStoreCard.vue";
 import type { PluginStoreMenuItem } from "@/components/PluginStoreCard.vue";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
+import { trackRestartFromPluginResult, useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { axiosErrorDetail } from "@/api/http";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { waitForInstallJob } from "@/utils/installJobStream";
@@ -140,9 +140,22 @@ async function restartBotNow() {
 
 async function noteStoreActionResult(
   message: string,
-  result: { needs_restart?: boolean; restart_scheduled?: boolean } | null,
+  result: {
+    needs_restart?: boolean;
+    restart_scheduled?: boolean;
+    activation_action?: string | null;
+  } | null,
 ) {
   await ensureRestartContext();
+  if (result?.restart_scheduled) {
+    storeActionHint.value = message;
+    storeActionNeedsRestart.value = false;
+    const ok = await trackRestartFromPluginResult(result);
+    if (ok) {
+      storeActionHint.value = "Bot 已恢复在线。";
+    }
+    return;
+  }
   storeActionHint.value = message;
   storeActionNeedsRestart.value = Boolean(
     systemRestartAvailable.value
@@ -767,9 +780,9 @@ async function executeInstallExtension(
     const result = payload.result as OfficialExtensionInstallResult | undefined;
     if (result) {
       officialActionState.value = { ...officialActionState.value, [row.package]: result };
-      noteStoreActionResult(result.message || payload.message || "安装完成。", result);
+      await noteStoreActionResult(result.message || payload.message || "安装完成。", result);
     } else {
-      noteStoreActionResult(payload.message || "安装完成。", null);
+      await noteStoreActionResult(payload.message || "安装完成。", null);
     }
     await refreshOfficialStore();
   } catch (e) {
@@ -797,7 +810,7 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
   try {
     const out = await uninstallOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    noteStoreActionResult(
+    await noteStoreActionResult(
       out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"),
       out,
     );
@@ -827,7 +840,7 @@ async function executeUpdateExtension(
   try {
     const out = await updateOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    noteStoreActionResult(out.message || "更新完成。", out);
+    await noteStoreActionResult(out.message || "更新完成。", out);
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -869,7 +882,7 @@ async function installCommunityFromGit(restart = false) {
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [pluginId]: out };
     const base = out.message || payload.message || "安装完成。";
-    noteStoreActionResult(restart ? base : `${base} 请重启 Bot 后加载。`, out);
+    await noteStoreActionResult(restart ? base : `${base} 请重启 Bot 后加载。`, out);
     gitInstallOpen.value = false;
     await refreshCommunityStore();
   } catch (e) {
@@ -905,7 +918,7 @@ async function executeInstallCommunity(
     });
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    noteStoreActionResult(
+    await noteStoreActionResult(
       out.message || payload.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。"),
       out,
     );
@@ -935,7 +948,7 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
   try {
     const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    noteStoreActionResult(
+    await noteStoreActionResult(
       out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"),
       out,
     );
@@ -968,7 +981,7 @@ async function executeUpdateCommunity(
       ref: row.ref,
     });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
-    noteStoreActionResult(
+    await noteStoreActionResult(
       out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。"),
       out,
     );

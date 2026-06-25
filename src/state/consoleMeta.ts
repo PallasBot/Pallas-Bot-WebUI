@@ -2,6 +2,7 @@ import { ref } from "vue";
 import { fetchHealth, type HealthResponse } from "@/api/health";
 import { fetchBotUpdateCheck, fetchUpdateCheck } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
+import { botRestartInProgress } from "@/state/botRestartSession";
 
 /** 侧栏品牌区与首页共用的 /health、更新检查快照 */
 export const consoleMetaHealth = ref<HealthResponse | null>(null);
@@ -34,6 +35,7 @@ export function patchWebuiDevMode(active: boolean): void {
 
 export async function refreshConsoleMeta(options?: { silent?: boolean }): Promise<void> {
   const silent = options?.silent ?? false;
+  if (botRestartInProgress.value) return;
   if (!silent) {
     consoleMetaLoading.value = true;
     consoleMetaErr.value = "";

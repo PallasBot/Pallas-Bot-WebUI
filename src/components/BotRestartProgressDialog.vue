@@ -7,6 +7,7 @@ import {
   botRestartInProgress,
   botRestartPhase,
   botRestartProgressLabel,
+  botRestartProgressPercent,
   resetBotRestartSession,
 } from "@/state/botRestartSession";
 
@@ -112,10 +113,26 @@ function closeDialog() {
     </ol>
 
     <div
-      v-if="botRestartInProgress"
+      v-if="botRestartInProgress || botRestartProgressPercent > 0"
       class="bot-restart-dialog__progress"
+      role="progressbar"
+      :aria-valuenow="botRestartProgressPercent"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-label="`重启进度 ${botRestartProgressPercent}%`"
+    >
+      <div
+        class="bot-restart-dialog__progress-fill"
+        :style="{ width: `${botRestartProgressPercent}%` }"
+      />
+    </div>
+    <p
+      v-if="botRestartInProgress || botRestartProgressPercent > 0"
+      class="bot-restart-dialog__percent"
       aria-hidden="true"
-    />
+    >
+      {{ Math.round(botRestartProgressPercent) }}%
+    </p>
 
     <p
       v-if="botRestartErr"
@@ -169,27 +186,25 @@ function closeDialog() {
 }
 .bot-restart-dialog__progress {
   margin-top: 16px;
-  height: 4px;
+  height: 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
   overflow: hidden;
-  position: relative;
 }
-.bot-restart-dialog__progress::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 42%;
+.bot-restart-dialog__progress-fill {
+  height: 100%;
   border-radius: inherit;
   background: var(--accent);
-  animation: bot-restart-progress 1.1s ease-in-out infinite;
+  transition: width 0.35s ease;
+}
+.bot-restart-dialog__percent {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: right;
 }
 .bot-restart-dialog__err {
   margin: 14px 0 0;
-}
-@keyframes bot-restart-progress {
-  0% { transform: translateX(-120%); }
-  100% { transform: translateX(280%); }
 }
 @keyframes bot-restart-step-pulse {
   0%, 100% { opacity: 1; }

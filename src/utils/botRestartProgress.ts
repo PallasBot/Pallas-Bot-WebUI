@@ -1,4 +1,4 @@
-import { fetchHealth } from "@/api/health";
+import { fetchHealth, type HealthResponse } from "@/api/health";
 
 export type BotRestartPhase =
   | "idle"
@@ -8,6 +8,10 @@ export type BotRestartPhase =
   | "online"
   | "timeout"
   | "failed";
+
+export const BOT_RESTART_PROGRESS_CAP = 99;
+export const BOT_RESTART_ESTIMATE_MS = 90_000;
+export const BOT_RESTART_POLL_MS = 500;
 
 export function botRestartPhaseLabel(phase: BotRestartPhase): string {
   switch (phase) {
@@ -28,34 +32,87 @@ export function botRestartPhaseLabel(phase: BotRestartPhase): string {
   }
 }
 
+export function healthBootFingerprint(health: HealthResponse | null | undefined): string {
+  if (!health) return "";
+  const bootId = (health.boot_id || "").trim();
+  if (bootId) return bootId;
+  const commit = (health.console?.commit || "").trim();
+  const buildTime = (health.console?.build_time || "").trim();
+  const version = (health.pallas_bot || "").trim();
+  return [commit, buildTime, version].filter(Boolean).join(":");
+}
+
+export function isHealthRestartComplete(
+  health: HealthResponse,
+  baselineFingerprint: string,
+  flags: { sawOffline: boolean; sawRestarting: boolean },
+  workersOnly: boolean,
+): boolean {
+  if (!health.ok || health.restarting) return false;
+  const fingerprint = healthBootFingerprint(health);
+  const bootChanged = Boolean(
+    baselineFingerprint && fingerprint && fingerprint !== baselineFingerprint,
+  );
+  if (workersOnly) {
+    return flags.sawRestarting || flags.sawOffline;
+  }
+  return bootChanged || flags.sawOffline || flags.sawRestarting;
+}
+
+function estimateRestartProgress(elapsedMs: number, estimateMs: number): number {
+  return Math.min(BOT_RESTART_PROGRESS_CAP, (elapsedMs / estimateMs) * BOT_RESTART_PROGRESS_CAP);
+}
+
 export async function waitForBotRestartOnline(options?: {
   timeoutMs?: number;
   pollMs?: number;
+  estimateMs?: number;
+  workersOnly?: boolean;
+  baselineFingerprint?: string;
   onPhase?: (phase: BotRestartPhase) => void;
+  onProgress?: (percent: number) => void;
 }): Promise<boolean> {
   const timeoutMs = options?.timeoutMs ?? 120_000;
-  const pollMs = options?.pollMs ?? 2000;
+  const pollMs = options?.pollMs ?? BOT_RESTART_POLL_MS;
+  const estimateMs = options?.estimateMs ?? BOT_RESTART_ESTIMATE_MS;
+  const workersOnly = Boolean(options?.workersOnly);
+  const baselineFingerprint = (options?.baselineFingerprint || "").trim();
   const started = Date.now();
   let sawOffline = false;
+  let sawRestarting = false;
+
+  const emitProgress = () => {
+    options?.onProgress?.(estimateRestartProgress(Date.now() - started, estimateMs));
+  };
+
   options?.onPhase?.("scheduled");
+  emitProgress();
 
   while (Date.now() - started < timeoutMs) {
-    if (sawOffline) {
+    if (sawOffline || sawRestarting) {
       options?.onPhase?.("reconnecting");
     }
     await sleep(pollMs);
+    emitProgress();
+
     try {
-      const health = await fetchHealth({ bypassCache: true });
-      if (health?.ok) {
-        if (!sawOffline) {
-          options?.onPhase?.("scheduled");
-          continue;
-        }
+      const health = await fetchHealth({ bypassCache: true, probe: true });
+      if (health.restarting) {
+        sawRestarting = true;
+        options?.onPhase?.("scheduled");
+        continue;
+      }
+      if (isHealthRestartComplete(health, baselineFingerprint, { sawOffline, sawRestarting }, workersOnly)) {
+        options?.onProgress?.(100);
         options?.onPhase?.("online");
         return true;
       }
-      sawOffline = true;
-      options?.onPhase?.("disconnecting");
+      if (!health.ok) {
+        sawOffline = true;
+        options?.onPhase?.("disconnecting");
+        continue;
+      }
+      options?.onPhase?.(sawOffline || sawRestarting ? "reconnecting" : "scheduled");
     } catch {
       sawOffline = true;
       options?.onPhase?.("disconnecting");
