@@ -90,7 +90,7 @@ const emit = defineEmits<{
           :selections="permSelections"
           :command-menu-map="commandMenuMap"
           :disabled="governanceSaving"
-          @change="emit('permChange', $event[0], $event[1])"
+          @change="(cmdId, lv) => emit('permChange', cmdId, lv)"
         />
         <p v-else class="muted plugin-governance-panel__empty">该插件暂无命令权限声明。</p>
       </section>
@@ -105,7 +105,7 @@ const emit = defineEmits<{
           :plugins="governanceData.limits_ui_filtered.plugins"
           :selections="limitSelections"
           :disabled="governanceSaving"
-          @input="emit('limitInput', $event[0], $event[1])"
+          @input="(cmdId, val) => emit('limitInput', cmdId, val)"
         />
         <p v-else class="muted plugin-governance-panel__empty">该插件暂无命令冷却声明。</p>
       </section>
