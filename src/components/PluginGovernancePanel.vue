@@ -81,7 +81,9 @@ const emit = defineEmits<{
       <section class="plugin-governance-panel__group">
         <header class="plugin-governance-panel__group-head">
           <h4 class="plugin-governance-panel__group-title">命令权限</h4>
-          <p class="muted plugin-governance-panel__group-desc">帮助图中的「何人可用」会随这里的配置同步变化。</p>
+          <p class="muted plugin-governance-panel__group-desc">
+            展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。
+          </p>
         </header>
         <CmdPermMatrix
           v-if="governanceData.perm_ui_filtered.plugins?.length"
@@ -98,7 +100,9 @@ const emit = defineEmits<{
       <section class="plugin-governance-panel__group">
         <header class="plugin-governance-panel__group-head">
           <h4 class="plugin-governance-panel__group-title">命令冷却</h4>
-          <p class="muted plugin-governance-panel__group-desc">输入秒数后会自动保存；留空或设为默认值表示不覆盖默认冷却。</p>
+          <p class="muted plugin-governance-panel__group-desc">
+            主显示中文名与触发口令；输入秒数后会自动保存，留空或设为默认值表示不覆盖默认冷却。
+          </p>
         </header>
         <CmdLimitsTable
           v-if="governanceData.limits_ui_filtered.plugins?.length"

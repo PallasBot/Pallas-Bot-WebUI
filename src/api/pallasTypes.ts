@@ -502,6 +502,7 @@ export interface CommunityPluginActionResult {
 export interface PluginCapabilitiesCommand {
   command_id: string;
   label: string;
+  trigger_condition?: string;
   default_level?: string;
   effective_level?: string;
   default_cd_sec?: number;
@@ -676,6 +677,7 @@ export interface CommandPermUiLevel {
 export interface CommandPermUiCommand {
   command_id: string;
   label: string;
+  trigger_condition?: string;
   default_level: string;
   effective_level: string;
 }
@@ -694,6 +696,7 @@ export interface CommandPermUiData {
 export interface CommandLimitsUiCommand {
   command_id: string;
   label: string;
+  trigger_condition?: string;
   default_cd_sec: number;
   effective_cd_sec: number;
 }

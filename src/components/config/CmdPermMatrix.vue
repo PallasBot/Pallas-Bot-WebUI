@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommandPermUiLevel, CommandPermUiPlugin } from "@/api/pallasTypes";
+import type { CommandPermUiCommand, CommandPermUiLevel, CommandPermUiPlugin } from "@/api/pallasTypes";
 import type { PluginGovernanceMenuItem } from "@/api/pallasTypes";
 
 const props = defineProps<{
@@ -30,7 +30,9 @@ function commandBrief(commandId: string): string {
   return String(item?.brief_des || "").trim();
 }
 
-function commandTrigger(commandId: string): string {
+function commandTrigger(commandId: string, cmd: CommandPermUiCommand): string {
+  const fromRow = String(cmd.trigger_condition || "").trim();
+  if (fromRow) return fromRow;
   const item = commandMenuItem(commandId);
   return String(item?.trigger_condition || "").trim();
 }
@@ -64,8 +66,11 @@ function commandTrigger(commandId: string): string {
           >
             {{ commandBrief(cmd.command_id) }}
           </p>
-          <p v-if="commandMenuMap" class="cmd-perm-card__trigger muted">
-            {{ commandTrigger(cmd.command_id) || "—" }}
+          <p
+            v-if="commandTrigger(cmd.command_id, cmd)"
+            class="cmd-perm-card__trigger muted"
+          >
+            触发：{{ commandTrigger(cmd.command_id, cmd) }}
           </p>
         </div>
         <div class="cmd-perm-card__choices" role="radiogroup" :aria-label="`${cmd.label} 权限`">

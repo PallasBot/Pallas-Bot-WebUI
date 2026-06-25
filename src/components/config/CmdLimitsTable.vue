@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommandLimitsUiPlugin } from "@/api/pallasTypes";
+import type { CommandLimitsUiCommand, CommandLimitsUiPlugin } from "@/api/pallasTypes";
 import NumberStepperInput from "@/components/config/NumberStepperInput.vue";
 
 defineProps<{
@@ -11,6 +11,14 @@ defineProps<{
 const emit = defineEmits<{
   input: [commandId: string, value: string];
 }>();
+
+function showCommandId(cmd: CommandLimitsUiCommand): boolean {
+  return cmd.label.trim() !== cmd.command_id.trim();
+}
+
+function commandTrigger(cmd: CommandLimitsUiCommand): string {
+  return String(cmd.trigger_condition || "").trim();
+}
 </script>
 
 <template>
@@ -34,8 +42,17 @@ const emit = defineEmits<{
         <div class="cmd-limit-card__main">
           <div class="cmd-limit-card__head">
             <span class="cmd-limit-card__label">{{ cmd.label }}</span>
-            <code class="cmd-limit-card__id">{{ cmd.command_id }}</code>
+            <code
+              v-if="showCommandId(cmd)"
+              class="cmd-limit-card__id"
+            >{{ cmd.command_id }}</code>
           </div>
+          <p
+            v-if="commandTrigger(cmd)"
+            class="cmd-limit-card__trigger muted"
+          >
+            触发：{{ commandTrigger(cmd) }}
+          </p>
           <p class="cmd-limit-card__default muted">
             默认冷却 {{ cmd.default_cd_sec }} 秒
           </p>
@@ -100,6 +117,8 @@ const emit = defineEmits<{
 .cmd-limit-card__label {
   font-weight: 600;
   font-size: 13px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cmd-limit-card__id {
@@ -118,6 +137,14 @@ const emit = defineEmits<{
   margin: 4px 0 0;
   font-size: 10px;
   line-height: 1.5;
+}
+
+.cmd-limit-card__trigger {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cmd-limit-card__editor {
