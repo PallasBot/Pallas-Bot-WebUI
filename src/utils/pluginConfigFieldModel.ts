@@ -13,6 +13,19 @@ export function resolveConfigFieldLayout(field: PluginConfigField): ConfigFieldL
   return "standard";
 }
 
+/**
+ * 字段在分组内的「类型聚类」序号，用于把同类控件排在一起：
+ * 开关(0) → 下拉选项(1) → 数字(2) → 文本(3) → JSON(4)。
+ * 二元布尔枚举按开关处理，与 resolveConfigFieldLayout 对齐。
+ */
+export function fieldTypeClusterRank(field: PluginConfigField): number {
+  if (field.kind === "bool") return 0;
+  if (field.kind === "enum") return isBinaryBoolEnum(field) ? 0 : 1;
+  if (field.kind === "int" || field.kind === "float") return 2;
+  if (field.kind === "json") return 4;
+  return 3;
+}
+
 export function fieldModel(f: PluginConfigField): string {
   const v = f.current;
   if (f.kind === "json") return JSON.stringify(v ?? null, null, 2);

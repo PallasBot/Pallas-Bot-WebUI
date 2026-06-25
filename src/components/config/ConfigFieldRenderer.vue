@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
+import NumberStepperInput from "@/components/config/NumberStepperInput.vue";
 import TagsInput from "@/components/config/TagsInput.vue";
 import { isStringListField, tagsFromJsonText, tagsToJsonText } from "@/utils/pluginConfigFieldModel";
 import {
@@ -65,8 +66,6 @@ const usesMultiline = computed(
 
 const usesTagsInput = computed(() => isStringListField(props.field));
 
-const numberStep = computed(() => (props.field.kind === "float" ? "any" : "1"));
-
 const boolSwitchValue = computed(() => {
   if (props.field.kind === "bool") return props.modelValue === "true";
   return binaryEnumIsOn(props.field, props.modelValue);
@@ -78,6 +77,8 @@ const boolSwitchLabelText = computed(() => {
 });
 
 const tagsValue = computed(() => tagsFromJsonText(props.modelValue));
+
+const numberKind = computed<"int" | "float">(() => (props.field.kind === "float" ? "float" : "int"));
 
 const showSecret = ref(false);
 
@@ -91,36 +92,6 @@ function onBoolChange(checked: boolean) {
     return;
   }
   setValue(checked ? binaryEnumOnChoice(props.field) : binaryEnumOffChoice(props.field));
-}
-
-function clampNumber(raw: string, opts: { min?: boolean; max?: boolean } = { min: true, max: true }): string {
-  const text = raw.trim();
-  if (text === "") return text;
-  const n = Number(text);
-  if (!Number.isFinite(n)) return raw;
-  let clamped = n;
-  if (opts.min && props.field.min_value !== undefined && clamped < props.field.min_value) {
-    clamped = props.field.min_value;
-  }
-  if (opts.max && props.field.max_value !== undefined && clamped > props.field.max_value) {
-    clamped = props.field.max_value;
-  }
-  return String(clamped);
-}
-
-// 输入中只夹住上界，避免输入「64」过程中把「6」夹成 min 而打断输入；下界在失焦时补夹。
-function onNumberInput(raw: string) {
-  setValue(clampNumber(raw, { max: true }));
-}
-
-function onNumberBlur(raw: string) {
-  setValue(clampNumber(raw));
-}
-
-function stepNumber(direction: 1 | -1) {
-  const current = Number(props.modelValue);
-  const start = Number.isFinite(current) ? current : props.field.min_value ?? 0;
-  setValue(clampNumber(String(start + direction)));
 }
 
 function onTagsChange(tags: string[]) {
@@ -231,43 +202,39 @@ function onTagsChange(tags: string[]) {
         :aria-pressed="showSecret"
         @click="showSecret = !showSecret"
       >
-        {{ showSecret ? "🙈" : "👁" }}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <template v-if="showSecret">
+            <path d="M3 3l18 18" />
+            <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+            <path d="M9.4 5.2A9.4 9.4 0 0 1 12 4.9c5 0 9 4.1 9 7.1a11 11 0 0 1-2.4 3.3" />
+            <path d="M6.2 6.7A11 11 0 0 0 3 12c0 3 4 7.1 9 7.1a9.6 9.6 0 0 0 3.3-.6" />
+          </template>
+          <template v-else>
+            <path d="M3 12c0-3 4-7.1 9-7.1s9 4.1 9 7.1-4 7.1-9 7.1S3 15 3 12Z" />
+            <circle cx="12" cy="12" r="2.4" />
+          </template>
+        </svg>
       </button>
     </div>
-    <div
+    <NumberStepperInput
       v-else-if="usesNumberStepper"
-      class="config-field-renderer__number"
-    >
-      <input
-        :value="modelValue"
-        class="inp form-field__control config-field-renderer__number-input"
-        type="number"
-        :inputmode="field.kind === 'int' ? 'numeric' : 'decimal'"
-        :min="field.min_value"
-        :max="field.max_value"
-        :step="numberStep"
-        @input="onNumberInput(($event.target as HTMLInputElement).value)"
-        @blur="onNumberBlur(($event.target as HTMLInputElement).value)"
-      >
-      <div class="config-field-renderer__steppers">
-        <button
-          type="button"
-          class="config-field-renderer__step"
-          aria-label="增加"
-          @click="stepNumber(1)"
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          class="config-field-renderer__step"
-          aria-label="减少"
-          @click="stepNumber(-1)"
-        >
-          ▼
-        </button>
-      </div>
-    </div>
+      :model-value="modelValue"
+      :kind="numberKind"
+      :min="field.min_value"
+      :max="field.max_value"
+      :max-width="inputMaxWidth"
+      @update:model-value="setValue"
+    />
     <textarea
       v-else-if="usesMultiline"
       :value="modelValue"
@@ -298,7 +265,7 @@ function onTagsChange(tags: string[]) {
 }
 .config-field-renderer__bool-only {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .config-field-renderer :deep(.form-field__control),
@@ -313,8 +280,7 @@ function onTagsChange(tags: string[]) {
   max-width: v-bind(inputMaxWidth);
 }
 
-.config-field-renderer__secret,
-.config-field-renderer__number {
+.config-field-renderer__secret {
   position: relative;
   display: flex;
   align-items: stretch;
@@ -350,54 +316,6 @@ function onTagsChange(tags: string[]) {
 
 .config-field-renderer__eye:hover {
   background: color-mix(in srgb, var(--accent, #ec4899) 10%, transparent);
-}
-
-.config-field-renderer__number-input {
-  width: 100%;
-  padding-right: 34px;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.config-field-renderer__number-input::-webkit-outer-spin-button,
-.config-field-renderer__number-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.config-field-renderer__steppers {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  bottom: 1px;
-  display: flex;
-  flex-direction: column;
-  width: 28px;
-}
-
-.config-field-renderer__step {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  border-left: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 80%, transparent);
-  background: transparent;
-  color: var(--text-muted, rgba(255, 255, 255, 0.6));
-  font-size: 8px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-.config-field-renderer__step:first-child {
-  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 80%, transparent);
-}
-
-.config-field-renderer__step:hover {
-  background: color-mix(in srgb, var(--accent, #ec4899) 12%, transparent);
-  color: var(--text, #fff);
 }
 
 .config-field-renderer__textarea {

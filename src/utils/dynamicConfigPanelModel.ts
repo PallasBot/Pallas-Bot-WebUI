@@ -1,4 +1,5 @@
 import type { PluginConfigField, PluginConfigFieldGroup } from "@/api/pallasTypes";
+import { fieldTypeClusterRank } from "@/utils/pluginConfigFieldModel";
 
 export interface DynamicConfigGroup {
   id: string;
@@ -15,6 +16,19 @@ function fieldsForGroup(group: PluginConfigFieldGroup, fields: PluginConfigField
     if (field) out.push(field);
   }
   return out;
+}
+
+/** 在已有排序基础上把同类控件聚到一起；同类内保持原有先后（稳定）。 */
+function clusterByType(fields: PluginConfigField[]): PluginConfigField[] {
+  return fields
+    .map((field, index) => ({ field, index }))
+    .sort((a, b) => {
+      const ra = fieldTypeClusterRank(a.field);
+      const rb = fieldTypeClusterRank(b.field);
+      if (ra !== rb) return ra - rb;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.field);
 }
 
 function sortByUiOrder(fields: PluginConfigField[]): PluginConfigField[] {
@@ -78,6 +92,9 @@ export function buildDynamicConfigGroups(
       fields: hidden,
       advanced: true,
     });
+  }
+  for (const group of main) {
+    group.fields = clusterByType(group.fields);
   }
   return main;
 }

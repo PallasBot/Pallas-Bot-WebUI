@@ -2,7 +2,6 @@
 import { computed } from "vue";
 import type { PluginConfigField } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
-import { pluginConfigFieldIcon } from "@/utils/pluginConfigFieldIcon";
 import { resolveConfigFieldLayout } from "@/utils/pluginConfigFieldModel";
 import { fieldCompactMeta, fieldDisplayName } from "@/utils/pluginConfigWorkspaceModel";
 
@@ -31,10 +30,6 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   >
     <div class="plugin-config-form-item__label-row">
       <label class="plugin-config-form-item__label">
-        <span
-          class="plugin-config-form-item__icon"
-          aria-hidden="true"
-        >{{ pluginConfigFieldIcon(field) }}</span>
         <span class="plugin-config-form-item__label-text">
           {{ fieldDisplayName(field) }}
         </span>
@@ -126,20 +121,14 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: var(--text-muted, rgba(255, 255, 255, 0.82));
-  font-size: 12px;
+  color: var(--text, #0f172a);
+  font-size: 12.5px;
   line-height: 1.35;
   font-weight: 600;
 }
 
 .plugin-config-form-item__label-text {
   min-width: 0;
-}
-
-.plugin-config-form-item__icon {
-  flex: 0 0 auto;
-  font-size: 13px;
-  line-height: 1;
 }
 
 .plugin-config-form-item__meta-pill--secret {
@@ -212,6 +201,7 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   color: var(--text-muted, rgba(255, 255, 255, 0.76));
   font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }

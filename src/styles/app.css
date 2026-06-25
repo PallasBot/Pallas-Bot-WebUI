@@ -11537,13 +11537,7 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
   }
 
   .plugin-config-group-card__hero {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .plugin-config-group-card__hero-side {
-    width: 100%;
-    justify-content: space-between;
+    align-items: flex-start;
   }
 
   .plugin-config-form-grid {
@@ -13095,12 +13089,13 @@ textarea.plugin-config-page__raw-toml,
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.55;
+  border-radius: 8px;
 }
 
 html[data-layout="hub"] textarea.plugin-config-page__raw-toml,
 html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
   min-height: min(40vh, 360px);
-  border-radius: var(--hub-radius-control, var(--radius-control));
+  border-radius: 8px;
 }
 
 .plugin-config-workspace--dialog textarea.plugin-config-page__raw-toml,
@@ -13139,6 +13134,14 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
 }
 
 .plugin-config-group-card__hero-text {
+  min-width: 0;
+}
+
+.plugin-config-group-card__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
 

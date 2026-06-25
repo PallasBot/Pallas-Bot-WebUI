@@ -75,37 +75,32 @@ function updateField(name: string, value: string) {
       <header class="plugin-config-group-card__hero">
         <div class="plugin-config-group-card__hero-main">
           <div class="plugin-config-group-card__hero-text">
-            <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
+            <div class="plugin-config-group-card__title-row">
+              <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
+              <span class="plugin-config-group-card__chip">
+                {{ group.summary.filled ? "已配置" : "待配置" }}
+              </span>
+              <span
+                v-if="group.summary.required"
+                class="plugin-config-group-card__chip plugin-config-group-card__chip--soft"
+              >
+                必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
+              </span>
+            </div>
             <p class="plugin-config-group-card__desc">
               共 {{ group.summary.total }} 项，已填写 {{ group.summary.filled }} 项
-              <template v-if="group.summary.required">
-                · 必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
-              </template>
             </p>
           </div>
         </div>
-        <div class="plugin-config-group-card__hero-side">
-          <div class="plugin-config-group-card__chips">
-            <span class="plugin-config-group-card__chip">
-              {{ group.summary.filled ? "已配置" : "待配置" }}
-            </span>
-            <span
-              v-if="group.summary.required"
-              class="plugin-config-group-card__chip plugin-config-group-card__chip--soft"
-            >
-              必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
-            </span>
-          </div>
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn plugin-config-group-card__collapse"
-            :aria-expanded="groupOpen[group.id] ?? true"
-            :aria-label="`${(groupOpen[group.id] ?? true) ? '收起' : '展开'}${group.title}`"
-            @click="toggleGroup(group.id)"
-          >
-            {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
-          </button>
-        </div>
+        <button
+          type="button"
+          class="btn panel-hd-collapse-btn plugin-config-group-card__collapse"
+          :aria-expanded="groupOpen[group.id] ?? true"
+          :aria-label="`${(groupOpen[group.id] ?? true) ? '收起' : '展开'}${group.title}`"
+          @click="toggleGroup(group.id)"
+        >
+          {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
+        </button>
       </header>
 
       <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">

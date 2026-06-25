@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommandLimitsUiPlugin } from "@/api/pallasTypes";
+import NumberStepperInput from "@/components/config/NumberStepperInput.vue";
 
 defineProps<{
   plugins: CommandLimitsUiPlugin[];
@@ -40,16 +41,16 @@ const emit = defineEmits<{
           </p>
         </div>
         <label class="cmd-limit-card__editor">
-          <input
-            :value="selections[cmd.command_id]"
-            class="inp cmd-limit-card__input"
-            type="number"
-            min="0"
-            step="1"
-            inputmode="numeric"
+          <NumberStepperInput
+            :model-value="selections[cmd.command_id] ?? ''"
+            kind="int"
+            :min="0"
             :disabled="disabled"
-            @input="emit('input', cmd.command_id, ($event.target as HTMLInputElement).value)"
-          >
+            :aria-label="`${cmd.label} 冷却秒数`"
+            max-width="120px"
+            class="cmd-limit-card__input"
+            @update:model-value="emit('input', cmd.command_id, $event)"
+          />
           <span class="cmd-limit-card__suffix muted">秒</span>
         </label>
       </section>
@@ -127,9 +128,7 @@ const emit = defineEmits<{
 }
 
 .cmd-limit-card__input {
-  width: 82px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  width: 120px;
 }
 
 .cmd-limit-card__suffix {
