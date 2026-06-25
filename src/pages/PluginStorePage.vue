@@ -34,6 +34,7 @@ import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
+import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -58,6 +59,13 @@ import {
   withPluginIconCacheBust,
   communityPluginIconBustKey,
 } from "@/utils/pluginIconUrl";
+import {
+  formatPluginStoreEnqueuedHint,
+  isPluginStoreTaskQueued,
+  type PluginStoreQueueAction,
+  type PluginStoreQueueKind,
+  withPluginStoreQueueSuffix,
+} from "@/utils/pluginStoreActionQueue";
 
 type StoreSection = "official" | "community" | "local";
 type StoreTab = "all" | "installed" | "available";
@@ -80,6 +88,22 @@ interface StoreDetail {
   official?: OfficialExtensionRow;
   community?: CommunityPluginRow;
 }
+
+interface OfficialInstallUpdateQueueEntry {
+  kind: "official";
+  action: PluginStoreQueueAction;
+  restart: boolean;
+  row: OfficialExtensionRow;
+}
+
+interface CommunityInstallUpdateQueueEntry {
+  kind: "community";
+  action: PluginStoreQueueAction;
+  restart: boolean;
+  row: CommunityPluginRow;
+}
+
+type InstallUpdateQueueEntry = OfficialInstallUpdateQueueEntry | CommunityInstallUpdateQueueEntry;
 
 const panelNavIcon = usePanelNavIcon();
 const router = useRouter();
@@ -131,8 +155,16 @@ const storeBusyPluginId = ref("");
 type StoreBusyAction = "" | "install" | "update" | "uninstall";
 const storeBusyOfficialAction = ref<StoreBusyAction>("");
 const storeBusyCommunityAction = ref<StoreBusyAction>("");
+const installUpdateQueue = ref<InstallUpdateQueueEntry[]>([]);
+const installUpdateQueueRunning = ref(false);
 const storeActionInProgress = computed(
-  () => Boolean(storeBusyOfficialAction.value || storeBusyCommunityAction.value || gitInstallBusy.value),
+  () => Boolean(
+    storeBusyOfficialAction.value
+    || storeBusyCommunityAction.value
+    || gitInstallBusy.value
+    || installUpdateQueue.value.length > 0
+    || installUpdateQueueRunning.value,
+  ),
 );
 const searchQuery = ref("");
 const activeTab = ref<StoreTab>("all");
@@ -616,18 +648,121 @@ async function checkUpdates() {
   }
 }
 
-async function installExtension(row: OfficialExtensionRow, restart = false) {
-  if (storeBusyPackage.value) return;
+function queueTaskDescriptor(entry: InstallUpdateQueueEntry): { kind: PluginStoreQueueKind; key: string; action: PluginStoreQueueAction } {
+  if (entry.kind === "official") {
+    return { kind: "official", key: entry.row.package, action: entry.action };
+  }
+  return { kind: "community", key: entry.row.plugin_id, action: entry.action };
+}
+
+function isInstallUpdateEntryQueued(entry: InstallUpdateQueueEntry): boolean {
+  const descriptor = queueTaskDescriptor(entry);
+  return isPluginStoreTaskQueued(
+    installUpdateQueue.value.map(queueTaskDescriptor),
+    descriptor,
+  );
+}
+
+function isOfficialInstallUpdateQueued(packageName: string, action: PluginStoreQueueAction): boolean {
+  return isPluginStoreTaskQueued(
+    installUpdateQueue.value.map(queueTaskDescriptor),
+    { kind: "official", key: packageName, action },
+  );
+}
+
+function isCommunityInstallUpdateQueued(pluginId: string, action: PluginStoreQueueAction): boolean {
+  return isPluginStoreTaskQueued(
+    installUpdateQueue.value.map(queueTaskDescriptor),
+    { kind: "community", key: pluginId, action },
+  );
+}
+
+function isInstallUpdateEntryActive(entry: InstallUpdateQueueEntry): boolean {
+  if (entry.kind === "official") {
+    return storeBusyPackage.value === entry.row.package && storeBusyOfficialAction.value === entry.action;
+  }
+  return storeBusyPluginId.value === entry.row.plugin_id && storeBusyCommunityAction.value === entry.action;
+}
+
+function isInstallUpdatePipelineBusy(): boolean {
+  if (installUpdateQueueRunning.value) return true;
+  if (gitInstallBusy.value) return true;
+  const official = storeBusyOfficialAction.value;
+  if (official === "install" || official === "update") return true;
+  const community = storeBusyCommunityAction.value;
+  return community === "install" || community === "update";
+}
+
+function enqueueInstallUpdate(entry: InstallUpdateQueueEntry): void {
+  if (isInstallUpdateEntryQueued(entry) || isInstallUpdateEntryActive(entry)) return;
   storeErr.value = "";
-  storeActionHint.value = "正在排队安装…";
+  storeActionNeedsRestart.value = false;
+  if (isInstallUpdatePipelineBusy()) {
+    installUpdateQueue.value.push(entry);
+    const descriptor = queueTaskDescriptor(entry);
+    storeActionHint.value = formatPluginStoreEnqueuedHint(
+      entry.action,
+      descriptor.key,
+      installUpdateQueue.value.length,
+    );
+    return;
+  }
+  void drainInstallUpdateQueue(entry);
+}
+
+async function drainInstallUpdateQueue(first?: InstallUpdateQueueEntry): Promise<void> {
+  if (installUpdateQueueRunning.value) {
+    if (first && !isInstallUpdateEntryQueued(first) && !isInstallUpdateEntryActive(first)) {
+      installUpdateQueue.value.push(first);
+    }
+    return;
+  }
+  installUpdateQueueRunning.value = true;
+  let current: InstallUpdateQueueEntry | undefined = first;
+  try {
+    while (true) {
+      if (!current) {
+        current = installUpdateQueue.value.shift();
+        if (!current) break;
+      }
+      const pendingAfter = installUpdateQueue.value.length;
+      if (current.kind === "official") {
+        if (current.action === "install") {
+          await executeInstallExtension(current.row, current.restart, pendingAfter);
+        } else {
+          await executeUpdateExtension(current.row, current.restart, pendingAfter);
+        }
+      } else if (current.action === "install") {
+        await executeInstallCommunity(current.row, current.restart, pendingAfter);
+      } else {
+        await executeUpdateCommunity(current.row, current.restart, pendingAfter);
+      }
+      current = undefined;
+    }
+  } finally {
+    installUpdateQueueRunning.value = false;
+  }
+}
+
+async function installExtension(row: OfficialExtensionRow, restart = false) {
+  enqueueInstallUpdate({ kind: "official", action: "install", restart, row });
+}
+
+async function executeInstallExtension(
+  row: OfficialExtensionRow,
+  restart: boolean,
+  queuePending = 0,
+) {
+  storeErr.value = "";
+  storeActionHint.value = withPluginStoreQueueSuffix("正在排队安装…", queuePending);
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   storeBusyOfficialAction.value = "install";
   try {
     const job = await installOfficialExtensionAsync(row.package, { restart });
-    storeActionHint.value = `安装中：${job.package}`;
+    storeActionHint.value = withPluginStoreQueueSuffix(`安装中：${job.package}`, queuePending);
     const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-      storeActionHint.value = message;
+      storeActionHint.value = withPluginStoreQueueSuffix(message, queuePending);
     });
     const result = payload.result as OfficialExtensionInstallResult | undefined;
     if (result) {
@@ -676,12 +811,19 @@ async function uninstallExtension(row: OfficialExtensionRow, restart = false) {
 }
 
 async function updateExtension(row: OfficialExtensionRow, restart = false) {
-  if (storeBusyPackage.value) return;
+  enqueueInstallUpdate({ kind: "official", action: "update", restart, row });
+}
+
+async function executeUpdateExtension(
+  row: OfficialExtensionRow,
+  restart: boolean,
+  queuePending = 0,
+) {
   storeErr.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   storeBusyOfficialAction.value = "update";
-  storeActionHint.value = `正在更新 ${row.package}…`;
+  storeActionHint.value = withPluginStoreQueueSuffix(`正在更新 ${row.package}…`, queuePending);
   try {
     const out = await updateOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
@@ -739,9 +881,16 @@ async function installCommunityFromGit(restart = false) {
 }
 
 async function installCommunity(row: CommunityPluginRow, restart = false) {
-  if (storeBusyPluginId.value) return;
+  enqueueInstallUpdate({ kind: "community", action: "install", restart, row });
+}
+
+async function executeInstallCommunity(
+  row: CommunityPluginRow,
+  restart: boolean,
+  queuePending = 0,
+) {
   storeErr.value = "";
-  storeActionHint.value = "正在排队安装…";
+  storeActionHint.value = withPluginStoreQueueSuffix("正在排队安装…", queuePending);
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   storeBusyCommunityAction.value = "install";
@@ -752,7 +901,7 @@ async function installCommunity(row: CommunityPluginRow, restart = false) {
       ref: row.ref,
     });
     const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-      storeActionHint.value = message;
+      storeActionHint.value = withPluginStoreQueueSuffix(message, queuePending);
     });
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
@@ -800,12 +949,19 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
 }
 
 async function updateCommunity(row: CommunityPluginRow, restart = false) {
-  if (storeBusyPluginId.value) return;
+  enqueueInstallUpdate({ kind: "community", action: "update", restart, row });
+}
+
+async function executeUpdateCommunity(
+  row: CommunityPluginRow,
+  restart: boolean,
+  queuePending = 0,
+) {
   storeErr.value = "";
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   storeBusyCommunityAction.value = "update";
-  storeActionHint.value = `正在更新 ${row.plugin_id}…`;
+  storeActionHint.value = withPluginStoreQueueSuffix(`正在更新 ${row.plugin_id}…`, queuePending);
   try {
     const out = await updateCommunityPlugin(row.plugin_id, {
       restart,
@@ -976,34 +1132,67 @@ onDeactivated(() => {
           </template>
         </template>
         <template #actions>
+          <div class="console-hub-toolbar-strip__masthead-actions">
+            <UiButton
+              v-if="storeSection === 'community' && communityWebuiInstallEnabled"
+              variant="outline"
+              @click="openGitInstallDialog"
+            >
+              从 Git 安装
+            </UiButton>
+            <UiButton
+              variant="outline"
+              :busy="checkingUpdate"
+              :disabled="checkingUpdate || loading"
+              v-if="storeSection !== 'local'"
+              @click="checkUpdates"
+            >
+              {{ checkingUpdate ? "检查中…" : "检查更新" }}
+            </UiButton>
+            <RefreshIconButton
+              :busy="loading"
+              label="刷新列表"
+              @click="refreshStore(true)"
+            />
+          </div>
+        </template>
+      </ConsoleHubMasthead>
+
+      <ConsoleHubToolbarStrip>
+        <template #search>
+          <ConsoleHubSearch
+            v-model="searchQuery"
+            :placeholder="storeSection === 'official' ? '搜索扩展包名或插件 ID…' : '搜索社区插件名、ID 或标签…'"
+          />
+        </template>
+        <template #middle>
           <UiButton
             v-if="storeSection === 'community' && communityWebuiInstallEnabled"
             variant="outline"
+            class="plugin-store-page__strip-btn"
             @click="openGitInstallDialog"
           >
-            从 Git 安装
+            Git 安装
           </UiButton>
           <UiButton
+            v-if="storeSection !== 'local'"
             variant="outline"
+            class="plugin-store-page__strip-btn"
             :busy="checkingUpdate"
             :disabled="checkingUpdate || loading"
-            v-if="storeSection !== 'local'"
             @click="checkUpdates"
           >
             {{ checkingUpdate ? "检查中…" : "检查更新" }}
           </UiButton>
+        </template>
+        <template #actions>
           <RefreshIconButton
             :busy="loading"
             label="刷新列表"
             @click="refreshStore(true)"
           />
         </template>
-      </ConsoleHubMasthead>
-
-      <ConsoleHubSearch
-        v-model="searchQuery"
-        :placeholder="storeSection === 'official' ? '搜索扩展包名或插件 ID…' : '搜索社区插件名、ID 或标签…'"
-      />
+      </ConsoleHubToolbarStrip>
 
       <ConsoleHubFilterBar>
         <template #primary>
@@ -1168,6 +1357,8 @@ onDeactivated(() => {
             :install-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'install'"
             :update-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'update'"
             :uninstall-busy="storeBusyPackage === row.package && storeBusyOfficialAction === 'uninstall'"
+            :install-queued="isOfficialInstallUpdateQueued(row.package, 'install')"
+            :update-queued="isOfficialInstallUpdateQueued(row.package, 'update')"
             :repo-url="row.repository_url || null"
             meta-link-label="GitHub"
             :meta-link-url="row.repository_url || null"
@@ -1252,6 +1443,8 @@ onDeactivated(() => {
             :install-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'install'"
             :update-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'update'"
             :uninstall-busy="storeBusyPluginId === row.plugin_id && storeBusyCommunityAction === 'uninstall'"
+            :install-queued="isCommunityInstallUpdateQueued(row.plugin_id, 'install')"
+            :update-queued="isCommunityInstallUpdateQueued(row.plugin_id, 'update')"
             :repo-url="row.repository_url || null"
             meta-link-label="GitHub"
             :meta-link-url="row.repository_url || row.homepage || null"
@@ -1421,7 +1614,8 @@ onDeactivated(() => {
             <UiButton
               v-if="detailTarget.official.can_install"
               variant="primary"
-              :disabled="storeBusyPackage === detailTarget.official.package"
+              :disabled="isOfficialInstallUpdateQueued(detailTarget.official.package, 'install')
+                || (storeBusyPackage === detailTarget.official.package && storeBusyOfficialAction === 'install')"
               @click="installExtension(detailTarget.official, false)"
             >
               一键安装
@@ -1429,7 +1623,8 @@ onDeactivated(() => {
             <UiButton
               v-if="officialUpdateEnabled(detailTarget.official)"
               variant="primary"
-              :disabled="storeBusyPackage === detailTarget.official.package"
+              :disabled="isOfficialInstallUpdateQueued(detailTarget.official.package, 'update')
+                || (storeBusyPackage === detailTarget.official.package && storeBusyOfficialAction === 'update')"
               @click="updateExtension(detailTarget.official, false)"
             >
               更新
@@ -1437,7 +1632,7 @@ onDeactivated(() => {
             <UiButton
               v-if="detailTarget.official.can_uninstall"
               variant="destructive"
-              :disabled="storeBusyPackage === detailTarget.official.package"
+              :disabled="storeBusyPackage === detailTarget.official.package && storeBusyOfficialAction === 'uninstall'"
               @click="uninstallExtension(detailTarget.official, false)"
             >
               卸载
@@ -1447,7 +1642,8 @@ onDeactivated(() => {
             <UiButton
               v-if="detailTarget.community.can_install"
               variant="primary"
-              :disabled="storeBusyPluginId === detailTarget.community.plugin_id"
+              :disabled="isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, 'install')
+                || (storeBusyPluginId === detailTarget.community.plugin_id && storeBusyCommunityAction === 'install')"
               @click="installCommunity(detailTarget.community, false)"
             >
               安装
@@ -1455,7 +1651,8 @@ onDeactivated(() => {
             <UiButton
               v-if="communityUpdateEnabled(detailTarget.community)"
               variant="primary"
-              :disabled="storeBusyPluginId === detailTarget.community.plugin_id"
+              :disabled="isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, 'update')
+                || (storeBusyPluginId === detailTarget.community.plugin_id && storeBusyCommunityAction === 'update')"
               @click="updateCommunity(detailTarget.community, false)"
             >
               更新
@@ -1463,7 +1660,7 @@ onDeactivated(() => {
             <UiButton
               v-if="detailTarget.community.can_uninstall"
               variant="destructive"
-              :disabled="storeBusyPluginId === detailTarget.community.plugin_id"
+              :disabled="storeBusyPluginId === detailTarget.community.plugin_id && storeBusyCommunityAction === 'uninstall'"
               @click="uninstallCommunity(detailTarget.community, false)"
             >
               删除

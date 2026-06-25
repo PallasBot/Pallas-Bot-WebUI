@@ -24,6 +24,8 @@ const props = withDefaults(
     installBusy?: boolean;
     updateBusy?: boolean;
     uninstallBusy?: boolean;
+    installQueued?: boolean;
+    updateQueued?: boolean;
     /** @deprecated 使用 installBusy / updateBusy / uninstallBusy */
     busy?: boolean;
     repoUrl?: string | null;
@@ -53,6 +55,8 @@ const props = withDefaults(
     installBusy: false,
     updateBusy: false,
     uninstallBusy: false,
+    installQueued: false,
+    updateQueued: false,
     busy: false,
     repoUrl: null,
     menuItems: () => [],
@@ -91,9 +95,23 @@ const resolvedAvatarUrl = computed(() => {
 });
 
 const cardBusy = computed(
-  () => Boolean(props.busy || props.installBusy || props.updateBusy || props.uninstallBusy),
+  () => Boolean(
+    props.busy
+    || props.installBusy
+    || props.updateBusy
+    || props.uninstallBusy
+    || props.installQueued
+    || props.updateQueued,
+  ),
 );
-const footLocked = computed(() => Boolean(props.updateBusy || props.uninstallBusy || props.installBusy || props.busy));
+const footLocked = computed(() => Boolean(
+  props.updateBusy
+  || props.uninstallBusy
+  || props.installBusy
+  || props.busy
+  || props.installQueued
+  || props.updateQueued,
+));
 const hasMenu = computed(() => props.menuItems.some((item) => !item.disabled));
 const hasMetaLink = computed(() => Boolean((props.metaLinkLabel || "").trim() && (props.metaLinkUrl || "").trim()));
 const versionChips = computed(() => {
@@ -288,9 +306,9 @@ watch(
             class="plugin-store-card__foot-btn"
             :variant="showUpdate ? 'primary' : 'latest'"
             block
-            :disabled="footLocked || !showUpdate"
+            :disabled="footLocked || !showUpdate || updateQueued"
             :busy="updateBusy"
-            @click="showUpdate && emit('update')"
+            @click="showUpdate && !updateQueued && emit('update')"
           >
             <svg
               class="ui-btn__ico plugin-store-card__foot-ico"
@@ -308,7 +326,7 @@ watch(
                 d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
               />
             </svg>
-            <span>{{ updateBusy ? "更新中…" : showUpdate ? updateLabel : latestLabel }}</span>
+            <span>{{ updateBusy ? "更新中…" : updateQueued ? "排队中" : showUpdate ? updateLabel : latestLabel }}</span>
           </UiButton>
           <UiButton
             class="plugin-store-card__foot-btn"
@@ -342,9 +360,9 @@ watch(
             class="plugin-store-card__foot-btn"
             variant="primary"
             block
-            :disabled="footLocked"
+            :disabled="footLocked || installQueued"
             :busy="installBusy || busy"
-            @click="emit('install')"
+            @click="!installQueued && emit('install')"
           >
             <svg
               class="ui-btn__ico plugin-store-card__foot-ico"
@@ -362,7 +380,7 @@ watch(
                 d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"
               />
             </svg>
-            <span>{{ installBusy || busy ? "安装中…" : installLabel }}</span>
+            <span>{{ installBusy || busy ? "安装中…" : installQueued ? "排队中" : installLabel }}</span>
           </UiButton>
           <UiButton
             v-if="repoUrl"
