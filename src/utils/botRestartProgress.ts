@@ -40,14 +40,22 @@ export async function waitForBotRestartOnline(options?: {
   options?.onPhase?.("scheduled");
 
   while (Date.now() - started < timeoutMs) {
+    if (sawOffline) {
+      options?.onPhase?.("reconnecting");
+    }
     await sleep(pollMs);
     try {
       const health = await fetchHealth({ bypassCache: true });
       if (health?.ok) {
+        if (!sawOffline) {
+          options?.onPhase?.("scheduled");
+          continue;
+        }
         options?.onPhase?.("online");
         return true;
       }
-      options?.onPhase?.(sawOffline ? "reconnecting" : "scheduled");
+      sawOffline = true;
+      options?.onPhase?.("disconnecting");
     } catch {
       sawOffline = true;
       options?.onPhase?.("disconnecting");

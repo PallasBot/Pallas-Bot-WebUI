@@ -18,6 +18,8 @@ import {
   consoleMetaWebUpdate,
   refreshConsoleMeta,
 } from "@/state/consoleMeta";
+import { botRestartInProgress } from "@/state/botRestartSession";
+import BotRestartProgressDialog from "@/components/BotRestartProgressDialog.vue";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
@@ -208,6 +210,9 @@ const pageLoadingTitle = computed(() => {
 });
 
 const connectionBadge = computed(() => {
+  if (botRestartInProgress.value) {
+    return { text: "重启中", cls: "shell__conn shell__conn--pending" as const };
+  }
   if (consoleMetaLoading.value) {
     return { text: "API …", cls: "shell__conn shell__conn--pending" as const };
   }
@@ -977,6 +982,7 @@ onUnmounted(() => {
           </svg>
         </button>
       </Teleport>
+      <BotRestartProgressDialog />
     </div>
   </div>
 </template>

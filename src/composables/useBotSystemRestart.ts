@@ -3,10 +3,24 @@ import { fetchBotUpdateCheck, fetchShardObservability, postSystemRestart } from 
 import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import {
+  patchBotRestartSession,
+  resetBotRestartSession,
+} from "@/state/botRestartSession";
+import {
   botRestartPhaseLabel,
   waitForBotRestartOnline,
   type BotRestartPhase,
 } from "@/utils/botRestartProgress";
+
+function syncRestartSession(patch: {
+  open?: boolean;
+  busy?: boolean;
+  phase?: BotRestartPhase;
+  msg?: string;
+  err?: string;
+}): void {
+  patchBotRestartSession(patch);
+}
 
 export function useBotSystemRestart(options?: {
   botUpdateCheck?: { value: BotUpdateCheckData | null };
@@ -71,29 +85,66 @@ export function useBotSystemRestart(options?: {
     restartErr.value = "";
     restartMsg.value = "";
     restartPhase.value = "idle";
+    syncRestartSession({
+      open: true,
+      busy: true,
+      phase: "idle",
+      msg: "",
+      err: "",
+    });
     try {
       const r = await postSystemRestart({ workersOnly });
       restartPhase.value = "scheduled";
       restartMsg.value = r.message || botRestartPhaseLabel("scheduled");
+      syncRestartSession({
+        phase: "scheduled",
+        msg: restartMsg.value,
+      });
       const online = await waitForBotRestartOnline({
         onPhase: (phase) => {
           restartPhase.value = phase;
           const label = botRestartPhaseLabel(phase);
           if (label) restartMsg.value = label;
+          syncRestartSession({
+            phase,
+            msg: restartMsg.value,
+            err: "",
+          });
         },
       });
       if (online) {
         restartErr.value = "";
+        syncRestartSession({
+          phase: "online",
+          msg: botRestartPhaseLabel("online"),
+          err: "",
+          busy: false,
+        });
+        window.setTimeout(() => {
+          if (!restartBusy.value) resetBotRestartSession();
+        }, 1800);
         return true;
       }
       restartErr.value = botRestartPhaseLabel("timeout");
+      syncRestartSession({
+        phase: "timeout",
+        msg: restartErr.value,
+        err: restartErr.value,
+        busy: false,
+      });
       return false;
     } catch (e) {
       restartPhase.value = "failed";
       restartErr.value = axiosErrorDetail(e);
+      syncRestartSession({
+        phase: "failed",
+        err: restartErr.value,
+        busy: false,
+      });
       return false;
     } finally {
       restartBusy.value = false;
+      syncRestartSession({ busy: false });
     }
   }
 
