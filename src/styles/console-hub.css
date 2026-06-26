@@ -599,17 +599,17 @@ html[data-layout="hub"] .plugins-page__hero-actions {
   min-height: var(--ui-ctrl-height);
 }
 
-/* 工具条：宽屏不显示（操作集中在 masthead），窄屏接管搜索/操作 */
+/* 工具条：宽屏不显示（操作在页头 masthead），窄屏接管搜索+操作并同处一行 */
 html[data-layout="hub"] .console-hub-toolbar-strip {
   display: none;
 }
 
-/* 自适应刷新：宽屏在页头，窄屏在面板标题旁 */
-.hub-refresh-narrow-only {
+/* 自适应刷新：宽屏在页头，窄屏在面板标题旁。双类提升优先级以压过 .ui-btn */
+.btn-refresh-action.hub-refresh-narrow-only {
   display: none;
 }
 
-.hub-refresh-wide-only {
+.btn-refresh-action.hub-refresh-wide-only {
   display: inline-flex;
 }
 
@@ -624,42 +624,40 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
     margin-top: 2px;
   }
 
+  /* 窄屏：搜索框与操作按钮同处一行，搜索自适应伸缩 */
   html[data-layout="hub"] .console-hub-toolbar-strip__main {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
   }
 
   html[data-layout="hub"] .console-hub-toolbar-strip__search {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
   html[data-layout="hub"] .console-hub-toolbar-strip__middle {
     display: flex;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
     min-width: 0;
   }
 
-  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .ui-btn {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
+  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .ui-btn,
   html[data-layout="hub"] .console-hub-toolbar-strip__middle > .sel {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
+    min-height: var(--ui-ctrl-height);
   }
 
   html[data-layout="hub"] .console-hub-toolbar-strip__actions {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
   }
 
   /* 窄屏不重复展示 masthead 操作区（改由工具条承载） */
@@ -667,11 +665,11 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
     display: none;
   }
 
-  .hub-refresh-narrow-only {
+  .btn-refresh-action.hub-refresh-narrow-only {
     display: inline-flex;
   }
 
-  .hub-refresh-wide-only {
+  .btn-refresh-action.hub-refresh-wide-only {
     display: none;
   }
 
@@ -1117,11 +1115,6 @@ html[data-surface="glass"] .plugin-store-page__search-card {
     width: auto;
   }
 
-  /* 日志报错：窄屏操作改由工具条承载，隐藏 masthead 操作区 */
-  html[data-layout="hub"] .log-errors-page .console-hub-page__masthead-actions {
-    display: none;
-  }
-
   html[data-layout="hub"] .common-config-page > .panel > .panel__hd.panel__hd--split,
   html[data-layout="hub"]
     .common-config-page
@@ -1379,13 +1372,8 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
   border-radius: 999px;
 }
 
-html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__masthead-actions .sel {
+html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__middle .sel {
   min-width: 9rem;
-  width: auto;
-}
-
-html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__masthead-actions .btn-refresh-action {
-  flex-shrink: 0;
 }
 
 /* ── 偏好 / 设置卡片（GsCore 风格） ── */

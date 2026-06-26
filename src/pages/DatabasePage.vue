@@ -320,6 +320,7 @@ onUnmounted(() => {
       </template>
       <template #actions>
         <RefreshIconButton
+          class="hub-refresh-wide-only"
           :busy="dbRefreshBusy"
           label="刷新数据库总览"
           @click="loadAll"

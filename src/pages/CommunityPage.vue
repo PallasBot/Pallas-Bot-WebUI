@@ -2,7 +2,7 @@
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding } from "@/api/consoleApi";
+import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding, peekCommunityStatsCache } from "@/api/consoleApi";
 import type {
   CommunityStatsData,
   CommunityVersionCountData,
@@ -24,11 +24,12 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 
 const panelNavIcon = usePanelNavIcon();
-const pageReady = ref(false);
+const warmCommunity = peekCommunityStatsCache();
+const pageReady = ref(Boolean(warmCommunity));
 const refreshBusy = ref(false);
 const hotReloadToken = ref(0);
 const err = ref("");
-const communityStats = ref<CommunityStatsData | null>(null);
+const communityStats = ref<CommunityStatsData | null>(warmCommunity);
 const corpusStatus = ref<CorpusStatusData | null>(null);
 const federationOnboarding = ref<FederationOnboardingData | null>(null);
 const federationOnboardingUnavailable = ref(false);
@@ -435,6 +436,13 @@ onMounted(() => {
                 class="panel__title-ico"
                 :name="panelNavIcon"
               />全网部署
+              <RefreshIconButton
+                class="hub-refresh-narrow-only"
+                :show-label="false"
+                :busy="refreshBusy"
+                label="刷新"
+                @click="refresh"
+              />
             </h2>
             <div class="row-actions community-page__hd-actions community-page__deploy-hd-actions">
               <RouterLink
@@ -449,12 +457,6 @@ onMounted(() => {
                   @click="navigate"
                 >在线统计设置</UiButton>
               </RouterLink>
-              <RefreshIconButton
-                class="hub-refresh-narrow-only"
-                :busy="refreshBusy"
-                label="刷新"
-                @click="refresh"
-              />
             </div>
           </div>
           <div class="panel__bd">
