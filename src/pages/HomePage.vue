@@ -138,7 +138,7 @@ const socialBusy = ref(false);
 /** 账号图表/按 Bot 统计拉取中（不含好友群列表） */
 const accountDetailBusy = ref(false);
 /** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
-const pageReady = ref(false);
+const pageReady = ref(Boolean(peekInstancesCache() && (peekBotsCache()?.length ?? 0) > 0));
 /** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
 const overviewBusy = ref(false);
 /** 首屏次要接口（统计/社区/分片等）拉取中 */

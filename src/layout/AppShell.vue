@@ -4,6 +4,7 @@ import { useRoute, type RouteLocationNormalizedLoaded } from "vue-router";
 import brandMarkUrl from "@/assets/brand-avatar.png?url";
 import { fetchBots, fetchInstances, fetchPlugins } from "@/api/consoleApi";
 import { scheduleInstancesCatalogRefreshOnRoute } from "@/composables/useInstancesCatalogSync";
+import { prefetchPriorityRouteChunks, prefetchRouteChunkByPath } from "@/utils/routePrefetch";
 import { MAIN_NAV_ITEMS, type MainNavItem } from "@/config/mainNav";
 import { AI_CONFIG_SIDEBAR_PATH } from "@/config/aiConfigSections";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
@@ -159,13 +160,22 @@ function onMainInnerScroll() {
   updateBackTopVisibility();
 }
 
-function scrollPageToTop() {
-  const smooth = typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function scrollMainToTop(instant: boolean) {
+  const smooth =
+    !instant && typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const behavior: ScrollBehavior = smooth ? "smooth" : "auto";
   mainInnerRef.value?.scrollTo({ top: 0, behavior });
   if (logsScrollEl) {
     logsScrollEl.scrollTo({ top: 0, behavior });
   }
+}
+
+function scrollPageToTop() {
+  scrollMainToTop(false);
+}
+
+function scrollPageToTopOnNav() {
+  scrollMainToTop(true);
 }
 
 const webuiVersion = __WEBUI_VERSION__;
@@ -198,7 +208,7 @@ watch(
     routeEnterTimer = setTimeout(() => {
       routeEnterPulse.value = false;
       routeEnterTimer = null;
-    }, 240);
+    }, 140);
   },
 );
 
@@ -243,8 +253,13 @@ function closeMobileNav() {
 }
 
 function onShellNavClick(navigate: (e?: MouseEvent) => unknown, event?: MouseEvent) {
+  scrollPageToTopOnNav();
   void navigate(event);
   closeMobileNav();
+}
+
+function onShellNavPrefetch(path: string) {
+  prefetchRouteChunkByPath(path);
 }
 
 /** 清理可能挡住点击的全局遮罩/滚动锁（如弹窗残留、首屏 loading 未收起） */
@@ -299,6 +314,10 @@ onMounted(() => {
   void refreshConsoleMeta();
   if (route.name !== "home") {
     void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
+  }
+  if (typeof window !== "undefined") {
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 120));
+    idle(() => prefetchPriorityRouteChunks());
   }
   healthPollTimer = setInterval(() => {
     void refreshConsoleMeta({ silent: true });
@@ -590,6 +609,7 @@ onUnmounted(() => {
                       'is-router-exact': isMainLinkExact(child.item),
                     }"
                     :aria-current="isMainLinkExact(child.item) ? 'page' : undefined"
+                    @pointerenter="onShellNavPrefetch(child.item.to)"
                     @click="onShellNavClick(navigate, $event)"
                   >
                     <ConsoleNavIcon
@@ -626,6 +646,7 @@ onUnmounted(() => {
                 }"
                 :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, entry.row.item.label)"
                 :aria-current="isMainLinkExact(entry.row.item) ? 'page' : undefined"
+                @pointerenter="onShellNavPrefetch(entry.row.item.to)"
                 @click="onShellNavClick(navigate, $event)"
               >
                 <ConsoleNavIcon
@@ -654,6 +675,7 @@ onUnmounted(() => {
                 :class="{ 'is-router-active': isPinLinkActive(entry.row.pin) }"
                 :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, entry.row.pin.label)"
                 :aria-current="isPinLinkActive(entry.row.pin) ? 'page' : undefined"
+                @pointerenter="onShellNavPrefetch(entry.row.pin.path)"
                 @click="onShellNavClick(navigate, $event)"
               >
                 <ConsoleNavIcon
@@ -822,6 +844,7 @@ onUnmounted(() => {
                         'is-router-active': isMainLinkActiveForPath(child.item),
                       }"
                       :aria-current="isMainLinkExact(child.item) ? 'page' : undefined"
+                      @pointerenter="onShellNavPrefetch(child.item.to)"
                       @click="onShellNavClick(navigate, $event)"
                     >
                       <ConsoleNavIcon
@@ -853,6 +876,7 @@ onUnmounted(() => {
                     'is-router-exact': isMainLinkExact(entry.row.item),
                   }"
                   :aria-current="isMainLinkExact(entry.row.item) ? 'page' : undefined"
+                  @pointerenter="onShellNavPrefetch(entry.row.item.to)"
                   @click="onShellNavClick(navigate, $event)"
                 >
                   <ConsoleNavIcon
@@ -876,6 +900,7 @@ onUnmounted(() => {
                   class="shell-mobile-nav__link shell__nav-link--pin"
                   :class="{ 'is-router-active': isPinLinkActive(entry.row.pin) }"
                   :aria-current="isPinLinkActive(entry.row.pin) ? 'page' : undefined"
+                  @pointerenter="onShellNavPrefetch(entry.row.pin.path)"
                   @click="onShellNavClick(navigate, $event)"
                 >
                   <ConsoleNavIcon

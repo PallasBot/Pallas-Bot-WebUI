@@ -4,28 +4,29 @@ import HomePage from "@/pages/HomePage.vue";
 import { installConsoleSetupGuard } from "@/router/consoleSetupGuard";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
+import { routeChunkLoaders } from "@/router/chunkLoaders";
 
-const LogsPage = () => import("@/pages/LogsPage.vue");
-const LogErrorsPage = () => import("@/pages/LogErrorsPage.vue");
-const PluginsPage = () => import("@/pages/PluginsPage.vue");
-const PluginStorePage = () => import("@/pages/PluginStorePage.vue");
-const CommonConfigPage = () => import("@/pages/CommonConfigPage.vue");
-const InstancesPage = () => import("@/pages/InstancesPage.vue");
-const ProtocolManagePage = () => import("@/pages/ProtocolManagePage.vue");
-const DatabasePage = () => import("@/pages/DatabasePage.vue");
-const DatabaseBackupsPage = () => import("@/pages/DatabaseBackupsPage.vue");
-const UpdatePage = () => import("@/pages/UpdatePage.vue");
-const AiExtensionPage = () => import("@/pages/AiExtensionPage.vue");
-const AiHomePage = () => import("@/pages/AiHomePage.vue");
-const AiStatisticsPage = () => import("@/pages/AiStatisticsPage.vue");
-const AiHistoryPage = () => import("@/pages/AiHistoryPage.vue");
-const AiWizardPage = () => import("@/pages/AiWizardPage.vue");
-const AiRuntimeOverviewPage = () => import("@/pages/AiRuntimeOverviewPage.vue");
-const FriendsGroupsPage = () => import("@/pages/FriendsGroupsPage.vue");
-const PreferencesPage = () => import("@/pages/PreferencesPage.vue");
-const SetupWizardPage = () => import("@/pages/SetupWizardPage.vue");
-const CommunityPage = () => import("@/pages/CommunityPage.vue");
-const ChartsPage = () => import("@/pages/ChartsPage.vue");
+const ChartsPage = routeChunkLoaders.charts;
+const LogsPage = routeChunkLoaders.logs;
+const LogErrorsPage = routeChunkLoaders["log-errors"];
+const PluginsPage = routeChunkLoaders.plugins;
+const PluginStorePage = routeChunkLoaders["plugin-store"];
+const CommonConfigPage = routeChunkLoaders["common-config"];
+const InstancesPage = routeChunkLoaders.instances;
+const ProtocolManagePage = routeChunkLoaders.protocol;
+const DatabasePage = routeChunkLoaders.database;
+const DatabaseBackupsPage = routeChunkLoaders["database-backups"];
+const UpdatePage = routeChunkLoaders.update;
+const AiExtensionPage = routeChunkLoaders["ai-config"];
+const AiHomePage = routeChunkLoaders["ai-home"];
+const AiStatisticsPage = routeChunkLoaders["ai-statistics"];
+const AiHistoryPage = routeChunkLoaders["ai-history"];
+const AiWizardPage = routeChunkLoaders["ai-wizard"];
+const AiRuntimeOverviewPage = routeChunkLoaders["ai-runtime"];
+const FriendsGroupsPage = routeChunkLoaders["friends-groups"];
+const PreferencesPage = routeChunkLoaders.preferences;
+const SetupWizardPage = routeChunkLoaders["setup-wizard"];
+const CommunityPage = routeChunkLoaders.community;
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -59,7 +60,6 @@ const router = createRouter({
           meta: {
             title: "运行日志",
             description: "检索导出",
-            keepAlive: false,
           },
         },
         {

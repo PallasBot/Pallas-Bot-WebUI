@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { fetchPluginRunStats, postLogErrorsCleanup } from "@/api/consoleApi";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
+import { fetchLogErrors, postLogErrorsCleanup, type LogErrorsData } from "@/api/consoleApi";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
@@ -21,9 +21,11 @@ import {
   parseLogErrorPlugin,
 } from "@/utils/logErrorDisplay";
 
+let logErrorsCache: LogErrorsData | null = null;
+
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const pageReady = ref(false);
+const pageReady = ref(Boolean(logErrorsCache));
 const loading = ref(false);
 const clearing = ref(false);
 const entries = ref<MatcherErrorLogEntry[]>([]);
@@ -32,11 +34,15 @@ const shardedLogErrors = ref(false);
 const logSource = ref("all");
 const q = ref("");
 
-async function load() {
+async function load(opts?: { bypassCache?: boolean }) {
   loading.value = true;
   err.value = "";
   try {
-    const stats = await fetchPluginRunStats(undefined, logSource.value, { tbLimit: 0 });
+    const stats = await fetchLogErrors(logSource.value, {
+      tbLimit: 0,
+      bypassCache: opts?.bypassCache === true,
+    });
+    logErrorsCache = stats;
     entries.value = stats.log_error_log ?? [];
     shardedLogErrors.value = Boolean(stats.sharded_log_errors);
     if (stats.log_error_sources?.length) {
@@ -44,7 +50,7 @@ async function load() {
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
-    entries.value = [];
+    if (!entries.value.length) entries.value = [];
   } finally {
     loading.value = false;
     pageReady.value = true;
@@ -142,7 +148,21 @@ async function clearLogErrors() {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+});
+
+onActivated(() => {
+  if (logErrorsCache && !loading.value) {
+    entries.value = logErrorsCache.log_error_log ?? [];
+    shardedLogErrors.value = Boolean(logErrorsCache.sharded_log_errors);
+    if (logErrorsCache.log_error_sources?.length) {
+      logSources.value = logErrorsCache.log_error_sources;
+    }
+    pageReady.value = true;
+  }
+  void load();
+});
 </script>
 
 <template>
@@ -194,7 +214,7 @@ onMounted(load);
             <RefreshIconButton
               :busy="loading"
               label="刷新"
-              @click="load"
+              @click="load({ bypassCache: true })"
             />
           </div>
         </template>
@@ -242,7 +262,7 @@ onMounted(load);
           <RefreshIconButton
             :busy="loading"
             label="刷新"
-            @click="load"
+            @click="load({ bypassCache: true })"
           />
         </template>
       </ConsoleHubToolbarStrip>

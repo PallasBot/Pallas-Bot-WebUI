@@ -124,6 +124,12 @@ export function peekInstancesCache(): InstancesData | null {
   return instancesCache?.data ?? null;
 }
 
+/** 实例缓存年龄（毫秒）；无缓存时返回 null */
+export function peekInstancesCacheAgeMs(): number | null {
+  if (!instancesCache) return null;
+  return Date.now() - instancesCache.ts;
+}
+
 /** 数据库 Bot 配置等变更后调用，避免旧 /instances 缓存误导 */
 export function invalidateInstancesCache() {
   instancesCache = null;
@@ -1209,10 +1215,60 @@ export async function fetchLogs(
   n: number,
   scope: LogScope = "all",
   source?: string,
+  options?: { bypassCache?: boolean },
 ): Promise<LogsData> {
+  const src = source && source !== "all" ? source : "all";
+  const cacheKey = `${n}:${scope}:${src}`;
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  const cached = logsCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < LOGS_FRESH_MS) {
+    return cached.data;
+  }
+  if (!bypass && cached && now - cached.ts < LOGS_STALE_MS) {
+    const snap = cached.data;
+    if (!logsInflight.has(cacheKey)) {
+      const refresh = fetchLogsFromNetwork(n, scope, src)
+        .then((data) => {
+          logsCache.set(cacheKey, { data, ts: Date.now() });
+          return data;
+        })
+        .finally(() => {
+          logsInflight.delete(cacheKey);
+        });
+      logsInflight.set(cacheKey, refresh);
+    }
+    return snap;
+  }
+  let inflight = logsInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = fetchLogsFromNetwork(n, scope, src)
+      .then((data) => {
+        logsCache.set(cacheKey, { data, ts: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        logsInflight.delete(cacheKey);
+      });
+    logsInflight.set(cacheKey, inflight);
+  }
+  return inflight;
+}
+
+const LOGS_FRESH_MS = 900;
+const LOGS_STALE_MS = 5_000;
+const logsCache = new Map<string, { data: LogsData; ts: number }>();
+const logsInflight = new Map<string, Promise<LogsData>>();
+
+async function fetchLogsFromNetwork(n: number, scope: LogScope, source: string): Promise<LogsData> {
   const params: { n: number; scope: LogScope; source?: string } = { n, scope };
-  if (source && source !== "all") params.source = source;
+  if (source !== "all") params.source = source;
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>("/logs", { params })) as LogsData;
+}
+
+export function invalidateLogsCache(): void {
+  logsCache.clear();
+  logsInflight.clear();
 }
 
 /** 分片 hub 实时日志 SSE（合并 hub 环与各 worker 落盘增量） */
@@ -1229,17 +1285,68 @@ export function openLogsEventSource(
   return new EventSource(`${apiBase}/logs/stream?${qs.toString()}`, { withCredentials: true });
 }
 
-export async function fetchMessageStats(selfId?: number): Promise<MessageStatsData> {
+const messageStatsInflight = new Map<string, Promise<MessageStatsData>>();
+const messageStatsCache = new Map<string, { data: MessageStatsData; ts: number }>();
+const MESSAGE_STATS_FRESH_MS = 2_500;
+const MESSAGE_STATS_STALE_MS = 12_000;
+
+export async function fetchMessageStats(
+  selfId?: number,
+  options?: { bypassCache?: boolean },
+): Promise<MessageStatsData> {
+  const key = selfId != null ? String(selfId) : "all";
+  const bypass = options?.bypassCache === true;
+  const now = Date.now();
+  const cached = messageStatsCache.get(key);
+  if (!bypass && cached && now - cached.ts < MESSAGE_STATS_FRESH_MS) {
+    return cached.data;
+  }
+  if (!bypass && cached && now - cached.ts < MESSAGE_STATS_STALE_MS) {
+    const snap = cached.data;
+    if (!messageStatsInflight.has(key)) {
+      const refresh = fetchMessageStatsFromNetwork(selfId)
+        .then((data) => {
+          messageStatsCache.set(key, { data, ts: Date.now() });
+          return data;
+        })
+        .finally(() => {
+          messageStatsInflight.delete(key);
+        });
+      messageStatsInflight.set(key, refresh);
+    }
+    return snap;
+  }
+  let inflight = messageStatsInflight.get(key);
+  if (!inflight) {
+    inflight = fetchMessageStatsFromNetwork(selfId)
+      .then((data) => {
+        messageStatsCache.set(key, { data, ts: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        messageStatsInflight.delete(key);
+      });
+    messageStatsInflight.set(key, inflight);
+  }
+  return inflight;
+}
+
+async function fetchMessageStatsFromNetwork(selfId?: number): Promise<MessageStatsData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/message-stats"]["get"]>(
     "/message-stats",
     { params: selfId ? { self_id: selfId } : {} },
   )) as MessageStatsData;
 }
 
+
 const COMMUNITY_STATS_FRESH_MS = 60_000;
 
 let communityStatsCache: { data: CommunityStatsData; ts: number } | null = null;
 let communityStatsInflight: Promise<CommunityStatsData> | null = null;
+
+export function peekCommunityStatsCache(): CommunityStatsData | null {
+  return communityStatsCache?.data ?? null;
+}
 
 export async function fetchCommunityStats(options?: { bypassCache?: boolean }): Promise<CommunityStatsData> {
   const bypass = options?.bypassCache === true;
@@ -1377,17 +1484,201 @@ export async function fetchFederationOnboarding(): Promise<FederationOnboardingD
 export async function fetchPluginRunStats(
   selfId?: number,
   logSource?: string,
-  options?: { tbLimit?: number },
+  options?: { tbLimit?: number; bypassCache?: boolean },
 ): Promise<PluginRunStatsData> {
-  const params: { self_id?: number; log_source?: string; tb_limit?: number } = {};
+  const params: {
+    self_id?: number;
+    log_source?: string;
+    tb_limit?: number;
+  } = {};
   if (selfId) params.self_id = selfId;
   if (logSource && logSource !== "all") params.log_source = logSource;
   const tbLimit = options?.tbLimit;
   if (tbLimit !== undefined) params.tb_limit = tbLimit;
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugin-run-stats"]["get"]>(
-    "/plugin-run-stats",
-    { params },
-  )) as PluginRunStatsData;
+  const cacheKey = pluginRunStatsCacheKey({
+    selfId,
+    logSource,
+    tbLimit,
+    view: "full",
+  });
+  return readPluginRunStatsCached(cacheKey, options?.bypassCache === true, async () =>
+    (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugin-run-stats"]["get"]>(
+      "/plugin-run-stats",
+      { params },
+    )) as PluginRunStatsData,
+  );
+}
+
+export type LogErrorsData = Pick<
+  PluginRunStatsData,
+  "log_error_log" | "log_error_sources" | "sharded_log_errors"
+>;
+
+/** 日志报错页：专用轻量接口，旧后端回退 plugin-run-stats?view=log_errors */
+export async function fetchLogErrors(
+  logSource?: string,
+  options?: { tbLimit?: number; bypassCache?: boolean },
+): Promise<LogErrorsData> {
+  const src = logSource && logSource !== "all" ? logSource : "all";
+  const tbLimit = options?.tbLimit ?? 0;
+  const cacheKey = `log-errors:${src}:${tbLimit}`;
+  return readLogErrorsCached(cacheKey, options?.bypassCache === true, async () => {
+    try {
+      return await fetchLogErrorsFromNetwork(src, tbLimit);
+    } catch (err) {
+      if (!isLogErrorsDedicatedEndpointMissing(err)) throw err;
+      return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugin-run-stats"]["get"]>(
+        "/plugin-run-stats",
+        {
+          params: {
+            view: "log_errors",
+            ...(src !== "all" ? { log_source: src } : {}),
+            tb_limit: tbLimit,
+          },
+        },
+      )) as LogErrorsData;
+    }
+  });
+}
+
+const LOG_ERRORS_FRESH_MS = 3_000;
+const LOG_ERRORS_STALE_MS = 20_000;
+const logErrorsCache = new Map<string, { data: LogErrorsData; ts: number }>();
+const logErrorsInflight = new Map<string, Promise<LogErrorsData>>();
+
+async function fetchLogErrorsFromNetwork(source: string, tbLimit: number): Promise<LogErrorsData> {
+  const params: { log_source?: string; tb_limit: number; limit: number } = { tb_limit: tbLimit, limit: 120 };
+  if (source !== "all") params.log_source = source;
+  const { data } = await http.get<{ ok: boolean; data: LogErrorsData }>("/log-errors", { params });
+  if (!data?.ok || !data.data) throw new Error("/log-errors: 响应异常");
+  return data.data;
+}
+
+function isLogErrorsDedicatedEndpointMissing(err: unknown): boolean {
+  if (!isAxiosError(err)) return false;
+  const status = err.response?.status;
+  return status === 404 || status === 405;
+}
+
+async function readLogErrorsCached(
+  cacheKey: string,
+  bypass: boolean,
+  loader: () => Promise<LogErrorsData>,
+): Promise<LogErrorsData> {
+  const now = Date.now();
+  const cached = logErrorsCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < LOG_ERRORS_FRESH_MS) {
+    return cached.data;
+  }
+  if (!bypass && cached && now - cached.ts < LOG_ERRORS_STALE_MS) {
+    const snap = cached.data;
+    if (!logErrorsInflight.has(cacheKey)) {
+      const refresh = loader()
+        .then((data) => {
+          logErrorsCache.set(cacheKey, { data, ts: Date.now() });
+          return data;
+        })
+        .finally(() => {
+          logErrorsInflight.delete(cacheKey);
+        });
+      logErrorsInflight.set(cacheKey, refresh);
+    }
+    return snap;
+  }
+  let inflight = logErrorsInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = loader()
+      .then((data) => {
+        logErrorsCache.set(cacheKey, { data, ts: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        logErrorsInflight.delete(cacheKey);
+      });
+    logErrorsInflight.set(cacheKey, inflight);
+  }
+  return inflight;
+}
+
+export function invalidateLogErrorsCache(): void {
+  logErrorsCache.clear();
+  logErrorsInflight.clear();
+  for (const key of [...pluginRunStatsCache.keys()]) {
+    if (key.startsWith("log_errors:")) pluginRunStatsCache.delete(key);
+  }
+}
+
+const PLUGIN_RUN_STATS_FRESH_MS = 2_500;
+const PLUGIN_RUN_STATS_STALE_MS = 12_000;
+
+type PluginRunStatsCacheKeyParts = {
+  selfId?: number;
+  logSource?: string;
+  tbLimit?: number;
+  view: "full" | "log_errors";
+};
+
+function pluginRunStatsCacheKey(parts: PluginRunStatsCacheKeyParts): string {
+  const sid = parts.selfId != null ? String(parts.selfId) : "all";
+  const src = parts.logSource && parts.logSource !== "all" ? parts.logSource : "all";
+  const tbl = parts.tbLimit !== undefined ? String(parts.tbLimit) : "default";
+  return `${parts.view}:${sid}:${src}:${tbl}`;
+}
+
+const pluginRunStatsCache = new Map<string, { data: PluginRunStatsData | LogErrorsData; ts: number }>();
+const pluginRunStatsInflight = new Map<string, Promise<PluginRunStatsData | LogErrorsData>>();
+
+async function readPluginRunStatsCached<T extends PluginRunStatsData | LogErrorsData>(
+  cacheKey: string,
+  bypass: boolean,
+  loader: () => Promise<T>,
+): Promise<T> {
+  const now = Date.now();
+  const cached = pluginRunStatsCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < PLUGIN_RUN_STATS_FRESH_MS) {
+    return cached.data as T;
+  }
+  if (!bypass && cached && now - cached.ts < PLUGIN_RUN_STATS_STALE_MS) {
+    const snap = cached.data as T;
+    if (!pluginRunStatsInflight.has(cacheKey)) {
+      const refresh = loader()
+        .then((data) => {
+          pluginRunStatsCache.set(cacheKey, { data, ts: Date.now() });
+          return data;
+        })
+        .finally(() => {
+          pluginRunStatsInflight.delete(cacheKey);
+        });
+      pluginRunStatsInflight.set(cacheKey, refresh);
+    }
+    return snap;
+  }
+  let inflight = pluginRunStatsInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = loader()
+      .then((data) => {
+        pluginRunStatsCache.set(cacheKey, { data, ts: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        pluginRunStatsInflight.delete(cacheKey);
+      });
+    pluginRunStatsInflight.set(cacheKey, inflight);
+  }
+  return (await inflight) as T;
+}
+
+const CONSOLE_DAILY_STATS_FRESH_MS = 3_500;
+const CONSOLE_DAILY_STATS_STALE_MS = 18_000;
+
+const consoleDailyStatsCache = new Map<string, { data: ConsoleDailyStatsData; ts: number }>();
+const consoleDailyStatsInflight = new Map<string, Promise<ConsoleDailyStatsData>>();
+
+function consoleDailyStatsCacheKey(params?: { selfId?: number; start?: string; end?: string }): string {
+  const sid = params?.selfId != null ? String(params.selfId) : "all";
+  const start = params?.start?.trim() || "";
+  const end = params?.end?.trim() || "";
+  return `${sid}:${start}:${end}`;
 }
 
 export interface LogErrorsCleanupResult {
@@ -1396,13 +1687,60 @@ export interface LogErrorsCleanupResult {
 }
 
 export async function postLogErrorsCleanup(): Promise<LogErrorsCleanupResult> {
-  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/log-errors/cleanup"]["post"]>(
+  const result = await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/log-errors/cleanup"]["post"]>(
     "/log-errors/cleanup",
     {},
   );
+  invalidateLogErrorsCache();
+  return result;
 }
 
-export async function fetchConsoleDailyStats(params?: {
+export async function fetchConsoleDailyStats(
+  params?: {
+    selfId?: number;
+    start?: string;
+    end?: string;
+    bypassCache?: boolean;
+  },
+): Promise<ConsoleDailyStatsData> {
+  const cacheKey = consoleDailyStatsCacheKey(params);
+  const bypass = params?.bypassCache === true;
+  const now = Date.now();
+  const cached = consoleDailyStatsCache.get(cacheKey);
+  if (!bypass && cached && now - cached.ts < CONSOLE_DAILY_STATS_FRESH_MS) {
+    return cached.data;
+  }
+  if (!bypass && cached && now - cached.ts < CONSOLE_DAILY_STATS_STALE_MS) {
+    const snap = cached.data;
+    if (!consoleDailyStatsInflight.has(cacheKey)) {
+      const refresh = fetchConsoleDailyStatsFromNetwork(params)
+        .then((data) => {
+          consoleDailyStatsCache.set(cacheKey, { data, ts: Date.now() });
+          return data;
+        })
+        .finally(() => {
+          consoleDailyStatsInflight.delete(cacheKey);
+        });
+      consoleDailyStatsInflight.set(cacheKey, refresh);
+    }
+    return snap;
+  }
+  let inflight = consoleDailyStatsInflight.get(cacheKey);
+  if (!inflight) {
+    inflight = fetchConsoleDailyStatsFromNetwork(params)
+      .then((data) => {
+        consoleDailyStatsCache.set(cacheKey, { data, ts: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        consoleDailyStatsInflight.delete(cacheKey);
+      });
+    consoleDailyStatsInflight.set(cacheKey, inflight);
+  }
+  return inflight;
+}
+
+async function fetchConsoleDailyStatsFromNetwork(params?: {
   selfId?: number;
   start?: string;
   end?: string;

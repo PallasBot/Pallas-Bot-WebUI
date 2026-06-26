@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
-import { computed, onMounted, ref, watch } from "vue";
-import { fetchConsoleDailyStats, fetchInstances, fetchPluginRunStats } from "@/api/consoleApi";
+import { computed, defineAsyncComponent, onActivated, onMounted, ref, watch } from "vue";
+import {
+  fetchConsoleDailyStats,
+  fetchInstances,
+  fetchPluginRunStats,
+  peekInstancesCache,
+} from "@/api/consoleApi";
 import type {
   BotConfigPublic,
   ConsoleDailyStatRow,
@@ -11,12 +16,13 @@ import type {
 import ChartsDailyBarChart from "@/components/ChartsDailyBarChart.vue";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
-import IngressDispatchPanel from "@/components/IngressDispatchPanel.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import HomePluginRunCharts from "@/components/HomePluginRunCharts.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatTrendCard from "@/components/StatTrendCard.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+
+const IngressDispatchPanel = defineAsyncComponent(() => import("@/components/IngressDispatchPanel.vue"));
+const HomePluginRunCharts = defineAsyncComponent(() => import("@/components/HomePluginRunCharts.vue"));
 import {
   readSavedHomeAccount,
   useAccountPluginCharts,
@@ -25,9 +31,10 @@ import {
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
-const pageReady = ref(false);
+const warmInstances = peekInstancesCache();
+const pageReady = ref(Boolean(warmInstances));
 const err = ref("");
-const instances = ref<InstancesData | null>(null);
+const instances = ref<InstancesData | null>(warmInstances);
 const dailyStatsRange = ref<ConsoleDailyStatsData | null>(null);
 const rangeBusy = ref(false);
 
@@ -269,29 +276,38 @@ async function loadRangeData() {
   await loadDailyRange();
 }
 
-async function load() {
+async function load(opts?: { bypassCache?: boolean }) {
   err.value = "";
+  const bypassCache = opts?.bypassCache === true;
   try {
-    instances.value = await fetchInstances();
+    await Promise.all([
+      fetchInstances(bypassCache ? { bypassCache: true } : undefined).then((d) => {
+        instances.value = d;
+      }),
+      ensurePluginsList(),
+      fetchPluginRunStats(undefined, undefined, bypassCache ? { bypassCache: true } : undefined)
+        .then((d) => {
+          pluginRunGlobal.value = d;
+        })
+        .catch(() => {
+          pluginRunGlobal.value = null;
+        }),
+      refreshChartStats(),
+    ]);
     ensureSelectedBot();
-    await ensurePluginsList();
-    try {
-      pluginRunGlobal.value = await fetchPluginRunStats();
-    } catch {
-      pluginRunGlobal.value = null;
-    }
-    await refreshChartStats();
-    await loadRangeData();
+    pageReady.value = true;
+    void loadRangeData();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
-  } finally {
     pageReady.value = true;
   }
 }
 
 async function refreshAll() {
-  await refreshChartStats();
-  await loadRangeData();
+  await Promise.all([
+    load({ bypassCache: true }),
+    loadRangeData(),
+  ]);
 }
 
 watch([selectedAccount, selectedMonth, rangeStart, rangeEnd], () => {
@@ -303,6 +319,14 @@ onMounted(() => {
   const bounds = monthBounds(selectedMonth.value);
   rangeStart.value = bounds.start;
   rangeEnd.value = bounds.end;
+  if (warmInstances) ensureSelectedBot();
+  void load();
+});
+
+onActivated(() => {
+  const warm = peekInstancesCache();
+  if (warm) instances.value = warm;
+  if (!pageReady.value) return;
   void load();
 });
 </script>

@@ -31,6 +31,16 @@ import {
 
 const panelNavIcon = usePanelNavIcon();
 const liveTick = useThrottledVersion(100);
+
+type LogsSnapshot = {
+  scope: LogScope;
+  logSource: string;
+  n: number;
+  payload: LogsData;
+};
+
+let logsSnapshotCache: LogsSnapshot | null = null;
+
 const err = ref("");
 const pageReady = ref(false);
 const loading = ref(false);
@@ -228,19 +238,28 @@ function startLogStream() {
   }
 }
 
-async function load(opts?: { silent?: boolean }) {
+async function load(opts?: { silent?: boolean; bypassCache?: boolean }) {
   const silent = Boolean(opts?.silent);
   if (!silent) loading.value = true;
   err.value = "";
   try {
     const src = logSource.value === "all" ? undefined : logSource.value;
-    payload.value = await fetchLogs(n.value, scope.value, src);
+    const data = await fetchLogs(n.value, scope.value, src, {
+      bypassCache: opts?.bypassCache === true,
+    });
+    payload.value = data;
     if (payload.value.log_sources?.length) {
       logSources.value = payload.value.log_sources;
     }
+    logsSnapshotCache = {
+      scope: scope.value,
+      logSource: logSource.value,
+      n: n.value,
+      payload: data,
+    };
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
-    payload.value = null;
+    if (!payload.value) payload.value = null;
   } finally {
     if (!silent) loading.value = false;
     pageReady.value = true;
@@ -249,6 +268,20 @@ async function load(opts?: { silent?: boolean }) {
       scheduleScrollActiveLogToBottom(true);
     }
   }
+}
+
+function applyLogsSnapshotCache(): boolean {
+  const snap = logsSnapshotCache;
+  if (!snap) return false;
+  scope.value = snap.scope;
+  logSource.value = snap.logSource;
+  n.value = snap.n;
+  payload.value = snap.payload;
+  if (snap.payload.log_sources?.length) {
+    logSources.value = snap.payload.log_sources;
+  }
+  pageReady.value = true;
+  return true;
 }
 
 watch([scope, n, logSource], () => {
@@ -415,10 +448,12 @@ watch(
 );
 
 onMounted(() => {
+  applyLogsSnapshotCache();
   scheduleBootLogsPage();
 });
 
 onActivated(() => {
+  applyLogsSnapshotCache();
   scheduleBootLogsPage();
 });
 
