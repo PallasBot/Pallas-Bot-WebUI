@@ -611,6 +611,24 @@ export async function fetchBots(opts?: FetchBotsOptions): Promise<BotRow[]> {
   return botsInflight;
 }
 
+export function buildHelpPreviewUrl(opts: {
+  level?: "menu" | "plugin" | "function";
+  page?: number;
+  plugin?: string;
+  function?: string;
+  cacheBust?: number;
+}): string {
+  const base = (import.meta.env.BASE_URL as string) || "/pallas/";
+  const apiBase = `${base.replace(/\/$/, "")}/api`;
+  const params = new URLSearchParams();
+  params.set("level", opts.level || "menu");
+  if (opts.page && opts.page > 1) params.set("page", String(opts.page));
+  if (opts.plugin) params.set("plugin", opts.plugin);
+  if (opts.function) params.set("function", opts.function);
+  if (opts.cacheBust) params.set("_", String(opts.cacheBust));
+  return `${apiBase}/help/preview?${params.toString()}`;
+}
+
 export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/help-menu-visibility"]["get"]>(
     "/plugins/help-menu-visibility",

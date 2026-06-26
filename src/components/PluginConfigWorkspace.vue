@@ -28,6 +28,7 @@ import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel.vue";
+import HelpImagePreview from "@/components/HelpImagePreview.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import PluginIcon from "@/components/PluginIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -113,6 +114,7 @@ const isDialogPresentation = computed(() => props.presentation === "dialog");
 const showReadmeTab = computed(() => isDialogPresentation.value);
 
 const pluginName = computed(() => props.pluginName.trim());
+const isHelpPlugin = computed(() => pluginName.value === "help");
 const pluginResolvedId = computed(() => (pluginRow.value?.resolved_plugin_id || pluginName.value).trim());
 
 const displayTitle = computed(
@@ -839,8 +841,13 @@ defineExpose({
             </button>
           </div>
 
+          <HelpImagePreview
+            v-if="isHelpPlugin && pluginConfigTab === 'config'"
+            class="plugin-config-page__help-preview"
+          />
+
           <p
-            v-if="pluginConfigTab === 'config' && !data.fields.length"
+            v-if="pluginConfigTab === 'config' && !data.fields.length && !isHelpPlugin"
             class="muted plugin-config-page__fields-lead"
           >
             该插件未暴露可调参数或未注册 schema。
