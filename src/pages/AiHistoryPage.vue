@@ -1481,28 +1481,27 @@ onMounted(() => {
   <div class="console-hub-page ai-surface ai-history-page">
     <ConsoleHubMasthead :icon="panelNavIcon">
       <template #title>
-        AI 历史
-      </template>
-      <template #lead>
-        按工作区浏览：会话对话、观测反馈、规则维护与统计趋势；选中会话后会自动同步群号到观测与规则筛选。
+        AI 历史与观测
       </template>
       <template #actions>
-        <label class="ai-date-field">
-          <span>月份</span>
-          <input v-model="month" class="inp" type="month">
-        </label>
-        <label class="ai-date-field">
-          <span>起始</span>
-          <input v-model="start" class="inp" type="date">
-        </label>
-        <label class="ai-date-field">
-          <span>结束</span>
-          <input v-model="end" class="inp" type="date">
-        </label>
-        <UiButton variant="primary" :busy="anyBusy" @click="refreshAll">刷新</UiButton>
+        <div class="ai-history-page__date-filters">
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">月份</span>
+            <input v-model="month" class="inp" type="month" aria-label="选择月份">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">起始</span>
+            <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">结束</span>
+            <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
+          </label>
+          <UiButton variant="primary" :busy="anyBusy" @click="refreshAll">刷新数据</UiButton>
+        </div>
       </template>
       <template #extra>
-        <p class="muted ai-history-page__hint">{{ persistenceHint }}</p>
+        <p v-if="persistenceHint" class="muted ai-history-page__hint">{{ persistenceHint }}</p>
       </template>
     </ConsoleHubMasthead>
 
@@ -1567,7 +1566,6 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel ai-history-page__summary-card">
         <div class="ai-head">
           <h3 class="ai-head__title">历史摘要</h3>
-          <span class="ai-head__hint">先看当前时间窗内有多少快照、会话和路径数据</span>
         </div>
         <div class="ai-stat-grid ai-history-page__summary-stats">
           <div
@@ -1586,7 +1584,6 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
           <h3 class="ai-head__title">每日完成任务</h3>
-          <span class="ai-head__hint">成功、失败与热点强度一起看</span>
         </div>
         <AiDailyTrendChart
           :series="[
@@ -1652,8 +1649,7 @@ onMounted(() => {
 
     <UiCard class="ai-history-page__panel">
       <div class="ai-head">
-        <h3 class="ai-head__title">按日趋势</h3>
-        <span class="ai-head__hint">先看提交、回调、成功、失败的日波动</span>
+          <h3 class="ai-head__title">按日趋势</h3>
       </div>
       <AiDailyTrendChart
         :series="[
@@ -1673,7 +1669,6 @@ onMounted(() => {
       <div v-if="historyDailyRows.length" class="ai-history-page__daily-section">
         <div class="ai-head ai-history-page__daily-subhead">
           <h4 class="ai-head__title">最近快照明细</h4>
-          <span class="ai-head__hint">仅保留最近几天，主要用于对照具体数值</span>
         </div>
         <div class="ai-history-page__daily-list">
         <article v-for="row in visibleDailyRows" :key="row.date" class="ai-history-page__daily-card">
@@ -1728,8 +1723,7 @@ onMounted(() => {
 
     <UiCard v-if="failureRows.length" class="ai-history-page__panel ai-history-page__failure-panel">
       <div class="ai-head">
-        <h3 class="ai-head__title">失败分布</h3>
-        <span class="ai-head__hint">当前时间窗内 AI 任务失败原因排行</span>
+          <h3 class="ai-head__title">高频失败原因</h3>
       </div>
       <div class="ai-dist-list">
         <article
@@ -1757,30 +1751,29 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
           <h3 class="ai-head__title">最近会话</h3>
-          <span class="ai-head__hint">按最后消息时间排序</span>
         </div>
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>会话筛选</strong>
             <span class="muted">留空表示不过滤</span>
           </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter">
-              <span>Bot</span>
-              <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <label class="ai-history-page__filter">
-              <span>用户</span>
-              <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-            </label>
-            <div class="ai-history-page__filter-action">
-              <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
-            </div>
+        <div class="ai-history-page__filters ai-history-page__filters--aligned">
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">Bot</span>
+            <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">群号</span>
+            <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">用户</span>
+            <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
+          </label>
+          <div class="ai-history-page__filter-action">
+            <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
           </div>
+        </div>
         </div>
         <div v-if="sessions.length" class="ai-history-page__session-list ai-history-page__session-list--scroll">
           <button
@@ -2034,7 +2027,6 @@ onMounted(() => {
           <section v-if="sessionTurnRows.orphanRuns.length" class="ai-history-page__orphan-behavior">
             <div class="ai-head ai-history-page__orphan-behavior-head">
               <h4 class="ai-head__title">未对齐的 Behavior</h4>
-              <span class="ai-head__hint">无法自动匹配到某条 Bot 回复，仍可在此校正</span>
             </div>
             <article
               v-for="run in sessionTurnRows.orphanRuns"
@@ -2210,7 +2202,6 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
           <h3 class="ai-head__title">对话决策 Kernel</h3>
-          <span class="ai-head__hint">运行态、memory 策略与最近决策 trace</span>
         </div>
         <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
         <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
@@ -2235,7 +2226,6 @@ onMounted(() => {
         <div class="ai-history-page__kernel-trace-block">
           <div class="ai-head ai-history-page__kernel-trace-head">
             <h4 class="ai-head__title">决策 Trace</h4>
-            <span class="ai-head__hint">repeater 机会判定与 conversation_decision_trace</span>
           </div>
           <div v-if="kernelTraces.length" class="ai-history-page__feedback-list ai-history-page__kernel-trace-list">
             <article
@@ -2289,7 +2279,7 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">闲聊反哺接话</h3>
+            <h3 class="ai-history-page__observe-panel-title">对话语料与软反馈</h3>
             <p class="ai-history-page__observe-panel-sub">
               <span v-if="isObservePanelExpanded('feedback')">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
               <span v-else class="muted">{{ feedbackPanelSummary }}</span>
@@ -2394,7 +2384,7 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">写回晋升候选</h3>
+            <h3 class="ai-history-page__observe-panel-title">高质量语料晋升审批</h3>
             <p class="ai-history-page__observe-panel-sub">
               <span v-if="isObservePanelExpanded('promotion')">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
               <span v-else class="muted">{{ promotionPanelSummary }}</span>
@@ -2529,7 +2519,7 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">近期 Behavior 记录</h3>
+            <h3 class="ai-history-page__observe-panel-title">行为模式 (Behavior) 记录</h3>
             <p class="ai-history-page__observe-panel-sub">
               <span v-if="isObservePanelExpanded('behavior')">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
               <span v-else class="muted">{{ behaviorPanelSummary }}</span>
@@ -2787,7 +2777,6 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
           <h3 class="ai-head__title">记忆与知识管理</h3>
-          <span class="ai-head__hint">先提供最小可用浏览面：群内旧事、关系备注、已加载知识源</span>
         </div>
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
@@ -2847,7 +2836,6 @@ onMounted(() => {
 
         <div class="ai-head ai-history-page__kernel-trace-head">
           <h4 class="ai-head__title">群内旧事</h4>
-          <span class="ai-head__hint">teach / ambient 提炼出的短期群记忆</span>
         </div>
         <div v-if="memoryEntries.length" class="ai-history-page__feedback-list">
           <article
@@ -2882,7 +2870,6 @@ onMounted(() => {
 
         <div class="ai-head ai-history-page__kernel-trace-head">
           <h4 class="ai-head__title">关系备注</h4>
-          <span class="ai-head__hint">按 Bot / 群 / 用户维度维护的稳定备注</span>
         </div>
         <div v-if="relationshipNotes.length" class="ai-history-page__feedback-list">
           <article
@@ -2918,7 +2905,6 @@ onMounted(() => {
 
         <div class="ai-head ai-history-page__kernel-trace-head">
           <h4 class="ai-head__title">知识源</h4>
-          <span class="ai-head__hint">已加载到当前 Bot 运行态的知识源声明</span>
         </div>
         <div v-if="knowledgeSources.length" class="ai-history-page__feedback-list">
           <article
@@ -2951,7 +2937,6 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-head">
           <h3 class="ai-head__title">Behavior 规则管理</h3>
-          <span class="ai-head__hint">先做最小可用维护面：筛选、编辑、禁用、删除</span>
         </div>
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
@@ -3225,14 +3210,12 @@ onMounted(() => {
           <div v-if="replayRunReply || replayRunAssistantPreview" class="ai-history-page__replay-block">
             <div class="ai-head ai-history-page__replay-block-head">
               <h4 class="ai-head__title">重放回复</h4>
-              <span class="ai-head__hint">优先展示 replay 返回的 reply，缺省时回退 assistant_message.content</span>
             </div>
             <pre class="ai-history-page__kernel-trace-json ai-history-page__kernel-trace-json--compact">{{ replayRunReply || replayRunAssistantPreview }}</pre>
           </div>
           <div v-if="replayRunTrace" class="ai-history-page__replay-block">
             <div class="ai-head ai-history-page__replay-block-head">
               <h4 class="ai-head__title">Agent Trace 摘要</h4>
-              <span class="ai-head__hint">快速看阶段、工具调用与快照关联</span>
             </div>
             <div v-if="behaviorAgentTraceHighlights(replayRunTrace).length" class="ai-history-page__trace-highlights">
               <span
@@ -3273,8 +3256,130 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-history-page__date-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+<style scoped>
+.ai-history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-history-page__date-filters,
+.ai-history-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.ai-date-field__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ai-date-field .inp {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  min-height: 28px;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.ai-date-field .inp:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ai-history-page__workspace-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  margin-bottom: 24px;
+}
+
+.ai-tab-btn {
+  padding: 8px 16px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-tab-btn:hover {
+  color: var(--text);
+}
+
+.ai-tab-btn.is-active {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
+.ai-history-page__workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-history-page__panel {
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.ai-head__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.ai-head__hint {
+  display: none;
+}
+
+.ai-head__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .ai-history-page__promotion-actions {
   margin-top: 10px;
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -3346,11 +3451,13 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
-  .ai-history-page__promotion-actions > .btn,
-  .ai-history-page__promotion-actions > :deep(.ui-btn),
-  .ai-history-page__trace-actions > button {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 0;
+  .ai-history-page__workspace--stats,
+  .ai-history-page__workspace--sessions {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-history-page__panel {
+    padding: 16px;
   }
 }
 
@@ -4423,6 +4530,16 @@ onMounted(() => {
   .ai-history-page__pattern-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-history-page__date-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ai-date-field {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 </style>
