@@ -191,10 +191,18 @@ export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: strin
   });
 }
 
-export function normalizeBundledReadmeMarkdown(markdown: string): string {
-  return (markdown || "")
+export function normalizeBundledReadmeMarkdown(markdown: string, pluginId?: string): string {
+  let out = (markdown || "")
     .replace(/\.\.\/assets\//g, "/pallas/assets/")
     .replace(/docs\/assets\//g, "/pallas/assets/");
+  const pid = (pluginId || "").trim();
+  if (!pid) return out;
+  const assetPrefix = `/pallas/plugin-assets/${pid}/`;
+  out = out.replace(
+    /(!\[[^\]]*]\(|<img\b[^>]*\bsrc=["'])(?:\.\/)?assets\//gi,
+    `$1${assetPrefix}assets/`,
+  );
+  return out;
 }
 
 export function pluginCoverHue(seed: string): number {

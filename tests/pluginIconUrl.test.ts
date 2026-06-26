@@ -44,12 +44,13 @@ describe("pluginIconUrl", () => {
     ).toBe(false);
   });
 
-  it("prefers official mapped icon over row icon for official plugin rows", () => {
+  it("falls back to official mapped icon when row has no package visual", () => {
     expect(
       resolvePluginIconForRow(
         {
           name: "duel",
-          icon: "/pallas/official-extensions/pallas-plugin-duel.svg",
+          icon: "",
+          cover: "",
           plugin_source: "extra",
           extra_package: "pallas-plugin-duel",
         } as never,
@@ -58,6 +59,24 @@ describe("pluginIconUrl", () => {
         },
       ),
     ).toBe("https://raw.githubusercontent.com/acme/duel/main/assets/brand-avatar.png");
+  });
+
+  it("prefers row package asset over official mapped icon", () => {
+    const packageCover = "/pallas/plugin-assets/duel/assets/cover.png";
+    expect(
+      resolvePluginIconForRow(
+        {
+          name: "duel",
+          icon: packageCover,
+          cover: packageCover,
+          plugin_source: "extra",
+          extra_package: "pallas-plugin-duel",
+        } as never,
+        {
+          duel: "https://raw.githubusercontent.com/acme/duel/main/assets/brand-avatar.png",
+        },
+      ),
+    ).toBe(packageCover);
   });
 
   it("uses the shell brand avatar as the mascot fallback", () => {
@@ -71,11 +90,28 @@ describe("pluginIconUrl", () => {
         {
           name: "help",
           icon: "",
+          cover: "",
           plugin_source: "core",
           extra_package: "",
         } as never,
         {},
       ),
     ).toBe(PALLAS_MASCOT_ICON_URL);
+  });
+
+  it("prefers package asset cover over core mascot fallback", () => {
+    const packageCover = "/pallas/plugin-assets/roulette/assets/cover.png";
+    expect(
+      resolvePluginIconForRow(
+        {
+          name: "roulette",
+          icon: packageCover,
+          cover: packageCover,
+          plugin_source: "core",
+          extra_package: "",
+        } as never,
+        {},
+      ),
+    ).toBe(packageCover);
   });
 });

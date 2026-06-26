@@ -108,4 +108,10 @@ describe("normalizeBundledReadmeMarkdown", () => {
       "/pallas/assets/brand-avatar.png",
     );
   });
+
+  it("rewrites plugin package asset paths when plugin id is provided", () => {
+    expect(
+      normalizeBundledReadmeMarkdown("![cover](assets/cover.png)", "roulette"),
+    ).toBe("![cover](/pallas/plugin-assets/roulette/assets/cover.png)");
+  });
 });

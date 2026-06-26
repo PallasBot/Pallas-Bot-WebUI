@@ -102,17 +102,17 @@ export function buildPluginIconMap(
 }
 
 export function resolvePluginIconForRow(
-  row: Pick<PluginRow, "name" | "icon" | "plugin_source" | "extra_package">,
+  row: Pick<PluginRow, "name" | "icon" | "cover" | "plugin_source" | "extra_package">,
   iconMap: Record<string, string>,
 ): string {
   const id = (row.name || "").trim();
   if (!id) return "";
+  const rowIcon = ((row.cover || row.icon) || "").trim();
+  if (rowIcon) return rowIcon;
   const mappedIcon = (iconMap[id] || "").trim();
   if ((row.extra_package || "").trim() && mappedIcon) {
     return mappedIcon;
   }
-  const rowIcon = (row.icon || "").trim();
-  if (rowIcon) return rowIcon;
   const pluginSource = row.plugin_source;
   if (isPallasBrandedPlugin(id, pluginSource)) {
     return PALLAS_MASCOT_ICON_URL;

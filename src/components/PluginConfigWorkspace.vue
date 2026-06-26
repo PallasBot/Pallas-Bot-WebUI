@@ -558,7 +558,7 @@ async function loadReadme() {
     try {
       const bundled = await fetchPluginBundledReadme(pluginId);
       if (bundled.markdown.trim()) {
-        const normalized = normalizeBundledReadmeMarkdown(bundled.markdown);
+        const normalized = normalizeBundledReadmeMarkdown(bundled.markdown, pluginId);
         readmeHtml.value = readmeMarkdownToSafeHtml(normalized);
         return;
       }

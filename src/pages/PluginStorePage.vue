@@ -497,12 +497,16 @@ function localPluginAuthor(row: PluginRow): string {
   return localPluginSourceDir(row);
 }
 
-function localPluginIconUrl(row: PluginRow): string | null {
+function localPluginIconUrl(row: PluginRow): string {
+  const rowIcon = ((row.cover || row.icon) || "").trim();
+  if (rowIcon) return rowIcon;
   const community = localCommunityMatch(row);
-  return community ? communityRowIconUrl(community) || null : null;
+  return community ? communityRowIconUrl(community) : "";
 }
 
 function localPluginAvatarUrl(row: PluginRow): string | null {
+  const rowAvatar = (row.avatar || "").trim();
+  if (rowAvatar) return rowAvatar;
   const community = localCommunityMatch(row);
   return community ? communityRowAvatarUrl(community) : null;
 }
