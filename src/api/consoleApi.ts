@@ -384,6 +384,14 @@ export interface PluginBundledReadmeResult {
   source: "bundled";
 }
 
+export interface PluginStoreChangelogResult {
+  kind: "official" | "community";
+  id: string;
+  markdown: string;
+  /** changelog = 仓库 CHANGELOG.md；git = 由本地提交历史自动生成。 */
+  source: "changelog" | "git";
+}
+
 export async function fetchPluginBundledReadme(pluginName: string): Promise<PluginBundledReadmeResult> {
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/readme"]["get"]
@@ -435,6 +443,24 @@ export async function fetchPluginStoreReadme(
   }
   if (apiError) throw apiError;
   throw new Error("README 不可用");
+}
+
+export async function fetchPluginStoreChangelog(
+  kind: "official" | "community",
+  id: string,
+  options?: { repositoryUrl?: string | null },
+): Promise<PluginStoreChangelogResult> {
+  const repositoryUrl = (options?.repositoryUrl || "").trim();
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/store/changelog"]["get"]>(
+    "/plugins/store/changelog",
+    {
+      params: {
+        kind,
+        id,
+        ...(repositoryUrl ? { repository_url: repositoryUrl } : {}),
+      },
+    },
+  )) as PluginStoreChangelogResult;
 }
 
 const COMMUNITY_INSTALL_TIMEOUT_MS = 320_000;

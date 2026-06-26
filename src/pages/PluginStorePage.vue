@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
+  fetchPluginStoreChangelog,
   fetchPluginStoreReadme,
   fetchPlugins,
   installCommunityPluginAsync,
@@ -184,11 +185,19 @@ const activeTab = ref<StoreTab>("all");
 const officialActionState = ref<Record<string, OfficialExtensionInstallResult>>({});
 const communityActionState = ref<Record<string, CommunityPluginActionResult>>({});
 
+type DetailTab = "readme" | "changelog";
+
 const detailOpen = ref(false);
 const detailTarget = ref<StoreDetail | null>(null);
+const detailTab = ref<DetailTab>("readme");
 const detailReadmeHtml = ref("");
 const detailReadmeLoading = ref(false);
 const detailReadmeErr = ref("");
+const detailChangelogHtml = ref("");
+const detailChangelogLoading = ref(false);
+const detailChangelogErr = ref("");
+const detailChangelogSource = ref<"changelog" | "git" | "">("");
+const detailChangelogLoaded = ref(false);
 
 const gitInstallOpen = ref(false);
 const gitPluginId = ref("");
@@ -1030,11 +1039,50 @@ function handleCommunityMenu(row: CommunityPluginRow, actionId: string) {
 function closeDetail() {
   detailOpen.value = false;
   detailTarget.value = null;
+  detailTab.value = "readme";
   detailReadmeHtml.value = "";
   detailReadmeErr.value = "";
+  detailChangelogHtml.value = "";
+  detailChangelogErr.value = "";
+  detailChangelogSource.value = "";
+  detailChangelogLoaded.value = false;
+}
+
+async function loadDetailChangelog() {
+  const target = detailTarget.value;
+  if (!target || detailChangelogLoaded.value || detailChangelogLoading.value) return;
+  detailChangelogLoaded.value = true;
+  detailChangelogLoading.value = true;
+  detailChangelogHtml.value = "";
+  detailChangelogErr.value = "";
+  detailChangelogSource.value = "";
+  const repositoryUrl = target.repositoryUrl;
+  try {
+    const data = await fetchPluginStoreChangelog(target.kind, target.id, { repositoryUrl });
+    const markdown = (data.markdown || "").trim();
+    if (markdown) {
+      detailChangelogHtml.value = readmeMarkdownToSafeHtml(data.markdown, repositoryUrl);
+      detailChangelogSource.value = data.source;
+    }
+  } catch (e) {
+    detailChangelogLoaded.value = false;
+    detailChangelogErr.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    detailChangelogLoading.value = false;
+  }
+}
+
+function selectDetailTab(tab: DetailTab) {
+  detailTab.value = tab;
+  if (tab === "changelog") void loadDetailChangelog();
 }
 
 async function loadDetailReadme(repositoryUrl: string | null) {
+  detailTab.value = "readme";
+  detailChangelogHtml.value = "";
+  detailChangelogErr.value = "";
+  detailChangelogSource.value = "";
+  detailChangelogLoaded.value = false;
   detailReadmeLoading.value = true;
   detailReadmeHtml.value = "";
   detailReadmeErr.value = "";
@@ -1589,31 +1637,94 @@ onDeactivated(() => {
       </template>
       <template v-if="detailTarget">
         <div
-          v-if="detailReadmeLoading"
-          class="plugin-store-page__detail-skeleton"
+          class="plugin-store-page__detail-tabs console-view-toggle"
+          role="tablist"
+          aria-label="详情分栏"
         >
-          <div class="plugin-store-page__detail-skel-line" />
-          <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--short" />
-          <div class="plugin-store-page__detail-skel-line" />
-          <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--medium" />
+          <button
+            type="button"
+            role="tab"
+            :class="{ 'is-on': detailTab === 'readme' }"
+            :aria-selected="detailTab === 'readme'"
+            @click="selectDetailTab('readme')"
+          >
+            README
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :class="{ 'is-on': detailTab === 'changelog' }"
+            :aria-selected="detailTab === 'changelog'"
+            @click="selectDetailTab('changelog')"
+          >
+            更新日志
+          </button>
         </div>
-        <p
-          v-else-if="detailReadmeErr"
-          class="muted plugin-store-page__detail-fallback"
-        >
-          {{ detailReadmeErr }}
-        </p>
-        <div
-          v-else-if="detailReadmeHtml"
-          class="plugin-store-page__readme markdown-body"
-          v-html="detailReadmeHtml"
-        />
-        <p
-          v-else
-          class="muted plugin-store-page__detail-fallback"
-        >
-          暂无 README 内容
-        </p>
+
+        <template v-if="detailTab === 'readme'">
+          <div
+            v-if="detailReadmeLoading"
+            class="plugin-store-page__detail-skeleton"
+          >
+            <div class="plugin-store-page__detail-skel-line" />
+            <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--short" />
+            <div class="plugin-store-page__detail-skel-line" />
+            <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--medium" />
+          </div>
+          <p
+            v-else-if="detailReadmeErr"
+            class="muted plugin-store-page__detail-fallback"
+          >
+            {{ detailReadmeErr }}
+          </p>
+          <div
+            v-else-if="detailReadmeHtml"
+            class="plugin-store-page__readme markdown-body"
+            v-html="detailReadmeHtml"
+          />
+          <p
+            v-else
+            class="muted plugin-store-page__detail-fallback"
+          >
+            暂无 README 内容
+          </p>
+        </template>
+
+        <template v-else>
+          <div
+            v-if="detailChangelogLoading"
+            class="plugin-store-page__detail-skeleton"
+          >
+            <div class="plugin-store-page__detail-skel-line" />
+            <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--short" />
+            <div class="plugin-store-page__detail-skel-line" />
+            <div class="plugin-store-page__detail-skel-line plugin-store-page__detail-skel-line--medium" />
+          </div>
+          <p
+            v-else-if="detailChangelogErr"
+            class="muted plugin-store-page__detail-fallback"
+          >
+            {{ detailChangelogErr }}
+          </p>
+          <template v-else-if="detailChangelogHtml">
+            <p
+              v-if="detailChangelogSource === 'git'"
+              class="muted plugin-store-page__changelog-note"
+            >
+              该插件未提供 CHANGELOG.md，以下为根据 git 提交历史自动生成。
+            </p>
+            <div
+              class="plugin-store-page__readme markdown-body"
+              v-html="detailChangelogHtml"
+            />
+          </template>
+          <p
+            v-else
+            class="muted plugin-store-page__detail-fallback"
+          >
+            暂无更新日志
+          </p>
+        </template>
       </template>
       <template
         v-if="detailTarget"
@@ -1794,6 +1905,21 @@ onDeactivated(() => {
 </template>
 
 <style scoped>
+.plugin-store-page__detail-tabs {
+  margin-bottom: 14px;
+}
+.plugin-store-page__changelog-note {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .plugin-store-page__detail-tabs {
+    width: 100%;
+  }
+  .plugin-store-page__detail-tabs button {
+    flex: 1 1 0;
+  }
+}
 .plugin-store-page__action-hint {
   display: flex;
   flex-wrap: wrap;

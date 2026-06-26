@@ -330,6 +330,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/plugins/store/readme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugins Store Readme */
+        get: operations["_plugins_store_readme_pallas_api_plugins_store_readme_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/plugins/store/changelog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plugins Store Changelog */
+        get: operations["_plugins_store_changelog_pallas_api_plugins_store_changelog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/plugins/{plugin_name}/readme": {
         parameters: {
             query?: never;
@@ -549,23 +583,6 @@ export interface paths {
          * @description 手动比对全部插件版本，刷新「有无新版本」快照。
          */
         post: operations["_plugins_update_snapshot_refresh_pallas_api_plugins_update_snapshot_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pallas/api/plugins/store/readme": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Plugins Store Readme */
-        get: operations["_plugins_store_readme_pallas_api_plugins_store_readme_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4007,6 +4024,84 @@ export interface operations {
             };
         };
     };
+    _plugins_store_readme_pallas_api_plugins_store_readme_get: {
+        parameters: {
+            query: {
+                /** @description official 或 community */
+                kind: string;
+                /** @description 官方包名或社区 plugin_id */
+                id: string;
+                /** @description 仓库地址，缓存未命中时按需拉取 README */
+                repository_url?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _plugins_store_changelog_pallas_api_plugins_store_changelog_get: {
+        parameters: {
+            query: {
+                /** @description official 或 community */
+                kind: string;
+                /** @description 官方包名或社区 plugin_id */
+                id: string;
+                /** @description 仓库地址，缓存未命中时按需拉取 CHANGELOG.md */
+                repository_url?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _plugin_bundled_readme_pallas_api_plugins__plugin_name__readme_get: {
         parameters: {
             query?: {
@@ -4473,43 +4568,6 @@ export interface operations {
     _plugins_update_snapshot_refresh_pallas_api_plugins_update_snapshot_refresh_post: {
         parameters: {
             query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _plugins_store_readme_pallas_api_plugins_store_readme_get: {
-        parameters: {
-            query: {
-                /** @description official 或 community */
-                kind: string;
-                /** @description 官方包名或社区 plugin_id */
-                id: string;
                 token?: string | null;
             };
             header?: {
