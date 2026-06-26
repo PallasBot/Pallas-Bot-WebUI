@@ -10,6 +10,7 @@ import {
   fetchFriendList,
   fetchGroupList,
   fetchHomeOverview,
+  peekHomeOverviewCache,
   fetchInstances,
   fetchCommunityStats,
   fetchMessageStats,
@@ -122,8 +123,8 @@ const statsScoped = ref<MessageStatsData | null>(null);
 const pluginRunStats = ref<PluginRunStatsData | null>(initialHomeSnapshot?.pluginRunStats ?? null);
 const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
 const consoleDailyStatsScoped = ref<ConsoleDailyStatsData | null>(null);
-const botCount = ref(0);
-const bots = ref<BotRow[]>([]);
+const botCount = ref(initialHomeSnapshot?.bots?.length ?? 0);
+const bots = ref<BotRow[]>(initialHomeSnapshot?.bots ?? []);
 {
   const warmBots = peekBotsCache();
   if (warmBots?.length) {
@@ -131,7 +132,7 @@ const bots = ref<BotRow[]>([]);
     botCount.value = warmBots.length;
   }
 }
-const instances = ref<InstancesData | null>(null);
+const instances = ref<InstancesData | null>(initialHomeSnapshot?.instances ?? null);
 {
   const warmInst = peekInstancesCache();
   if (warmInst) instances.value = warmInst;
@@ -146,10 +147,13 @@ const accountDetailBusy = ref(false);
 /** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
 const pageReady = ref(
   Boolean(peekInstancesCache() && (peekBotsCache()?.length ?? 0) > 0) ||
+    Boolean(peekHomeOverviewCache()) ||
     snapshotCanPrimeHomeShell(initialHomeSnapshot),
 );
-/** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
+/** 概况接口（健康/系统/实例等）拉取中；仅首屏无缓存时用于骨架屏 */
 const overviewBusy = ref(false);
+/** 手动刷新概况时仅转圈，不遮挡已展示内容 */
+const overviewRefreshing = ref(false);
 /** 首屏次要接口（统计/社区/分片等）拉取中 */
 const homeDeferredBusy = ref(false);
 
@@ -945,10 +949,47 @@ function stopHomeConnDurationTick() {
 function flushHomeOverviewSnapshot() {
   persistHomeOverviewSnapshot({
     system: system.value,
+    bots: bots.value,
+    instances: instances.value,
     stats: stats.value,
     pluginRunStats: pluginRunStats.value,
     communityStats: communityStats.value,
   });
+}
+
+function applyOverviewBundle(overview: Awaited<ReturnType<typeof fetchHomeOverview>>) {
+  if (overview.health) {
+    health.value = overview.health;
+    patchConsoleMeta(overview.health);
+  }
+  if (overview.system) system.value = overview.system;
+  if (overview.bots.length) {
+    bots.value = overview.bots;
+    botCount.value = overview.bots.length;
+  }
+  if (overview.instances) instances.value = overview.instances;
+  if (overview.plugins.length) pluginsList.value = overview.plugins;
+  if (overview.message_stats) stats.value = overview.message_stats;
+  if (overview.plugin_run_stats) pluginRunStats.value = overview.plugin_run_stats;
+  if (overview.community_stats) communityStats.value = overview.community_stats;
+}
+
+async function refreshOverviewInBackground(force: boolean) {
+  try {
+    const overview = await fetchHomeOverview(force ? { bypassCache: true } : undefined);
+    applyOverviewBundle(overview);
+    applyWarmCatalogFallback();
+    ensureSelectedAccount();
+    flushHomeOverviewSnapshot();
+    void loadHomeDeferred(force);
+  } catch (e) {
+    if (!pageReady.value) {
+      err.value = e instanceof Error ? e.message : String(e);
+    }
+  } finally {
+    overviewRefreshing.value = false;
+    overviewBusy.value = false;
+  }
 }
 
 function applyWarmCatalogFallback() {
@@ -1003,22 +1044,42 @@ type LoadOptions = {
 
 async function load(opts?: LoadOptions) {
   const refreshMeta = opts?.refreshMeta ?? false;
-  if (overviewBusy.value) return;
+  const shellVisible = pageReady.value;
+
+  if (overviewBusy.value || (overviewRefreshing.value && refreshMeta)) return;
+
   err.value = "";
-  overviewBusy.value = true;
+
+  if (!shellVisible) {
+    overviewBusy.value = true;
+  } else if (refreshMeta) {
+    overviewRefreshing.value = true;
+  }
+
+  if (shellVisible) {
+    void refreshOverviewInBackground(refreshMeta);
+    if (refreshMeta) {
+      const accBefore = selectedAccount.value;
+      ensureSelectedAccount();
+      if (accBefore === selectedAccount.value) {
+        void refreshSelectedBotDetails();
+      }
+    }
+    return;
+  }
+
   try {
     let overviewErr: Error | null = null;
     let overview: Awaited<ReturnType<typeof fetchHomeOverview>> | null = null;
     try {
-      overview = await fetchHomeOverview(refreshMeta ? { bypassCache: true } : undefined);
+      overview = await fetchHomeOverview();
     } catch (e) {
       overviewErr = e instanceof Error ? e : new Error(String(e));
     }
 
-    if (overview?.health) {
-      health.value = overview.health;
-      patchConsoleMeta(overview.health);
-    } else if (consoleMetaHealth.value) {
+    if (overview) {
+      applyOverviewBundle(overview);
+    } else if (!health.value && consoleMetaHealth.value) {
       health.value = consoleMetaHealth.value;
       patchConsoleMeta(health.value);
     } else if (!overview && !consoleMetaHealth.value) {
@@ -1029,19 +1090,6 @@ async function load(opts?: LoadOptions) {
       } catch {
         /* health 单独失败不阻断其余切片 */
       }
-    }
-
-    if (overview) {
-      if (overview.system) system.value = overview.system;
-      if (overview.bots.length) {
-        bots.value = overview.bots;
-        botCount.value = overview.bots.length;
-      }
-      if (overview.instances) instances.value = overview.instances;
-      if (overview.plugins.length) pluginsList.value = overview.plugins;
-      if (overview.message_stats) stats.value = overview.message_stats;
-      if (overview.plugin_run_stats) pluginRunStats.value = overview.plugin_run_stats;
-      if (overview.community_stats) communityStats.value = overview.community_stats;
     }
 
     applyWarmCatalogFallback();
@@ -1060,17 +1108,9 @@ async function load(opts?: LoadOptions) {
     flushHomeOverviewSnapshot();
 
     if (accBefore === accAfter) {
-      if (refreshMeta) {
-        void refreshSelectedBotDetails();
-      } else {
-        void refreshSelectedBotDetails({ deferSocial: true });
-      }
+      void refreshSelectedBotDetails({ deferSocial: true });
     }
-    if (refreshMeta) {
-      await loadHomeDeferred(true);
-    } else {
-      void loadHomeDeferred(false);
-    }
+    void loadHomeDeferred(false);
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
     pageReady.value = true;
@@ -1209,8 +1249,8 @@ onUnmounted(() => {
     <ConsolePageSkeleton v-if="!pageReady" :panels="3" />
 
     <Transition name="home-shell-fade">
-      <div v-if="pageReady" class="home-body" :class="{ 'home-body--syncing': overviewBusy }">
-        <p v-if="overviewBusy" class="home-sync" role="status">正在同步概况…</p>
+      <div v-if="pageReady" class="home-body">
+        <p v-if="overviewBusy" class="home-sync" role="status">正在加载概况…</p>
 
         <!-- ═══ KPI Bar（GsHub 风格） ═══ -->
         <div class="home-kpi-head">
@@ -1324,7 +1364,7 @@ onUnmounted(() => {
               <div class="home-acct__hd-actions">
                 <span v-if="selectedAccount != null && selectedConnected" class="home-acct__conn home-acct__conn--on"><span class="home-acct__conn-dot" aria-hidden="true" />已连接</span>
                 <span v-else-if="selectedAccount != null" class="home-acct__conn home-acct__conn--off">未连接</span>
-                <RefreshIconButton :show-label="false" :busy="overviewBusy" label="刷新概况" @click="() => load({ refreshMeta: true })" />
+                <RefreshIconButton :show-label="false" :busy="overviewRefreshing" label="刷新概况" @click="() => load({ refreshMeta: true })" />
               </div>
             </div>
             <div class="home-card__bd home-acct__bd" v-if="selectedAccount != null">

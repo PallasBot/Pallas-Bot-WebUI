@@ -59,6 +59,38 @@ function setGlassBlur(v: number) {
 function setCardGlassOpacity(v: number) {
   setConsolePrefs({ cardGlassOpacity: Math.min(0.72, Math.max(0.12, v)) });
 }
+
+const glassBlurDraft = ref(consolePrefs.glassBlur);
+const cardGlassOpacityDraft = ref(consolePrefs.cardGlassOpacity);
+
+watch(
+  () => consolePrefs.glassBlur,
+  (v) => {
+    glassBlurDraft.value = v;
+  },
+);
+watch(
+  () => consolePrefs.cardGlassOpacity,
+  (v) => {
+    cardGlassOpacityDraft.value = v;
+  },
+);
+
+function onGlassBlurInput(v: number) {
+  glassBlurDraft.value = Math.min(40, Math.max(8, Math.round(v)));
+}
+
+function onGlassBlurCommit() {
+  setGlassBlur(glassBlurDraft.value);
+}
+
+function onCardGlassOpacityInput(v: number) {
+  cardGlassOpacityDraft.value = Math.min(0.72, Math.max(0.12, v));
+}
+
+function onCardGlassOpacityCommit() {
+  setCardGlassOpacity(cardGlassOpacityDraft.value);
+}
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
 }
@@ -235,17 +267,22 @@ async function loadSetupStatus(force = false) {
         title="模糊强度"
         lead="调节背景模糊半径；数值越大越朦胧，饱和度会随强度略增。"
       >
-        <PrefsGlassPreview label="拖动滑块查看模糊变化" />
+        <PrefsGlassPreview
+          label="拖动滑块查看模糊变化"
+          :blur="glassBlurDraft"
+          :opacity="cardGlassOpacityDraft"
+        />
         <div class="prefs-form-field prefs-form-field--range">
-          <label class="prefs-form-field__label">模糊半径 {{ consolePrefs.glassBlur }}px</label>
+          <label class="prefs-form-field__label">模糊半径 {{ glassBlurDraft }}px</label>
           <input
             class="inp"
             type="range"
             min="8"
             max="40"
             step="1"
-            :value="consolePrefs.glassBlur"
-            @input="setGlassBlur(Number(($event.target as HTMLInputElement).value))"
+            :value="glassBlurDraft"
+            @input="onGlassBlurInput(Number(($event.target as HTMLInputElement).value))"
+            @change="onGlassBlurCommit"
           >
         </div>
       </PrefsSettingCard>
@@ -256,17 +293,22 @@ async function loadSetupStatus(force = false) {
         title="卡片不透明度"
         lead="调节毛玻璃面板底色浓度；数值越低越透、模糊越明显。"
       >
-        <PrefsGlassPreview label="拖动滑块查看透明度变化" />
+        <PrefsGlassPreview
+          label="拖动滑块查看透明度变化"
+          :blur="glassBlurDraft"
+          :opacity="cardGlassOpacityDraft"
+        />
         <div class="prefs-form-field prefs-form-field--range">
-          <label class="prefs-form-field__label">不透明度 {{ Math.round(consolePrefs.cardGlassOpacity * 100) }}%</label>
+          <label class="prefs-form-field__label">不透明度 {{ Math.round(cardGlassOpacityDraft * 100) }}%</label>
           <input
             class="inp"
             type="range"
             min="12"
             max="72"
             step="1"
-            :value="Math.round(consolePrefs.cardGlassOpacity * 100)"
-            @input="setCardGlassOpacity(Number(($event.target as HTMLInputElement).value) / 100)"
+            :value="Math.round(cardGlassOpacityDraft * 100)"
+            @input="onCardGlassOpacityInput(Number(($event.target as HTMLInputElement).value) / 100)"
+            @change="onCardGlassOpacityCommit"
           >
         </div>
       </PrefsSettingCard>

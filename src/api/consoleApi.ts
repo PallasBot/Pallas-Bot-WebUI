@@ -1669,7 +1669,61 @@ async function readPluginRunStatsCached<T extends PluginRunStatsData | LogErrors
   return (await inflight) as T;
 }
 
+let homeOverviewCache: { data: HomeOverviewData; ts: number } | null = null;
 let homeOverviewInflight: Promise<HomeOverviewData> | null = null;
+const HOME_OVERVIEW_FRESH_MS = 5_000;
+const HOME_OVERVIEW_STALE_MS = 45_000;
+
+function storeHomeOverviewCache(data: HomeOverviewData): void {
+  homeOverviewCache = { data, ts: Date.now() };
+  seedCachesFromHomeOverview(data);
+}
+
+async function fetchHomeOverviewFromNetwork(bypass = false): Promise<HomeOverviewData> {
+  const { data } = await http.get<{ ok: boolean; data: HomeOverviewData }>("/home/overview", {
+    ...(bypass ? { params: { _ts: Date.now() } } : {}),
+  });
+  if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
+  storeHomeOverviewCache(data.data);
+  return data.data;
+}
+
+/** 同步读取上次成功的首页聚合快照（供首屏或静默刷新） */
+export function peekHomeOverviewCache(): HomeOverviewData | null {
+  return homeOverviewCache?.data ?? null;
+}
+
+export async function fetchHomeOverview(opts?: { bypassCache?: boolean }): Promise<HomeOverviewData> {
+  const bypass = Boolean(opts?.bypassCache);
+  const now = Date.now();
+
+  if (!bypass && homeOverviewCache && now - homeOverviewCache.ts < HOME_OVERVIEW_FRESH_MS) {
+    return homeOverviewCache.data;
+  }
+
+  if (!bypass && homeOverviewCache && now - homeOverviewCache.ts < HOME_OVERVIEW_STALE_MS) {
+    const snap = homeOverviewCache.data;
+    if (!homeOverviewInflight) {
+      homeOverviewInflight = fetchHomeOverviewFromNetwork()
+        .finally(() => {
+          homeOverviewInflight = null;
+        });
+    }
+    return snap;
+  }
+
+  if (bypass) {
+    return fetchHomeOverviewFromNetwork(true);
+  }
+
+  if (!homeOverviewInflight) {
+    homeOverviewInflight = fetchHomeOverviewFromNetwork()
+      .finally(() => {
+        homeOverviewInflight = null;
+      });
+  }
+  return homeOverviewInflight;
+}
 
 function seedCachesFromHomeOverview(data: HomeOverviewData): void {
   if (data.instances) touchInstancesCache(data.instances);
@@ -1690,29 +1744,6 @@ function seedCachesFromHomeOverview(data: HomeOverviewData): void {
   if (data.community_stats) {
     communityStatsCache = { data: data.community_stats, ts: Date.now() };
   }
-}
-
-export async function fetchHomeOverview(opts?: { bypassCache?: boolean }): Promise<HomeOverviewData> {
-  const bypass = Boolean(opts?.bypassCache);
-  if (bypass) {
-    const { data } = await http.get<{ ok: boolean; data: HomeOverviewData }>("/home/overview", {
-      params: { _ts: Date.now() },
-    });
-    if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
-    seedCachesFromHomeOverview(data.data);
-    return data.data;
-  }
-  if (!homeOverviewInflight) {
-    homeOverviewInflight = (async () => {
-      const { data } = await http.get<{ ok: boolean; data: HomeOverviewData }>("/home/overview");
-      if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
-      seedCachesFromHomeOverview(data.data);
-      return data.data;
-    })().finally(() => {
-      homeOverviewInflight = null;
-    });
-  }
-  return homeOverviewInflight;
 }
 
 const CONSOLE_DAILY_STATS_FRESH_MS = 3_500;

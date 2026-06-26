@@ -19,18 +19,23 @@ describe("homeOverviewSnapshot", () => {
   it("round-trips snapshot fields", () => {
     persistHomeOverviewSnapshot({
       system: systemStub,
+      bots: [{ self_id: "1" }],
+      instances: { nonebot_bots: [] },
       stats: null,
       pluginRunStats: null,
       communityStats: null,
     });
     const stale = readHomeOverviewSnapshotStale();
     expect(stale?.system).toEqual(systemStub);
+    expect(stale?.bots).toEqual([{ self_id: "1" }]);
     expect(readHomeOverviewSnapshotFresh()?.system).toEqual(systemStub);
   });
 
   it("applyHomeOverviewSnapshot only fills present slices", () => {
     const target = {
       system: null,
+      bots: [],
+      instances: null,
       stats: null,
       pluginRunStats: null,
       communityStats: null,
@@ -39,6 +44,8 @@ describe("homeOverviewSnapshot", () => {
       {
         savedAt: Date.now(),
         system: systemStub,
+        bots: [],
+        instances: null,
         stats: null,
         pluginRunStats: null,
         communityStats: null,
@@ -55,6 +62,8 @@ describe("homeOverviewSnapshot", () => {
       JSON.stringify({
         savedAt: Date.now() - HOME_OVERVIEW_SNAPSHOT_STALE_MS - 1,
         system: systemStub,
+        bots: [],
+        instances: null,
         stats: null,
         pluginRunStats: null,
         communityStats: null,
@@ -63,12 +72,25 @@ describe("homeOverviewSnapshot", () => {
     expect(readHomeOverviewSnapshotStale()).toBeNull();
   });
 
-  it("snapshotCanPrimeHomeShell requires system slice", () => {
+  it("snapshotCanPrimeHomeShell accepts system or catalog shell", () => {
     expect(snapshotCanPrimeHomeShell(null)).toBe(false);
     expect(
       snapshotCanPrimeHomeShell({
         savedAt: Date.now(),
         system: systemStub,
+        bots: [],
+        instances: null,
+        stats: null,
+        pluginRunStats: null,
+        communityStats: null,
+      }),
+    ).toBe(true);
+    expect(
+      snapshotCanPrimeHomeShell({
+        savedAt: Date.now(),
+        system: null,
+        bots: [{ self_id: "1" }],
+        instances: { nonebot_bots: [] },
         stats: null,
         pluginRunStats: null,
         communityStats: null,

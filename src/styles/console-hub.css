@@ -1443,6 +1443,7 @@ html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__middle .sel
   margin-bottom: 14px;
   border-radius: var(--radius-sm);
   overflow: hidden;
+  contain: layout style paint;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 

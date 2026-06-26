@@ -15604,11 +15604,6 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   gap: 24px;
 }
 
-.home-body--syncing {
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
-}
-
 .home-sync {
   text-align: center;
   margin: 0;

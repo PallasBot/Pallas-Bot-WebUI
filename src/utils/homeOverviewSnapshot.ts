@@ -2,7 +2,9 @@
  * 首页概况 session 快照：冷启动先展示上次数据，网络返回后再刷新（stale-while-revalidate）。
  */
 import type {
+  BotRow,
   CommunityStatsData,
+  InstancesData,
   MessageStatsData,
   PluginRunStatsData,
   SystemData,
@@ -17,6 +19,8 @@ export const HOME_OVERVIEW_SNAPSHOT_STALE_MS = 30 * 60_000;
 export type HomeOverviewSnapshot = {
   savedAt: number;
   system: SystemData | null;
+  bots: BotRow[];
+  instances: InstancesData | null;
   stats: MessageStatsData | null;
   pluginRunStats: PluginRunStatsData | null;
   communityStats: CommunityStatsData | null;
@@ -24,6 +28,8 @@ export type HomeOverviewSnapshot = {
 
 export type HomeOverviewSnapshotFields = {
   system: SystemData | null;
+  bots: BotRow[];
+  instances: InstancesData | null;
   stats: MessageStatsData | null;
   pluginRunStats: PluginRunStatsData | null;
   communityStats: CommunityStatsData | null;
@@ -60,6 +66,8 @@ export function applyHomeOverviewSnapshot(
   target: HomeOverviewSnapshotFields,
 ): void {
   if (snap.system) target.system = snap.system;
+  if (snap.bots?.length) target.bots = snap.bots;
+  if (snap.instances) target.instances = snap.instances;
   if (snap.stats) target.stats = snap.stats;
   if (snap.pluginRunStats) target.pluginRunStats = snap.pluginRunStats;
   if (snap.communityStats) target.communityStats = snap.communityStats;
@@ -70,6 +78,8 @@ export function persistHomeOverviewSnapshot(fields: HomeOverviewSnapshotFields):
   const snap: HomeOverviewSnapshot = {
     savedAt: Date.now(),
     system: fields.system,
+    bots: fields.bots,
+    instances: fields.instances,
     stats: fields.stats,
     pluginRunStats: fields.pluginRunStats,
     communityStats: fields.communityStats,
@@ -82,5 +92,7 @@ export function persistHomeOverviewSnapshot(fields: HomeOverviewSnapshotFields):
 }
 
 export function snapshotCanPrimeHomeShell(snap: HomeOverviewSnapshot | null): boolean {
-  return Boolean(snap?.system);
+  if (!snap) return false;
+  if (snap.system) return true;
+  return Boolean(snap.bots?.length && snap.instances);
 }
