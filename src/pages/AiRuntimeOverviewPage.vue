@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
@@ -70,156 +71,82 @@ onMounted(() => {
   <div class="console-hub-page ai-surface ai-runtime-page">
     <ConsoleHubMasthead :icon="panelNavIcon">
       <template #title>
-        Runtime 总览
+        Runtime 诊断中心
       </template>
       <template #lead>
-        一屏查看 LLM、绘图、点歌与媒体任务的 health、队列、降级与熔断；维护者可在 30 秒内判断全局是否可用。
+        全方位监控大模型及多媒体任务的运行状态。您可以在此快速排查降级、熔断与队列堆积问题，确认全局可用性。
       </template>
       <template #actions>
-        <UiButton variant="primary" :busy="loading" @click="refresh">
-          刷新
-        </UiButton>
         <RouterLink to="/ai/wizard">
-          <UiButton variant="ghost">体检向导</UiButton>
-        </RouterLink>
-        <RouterLink to="/ai/statistics">
-          <UiButton variant="ghost">调用统计</UiButton>
+          <UiButton variant="outline">体检向导</UiButton>
         </RouterLink>
         <RouterLink to="/ai/home">
-          <UiButton variant="ghost">AI 首页</UiButton>
+          <UiButton variant="outline">返回首页</UiButton>
         </RouterLink>
+        <UiButton variant="primary" :busy="loading" @click="refresh">
+          刷新数据
+        </UiButton>
       </template>
     </ConsoleHubMasthead>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
 
+    <!-- 顶部数据卡片 -->
+    <div class="ai-runtime-page__top-metrics">
+      <div class="ai-runtime-page__metric-card">
+        <span class="ai-runtime-page__metric-label">排队中请求</span>
+        <strong class="ai-runtime-page__metric-value">{{ llmRuntimeSummary.queued }}</strong>
+      </div>
+      <div class="ai-runtime-page__metric-card">
+        <span class="ai-runtime-page__metric-label">处理中请求</span>
+        <strong class="ai-runtime-page__metric-value">{{ llmRuntimeSummary.running }}</strong>
+      </div>
+      <div class="ai-runtime-page__metric-card">
+        <span class="ai-runtime-page__metric-label">最近失败数</span>
+        <strong
+          class="ai-runtime-page__metric-value"
+          :class="{ 'text-danger': llmRuntimeSummary.failed > 0 }"
+        >
+          {{ llmRuntimeSummary.failed }}
+        </strong>
+      </div>
+    </div>
+
+    <!-- 运行状态横幅 -->
     <UiCard class="ai-runtime-page__hero">
       <div class="ai-runtime-page__hero-head">
-        <div>
+        <div class="ai-runtime-page__hero-main">
           <div class="ai-runtime-page__hero-state">
             <span
               class="ai-dot"
               :class="headline.ok && headline.title === '全局运行正常' ? dotClass('healthy') : dotClass('degraded')"
             />
-            <strong>{{ headline.title }}</strong>
+            <strong class="ai-runtime-page__hero-title">{{ headline.title }}</strong>
           </div>
           <p class="muted ai-runtime-page__hero-detail">{{ headline.detail }}</p>
           <p
             v-if="submitGate && submitGate.allowed === false"
             class="alert alert--warn ai-runtime-page__gate-hint"
           >
-            当前拒接新 LLM 请求：{{ submitGate.status || "unknown" }}
+            当前拒接新 LLM 请求：{{ submitGate.status || "未知原因" }}
           </p>
           <p v-if="runtimeOverview?.health?.url" class="muted ai-runtime-page__hero-url">
-            探活 {{ runtimeOverview.health.url }}
-            <template v-if="runtimeOverview.health.status_code != null">
+            <span>服务节点：{{ runtimeOverview.health.url }}</span>
+            <span v-if="runtimeOverview.health.status_code != null" class="ai-runtime-page__hero-code">
               · HTTP {{ runtimeOverview.health.status_code }}
-            </template>
+            </span>
           </p>
         </div>
-        <div class="ai-runtime-page__hero-stats">
-          <div class="ai-stat ai-runtime-page__hero-stat">
-            <span class="ai-stat__label">LLM 排队</span>
-            <strong class="ai-stat__value">{{ llmRuntimeSummary.queued }}</strong>
-          </div>
-          <div class="ai-stat ai-runtime-page__hero-stat">
-            <span class="ai-stat__label">LLM 执行中</span>
-            <strong class="ai-stat__value">{{ llmRuntimeSummary.running }}</strong>
-          </div>
-          <div class="ai-stat ai-runtime-page__hero-stat">
-            <span class="ai-stat__label">LLM 失败</span>
-            <strong
-              class="ai-stat__value"
-              :class="{ 'ai-stat__value--danger': llmRuntimeSummary.failed > 0 }"
-            >
-              {{ llmRuntimeSummary.failed }}
-            </strong>
-          </div>
-        </div>
-      </div>
-    </UiCard>
-
-    <UiCard class="ai-runtime-page__table-card">
-      <div class="ai-head">
-        <h3 class="ai-head__title">运行时分项</h3>
-        <span class="ai-head__hint">数据来自 runtime-overview / AI /health</span>
-      </div>
-      <div v-if="rows.length" class="ai-runtime-page__table-wrap">
-        <table class="ai-runtime-page__table">
-          <thead>
-            <tr>
-              <th>能力</th>
-              <th>Health</th>
-              <th>Circuit</th>
-              <th>Degraded</th>
-              <th>详情</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.id">
-              <td data-label="能力">
-                <strong>{{ row.title }}</strong>
-                <span class="muted ai-runtime-page__row-id">{{ row.id }}</span>
-              </td>
-              <td data-label="Health">
-                <span class="ai-runtime-page__pill" :class="`ai-runtime-page__pill--${healthTone(row.healthState)}`">
-                  {{ row.healthState }}
-                </span>
-              </td>
-              <td data-label="Circuit">
-                <span class="ai-runtime-page__pill" :class="`ai-runtime-page__pill--${circuitTone(row.circuitState)}`">
-                  {{ row.circuitState }}
-                </span>
-              </td>
-              <td data-label="Degraded">{{ row.degradedState }}</td>
-              <td data-label="详情" class="muted">{{ row.detail }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-else class="ai-empty">
-        <span>暂无分项数据</span>
-        <span class="ai-empty__hint">确认 AI 服务在线后刷新；也可先走体检向导。</span>
-      </div>
-    </UiCard>
-
-    <UiCard v-if="taskRoutingRows.length" class="ai-runtime-page__routing-card">
-      <div class="ai-head">
-        <h3 class="ai-head__title">任务路由与 Fallback 链</h3>
-        <span class="ai-head__hint">Bot 提交时将按主模型 → fallback 顺序尝试</span>
-      </div>
-      <div class="ai-runtime-page__table-wrap">
-        <table class="ai-runtime-page__table">
-          <thead>
-            <tr>
-              <th>任务</th>
-              <th>主模型</th>
-              <th>Fallback</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in taskRoutingRows" :key="row.task">
-              <td data-label="任务">
-                <strong>{{ row.label }}</strong>
-                <span class="muted ai-runtime-page__row-id">{{ row.task }}</span>
-              </td>
-              <td data-label="主模型"><code>{{ row.primary }}</code></td>
-              <td data-label="Fallback" class="muted">
-                {{ row.fallbacks.length ? row.fallbacks.join(" → ") : "—" }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </UiCard>
 
     <UiCard v-if="focusItems.length" class="ai-runtime-page__focus-card">
       <div class="ai-head">
-        <h3 class="ai-head__title">网关探活需处理</h3>
-        <span class="ai-head__hint">来自站点级连通检查</span>
+        <ConsoleNavIcon name="alert" class="ai-head__icon" />
+        <h3 class="ai-head__title">网关连通性异常</h3>
       </div>
       <div class="ai-rows">
-        <article
+        <div
           v-for="item in focusItems"
           :key="item.capabilityId"
           class="ai-runtime-page__focus"
@@ -228,54 +155,205 @@ onMounted(() => {
             <span class="ai-dot" :class="dotClass(item.state)" />
             <strong>{{ item.title }}</strong>
           </div>
-          <p class="muted">{{ item.description }}</p>
-        </article>
+          <p class="ai-runtime-page__focus-desc">{{ item.description }}</p>
+        </div>
+      </div>
+    </UiCard>
+
+    <UiCard class="ai-runtime-page__table-card">
+      <div class="ai-head">
+        <ConsoleNavIcon name="activity" class="ai-head__icon" />
+        <h3 class="ai-head__title">核心能力健康状态</h3>
+      </div>
+      <div v-if="rows.length" class="ai-runtime-page__table-wrap">
+        <table class="ai-runtime-page__table">
+          <thead>
+            <tr>
+              <th>能力项</th>
+              <th>健康度 (Health)</th>
+              <th>熔断器 (Circuit)</th>
+              <th>降级状态</th>
+              <th>详细信息</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.id">
+              <td data-label="能力项">
+                <strong>{{ row.title }}</strong>
+                <span class="muted ai-runtime-page__row-id">{{ row.id }}</span>
+              </td>
+              <td data-label="健康度">
+                <span class="ai-runtime-page__pill" :class="`ai-runtime-page__pill--${healthTone(row.healthState)}`">
+                  {{ row.healthState }}
+                </span>
+              </td>
+              <td data-label="熔断器">
+                <span class="ai-runtime-page__pill" :class="`ai-runtime-page__pill--${circuitTone(row.circuitState)}`">
+                  {{ row.circuitState }}
+                </span>
+              </td>
+              <td data-label="降级状态">{{ row.degradedState }}</td>
+              <td data-label="详细信息" class="muted">{{ row.detail }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="ai-empty">
+        <span class="ai-empty__title">暂无核心能力数据</span>
+        <span class="ai-empty__hint">请确认 AI 服务在线，或通过体检向导进行诊断。</span>
+      </div>
+    </UiCard>
+
+    <UiCard v-if="taskRoutingRows.length" class="ai-runtime-page__routing-card">
+      <div class="ai-head">
+        <ConsoleNavIcon name="blocks" class="ai-head__icon" />
+        <h3 class="ai-head__title">模型任务路由与降级链</h3>
+      </div>
+      <div class="ai-runtime-page__table-wrap">
+        <table class="ai-runtime-page__table">
+          <thead>
+            <tr>
+              <th>任务场景</th>
+              <th>主用模型</th>
+              <th>备选模型 (Fallback)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in taskRoutingRows" :key="row.task">
+              <td data-label="任务场景">
+                <strong>{{ row.label }}</strong>
+                <span class="muted ai-runtime-page__row-id">{{ row.task }}</span>
+              </td>
+              <td data-label="主用模型"><code>{{ row.primary }}</code></td>
+              <td data-label="备选模型" class="muted">
+                <span v-if="row.fallbacks.length" class="ai-runtime-page__fallback-chain">
+                  {{ row.fallbacks.join(" → ") }}
+                </span>
+                <span v-else>—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </UiCard>
   </div>
 </template>
 
 <style scoped>
-.ai-runtime-page__hero {
+.ai-runtime-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-runtime-page__top-metrics {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.ai-runtime-page__metric-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ai-runtime-page__metric-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ai-runtime-page__metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.ai-runtime-page__hero,
+.ai-runtime-page__table-card,
+.ai-runtime-page__routing-card,
+.ai-runtime-page__focus-card {
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .ai-runtime-page__hero-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 24px;
+}
+
+.ai-runtime-page__hero-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .ai-runtime-page__hero-state {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 1.125rem;
+  gap: 10px;
+  font-size: 1.375rem;
+  margin-bottom: 8px;
 }
 
-.ai-runtime-page__hero-detail,
+.ai-runtime-page__hero-title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ai-runtime-page__hero-detail {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  max-width: 48rem;
+}
+
 .ai-runtime-page__hero-url {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 0.8125rem;
-  line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border-radius: 6px;
+}
+
+.ai-runtime-page__hero-code {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .ai-runtime-page__gate-hint {
-  margin: 10px 0 0;
-  font-size: 0.8125rem;
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  border-radius: 8px;
 }
 
-.ai-runtime-page__hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(88px, 1fr));
-  gap: 10px;
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 14px;
 }
 
-.ai-runtime-page__hero-stat {
-  min-width: 0;
-  padding: 12px 14px;
+.ai-head__icon {
+  color: var(--text-muted);
+}
+
+.ai-head__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
 }
 
 .ai-runtime-page__table-wrap {
@@ -285,50 +363,60 @@ onMounted(() => {
 .ai-runtime-page__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 
 .ai-runtime-page__table th,
 .ai-runtime-page__table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   text-align: left;
   vertical-align: top;
+  line-height: 1.5;
 }
 
 .ai-runtime-page__table th {
   color: var(--text-muted);
   font-weight: 600;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.ai-runtime-page__table tr:last-child td {
+  border-bottom: none;
 }
 
 .ai-runtime-page__row-id {
   display: block;
   font-size: 0.75rem;
-  margin-top: 2px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
 }
 
 .ai-runtime-page__pill {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  padding: 0 8px;
+  padding: 0 10px;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .ai-runtime-page__pill--ok {
-  background: color-mix(in srgb, var(--ok, #16a34a) 14%, transparent);
+  background: color-mix(in srgb, var(--ok, #16a34a) 12%, transparent);
   color: var(--ok, #16a34a);
 }
 
 .ai-runtime-page__pill--warn {
-  background: color-mix(in srgb, var(--warn, #d97706) 14%, transparent);
+  background: color-mix(in srgb, var(--warn, #d97706) 12%, transparent);
   color: var(--warn, #d97706);
 }
 
 .ai-runtime-page__pill--danger {
-  background: color-mix(in srgb, var(--danger, #dc2626) 14%, transparent);
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
   color: var(--danger, #dc2626);
 }
 
@@ -337,11 +425,27 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.ai-runtime-page__fallback-chain {
+  display: inline-block;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.ai-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .ai-runtime-page__focus {
-  display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
   border-radius: 12px;
 }
 
@@ -351,20 +455,48 @@ onMounted(() => {
   gap: 8px;
 }
 
+.ai-runtime-page__focus-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.ai-empty__title {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.ai-empty__hint {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
 @media (max-width: 960px) {
   .ai-runtime-page__hero-head {
     flex-direction: column;
   }
-
-  .ai-runtime-page__hero-stats {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 560px) {
-  .ai-runtime-page__hero-stats {
-    grid-template-columns: minmax(0, 1fr);
+  .ai-runtime-page__top-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .ai-runtime-page__hero,
+  .ai-runtime-page__table-card,
+  .ai-runtime-page__routing-card,
+  .ai-runtime-page__focus-card {
+    padding: 16px;
   }
 
   .ai-runtime-page__table thead {
@@ -374,22 +506,23 @@ onMounted(() => {
   .ai-runtime-page__table tr {
     display: grid;
     gap: 8px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
   }
 
   .ai-runtime-page__table td {
     display: grid;
-    grid-template-columns: 5.5rem minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    gap: 12px;
     padding: 0;
     border: 0;
+    align-items: baseline;
   }
 
   .ai-runtime-page__table td::before {
     content: attr(data-label);
     color: var(--text-muted);
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.8125rem;
   }
 }
 </style>

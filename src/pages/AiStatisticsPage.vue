@@ -48,30 +48,30 @@ const aiAccent = computed(() => palette.value[2] ?? "#34d399");
 const aiFailAccent = computed(() => palette.value[3] ?? "#fb7185");
 const statsSummary = computed(() => [
   {
-    label: "AI 可达",
-    value: stats.value?.ai_reachable ? "是" : "否",
+    label: "服务连通性",
+    value: stats.value?.ai_reachable ? "正常" : "异常",
     tone: stats.value?.ai_reachable ? "accent" : "danger",
   },
   {
-    label: "Bot 提交 + 回调",
+    label: "请求与回调 (Bot)",
     value: botSuccess.value.toLocaleString(),
   },
   {
-    label: "AI 成功",
+    label: "处理成功 (AI)",
     value: aiSuccess.value.toLocaleString(),
     tone: "accent",
   },
   {
-    label: "AI 失败",
+    label: "处理失败 (AI)",
     value: aiFailed.value.toLocaleString(),
     tone: aiFailed.value > 0 ? "danger" : undefined,
   },
   {
-    label: "队列中",
+    label: "队列积压",
     value: aiQueued.value.toLocaleString(),
   },
   {
-    label: "执行中",
+    label: "正在处理",
     value: aiRunning.value.toLocaleString(),
   },
 ]);
@@ -90,9 +90,9 @@ const dimColumns = (head: string): StatColumn<DimRow>[] => [
     key: "name",
     label: head,
     value: (r) => r.key,
-    sub: (r) => (r.recentFailureClass ? `最近失败：${r.recentFailureClass}` : ""),
+    sub: (r) => (r.recentFailureClass ? `最新报错：${r.recentFailureClass}` : ""),
   },
-  { key: "requests", label: "请求", value: (r) => r.requests.toLocaleString(), align: "right" },
+  { key: "requests", label: "请求数", value: (r) => r.requests.toLocaleString(), align: "right" },
   { key: "success", label: "成功", value: (r) => r.succeeded.toLocaleString(), align: "right" },
   {
     key: "failed",
@@ -155,114 +155,103 @@ onUnmounted(() => {
   <div class="console-hub-page ai-surface ai-stats-page">
     <ConsoleHubMasthead :icon="panelNavIcon">
       <template #title>
-        AI 统计
-      </template>
-      <template #lead>
-        按时间窗汇总 LLM 的调用量、成功与失败、回复路径，以及各 Provider / 模型的请求量和 Token 消耗。
+        <ConsoleNavIcon name="chart-line-up-solid" :size="24" />
+        AI 数据看板
       </template>
       <template #actions>
-        <label class="ai-date-field">
-          <span>月份</span>
-          <input v-model="month" class="inp" type="month" aria-label="选择月份">
-        </label>
-        <label class="ai-date-field">
-          <span>起始</span>
-          <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
-        </label>
-        <label class="ai-date-field">
-          <span>结束</span>
-          <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
-        </label>
-        <UiButton variant="primary" :busy="loading" @click="refresh">刷新</UiButton>
+        <div class="ai-stats-page__date-filters">
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">月份</span>
+            <input v-model="month" class="inp" type="month" aria-label="选择月份">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">起始</span>
+            <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
+          </label>
+          <label class="ai-date-field">
+            <span class="ai-date-field__label">结束</span>
+            <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
+          </label>
+          <UiButton variant="primary" :busy="loading" @click="refresh">刷新</UiButton>
+        </div>
       </template>
       <template #extra>
-        <p class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
+        <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
       </template>
     </ConsoleHubMasthead>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
 
-    <section class="ai-stats-page__summary">
-      <UiCard class="ai-stats-page__summary-card">
-        <div class="ai-head">
-          <h3 class="ai-head__title">运行摘要</h3>
-          <span class="ai-head__hint">先判断 AI 是否可达，再看当前队列压力</span>
-        </div>
-        <div class="ai-stat-grid ai-stats-page__kpis">
-          <div
-            v-for="item in statsSummary"
-            :key="item.label"
-            class="ai-stat ai-stats-page__stat-card"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong
-              class="ai-stat__value"
-              :class="{
-                'ai-stat__value--accent': item.tone === 'accent',
-                'ai-stat__value--danger': item.tone === 'danger',
-              }"
-            >
-              {{ item.value }}
-            </strong>
-          </div>
-        </div>
+    <div class="ai-stats-page__top-metrics">
+      <UiCard
+        v-for="item in statsSummary"
+        :key="item.label"
+        class="ai-stats-page__metric-card"
+      >
+        <span class="ai-stats-page__metric-label">{{ item.label }}</span>
+        <strong
+          class="ai-stats-page__metric-value"
+          :class="{
+            'text-ok': item.tone === 'accent',
+            'text-danger': item.tone === 'danger',
+          }"
+        >
+          {{ item.value }}
+        </strong>
       </UiCard>
-    </section>
+    </div>
 
     <section class="ai-stats-page__charts">
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">Bot 提交与回调</h3>
-          <span class="ai-head__hint">按日观察提交与回调是否失衡</span>
+          <h3 class="ai-head__title">Bot 端请求趋势</h3>
         </div>
         <AiDailyTrendChart
           :series="[
-            { id: 'submit', label: 'Bot 提交', color: botAccent, unit: '次', points: historyBotPoints },
-            { id: 'callback', label: 'Bot 回调', color: aiAccent, unit: '次', points: historyBotCallbackPoints },
+            { id: 'submit', label: '请求发起', color: botAccent, unit: '次', points: historyBotPoints },
+            { id: 'callback', label: '接收回调', color: aiAccent, unit: '次', points: historyBotCallbackPoints },
           ]"
           :summary="[
-            `Bot 提交 ${historyBotPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
-            `Bot 回调 ${historyBotCallbackPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
+            `请求发起 ${historyBotPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
+            `接收回调 ${historyBotCallbackPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
           ]"
-          empty-text="所选时间窗暂无 Bot 侧历史快照。"
+          empty-text="暂无记录"
         />
       </UiCard>
 
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">AI 成功任务</h3>
-          <span class="ai-head__hint">同时看成功与失败的日走势</span>
+          <h3 class="ai-head__title">模型成功与失败趋势</h3>
         </div>
         <AiDailyTrendChart
           :series="[
-            { id: 'success', label: 'AI 成功', color: aiAccent, unit: '次', points: historyAiPoints },
-            { id: 'fail', label: 'AI 失败', color: aiFailAccent, unit: '次', points: historyAiFailPoints },
+            { id: 'success', label: '处理成功', color: aiAccent, unit: '次', points: historyAiPoints },
+            { id: 'fail', label: '处理失败', color: aiFailAccent, unit: '次', points: historyAiFailPoints },
           ]"
           :summary="[
-            `AI 成功 ${historyAiPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
-            `AI 失败 ${historyAiFailPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
+            `处理成功 ${historyAiPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
+            `处理失败 ${historyAiFailPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
           ]"
-          :empty-text="stats?.ai_reachable ? '所选时间窗暂无 AI 历史快照。' : 'AI 当前不可达，无法获取 AI 历史快照。'"
+          :empty-text="stats?.ai_reachable ? '暂无记录' : '服务断开'"
         />
       </UiCard>
 
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">plain_llm_chat 调用趋势</h3>
-          <span class="ai-head__hint">一张图同时看总量、成功与失败波动</span>
+          <h3 class="ai-head__title">直接对话调用趋势</h3>
         </div>
         <AiDailyTrendChart
           :series="[
-            { id: 'plain-total', label: '总调用', color: botAccent, unit: '次', points: historyPlainLlmChatPoints },
+            { id: 'plain-total', label: '总调用量', color: botAccent, unit: '次', points: historyPlainLlmChatPoints },
             { id: 'plain-ok', label: '成功', color: aiAccent, unit: '次', style: 'bar', points: historyPlainLlmChatSuccessPoints },
             { id: 'plain-fail', label: '失败', color: aiFailAccent, unit: '次', style: 'bar', points: historyPlainLlmChatFailPoints },
           ]"
           :summary="[
-            `总调用 ${historyPlainLlmChatPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
+            `总计调用 ${historyPlainLlmChatPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
             `成功 ${historyPlainLlmChatSuccessPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
             `失败 ${historyPlainLlmChatFailPoints.reduce((sum, item) => sum + item.value, 0).toLocaleString()} 次`,
           ]"
-          empty-text="所选时间窗暂无 plain_llm_chat 调用历史。"
+          empty-text="暂无记录"
         />
       </UiCard>
     </section>
@@ -270,8 +259,7 @@ onUnmounted(() => {
     <section class="ai-stats-page__boards">
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">失败分布</h3>
-          <span class="ai-head__hint">出现最多的失败原因</span>
+          <h3 class="ai-head__title">高频失败原因</h3>
         </div>
         <div v-if="failureRows.length" class="ai-dist-list">
           <article
@@ -281,7 +269,7 @@ onUnmounted(() => {
           >
             <div class="ai-dist-row__head">
               <span class="ai-dist-row__label ai-stats-page__row-key">{{ row.label }}</span>
-              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
+              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }} 次</strong>
             </div>
             <div class="ai-dist-row__track" aria-hidden="true">
               <span
@@ -292,25 +280,24 @@ onUnmounted(() => {
           </article>
         </div>
         <div v-else class="ai-empty">
-          <span>没有失败记录</span>
-          <span class="ai-empty__hint">所选时间窗内 AI 没有失败任务。</span>
+          <span class="ai-empty__title">运行平稳</span>
+          <span class="ai-empty__hint">该时段内未发生任何失败异常。</span>
         </div>
       </UiCard>
 
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">回复路径</h3>
-          <span class="ai-head__hint">先看每日热点，再看当前区间最常命中的路径</span>
+          <h3 class="ai-head__title">路由命中排行</h3>
         </div>
         <AiDailyTrendChart
           :series="[
-            { id: 'route-heat', label: '路径命中', color: '#22c55e', unit: '次', points: historyRouteHeatPoints },
+            { id: 'route-heat', label: '触发次数', color: '#22c55e', unit: '次', points: historyRouteHeatPoints },
           ]"
           :summary="[
-            `路径命中 ${historyRouteHeatPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-            routeRowsTop[0] ? `当前最热 ${routeRowsTop[0].key} · ${routeRowsTop[0].count.toLocaleString()} 次` : '当前区间暂无热点路径',
+            `累计触发 ${historyRouteHeatPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
+            routeRowsTop[0] ? `最热节点 ${routeRowsTop[0].key} (${routeRowsTop[0].count.toLocaleString()} 次)` : '暂无数据',
           ]"
-          empty-text="这段时间还没有产生回复路径统计。"
+          empty-text="所选时间段内暂无热度记录。"
         />
         <div v-if="routeRowsTop.length" class="ai-dist-list ai-stats-page__route-list">
           <article
@@ -320,7 +307,7 @@ onUnmounted(() => {
           >
             <div class="ai-dist-row__head">
               <span class="ai-dist-row__label ai-stats-page__row-key">{{ row.key }}</span>
-              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
+              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }} 次</strong>
             </div>
             <div class="ai-dist-row__track" aria-hidden="true">
               <span
@@ -335,30 +322,29 @@ onUnmounted(() => {
 
     <section class="ai-stats-page__boards">
       <StatTable
-        title="Provider 视图"
-        hint="按 Provider 对比请求量、成功率与平均延迟"
+        title="模型提供商表现"
+        hint=""
         :rows="providerRows"
         :columns="dimColumns('Provider')"
         :page-size="AI_STATS_LIMITS.topRows"
         :row-key="(r) => r.key"
-        empty-text="暂无 Provider 统计"
+        empty-text="暂无数据"
       />
       <StatTable
-        title="模型视图"
-        hint="按模型对比请求量、成功率与平均延迟"
+        title="单一模型表现"
+        hint=""
         :rows="modelRows"
         :columns="dimColumns('模型')"
         :page-size="AI_STATS_LIMITS.topRows"
         :row-key="(r) => r.key"
-        empty-text="暂无模型统计"
+        empty-text="暂无数据"
       />
     </section>
 
     <section class="ai-stats-page__boards">
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">Token · 按 Provider</h3>
-          <span class="ai-head__hint">先看总量，再看提示词与补全占比</span>
+          <h3 class="ai-head__title">Token 消耗 (按 Provider)</h3>
         </div>
         <div v-if="tokenProviderRows.length" class="ai-token-list">
           <article
@@ -372,11 +358,11 @@ onUnmounted(() => {
             </div>
             <div class="ai-token-card__meta">
               <span class="ai-token-chip">
-                <span class="ai-token-chip__label">提示</span>
+                <span class="ai-token-chip__label">输入 (Prompt)</span>
                 <strong>{{ row.promptTokens.toLocaleString() }}</strong>
               </span>
               <span class="ai-token-chip">
-                <span class="ai-token-chip__label">补全</span>
+                <span class="ai-token-chip__label">输出 (Completion)</span>
                 <strong>{{ row.completionTokens.toLocaleString() }}</strong>
               </span>
             </div>
@@ -387,14 +373,13 @@ onUnmounted(() => {
           </article>
         </div>
         <div v-else class="ai-empty">
-          <span>暂无 Token 统计</span>
+          <span class="ai-empty__title">暂无 Token 数据</span>
         </div>
       </UiCard>
 
       <UiCard class="ai-stats-page__panel">
         <div class="ai-head">
-          <h3 class="ai-head__title">Token · 按模型</h3>
-          <span class="ai-head__hint">观察高消耗模型，避免单模型异常拉高成本</span>
+          <h3 class="ai-head__title">Token 消耗 (按模型)</h3>
         </div>
         <div v-if="tokenModelRows.length" class="ai-token-list">
           <article
@@ -408,11 +393,11 @@ onUnmounted(() => {
             </div>
             <div class="ai-token-card__meta">
               <span class="ai-token-chip">
-                <span class="ai-token-chip__label">提示</span>
+                <span class="ai-token-chip__label">输入 (Prompt)</span>
                 <strong>{{ row.promptTokens.toLocaleString() }}</strong>
               </span>
               <span class="ai-token-chip">
-                <span class="ai-token-chip__label">补全</span>
+                <span class="ai-token-chip__label">输出 (Completion)</span>
                 <strong>{{ row.completionTokens.toLocaleString() }}</strong>
               </span>
             </div>
@@ -423,7 +408,7 @@ onUnmounted(() => {
           </article>
         </div>
         <div v-else class="ai-empty">
-          <span>暂无 Token 统计</span>
+          <span class="ai-empty__title">暂无 Token 数据</span>
         </div>
       </UiCard>
     </section>
@@ -431,45 +416,118 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.ai-stats-page__summary {
-  display: block;
+.ai-stats-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.ai-stats-page__summary-card {
-  height: 100%;
+.ai-stats-page__date-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
-.ai-stats-page__kpis {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+.ai-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  padding: 4px 8px;
+  border-radius: 8px;
 }
 
-.ai-stats-page__stat-card {
-  min-width: 0;
-  padding: 16px 16px 14px;
+.ai-date-field__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ai-date-field .inp {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  min-height: 28px;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.ai-date-field .inp:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ai-stats-page__top-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.ai-stats-page__metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  border: none;
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-stats-page__metric-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.ai-stats-page__metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
 }
 
 .ai-stats-page__hint {
   margin-top: 8px;
-  font-size: 0.75rem;
-}
-
-.ai-stats-page__kpis {
-  --ai-stat-cols: 6;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 
 .ai-stats-page__charts,
 .ai-stats-page__boards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 24px;
 }
 
 .ai-stats-page__panel {
   height: 100%;
+  padding: 24px;
+  background: var(--bg-card);
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ai-head__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.ai-head__hint {
+  display: none;
 }
 
 .ai-stats-page__route-list {
-  margin-top: 14px;
+  margin-top: 20px;
 }
 
 .ai-stats-page__row-key {
@@ -479,7 +537,7 @@ onUnmounted(() => {
 
 .ai-dist-list {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ai-dist-row {
@@ -497,12 +555,14 @@ onUnmounted(() => {
 
 .ai-dist-row__label {
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
 }
 
 .ai-dist-row__value {
   flex-shrink: 0;
-  font-size: 0.84rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -510,37 +570,35 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   overflow: hidden;
-  height: 10px;
+  height: 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
 }
 
 .ai-dist-row__fill {
   height: 100%;
-  min-width: 10px;
+  min-width: 8px;
   border-radius: inherit;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 78%, #ffffff), var(--accent));
+  background: var(--accent);
 }
 
 .ai-dist-row__fill--danger {
-  background: linear-gradient(90deg, color-mix(in srgb, #fb7185 78%, #ffffff), #ef4444);
+  background: #fb7185;
 }
 
 .ai-token-list {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ai-token-card {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 48%),
-    color-mix(in srgb, var(--text) 2.5%, transparent);
+  padding: 16px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
+  border-radius: 12px;
+  border: none;
 }
 
 .ai-token-card__head {
@@ -552,7 +610,8 @@ onUnmounted(() => {
 
 .ai-token-card__name {
   min-width: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  font-weight: 600;
   word-break: break-word;
 }
 
@@ -561,28 +620,26 @@ onUnmounted(() => {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
+  font-family: var(--font-mono);
 }
 
 .ai-token-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 
 .ai-token-chip {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  font-size: 0.78rem;
+  gap: 6px;
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
 .ai-token-chip strong {
   color: var(--text);
-  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .ai-token-chip__label {
@@ -592,26 +649,39 @@ onUnmounted(() => {
 .ai-token-bar {
   display: flex;
   overflow: hidden;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 7%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
 }
 
 .ai-token-bar__prompt {
-  background: color-mix(in srgb, var(--accent) 72%, #ffffff);
+  background: var(--brand);
 }
 
 .ai-token-bar__completion {
-  background: color-mix(in srgb, #f59e0b 72%, #ffffff);
+  background: color-mix(in srgb, var(--brand) 40%, transparent);
+}
+
+.ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.ai-empty__title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ai-empty__hint {
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 @media (max-width: 1100px) {
-  .ai-stats-page__kpis {
-    --ai-stat-cols: 3;
-  }
-}
-
-@media (max-width: 860px) {
   .ai-stats-page__charts,
   .ai-stats-page__boards {
     grid-template-columns: minmax(0, 1fr);
@@ -619,18 +689,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 560px) {
-  .ai-stats-page__kpis {
-    --ai-stat-cols: 2;
+  .ai-stats-page__date-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ai-date-field {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .ai-stats-page__top-metrics {
+    grid-template-columns: 1fr;
   }
 
-  .ai-dist-row__head {
-    display: grid;
-    gap: 4px;
-  }
-
-  .ai-token-card__head {
-    display: grid;
-    gap: 4px;
+  .ai-stats-page__panel {
+    padding: 16px;
   }
 }
 </style>
