@@ -11,6 +11,10 @@ export const FALLBACK_ENUM_LABELS: Record<string, string> = {
   auto: "自动",
   true: "开启",
   false: "关闭",
+  keyword: "仅关键词（默认）",
+  hybrid: "关键词 + 向量（推荐）",
+  embedding: "纯向量",
+  vector: "纯向量（同 embedding）",
   prefetch: "后台预取（推荐）",
   sync: "当场联网查询",
   "local,community": "先本机，再共享池",
@@ -67,7 +71,25 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<{ title: string; keys: readonly
       "llm_session_enabled",
       "llm_tools_enabled",
       "llm_governance_enabled",
+    ],
+  },
+  {
+    title: "记忆与检索",
+    keys: [
       "llm_memory_rag_enabled",
+      "llm_vector_retrieve",
+      "llm_embedding_model",
+      "llm_relationship_notes_enabled",
+    ],
+  },
+  {
+    title: "输出过滤",
+    keys: [
+      "llm_output_filter_enabled",
+      "llm_output_filter_chat_hard_phrases",
+      "llm_output_filter_chat_soft_phrases",
+      "llm_output_filter_polish_lite_hard_phrases",
+      "llm_output_filter_polish_lite_soft_phrases",
     ],
   },
   {
