@@ -398,7 +398,7 @@ onMounted(() => {
         </template>
         <template #actions>
           <RefreshIconButton
-            :show-label="true"
+            class="hub-refresh-wide-only"
             :busy="refreshBusy"
             label="刷新"
             @click="refresh"
@@ -449,6 +449,12 @@ onMounted(() => {
                   @click="navigate"
                 >在线统计设置</UiButton>
               </RouterLink>
+              <RefreshIconButton
+                class="hub-refresh-narrow-only"
+                :busy="refreshBusy"
+                label="刷新"
+                @click="refresh"
+              />
             </div>
           </div>
           <div class="panel__bd">

@@ -7596,6 +7596,11 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   border-bottom: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
 }
+/* 仅标题、其下无内容的面板头：去掉多余的底部分割线 */
+.panel__hd--flush {
+  border-bottom: none;
+  background: transparent;
+}
 .panel__title {
   margin: 0;
   display: inline-flex;
@@ -7657,17 +7662,18 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
 }
 
 .btn-refresh-action--icon-only {
-  width: 2.5rem;
-  min-width: 2.5rem;
-  height: 2.5rem;
-  min-height: 2.5rem;
+  width: var(--ui-ctrl-height);
+  min-width: var(--ui-ctrl-height);
+  height: var(--ui-ctrl-height);
+  min-height: var(--ui-ctrl-height);
   padding: 0;
 }
 
 .btn-refresh-action--icon-only.ui-btn {
-  width: 2.5rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  width: var(--ui-ctrl-height);
+  min-width: var(--ui-ctrl-height);
+  height: var(--ui-ctrl-height);
+  min-height: var(--ui-ctrl-height);
   padding: 0;
 }
 
@@ -7818,26 +7824,27 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp,
   #db-group-configs .friends-groups-list-hd-actions > input[type="search"].inp,
   #db-user-configs .friends-groups-list-hd-actions > input[type="search"].inp {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
   }
 
+  /* 搜索框与「展开/收起」同处第 2 行，按钮不再整行铺底 */
   #fg-friends .friends-groups-list-hd-actions__tail,
   #fg-groups .friends-groups-list-hd-actions__tail,
   #db-group-configs .friends-groups-list-hd-actions__tail,
   #db-user-configs .friends-groups-list-hd-actions__tail {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 2;
+    grid-row: 2;
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 8px;
-    width: 100%;
+    width: auto;
     min-width: 0;
   }
 
@@ -7849,7 +7856,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   #fg-groups .friends-groups-list-hd-actions__tail > .ui-btn,
   #db-group-configs .friends-groups-list-hd-actions__tail > .ui-btn,
   #db-user-configs .friends-groups-list-hd-actions__tail > .ui-btn {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-width: 0;
     width: auto !important;
     max-width: 100%;
@@ -9648,7 +9655,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__tab-group {
 .plugin-store-page--hub .plugin-store-page__masthead-actions > .btn,
 .plugin-store-page--hub .plugin-store-page__hero-actions > .btn,
 .plugin-store-page--hub .btn-refresh-action {
-  min-height: 38px;
+  min-height: var(--ui-ctrl-height);
   border-radius: 999px;
 }
 
@@ -13732,16 +13739,20 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
   }
 }
 @media (max-width: 560px) {
+  /* 标题与右侧 ghost 操作（在线统计/语料设置）保持同一行，不让小字单独成行 */
   .community-page__panel-hd.panel__hd--split {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
   }
-  .community-page__hd-actions {
-    width: 100%;
-    justify-content: flex-start;
+  .community-page__panel-hd.panel__hd--split .community-page__hd-actions {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
   }
-  .community-page__hd-actions > .btn {
-    flex: 1 1 auto;
+  .community-page__panel-hd.panel__hd--split .community-page__hd-actions > .btn {
+    flex: 0 0 auto;
     min-width: 0;
     justify-content: center;
   }

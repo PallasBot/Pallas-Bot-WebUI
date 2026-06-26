@@ -1219,6 +1219,12 @@ onDeactivated(() => {
         </template>
       </ConsoleHubMasthead>
 
+      <ConsoleHubSearch
+        v-model="searchQuery"
+        class="hub-search-wide-only"
+        :placeholder="storeSection === 'official' ? '搜索扩展包名或插件 ID…' : '搜索社区插件名、ID 或标签…'"
+      />
+
       <ConsoleHubToolbarStrip>
         <template #search>
           <ConsoleHubSearch

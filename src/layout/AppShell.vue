@@ -18,7 +18,7 @@ import {
   consoleMetaWebUpdate,
   refreshConsoleMeta,
 } from "@/state/consoleMeta";
-import { botRestartInProgress } from "@/state/botRestartSession";
+import { botRestartInProgress, botRestartBusy, botRestartDialogOpen, botRestartPhase, resetBotRestartSession } from "@/state/botRestartSession";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog.vue";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -242,6 +242,29 @@ function closeMobileNav() {
   mobileNavOpen.value = false;
 }
 
+function onShellNavClick(navigate: (e?: MouseEvent) => unknown, event?: MouseEvent) {
+  void navigate(event);
+  closeMobileNav();
+}
+
+/** 清理可能挡住点击的全局遮罩/滚动锁（如弹窗残留、首屏 loading 未收起） */
+function clearShellInteractionBlockers() {
+  if (typeof document === "undefined") return;
+  document.body.style.overflow = "";
+  if (initialShellLoading.value) {
+    initialShellLoading.value = false;
+  }
+  if (
+    botRestartDialogOpen.value
+    && !botRestartBusy.value
+    && botRestartPhase.value !== "scheduled"
+    && botRestartPhase.value !== "disconnecting"
+    && botRestartPhase.value !== "reconnecting"
+  ) {
+    resetBotRestartSession();
+  }
+}
+
 function toggleSidebar() {
   setConsolePrefs({ sidebarCollapsed: !consolePrefs.sidebarCollapsed });
 }
@@ -270,6 +293,7 @@ function navCollapsedLabel(collapsed: boolean, label: string) {
 }
 
 onMounted(() => {
+  clearShellInteractionBlockers();
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
   void refreshConsoleMeta();
@@ -566,7 +590,7 @@ onUnmounted(() => {
                       'is-router-exact': isMainLinkExact(child.item),
                     }"
                     :aria-current="isMainLinkExact(child.item) ? 'page' : undefined"
-                    @click="navigate"
+                    @click="onShellNavClick(navigate, $event)"
                   >
                     <ConsoleNavIcon
                       class="shell__nav-ico"
@@ -602,7 +626,7 @@ onUnmounted(() => {
                 }"
                 :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, entry.row.item.label)"
                 :aria-current="isMainLinkExact(entry.row.item) ? 'page' : undefined"
-                @click="navigate"
+                @click="onShellNavClick(navigate, $event)"
               >
                 <ConsoleNavIcon
                   class="shell__nav-ico"
@@ -630,7 +654,7 @@ onUnmounted(() => {
                 :class="{ 'is-router-active': isPinLinkActive(entry.row.pin) }"
                 :aria-label="navCollapsedLabel(consolePrefs.sidebarCollapsed, entry.row.pin.label)"
                 :aria-current="isPinLinkActive(entry.row.pin) ? 'page' : undefined"
-                @click="navigate"
+                @click="onShellNavClick(navigate, $event)"
               >
                 <ConsoleNavIcon
                   class="shell__nav-ico"
@@ -798,10 +822,7 @@ onUnmounted(() => {
                         'is-router-active': isMainLinkActiveForPath(child.item),
                       }"
                       :aria-current="isMainLinkExact(child.item) ? 'page' : undefined"
-                      @click="
-                        navigate();
-                        closeMobileNav();
-                      "
+                      @click="onShellNavClick(navigate, $event)"
                     >
                       <ConsoleNavIcon
                       class="shell__nav-ico"
@@ -832,10 +853,7 @@ onUnmounted(() => {
                     'is-router-exact': isMainLinkExact(entry.row.item),
                   }"
                   :aria-current="isMainLinkExact(entry.row.item) ? 'page' : undefined"
-                  @click="
-                    navigate();
-                    closeMobileNav();
-                  "
+                  @click="onShellNavClick(navigate, $event)"
                 >
                   <ConsoleNavIcon
                   class="shell__nav-ico"
@@ -858,10 +876,7 @@ onUnmounted(() => {
                   class="shell-mobile-nav__link shell__nav-link--pin"
                   :class="{ 'is-router-active': isPinLinkActive(entry.row.pin) }"
                   :aria-current="isPinLinkActive(entry.row.pin) ? 'page' : undefined"
-                  @click="
-                    navigate();
-                    closeMobileNav();
-                  "
+                  @click="onShellNavClick(navigate, $event)"
                 >
                   <ConsoleNavIcon
                   class="shell__nav-ico"
@@ -940,17 +955,16 @@ onUnmounted(() => {
         @scroll.passive="onMainInnerScroll"
       >
         <router-view v-slot="{ Component, route: r }">
-          <!-- keep-alive 为 transition 直接子节点时 out-in 易卡住（协议页轮询触发重绘后更明显） -->
           <keep-alive :max="24">
             <component
               :is="Component"
-              v-if="r.meta.keepAlive !== false"
+              v-if="Component && r.meta.keepAlive !== false"
               :key="keepAliveRouteKey(r)"
             />
           </keep-alive>
           <component
             :is="Component"
-            v-if="r.meta.keepAlive === false"
+            v-if="Component && r.meta.keepAlive === false"
             :key="keepAliveRouteKey(r)"
           />
         </router-view>

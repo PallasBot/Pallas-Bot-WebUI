@@ -15,6 +15,7 @@ import type {
   PluginCapabilitiesRow,
   PluginRow,
 } from "@/api/pallasTypes";
+import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -24,6 +25,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames } from "@/utils/pluginFavorites";
 import { buildPluginIconMap, resolvePluginIconForRow, shouldShowPluginAvatar } from "@/utils/pluginIconUrl";
+import { PLUGIN_CATEGORY_LABELS, type PluginCategory, pluginCategory } from "@/utils/pluginCategory";
 import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
@@ -38,6 +40,7 @@ const list = ref<PluginRow[]>([]);
   if (warm?.length) list.value = warm;
 }
 const searchQuery = ref("");
+const activeCategory = ref<PluginCategory | "all">("all");
 const capabilities = ref<PluginCapabilitiesRow[]>([]);
 const capabilitiesOverviewOpen = ref(false);
 const iconByPlugin = ref<Record<string, string>>({});
@@ -60,10 +63,21 @@ const sortedPlugins = computed(() => {
   return rows;
 });
 
+const categoryOf = (p: PluginRow): PluginCategory => pluginCategory(p, officialExtensions.value);
+
+const categoryTabs = computed<{ id: PluginCategory | "all"; label: string }[]>(() => [
+  { id: "all", label: "全部" },
+  { id: "core", label: PLUGIN_CATEGORY_LABELS.core },
+  { id: "extra", label: PLUGIN_CATEGORY_LABELS.extra },
+  { id: "local", label: PLUGIN_CATEGORY_LABELS.local },
+]);
+
 const filteredPlugins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return sortedPlugins.value;
+  const cat = activeCategory.value;
   return sortedPlugins.value.filter((p) => {
+    if (cat !== "all" && categoryOf(p) !== cat) return false;
+    if (!q) return true;
     const name = (p.metadata?.name || p.name).toLowerCase();
     const id = p.name.toLowerCase();
     const desc = (p.metadata?.description || "").toLowerCase();
@@ -204,6 +218,28 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
         v-model="searchQuery"
         placeholder="搜索插件名、ID 或说明…"
       />
+
+      <ConsoleHubFilterBar>
+        <template #primary>
+          <div
+            class="console-view-toggle"
+            role="tablist"
+            aria-label="插件分类"
+          >
+            <button
+              v-for="tab in categoryTabs"
+              :key="tab.id"
+              type="button"
+              role="tab"
+              :class="{ 'is-on': activeCategory === tab.id }"
+              :aria-selected="activeCategory === tab.id"
+              @click="activeCategory = tab.id"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </template>
+      </ConsoleHubFilterBar>
 
       <section
         class="plugins-page__catalog"

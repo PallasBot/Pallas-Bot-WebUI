@@ -354,7 +354,6 @@ onMounted(() => {
               </select>
             </label>
             <RefreshIconButton
-              :show-label="true"
               :busy="chartsBusy || rangeBusy"
               label="刷新"
               @click="refreshAll"

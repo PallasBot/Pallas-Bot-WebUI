@@ -23,4 +23,14 @@ export function installRouteLoading(router: Router): void {
     initialHideScheduled = true;
     if (initialHideTimer) clearTimeout(initialHideTimer);
   });
+
+  if (typeof window !== "undefined") {
+    window.setTimeout(() => {
+      if (initialShellLoading.value) {
+        initialShellLoading.value = false;
+        initialHideScheduled = true;
+        if (initialHideTimer) clearTimeout(initialHideTimer);
+      }
+    }, 6000);
+  }
 }

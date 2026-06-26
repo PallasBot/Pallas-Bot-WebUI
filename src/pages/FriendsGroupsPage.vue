@@ -739,7 +739,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="console-hub-page">
+  <div class="friends-groups-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -762,6 +762,7 @@ onUnmounted(() => {
       </template>
       <template #actions>
         <RefreshIconButton
+          class="hub-refresh-wide-only"
           :busy="pageRefreshBusy"
           label="刷新本页数据"
           @click="refreshPage"
@@ -775,11 +776,12 @@ onUnmounted(() => {
       glass
       class="friends-groups-page__panel friends-groups-account-panel"
     >
-      <div class="panel__hd friends-groups-account-panel__hd">
+      <div class="panel__hd panel__hd--flush friends-groups-account-panel__hd">
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />当前账号
           <RefreshIconButton
-                :show-label="false"
+            class="hub-refresh-narrow-only"
+            :show-label="false"
             :busy="pageRefreshBusy"
             label="刷新本页数据"
             @click="refreshPage"

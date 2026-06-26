@@ -454,3 +454,14 @@ html[data-theme="light"] .ui-btn.panel-hd-collapse-btn:hover:not(:disabled),
 html[data-theme="light"] .ui-btn.panel-hd-collapse-btn.ui-btn--outline:hover:not(:disabled) {
   background: #fff;
 }
+
+/* 实例/协议页：收起-展开按钮与相邻视图切换条等高，避免显得过小 */
+.instances-page .ui-btn.panel-hd-collapse-btn,
+.instances-page .ui-btn.panel-hd-collapse-btn.ui-btn--outline,
+.inst-db-panel__hd-side .ui-btn.panel-hd-collapse-btn,
+.inst-db-panel__hd-side .ui-btn.panel-hd-collapse-btn.ui-btn--outline {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+}

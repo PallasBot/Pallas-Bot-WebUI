@@ -462,7 +462,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="console-hub-page">
+  <div class="instances-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"

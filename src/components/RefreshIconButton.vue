@@ -14,7 +14,7 @@ const props = withDefaults(
     disabled: false,
     label: "刷新",
     busyLabel: "刷新中…",
-    showLabel: true,
+    showLabel: false,
   },
 );
 const emit = defineEmits<{ click: [] }>();

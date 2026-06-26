@@ -4,6 +4,7 @@ import { fetchPluginRunStats, postLogErrorsCleanup } from "@/api/consoleApi";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
+import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -166,20 +167,62 @@ onMounted(load);
           每条报错独立成卡；分片时可按来源筛选。「清理全部」与每日 4:00 自动清理中的日志报错部分一致。
         </template>
         <template #actions>
-          <RefreshIconButton
-            :busy="loading"
-            label="刷新"
-            @click="load"
+          <div class="console-hub-toolbar-strip__masthead-actions">
+            <select
+              v-if="shardedLogErrors"
+              v-model="logSource"
+              class="sel log-errors-page__source-sel"
+              aria-label="报错来源"
+            >
+              <option
+                v-for="s in sourceOptions"
+                :key="`err-src-${s}`"
+                :value="s"
+              >
+                {{ s === "all" ? "全部来源" : s }}
+              </option>
+            </select>
+            <UiButton
+              variant="destructive"
+              class="log-errors-page__clear-btn"
+              :disabled="clearing || loading || !entries.length"
+              :title="entries.length ? '清空 log_errors 与分片 errors 归档' : '暂无记录可清理'"
+              @click="clearLogErrors"
+            >
+              {{ clearing ? "清理中…" : "清理全部" }}
+            </UiButton>
+            <RefreshIconButton
+              :busy="loading"
+              label="刷新"
+              @click="load"
+            />
+          </div>
+        </template>
+      </ConsoleHubMasthead>
+
+      <ConsoleHubSearch
+        v-model="q"
+        class="hub-search-wide-only"
+        placeholder="搜索消息、类型、来源…"
+      />
+
+      <ConsoleHubToolbarStrip>
+        <template #search>
+          <ConsoleHubSearch
+            v-model="q"
+            placeholder="搜索消息、类型、来源…"
           />
+        </template>
+        <template #middle>
           <select
             v-if="shardedLogErrors"
             v-model="logSource"
-            class="sel log-errors-page__source-sel"
+            class="sel log-errors-page__source-sel log-errors-page__source-sel--strip"
             aria-label="报错来源"
           >
             <option
               v-for="s in sourceOptions"
-              :key="`err-src-${s}`"
+              :key="`err-src-strip-${s}`"
               :value="s"
             >
               {{ s === "all" ? "全部来源" : s }}
@@ -187,20 +230,22 @@ onMounted(load);
           </select>
           <UiButton
             variant="destructive"
-            class="log-errors-page__clear-btn"
+            class="log-errors-page__clear-btn log-errors-page__clear-btn--strip"
             :disabled="clearing || loading || !entries.length"
             :title="entries.length ? '清空 log_errors 与分片 errors 归档' : '暂无记录可清理'"
             @click="clearLogErrors"
           >
-            {{ clearing ? "清理中…" : "清理全部" }}
+            {{ clearing ? "清理中…" : "清理" }}
           </UiButton>
         </template>
-      </ConsoleHubMasthead>
-
-      <ConsoleHubSearch
-        v-model="q"
-        placeholder="搜索消息、类型、来源…"
-      />
+        <template #actions>
+          <RefreshIconButton
+            :busy="loading"
+            label="刷新"
+            @click="load"
+          />
+        </template>
+      </ConsoleHubToolbarStrip>
 
       <UiCard tag="div" glass class="log-errors-page__panel">
         <div class="panel__bd">

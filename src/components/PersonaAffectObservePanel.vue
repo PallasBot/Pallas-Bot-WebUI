@@ -206,7 +206,6 @@ onMounted(() => {
           >
         </label>
         <RefreshIconButton
-          :show-label="true"
           :busy="loading"
           label="刷新"
           @click="load"

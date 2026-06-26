@@ -428,6 +428,7 @@ onMounted(() => {
         </template>
         <template #actions>
           <RefreshIconButton
+            class="hub-refresh-wide-only"
             :busy="updateRefreshBusy"
             label="重新检查"
             @click="refreshAllUpdates"
