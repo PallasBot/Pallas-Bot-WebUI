@@ -1,10 +1,23 @@
 import type { paths as ConsoleOpenapiPaths } from "./generated/pallasConsoleOpenapi";
+import type { HealthResponse } from "./health";
 
 /** 标准响应结构 */
 
 export interface ApiOk<T> {
   ok: boolean;
   data: T;
+}
+
+/** 首页聚合只读快照（/home/overview） */
+export interface HomeOverviewData {
+  health: HealthResponse | null;
+  system: SystemData | null;
+  bots: BotRow[];
+  instances: InstancesData | null;
+  plugins: PluginRow[];
+  message_stats: MessageStatsData | null;
+  plugin_run_stats: PluginRunStatsData | null;
+  community_stats: CommunityStatsData | null;
 }
 
 type OpenapiJson200<TOperation> =

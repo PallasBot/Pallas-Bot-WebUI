@@ -99,8 +99,8 @@ html[data-theme="light"] {
 }
 
 html[data-theme="light"] .ui-btn--default {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.12);
+  background: var(--surface-control);
+  border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .ui-btn--default:hover:not(:disabled) {
@@ -138,8 +138,8 @@ html[data-theme="light"] .ui-btn--default {
 }
 
 html[data-theme="light"] .ui-btn--outline {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.12);
+  background: var(--surface-control);
+  border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .ui-btn--outline:hover:not(:disabled) {
@@ -170,9 +170,9 @@ html[data-theme="light"] .ui-btn--outline {
 }
 
 html[data-theme="light"] .ui-btn--latest {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.08);
-  color: rgba(15, 23, 42, 0.45);
+  background: var(--surface-1);
+  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
 }
 
 .ui-btn__ico {
@@ -198,8 +198,8 @@ html[data-theme="light"] .ui-btn--latest {
 }
 
 html[data-theme="light"] .ui-card {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-elevated);
+  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
   box-shadow: var(--shadow-md);
 }
 
@@ -210,8 +210,8 @@ html[data-theme="light"] .ui-card {
 }
 
 html[data-theme="light"] .ui-card--glass {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
-  border-color: rgba(255, 255, 255, 0.55);
+  background: var(--surface-glass-fg);
+  border-color: color-mix(in srgb, var(--surface-control) 55%, transparent);
 }
 
 .ui-card--interactive:hover {
@@ -317,7 +317,7 @@ html[data-layout="hub"][data-surface="glass"] .ui-card--glass {
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .ui-card--glass {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  background: var(--surface-glass-fg);
 }
 
 html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
@@ -327,7 +327,7 @@ html[data-layout="hub"][data-surface="glass"] .plugin-store-card {
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-card {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  background: var(--surface-glass-fg);
 }
 
 html[data-layout="hub"] .ui-btn {
@@ -446,13 +446,13 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.
 
 html[data-theme="light"] .ui-btn.panel-hd-collapse-btn,
 html[data-theme="light"] .ui-btn.panel-hd-collapse-btn.ui-btn--outline {
-  background: color-mix(in srgb, #fff 96%, var(--bg-deep) 4%);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  background: color-mix(in srgb, var(--surface-control) 96%, var(--bg-deep) 4%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 html[data-theme="light"] .ui-btn.panel-hd-collapse-btn:hover:not(:disabled),
 html[data-theme="light"] .ui-btn.panel-hd-collapse-btn.ui-btn--outline:hover:not(:disabled) {
-  background: #fff;
+  background: var(--surface-control);
 }
 
 /* 实例/协议页：收起-展开按钮与相邻视图切换条等高，避免显得过小 */

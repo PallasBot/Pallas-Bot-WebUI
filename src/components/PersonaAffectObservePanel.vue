@@ -552,8 +552,8 @@ onMounted(() => {
   margin-bottom: 18px;
   padding: 14px;
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 .persona-observe-panel__section-hd {
@@ -654,8 +654,8 @@ onMounted(() => {
 .persona-observe-panel__bot-card {
   padding: 12px;
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
 }
 
 .persona-observe-panel__bot-hd {
@@ -675,7 +675,7 @@ onMounted(() => {
 .persona-observe-panel__mode-block + .persona-observe-panel__mode-block {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed var(--border, rgba(255, 255, 255, 0.08));
+  border-top: 1px dashed var(--border);
 }
 
 .persona-observe-panel__mode-label {
@@ -746,7 +746,7 @@ onMounted(() => {
   position: relative;
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-2);
   overflow: hidden;
 }
 
@@ -756,7 +756,7 @@ onMounted(() => {
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--foreground) 18%, transparent);
   transform: translateX(-50%);
   z-index: 1;
 }
@@ -766,15 +766,15 @@ onMounted(() => {
   top: 0;
   bottom: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, var(--foreground) 35%, transparent);
 }
 
 .persona-axis__fill--pos {
-  background: rgba(109, 212, 168, 0.75);
+  background: color-mix(in srgb, var(--success) 75%, transparent);
 }
 
 .persona-axis__fill--neg {
-  background: rgba(232, 184, 109, 0.75);
+  background: color-mix(in srgb, var(--warn) 75%, transparent);
 }
 
 .persona-observe-panel__hint-list {

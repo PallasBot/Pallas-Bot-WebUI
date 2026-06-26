@@ -665,15 +665,15 @@ onActivated(() => {
   display: grid;
   gap: 6px;
   padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--surface-2);
   color: inherit;
   text-decoration: none;
 }
 
 .charts-page__ai-link:hover {
-  border-color: rgba(59, 130, 246, 0.28);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 @media (max-width: 960px) {

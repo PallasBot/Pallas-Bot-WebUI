@@ -95,6 +95,7 @@ import type {
   FederationOnboardingData,
   ConsoleDailyStatsData,
   PluginRunStatsData,
+  HomeOverviewData,
   ShardObservabilityData,
   IngressDispatchData,
   ConsoleLoginChangeResult,
@@ -1666,6 +1667,52 @@ async function readPluginRunStatsCached<T extends PluginRunStatsData | LogErrors
     pluginRunStatsInflight.set(cacheKey, inflight);
   }
   return (await inflight) as T;
+}
+
+let homeOverviewInflight: Promise<HomeOverviewData> | null = null;
+
+function seedCachesFromHomeOverview(data: HomeOverviewData): void {
+  if (data.instances) touchInstancesCache(data.instances);
+  if (data.bots.length) touchBotsCache(data.bots);
+  if (data.plugins.length) touchPluginsCache(data.plugins);
+  if (data.message_stats) {
+    messageStatsCache.set("all", { data: data.message_stats, ts: Date.now() });
+  }
+  if (data.plugin_run_stats) {
+    const key = pluginRunStatsCacheKey({
+      selfId: undefined,
+      logSource: "all",
+      tbLimit: 0,
+      view: "full",
+    });
+    pluginRunStatsCache.set(key, { data: data.plugin_run_stats, ts: Date.now() });
+  }
+  if (data.community_stats) {
+    communityStatsCache = { data: data.community_stats, ts: Date.now() };
+  }
+}
+
+export async function fetchHomeOverview(opts?: { bypassCache?: boolean }): Promise<HomeOverviewData> {
+  const bypass = Boolean(opts?.bypassCache);
+  if (bypass) {
+    const { data } = await http.get<{ ok: boolean; data: HomeOverviewData }>("/home/overview", {
+      params: { _ts: Date.now() },
+    });
+    if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
+    seedCachesFromHomeOverview(data.data);
+    return data.data;
+  }
+  if (!homeOverviewInflight) {
+    homeOverviewInflight = (async () => {
+      const { data } = await http.get<{ ok: boolean; data: HomeOverviewData }>("/home/overview");
+      if (!data?.ok || !data.data) throw new Error("/home/overview: 响应异常");
+      seedCachesFromHomeOverview(data.data);
+      return data.data;
+    })().finally(() => {
+      homeOverviewInflight = null;
+    });
+  }
+  return homeOverviewInflight;
 }
 
 const CONSOLE_DAILY_STATS_FRESH_MS = 3_500;

@@ -3596,7 +3596,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
 .home-plugin-bars__track {
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   overflow: hidden;
 }
@@ -3693,7 +3693,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   align-items: center;
   padding: 4px 6px 4px 2px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-1);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   width: 100%;
@@ -3747,8 +3747,8 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   white-space: nowrap;
 }
 .home-matcher-dur-log__row--err {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
 }
 .home-matcher-dur-log__ms {
   font-weight: 700;
@@ -3777,7 +3777,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
 .home-matcher-dur-log__track {
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   overflow: hidden;
   min-width: 0;
@@ -3800,8 +3800,8 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   font-size: 0.7rem;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(239, 68, 68, 0.2);
-  color: #fecaca;
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: color-mix(in srgb, var(--danger) 35%, var(--text));
   justify-self: end;
 }
 .home-plugin-bars__val--stack {

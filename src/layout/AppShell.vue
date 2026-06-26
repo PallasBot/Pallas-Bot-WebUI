@@ -312,9 +312,7 @@ onMounted(() => {
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
   void refreshConsoleMeta();
-  if (route.name !== "home") {
-    void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
-  }
+  void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
   if (typeof window !== "undefined") {
     const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 120));
     idle(() => prefetchPriorityRouteChunks());

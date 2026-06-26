@@ -74,7 +74,7 @@ html[data-layout="hub"][data-surface="glass"] .shell__topbar {
 
 html[data-theme="light"][data-layout="hub"][data-surface="glass"] .shell__sidebar,
 html[data-theme="light"][data-layout="hub"][data-surface="glass"] .shell__topbar {
-  background: #ffffff !important;
+  background: var(--surface-elevated) !important;
 }
 
 html[data-layout="hub"][data-surface="glass"] .panel:not(.plugin-config-page__card):not(.plugin-store-page__empty-panel):not(.ui-card--glass):not(.prefs-setting-card) {
@@ -92,7 +92,7 @@ html[data-layout="hub"][data-surface="glass"] .prefs-setting-card.panel {
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel.ui-card--glass,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .prefs-setting-card.panel {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent) !important;
+  background: var(--surface-glass-fg) !important;
 }
 
 html[data-layout="hub"][data-surface="glass"] .panel.plugin-config-page__card,
@@ -193,14 +193,14 @@ html[data-layout="hub"] .btn:not(.panel-hd-collapse-btn) {
 }
 
 html[data-layout="hub"][data-theme="light"] .btn:not(.panel-hd-collapse-btn):not(.btn--primary):not(.btn--danger) {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.12);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  background: var(--surface-control);
+  border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 html[data-layout="hub"][data-theme="light"] .btn:not(.panel-hd-collapse-btn):not(.btn--primary):not(.btn--danger):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 4%, #ffffff);
-  border-color: rgba(15, 23, 42, 0.16);
+  background: color-mix(in srgb, var(--text) 4%, var(--surface-control));
+  border-color: color-mix(in srgb, var(--foreground) 16%, transparent);
 }
 
 html[data-layout="hub"] .btn--primary {
@@ -233,8 +233,8 @@ html[data-layout="hub"] .textarea {
 html[data-layout="hub"][data-theme="light"] .inp,
 html[data-layout="hub"][data-theme="light"] .sel,
 html[data-layout="hub"][data-theme="light"] .textarea {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.12);
+  background: var(--surface-control);
+  border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 html[data-layout="hub"] .inp:focus,
@@ -309,8 +309,8 @@ html[data-layout="hub"] .console-view-toggle {
 }
 
 html[data-layout="hub"][data-theme="light"] .console-view-toggle {
-  background: #ececee;
-  border-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-segment);
+  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .console-view-toggle button {
@@ -325,14 +325,14 @@ html[data-layout="hub"] .console-view-toggle button {
 }
 
 html[data-layout="hub"] .console-view-toggle button.is-on {
-  background: var(--control-bg, #fff);
+  background: var(--surface-segment-active);
   border-color: color-mix(in srgb, var(--border) 70%, transparent);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 html[data-layout="hub"][data-theme="light"] .console-view-toggle button.is-on {
-  background: #ffffff;
+  background: var(--surface-segment-active);
 }
 
 /* 全局 chip / 标签（与插件商店一致） */
@@ -357,9 +357,9 @@ html[data-layout="hub"] .plugin-store-page__chip {
 
 html[data-layout="hub"][data-theme="light"] .console-hub-chip,
 html[data-layout="hub"][data-theme="light"] .plugin-store-page__chip {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(15, 23, 42, 0.1);
-  color: #334155;
+  background: var(--surface-chip);
+  border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: color-mix(in srgb, var(--text) 82%, var(--text-muted) 18%);
 }
 
 html[data-layout="hub"] code:not(pre code):not(.pre-block code) {
@@ -375,9 +375,9 @@ html[data-layout="hub"] code:not(pre code):not(.pre-block code) {
 }
 
 html[data-layout="hub"][data-theme="light"] code:not(pre code):not(.pre-block code) {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(15, 23, 42, 0.1);
-  color: #334155;
+  background: var(--surface-chip);
+  border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: color-mix(in srgb, var(--text) 82%, var(--text-muted) 18%);
 }
 
 html[data-layout="hub"] .alert {
@@ -440,7 +440,7 @@ html[data-layout="hub"] .console-hub-page__filter-bar .console-hub-page__tab-btn
 
 html[data-layout="hub"][data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-tab-btn:hover:not(.is-on),
 html[data-layout="hub"][data-theme="light"] .console-hub-page__filter-bar .console-hub-page__tab-btn:hover:not(.is-on) {
-  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--surface-control) 55%, transparent);
 }
 
 html[data-layout="hub"] .plugins-page__plugin-tab-group .plugins-page__plugin-tab-btn.is-on,
@@ -453,8 +453,8 @@ html[data-layout="hub"] .console-hub-page__filter-bar .console-hub-page__tab-btn
 
 html[data-layout="hub"][data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-tab-btn.is-on,
 html[data-layout="hub"][data-theme="light"] .console-hub-page__filter-bar .console-hub-page__tab-btn.is-on {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.1);
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 html[data-layout="hub"] .plugins-page__plugin-tab-group .plugin-icon__img,
@@ -725,7 +725,7 @@ html[data-layout="hub"] .plugins-page__search-input {
 html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input,
 html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input,
 html[data-layout="hub"][data-theme="light"] .plugins-page__search-input {
-  background: #ffffff;
+  background: var(--surface-control);
 }
 
 .console-hub-page__search-input:focus,
@@ -835,8 +835,8 @@ html[data-layout="hub"][data-theme="light"] .plugins-page__plugin-tab-group {
 html[data-layout="hub"][data-theme="light"] .console-hub-page__tab-btn.is-on,
 html[data-layout="hub"][data-theme="light"] .plugin-store-page__tab-btn.is-on,
 html[data-layout="hub"][data-theme="light"] .plugins-page__plugin-tab-btn.is-on {
-  background: rgba(15, 23, 42, 0.07);
-  border-color: rgba(15, 23, 42, 0.1);
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
   color: var(--foreground);
 }
 
@@ -865,8 +865,8 @@ html[data-layout="hub"] .plugin-config-page__card {
 
 html[data-layout="hub"][data-theme="light"] .plugin-config-page__card,
 html[data-layout="hub"][data-theme="light"] .plugin-catalog-card {
-  background: #ffffff;
-  border-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-elevated);
+  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
@@ -878,7 +878,7 @@ html[data-layout="hub"][data-surface="glass"] .plugin-config-page__card {
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-config-page__card {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  background: var(--surface-glass-fg);
 }
 
 html[data-layout="hub"] .ai-config-page,
@@ -1481,7 +1481,7 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
 }
 
 html[data-theme="light"] .prefs-glass-preview__pane {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fg);
 }
 
 .prefs-form-field--range {
@@ -1721,8 +1721,8 @@ html[data-layout="hub"] .shell__sidebar {
 }
 
 html[data-layout="hub"][data-theme="light"] .shell__sidebar {
-  background: #ffffff;
-  border-right-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-elevated);
+  border-right-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .shell__sidebar-top {
@@ -1805,8 +1805,8 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link:hover {
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link:hover {
-  background: rgba(15, 23, 42, 0.06);
-  border-color: rgba(15, 23, 42, 0.1);
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
@@ -1831,8 +1831,8 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell_
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
-  background: color-mix(in srgb, var(--primary) 10%, #ffffff);
-  color: color-mix(in srgb, var(--primary) 78%, #0f172a);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-control));
+  color: color-mix(in srgb, var(--primary) 78%, var(--text));
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell__nav-ico {
@@ -1862,8 +1862,8 @@ html[data-layout="hub"] .shell__topbar {
 }
 
 html[data-theme="light"][data-layout="hub"] .shell__topbar {
-  background: #ffffff;
-  border-bottom-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-elevated);
+  border-bottom-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .shell__topbar-rail .shell__topbar-menu,
@@ -2079,8 +2079,8 @@ html[data-layout="hub"] .shell-toolbar__seg.shell__topbar-theme {
 }
 
 html[data-theme="light"][data-layout="hub"] .shell-toolbar__seg.shell__topbar-theme {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.08);
+  background: var(--surface-1);
+  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"] .shell-toolbar__seg.shell__topbar-theme button {
@@ -2090,7 +2090,7 @@ html[data-layout="hub"] .shell-toolbar__seg.shell__topbar-theme button {
 }
 
 html[data-layout="hub"] .shell-toolbar__seg.shell__topbar-theme button.is-on {
-  background: var(--control-bg, #fff);
+  background: var(--surface-segment-active);
   box-shadow: var(--shadow-sm);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
@@ -2103,7 +2103,7 @@ html[data-layout="hub"] .shell__topbar-exit {
 
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input,
 html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input {
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--surface-control) calc(var(--card-glass-opacity) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
 }
@@ -2130,8 +2130,8 @@ html[data-layout="hub"] .shell--sidebar-collapsed nav.shell__nav .shell__nav-tex
   }
 
   html[data-layout="hub"] .shell-mobile-nav__link.is-router-active {
-    background: color-mix(in srgb, var(--primary) 10%, #ffffff);
-    color: color-mix(in srgb, var(--primary) 78%, #0f172a);
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface-control));
+    color: color-mix(in srgb, var(--primary) 78%, var(--text));
   }
 }
 
@@ -2146,7 +2146,7 @@ html[data-ui-preset="shadcn"] .shell-mobile-nav__link.is-router-active {
 
 html[data-theme="light"][data-ui-preset="shadcn"] nav.shell__nav .shell__nav-link.is-router-active,
 html[data-theme="light"][data-ui-preset="shadcn"] .shell-mobile-nav__link.is-router-active {
-  background: color-mix(in srgb, var(--foreground) 6%, #ffffff);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--surface-control));
   color: var(--foreground);
 }
 
@@ -2175,9 +2175,6 @@ html[data-ui-preset="shadcn"] {
   --accent-glow: color-mix(in srgb, var(--foreground) 18%, transparent);
   --primary: var(--foreground);
   --ring: color-mix(in srgb, var(--foreground) 42%, transparent);
-  --shell-brand-mark-bg: color-mix(in srgb, var(--foreground) 5%, var(--background));
-  --shell-brand-mark-border: color-mix(in srgb, var(--foreground) 12%, var(--border));
-  --shell-brand-mark-inset: transparent;
 }
 
 /* 覆盖 data-accent 主题色，避免黑白模式仍带彩色底 */
@@ -2214,12 +2211,6 @@ html[data-ui-preset="shadcn"][data-layout="hub"][data-surface="glass"] .shell__t
 
 html[data-ui-preset="shadcn"] .shell__brand-mark-wrap {
   box-shadow: none;
-}
-
-html[data-ui-preset="gs"] {
-  --shell-brand-mark-bg: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
-  --shell-brand-mark-border: color-mix(in srgb, var(--accent) 20%, var(--border));
-  --shell-brand-mark-inset: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 html[data-ui-preset="shadcn"] .ui-btn--primary {

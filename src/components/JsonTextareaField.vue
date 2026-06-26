@@ -233,7 +233,7 @@ onUnmounted(() => {
 .json-textarea-field__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(11, 15, 20, 0.26);
+  background: var(--surface-overlay);
   backdrop-filter: blur(2px);
 }
 

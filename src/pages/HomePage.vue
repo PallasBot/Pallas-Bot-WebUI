@@ -9,12 +9,12 @@ import {
   fetchBotUpdateCheck,
   fetchFriendList,
   fetchGroupList,
+  fetchHomeOverview,
   fetchInstances,
   fetchCommunityStats,
   fetchMessageStats,
   fetchPluginRunStats,
   fetchConsoleDailyStats,
-  fetchPlugins,
   fetchRequestOverview,
   fetchSystem,
   fetchUpdateCheck,
@@ -65,6 +65,11 @@ import {
   saveHomeActionDismissal,
 } from "@/utils/homeActionDismissals";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
+import {
+  persistHomeOverviewSnapshot,
+  readHomeOverviewSnapshotStale,
+  snapshotCanPrimeHomeShell,
+} from "@/utils/homeOverviewSnapshot";
 
 /** 总览首屏当前选中的数据库 Bot 账号（刷新后恢复） */
 const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
@@ -109,11 +114,12 @@ const {
   restartBot,
 } = useBotSystemRestart({ botUpdateCheck });
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
-const system = ref<SystemData | null>(null);
-const communityStats = ref<CommunityStatsData | null>(null);
-const stats = ref<MessageStatsData | null>(null);
+const initialHomeSnapshot = readHomeOverviewSnapshotStale();
+const system = ref<SystemData | null>(initialHomeSnapshot?.system ?? null);
+const communityStats = ref<CommunityStatsData | null>(initialHomeSnapshot?.communityStats ?? null);
+const stats = ref<MessageStatsData | null>(initialHomeSnapshot?.stats ?? null);
 const statsScoped = ref<MessageStatsData | null>(null);
-const pluginRunStats = ref<PluginRunStatsData | null>(null);
+const pluginRunStats = ref<PluginRunStatsData | null>(initialHomeSnapshot?.pluginRunStats ?? null);
 const pluginRunStatsScoped = ref<PluginRunStatsData | null>(null);
 const consoleDailyStatsScoped = ref<ConsoleDailyStatsData | null>(null);
 const botCount = ref(0);
@@ -138,7 +144,10 @@ const socialBusy = ref(false);
 /** 账号图表/按 Bot 统计拉取中（不含好友群列表） */
 const accountDetailBusy = ref(false);
 /** 首屏主内容区：首包 API 返回后即展示，不再等待按账号拉取的社交/统计 */
-const pageReady = ref(Boolean(peekInstancesCache() && (peekBotsCache()?.length ?? 0) > 0));
+const pageReady = ref(
+  Boolean(peekInstancesCache() && (peekBotsCache()?.length ?? 0) > 0) ||
+    snapshotCanPrimeHomeShell(initialHomeSnapshot),
+);
 /** 概况接口（健康/系统/实例等）拉取中；用于刷新按钮与轻提示 */
 const overviewBusy = ref(false);
 /** 首屏次要接口（统计/社区/分片等）拉取中 */
@@ -933,6 +942,33 @@ function stopHomeConnDurationTick() {
   homeConnDurationPollId = null;
 }
 
+function flushHomeOverviewSnapshot() {
+  persistHomeOverviewSnapshot({
+    system: system.value,
+    stats: stats.value,
+    pluginRunStats: pluginRunStats.value,
+    communityStats: communityStats.value,
+  });
+}
+
+function applyWarmCatalogFallback() {
+  if (!bots.value.length) {
+    const warm = peekBotsCache();
+    if (warm?.length) {
+      bots.value = warm;
+      botCount.value = warm.length;
+    }
+  }
+  if (!instances.value) {
+    const warm = peekInstancesCache();
+    if (warm) instances.value = warm;
+  }
+  if (!pluginsList.value.length) {
+    const warm = peekPluginsCache();
+    if (warm?.length) pluginsList.value = warm;
+  }
+}
+
 async function loadHomeDeferred(refreshMeta: boolean) {
   homeDeferredBusy.value = true;
   try {
@@ -944,20 +980,13 @@ async function loadHomeDeferred(refreshMeta: boolean) {
       !refreshMeta && consoleMetaWebUpdate.value
         ? Promise.resolve(consoleMetaWebUpdate.value)
         : fetchUpdateCheck().catch(() => null);
-    const settled = await Promise.allSettled([
-      fetchMessageStats(),
-      fetchPluginRunStats(),
-      botUpdateP,
-      webUpdateP,
-    ]);
+    const settled = await Promise.allSettled([botUpdateP, webUpdateP]);
     function take<T>(i: number): T | null {
       const r = settled[i];
       return r.status === "fulfilled" ? (r.value as T) : null;
     }
-    stats.value = take<MessageStatsData>(0);
-    pluginRunStats.value = take<PluginRunStatsData>(1);
-    botUpdateCheck.value = take<BotUpdateCheckData | null>(2);
-    webUpdateCheck.value = take<UpdateCheckData | null>(3);
+    botUpdateCheck.value = take<BotUpdateCheckData | null>(0);
+    webUpdateCheck.value = take<UpdateCheckData | null>(1);
     const h = consoleMetaHealth.value ?? health.value;
     if (h) health.value = h;
     patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
@@ -978,27 +1007,58 @@ async function load(opts?: LoadOptions) {
   err.value = "";
   overviewBusy.value = true;
   try {
-    const healthP = consoleMetaHealth.value ? Promise.resolve(consoleMetaHealth.value) : fetchHealth();
-    const [h, s, botList, inst, pl, comm] = await Promise.all([
-      healthP,
-      fetchSystem(),
-      fetchBots(),
-      fetchInstances(),
-      fetchPlugins(),
-      fetchCommunityStats(refreshMeta ? { bypassCache: true } : undefined).catch(() => null),
-    ]);
-    health.value = h;
-    patchConsoleMeta(h);
-    system.value = s;
-    bots.value = botList;
-    instances.value = inst;
-    pluginsList.value = pl;
-    communityStats.value = comm;
-    botCount.value = botList.length;
+    let overviewErr: Error | null = null;
+    let overview: Awaited<ReturnType<typeof fetchHomeOverview>> | null = null;
+    try {
+      overview = await fetchHomeOverview(refreshMeta ? { bypassCache: true } : undefined);
+    } catch (e) {
+      overviewErr = e instanceof Error ? e : new Error(String(e));
+    }
+
+    if (overview?.health) {
+      health.value = overview.health;
+      patchConsoleMeta(overview.health);
+    } else if (consoleMetaHealth.value) {
+      health.value = consoleMetaHealth.value;
+      patchConsoleMeta(health.value);
+    } else if (!overview && !consoleMetaHealth.value) {
+      try {
+        const h = await fetchHealth();
+        health.value = h;
+        patchConsoleMeta(h);
+      } catch {
+        /* health 单独失败不阻断其余切片 */
+      }
+    }
+
+    if (overview) {
+      if (overview.system) system.value = overview.system;
+      if (overview.bots.length) {
+        bots.value = overview.bots;
+        botCount.value = overview.bots.length;
+      }
+      if (overview.instances) instances.value = overview.instances;
+      if (overview.plugins.length) pluginsList.value = overview.plugins;
+      if (overview.message_stats) stats.value = overview.message_stats;
+      if (overview.plugin_run_stats) pluginRunStats.value = overview.plugin_run_stats;
+      if (overview.community_stats) communityStats.value = overview.community_stats;
+    }
+
+    applyWarmCatalogFallback();
+
+    const hasShellData =
+      Boolean(health.value || system.value) &&
+      Boolean(instances.value || bots.value.length);
+    if (!hasShellData && overviewErr) {
+      err.value = overviewErr.message;
+    }
+
     const accBefore = selectedAccount.value;
     ensureSelectedAccount();
     const accAfter = selectedAccount.value;
     pageReady.value = true;
+    flushHomeOverviewSnapshot();
+
     if (accBefore === accAfter) {
       if (refreshMeta) {
         void refreshSelectedBotDetails();

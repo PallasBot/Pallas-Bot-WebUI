@@ -37,9 +37,9 @@
   --shell-chrome-h: 52px;
   --shell-chrome-bg: linear-gradient(180deg, rgba(14, 14, 18, 0.92) 0%, rgba(10, 10, 12, 0.98) 100%);
   --shell-sidebar-w: 240px;
-  --shell-brand-mark-bg: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
-  --shell-brand-mark-border: color-mix(in srgb, var(--accent) 18%, var(--border));
-  --shell-brand-mark-inset: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
+  --shell-brand-mark-bg: #0a0a0c;
+  --shell-brand-mark-border: color-mix(in srgb, var(--foreground, var(--text)) 14%, var(--border));
+  --shell-brand-mark-inset: transparent;
   --shell-brand-mark-wrap-size: 44px;
   --shell-brand-mark-size: 32px;
   --shell-brand-mark-wrap-radius: 12px;
@@ -100,6 +100,22 @@
   /* 主内容区最大宽度（仪表盘双列等） */
   --shell-content-max: 1450px;
   --ui-scale: 1.1;
+  /* 嵌套层 / 交互面（随主题、界面风格、毛玻璃不透明度变化） */
+  --bg-muted: color-mix(in srgb, var(--text) 6%, var(--bg-card));
+  --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 2%, transparent);
+  --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 4%, transparent);
+  --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
+  --surface-hover: var(--surface-2);
+  --surface-active: var(--surface-3);
+  --surface-elevated: var(--bg-card);
+  --surface-control: var(--control-bg);
+  --surface-chip: color-mix(in srgb, var(--bg-card) 72%, var(--bg-muted) 28%);
+  --surface-segment: color-mix(in srgb, var(--text) 4%, var(--bg-card));
+  --surface-segment-active: var(--surface-control);
+  --surface-glass: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  --surface-glass-fg: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 100%), transparent);
+  --surface-overlay: color-mix(in srgb, #000 52%, transparent);
+  --surface-accent-ring: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 html {
@@ -137,6 +153,9 @@ html[data-surface="glass"] {
     color-mix(in srgb, var(--bg-elev) 48%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 42%, transparent) 100%
   );
+  --surface-elevated: var(--surface-glass);
+  --surface-control: color-mix(in srgb, var(--control-bg) 58%, transparent);
+  --surface-chip: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 72%), transparent);
 }
 
 html[data-surface="glass"] .shell__main,
@@ -171,6 +190,11 @@ html[data-surface="glass"] .textarea:focus {
   background: color-mix(in srgb, var(--control-bg) 78%, transparent);
 }
 
+html[data-surface="solid"] {
+  --surface-elevated: var(--bg-card);
+  --surface-control: var(--control-bg);
+}
+
 html[data-surface="solid"] .shell__sidebar,
 html[data-surface="solid"] .shell__topbar {
   backdrop-filter: none;
@@ -188,7 +212,7 @@ html[data-surface="solid"] .prefs-setting-card.panel {
 html[data-theme="light"][data-surface="solid"] .ui-card--glass,
 html[data-theme="light"][data-surface="solid"] .panel.ui-card--glass,
 html[data-theme="light"][data-surface="solid"] .prefs-setting-card.panel {
-  background: #ffffff !important;
+  background: var(--surface-elevated) !important;
 }
 
 html[data-theme="light"][data-surface="glass"] {
@@ -197,6 +221,9 @@ html[data-theme="light"][data-surface="glass"] {
     color-mix(in srgb, #fff 52%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 38%, transparent) 100%
   );
+  --surface-elevated: var(--surface-glass-fg);
+  --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
+  --surface-chip: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 92%), transparent);
 }
 
 html[data-theme="light"][data-surface="glass"] .panel,
@@ -367,6 +394,15 @@ html[data-theme="light"] {
   --shell-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
   --control-bg: #ffffff;
   --control-border: rgba(15, 23, 42, 0.14);
+  --bg-muted: color-mix(in srgb, var(--text) 4%, var(--bg-elev));
+  --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 3%, transparent);
+  --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
+  --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 7%, transparent);
+  --surface-segment: #ececee;
+  --surface-chip: color-mix(in srgb, var(--surface-control) 92%, var(--bg-muted) 8%);
+  --surface-overlay: color-mix(in srgb, #000 8%, transparent);
+  --shell-brand-mark-bg: #ffffff;
+  --shell-brand-mark-border: color-mix(in srgb, var(--foreground, var(--text)) 12%, var(--border));
 }
 
 html[data-surface="solid"] .shell__bg {
@@ -383,11 +419,11 @@ html[data-theme="light"] .inp {
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link:hover {
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--surface-1);
 }
 
 html[data-theme="light"] table.data tbody tr:hover td {
-  background: rgba(15, 23, 42, 0.03);
+  background: var(--surface-1);
 }
 
 html[data-theme="light"] .alert--err {
@@ -947,7 +983,7 @@ html[data-theme="light"] .shell__brand-badge {
 }
 .shell__nav-grip:hover {
   opacity: 0.95;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-2);
 }
 .shell__nav-grip:active {
   cursor: grabbing;
@@ -960,13 +996,13 @@ html[data-theme="light"] .shell__brand-badge {
 .shell__nav-item--drag-over {
   outline: 1px dashed var(--accent);
   outline-offset: 2px;
-  background: rgba(56, 189, 248, 0.06);
+  background: var(--accent-soft);
 }
 html[data-theme="light"] .shell__nav-item--drag-over {
-  background: rgba(2, 132, 199, 0.08);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 html[data-theme="light"] .shell__nav-grip:hover {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--surface-2);
 }
 
 nav.shell__nav .shell__nav-link {
@@ -1000,13 +1036,13 @@ nav.shell__nav .shell__nav-link:focus-visible {
 
 nav.shell__nav .shell__nav-link:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-1);
 }
 
 nav.shell__nav .shell__nav-link.is-router-active {
   color: var(--text);
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.22);
+  box-shadow: inset 0 0 0 1px var(--surface-accent-ring);
 }
 
 /* 「/」在嵌套路由下会一直处于 active；仅精确匹配总览时高亮 */
@@ -1017,7 +1053,7 @@ nav.shell__nav .shell__nav-link.shell__nav-link--root.is-router-active:not(.is-r
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link.is-router-active {
-  box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.22);
+  box-shadow: inset 0 0 0 1px var(--surface-accent-ring);
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.is-router-active:not(.is-router-exact) {
@@ -1113,11 +1149,11 @@ html[data-theme="light"] nav.shell__nav .shell__nav-link.shell__nav-link--root.i
 }
 
 .shell__nav-grip-dropdown__item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-3);
 }
 
 html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--surface-3);
 }
 
 .shell__nav-grip-dropdown__item--danger {
