@@ -12,7 +12,7 @@ import UiCard from "@/components/ui/UiCard.vue";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
-const { err, pageReady, mountUrl, protocolNotInstalled, reload } = useProtocolMount();
+const { err, pageReady, mountUrl, reload } = useProtocolMount();
 
 const overview = ref<Record<string, unknown> | null>(null);
 const profile = ref<Record<string, unknown> | null>(null);
@@ -72,12 +72,6 @@ void onMountedLoad();
         class="alert alert--err"
       >
         {{ err }}
-      </div>
-      <div
-        v-if="protocolNotInstalled"
-        class="alert alert--warn"
-      >
-        尚未安装 pallas-plugin-protocol 扩展。
       </div>
       <UiCard
         tag="div"
@@ -150,12 +144,6 @@ void onMountedLoad();
 </template>
 
 <style scoped>
-.protocol-assets-kv {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0;
-  font-size: 0.88rem;
-}
 .protocol-assets-pre {
   max-height: 280px;
   overflow: auto;
@@ -168,11 +156,5 @@ void onMountedLoad();
 .protocol-assets-download {
   margin-top: 12px;
   flex-wrap: wrap;
-}
-@media (max-width: 560px) {
-  .protocol-assets-download > .btn,
-  .protocol-assets-download > .inp {
-    width: 100%;
-  }
 }
 </style>

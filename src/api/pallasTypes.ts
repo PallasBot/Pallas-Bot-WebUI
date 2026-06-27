@@ -1531,6 +1531,10 @@ export interface NapcatAccountRow {
   running?: boolean;
   connected?: boolean;
   process_running?: boolean;
+  /** plugin=插件托管 external=自建协议端经 NoneBot 接入 */
+  account_source?: "plugin" | "external";
+  external_adapter?: string;
+  connection_key?: string;
   [key: string]: unknown;
 }
 

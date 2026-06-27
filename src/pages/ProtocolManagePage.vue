@@ -26,6 +26,11 @@ import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { isProtocolExtensionInstalled } from "@/utils/protocolExtension";
 import {
+  isExternalProtocolAccount,
+  isPluginManagedProtocolAccount,
+  mergeProtocolDisplayAccounts,
+} from "@/utils/protocolDisplayAccounts";
+import {
   accountConnectedWsPortLabel,
   accountProtocolId,
   accountWebUiHref,
@@ -72,11 +77,10 @@ const snap = computed(() => {
   }
   return base;
 });
-const protocolExtension = computed(() => instances.value?.protocol_extension ?? null);
 const protocolExtensionInstalled = computed(() =>
   isProtocolExtensionInstalled(instances.value),
 );
-const protocolNotInstalled = computed(() => !protocolExtensionInstalled.value);
+const skeletonPanels = computed(() => (protocolExtensionInstalled.value ? 2 : 1));
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
@@ -119,7 +123,8 @@ const consoleAuthDisp = computed(() =>
 );
 
 const protocolAccountsSorted = computed(() => {
-  const list = [...(snap.value?.accounts ?? [])];
+  const pluginAccounts = protoAccountsLive.value ?? snap.value?.accounts ?? [];
+  const list = mergeProtocolDisplayAccounts(instances.value, pluginAccounts);
   list.sort((a, b) => {
     const fa = protocolAccountNumber(a);
     const fb = protocolAccountNumber(b);
@@ -161,6 +166,7 @@ const pagedProtocolAccounts = computed(() =>
 
 const pagedProtocolIds = computed(() =>
   pagedProtocolAccounts.value
+    .filter((a) => isPluginManagedProtocolAccount(a))
     .map((a) => accountProtocolId(a))
     .filter((id): id is string => Boolean(id)),
 );
@@ -308,9 +314,15 @@ function isProcessRunning(a: NapcatAccountRow): boolean {
 }
 
 function runningCapsuleClass(a: NapcatAccountRow): string {
+  if (isExternalProtocolAccount(a)) return "muted";
   return isProcessRunning(a)
     ? "data-conn-capsule data-conn-capsule--run"
     : "data-conn-capsule data-conn-capsule--off";
+}
+
+function processStateLabel(a: NapcatAccountRow): string {
+  if (isExternalProtocolAccount(a)) return "—";
+  return isProcessRunning(a) ? "运行中" : "未运行";
 }
 
 function cardKey(a: NapcatAccountRow, index: number): string {
@@ -647,35 +659,9 @@ onUnmounted(() => {
   <div class="console-hub-page">
     <ConsolePageSkeleton
       v-if="!pageReady"
-      :panels="2"
+      :panels="skeletonPanels"
     />
     <template v-else>
-    <div
-      v-if="protocolNotInstalled"
-      class="alert alert--warn protocol-page__ext-missing"
-      role="status"
-    >
-      <p>
-        尚未安装协议端扩展（<code>{{ protocolExtension?.package ?? "pallas-plugin-protocol" }}</code>），无法管理 NapCat / SnowLuma 实例与重新上号。
-      </p>
-      <p
-        v-if="protocolExtension?.install_cli"
-        class="muted protocol-page__ext-missing-cmd"
-      >
-        在本体项目目录执行：<code>{{ protocolExtension.install_cli }}</code>
-      </p>
-      <p
-        v-if="protocolExtension?.repository_url"
-        class="muted"
-      >
-        <a
-          :href="protocolExtension.repository_url"
-          target="_blank"
-          rel="noopener noreferrer"
-        >扩展仓库</a>
-        · 迁移期也可设置 <code>PALLAS_LOAD_BUNDLED_EXTRA=1</code> 加载本体 bundled 副本
-      </p>
-    </div>
     <div
       v-if="batch.batchOpen.value"
       class="protocol-page__batch panel"
@@ -692,39 +678,6 @@ onUnmounted(() => {
         {{ batch.batchBusy.value ? batch.batchPhaseLabel() || "批量任务进行中…" : batch.batchPhaseLabel() }}
       </p>
     </div>
-    <nav
-      v-if="protocolExtensionInstalled && protoActionsEnabled"
-      class="protocol-page__subnav row-actions"
-      aria-label="协议端管理"
-    >
-      <RouterLink
-        class="btn secondary"
-        to="/protocol/create"
-      >
-        创建账号
-      </RouterLink>
-      <RouterLink
-        class="btn secondary"
-        to="/protocol/import"
-      >
-        导入账号
-      </RouterLink>
-      <RouterLink
-        class="btn secondary"
-        to="/protocol/assets"
-      >
-        协议资产
-      </RouterLink>
-      <UiButton
-        v-if="dashUrl"
-        variant="outline"
-        :href="dashUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        内置管理页
-      </UiButton>
-    </nav>
     <UiCard
       tag="div"
       glass
@@ -735,7 +688,7 @@ onUnmounted(() => {
           <ConsoleNavIcon
             class="panel__title-ico"
             :name="panelNavIcon"
-          />协议端中的实例
+          />已连接账号
           <RefreshIconButton
             :show-label="false"
             :busy="loadBusy"
@@ -788,9 +741,9 @@ onUnmounted(() => {
             >
           </div>
           <UiButton
+            v-if="protoActionsEnabled"
             variant="outline"
             :disabled="
-              !protoActionsEnabled ||
               restartAllBusy ||
               batch.batchBusy.value ||
               protocolAccountsTotalCount === 0 ||
@@ -802,9 +755,9 @@ onUnmounted(() => {
             {{ restartAllBusy ? "重启全部中…" : "重启全部" }}
           </UiButton>
           <UiButton
+            v-if="protoActionsEnabled"
             variant="outline"
             :disabled="
-              !protoActionsEnabled ||
               restartSelectedBusy ||
               batch.batchBusy.value ||
               unref(bulk.selectedCount) === 0 ||
@@ -860,9 +813,7 @@ onUnmounted(() => {
                   >{{ a.connected === true ? "已连接" : "未连接" }}</span>
                 </td>
                 <td>
-                  <span :class="runningCapsuleClass(a)">{{
-                    isProcessRunning(a) ? "运行中" : "未运行"
-                  }}</span>
+                  <span :class="runningCapsuleClass(a)">{{ processStateLabel(a) }}</span>
                 </td>
                 <td>
                   <a
@@ -877,9 +828,10 @@ onUnmounted(() => {
                     class="muted"
                   >—</span>
                 </td>
-                <td>{{ accountConnectedWsPortLabel(a) }}</td>
+                <td>{{ isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a) }}</td>
                 <td>
                   <div class="inst-actions protocol-acc-table-actions">
+                    <template v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled">
                     <UiButton
                       v-if="detailHref(a)"
                       variant="outline"
@@ -890,24 +842,10 @@ onUnmounted(() => {
                     >
                       详情
                     </UiButton>
-                    <button
-                      v-if="protocolAccountNumber(a) != null"
-                      type="button"
-                      class="btn inst-fav-star"
-                      :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
-                      :title="
-                        botFavoriteAccounts.has(protocolAccountNumber(a)!)
-                          ? '取消收藏'
-                          : '收藏'
-                      "
-                      @click="toggleFavoriteBot(protocolAccountNumber(a)!)"
-                    >
-                      ★
-                    </button>
                     <UiButton
                       variant="outline"
                       size="sm"
-                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                      :disabled="isAnyAccountActionBusy(a)"
                       :busy="isAnyAccountActionBusy(a)"
                       @click="restartAccount(a)"
                     >
@@ -924,12 +862,27 @@ onUnmounted(() => {
                     <UiButton
                       size="sm"
                       :variant="isProcessRunning(a) ? 'outline' : 'primary'"
-                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                      :disabled="isAnyAccountActionBusy(a)"
                       :busy="isAnyAccountActionBusy(a)"
                       @click="toggleAccountPower(a)"
                     >
                       {{ togglePowerLabel(a) }}
                     </UiButton>
+                    </template>
+                    <button
+                      v-if="protocolAccountNumber(a) != null"
+                      type="button"
+                      class="btn inst-fav-star"
+                      :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
+                      :title="
+                        botFavoriteAccounts.has(protocolAccountNumber(a)!)
+                          ? '取消收藏'
+                          : '收藏'
+                      "
+                      @click="toggleFavoriteBot(protocolAccountNumber(a)!)"
+                    >
+                      ★
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -953,7 +906,7 @@ onUnmounted(() => {
           >
             <div class="data-summary-card__head data-summary-card__head--bot">
               <label
-                v-if="accountProtocolId(a)"
+                v-if="protoActionsEnabled && accountProtocolId(a) && isPluginManagedProtocolAccount(a)"
                 class="inst-db-card-select"
                 @click.stop
               >
@@ -1008,9 +961,7 @@ onUnmounted(() => {
                       : 'data-conn-capsule data-conn-capsule--off'
                   "
                 >{{ a.connected === true ? "已连接" : "未连接" }}</span>
-                <span :class="runningCapsuleClass(a)">{{
-                  isProcessRunning(a) ? "运行中" : "未运行"
-                }}</span>
+                <span :class="runningCapsuleClass(a)">{{ processStateLabel(a) }}</span>
               </div>
             </div>
             <div class="data-summary-card__body">
@@ -1047,10 +998,15 @@ onUnmounted(() => {
             </div>
             <div class="data-summary-card__row">
               <span class="data-summary-card__label">WS 端口</span>
-              <span class="data-summary-card__val">{{ accountConnectedWsPortLabel(a) }}</span>
+              <span class="data-summary-card__val">{{
+                isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a)
+              }}</span>
             </div>
             </div>
-            <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
+            <div
+              v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled"
+              class="data-summary-card__tags data-summary-card__foot inst-card-actions"
+            >
               <UiButton
                 variant="outline"
                 size="sm"
@@ -1087,7 +1043,7 @@ onUnmounted(() => {
           :total="filteredProtocolAccounts.length"
         />
         <ConsoleCardBulkBar
-          v-if="protoView === 'cards' && filteredProtocolAccounts.length > 0"
+          v-if="protoActionsEnabled && protoView === 'cards' && filteredProtocolAccounts.length > 0"
           :page-all-selected="protoCardsPageAllSelected"
           :selected-count="unref(bulk.selectedCount)"
           :delete-busy="deleteBusy"
@@ -1096,16 +1052,11 @@ onUnmounted(() => {
           @clear-selection="bulk.clearSelection()"
           @delete="openDeleteModal"
         />
-        <p
-          v-if="!protoActionsEnabled"
-          class="muted protocol-page__hint"
-        >
-          协议内置页未启用时，无法在控制台内启停或删除；请使用下方「协议端入口」或检查主仓配置。
-        </p>
       </div>
     </UiCard>
 
     <UiCard
+      v-if="protocolExtensionInstalled"
       tag="div"
       glass
       class="protocol-page__panel"
@@ -1157,7 +1108,25 @@ onUnmounted(() => {
             >{{ pillLabel(consoleAuthDisp) }}</span>
           </div>
         </div>
-        <div class="row-actions protocol-page__actions">
+        <div class="row-actions protocol-page__actions protocol-page__entry-actions">
+          <RouterLink
+            class="btn secondary"
+            to="/protocol/create"
+          >
+            创建账号
+          </RouterLink>
+          <RouterLink
+            class="btn secondary"
+            to="/protocol/import"
+          >
+            导入账号
+          </RouterLink>
+          <RouterLink
+            class="btn secondary"
+            to="/protocol/assets"
+          >
+            协议资产
+          </RouterLink>
           <UiButton
             v-if="dashUrl"
             variant="primary"
@@ -1165,36 +1134,8 @@ onUnmounted(() => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            打开协议端管理
+            内置管理页
           </UiButton>
-          <span
-            v-else
-            class="muted"
-          >当前无法拼接管理页 URL（请检查 http_base、webui_enabled 与 webui_path）。</span>
-          <RouterLink
-            custom
-            v-slot="{ navigate }"
-            to="/instances"
-          >
-            <UiButton
-              variant="outline"
-              @click="navigate"
-            >
-              数据库实例
-            </UiButton>
-          </RouterLink>
-          <RouterLink
-            custom
-            v-slot="{ navigate }"
-            to="/"
-          >
-            <UiButton
-              variant="outline"
-              @click="navigate"
-            >
-              返回总览
-            </UiButton>
-          </RouterLink>
         </div>
       </div>
     </UiCard>
@@ -1239,25 +1180,6 @@ onUnmounted(() => {
 }
 .protocol-page__actions {
   margin-top: 4px;
-}
-.protocol-page__hint {
-  margin: 12px 0 0;
-  font-size: 12px;
-}
-.protocol-page__ext-missing {
-  margin-bottom: 12px;
-}
-.protocol-page__ext-missing code {
-  word-break: break-all;
-}
-.protocol-page__ext-missing-cmd {
-  margin-top: 8px;
-}
-
-@media (max-width: 560px) {
-  .protocol-page__ext-missing {
-    font-size: 13px;
-  }
 }
 
 .protocol-acc-table-actions {

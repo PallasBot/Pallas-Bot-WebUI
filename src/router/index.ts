@@ -127,8 +127,8 @@ const router = createRouter({
           name: "protocol",
           component: ProtocolManagePage,
           meta: {
-            title: "协议端实例",
-            description: "协议运维",
+            title: "协议连接",
+            description: "Bot 在线账号",
           },
         },
         {

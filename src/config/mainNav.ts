@@ -24,7 +24,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/logs", label: "运行日志", icon: "logs", description: "检索导出", section: "运行与观测" },
   { to: "/log-errors", label: "日志报错", icon: "alert", description: "错误归档", section: "运行与观测" },
   { to: "/instances", label: "数据库实例", icon: "server", description: "Bot 连接", section: "接入与实例" },
-  { to: "/protocol", label: "协议端实例", icon: "radio", description: "协议运维", section: "接入与实例" },
+  { to: "/protocol", label: "协议连接", icon: "radio", description: "Bot 在线账号", section: "接入与实例" },
   { to: "/plugins", label: "插件列表", icon: "blocks", description: "已加载", section: "模块与配置" },
   { to: "/plugin-store", label: "插件商店", icon: "store", description: "官方扩展与社区插件", section: "模块与配置" },
   { to: "/common-config", label: "通用配置", icon: "settings", description: "公共项", section: "模块与配置" },

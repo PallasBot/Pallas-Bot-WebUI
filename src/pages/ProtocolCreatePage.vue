@@ -9,7 +9,7 @@ import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const router = useRouter();
-const { err, pageReady, mountUrl, protocolNotInstalled, reload } = useProtocolMount();
+const { err, pageReady, mountUrl, reload } = useProtocolMount();
 
 const qq = ref("");
 const displayName = ref("");
@@ -69,12 +69,6 @@ async function submitCreate() {
         class="alert alert--err"
       >
         {{ err }}
-      </div>
-      <div
-        v-if="protocolNotInstalled"
-        class="alert alert--warn"
-      >
-        尚未安装 pallas-plugin-protocol 扩展。
       </div>
       <UiCard
         tag="div"
@@ -198,25 +192,3 @@ async function submitCreate() {
     </template>
   </div>
 </template>
-
-<style scoped>
-.protocol-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.field--full {
-  grid-column: 1 / -1;
-}
-.field__label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-@media (max-width: 560px) {
-  .protocol-form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
