@@ -64,7 +64,10 @@ import {
   communityPluginIconBustKey,
 } from "@/utils/pluginIconUrl";
 import {
+  formatPluginStoreActiveHint,
+  formatPluginStoreBatchCompleteHint,
   formatPluginStoreEnqueuedHint,
+  formatPluginStoreInstallProgressHint,
   isPluginStoreTaskQueued,
   type PluginStoreQueueAction,
   type PluginStoreQueueKind,
@@ -150,8 +153,14 @@ async function noteStoreActionResult(
     restart_scheduled?: boolean;
     activation_action?: string | null;
   } | null,
+  queuePending = 0,
 ) {
   await ensureRestartContext();
+  const needsRestart = Boolean(
+    systemRestartAvailable.value
+    && result
+    && extensionResultNeedsRestart(result),
+  );
   if (result?.restart_scheduled) {
     storeActionHint.value = message;
     storeActionNeedsRestart.value = false;
@@ -161,12 +170,13 @@ async function noteStoreActionResult(
     }
     return;
   }
+  if (queuePending > 0 || installUpdateQueue.value.length > 0) {
+    installUpdateQueueDeferredRestart.value = installUpdateQueueDeferredRestart.value || needsRestart;
+    return;
+  }
   storeActionHint.value = message;
-  storeActionNeedsRestart.value = Boolean(
-    systemRestartAvailable.value
-    && result
-    && extensionResultNeedsRestart(result),
-  );
+  storeActionNeedsRestart.value = needsRestart || installUpdateQueueDeferredRestart.value;
+  installUpdateQueueDeferredRestart.value = false;
 }
 const storeBusyPackage = ref("");
 const storeBusyPluginId = ref("");
@@ -175,6 +185,7 @@ const storeBusyOfficialAction = ref<StoreBusyAction>("");
 const storeBusyCommunityAction = ref<StoreBusyAction>("");
 const installUpdateQueue = ref<InstallUpdateQueueEntry[]>([]);
 const installUpdateQueueRunning = ref(false);
+const installUpdateQueueDeferredRestart = ref(false);
 const storeActionInProgress = computed(
   () => Boolean(
     storeBusyOfficialAction.value
@@ -699,6 +710,13 @@ function queueTaskDescriptor(entry: InstallUpdateQueueEntry): { kind: PluginStor
   return { kind: "community", key: entry.row.plugin_id, action: entry.action };
 }
 
+function queueEntryLabel(entry: InstallUpdateQueueEntry): string {
+  if (entry.kind === "official") {
+    return officialRowTitle(entry.row);
+  }
+  return (entry.row.name || entry.row.plugin_id).trim();
+}
+
 function isInstallUpdateEntryQueued(entry: InstallUpdateQueueEntry): boolean {
   const descriptor = queueTaskDescriptor(entry);
   return isPluginStoreTaskQueued(
@@ -743,10 +761,9 @@ function enqueueInstallUpdate(entry: InstallUpdateQueueEntry): void {
   storeActionNeedsRestart.value = false;
   if (isInstallUpdatePipelineBusy()) {
     installUpdateQueue.value.push(entry);
-    const descriptor = queueTaskDescriptor(entry);
     storeActionHint.value = formatPluginStoreEnqueuedHint(
       entry.action,
-      descriptor.key,
+      queueEntryLabel(entry),
       installUpdateQueue.value.length,
     );
     return;
@@ -762,7 +779,9 @@ async function drainInstallUpdateQueue(first?: InstallUpdateQueueEntry): Promise
     return;
   }
   installUpdateQueueRunning.value = true;
+  installUpdateQueueDeferredRestart.value = false;
   let current: InstallUpdateQueueEntry | undefined = first;
+  let processedCount = 0;
   try {
     while (true) {
       if (!current) {
@@ -781,10 +800,16 @@ async function drainInstallUpdateQueue(first?: InstallUpdateQueueEntry): Promise
       } else {
         await executeUpdateCommunity(current.row, current.restart, pendingAfter);
       }
+      processedCount += 1;
       current = undefined;
+    }
+    const batchHint = formatPluginStoreBatchCompleteHint(processedCount);
+    if (batchHint && !storeErr.value) {
+      storeActionHint.value = batchHint;
     }
   } finally {
     installUpdateQueueRunning.value = false;
+    installUpdateQueueDeferredRestart.value = false;
   }
 }
 
@@ -802,18 +827,25 @@ async function executeInstallExtension(
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   storeBusyOfficialAction.value = "install";
+  const label = officialRowTitle(row);
   try {
     const job = await installOfficialExtensionAsync(row.package, { restart });
-    storeActionHint.value = withPluginStoreQueueSuffix(`安装中：${job.package}`, queuePending);
+    storeActionHint.value = withPluginStoreQueueSuffix(
+      formatPluginStoreActiveHint("install", label),
+      queuePending,
+    );
     const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-      storeActionHint.value = withPluginStoreQueueSuffix(message, queuePending);
+      storeActionHint.value = withPluginStoreQueueSuffix(
+        formatPluginStoreInstallProgressHint(message, label, row.package, "install"),
+        queuePending,
+      );
     });
     const result = payload.result as OfficialExtensionInstallResult | undefined;
     if (result) {
       officialActionState.value = { ...officialActionState.value, [row.package]: result };
-      await noteStoreActionResult(result.message || payload.message || "安装完成。", result);
+      await noteStoreActionResult(result.message || payload.message || "安装完成。", result, queuePending);
     } else {
-      await noteStoreActionResult(payload.message || "安装完成。", null);
+      await noteStoreActionResult(payload.message || "安装完成。", null, queuePending);
     }
     await refreshOfficialStore();
   } catch (e) {
@@ -867,11 +899,12 @@ async function executeUpdateExtension(
   storeActionNeedsRestart.value = false;
   storeBusyPackage.value = row.package;
   storeBusyOfficialAction.value = "update";
-  storeActionHint.value = withPluginStoreQueueSuffix(`正在更新 ${row.package}…`, queuePending);
+  const label = officialRowTitle(row);
+  storeActionHint.value = withPluginStoreQueueSuffix(formatPluginStoreActiveHint("update", label), queuePending);
   try {
     const out = await updateOfficialExtension(row.package, { restart });
     officialActionState.value = { ...officialActionState.value, [row.package]: out };
-    await noteStoreActionResult(out.message || "更新完成。", out);
+    await noteStoreActionResult(out.message || "更新完成。", out, queuePending);
     await refreshOfficialStore();
   } catch (e) {
     storeErr.value = axiosErrorDetail(e);
@@ -937,20 +970,29 @@ async function executeInstallCommunity(
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   storeBusyCommunityAction.value = "install";
+  const label = (row.name || row.plugin_id).trim();
   try {
     const job = await installCommunityPluginAsync(row.plugin_id, {
       restart,
       repositoryUrl: row.repository_url || undefined,
       ref: row.ref,
     });
+    storeActionHint.value = withPluginStoreQueueSuffix(
+      formatPluginStoreActiveHint("install", label),
+      queuePending,
+    );
     const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-      storeActionHint.value = withPluginStoreQueueSuffix(message, queuePending);
+      storeActionHint.value = withPluginStoreQueueSuffix(
+        formatPluginStoreInstallProgressHint(message, label, row.plugin_id, "install"),
+        queuePending,
+      );
     });
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     await noteStoreActionResult(
       out.message || payload.message || "安装完成。",
       out,
+      queuePending,
     );
     await refreshCommunityStore();
   } catch (e) {
@@ -1004,7 +1046,8 @@ async function executeUpdateCommunity(
   storeActionNeedsRestart.value = false;
   storeBusyPluginId.value = row.plugin_id;
   storeBusyCommunityAction.value = "update";
-  storeActionHint.value = withPluginStoreQueueSuffix(`正在更新 ${row.plugin_id}…`, queuePending);
+  const label = (row.name || row.plugin_id).trim();
+  storeActionHint.value = withPluginStoreQueueSuffix(formatPluginStoreActiveHint("update", label), queuePending);
   try {
     const out = await updateCommunityPlugin(row.plugin_id, {
       restart,
@@ -1014,6 +1057,7 @@ async function executeUpdateCommunity(
     await noteStoreActionResult(
       out.message || "更新完成。",
       out,
+      queuePending,
     );
     await refreshCommunityStore();
   } catch (e) {

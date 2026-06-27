@@ -45,3 +45,34 @@ export function formatPluginStoreEnqueuedHint(
   const verb = action === "install" ? "安装" : "更新";
   return `已加入队列：${verb} ${label}（待处理 ${pendingCount} 项）`;
 }
+
+export function formatPluginStoreActiveHint(
+  action: PluginStoreQueueAction,
+  label: string,
+): string {
+  const verb = action === "install" ? "安装" : "更新";
+  return `正在${verb} ${label}…`;
+}
+
+export function formatPluginStoreInstallProgressHint(
+  rawMessage: string,
+  displayLabel: string,
+  technicalKey: string,
+  action: PluginStoreQueueAction,
+): string {
+  const trimmed = (rawMessage || "").trim();
+  if (!trimmed) return formatPluginStoreActiveHint(action, displayLabel);
+  let out = trimmed;
+  if (technicalKey) {
+    out = out.split(technicalKey).join(displayLabel);
+  }
+  out = out.replace(/^开始install/i, "正在安装");
+  out = out.replace(/^开始update/i, "正在更新");
+  out = out.replace(/^开始uninstall/i, "正在卸载");
+  return out;
+}
+
+export function formatPluginStoreBatchCompleteHint(count: number): string {
+  if (count <= 1) return "";
+  return `已完成 ${count} 项安装/更新。`;
+}
