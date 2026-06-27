@@ -58,13 +58,26 @@ export const LLM_CLASSIFY_METRIC_LABELS: Record<string, string> = {
   vision_off: "纯文本",
 };
 
-export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<{ title: string; keys: readonly string[] }> = [
+export type LlmBotFieldGroupTier = "essential" | "advanced";
+
+export interface LlmBotFieldGroupDef {
+  title: string;
+  keys: readonly string[];
+  tier: LlmBotFieldGroupTier;
+  hint?: string;
+  anchorId?: string;
+}
+
+export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
   {
     title: "AI 服务连接",
+    tier: "essential",
     keys: ["ai_server_host", "ai_server_port"],
+    hint: "Bot 访问 Pallas-Bot-AI 的地址；扩展连接页也可改同一组项。",
   },
   {
     title: "功能开关",
+    tier: "essential",
     keys: [
       "llm_chat_enabled",
       "llm_repeater_mode",
@@ -72,9 +85,22 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<{ title: string; keys: readonly
       "llm_tools_enabled",
       "llm_governance_enabled",
     ],
+    hint: "先开「智能对话」与接话模式；记忆 / 工具可稍后再动。",
+  },
+  {
+    title: "学习闭环",
+    tier: "essential",
+    anchorId: "learning-loop",
+    keys: [
+      "llm_repeater_feedback_enabled",
+      "llm_repeater_bias_enabled",
+      "llm_repeater_writeback_enabled",
+    ],
+    hint: "开启加权后，在 AI 历史里排除坏回复或填写期望回复；写回晋升为可选进阶。",
   },
   {
     title: "记忆与检索",
+    tier: "advanced",
     keys: [
       "llm_memory_rag_enabled",
       "llm_vector_retrieve",
@@ -84,6 +110,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<{ title: string; keys: readonly
   },
   {
     title: "输出过滤",
+    tier: "advanced",
     keys: [
       "llm_output_filter_enabled",
       "llm_output_filter_chat_hard_phrases",
@@ -94,6 +121,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<{ title: string; keys: readonly
   },
   {
     title: "并发与限流",
+    tier: "advanced",
     keys: [
       "llm_chat_max_concurrency",
       "llm_repeater_group_cooldown_sec",

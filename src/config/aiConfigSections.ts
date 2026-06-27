@@ -122,7 +122,7 @@ export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/runtime";
 
 export const AI_CONFIG_HUB_LEAD =
-  "左侧选择要修改的分层；对话链路、观测内容与扩展服务互不混用，保存范围一目了然。";
+  "按左侧分区改对应链路；不确定从顶部「入门引导」或体检向导开始，高级项可稍后再动。";
 
 export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;

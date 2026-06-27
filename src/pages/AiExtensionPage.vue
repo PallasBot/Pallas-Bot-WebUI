@@ -9,6 +9,7 @@ import AiConfigProviderSection from "@/components/ai-config/AiConfigProviderSect
 import AiConfigRoutingSection from "@/components/ai-config/AiConfigRoutingSection.vue";
 import AiConfigRuntimeSection from "@/components/ai-config/AiConfigRuntimeSection.vue";
 import AiConfigStrategySection from "@/components/ai-config/AiConfigStrategySection.vue";
+import AiConfigSetupGuide from "@/components/ai-config/AiConfigSetupGuide.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -21,6 +22,7 @@ import {
   normalizeAiConfigSection,
   type AiConfigSectionId,
 } from "@/config/aiConfigSections";
+import { AI_CONFIG_WIZARD_PATH } from "@/config/aiSetupGuide";
 import { AI_OBSERVATION_SIDEBAR_PATH } from "@/config/aiObservationNav";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
@@ -97,11 +99,16 @@ onMounted(() => {
           {{ AI_CONFIG_HUB_LEAD }}
         </template>
         <template #actions>
+          <RouterLink :to="AI_CONFIG_WIZARD_PATH">
+            <UiButton variant="outline">体检向导</UiButton>
+          </RouterLink>
           <RouterLink :to="AI_OBSERVATION_SIDEBAR_PATH">
             <UiButton variant="ghost">AI 观测</UiButton>
           </RouterLink>
         </template>
       </ConsoleHubMasthead>
+
+      <AiConfigSetupGuide />
 
       <div class="ai-config-page__layout">
         <nav
