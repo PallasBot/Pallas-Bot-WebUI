@@ -72,6 +72,8 @@ const logFeedRef = ref<InstanceType<typeof LogVirtualFeed> | null>(null);
 const followLogTail = ref(true);
 const advancedOpen = ref(false);
 const streamLive = ref(false);
+const LOG_ROW_HEIGHT = 34;
+let suppressRawFollowUpdate = 0;
 
 function logScrollThreshold(el: HTMLElement): number {
   const h = el.clientHeight;
@@ -80,7 +82,8 @@ function logScrollThreshold(el: HTMLElement): number {
 
 function isNearBottom(el: HTMLElement): boolean {
   const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-  return gap <= logScrollThreshold(el);
+  const slack = Math.max(logScrollThreshold(el), LOG_ROW_HEIGHT * 3);
+  return gap <= slack;
 }
 
 function onFeedScrollState(nearBottom: boolean) {
@@ -88,6 +91,7 @@ function onFeedScrollState(nearBottom: boolean) {
 }
 
 function onRawScroll(ev: Event) {
+  if (suppressRawFollowUpdate > 0) return;
   const el = ev.target as HTMLElement | null;
   if (!el) return;
   followLogTail.value = isNearBottom(el);
@@ -103,7 +107,23 @@ async function scrollActiveLogToBottom(force = false) {
   }
   const el = rawScrollEl.value;
   if (!el || (!force && !followLogTail.value)) return;
-  el.scrollTop = el.scrollHeight;
+  suppressRawFollowUpdate += 1;
+  const apply = () => {
+    el.scrollTop = el.scrollHeight;
+  };
+  apply();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      apply();
+      window.requestAnimationFrame(() => {
+        apply();
+        suppressRawFollowUpdate = Math.max(0, suppressRawFollowUpdate - 1);
+        followLogTail.value = isNearBottom(el);
+      });
+    });
+  } else {
+    suppressRawFollowUpdate = Math.max(0, suppressRawFollowUpdate - 1);
+  }
 }
 
 function scheduleScrollActiveLogToBottom(force = false) {
@@ -427,7 +447,7 @@ watch(
 watch(
   () => liveTick.version.value,
   () => {
-    if (followLogTail.value) scheduleScrollActiveLogToBottom();
+    scheduleScrollActiveLogToBottom(followLogTail.value);
   },
   { flush: "post" },
 );

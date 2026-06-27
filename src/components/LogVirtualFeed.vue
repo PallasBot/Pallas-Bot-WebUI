@@ -26,6 +26,7 @@ const scrollTop = ref(0);
 const viewportHeight = ref(480);
 const expandedKey = ref<string | null>(null);
 let ro: ResizeObserver | null = null;
+let suppressScrollState = 0;
 
 const totalHeight = computed(() => Math.max(0, props.rows.length * props.rowHeight));
 
@@ -69,13 +70,15 @@ function scrollThreshold(el: HTMLElement): number {
 
 function isNearBottom(el: HTMLElement): boolean {
   const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-  return gap <= scrollThreshold(el);
+  const slack = Math.max(scrollThreshold(el), props.rowHeight * 3);
+  return gap <= slack;
 }
 
 function onScroll() {
   const el = scrollEl.value;
   if (!el) return;
   scrollTop.value = el.scrollTop;
+  if (suppressScrollState > 0) return;
   emit("scrollState", isNearBottom(el));
 }
 
@@ -88,6 +91,7 @@ async function scrollToBottom(force = false) {
   await nextTick();
   const el = scrollEl.value;
   if (!el) return;
+  suppressScrollState += 1;
   const apply = () => {
     el.scrollTop = el.scrollHeight;
     scrollTop.value = el.scrollTop;
@@ -96,7 +100,15 @@ async function scrollToBottom(force = false) {
   if (typeof window !== "undefined") {
     window.requestAnimationFrame(() => {
       apply();
+      window.requestAnimationFrame(() => {
+        apply();
+        suppressScrollState = Math.max(0, suppressScrollState - 1);
+        emit("scrollState", isNearBottom(el));
+      });
     });
+  } else {
+    suppressScrollState = Math.max(0, suppressScrollState - 1);
+    emit("scrollState", isNearBottom(el));
   }
 }
 
@@ -112,10 +124,22 @@ function bindViewport() {
 }
 
 watch(
-  () => props.rows.length,
+  () => props.rows,
   () => {
     if (props.followTail) void scrollToBottom(true);
   },
+  { flush: "post" },
+);
+
+watch(
+  () => {
+    const last = props.rows[props.rows.length - 1];
+    return last ? `${rowKey(last, props.rows.length - 1)}|${last.message.length}` : "";
+  },
+  () => {
+    if (props.followTail) void scrollToBottom(true);
+  },
+  { flush: "post" },
 );
 
 watch(
