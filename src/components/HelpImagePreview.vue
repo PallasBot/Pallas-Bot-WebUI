@@ -1,29 +1,71 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { fetchHelpPreviewBlob } from "@/api/consoleApi";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { fetchHelpPreviewBlob, fetchPlugins } from "@/api/consoleApi";
+import type { PluginRow } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
+import {
+  listHelpPreviewFunctionOptions,
+  listHelpPreviewPluginOptions,
+  pickDefaultHelpPreviewFunction,
+} from "@/utils/helpPreviewOptions";
 
-const { embedded } = withDefaults(
-  defineProps<{
-    embedded?: boolean;
-  }>(),
-  {
-    embedded: false,
-  },
-);
+const { embedded = false, defaultPlugin = "help" } = defineProps<{
+  embedded?: boolean;
+  defaultPlugin?: string;
+}>();
 
 const level = ref<"menu" | "plugin" | "function">("menu");
 const page = ref(1);
-const plugin = ref("help");
-const functionName = ref("");
+const plugin = ref(defaultPlugin.trim() || "help");
+const functionName = ref("1");
 const cacheBust = ref(0);
 const previewUrl = ref<string | null>(null);
 const previewLoading = ref(false);
 const previewErr = ref("");
+const pluginRows = ref<PluginRow[]>([]);
+const pluginsLoading = ref(false);
+const pluginsErr = ref("");
 
 const showPageNav = computed(() => level.value === "menu");
 const showPluginPicker = computed(() => level.value === "plugin" || level.value === "function");
 const showFunctionPicker = computed(() => level.value === "function");
+
+const pluginOptions = computed(() => listHelpPreviewPluginOptions(pluginRows.value));
+
+const selectedPluginRow = computed(
+  () => pluginRows.value.find((row) => row.name === plugin.value) ?? null,
+);
+
+const functionOptions = computed(() => listHelpPreviewFunctionOptions(selectedPluginRow.value));
+
+function syncFunctionSelection() {
+  if (level.value !== "function") return;
+  functionName.value = pickDefaultHelpPreviewFunction(functionOptions.value, functionName.value);
+}
+
+function syncPluginSelection() {
+  if (!pluginOptions.value.length) return;
+  if (!pluginOptions.value.some((item) => item.value === plugin.value)) {
+    const preferred = (defaultPlugin.trim() || "help");
+    plugin.value = pluginOptions.value.some((item) => item.value === preferred)
+      ? preferred
+      : pluginOptions.value[0].value;
+  }
+}
+
+async function loadPluginOptions() {
+  pluginsLoading.value = true;
+  pluginsErr.value = "";
+  try {
+    pluginRows.value = await fetchPlugins();
+    syncPluginSelection();
+    syncFunctionSelection();
+  } catch (e) {
+    pluginsErr.value = axiosErrorDetail(e);
+  } finally {
+    pluginsLoading.value = false;
+  }
+}
 
 function revokePreviewUrl() {
   if (previewUrl.value?.startsWith("blob:")) {
@@ -63,10 +105,20 @@ async function loadPreview() {
 
 watch([level, page, plugin, functionName, cacheBust], () => void loadPreview(), { immediate: true });
 
+watch(level, (next) => {
+  if (next === "function") syncFunctionSelection();
+});
+
+watch(plugin, () => syncFunctionSelection());
+
+watch(functionOptions, () => syncFunctionSelection());
+
 function refreshPreview() {
   page.value = Math.max(1, page.value);
   cacheBust.value = Date.now();
 }
+
+onMounted(() => void loadPluginOptions());
 
 onBeforeUnmount(revokePreviewUrl);
 </script>
@@ -111,53 +163,86 @@ onBeforeUnmount(revokePreviewUrl);
           功能
         </button>
       </div>
-      <div class="help-image-preview__actions">
-        <label
-          v-if="showPageNav"
-          class="help-image-preview__field"
+      <label
+        v-if="showPageNav"
+        class="help-image-preview__field help-image-preview__field--page"
+      >
+        <span class="help-image-preview__label">页码</span>
+        <input
+          v-model.number="page"
+          type="number"
+          min="1"
+          class="input help-image-preview__input"
         >
-          <span class="help-image-preview__label">页码</span>
-          <input
-            v-model.number="page"
-            type="number"
-            min="1"
-            class="input help-image-preview__input"
+      </label>
+      <label
+        v-if="showPluginPicker"
+        class="help-image-preview__field"
+      >
+        <span class="help-image-preview__label">插件</span>
+        <select
+          v-model="plugin"
+          class="input help-image-preview__input help-image-preview__select"
+          :disabled="pluginsLoading || !pluginOptions.length"
+        >
+          <option
+            v-if="pluginsLoading"
+            value=""
+            disabled
           >
-        </label>
-        <label
-          v-if="showPluginPicker"
-          class="help-image-preview__field"
-        >
-          <span class="help-image-preview__label">插件</span>
-          <input
-            v-model="plugin"
-            type="text"
-            class="input help-image-preview__input"
-            placeholder="插件 ID"
+            加载插件列表…
+          </option>
+          <option
+            v-for="item in pluginOptions"
+            :key="item.value"
+            :value="item.value"
           >
-        </label>
-        <label
-          v-if="showFunctionPicker"
-          class="help-image-preview__field"
+            {{ item.label }}
+          </option>
+        </select>
+      </label>
+      <label
+        v-if="showFunctionPicker"
+        class="help-image-preview__field"
+      >
+        <span class="help-image-preview__label">功能</span>
+        <select
+          v-model="functionName"
+          class="input help-image-preview__input help-image-preview__select"
+          :disabled="!functionOptions.length"
         >
-          <span class="help-image-preview__label">功能</span>
-          <input
-            v-model="functionName"
-            type="text"
-            class="input help-image-preview__input"
-            placeholder="命令或功能 ID"
+          <option
+            v-if="!functionOptions.length"
+            value="1"
+            disabled
           >
-        </label>
-        <button
-          type="button"
-          class="btn btn--sm"
-          :disabled="previewLoading"
-          @click="refreshPreview"
-        >
-          {{ previewLoading ? "加载中…" : "刷新预览" }}
-        </button>
-      </div>
+            该插件暂无功能项
+          </option>
+          <option
+            v-for="item in functionOptions"
+            :key="item.value"
+            :value="item.value"
+          >
+            {{ item.label }}
+          </option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="btn btn--sm help-image-preview__refresh"
+        :disabled="previewLoading"
+        @click="refreshPreview"
+      >
+        {{ previewLoading ? "加载中…" : "刷新预览" }}
+      </button>
     </div>
+    <p
+      v-if="pluginsErr"
+      class="help-image-preview__plugins-err muted"
+      role="status"
+    >
+      插件列表加载失败：{{ pluginsErr }}
+    </p>
     <div class="help-image-preview__frame">
       <p
         v-if="previewLoading && !previewUrl"
@@ -193,22 +278,23 @@ onBeforeUnmount(revokePreviewUrl);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
-.help-image-preview__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
+.help-image-preview__level-toggle {
+  flex: 0 0 auto;
 }
 
 .help-image-preview__field {
   display: grid;
   gap: 4px;
-  min-width: min(100%, 180px);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.help-image-preview__field--page {
+  width: 72px;
 }
 
 .help-image-preview__label {
@@ -218,6 +304,22 @@ onBeforeUnmount(revokePreviewUrl);
 
 .help-image-preview__input {
   min-width: 0;
+  width: 100%;
+}
+
+.help-image-preview__select {
+  width: min(220px, 100%);
+  min-width: 140px;
+}
+
+.help-image-preview__refresh {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+.help-image-preview__plugins-err {
+  margin: -4px 0 12px;
+  font-size: 0.85rem;
 }
 
 .help-image-preview__frame {
@@ -249,7 +351,7 @@ onBeforeUnmount(revokePreviewUrl);
 }
 
 .help-image-preview--embedded .help-image-preview__toolbar {
-  gap: 10px;
+  gap: 8px;
 }
 
 @media (max-width: 560px) {
@@ -262,12 +364,17 @@ onBeforeUnmount(revokePreviewUrl);
     flex: 1 1 auto;
   }
 
-  .help-image-preview__actions {
-    flex-direction: column;
-    align-items: stretch;
+  .help-image-preview__field,
+  .help-image-preview__field--page {
+    width: 100%;
   }
 
-  .help-image-preview__field {
+  .help-image-preview__select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .help-image-preview__refresh {
     width: 100%;
   }
 }

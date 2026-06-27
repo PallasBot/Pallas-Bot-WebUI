@@ -649,10 +649,27 @@ export async function fetchHelpPreviewBlob(opts: {
   if (level === "function" && opts.function) {
     params.set("function", opts.function);
   }
-  const { data } = await http.get<Blob>(`/help/preview?${params.toString()}`, {
-    responseType: "blob",
-  });
-  return data;
+  try {
+    const { data } = await http.get<Blob>(`/help/preview?${params.toString()}`, {
+      responseType: "blob",
+      timeout: 120_000,
+    });
+    return data;
+  } catch (e) {
+    if (isAxiosError(e) && e.response?.data instanceof Blob) {
+      const text = await e.response.data.text();
+      try {
+        const parsed = JSON.parse(text) as { detail?: string };
+        if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+          throw new Error(parsed.detail.trim());
+        }
+      } catch (inner) {
+        if (inner instanceof Error && inner.message !== text) throw inner;
+      }
+      if (text.trim()) throw new Error(text.trim());
+    }
+    throw e;
+  }
 }
 
 export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
