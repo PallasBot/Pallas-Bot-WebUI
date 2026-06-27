@@ -4430,9 +4430,11 @@ html[data-layout="hub"] .home-plugin-charts-dashboard__cell {
 }
 
 html[data-layout="hub"][data-surface="glass"] .home-plugin-charts-dashboard__cell {
-  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.35));
-  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.35));
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 .home-plugin-charts-dashboard__cell--span-2 {

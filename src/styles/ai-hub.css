@@ -88,7 +88,20 @@
     0 8px 24px rgba(15, 23, 42, 0.04);
 }
 
-html[data-theme="light"] .ai-hub-panel {
+html[data-surface="glass"] .ai-hub-panel {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-theme="light"][data-surface="glass"] .ai-hub-panel {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+}
+
+html[data-surface="solid"] .ai-hub-panel,
+html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   background: var(--surface-elevated, var(--bg-card));
 }
 

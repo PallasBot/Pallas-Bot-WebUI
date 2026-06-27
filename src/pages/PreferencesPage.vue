@@ -262,6 +262,19 @@ async function loadSetupStatus(force = false) {
       </PrefsSettingCard>
 
       <PrefsSettingCard
+        icon="terminal"
+        title="开发模式"
+        lead="联调时可跳过控制台登录与 API token；生产环境务必关闭。"
+      >
+        <ConsoleDevModePanel
+          :active="webuiDevModeActive"
+          :show-banner="false"
+          toolbar
+          @updated="onWebuiDevModeUpdated"
+        />
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
         v-if="consolePrefs.surfaceStyle === 'glass'"
         icon="sliders"
         title="模糊强度"
@@ -343,19 +356,6 @@ async function loadSetupStatus(force = false) {
             <span class="prefs-accent-swatch__label">{{ opt.label }}</span>
           </button>
         </div>
-      </PrefsSettingCard>
-
-      <PrefsSettingCard
-        icon="terminal"
-        title="开发模式"
-        lead="联调时可跳过控制台登录与 API token；生产环境务必关闭。"
-      >
-        <ConsoleDevModePanel
-          :active="webuiDevModeActive"
-          :show-banner="false"
-          toolbar
-          @updated="onWebuiDevModeUpdated"
-        />
       </PrefsSettingCard>
 
       <PrefsSettingCard

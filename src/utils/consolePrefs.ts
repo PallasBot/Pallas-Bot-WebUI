@@ -69,8 +69,8 @@ const defaults: ConsolePrefsState = {
   theme: "system",
   radius: "round",
   surfaceStyle: "glass",
-  glassBlur: 24,
-  cardGlassOpacity: 0.38,
+  glassBlur: 12,
+  cardGlassOpacity: 0.25,
   density: "comfortable",
   accentPreset: "sky",
   uiPreset: "gs",
@@ -233,7 +233,7 @@ export function applyConsolePrefsToDocument(): void {
   const el = document.documentElement;
   applyConsoleDocumentDataset(el, buildConsoleDocumentDataset(consolePrefs, systemPrefersDark()));
   const blur = consolePrefs.glassBlur;
-  const saturate = 1.05 + ((blur - 8) / 32) * 0.75;
+  const saturate = 1.08 + ((blur - 8) / 32) * 0.18;
   const glassPct = Math.round(consolePrefs.cardGlassOpacity * 100);
   el.style.setProperty("--surface-blur", `${blur}px`);
   el.style.setProperty("--card-glass-opacity", String(consolePrefs.cardGlassOpacity));

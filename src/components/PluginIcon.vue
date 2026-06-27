@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import PluginDefaultIcon from "@/components/PluginDefaultIcon.vue";
-import { pluginCoverHue } from "@/utils/pluginReadme";
 
 const props = withDefaults(
   defineProps<{
@@ -22,10 +21,6 @@ const imgFailed = ref(false);
 const sizeClass = computed(() => `plugin-icon--${props.size}`);
 
 const resolvedUrl = computed(() => (props.iconUrl || "").trim() || null);
-
-const fallbackStyle = computed(() => ({
-  "--plugin-icon-hue": String(pluginCoverHue(props.pluginId || props.label || "plugin")),
-}));
 
 const defaultIconSize = computed(() => {
   if (props.size === "xl") return 26;
@@ -58,7 +53,6 @@ watch(
     <span
       v-else
       class="plugin-icon__fallback"
-      :style="fallbackStyle"
     >
       <PluginDefaultIcon :size="defaultIconSize" />
     </span>
@@ -114,24 +108,18 @@ watch(
   align-items: center;
   justify-content: center;
   border-radius: calc(var(--radius-shell, 10px) * 0.45);
-  color: rgba(255, 255, 255, 0.94);
-  background: hsl(var(--plugin-icon-hue, 210), 52%, 46%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
+  background: #0a0a0c;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="light"] .plugin-icon__fallback {
+  color: rgba(15, 23, 42, 0.72);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1);
 }
 
 .plugin-icon--xl .plugin-icon__fallback {
   border-radius: 999px;
-}
-
-html[data-theme="light"] .plugin-icon__fallback {
-  color: color-mix(in srgb, var(--foreground) 72%, #ffffff);
-  background: color-mix(in srgb, hsl(var(--plugin-icon-hue, 210), 42%, 88%) 88%, #ffffff);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
-}
-
-html[data-ui-preset="shadcn"] .plugin-icon__fallback {
-  color: color-mix(in srgb, var(--foreground) 78%, transparent);
-  background: color-mix(in srgb, var(--foreground) 6%, var(--background));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 </style>

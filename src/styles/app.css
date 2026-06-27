@@ -1,10 +1,10 @@
 /* Pallas Console — 独立视觉系统（仅依赖后端 API，与历史主题无关） */
 :root {
   color-scheme: dark;
-  --bg-deep: #060608;
-  --bg-elev: #0e0e12;
-  --bg-card: #12121a;
-  --bg-card-hover: #181822;
+  --bg-deep: #18181b;
+  --bg-elev: #1d1d21;
+  --bg-card: #131316;
+  --bg-card-hover: #1a1a1f;
   --border: rgba(255, 255, 255, 0.05);
   --border-strong: rgba(255, 255, 255, 0.09);
   --text: #f4f4f5;
@@ -21,9 +21,11 @@
   --radius-sm: 14px;
   --radius-control: 999px;
   --radius-shell: 14px;
-  --surface-blur: 24px;
-  --card-glass-opacity: 0.38;
-  --glass-saturate: 1.45;
+  --surface-blur: 12px;
+  --card-glass-opacity: 0.25;
+  --glass-saturate: 1.12;
+  --glass-elev-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
   --font-sans: "Poppins", "Noto Sans SC", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
   --console-page-title-size: clamp(1.1rem, 2.1vw, 1.25rem);
@@ -47,7 +49,7 @@
   --home-aside-min-w: 300px;
   --home-aside-max-w: 360px;
   /* 表单控件：相对面板背景略提亮，便于辨认边界与内容 */
-  --control-bg: #1a1a26;
+  --control-bg: #1c1c22;
   --control-border: rgba(255, 255, 255, 0.11);
   /* 图表系列色（随 accent 预设变化） */
   --chart-palette-1: var(--accent);
@@ -167,12 +169,10 @@ html[data-surface="glass"] .panel,
 html[data-surface="glass"] .shell__sidebar,
 html[data-surface="glass"] .shell__topbar {
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
-  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.45));
-  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.45));
-  border-color: color-mix(in srgb, var(--border-strong) 72%, transparent);
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.14),
-    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-surface="glass"] .inp,
@@ -225,16 +225,16 @@ html[data-theme="light"][data-surface="glass"] {
   --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
   --surface-segment-active: #ffffff;
   --surface-chip: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 92%), transparent);
+  --glass-elev-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 html[data-theme="light"][data-surface="glass"] .panel,
 html[data-theme="light"][data-surface="glass"] .shell__sidebar,
 html[data-theme="light"][data-surface="glass"] .shell__topbar {
-  background: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 100%), transparent);
-  border-color: color-mix(in srgb, var(--border-strong) 55%, transparent);
-  box-shadow:
-    0 12px 36px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 /* 强调色预设（默认 sky 与 :root 一致，可不设 data-accent） */
@@ -375,9 +375,9 @@ html[data-theme="light"] {
   color-scheme: light;
   --font-sans: "Noto Sans SC", "Poppins", system-ui, sans-serif;
   --ui-btn-font: 14px;
-  --bg-deep: #f4f4f5;
-  --bg-elev: #ffffff;
-  --bg-card: #ffffff;
+  --bg-deep: #f2f2f4;
+  --bg-elev: #f7f7f8;
+  --bg-card: #fafafa;
   --bg-card-hover: #fafafa;
   --border: rgba(15, 23, 42, 0.048);
   --border-strong: rgba(15, 23, 42, 0.09);
@@ -522,23 +522,19 @@ a:hover {
   background: var(--bg-deep);
 }
 
-/* 彩色 + 毛玻璃：背景光晕随主题色 */
+/* 彩色 + 毛玻璃：主题色渐变底（对齐 gsuid_hub 默认背景） */
 html[data-ui-preset="gs"][data-surface="glass"] .shell__bg {
   background:
-    radial-gradient(ellipse 120% 80% at 10% -20%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 52%),
-    radial-gradient(ellipse 90% 60% at 100% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 48%),
-    radial-gradient(ellipse 70% 50% at 50% 100%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 52%),
-    radial-gradient(ellipse 55% 40% at 82% 72%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 50%),
-    var(--bg-deep);
+    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 52%),
+    radial-gradient(ellipse 70% 55% at 100% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 50%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, var(--bg-deep) 100%);
 }
 
 html[data-theme="light"][data-ui-preset="gs"][data-surface="glass"] .shell__bg {
   background:
-    radial-gradient(ellipse 120% 80% at 10% -20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 52%),
-    radial-gradient(ellipse 90% 60% at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 48%),
-    radial-gradient(ellipse 70% 50% at 50% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 52%),
-    radial-gradient(ellipse 55% 40% at 82% 72%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 50%),
-    var(--bg-deep);
+    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 52%),
+    radial-gradient(ellipse 70% 55% at 100% 100%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 50%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, var(--bg-deep) 100%);
 }
 
 /* 黑白 + 毛玻璃：中性灰渐变，不受主题色影响 */
@@ -9657,24 +9653,6 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card--clickable:h
     0 4px 14px rgba(15, 23, 42, 0.08);
 }
 
-html[data-surface="glass"] .plugin-store-page--hub .plugin-store-card,
-html[data-surface="glass"] .plugins-page--hub .plugin-catalog-card,
-html[data-surface="glass"] .plugin-store-page--hub .plugin-store-page__search-card,
-html[data-surface="glass"] .plugin-store-page--hub .plugin-store-page__empty-panel.panel {
-  background: var(--plugin-store-hub-surface) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-html[data-surface="glass"] .plugin-store-page--hub .plugin-store-page__search-card {
-  background: transparent !important;
-}
-
-html[data-surface="glass"] .plugin-store-page--hub .inp {
-  background: var(--control-bg) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
 
 .plugin-store-page--hub .plugin-store-page__masthead,
 .plugin-store-page--hub .plugin-store-page__hero {
@@ -9907,9 +9885,12 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__tab-btn.is-
 .plugin-store-page--hub .plugin-store-card {
   border: 1px solid var(--border);
   border-radius: var(--plugin-store-hub-radius);
-  background: var(--plugin-store-hub-surface);
   box-shadow: var(--plugin-store-hub-shadow);
   min-height: 0;
+}
+
+html[data-layout="hub"][data-surface="solid"] .plugin-store-page--hub .plugin-store-card {
+  background: var(--plugin-store-hub-surface);
 }
 
 html[data-theme="light"] .plugin-store-page--hub .plugin-store-card {
@@ -10851,13 +10832,12 @@ html[data-theme="light"] .plugin-config-workspace--dialog .help-image-preview__f
 }
 
 .readme-code-block pre {
-  padding-top: 2.25rem;
   padding-right: 4.25rem;
 }
 
 .readme-code-block__copy {
   position: absolute;
-  top: 8px;
+  top: 12px;
   right: 8px;
   z-index: 1;
   padding: 3px 8px;
@@ -16876,19 +16856,25 @@ html[data-layout="hub"] .home-body {
 
 html[data-layout="hub"] .home-kpi-bar {
   border-radius: var(--hub-radius-lg);
-  background: var(--bg-card);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
   box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"][data-surface="solid"] .home-kpi-bar {
+  background: var(--bg-card);
 }
 
 html[data-layout="hub"] .home-kpi-community {
   border-radius: var(--hub-radius-lg);
-  background: var(--bg-card);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
   box-shadow: var(--hub-shadow);
 }
 
-html[data-layout="hub"][data-theme="light"] .home-kpi-bar {
+html[data-layout="hub"][data-surface="solid"] .home-kpi-community {
+  background: var(--bg-card);
+}
+
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .home-kpi-bar {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.07);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
@@ -16899,7 +16885,7 @@ html[data-layout="hub"][data-theme="light"] .home-kpi-cell {
   border-color: rgba(15, 23, 42, 0.06);
 }
 
-html[data-layout="hub"][data-theme="light"] .home-kpi-community {
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .home-kpi-community {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.07);
 }
@@ -16908,10 +16894,13 @@ html[data-layout="hub"] .home-card {
   border-radius: var(--hub-radius-lg);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
   box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"][data-surface="solid"] .home-card {
   background: var(--bg-card);
 }
 
-html[data-layout="hub"][data-theme="light"] .home-card {
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .home-card {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.07);
 }

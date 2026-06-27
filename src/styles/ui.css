@@ -204,14 +204,16 @@ html[data-theme="light"] .ui-card {
 }
 
 .ui-card--glass {
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
-  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
-  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-theme="light"] .ui-card--glass {
-  background: var(--surface-glass-fg);
-  border-color: color-mix(in srgb, var(--surface-control) 55%, transparent);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
 }
 
 .ui-card--interactive:hover {
@@ -302,32 +304,63 @@ html[data-theme="light"] .ui-card--glass {
   border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 
-/* hub + glass：壳层实色，内容卡片可 blur */
+/* hub + glass：内容区卡片与壳层均可 blur */
 html[data-layout="hub"][data-surface="glass"] .ui-card--glass,
 html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-surface="glass"] .plugin-store-card,
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-card,
 html[data-layout="hub"][data-surface="glass"] .plugin-config-page__card {
-  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
-  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
 }
 
 html[data-layout="hub"][data-surface="glass"] .ui-card--glass {
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .ui-card--glass {
-  background: var(--surface-glass-fg);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
 }
 
 html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-surface="glass"] .plugin-store-card {
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-card {
-  background: var(--surface-glass-fg);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+}
+
+html[data-layout="hub"][data-surface="glass"] .home-card,
+html[data-layout="hub"][data-surface="glass"] .home-kpi-bar,
+html[data-layout="hub"][data-surface="glass"] .home-kpi-community {
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-kpi-bar,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-kpi-community {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+}
+
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-card {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.2) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 32%, transparent);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .console-hub-page__search-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-page__search-card {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.2) * 100%), transparent);
 }
 
 html[data-layout="hub"] .ui-btn {

@@ -31,9 +31,9 @@ html[data-layout="hub"] {
 }
 
 html[data-layout="hub"][data-theme="light"] {
-  --bg-deep: #ececee;
-  --bg-elev: #f2f2f3;
-  --bg-card: #ffffff;
+  --bg-deep: #f2f2f4;
+  --bg-elev: #f7f7f8;
+  --bg-card: #fafafa;
   --bg-card-hover: #fafafa;
   --border: rgba(15, 23, 42, 0.1);
   --border-strong: rgba(15, 23, 42, 0.14);
@@ -64,46 +64,30 @@ html[data-layout="hub"] .shell__main-inner--fill {
   gap: var(--hub-page-gap);
 }
 
-html[data-layout="hub"][data-surface="glass"] .shell__sidebar,
-html[data-layout="hub"][data-surface="glass"] .shell__topbar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
-  background: var(--hub-surface) !important;
+html[data-layout="hub"][data-surface="glass"] .panel:not(.plugin-catalog-card):not(.plugin-store-card):not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
-html[data-theme="light"][data-layout="hub"][data-surface="glass"] .shell__sidebar,
-html[data-theme="light"][data-layout="hub"][data-surface="glass"] .shell__topbar {
-  background: var(--surface-elevated) !important;
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel:not(.plugin-catalog-card):not(.plugin-store-card):not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
-html[data-layout="hub"][data-surface="glass"] .panel:not(.plugin-config-page__card):not(.plugin-store-page__empty-panel):not(.ui-card--glass):not(.prefs-setting-card) {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: var(--hub-surface) !important;
-}
-
-html[data-layout="hub"][data-surface="glass"] .panel.ui-card--glass,
 html[data-layout="hub"][data-surface="glass"] .prefs-setting-card.panel {
-  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4)) !important;
-  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4)) !important;
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent) !important;
-}
-
-html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel.ui-card--glass,
-html[data-layout="hub"][data-theme="light"][data-surface="glass"] .prefs-setting-card.panel {
-  background: var(--surface-glass-fg) !important;
-}
-
-html[data-layout="hub"][data-surface="glass"] .panel.plugin-config-page__card,
-html[data-layout="hub"][data-surface="glass"] .panel.plugin-store-page__empty-panel {
-  background: color-mix(in srgb, var(--hub-surface) 88%, transparent) !important;
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12)) !important;
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12)) !important;
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent) !important;
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent) !important;
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight) !important;
 }
 
 html[data-layout="hub"][data-ui-preset="gs"][data-surface="glass"] .shell__main-inner {
-  background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 55%),
-    var(--hub-canvas, var(--background));
+  background: transparent;
 }
 
 html[data-layout="hub"][data-ui-preset="shadcn"][data-surface="glass"] .shell__main-inner {
@@ -114,6 +98,9 @@ html[data-layout="hub"] .panel {
   border-radius: var(--hub-radius);
   border-color: color-mix(in srgb, var(--border) 92%, transparent);
   box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"][data-surface="solid"] .panel:not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
   background: var(--hub-surface);
 }
 
@@ -828,22 +815,24 @@ html[data-layout="hub"] .plugin-config-page__card {
   overflow: hidden;
 }
 
-html[data-layout="hub"][data-theme="light"] .plugin-config-page__card,
-html[data-layout="hub"][data-theme="light"] .plugin-catalog-card {
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .plugin-config-page__card,
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .plugin-catalog-card {
   background: var(--surface-elevated);
   border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
 html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-surface="glass"] .plugin-config-page__card {
-  backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
-  -webkit-backdrop-filter: blur(var(--surface-blur, 20px)) saturate(var(--glass-saturate, 1.4));
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity, 0.38) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-config-page__card {
-  background: var(--surface-glass-fg);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
 }
 
 html[data-layout="hub"] .ai-config-page,
@@ -966,8 +955,11 @@ html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: var(--plugin-store-hub-radius);
-  background: var(--plugin-store-hub-surface);
   box-shadow: var(--plugin-store-hub-shadow);
+}
+
+html[data-layout="hub"][data-surface="solid"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
+  background: var(--plugin-store-hub-surface);
 }
 
 html[data-layout="hub"][data-theme="light"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
@@ -1093,11 +1085,6 @@ html[data-layout="hub"] .bot-config-edit__grid {
 html[data-layout="hub"] .logs-page__search {
   border-radius: 999px;
   min-height: 40px;
-}
-
-html[data-surface="glass"] .console-hub-page__search-card,
-html[data-surface="glass"] .plugin-store-page__search-card {
-  background: transparent !important;
 }
 
 @media (max-width: 860px) {
@@ -1482,9 +1469,8 @@ html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__middle .sel
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(125deg, color-mix(in srgb, var(--accent) 55%, #6366f1) 0%, transparent 42%),
-    linear-gradient(215deg, color-mix(in srgb, var(--warn) 45%, #ec4899) 0%, transparent 48%),
-    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-card) 100%);
+    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 52%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, var(--bg-deep) 100%);
 }
 
 html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
@@ -1502,10 +1488,11 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--card) calc(var(--card-glass-opacity) * 100%), transparent);
-  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.4));
-  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.4));
+  border: 1px solid color-mix(in srgb, var(--border-strong) 40%, transparent);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
   font-size: 12px;
   font-weight: 650;
   color: var(--text);
@@ -1513,7 +1500,7 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
 }
 
 html[data-theme="light"] .prefs-glass-preview__pane {
-  background: var(--surface-glass-fg);
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
 }
 
 .prefs-form-field--range {
@@ -1745,14 +1732,17 @@ input.inp[type="range"]:focus-visible {
 /* ── P2 壳层 GS 化：侧栏 / 顶栏 / 搜索 ── */
 html[data-layout="hub"] .shell__sidebar {
   padding: 0 10px 12px;
-  background: var(--hub-surface);
   border-right-color: color-mix(in srgb, var(--border) 88%, transparent);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   box-shadow: none;
 }
 
-html[data-layout="hub"][data-theme="light"] .shell__sidebar {
+html[data-layout="hub"][data-surface="solid"] .shell__sidebar {
+  background: var(--hub-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .shell__sidebar {
   background: var(--surface-elevated);
   border-right-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
@@ -1886,14 +1876,17 @@ html[data-layout="hub"] .shell__nav-section {
 }
 
 html[data-layout="hub"] .shell__topbar {
-  background: var(--hub-surface);
   border-bottom-color: color-mix(in srgb, var(--border) 88%, transparent);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   box-shadow: none;
 }
 
-html[data-theme="light"][data-layout="hub"] .shell__topbar {
+html[data-layout="hub"][data-surface="solid"] .shell__topbar {
+  background: var(--hub-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .shell__topbar {
   background: var(--surface-elevated);
   border-bottom-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
