@@ -46,6 +46,7 @@ export async function refreshConsoleMeta(options?: { silent?: boolean }): Promis
       fetchBotUpdateCheck().catch(() => null),
       fetchUpdateCheck().catch(() => null),
     ]);
+    consoleMetaErr.value = "";
     consoleMetaHealth.value = h;
     if (bot) consoleMetaBotUpdate.value = bot;
     if (web) consoleMetaWebUpdate.value = web;
