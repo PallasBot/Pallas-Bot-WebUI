@@ -6,6 +6,7 @@ import AiConfigHealthFlow from "@/components/ai-config/AiConfigHealthFlow.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
 import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
@@ -94,20 +95,12 @@ watch(
 onMounted(() => {
   void refresh();
 });
+
+useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 </script>
 
 <template>
   <div class="ai-home-page">
-    <div class="ai-hub-toolbar">
-      <UiButton
-        variant="ghost"
-        size="sm"
-        :busy="loading"
-        @click="refresh"
-      >
-        刷新
-      </UiButton>
-    </div>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
     <AiConfigHealthFlow />

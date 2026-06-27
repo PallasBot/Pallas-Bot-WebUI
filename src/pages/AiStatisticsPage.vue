@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
 import StatTable, { type StatColumn } from "@/components/ai-config/stats/StatTable.vue";
-import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
 import { installChartThemeWatcher, readChartPalette } from "@/utils/chartTheme";
@@ -165,6 +165,8 @@ onMounted(() => {
 onUnmounted(() => {
   stopThemeWatch?.();
 });
+
+useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 </script>
 
 <template>
@@ -183,7 +185,6 @@ onUnmounted(() => {
           <span class="ai-date-field__label">结束</span>
           <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
         </label>
-        <UiButton variant="primary" :busy="loading" @click="refresh">刷新</UiButton>
       </div>
       <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
     </div>

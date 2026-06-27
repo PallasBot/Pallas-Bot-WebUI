@@ -51,6 +51,7 @@ import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistorySessionFilterBar from "@/components/ai-history/AiHistorySessionFilterBar.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
+import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { copyTextToClipboard } from "@/utils/clipboard";
@@ -1631,6 +1632,8 @@ async function refreshAll() {
   await refreshSessions();
 }
 
+useAiObservationRefresh(refreshAll, { isBusy: () => anyBusy.value });
+
 async function refreshFeedback() {
   if (feedbackGroupId.value == null || feedbackGroupId.value <= 0) {
     feedbackItems.value = [];
@@ -1878,9 +1881,6 @@ onMounted(() => {
 
 <template>
   <div class="ai-history-page">
-    <div class="ai-hub-toolbar ai-history-page__toolbar">
-      <UiButton variant="outline" :busy="anyBusy" @click="refreshAll">刷新</UiButton>
-    </div>
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
@@ -2213,14 +2213,20 @@ onMounted(() => {
                       <div class="ai-history-page__maintain-meta">
                         <span>任务：{{ personaShapingTaskLabel(personaShapingForRequestId(sessionTurnRequestId(row))) }}</span>
                         <span>
-                          塑形：
+                          塑形块：
                           {{
                             personaShapingForRequestId(sessionTurnRequestId(row))?.persona_shaping_active
                               ? "已注入"
-                              : "未启用"
+                              : "未注入"
                           }}
                         </span>
                       </div>
+                      <p
+                        v-if="!personaShapingForRequestId(sessionTurnRequestId(row))?.persona_shaping_active"
+                        class="muted ai-history-page__maintain-hint"
+                      >
+                        未注入表示本轮请求未写入【本轮牛格塑形】；常见于复读/语料链路、功能上线前的旧记录，或当时未解析到 persona。
+                      </p>
                       <ul
                         v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.lines?.length"
                         class="ai-history-page__persona-shaping-lines"
@@ -5044,6 +5050,7 @@ onMounted(() => {
   color: var(--text);
   background: color-mix(in srgb, var(--bg-card, var(--surface)) 92%, var(--text) 4%);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
+  border-radius: var(--radius-sm, 8px);
 }
 
 .ai-history-page__correction-textarea::placeholder {

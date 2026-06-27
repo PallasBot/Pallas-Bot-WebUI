@@ -2,13 +2,17 @@
 import { computed } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
+import { provideAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_CONFIG_SIDEBAR_PATH } from "@/config/aiConfigSections";
 import { AI_OBSERVATION_TABS } from "@/config/aiObservationNav";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
+const observationRefresh = provideAiObservationRefresh();
+const { mastheadBusy, trigger } = observationRefresh;
 
 const activeTab = computed(() =>
   AI_OBSERVATION_TABS.find((tab) => tab.routeName === route.name) ?? AI_OBSERVATION_TABS[0],
@@ -25,6 +29,12 @@ const activeTab = computed(() =>
         {{ activeTab.lead }}
       </template>
       <template #actions>
+        <RefreshIconButton
+          :show-label="false"
+          :busy="mastheadBusy"
+          label="刷新"
+          @click="trigger()"
+        />
         <RouterLink :to="AI_CONFIG_SIDEBAR_PATH">
           <UiButton variant="primary">AI 配置</UiButton>
         </RouterLink>
