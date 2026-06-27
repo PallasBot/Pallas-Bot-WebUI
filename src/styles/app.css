@@ -26,6 +26,18 @@
   --glass-saturate: 1.12;
   --glass-elev-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
+  --shell-chrome-edge: color-mix(in srgb, var(--border) 30%, transparent);
+  --shell-chrome-separator: color-mix(in srgb, var(--border) 30%, transparent);
+  --shell-chrome-shadow-x: 4px 0 24px rgba(0, 0, 0, 0.06);
+  --shell-chrome-shadow-y: 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shell-chrome-inset: inset 0 1px 0 color-mix(in srgb, var(--accent) 5%, transparent);
+  --shell-sidebar-surface: var(--bg-card);
+  --shell-sidebar-glass-mix: 1;
+  --shell-sidebar-glass-bg: color-mix(
+    in srgb,
+    var(--shell-sidebar-surface) calc(min(var(--card-glass-opacity) * var(--shell-sidebar-glass-mix), 0.88) * 100%),
+    transparent
+  );
   --font-sans: "Poppins", "Noto Sans SC", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
   --console-page-title-size: clamp(1.1rem, 2.1vw, 1.25rem);
@@ -165,14 +177,28 @@ html[data-surface="glass"] .shell__main-inner {
   background: transparent;
 }
 
-html[data-surface="glass"] .panel,
-html[data-surface="glass"] .shell__sidebar,
-html[data-surface="glass"] .shell__topbar {
+html[data-surface="glass"] .panel {
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-surface="glass"] .shell__sidebar {
+  background: var(--shell-sidebar-glass-bg);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-right: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-x), var(--glass-inset-highlight);
+}
+
+html[data-surface="glass"] .shell__topbar {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-bottom: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-y), var(--glass-inset-highlight);
 }
 
 html[data-surface="glass"] .inp,
@@ -221,20 +247,34 @@ html[data-theme="light"][data-surface="glass"] {
     color-mix(in srgb, #fff 52%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 38%, transparent) 100%
   );
+  --shell-sidebar-surface: #ffffff;
+  --shell-sidebar-glass-mix: 2;
   --surface-elevated: var(--surface-glass-fg);
   --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
   --surface-segment-active: #ffffff;
   --surface-chip: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 92%), transparent);
   --glass-elev-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 6%, transparent);
+  --shell-chrome-shadow-x: 4px 0 24px rgba(15, 23, 42, 0.06);
+  --shell-chrome-shadow-y: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
-html[data-theme="light"][data-surface="glass"] .panel,
-html[data-theme="light"][data-surface="glass"] .shell__sidebar,
-html[data-theme="light"][data-surface="glass"] .shell__topbar {
+html[data-theme="light"][data-surface="glass"] .panel {
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
   border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-theme="light"][data-surface="glass"] .shell__sidebar {
+  background: var(--shell-sidebar-glass-bg);
+  border-right: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-x), var(--glass-inset-highlight);
+}
+
+html[data-theme="light"][data-surface="glass"] .shell__topbar {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  border-bottom: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-y), var(--glass-inset-highlight);
 }
 
 /* 强调色预设（默认 sky 与 :root 一致，可不设 data-accent） */
@@ -405,6 +445,7 @@ html[data-theme="light"] {
   --surface-overlay: color-mix(in srgb, #000 8%, transparent);
   --shell-brand-mark-bg: #ffffff;
   --shell-brand-mark-border: color-mix(in srgb, var(--foreground, var(--text)) 12%, var(--border));
+  --shell-sidebar-surface: #ffffff;
 }
 
 html[data-surface="solid"] .shell__bg {
@@ -563,9 +604,10 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
   display: flex;
   flex-direction: column;
   padding: 0 8px 12px;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--shell-chrome-edge);
   background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
+  box-shadow: var(--shell-chrome-shadow-x), var(--shell-chrome-inset);
   z-index: 2;
   transition: padding 0.22s var(--ease);
 }
@@ -752,9 +794,17 @@ html[data-theme="light"] .shell__brand-badge {
   flex-direction: column;
   align-items: stretch;
   flex-shrink: 0;
-  padding: 8px 4px 10px;
+  padding: 8px 4px 0;
   margin-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+}
+
+.shell__sidebar-top::after {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: 1px;
+  margin: 10px 8px 0;
+  background: var(--shell-chrome-separator);
 }
 
 .shell__sidebar-top--collapsed {
@@ -768,7 +818,15 @@ html[data-theme="light"] .shell__brand-badge {
   gap: 10px;
   padding: 10px 8px 0;
   margin-top: auto;
-  border-top: 1px solid var(--border);
+}
+
+.shell__sidebar-tools::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: 1px;
+  margin: 0 8px 10px;
+  background: var(--shell-chrome-separator);
 }
 
 .shell__sidebar-tools .console-dev-mode-panel--compact {
@@ -1330,8 +1388,16 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
+}
+
+.shell__sidebar-bottom::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: 1px;
+  margin: 0 8px 12px;
+  background: var(--shell-chrome-separator);
 }
 
 .shell__sidebar-theme {
@@ -1449,9 +1515,10 @@ html[data-theme="light"] .shell__nav-grip-dropdown__item:hover {
   box-sizing: border-box;
   height: var(--shell-chrome-h);
   padding: 0 14px 0 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--shell-chrome-edge);
   background: var(--shell-chrome-bg);
   backdrop-filter: blur(20px);
+  box-shadow: var(--shell-chrome-shadow-y), var(--shell-chrome-inset);
   z-index: 3;
 }
 .shell__topbar-start {
@@ -3379,7 +3446,14 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
 
   .shell--sidebar-collapsed .shell__sidebar-top {
     margin: 0 0 4px;
-    padding: 6px 2px 8px;
+    padding: 6px 2px 0;
+  }
+
+  .shell--sidebar-collapsed .shell__sidebar-top::after,
+  .shell--sidebar-collapsed .shell__sidebar-tools::before,
+  .shell--sidebar-collapsed .shell__sidebar-bottom::before {
+    margin-left: 4px;
+    margin-right: 4px;
   }
 
   .shell--sidebar-collapsed .shell__nav {
@@ -3547,13 +3621,30 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
     box-sizing: border-box;
     height: var(--shell-chrome-h, 52px);
     padding: 0 12px 0 10px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--shell-chrome-edge);
     background: var(--shell-chrome-bg);
     backdrop-filter: blur(20px);
+    box-shadow: var(--shell-chrome-shadow-y);
   }
 
   .shell__main-inner {
     padding: calc(var(--shell-chrome-h, 52px) + 12px) 14px 32px;
+  }
+}
+
+@media (max-width: 560px) {
+  .shell__sidebar,
+  .shell__topbar,
+  .shell__mobile-topbar {
+    --shell-chrome-shadow-x: 2px 0 12px rgba(0, 0, 0, 0.04);
+    --shell-chrome-shadow-y: 0 2px 10px rgba(0, 0, 0, 0.03);
+  }
+
+  html[data-theme="light"] .shell__sidebar,
+  html[data-theme="light"] .shell__topbar,
+  html[data-theme="light"] .shell__mobile-topbar {
+    --shell-chrome-shadow-x: 2px 0 12px rgba(15, 23, 42, 0.04);
+    --shell-chrome-shadow-y: 0 2px 10px rgba(15, 23, 42, 0.035);
   }
 }
 

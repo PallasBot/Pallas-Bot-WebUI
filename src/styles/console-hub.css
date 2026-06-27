@@ -1732,8 +1732,12 @@ input.inp[type="range"]:focus-visible {
 /* ── P2 壳层 GS 化：侧栏 / 顶栏 / 搜索 ── */
 html[data-layout="hub"] .shell__sidebar {
   padding: 0 10px 12px;
-  border-right-color: color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow: none;
+  border-right: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-x), var(--shell-chrome-inset);
+}
+
+html[data-layout="hub"][data-surface="glass"] .shell__sidebar {
+  box-shadow: var(--shell-chrome-shadow-x), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-surface="solid"] .shell__sidebar {
@@ -1743,14 +1747,18 @@ html[data-layout="hub"][data-surface="solid"] .shell__sidebar {
 }
 
 html[data-layout="hub"][data-surface="solid"][data-theme="light"] .shell__sidebar {
-  background: var(--surface-elevated);
-  border-right-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  background: var(--shell-sidebar-surface, #fafafa);
+  border-right-color: var(--shell-chrome-edge);
 }
 
 html[data-layout="hub"] .shell__sidebar-top {
-  padding: 6px 4px 14px 0;
+  padding: 6px 4px 0 0;
   margin-bottom: 12px;
-  border-bottom-color: color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+html[data-layout="hub"] .shell__sidebar-top::after {
+  margin-left: 8px;
+  margin-right: 8px;
 }
 
 html[data-layout="hub"] .shell__brand {
@@ -1876,8 +1884,12 @@ html[data-layout="hub"] .shell__nav-section {
 }
 
 html[data-layout="hub"] .shell__topbar {
-  border-bottom-color: color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow: none;
+  border-bottom: 1px solid var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-y), var(--shell-chrome-inset);
+}
+
+html[data-layout="hub"][data-surface="glass"] .shell__topbar {
+  box-shadow: var(--shell-chrome-shadow-y), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-surface="solid"] .shell__topbar {
@@ -1888,7 +1900,7 @@ html[data-layout="hub"][data-surface="solid"] .shell__topbar {
 
 html[data-layout="hub"][data-surface="solid"][data-theme="light"] .shell__topbar {
   background: var(--surface-elevated);
-  border-bottom-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+  border-bottom-color: var(--shell-chrome-edge);
 }
 
 html[data-layout="hub"] .shell__topbar-rail .shell__topbar-menu,
@@ -2230,8 +2242,12 @@ html[data-theme="dark"][data-ui-preset="shadcn"][data-accent="violet"] {
 
 html[data-ui-preset="shadcn"][data-layout="hub"][data-surface="glass"] .shell__sidebar,
 html[data-ui-preset="shadcn"][data-layout="hub"][data-surface="glass"] .shell__topbar {
-  border-color: color-mix(in srgb, var(--foreground) 10%, var(--border) 90%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-color: var(--shell-chrome-edge);
+  box-shadow: var(--shell-chrome-shadow-x), var(--shell-chrome-inset);
+}
+
+html[data-ui-preset="shadcn"][data-layout="hub"][data-surface="glass"] .shell__topbar {
+  box-shadow: var(--shell-chrome-shadow-y), var(--shell-chrome-inset);
 }
 
 html[data-ui-preset="shadcn"] .shell__brand-mark-wrap {
