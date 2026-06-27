@@ -40,6 +40,11 @@ export const AI_SETUP_GUIDE_PATHS: AiSetupGuidePath[] = [
         detail: "开启「智能对话」等 Bot 侧总开关并保存。",
         to: aiConfigSectionPath("strategy"),
       },
+      {
+        label: "5. 历史验证",
+        detail: "改完配置后 @ 试聊，并在会话里排除坏回复或填期望回复。",
+        to: "/ai/history?workspace=sessions",
+      },
     ],
   },
   {

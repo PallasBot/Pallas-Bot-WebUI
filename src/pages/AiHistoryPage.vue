@@ -53,7 +53,7 @@ import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { formatCompactDateTime } from "@/utils/formatDateTime";
+import { formatCompactDateTime, formatRelativeDayLabel } from "@/utils/formatDateTime";
 import { deriveFeedbackGroupFromSession } from "@/utils/llmRepeaterFeedbackLink";
 
 const router = useRouter();
@@ -134,13 +134,15 @@ const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
-type MaintainPanelKey = "feedback" | "promotion" | "behavior" | "kernel";
+type MaintainPanelKey = "persona" | "feedback" | "promotion" | "behavior" | "kernel";
 const maintainPanelExpanded = ref<Record<MaintainPanelKey, boolean>>({
+  persona: false,
   feedback: true,
   promotion: false,
   behavior: false,
   kernel: false,
 });
+const personaPanelRef = ref<InstanceType<typeof PersonaAffectObservePanel> | null>(null);
 const patternSortKey = ref<"success_score" | "manual_score" | "pattern_id">("success_score");
 const learningLoopDismissed = ref(
   typeof localStorage !== "undefined" && localStorage.getItem(LEARNING_LOOP_DISMISS_KEY) === "1",
@@ -482,8 +484,16 @@ function dismissLearningLoopBanner(): void {
   localStorage.setItem(LEARNING_LOOP_DISMISS_KEY, "1");
 }
 
-function openLlmCommonConfig(): void {
-  void router.push(aiConfigSectionPath("strategy"));
+function openLlmCommonConfig(focusLearningLoop = false): void {
+  void router.push(
+    focusLearningLoop
+      ? `${aiConfigSectionPath("strategy")}#learning-loop`
+      : aiConfigSectionPath("strategy"),
+  );
+}
+
+function openHistoryVerify(): void {
+  void router.push({ path: "/ai/history", query: { workspace: "sessions" } });
 }
 const workspaceContextLabel = computed(() => {
   const session = selectedSession.value;
@@ -567,6 +577,28 @@ const behaviorPanelSummary = computed(() => {
     : "";
   return `${count} 条 · ${group} · ${scene}${outcomeLabel ? ` · ${outcomeLabel}` : ""}`;
 });
+
+const personaPanelSummary = computed(() => {
+  if (!observeGroupId.value) return "未填群号 · 在上方上下文条输入，或从会话选群";
+  if (observeScene.value) return `群 ${observeGroupId.value} · 场景 ${observeScene.value} · 点击展开`;
+  return `群 ${observeGroupId.value} · 点击展开查看情感轴`;
+});
+
+function pickGroupFromSessions(): void {
+  activeWorkspace.value = "sessions";
+}
+
+function sessionIsPrivate(item: LlmHistorySessionSummary): boolean {
+  return item.group_id === 0;
+}
+
+function sessionLastRoleLabel(item: LlmHistorySessionSummary): string {
+  return item.last_role === "assistant" ? "末条 Bot" : "末条用户";
+}
+
+function relativeDayLabel(tsSeconds: number): string {
+  return formatRelativeDayLabel(tsSeconds) ?? "";
+}
 
 function isMaintainPanelExpanded(key: MaintainPanelKey): boolean {
   return maintainPanelExpanded.value[key];
@@ -745,6 +777,27 @@ interface SessionTurnRow {
   decisionTrace: ConversationKernelTraceRow | null;
   precedingUserText: string;
   feedbackEntry: LlmRepeaterFeedbackEntry | null;
+}
+
+/** 最新轮次在前；每轮内保持用户 → Bot 顺序。 */
+function orderSessionTurnRowsForDisplay(rows: SessionTurnRow[]): SessionTurnRow[] {
+  if (rows.length <= 1) return rows;
+  const groups: SessionTurnRow[][] = [];
+  let current: SessionTurnRow[] = [];
+  for (const row of rows) {
+    if (
+      row.turn.role === "user"
+      && current.length > 0
+      && current[current.length - 1]?.turn.role === "assistant"
+    ) {
+      groups.push(current);
+      current = [row];
+      continue;
+    }
+    current.push(row);
+  }
+  if (current.length) groups.push(current);
+  return groups.reverse().flat();
 }
 
 const DECISION_TRACE_MATCH_WINDOW_SEC = 120;
@@ -970,7 +1023,7 @@ const sessionTurnRows = computed(() => {
     });
   }
   const orphanRuns = runs.filter((run) => !runConsumed.has(run.request_id));
-  return { rows, orphanRuns };
+  return { rows: orderSessionTurnRowsForDisplay(rows), orphanRuns };
 });
 
 const expandedSessionMaintainIds = ref<Record<string, boolean>>({});
@@ -1786,7 +1839,7 @@ onMounted(() => {
         </ol>
       </div>
       <div class="row-actions ai-history-page__learning-strip-actions">
-        <UiButton v-if="showLearningLoopBanner" size="sm" variant="primary" @click="openLlmCommonConfig">
+        <UiButton v-if="showLearningLoopBanner" size="sm" variant="primary" @click="openLlmCommonConfig(true)">
           去开启加权
         </UiButton>
         <UiButton
@@ -1798,12 +1851,20 @@ onMounted(() => {
           知道了
         </UiButton>
         <UiButton
+          v-else-if="learningLoopState?.kind === 'bias_on' || learningLoopState?.kind === 'full'"
+          size="sm"
+          variant="outline"
+          @click="openHistoryVerify"
+        >
+          已在维护？去验证
+        </UiButton>
+        <UiButton
           v-else-if="learningLoopState?.kind === 'idle'"
           size="sm"
           variant="outline"
-          @click="openLlmCommonConfig"
+          @click="openLlmCommonConfig(true)"
         >
-          打开 LLM 配置
+          开启学习闭环
         </UiButton>
       </div>
     </section>
@@ -1871,17 +1932,43 @@ onMounted(() => {
             v-for="item in visibleSessions"
             :key="item.session_key"
             type="button"
-            class="ai-history-page__session"
+            class="ai-history-session"
             :class="{ 'is-on': selectedSessionKey === item.session_key }"
             @click="selectedSessionKey = item.session_key"
           >
-            <div class="ai-history-page__session-top">
-              <strong>{{ item.group_id === 0 ? `私聊 ${item.user_id}` : `群 ${item.group_id} · 用户 ${item.user_id}` }}</strong>
-              <span class="ai-history-page__session-role">{{ item.last_role === "assistant" ? "Bot" : "用户" }}</span>
-              <span class="muted ai-history-page__session-time">{{ formatCompactDateTime(item.last_created_at) }}</span>
+            <div class="ai-history-session__head">
+              <div class="ai-history-session__tags">
+                <span
+                  class="ai-history-session__tag"
+                  :class="sessionIsPrivate(item) ? 'is-dm' : 'is-group'"
+                >
+                  {{ sessionIsPrivate(item) ? "私聊" : "群聊" }}
+                </span>
+                <span
+                  v-if="relativeDayLabel(item.last_created_at)"
+                  class="ai-history-session__tag is-day"
+                >
+                  {{ relativeDayLabel(item.last_created_at) }}
+                </span>
+                <span class="ai-history-session__tag is-count">{{ item.turn_count }} 条</span>
+                <span
+                  class="ai-history-session__tag"
+                  :class="item.last_role === 'assistant' ? 'is-last-bot' : 'is-last-user'"
+                >
+                  {{ sessionLastRoleLabel(item) }}
+                </span>
+                <span class="ai-history-session__tag is-bot">Bot {{ item.bot_id }}</span>
+              </div>
+              <time class="ai-history-session__time muted">{{ formatCompactDateTime(item.last_created_at) }}</time>
             </div>
-            <div class="muted ai-history-page__session-meta">Bot {{ item.bot_id }} · {{ item.turn_count }} 条对话</div>
-            <p class="ai-history-page__session-preview">{{ item.last_content || "（空消息）" }}</p>
+            <div class="ai-history-session__title">
+              <strong v-if="sessionIsPrivate(item)">用户 {{ item.user_id }}</strong>
+              <template v-else>
+                <strong>群 {{ item.group_id }}</strong>
+                <span class="ai-history-session__title-sub muted">用户 {{ item.user_id }}</span>
+              </template>
+            </div>
+            <p class="ai-history-session__preview">{{ item.last_content || "（空消息）" }}</p>
           </button>
           <button
             v-if="sessions.length > visibleSessions.length"
@@ -1909,9 +1996,28 @@ onMounted(() => {
       <main class="ai-history-split__detail">
       <div ref="sessionDetailAnchor" class="ai-history-page__detail-anchor">
         <div class="ai-history-split__detail-top">
-          <div>
+          <div class="ai-history-detail__intro">
             <h3 class="ai-history-split__detail-title">会话明细</h3>
-            <p class="muted ai-history-split__detail-lede">
+            <div
+              v-if="selectedSession"
+              class="ai-history-detail__tags"
+            >
+              <span
+                class="ai-history-session__tag"
+                :class="sessionIsPrivate(selectedSession) ? 'is-dm' : 'is-group'"
+              >
+                {{ sessionIsPrivate(selectedSession) ? "私聊" : "群聊" }}
+              </span>
+              <span
+                v-if="relativeDayLabel(selectedSession.last_created_at)"
+                class="ai-history-session__tag is-day"
+              >
+                {{ relativeDayLabel(selectedSession.last_created_at) }}
+              </span>
+              <span class="ai-history-session__tag is-count">{{ selectedSession.turn_count }} 条</span>
+              <span class="ai-history-session__tag is-bot">Bot {{ selectedSession.bot_id }}</span>
+            </div>
+            <p class="ai-history-split__detail-lede">
               {{ sessionDetail ? workspaceContextLabel || "当前选中会话" : "选择左侧会话查看完整对话" }}
             </p>
           </div>
@@ -1933,7 +2039,15 @@ onMounted(() => {
             >
               <div class="ai-history-page__turn-head">
                 <strong>{{ row.turn.role === "assistant" ? AI_ASSISTANT_NAME : `用户 ${row.turn.user_id}` }}</strong>
-                <span class="muted">{{ formatCompactDateTime(row.turn.created_at) }}</span>
+                <div class="ai-history-page__turn-meta">
+                  <span
+                    v-if="relativeDayLabel(row.turn.created_at)"
+                    class="ai-history-page__turn-day-tag"
+                  >
+                    {{ relativeDayLabel(row.turn.created_at) }}
+                  </span>
+                  <time class="ai-history-page__turn-time">{{ formatCompactDateTime(row.turn.created_at) }}</time>
+                </div>
               </div>
               <div
                 class="ai-history-page__turn-body"
@@ -2065,7 +2179,7 @@ onMounted(() => {
                         </UiButton>
                       </div>
                     </template>
-                    <p v-else class="muted ai-history-page__maintain-empty">
+                    <p v-else class="ai-history-page__maintain-empty">
                       此回复未进入反哺池，仍可直接填写期望回复写回。
                     </p>
                     <div class="ai-history-page__correction-editor">
@@ -2353,11 +2467,54 @@ onMounted(() => {
     </div>
 
     <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain">
-    <PersonaAffectObservePanel
-      embedded
-      :sync-group-id="observeGroup"
-      class="ai-history-page__persona-panel"
-    />
+    <UiCard class="ai-history-page__panel ai-history-page__persona-wrap">
+      <div class="ai-history-page__observe-panel-hd ai-history-page__observe-panel-hd--persona">
+        <div class="ai-history-page__observe-panel-hd-text">
+          <h3 class="ai-history-page__observe-panel-title">牛格观测</h3>
+          <p class="ai-history-page__observe-panel-sub">
+            <span v-if="isMaintainPanelExpanded('persona')">按群查看情感轴、群画像与 affect-refine</span>
+            <span v-else class="muted">{{ personaPanelSummary }}</span>
+          </p>
+        </div>
+        <div class="row-actions ai-history-page__observe-panel-hd-actions">
+          <UiButton
+            size="sm"
+            variant="ghost"
+            @click="pickGroupFromSessions"
+          >
+            从会话选群
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :disabled="!isMaintainPanelExpanded('persona')"
+            @click="personaPanelRef?.reload?.()"
+          >
+            刷新
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
+            @click="toggleMaintainPanel('persona')"
+          >
+            {{ isMaintainPanelExpanded('persona') ? "收起" : "展开" }}
+          </UiButton>
+        </div>
+      </div>
+      <div
+        v-show="isMaintainPanelExpanded('persona')"
+        class="ai-history-page__observe-panel-body ai-history-page__observe-panel-body--persona"
+      >
+        <PersonaAffectObservePanel
+          ref="personaPanelRef"
+          embedded
+          headless
+          :sync-group-id="observeGroup"
+          class="ai-history-page__persona-panel"
+        />
+      </div>
+    </UiCard>
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
@@ -3727,6 +3884,20 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+.ai-history-page__observe-panel-hd-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ai-history-page__observe-panel-body--persona {
+  margin-top: 0;
+}
+
+.ai-history-page__persona-wrap {
+  margin-bottom: 0;
+}
+
 .ai-history-page__observe-panel-toggle:deep(.ui-btn) {
   flex-shrink: 0;
 }
@@ -3898,7 +4069,7 @@ onMounted(() => {
 
 .ai-history-page__thread {
   display: grid;
-  gap: 0;
+  gap: 8px;
   max-height: min(58vh, 620px);
   overflow: auto;
   margin-inline: -4px;
@@ -4164,7 +4335,7 @@ onMounted(() => {
 .ai-history-page__session-list,
 .ai-history-page__detail {
   display: grid;
-  gap: 0;
+  gap: 4px;
 }
 
 .ai-history-page__session-list--scroll {
@@ -4342,80 +4513,6 @@ onMounted(() => {
   margin: 0;
 }
 
-.ai-history-page__session {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  text-align: left;
-  padding: 10px 4px;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.ai-history-page__session:last-of-type {
-  border-bottom: none;
-}
-
-.ai-history-page__session:hover {
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-}
-
-.ai-history-page__session.is-on {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.ai-history-page__session-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ai-history-page__session-role {
-  margin-left: auto;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-  color: var(--text-muted);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.ai-history-page__session.is-on .ai-history-page__session-role {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-}
-
-.ai-history-page__session-time,
-.ai-history-page__session-meta {
-  font-size: 0.75rem;
-}
-
-.ai-history-page__session-preview {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-  display: -webkit-box;
-  min-height: calc(1.45em * 2);
-  max-height: calc(1.45em * 2);
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.ai-history-split__detail {
-  min-height: min(68vh, 720px);
-}
-
 .ai-history-page__more {
   display: inline-flex;
   align-items: center;
@@ -4454,7 +4551,7 @@ onMounted(() => {
   padding: 10px 0 12px;
   border: 0;
   border-radius: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   background: transparent;
 }
 
@@ -4463,16 +4560,47 @@ onMounted(() => {
 }
 
 .ai-history-page__turn.is-assistant {
-  padding-left: 10px;
+  padding: 12px 10px 12px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
   border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.ai-history-page__turn.is-user {
+  padding: 10px 0;
 }
 
 .ai-history-page__turn-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   font-size: 0.8125rem;
+}
+
+.ai-history-page__turn-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ai-history-page__turn-day-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 32%, var(--border));
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: color-mix(in srgb, #b45309 78%, var(--text));
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.ai-history-page__turn-time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .ai-history-page__turn p {
@@ -4570,25 +4698,29 @@ onMounted(() => {
 }
 
 .ai-history-page__maintain-pill {
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
+  border: 1px solid transparent;
 }
 
 .ai-history-page__maintain-pill.is-active {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
   color: var(--accent);
 }
 
 .ai-history-page__maintain-pill.is-excluded {
   background: color-mix(in srgb, #f97316 14%, transparent);
+  border-color: color-mix(in srgb, #f97316 30%, var(--border));
   color: #c2410c;
 }
 
 .ai-history-page__maintain-pill.is-none {
-  background: color-mix(in srgb, var(--muted) 12%, transparent);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+  color: color-mix(in srgb, var(--text) 82%, var(--text-muted));
 }
 
 .ai-history-page__turn-maintain-toggle {
@@ -4637,7 +4769,13 @@ onMounted(() => {
 
 .ai-history-page__maintain-empty {
   margin: 0;
-  font-size: 0.75rem;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px dashed color-mix(in srgb, var(--text) 18%, var(--border));
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: color-mix(in srgb, var(--text) 84%, var(--text-muted));
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 .ai-history-page__maintain-behavior-bar {
@@ -4874,7 +5012,7 @@ onMounted(() => {
     gap: 4px;
   }
 
-  .ai-history-page__session-top,
+  .ai-history-session__head,
   .ai-history-page__turn-head,
   .ai-history-page__behavior-top,
   .ai-history-page__feedback-top {
@@ -4882,8 +5020,12 @@ onMounted(() => {
     gap: 4px;
   }
 
-  .ai-history-page__session-role {
-    margin-left: 0;
+  .ai-history-session__head {
+    display: grid;
+    gap: 6px;
+  }
+
+  .ai-history-session__time {
     justify-self: start;
   }
 
@@ -4906,6 +5048,16 @@ onMounted(() => {
   .ai-history-page__observe-panel-hd {
     display: grid;
     gap: 8px;
+  }
+
+  .ai-history-page__observe-panel-hd--persona .ai-history-page__observe-panel-hd-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-history-page__observe-panel-hd--persona .ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .ai-history-page__observe-panel-toggle:deep(.ui-btn) {

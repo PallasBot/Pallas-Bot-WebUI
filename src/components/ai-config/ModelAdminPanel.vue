@@ -16,7 +16,10 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
-withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
+const props = withDefaults(defineProps<{ embedded?: boolean; simpleMode?: boolean }>(), {
+  embedded: false,
+  simpleMode: false,
+});
 
 type ConfirmAction = "switch" | "numGpu" | "reload" | "unload";
 
@@ -199,7 +202,7 @@ onMounted(() => {
       </div>
 
       <dl
-        v-if="status?.provider_mode || status?.categorizer_enabled || status?.moe_tier_routing"
+        v-if="!props.simpleMode && (status?.provider_mode || status?.categorizer_enabled || status?.moe_tier_routing)"
         class="model-admin__status"
       >
         <div
@@ -242,7 +245,7 @@ onMounted(() => {
         当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
       </p>
       <div class="model-admin__links">
-        <AiConfigLayerLinks active="runtime" />
+        <AiConfigLayerLinks v-if="!props.simpleMode" active="runtime" />
         <AiObservationLinks />
       </div>
 
@@ -306,6 +309,7 @@ onMounted(() => {
           应用 GPU
         </UiButton>
         <UiButton
+          v-if="!props.simpleMode"
           variant="outline"
           :disabled="busy || loading"
           @click="askReload"
@@ -313,6 +317,7 @@ onMounted(() => {
           从配置重载
         </UiButton>
         <UiButton
+          v-if="!props.simpleMode"
           variant="destructive"
           :disabled="busy || loading"
           @click="askUnload"

@@ -3,6 +3,8 @@ import { computed, nextTick, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import AiRuntimeDiagnosticPanel from "@/components/ai-config/AiRuntimeDiagnosticPanel.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
+import AiConfigHealthFlow from "@/components/ai-config/AiConfigHealthFlow.vue";
+import AiWizardChecklist from "@/components/ai-config/AiWizardChecklist.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -111,7 +113,9 @@ onMounted(() => {
     </div>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
-    <div v-else-if="wizardAlert" class="alert alert--warn ai-home-page__wizard-alert">
+    <AiConfigHealthFlow />
+    <AiWizardChecklist />
+    <div v-if="!err && wizardAlert" class="alert alert--warn ai-home-page__wizard-alert">
       <span>{{ wizardAlert }}</span>
       <RouterLink to="/ai/wizard">
         <UiButton variant="ghost" size="sm">打开体检向导</UiButton>

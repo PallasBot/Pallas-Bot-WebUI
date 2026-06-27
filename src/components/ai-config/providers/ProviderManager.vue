@@ -10,6 +10,9 @@ import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
 import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
+import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
+
+const props = withDefaults(defineProps<{ simpleMode?: boolean }>(), { simpleMode: false });
 
 const store = useLlmProviders();
 const {
@@ -161,11 +164,13 @@ onMounted(() => {
 
       <div class="provider-manager__meta">
         <p class="muted provider-manager__intro">
-          配置本地与远程 LLM Provider 及各 task 的路由；保存写入 AI 服务
-          <code>providers.toml</code>，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。
+          {{ AI_TASK_CONFIG_HINTS.providerIntro }}
         </p>
-        <div class="provider-manager__links">
+        <div v-if="!props.simpleMode" class="provider-manager__links">
           <AiConfigLayerLinks active="provider" />
+          <AiObservationLinks />
+        </div>
+        <div v-else class="provider-manager__links">
           <AiObservationLinks />
         </div>
 
@@ -254,7 +259,7 @@ onMounted(() => {
       </ul>
 
       <div
-        v-if="providers.length"
+        v-if="providers.length && !props.simpleMode"
         class="provider-manager__routing"
       >
         <ProviderRoutingEditor

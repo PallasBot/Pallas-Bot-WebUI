@@ -22,6 +22,7 @@ import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { wizardActionForCheckId } from "@/config/aiWizardGuide";
 
 type WizardActionTarget = {
   to: string;
@@ -52,18 +53,7 @@ const extensionTest = ref<AiExtensionTestData | null>(null);
 const providerTests = ref<Record<string, ProviderTestRowState>>({});
 
 function actionTargetForCheck(id: string): WizardActionTarget {
-  switch (id) {
-    case "ai_service":
-      return { to: "/ai/config/connection", label: "检查连接配置" };
-    case "provider_configured":
-      return { to: "/ai/config/provider", label: "配置 Provider" };
-    case "provider_reachable":
-      return { to: "/ai/config/provider", label: "测试 Provider" };
-    case "llm_chat_enabled":
-      return { to: "/ai/config/strategy", label: "开启智能对话" };
-    default:
-      return { to: "/ai/home", label: "返回首页" };
-  }
+  return wizardActionForCheckId(id);
 }
 
 const checkRows = computed(() =>
@@ -286,6 +276,7 @@ onMounted(() => {
         v-for="row in checkRows"
         :key="row.id"
         class="ai-wizard-page__check"
+        :class="{ 'is-fail': !row.ok }"
       >
         <div class="ai-wizard-page__check-head">
           <div class="ai-wizard-page__check-info">
@@ -515,6 +506,11 @@ onMounted(() => {
 
 .ai-wizard-page__check {
   padding: 18px 20px;
+}
+
+.ai-wizard-page__check.is-fail {
+  border-color: color-mix(in srgb, var(--warn, #f59e0b) 45%, var(--border));
+  background: color-mix(in srgb, var(--warn, #f59e0b) 6%, transparent);
 }
 
 .ai-wizard-page__check-head {

@@ -10,6 +10,10 @@ import AiConfigRoutingSection from "@/components/ai-config/AiConfigRoutingSectio
 import AiConfigRuntimeSection from "@/components/ai-config/AiConfigRuntimeSection.vue";
 import AiConfigStrategySection from "@/components/ai-config/AiConfigStrategySection.vue";
 import AiConfigSetupGuide from "@/components/ai-config/AiConfigSetupGuide.vue";
+import AiConfigExpertModeToggle from "@/components/ai-config/AiConfigExpertModeToggle.vue";
+import AiConfigProfilePicker from "@/components/ai-config/AiConfigProfilePicker.vue";
+import AiConfigHealthFlow from "@/components/ai-config/AiConfigHealthFlow.vue";
+import AiWizardChecklist from "@/components/ai-config/AiWizardChecklist.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -24,6 +28,7 @@ import {
 } from "@/config/aiConfigSections";
 import { AI_CONFIG_WIZARD_PATH } from "@/config/aiSetupGuide";
 import { AI_OBSERVATION_SIDEBAR_PATH } from "@/config/aiObservationNav";
+import { useAiConfigExpertMode } from "@/composables/useAiConfigExpertMode";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 
@@ -32,6 +37,19 @@ const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const pageReady = ref(false);
 const navGroups = aiConfigSectionsByGroup();
+const { isSimpleMode } = useAiConfigExpertMode();
+
+const SIMPLE_SECTION_IDS = new Set(["runtime", "strategy", "connection", "knowledge"]);
+
+const visibleNavGroups = computed(() => {
+  if (!isSimpleMode.value) return navGroups;
+  return navGroups
+    .map((row) => ({
+      ...row,
+      sections: row.sections.filter((sec) => SIMPLE_SECTION_IDS.has(sec.id)),
+    }))
+    .filter((row) => row.sections.length > 0);
+});
 
 const providerSectionRef = ref<InstanceType<typeof AiConfigProviderSection> | null>(null);
 const strategySectionRef = ref<InstanceType<typeof AiConfigStrategySection> | null>(null);
@@ -51,6 +69,16 @@ watch(
     const id = typeof raw === "string" ? raw.trim() : "";
     if (id && normalizeAiConfigSection(id) === id) return;
     void router.replace(aiConfigSectionPath(normalizeAiConfigSection(id)));
+  },
+  { immediate: true },
+);
+
+watch(
+  [isSimpleMode, activeSection],
+  ([simple, section]) => {
+    if (simple && !SIMPLE_SECTION_IDS.has(section)) {
+      void router.replace(aiConfigSectionPath("runtime"));
+    }
   },
   { immediate: true },
 );
@@ -108,6 +136,10 @@ onMounted(() => {
         </template>
       </ConsoleHubMasthead>
 
+      <AiConfigHealthFlow />
+      <AiConfigExpertModeToggle />
+      <AiWizardChecklist />
+      <AiConfigProfilePicker />
       <AiConfigSetupGuide />
 
       <div class="ai-config-page__layout">
@@ -117,7 +149,7 @@ onMounted(() => {
           aria-label="AI 配置分区"
         >
           <div
-            v-for="group in navGroups"
+            v-for="group in visibleNavGroups"
             :key="group.group.id"
             class="ai-config-page__rail-group"
           >
@@ -186,6 +218,11 @@ onMounted(() => {
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   gap: var(--hub-page-gap, 18px);
   align-items: start;
+}
+
+.ai-config-page__body {
+  display: grid;
+  gap: var(--hub-page-gap, 18px);
 }
 
 .ai-config-page__rail {

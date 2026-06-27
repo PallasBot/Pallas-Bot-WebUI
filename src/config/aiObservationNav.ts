@@ -9,7 +9,7 @@ export interface AiObservationTabDef {
 }
 
 export interface AiSidebarNavDef {
-  id: "observe" | "config";
+  id: "observe" | "wizard" | "config";
   label: string;
   lead: string;
   icon: ConsoleNavIconId;
@@ -41,7 +41,7 @@ export const AI_OBSERVATION_TABS: AiObservationTabDef[] = [
   },
 ];
 
-/** 侧栏仅保留观测 + 配置两个入口 */
+/** 侧栏：观测 + 体检 + 配置 */
 export const AI_SIDEBAR_NAV: AiSidebarNavDef[] = [
   {
     id: "observe",
@@ -49,6 +49,13 @@ export const AI_SIDEBAR_NAV: AiSidebarNavDef[] = [
     lead: "运行总览、调用统计与会话历史。",
     icon: "dashboard",
     path: "/ai/home",
+  },
+  {
+    id: "wizard",
+    label: "AI 体检",
+    lead: "连通性与开关联检，失败项一键跳转修复。",
+    icon: "activity",
+    path: "/ai/wizard",
   },
   {
     id: "config",
