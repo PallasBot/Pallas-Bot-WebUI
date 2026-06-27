@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { putCommonConfig } from "@/api/consoleApi";
+import { putPluginConfig } from "@/api/consoleApi";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
-import { PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+
+const PB_WEBUI_PLUGIN = "pb_webui";
 
 const DEV_MODE_TOOLTIP =
   "联调时可跳过登录与 API token；保存后立即生效，无需重启 Bot。CORS 等中间件变更仍需重启 hub。";
@@ -46,7 +47,7 @@ async function applyDevMode(next: boolean) {
   busy.value = true;
   err.value = "";
   try {
-    await putCommonConfig(PALLAS_WEBUI_SECTION_ID, { pallas_webui_dev_mode: next });
+    await putPluginConfig(PB_WEBUI_PLUGIN, { pallas_webui_dev_mode: next });
     emit("updated", next);
     toastSaveSuccess(next ? "开发模式已开启（鉴权已跳过，立即生效）" : "开发模式已关闭（鉴权已恢复）");
   } catch (e) {
@@ -72,7 +73,7 @@ function onToggleInput(want: boolean) {
     <strong>开发模式已开启</strong>
     <span>
       控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
-      <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_WEBUI_SECTION_ID } }">通用配置</RouterLink>
+      <RouterLink :to="{ name: 'plugins', params: { name: PB_WEBUI_PLUGIN } }">网页控制台配置</RouterLink>
     </span>
   </div>
 

@@ -4,12 +4,12 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
   fetchBotUpdateCheck,
-  fetchCommonConfig,
+  fetchPluginConfig,
   fetchUpdateCheck,
   fetchUpdateCheckAll,
   postBotUpdateApply,
   postUpdateApply,
-  putCommonConfig,
+  putPluginConfig,
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -37,8 +37,8 @@ const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 const BOT_DOC = PALLAS_BOT_DOC;
 
-/** 与通用配置 `?section=pallas_protocol` 一致，经通用配置落盘 */
-const PALLAS_PROTOCOL_SECTION_ID = "pallas_protocol";
+/** 协议端插件配置（GitHub 令牌等） */
+const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 
 const panelNavIcon = usePanelNavIcon();
@@ -219,7 +219,7 @@ async function loadGithubTokenHint() {
   ghTokenErr.value = "";
   ghTokenOk.value = "";
   try {
-    const data = await fetchCommonConfig(PALLAS_PROTOCOL_SECTION_ID);
+    const data = await fetchPluginConfig(PB_PROTOCOL_PLUGIN);
     const f = data.fields.find((x) => x.name === GITHUB_TOKEN_FIELD);
     const cur = f?.current;
     const s = cur === null || cur === undefined ? "" : String(cur).trim();
@@ -241,7 +241,7 @@ async function saveGithubToken() {
   ghTokenErr.value = "";
   ghTokenOk.value = "";
   try {
-    await putCommonConfig(PALLAS_PROTOCOL_SECTION_ID, { [GITHUB_TOKEN_FIELD]: next });
+    await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: next });
     ghTokenHadValue.value = true;
     ghTokenInput.value = "";
     ghTokenOk.value = "配置已保存；若未立即生效可重启 Bot。";
@@ -262,7 +262,7 @@ async function clearGithubToken() {
   ghTokenErr.value = "";
   ghTokenOk.value = "";
   try {
-    await putCommonConfig(PALLAS_PROTOCOL_SECTION_ID, { [GITHUB_TOKEN_FIELD]: "" });
+    await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: "" });
     ghTokenHadValue.value = false;
     ghTokenInput.value = "";
     ghTokenOk.value = "已清除；重启 Bot 后生效。";
@@ -832,7 +832,7 @@ onMounted(() => {
           <div class="panel__bd muted update-page__bd">
             <p>
               可选。用于 Release 检查与下载、协议端在线拉包等。也可在
-              <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_PROTOCOL_SECTION_ID } }">通用配置 → 协议端</RouterLink>
+              <RouterLink :to="{ name: 'plugins', params: { name: PB_PROTOCOL_PLUGIN } }">插件配置 → 协议端</RouterLink>
               填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
             </p>
             <div class="update-page__gh-row">

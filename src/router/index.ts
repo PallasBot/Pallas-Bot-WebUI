@@ -7,6 +7,7 @@ import { installProtocolExtensionGuard } from "@/router/protocolExtensionGuard";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 import { routeChunkLoaders } from "@/router/chunkLoaders";
+import { commonConfigSectionRedirectTarget } from "@/utils/commonConfigRedirects";
 
 const ChartsPage = routeChunkLoaders.charts;
 const LogsPage = routeChunkLoaders.logs;
@@ -110,8 +111,9 @@ const router = createRouter({
             if (id === "arknights_kb") {
               return { name: "ai-config", params: { section: "knowledge" } };
             }
-            if (id === "pallas_webui" || id === "pallas_protocol" || id === "help") {
-              return { name: "plugins", params: { name: id } };
+            const pluginRedirect = commonConfigSectionRedirectTarget(id);
+            if (pluginRedirect) {
+              return pluginRedirect;
             }
             return { name: "common-config", query: { section: id } };
           },

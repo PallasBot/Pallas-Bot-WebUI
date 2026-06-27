@@ -20,13 +20,11 @@ import type {
   PluginConfigField,
   PluginConfigFieldGroup,
 } from "@/api/pallasTypes";
-import { SERVICE_GATEWAYS_SECTION_ID, PALLAS_WEBUI_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
+import { SERVICE_GATEWAYS_SECTION_ID, CORPUS_FEDERATION_SECTION_ID, COMMUNITY_STATS_SECTION_ID } from "@/api/pallasTypes";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
-import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
-import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
@@ -49,6 +47,7 @@ import {
   fieldValuesFromConfig,
   parsePluginConfigField,
 } from "@/utils/pluginConfigFieldModel";
+import { commonConfigSectionRedirectTarget } from "@/utils/commonConfigRedirects";
 
 const route = useRoute();
 const router = useRouter();
@@ -64,10 +63,7 @@ const checkLines = ref<string[]>([]);
 const checkResults = ref<PluginConfigCheckResult["results"]>([]);
 const checkErr = ref("");
 const fieldValues = ref<Record<string, string>>({});
-const permSelections = ref<Record<string, string>>({});
 
-const CMD_PERM_SECTION_ID = "cmd_perm";
-const COMMAND_LIMITS_SECTION_ID = "command_limits";
 const CONTROL_PLANE_SECTION_ID = "control_plane";
 const LLM_SECTION_ID = "llm";
 const ARKNIGHTS_KB_SECTION_ID = "arknights_kb";
@@ -75,7 +71,6 @@ const AI_MANAGED_SECTION_IDS = new Set([LLM_SECTION_ID, ARKNIGHTS_KB_SECTION_ID]
 const SHELL_FIELD_SECTION_IDS = new Set([
   SERVICE_GATEWAYS_SECTION_ID,
   CORPUS_FEDERATION_SECTION_ID,
-  PALLAS_WEBUI_SECTION_ID,
   COMMUNITY_STATS_SECTION_ID,
 ]);
 
@@ -83,26 +78,14 @@ const isCorpusFederationSection = computed(() => currentId.value === CORPUS_FEDE
 const isCommunityStatsSection = computed(() => currentId.value === COMMUNITY_STATS_SECTION_ID);
 const isControlPlaneSection = computed(() => currentId.value === CONTROL_PLANE_SECTION_ID);
 const isServiceGateways = computed(() => currentId.value === SERVICE_GATEWAYS_SECTION_ID);
-const isPallasWebuiSection = computed(() => currentId.value === PALLAS_WEBUI_SECTION_ID);
-const showDevModeHotReloadHint = computed(() => Boolean(data.value?.dev_mode_hot_reload));
-const showHotReloadHint = computed(
-  () => Boolean(data.value?.dev_mode_hot_reload || data.value?.hot_reload),
-);
+const showHotReloadHint = computed(() => Boolean(data.value?.hot_reload));
 const showGatewayEditor = computed(() => Boolean(data.value?.gateway_editor));
 const supportsConnectivityCheck = computed(() => Boolean(data.value?.supports_connectivity_check));
-const showCmdPermMatrix = computed(
-  () => currentId.value === CMD_PERM_SECTION_ID && Boolean(data.value?.command_perm_ui),
-);
-const showCommandLimitsTable = computed(
-  () => currentId.value === COMMAND_LIMITS_SECTION_ID && Boolean(data.value?.command_limits_ui),
-);
-const isCmdPermSection = computed(() => currentId.value === CMD_PERM_SECTION_ID);
 const isMessageScrubSection = computed(() => currentId.value === "message_scrub");
 const useShellFieldLayout = computed(() => SHELL_FIELD_SECTION_IDS.has(currentId.value));
 const gatewayFieldNameSet = computed(() => new Set<string>(PALLAS_IMAGE_GATEWAY_FIELD_NAMES));
 
 const fieldGroups = computed((): PluginConfigFieldGroup[] => data.value?.field_groups ?? []);
-const limitSelections = ref<Record<string, string>>({});
 const gatewayRuntimeItems = computed(() =>
   resolveAiRuntimeSnapshot({
     gatewayResults: checkResults.value,
@@ -114,19 +97,8 @@ const gatewayRuntimeOverview = computed(() => buildAiRuntimeOverview(gatewayRunt
 
 const genericFields = computed(() => {
   if (!data.value || fieldGroups.value.length) return [];
-  if (isCmdPermSection.value && data.value.command_perm_ui) return [];
-  if (showCommandLimitsTable.value && data.value.command_limits_ui) return [];
   return data.value.fields;
 });
-
-function sortSectionsCmdPermFirst(list: CommonConfigSectionMeta[]): CommonConfigSectionMeta[] {
-  const i = list.findIndex((s) => s.id === CMD_PERM_SECTION_ID);
-  if (i <= 0) return [...list];
-  const next = [...list];
-  const [picked] = next.splice(i, 1);
-  next.unshift(picked);
-  return next;
-}
 
 function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
   if (!data.value) return [];
@@ -135,7 +107,6 @@ function fieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[] {
 }
 
 function isFieldHiddenInGroup(f: PluginConfigField, group: PluginConfigFieldGroup): boolean {
-  if (!showConfigField(f)) return true;
   if (group.id === "draw" && showGatewayEditor.value && gatewayFieldNameSet.value.has(f.name)) {
     return true;
   }
@@ -146,9 +117,7 @@ function visibleFieldsInGroup(group: PluginConfigFieldGroup): PluginConfigField[
   return fieldsInGroup(group).filter((f) => !isFieldHiddenInGroup(f, group));
 }
 
-const visibleGenericFields = computed(() =>
-  genericFields.value.filter((f) => showConfigField(f)),
-);
+const visibleGenericFields = computed(() => genericFields.value);
 
 type ConfigEditMode = "form" | "raw";
 
@@ -232,8 +201,7 @@ const {
 } = usePluginConfigFieldPopover(() => data.value?.fields ?? []);
 
 function fieldGroupPluginRoute(group: PluginConfigFieldGroup) {
-  const sectionPlugin = isPallasWebuiSection.value ? PALLAS_WEBUI_SECTION_ID : undefined;
-  return pluginConfigRouteFromPath(group.plugin_config_path, sectionPlugin);
+  return pluginConfigRouteFromPath(group.plugin_config_path);
 }
 
 function onGatewayFieldValues(next: Record<string, string>) {
@@ -247,8 +215,6 @@ function updateFieldValue(name: string, value: string) {
 watch(
   data,
   (d) => {
-    permSelections.value = {};
-    limitSelections.value = {};
     if (!d?.fields?.length) {
       fieldValues.value = {};
       return;
@@ -262,73 +228,9 @@ watch(
       }
       fieldValues.value = next;
     }
-    const ui = d.command_perm_ui;
-    if (ui) {
-      const permNext: Record<string, string> = {};
-      for (const p of ui.plugins) {
-        for (const c of p.commands) {
-          permNext[c.command_id] = c.effective_level;
-        }
-      }
-      permSelections.value = permNext;
-    }
-    const limitUi = d.command_limits_ui;
-    if (limitUi) {
-      const limitNext: Record<string, string> = {};
-      for (const p of limitUi.plugins) {
-        for (const c of p.commands) {
-          limitNext[c.command_id] = String(c.effective_cd_sec);
-        }
-      }
-      limitSelections.value = limitNext;
-    }
   },
   { immediate: true },
 );
-
-function buildOverridesFromMatrix(): Record<string, string> {
-  const ui = data.value?.command_perm_ui;
-  if (!ui) return {};
-  const out: Record<string, string> = {};
-  for (const p of ui.plugins) {
-    for (const c of p.commands) {
-      const sel = permSelections.value[c.command_id] ?? c.effective_level;
-      if (sel !== c.default_level) {
-        out[c.command_id] = sel;
-      }
-    }
-  }
-  return out;
-}
-
-function buildCommandLimitOverridesFromTable(): Record<string, number> {
-  const ui = data.value?.command_limits_ui;
-  if (!ui) return {};
-  const out: Record<string, number> = {};
-  for (const p of ui.plugins) {
-    for (const c of p.commands) {
-      const raw = (limitSelections.value[c.command_id] ?? String(c.effective_cd_sec)).trim();
-      const parsed = Number.parseInt(raw === "" ? String(c.default_cd_sec) : raw, 10);
-      const safe = Number.isFinite(parsed) && parsed >= 0 ? parsed : c.default_cd_sec;
-      if (safe !== c.default_cd_sec) out[c.command_id] = safe;
-    }
-  }
-  return out;
-}
-
-function onCommandLimitInput(commandId: string, value: string) {
-  const trimmed = value.trim();
-  if (trimmed === "") {
-    limitSelections.value = { ...limitSelections.value, [commandId]: "" };
-    return;
-  }
-  const parsed = Number.parseInt(trimmed, 10);
-  limitSelections.value = {
-    ...limitSelections.value,
-    [commandId]: Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : "0",
-  };
-}
-
 
 async function loadSections() {
   try {
@@ -342,7 +244,14 @@ async function loadSections() {
       await router.replace(aiConfigSectionPath("knowledge"));
       return;
     }
-    sections.value = sortSectionsCmdPermFirst(raw.filter((s) => !AI_MANAGED_SECTION_IDS.has(s.id)));
+    if (typeof q === "string" && q.trim()) {
+      const redirect = commonConfigSectionRedirectTarget(q.trim());
+      if (redirect) {
+        await router.replace(redirect);
+        return;
+      }
+    }
+    sections.value = [...raw.filter((s) => !AI_MANAGED_SECTION_IDS.has(s.id))];
     const metaSection = route.meta.defaultCommonConfigSection;
     if (typeof q === "string" && q.trim()) {
       const sid = q.trim();
@@ -353,8 +262,7 @@ async function loadSections() {
       const sid = metaSection.trim();
       if (!AI_MANAGED_SECTION_IDS.has(sid)) currentId.value = sid;
     } else if (!currentId.value || AI_MANAGED_SECTION_IDS.has(currentId.value)) {
-      currentId.value =
-        sections.value.find((s) => s.id === CMD_PERM_SECTION_ID)?.id ?? sections.value[0]?.id ?? "";
+      currentId.value = sections.value[0]?.id ?? "";
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
@@ -395,6 +303,11 @@ watch(
       void router.replace(aiConfigSectionPath("knowledge"));
       return;
     }
+    const redirect = commonConfigSectionRedirectTarget(sid);
+    if (redirect) {
+      void router.replace(redirect);
+      return;
+    }
     if (sid !== currentId.value && sections.value.some((s) => s.id === sid)) {
       currentId.value = sid;
     }
@@ -424,14 +337,6 @@ function collectValues(): Record<string, unknown> {
   if (!data.value) return {};
   const values: Record<string, unknown> = {};
   for (const f of data.value.fields) {
-    if (showCmdPermMatrix.value && f.name === "command_permission_overrides") {
-      values[f.name] = buildOverridesFromMatrix();
-      continue;
-    }
-    if (showCommandLimitsTable.value && f.name === "command_limit_overrides") {
-      values[f.name] = buildCommandLimitOverridesFromTable();
-      continue;
-    }
     const raw = fieldValues.value[f.name] ?? "";
     if (f.kind === "json" && String(raw).trim() === "") {
       values[f.name] = null;
@@ -445,24 +350,13 @@ function collectValues(): Record<string, unknown> {
 const BACKFILL_ENABLE_CONFIRM =
   "开启后将在后台分批把本机历史语料同步到社区共享池；需已开启「上传本机新回复」并完成语料登记。\n\n与接话无关，队列繁忙时会自动跳过。\n\n确定开启？";
 
-const DEV_MODE_ENABLE_CONFIRM =
-  "开启开发模式将跳过控制台 JSON API 与静态页登录鉴权，任何能访问该地址的人均可读写控制台。\n\n仅在受信任的本机/内网联调时使用，生产环境务必保持关闭。\n\n确定开启？";
-
 async function save() {
   if (!data.value) return;
-  if (configEditMode.value === "form") {
-    if (isPallasWebuiSection.value) {
-      const values = collectValues();
-      const prev = data.value.fields.find((f) => f.name === "pallas_webui_dev_mode")?.current === true;
-      const next = values.pallas_webui_dev_mode === true;
-      if (!prev && next && !window.confirm(DEV_MODE_ENABLE_CONFIRM)) return;
-    }
-    if (isCorpusFederationSection.value) {
-      const values = collectValues();
-      const prev = data.value.fields.find((f) => f.name === "corpus_backfill_enabled")?.current === true;
-      const next = values.corpus_backfill_enabled === true;
-      if (!prev && next && !window.confirm(BACKFILL_ENABLE_CONFIRM)) return;
-    }
+  if (configEditMode.value === "form" && isCorpusFederationSection.value) {
+    const values = collectValues();
+    const prev = data.value.fields.find((f) => f.name === "corpus_backfill_enabled")?.current === true;
+    const next = values.corpus_backfill_enabled === true;
+    if (!prev && next && !window.confirm(BACKFILL_ENABLE_CONFIRM)) return;
   }
   saving.value = true;
   err.value = "";
@@ -504,13 +398,6 @@ async function runConnectivityCheck() {
   } finally {
     checking.value = false;
   }
-}
-
-function showConfigField(f: PluginConfigField): boolean {
-  if (showCmdPermMatrix.value && f.name === "command_permission_overrides") return false;
-  if (showCommandLimitsTable.value && f.name === "command_limit_overrides") return false;
-  if (isPallasWebuiSection.value && f.name === "pallas_webui_dev_mode") return false;
-  return true;
 }
 
 </script>
@@ -588,18 +475,6 @@ function showConfigField(f: PluginConfigField): boolean {
           v-if="data"
           class="panel__bd"
         >
-          <p
-            v-if="isCmdPermSection"
-            class="muted common-config-page__intro"
-          >
-            调整各口令<strong>谁可用</strong>（所有人、群管、号主等）。下方矩阵只显示中文命令名；保存后立即生效，一般无需重启。
-          </p>
-          <p
-            v-if="showCommandLimitsTable"
-            class="muted common-config-page__intro"
-          >
-            调整各命令的默认冷却秒数覆盖。仅当所填秒数与插件默认值不同时才会保存覆盖项；填 <code>0</code> 表示关闭该命令冷却。
-          </p>
           <p
             v-if="isMessageScrubSection"
             class="muted common-config-page__intro"
@@ -688,13 +563,6 @@ function showConfigField(f: PluginConfigField): boolean {
             />
           </div>
           <template v-if="!supportsRawToml || configEditMode === 'form'">
-          <p
-            v-if="showDevModeHotReloadHint"
-            class="muted common-config-page__intro"
-          >
-            <strong>开发模式</strong>可在顶栏快速开关：开启后跳过控制台登录校验，仅适合本机调试；公网务必关闭。
-            「允许跨域访问」变更后需重启总机牛牛。
-          </p>
           <div
             v-if="supportsConnectivityCheck && (checkLines.length || checkErr)"
             class="plugin-config-page__check-feedback"
@@ -727,33 +595,6 @@ function showConfigField(f: PluginConfigField): boolean {
             />
             <RuntimeCheckResults :results="checkResults" />
           </div>
-          <div
-            v-if="showCmdPermMatrix && data.command_perm_ui"
-            style="margin-bottom: 28px"
-          >
-            <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
-              为各命令选择「谁可用」。仅当所选等级与插件默认不同时才会保存覆盖项。
-            </p>
-            <CmdPermMatrix
-              :levels="data.command_perm_ui.levels"
-              :plugins="data.command_perm_ui.plugins"
-              :selections="permSelections"
-              @change="(cmdId, lv) => (permSelections[cmdId] = lv)"
-            />
-          </div>
-          <div
-            v-if="showCommandLimitsTable && data.command_limits_ui"
-            style="margin-bottom: 28px"
-          >
-            <p class="muted" style="font-size: 13px; margin-bottom: 14px; line-height: 1.5">
-              按插件分组编辑冷却秒数。表格内填写的是<strong>生效值</strong>；与默认值相同则不会写入覆盖。
-            </p>
-            <CmdLimitsTable
-              :plugins="data.command_limits_ui.plugins"
-              :selections="limitSelections"
-              @input="onCommandLimitInput"
-            />
-          </div>
           <template v-if="fieldGroups.length">
             <section
               v-for="group in fieldGroups"
@@ -765,15 +606,7 @@ function showConfigField(f: PluginConfigField): boolean {
                   {{ group.title }}
                 </h3>
                 <router-link
-                  v-if="isPallasWebuiSection"
-                  :to="{ name: 'plugins', params: { name: PALLAS_WEBUI_SECTION_ID } }"
-                  class="muted"
-                  style="font-size: 13px"
-                >
-                  插件完整配置 →
-                </router-link>
-                <router-link
-                  v-else-if="group.plugin_config_path"
+                  v-if="group.plugin_config_path"
                   :to="fieldGroupPluginRoute(group)"
                   class="muted"
                   style="font-size: 13px"
@@ -781,13 +614,6 @@ function showConfigField(f: PluginConfigField): boolean {
                   插件完整配置 →
                 </router-link>
               </div>
-              <p
-                v-if="isPallasWebuiSection && group.id === 'security'"
-                class="muted"
-                style="font-size: 13px; margin: -6px 0 12px; line-height: 1.5"
-              >
-                开发模式开关在顶栏右侧，与连接状态、主题切换同一行。
-              </p>
               <PallasImageGatewaysEditor
                 v-if="group.id === 'draw' && showGatewayEditor"
                 :field-values="fieldValues"
