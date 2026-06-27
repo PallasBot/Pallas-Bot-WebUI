@@ -15,6 +15,7 @@ import {
   fetchLlmRepeaterFeedbackSummary,
   fetchLlmPromotionCandidates,
   fetchLlmRuntimeReplay,
+  fetchLlmRuntimeDebug,
   postConversationKernelMemoryDelete,
   postConversationKernelRelationshipNoteDelete,
   postLlmRuntimeReplayRun,
@@ -30,6 +31,8 @@ import type {
   LlmHistoryBehaviorRun,
   LlmHistoryBehaviorAutoFeedbackPayload,
   LlmRuntimeReplayResult,
+  LlmRuntimeDebugData,
+  LlmPersonaShapingSummary,
   LlmHistorySessionDetailData,
   LlmHistorySessionSummary,
   LlmHistoryTurn,
@@ -349,6 +352,10 @@ const replayRunDialogSubtitle = ref("");
 const replayRunResult = ref<LlmRuntimeReplayResult | null>(null);
 const replayRunError = ref("");
 const replayRunRawExpanded = ref(false);
+const personaShapingCache = ref<Record<string, LlmPersonaShapingSummary>>({});
+const personaShapingBusy = ref<Record<string, boolean>>({});
+const personaShapingError = ref<Record<string, string>>({});
+const replayPersonaShaping = ref<LlmPersonaShapingSummary | null>(null);
 
 const replayRunTrace = computed(() => replayRunResult.value?.trace ?? null);
 const replayRunReply = computed(() => String(replayRunResult.value?.reply || "").trim());
@@ -362,7 +369,7 @@ const replayRunAssistantPreview = computed(() => {
 const replayRunSummary = computed(() => {
   const result = replayRunResult.value;
   if (!result) return [];
-  return [
+  const items = [
     { label: "执行模式", value: result.mode || "mock_tools", accent: true },
     { label: "任务", value: result.task || "llm_chat" },
     { label: "请求快照", value: result.request_snapshot_id || "无" },
@@ -371,6 +378,11 @@ const replayRunSummary = computed(() => {
       value: typeof replayRunTrace.value?.tool_call_count === "number" ? String(replayRunTrace.value.tool_call_count) : "0",
     },
   ];
+  const shaping = replayPersonaShaping.value;
+  if (shaping?.lines?.length) {
+    items.push({ label: "牛格塑形", value: shaping.lines.slice(0, 2).join("；") });
+  }
+  return items;
 });
 
 async function copyReplayPayload(requestId: string) {
@@ -391,6 +403,55 @@ async function copyReplayPayload(requestId: string) {
 function closeReplayRunDialog() {
   replayRunDialogOpen.value = false;
   replayRunRawExpanded.value = false;
+  replayPersonaShaping.value = null;
+}
+
+async function loadPersonaShaping(requestId: string): Promise<LlmPersonaShapingSummary | null> {
+  const key = requestId.trim();
+  if (!key) return null;
+  if (personaShapingCache.value[key]) return personaShapingCache.value[key];
+  if (personaShapingBusy.value[key]) return null;
+  personaShapingBusy.value = { ...personaShapingBusy.value, [key]: true };
+  personaShapingError.value = { ...personaShapingError.value, [key]: "" };
+  try {
+    const data: LlmRuntimeDebugData = await fetchLlmRuntimeDebug(key);
+    const summary = data.persona_shaping ?? null;
+    if (summary) {
+      personaShapingCache.value = { ...personaShapingCache.value, [key]: summary };
+    }
+    return summary;
+  } catch (e) {
+    personaShapingError.value = {
+      ...personaShapingError.value,
+      [key]: e instanceof Error ? e.message : String(e),
+    };
+    return null;
+  } finally {
+    personaShapingBusy.value = { ...personaShapingBusy.value, [key]: false };
+  }
+}
+
+function sessionTurnRequestId(row: SessionTurnRow): string {
+  return String(row.feedbackEntry?.request_id || row.behaviorRun?.request_id || "").trim();
+}
+
+function personaShapingForRequestId(requestId: string): LlmPersonaShapingSummary | null {
+  const key = requestId.trim();
+  return key ? personaShapingCache.value[key] ?? null : null;
+}
+
+function personaShapingTaskLabel(summary: LlmPersonaShapingSummary | null): string {
+  const task = String(summary?.source_task || "").trim();
+  if (!task) return "未知任务";
+  if (task === "llm_chat") return "@ 闲聊";
+  if (task.startsWith("repeater")) return "复读 / 语料";
+  return task;
+}
+
+async function loadPersonaShapingForTurn(row: SessionTurnRow) {
+  const requestId = sessionTurnRequestId(row);
+  if (!requestId) return;
+  await loadPersonaShaping(requestId);
 }
 
 async function copyReplayRunResult() {
@@ -412,6 +473,7 @@ async function runReplay(requestId: string) {
     const result = await postLlmRuntimeReplayRun(key);
     replayRunDialogSubtitle.value = `${result.mode || "mock_tools"} · ${result.task || "llm_chat"}`;
     replayRunResult.value = result;
+    replayPersonaShaping.value = result.persona_shaping ?? (await loadPersonaShaping(key));
   } catch (e) {
     replayRunError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -1027,11 +1089,15 @@ function isSessionMaintainExpanded(key: string): boolean {
   return !!expandedSessionMaintainIds.value[key];
 }
 
-function toggleSessionMaintainExpanded(key: string): void {
+function toggleSessionMaintainExpanded(key: string, row?: SessionTurnRow): void {
+  const next = !expandedSessionMaintainIds.value[key];
   expandedSessionMaintainIds.value = {
     ...expandedSessionMaintainIds.value,
-    [key]: !expandedSessionMaintainIds.value[key],
+    [key]: next,
   };
+  if (next && row) {
+    void loadPersonaShapingForTurn(row);
+  }
 }
 
 function buildSessionKey(botId?: number | null, groupId?: number | null, userId?: number | null): string {
@@ -2117,7 +2183,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="ai-history-page__turn-toggle ai-history-page__turn-maintain-toggle"
-                    @click="toggleSessionMaintainExpanded(turnMaintKey(row))"
+                    @click="toggleSessionMaintainExpanded(turnMaintKey(row), row)"
                   >
                     {{ isSessionMaintainExpanded(turnMaintKey(row)) ? "收起" : (row.behaviorRun ? "行为标注" : "详情") }}
                   </button>
@@ -2126,6 +2192,66 @@ onMounted(() => {
                   v-if="isSessionMaintainExpanded(turnMaintKey(row))"
                   class="ai-history-page__turn-maintain-body"
                 >
+                  <section
+                    v-if="sessionTurnRequestId(row)"
+                    class="ai-history-page__maintain-section ai-history-page__persona-shaping-section"
+                  >
+                    <h5 class="ai-history-page__maintain-section-title">牛格塑形</h5>
+                    <p class="muted ai-history-page__maintain-hint">
+                      展示本轮请求注入的塑形摘要；@ 闲聊含完整塑形块，复读链路通常较轻。
+                    </p>
+                    <div v-if="personaShapingBusy[sessionTurnRequestId(row)]" class="muted ai-history-page__maintain-hint">
+                      加载塑形摘要…
+                    </div>
+                    <p
+                      v-else-if="personaShapingError[sessionTurnRequestId(row)]"
+                      class="ai-history-page__maintain-empty"
+                    >
+                      未找到 runtime 快照：{{ personaShapingError[sessionTurnRequestId(row)] }}
+                    </p>
+                    <template v-else-if="personaShapingForRequestId(sessionTurnRequestId(row))">
+                      <div class="ai-history-page__maintain-meta">
+                        <span>任务：{{ personaShapingTaskLabel(personaShapingForRequestId(sessionTurnRequestId(row))) }}</span>
+                        <span>
+                          塑形：
+                          {{
+                            personaShapingForRequestId(sessionTurnRequestId(row))?.persona_shaping_active
+                              ? "已注入"
+                              : "未启用"
+                          }}
+                        </span>
+                      </div>
+                      <ul
+                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.lines?.length"
+                        class="ai-history-page__persona-shaping-lines"
+                      >
+                        <li
+                          v-for="(line, lineIndex) in personaShapingForRequestId(sessionTurnRequestId(row))?.lines"
+                          :key="`${sessionTurnRequestId(row)}-line-${lineIndex}`"
+                        >
+                          {{ line }}
+                        </li>
+                      </ul>
+                      <p
+                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.dynamic_expression"
+                        class="ai-history-page__persona-shaping-extra"
+                      >
+                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.dynamic_expression }}
+                      </p>
+                      <p
+                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.variation_hint"
+                        class="ai-history-page__persona-shaping-extra muted"
+                      >
+                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.variation_hint }}
+                      </p>
+                      <p class="muted ai-history-page__maintain-hint ai-history-page__persona-shaping-note">
+                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.compare_note }}
+                      </p>
+                    </template>
+                    <p v-else class="ai-history-page__maintain-empty">
+                      暂无塑形摘要（可能为旧请求或未落盘 runtime 快照）。
+                    </p>
+                  </section>
                   <section class="ai-history-page__maintain-section">
                     <h5 class="ai-history-page__maintain-section-title">反哺学习</h5>
                     <p class="muted ai-history-page__maintain-hint">
@@ -3532,6 +3658,22 @@ onMounted(() => {
               <span class="ai-stat__label">{{ item.label }}</span>
               <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
             </div>
+          </div>
+          <div v-if="replayPersonaShaping?.lines?.length" class="ai-history-page__replay-block">
+            <div class="ai-head ai-history-page__replay-block-head">
+              <h4 class="ai-head__title">牛格塑形摘要</h4>
+            </div>
+            <ul class="ai-history-page__persona-shaping-lines">
+              <li v-for="(line, lineIndex) in replayPersonaShaping.lines" :key="`replay-shaping-${lineIndex}`">
+                {{ line }}
+              </li>
+            </ul>
+            <p v-if="replayPersonaShaping.dynamic_expression" class="ai-history-page__persona-shaping-extra">
+              {{ replayPersonaShaping.dynamic_expression }}
+            </p>
+            <p class="muted ai-history-page__maintain-hint ai-history-page__persona-shaping-note">
+              {{ replayPersonaShaping.compare_note }}
+            </p>
           </div>
           <div v-if="replayRunReply || replayRunAssistantPreview" class="ai-history-page__replay-block">
             <div class="ai-head ai-history-page__replay-block-head">
@@ -4963,6 +5105,28 @@ onMounted(() => {
   color: var(--text-muted);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.ai-history-page__persona-shaping-lines {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.ai-history-page__persona-shaping-extra {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-history-page__persona-shaping-note {
+  margin-top: 8px;
 }
 
 @media (max-width: 860px) {

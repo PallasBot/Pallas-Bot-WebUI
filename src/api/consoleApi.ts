@@ -69,6 +69,7 @@ import type {
   LlmHistorySessionDetailData,
   LlmHistoryBehaviorRun,
   LlmRuntimeReplayResult,
+  LlmRuntimeDebugData,
   LlmBehaviorPattern,
   LlmBehaviorPatternsData,
   LlmBehaviorRunsData,
@@ -971,6 +972,13 @@ export async function fetchLlmRuntimeReplay(
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-debug/{request_id}/replay"]["get"]
   >(path, { params: { mode } })) as Record<string, unknown>;
+}
+
+export async function fetchLlmRuntimeDebug(requestId: string): Promise<LlmRuntimeDebugData> {
+  const path = `/common-config/llm/runtime-debug/${encodeURIComponent(requestId)}`;
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-debug/{request_id}"]["get"]
+  >(path)) as LlmRuntimeDebugData;
 }
 
 export async function postLlmRuntimeReplayRun(

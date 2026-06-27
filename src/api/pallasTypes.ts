@@ -1101,6 +1101,25 @@ export interface LlmRuntimeReplayResult {
   reply?: string;
   trace?: LlmHistoryBehaviorAgentTrace | null;
   assistant_message?: Record<string, unknown>;
+  persona_shaping?: LlmPersonaShapingSummary | null;
+}
+
+export interface LlmPersonaShapingSummary {
+  source_task?: string;
+  persona_shaping_active?: boolean;
+  affect_block?: string;
+  dynamic_expression?: string;
+  variation_hint?: string;
+  lines?: string[];
+  compare_note?: string;
+  corpus_ending?: string;
+}
+
+export interface LlmRuntimeDebugData {
+  request_id?: string;
+  snapshot?: Record<string, unknown> | null;
+  trace?: LlmHistoryBehaviorAgentTrace | null;
+  persona_shaping?: LlmPersonaShapingSummary | null;
 }
 
 export interface LlmBehaviorPattern {
