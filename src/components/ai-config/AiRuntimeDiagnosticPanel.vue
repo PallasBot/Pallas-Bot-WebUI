@@ -40,17 +40,25 @@ const taskRoutingRows = computed(() => {
   return Object.entries(preview).map(([task, raw]) => {
     const row = raw as {
       primary_model?: string | null;
-      chain?: Array<{ resolved_model?: string | null }>;
+      chain?: Array<{ resolved_model?: string | null; provider_hint?: string | null }>;
     };
     const chain = Array.isArray(row.chain) ? row.chain : [];
+    const primaryEntry = chain[0];
+    const providerHint = String(primaryEntry?.provider_hint ?? "").trim();
+    const model = String(row.primary_model ?? primaryEntry?.resolved_model ?? "").trim();
     const fallbacks = chain
       .slice(1)
       .map((item) => String(item.resolved_model ?? "").trim())
       .filter(Boolean);
+    const primary = model || providerHint || "—";
     return {
       task,
       label: LLM_TASK_ROUTE_LABELS[task as keyof typeof LLM_TASK_ROUTE_LABELS] ?? task,
-      primary: String(row.primary_model ?? chain[0]?.resolved_model ?? "").trim() || "—",
+      providerHint,
+      model,
+      primary,
+      primaryDisplay:
+        model && providerHint ? `${providerHint} · ${model}` : primary,
       fallbacks,
     };
   });
@@ -233,7 +241,7 @@ function circuitTone(state: string): string {
                 <strong>{{ row.label }}</strong>
                 <span class="muted ai-runtime-diagnostic__row-id">{{ row.task }}</span>
               </td>
-              <td data-label="主用模型"><code>{{ row.primary }}</code></td>
+              <td data-label="主用模型"><code>{{ row.primaryDisplay }}</code></td>
               <td data-label="备选模型" class="muted">
                 <span v-if="row.fallbacks.length" class="ai-runtime-diagnostic__fallback-chain">
                   {{ row.fallbacks.join(" → ") }}

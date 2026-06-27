@@ -9,6 +9,7 @@ import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
 import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
 import { collectSavedProviderModels } from "@/utils/llmModelOptionSources";
+import { providerAuthSummary } from "@/utils/llmProviderAuth";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
@@ -250,7 +251,7 @@ onMounted(async () => {
             <div class="muted provider-manager__card-meta">
               <span v-if="p.default_model">模型 {{ p.default_model }}</span>
               <span v-if="p.base_url">· {{ p.base_url }}</span>
-              <span v-if="p.api_key_env">· key=${{ p.api_key_env }}</span>
+              <span v-if="p.kind !== 'local'">· {{ providerAuthSummary(p) }}</span>
               <span v-if="Object.keys(p.task_models).length">· {{ Object.keys(p.task_models).length }} 个 task 覆盖</span>
             </div>
           </div>

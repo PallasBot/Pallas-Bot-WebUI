@@ -111,6 +111,7 @@ export function useLlmProviders() {
       if (result.providers_file) doc.value.providers_file = result.providers_file;
       markClean();
       toastSaveSuccess("已保存提供方配置");
+      await load();
     } catch (e) {
       err.value = axiosErrorDetail(e);
       toastApiError(e, "保存提供方配置失败");

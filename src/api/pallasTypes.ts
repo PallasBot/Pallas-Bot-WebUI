@@ -791,28 +791,29 @@ export interface LlmProviderStatusRow {
 type GeneratedLlmProvidersConfig =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>;
 
-type GeneratedLlmProviderConfigRow = NonNullable<GeneratedLlmProvidersConfig["providers"]>[number];
 type GeneratedLlmProvidersRouting = NonNullable<GeneratedLlmProvidersConfig["routing"]>;
-
-export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
-  providers: Array<Omit<GeneratedLlmProviderConfigRow, "task_models"> & {
-    task_models: NonNullable<GeneratedLlmProviderConfigRow["task_models"]>;
-  }>;
-  routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
-    chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
-    tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
-  };
-};
 
 export interface LlmProviderConfigRow {
   id: string;
   kind: string;
   base_url: string;
+  /** 保存时填写；GET 不返回明文，留空表示不修改。 */
+  api_key?: string;
   api_key_env: string;
+  /** GET：是否已配置可用密钥（inline 或环境变量）。 */
+  api_key_set?: boolean;
   default_model: string;
   enabled: boolean;
   task_models: Record<string, string>;
 }
+
+export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
+  providers: LlmProviderConfigRow[];
+  routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
+    chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
+    tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
+  };
+};
 
 export interface LlmProvidersSaveResult {
   providers_file: string;

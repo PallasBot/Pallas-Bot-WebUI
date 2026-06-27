@@ -37,6 +37,8 @@ const emit = defineEmits<{
 }>();
 
 const draft = ref<LlmProviderConfigRow>(blank());
+const draftApiKey = ref("");
+const useEnvVar = ref(false);
 const localErr = ref("");
 
 const isEdit = computed(() => props.row !== null);
@@ -47,6 +49,7 @@ function blank(): LlmProviderConfigRow {
     kind: "remote",
     base_url: "",
     api_key_env: "",
+    api_key_set: false,
     default_model: "",
     enabled: true,
     task_models: {},
@@ -58,7 +61,9 @@ watch(
   (open) => {
     if (!open) return;
     localErr.value = "";
+    draftApiKey.value = "";
     draft.value = props.row ? JSON.parse(JSON.stringify(props.row)) : blank();
+    useEnvVar.value = Boolean(props.row?.api_key_env?.trim() && !props.row?.api_key_set);
   },
   { immediate: true },
 );
@@ -108,12 +113,23 @@ function submit() {
     localErr.value = "远程 Provider 需要填写 Base URL";
     return;
   }
+  const apiKeyInput = draftApiKey.value.trim();
+  const apiKeyEnv = useEnvVar.value ? draft.value.api_key_env.trim() : "";
+  if (draft.value.kind !== "local") {
+    const hasStoredKey = Boolean(isEdit.value && draft.value.api_key_set);
+    if (!apiKeyInput && !apiKeyEnv && !hasStoredKey) {
+      localErr.value = "请填写 API Key，或选择使用环境变量";
+      return;
+    }
+  }
   const task_models = { ...(draft.value.task_models || {}) };
   emit("submit", {
     id,
     kind: draft.value.kind,
     base_url: draft.value.base_url.trim(),
-    api_key_env: draft.value.api_key_env.trim(),
+    api_key: apiKeyInput,
+    api_key_env: apiKeyEnv,
+    api_key_set: draft.value.api_key_set,
     default_model: draft.value.default_model.trim(),
     enabled: draft.value.enabled,
     task_models,
@@ -126,7 +142,7 @@ function submit() {
   <UiDialog
     :open="open"
     :title="isEdit ? `编辑 Provider · ${row?.id}` : '新增 Provider'"
-    subtitle="远程 Provider 的密钥通过环境变量名引用，明文密钥仍写在 AI 服务 .env 中。"
+    subtitle="远程 Provider 可直接填写 API Key；高级用户也可改用环境变量。"
     panel-class="provider-edit-dialog"
     @close="emit('close')"
   >
@@ -176,17 +192,41 @@ function submit() {
           </label>
 
           <label
-            v-if="draft.kind !== 'local'"
-            class="form-field"
+            v-if="draft.kind !== 'local' && !useEnvVar"
+            class="form-field provider-edit-dialog__col-span"
           >
-            <span class="form-field__label">API Key 环境变量名</span>
+            <span class="form-field__label">API Key</span>
             <input
-              v-model="draft.api_key_env"
+              v-model="draftApiKey"
               class="inp"
-              placeholder="LLM_REMOTE_API_KEY"
+              type="password"
+              autocomplete="off"
+              :placeholder="isEdit && draft.api_key_set ? '已配置，留空不修改' : 'sk-…'"
             >
-            <span class="form-field__hint muted">填环境变量名，不是密钥本身。</span>
+            <span class="form-field__hint muted">
+              保存后写入 AI 服务 providers.toml；控制台不会回显明文。
+              <template v-if="isEdit && draft.api_key_set">当前已配置。</template>
+            </span>
           </label>
+
+          <details
+            v-if="draft.kind !== 'local'"
+            class="provider-edit-dialog__advanced provider-edit-dialog__col-span"
+            :open="useEnvVar"
+            @toggle="useEnvVar = ($event.target as HTMLDetailsElement).open"
+          >
+            <summary class="provider-edit-dialog__advanced-summary">高级：改用环境变量</summary>
+            <label class="form-field">
+              <span class="form-field__label">API Key 环境变量名</span>
+              <input
+                v-model="draft.api_key_env"
+                class="inp"
+                placeholder="LLM_REMOTE_API_KEY"
+                :disabled="!useEnvVar"
+              >
+              <span class="form-field__hint muted">填 AI 服务进程 .env 中的变量名，不是 sk- 密钥本身。</span>
+            </label>
+          </details>
 
           <label class="form-field provider-edit-dialog__switch-field">
             <span class="form-field__label">启用</span>
@@ -377,6 +417,18 @@ function submit() {
 
 .provider-edit-dialog__switch-field {
   align-content: start;
+}
+
+.provider-edit-dialog__advanced {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.provider-edit-dialog__advanced-summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .provider-edit-dialog__footer {

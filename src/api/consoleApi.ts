@@ -851,12 +851,23 @@ export async function putLlmLocalRoutingConfig(
 export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
-  // GET 响应含只读元数据，PUT 体仅允许 providers + routing
-  const payload = { providers: body.providers, routing: body.routing };
-  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["put"]>(
+  const payload = {
+    providers: body.providers.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      base_url: row.base_url,
+      api_key: row.api_key ?? "",
+      api_key_env: row.api_key_env,
+      default_model: row.default_model,
+      enabled: row.enabled,
+      task_models: row.task_models,
+    })),
+    routing: body.routing,
+  };
+  return consoleOpenapiPut(
     "/common-config/llm/providers",
     payload,
-  );
+  ) as Promise<LlmProvidersSaveResult>;
 }
 
 /** 在线发现指定 Provider 的可用模型（经 BFF 代理 AI 仓）。 */
