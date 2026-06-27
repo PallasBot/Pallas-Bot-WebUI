@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { PluginConfigField } from "@/api/pallasTypes";
+import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { LLM_BOT_FIELD_GROUPS } from "@/config/configFieldLabels";
-import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 import { useCommonConfigSection } from "@/composables/useCommonConfigSection";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -74,15 +75,11 @@ defineExpose({ save, canSave, saving });
       </div>
       <div class="panel__bd ai-config-strategy-fields">
         <p class="muted ai-config-section__intro">
-          本页只管 Bot 侧总开关、接话模式与限流；模型端点与路由分别在
-          <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>
-          与
-          <RouterLink :to="AI_CONFIG_LAYER_LINKS.routing.path">{{ AI_CONFIG_LAYER_LINKS.routing.label }}</RouterLink>。
+          本页只管 Bot 侧总开关、接话模式与限流；模型与路由见下方「对话链路」快捷入口。
         </p>
         <div class="ai-config-strategy-fields__links">
-          <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
-          <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
-          <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+          <AiConfigLayerLinks active="strategy" />
+          <AiObservationLinks />
         </div>
         <section
           v-for="group in groupedFieldViews.groups"
@@ -137,9 +134,8 @@ defineExpose({ save, canSave, saving });
 
 .ai-config-strategy-fields__links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  font-size: 0.8125rem;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .ai-config-strategy-fields__group-title {

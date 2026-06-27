@@ -299,40 +299,14 @@ html[data-layout="hub"] .console-bool-switch__label {
   font-size: 14px;
 }
 
-/* 视图切换 / 分段控件 → 胶囊 Tab */
+/* Hub 仅保留圆角 token；分段控件底色/选中态见 app.css .console-view-toggle */
 html[data-layout="hub"] .console-view-toggle {
-  padding: 3px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-  background: color-mix(in srgb, var(--text) 4%, var(--bg-card));
-  gap: 2px;
+  border-radius: var(--hub-radius-control);
 }
 
-html[data-layout="hub"][data-theme="light"] .console-view-toggle {
-  background: var(--surface-segment);
-  border-color: color-mix(in srgb, var(--foreground) 8%, transparent);
-}
-
-html[data-layout="hub"] .console-view-toggle button {
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-html[data-layout="hub"] .console-view-toggle button.is-on {
-  background: var(--surface-segment-active);
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
-  color: var(--text);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent);
-}
-
-html[data-layout="hub"][data-theme="light"] .console-view-toggle button.is-on {
-  background: var(--surface-segment-active);
+html[data-layout="hub"] .console-hub-page__filter-bar .console-view-toggle {
+  flex-shrink: 0;
+  max-width: 100%;
 }
 
 /* 全局 chip / 标签（与插件商店一致） */
@@ -390,15 +364,6 @@ html[data-layout="hub"] .table-wrap {
 
 html[data-layout="hub"] .log-error-card {
   border-radius: var(--hub-radius-lg);
-}
-
-html[data-layout="hub"] .console-view-toggle {
-  border-radius: var(--hub-radius-control);
-}
-
-html[data-layout="hub"] .console-hub-page__filter-bar .console-view-toggle {
-  flex-shrink: 0;
-  max-width: 100%;
 }
 
 html[data-layout="hub"] .console-hub-page__tab-btn,
@@ -2226,6 +2191,14 @@ html[data-ui-preset="shadcn"] .prefs-segment__btn--active {
   border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
   color: var(--foreground);
   box-shadow: none;
+}
+
+html[data-theme="light"][data-ui-preset="shadcn"] .console-view-toggle button.is-on,
+html[data-theme="light"][data-ui-preset="shadcn"] .prefs-segment__btn--active {
+  background: var(--surface-segment-active);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
+  color: var(--text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #0f172a) 4%, transparent);
 }
 
 html[data-ui-preset="shadcn"] .console-bool-switch--on:not(.console-bool-switch--amber) .console-bool-switch__track {

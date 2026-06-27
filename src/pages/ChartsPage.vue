@@ -567,8 +567,8 @@ onActivated(() => {
                     class="charts-page__ai-link"
                     to="/ai/home"
                   >
-                    <strong>AI 首页</strong>
-                    <span class="muted">运行态、异常、快速入口</span>
+                    <strong>AI 观测</strong>
+                    <span class="muted">运行态、异常与 Runtime 诊断</span>
                   </RouterLink>
                   <RouterLink
                     class="charts-page__ai-link"

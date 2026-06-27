@@ -642,7 +642,7 @@ function showConfigField(f: PluginConfigField): boolean {
             <router-link to="/plugins/draw">插件配置</router-link> 页编辑。
             本页「连通性检测」属于<strong>{{ AI_ENTRY_SITE_GATEWAY_CHECK.label }}</strong>：{{ AI_ENTRY_SITE_GATEWAY_CHECK.shortLead }}
             {{ AI_ENTRY_RUNTIME.label }}见
-            <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
+            <router-link :to="AI_ENTRY_RUNTIME.path">AI 观测</router-link>。
           </p>
           <div
             v-if="supportsRawToml"

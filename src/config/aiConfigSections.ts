@@ -14,7 +14,7 @@ export interface AiConfigSectionDef {
 }
 
 export interface AiTopLevelNavDef {
-  id: "runtime" | "home" | "statistics" | "history" | "config";
+  id: "home" | "config";
   label: string;
   lead: string;
   icon: ConsoleNavIconId;
@@ -57,13 +57,6 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     groupId: "dialogue",
   },
   {
-    id: "persona",
-    label: "牛格观测",
-    lead: "按群号查看情感轴与分层人格的编译结果。",
-    icon: "users",
-    groupId: "observe",
-  },
-  {
     id: "knowledge",
     label: "方舟知识库",
     lead: "查询干员与敌人数据，管理接话语料入口。",
@@ -100,34 +93,14 @@ const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
   model: "runtime",
 };
 
+/** @deprecated 侧栏已收口为 AI_SIDEBAR_NAV；保留供旧链接与迁移识别 */
 export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
-    id: "runtime",
-    label: "Runtime 总览",
-    lead: "一屏查看 LLM / 绘图 / 点歌 health、队列、降级与熔断。",
-    icon: "activity",
-    path: "/ai/runtime",
-  },
-  {
     id: "home",
-    label: "AI 首页",
-    lead: "运行总览、需要处理的降级项、LLM 调用走向与快速入口。",
+    label: "AI 观测",
+    lead: "运行总览、调用统计与会话历史。",
     icon: "dashboard",
     path: "/ai/home",
-  },
-  {
-    id: "statistics",
-    label: "AI 统计",
-    lead: "调用量、成功失败、回复路径，以及 Provider / 模型与 Token 消耗。",
-    icon: "charts",
-    path: "/ai/statistics",
-  },
-  {
-    id: "history",
-    label: "AI 历史",
-    lead: "每日走势、最近会话与完整来回对话。",
-    icon: "logs",
-    path: "/ai/history",
   },
   {
     id: "config",
@@ -149,7 +122,7 @@ export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/runtime";
 
 export const AI_CONFIG_HUB_LEAD =
-  "按对话链路、观测内容与扩展服务分层配置；左侧选择分区，明确你改的是哪一层。";
+  "左侧选择要修改的分层；对话链路、观测内容与扩展服务互不混用，保存范围一目了然。";
 
 export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;
@@ -170,8 +143,11 @@ export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   return "runtime";
 }
 
-/** 旧 runtime 分区已移除，其内容并入 Runtime 总览 /ai/runtime。 */
-export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/runtime";
+/** 旧 runtime 分区与独立 Runtime 页已并入 AI 观测总览。 */
+export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/home?panel=runtime";
+
+/** 牛格观测已迁入 AI 历史 · 群维护工作区。 */
+export const AI_PERSONA_OBSERVE_REDIRECT = "/ai/history?workspace=maintain";
 
 export function aiConfigSectionMeta(id: AiConfigSectionId): AiConfigSectionDef {
   return SECTION_BY_ID.get(id) ?? AI_CONFIG_SECTIONS[0];

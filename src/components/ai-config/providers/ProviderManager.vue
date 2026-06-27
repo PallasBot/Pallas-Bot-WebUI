@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { RouterLink } from "vue-router";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
@@ -9,7 +8,8 @@ import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
-import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
+import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 
 const store = useLlmProviders();
 const {
@@ -164,10 +164,9 @@ onMounted(() => {
           配置本地与远程 LLM Provider 及各 task 的路由；保存写入 AI 服务
           <code>providers.toml</code>，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。
         </p>
-        <div class="row-actions provider-manager__links">
-          <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
-          <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
-          <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+        <div class="provider-manager__links">
+          <AiConfigLayerLinks active="provider" />
+          <AiObservationLinks />
         </div>
 
         <div
@@ -356,8 +355,10 @@ onMounted(() => {
 }
 
 .provider-manager__links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin: 0 0 12px;
-  flex-wrap: wrap;
 }
 
 .provider-manager__list-head {

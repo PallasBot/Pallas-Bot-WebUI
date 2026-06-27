@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   fetchConversationKernelKnowledgeSources,
   fetchConversationKernelMemory,
@@ -21,6 +22,7 @@ import {
   postLlmBehaviorPatternDelete,
   postLlmBehaviorPatternUpsert,
   postLlmHistoryBehaviorAnnotate,
+  postLlmRepeaterFeedbackManage,
 } from "@/api/consoleApi";
 import type {
   LlmBehaviorPattern,
@@ -40,47 +42,23 @@ import type {
   ConversationKernelRelationshipNote,
   ConversationKernelTraceRow,
 } from "@/api/pallasTypes";
-import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
+import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
+import AiHistorySessionFilterBar from "@/components/ai-history/AiHistorySessionFilterBar.vue";
+import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
 import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
-import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
-import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatCompactDateTime } from "@/utils/formatDateTime";
 import { deriveFeedbackGroupFromSession } from "@/utils/llmRepeaterFeedbackLink";
 
-const panelNavIcon = usePanelNavIcon();
-const {
-  loading,
-  err,
-  month,
-  start,
-  end,
-  historyDailyRows,
-  routeRowsTop,
-  historyRouteHeatPoints,
-  failureRows,
-  persistenceHint,
-  refresh,
-  resetMonthRange,
-} = useAiTaskStatsPage();
-
-const ROUTE_BAR_COLORS = ["var(--accent)", "#22c55e", "#38bdf8", "#a78bfa", "#fb7185", "#fbbf24", "#34d399", "#f472b6"];
-
-type CountRow = { count: number };
-
-function countBarWidth(row: CountRow, rows: CountRow[]): number {
-  const max = Math.max(1, ...rows.map((item) => item.count));
-  return Math.max(8, Math.round((row.count / max) * 100));
-}
-
-function routeBarColor(index: number): string {
-  return ROUTE_BAR_COLORS[index % ROUTE_BAR_COLORS.length] ?? "var(--accent)";
-}
+const router = useRouter();
+const route = useRoute();
+const LEARNING_LOOP_DISMISS_KEY = "pallas.aiHistory.learningLoopDismissed";
 
 const sessions = ref<LlmHistorySessionSummary[]>([]);
 const selectedSessionKey = ref("");
@@ -89,6 +67,8 @@ const sessionDecisionTraces = ref<ConversationKernelTraceRow[]>([]);
 const historyBusy = ref(false);
 const historyErr = ref("");
 const feedbackBusy = ref(false);
+const feedbackManageBusy = ref<Record<string, boolean>>({});
+const feedbackCorrectionDraft = ref<Record<string, string>>({});
 const feedbackErr = ref("");
 const feedbackGroup = ref("");
 const feedbackItems = ref<LlmRepeaterFeedbackEntry[]>([]);
@@ -154,21 +134,25 @@ const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
-type ObservePanelKey = "feedback" | "promotion" | "behavior";
-const observePanelExpanded = ref<Record<ObservePanelKey, boolean>>({
+type MaintainPanelKey = "feedback" | "promotion" | "behavior" | "kernel";
+const maintainPanelExpanded = ref<Record<MaintainPanelKey, boolean>>({
   feedback: true,
   promotion: false,
   behavior: false,
+  kernel: false,
 });
 const patternSortKey = ref<"success_score" | "manual_score" | "pattern_id">("success_score");
+const learningLoopDismissed = ref(
+  typeof localStorage !== "undefined" && localStorage.getItem(LEARNING_LOOP_DISMISS_KEY) === "1",
+);
+const showDecisionTraces = ref(false);
 
-type AiHistoryWorkspace = "sessions" | "observe" | "rules" | "memory" | "stats";
+type AiHistoryWorkspace = "sessions" | "maintain" | "rules" | "memory";
 const WORKSPACE_TABS = [
   { label: "会话", value: "sessions" as const },
-  { label: "观测", value: "observe" as const },
+  { label: "群维护", value: "maintain" as const },
   { label: "规则", value: "rules" as const },
   { label: "记忆", value: "memory" as const },
-  { label: "统计", value: "stats" as const },
 ];
 const activeWorkspace = ref<AiHistoryWorkspace>("sessions");
 
@@ -177,7 +161,6 @@ const filterBot = ref("");
 const filterGroup = ref("");
 const filterUser = ref("");
 const expandedTurnKeys = ref<Record<string, boolean>>({});
-const showAllDailyRows = ref(false);
 const showAllSessions = ref(false);
 const behaviorBusy = ref<Record<string, boolean>>({});
 
@@ -215,33 +198,14 @@ function parseFilter(raw: string): number | null {
   return raw.trim() && Number.isFinite(n) ? n : null;
 }
 
-const combinedErr = computed(() => err.value || historyErr.value);
-const anyBusy = computed(() => loading.value || historyBusy.value);
+const combinedErr = computed(() => historyErr.value);
+const anyBusy = computed(() => historyBusy.value);
 const feedbackGroupId = computed(() => parseFilter(feedbackGroup.value));
 const observeGroupId = computed(() => parseFilter(observeGroup.value));
 const memoryBotId = computed(() => parseFilter(memoryBot.value));
 const memoryGroupId = computed(() => parseFilter(memoryGroup.value));
 const behaviorRunsGroupId = computed(() => parseFilter(behaviorRunsGroup.value));
 const patternsGroupId = computed(() => parseFilter(patternsGroup.value));
-const historySummary = computed(() => [
-  {
-    label: "每日快照",
-    value: String(historyDailyRows.value.length),
-    accent: true,
-  },
-  {
-    label: "最近会话",
-    value: String(sessions.value.length),
-  },
-  {
-    label: "当前选中",
-    value: selectedSession.value ? (selectedSession.value.group_id === 0 ? "私聊会话" : `群 ${selectedSession.value.group_id}`) : "未选择",
-  },
-  {
-    label: "回复路径",
-    value: routeRowsTop.value.length ? `${routeRowsTop.value.length} 种` : "暂无",
-  },
-]);
 const behaviorRunsOverview = computed(() => [
   {
     label: "最近记录",
@@ -473,13 +437,54 @@ function scrollSessionDetailIntoView(): void {
 
 const workspaceTabBadges = computed(() => ({
   sessions: sessions.value.length,
-  observe: pendingPromotionCandidates.value.length > 0
+  maintain: pendingPromotionCandidates.value.length > 0
     ? pendingPromotionCandidates.value.length
-    : behaviorRunsItems.value.length,
+    : (feedbackSummary.value?.count ?? 0),
   rules: patternsItems.value.length,
   memory: memoryEntries.value.length + relationshipNotes.value.length,
-  stats: historyDailyRows.value.length,
 }));
+
+type LearningLoopKind = "idle" | "need_bias" | "bias_on" | "full";
+
+const learningLoopState = computed((): { kind: LearningLoopKind; writebackOn?: boolean } | null => {
+  const status = kernelStatus.value;
+  if (!status) return null;
+  if (!status.feedback_collect_active) return { kind: "idle" };
+  if (!status.feedback_bias_active) {
+    return { kind: "need_bias", writebackOn: status.writeback_active };
+  }
+  if (!status.writeback_active) return { kind: "bias_on" };
+  return { kind: "full" };
+});
+
+const showLearningLoopBanner = computed(() => {
+  if (learningLoopDismissed.value) return false;
+  return learningLoopState.value?.kind === "need_bias";
+});
+
+const learningLoopHint = computed(() => {
+  const state = learningLoopState.value;
+  if (!state) return "";
+  if (state.kind === "need_bias") {
+    return "已在收集反哺样本，但弱打分加权未开启，维护操作暂不会影响复读选词。";
+  }
+  if (state.kind === "bias_on") {
+    return "反哺加权已开启；可在会话里排除坏样本，好样本会逐步影响接话偏好。";
+  }
+  if (state.kind === "full") {
+    return "收集、加权与写回均已开启，维护操作会参与完整学习闭环。";
+  }
+  return "反哺收集未开启，可在 AI 配置 → Bot 对话策略 中打开。";
+});
+
+function dismissLearningLoopBanner(): void {
+  learningLoopDismissed.value = true;
+  localStorage.setItem(LEARNING_LOOP_DISMISS_KEY, "1");
+}
+
+function openLlmCommonConfig(): void {
+  void router.push(aiConfigSectionPath("strategy"));
+}
 const workspaceContextLabel = computed(() => {
   const session = selectedSession.value;
   if (!session) return "";
@@ -487,29 +492,37 @@ const workspaceContextLabel = computed(() => {
     ? `私聊 · 用户 ${session.user_id} · Bot ${session.bot_id}`
     : `群 ${session.group_id} · 用户 ${session.user_id} · Bot ${session.bot_id}`;
 });
-const feedbackOverview = computed(() => [
-  {
-    label: "样本数",
-    value: feedbackSummary.value ? String(feedbackSummary.value.count) : "—",
-    accent: true,
-  },
-  {
-    label: "待晋升",
-    value: feedbackSummary.value?.promotion_candidate_count != null
-      ? String(feedbackSummary.value.promotion_candidate_count)
-      : "—",
-    accent: Boolean(feedbackSummary.value?.promotion_candidate_count),
-  },
-  {
-    label: "高频回复",
-    value: feedbackSummary.value?.top_replies?.length ? feedbackSummary.value.top_replies.slice(0, 2).join(" / ") : "暂无",
-  },
-  {
-    label: "场景",
-    value: feedbackSummary.value?.scenes?.length ? feedbackSummary.value.scenes.slice(0, 2).join(" / ") : "暂无",
-  },
-]);
-
+const historyContextTitle = computed(() => {
+  const session = selectedSession.value;
+  if (session) {
+    return session.group_id === 0
+      ? `私聊 · 用户 ${session.user_id}`
+      : `群 ${session.group_id} · 用户 ${session.user_id}`;
+  }
+  if (observeGroupId.value) return `群 ${observeGroupId.value}`;
+  if (activeWorkspace.value === "maintain") return "群维护";
+  if (activeWorkspace.value === "rules") return "行为规则";
+  if (activeWorkspace.value === "memory") return "记忆与知识";
+  return "未选择上下文";
+});
+const historyContextMeta = computed(() => {
+  const session = selectedSession.value;
+  if (session) {
+    return `Bot ${session.bot_id} · ${session.turn_count ?? 0} 条对话`;
+  }
+  if (activeWorkspace.value === "maintain") {
+    return feedbackPanelSummary.value || "输入群号后刷新维护面板";
+  }
+  if (activeWorkspace.value === "sessions") return "在左侧筛选并选择会话";
+  if (activeWorkspace.value === "rules") return "按群号维护行为模式与样本";
+  if (activeWorkspace.value === "memory") return "按 Bot / 群号检索记忆条目";
+  return "";
+});
+const historyContextGroupId = computed(() => {
+  const session = selectedSession.value;
+  if (session && session.group_id > 0) return session.group_id;
+  return observeGroupId.value;
+});
 const selectedSession = computed(() =>
   sessions.value.find((item) => item.session_key === selectedSessionKey.value) ?? null,
 );
@@ -555,14 +568,14 @@ const behaviorPanelSummary = computed(() => {
   return `${count} 条 · ${group} · ${scene}${outcomeLabel ? ` · ${outcomeLabel}` : ""}`;
 });
 
-function isObservePanelExpanded(key: ObservePanelKey): boolean {
-  return observePanelExpanded.value[key];
+function isMaintainPanelExpanded(key: MaintainPanelKey): boolean {
+  return maintainPanelExpanded.value[key];
 }
 
-function toggleObservePanel(key: ObservePanelKey): void {
-  observePanelExpanded.value = {
-    ...observePanelExpanded.value,
-    [key]: !observePanelExpanded.value[key],
+function toggleMaintainPanel(key: MaintainPanelKey): void {
+  maintainPanelExpanded.value = {
+    ...maintainPanelExpanded.value,
+    [key]: !maintainPanelExpanded.value[key],
   };
 }
 
@@ -583,28 +596,8 @@ const sortedPatternsItems = computed(() => {
   return rows.sort((a, b) => (b.success_score ?? 0) - (a.success_score ?? 0));
 });
 
-const visibleDailyRows = computed(() =>
-  showAllDailyRows.value ? historyDailyRows.value : historyDailyRows.value.slice(0, 7),
-);
-
 const visibleSessions = computed(() =>
   showAllSessions.value ? sessions.value : sessions.value.slice(0, 8),
-);
-
-const dailySubmitPoints = computed(() =>
-  historyDailyRows.value.map((row) => ({ date: row.date, value: row.botSubmit })),
-);
-
-const dailyCallbackPoints = computed(() =>
-  historyDailyRows.value.map((row) => ({ date: row.date, value: row.botCallback })),
-);
-
-const dailySuccessPoints = computed(() =>
-  historyDailyRows.value.map((row) => ({ date: row.date, value: row.aiOk })),
-);
-
-const dailyFailPoints = computed(() =>
-  historyDailyRows.value.map((row) => ({ date: row.date, value: row.aiFail })),
 );
 
 function turnKey(createdAt: string | number, index: number): string {
@@ -751,6 +744,7 @@ interface SessionTurnRow {
   behaviorRun: LlmHistoryBehaviorRun | null;
   decisionTrace: ConversationKernelTraceRow | null;
   precedingUserText: string;
+  feedbackEntry: LlmRepeaterFeedbackEntry | null;
 }
 
 const DECISION_TRACE_MATCH_WINDOW_SEC = 120;
@@ -830,13 +824,115 @@ function matchBehaviorRunForAssistantTurn(
   return null;
 }
 
+function turnMaintKey(row: SessionTurnRow): string {
+  return turnKey(row.turn.created_at, row.index);
+}
+
+function matchFeedbackForAssistantTurn(
+  turn: LlmHistoryTurn,
+  precedingUserText: string,
+  entries: LlmRepeaterFeedbackEntry[],
+  behaviorRun: LlmHistoryBehaviorRun | null,
+  consumed: Set<string>,
+): LlmRepeaterFeedbackEntry | null {
+  if (behaviorRun?.request_id) {
+    for (const item of entries) {
+      const entryKey = item.entry_id || item.request_id;
+      if (!entryKey || consumed.has(entryKey)) continue;
+      if (item.request_id === behaviorRun.request_id || item.entry_id === behaviorRun.request_id) {
+        consumed.add(entryKey);
+        return item;
+      }
+    }
+  }
+  const contentKey = String(turn.content || "").trim();
+  for (const item of entries) {
+    const entryKey = item.entry_id || item.request_id;
+    if (!entryKey || consumed.has(entryKey)) continue;
+    if (String(item.reply_text || "").trim() !== contentKey) continue;
+    const userKey = String(item.user_text || "").trim();
+    if (userKey && userKey !== precedingUserText) continue;
+    consumed.add(entryKey);
+    return item;
+  }
+  return null;
+}
+
+function feedbackLearningLabel(entry: LlmRepeaterFeedbackEntry | null): string {
+  if (!entry) return "未收录反哺";
+  return entry.eligible_for_bias ? "参与学习" : "已排除";
+}
+
+function feedbackLearningClass(entry: LlmRepeaterFeedbackEntry | null): string {
+  if (!entry) return "is-none";
+  return entry.eligible_for_bias ? "is-active" : "is-excluded";
+}
+
+function isFeedbackManageBusy(entry: LlmRepeaterFeedbackEntry): boolean {
+  const key = entry.entry_id || entry.request_id;
+  return !!feedbackManageBusy.value[key];
+}
+
+function correctionDraftKey(row: SessionTurnRow): string {
+  return turnMaintKey(row);
+}
+
+function feedbackCorrectionRequestId(row: SessionTurnRow): string {
+  return row.feedbackEntry?.request_id
+    || row.feedbackEntry?.entry_id
+    || row.behaviorRun?.request_id
+    || `session-correct-${row.turn.created_at}`;
+}
+
+function getCorrectionDraft(row: SessionTurnRow): string {
+  const key = correctionDraftKey(row);
+  if (Object.prototype.hasOwnProperty.call(feedbackCorrectionDraft.value, key)) {
+    return feedbackCorrectionDraft.value[key];
+  }
+  return row.feedbackEntry?.corrected_reply_text ?? "";
+}
+
+function setCorrectionDraft(row: SessionTurnRow, value: string) {
+  feedbackCorrectionDraft.value = {
+    ...feedbackCorrectionDraft.value,
+    [correctionDraftKey(row)]: value,
+  };
+}
+
+function feedbackCardCorrectionDraftKey(item: LlmRepeaterFeedbackEntry): string {
+  return item.entry_id || item.request_id || "";
+}
+
+function getFeedbackCardCorrectionDraft(item: LlmRepeaterFeedbackEntry): string {
+  const key = feedbackCardCorrectionDraftKey(item);
+  if (key && Object.prototype.hasOwnProperty.call(feedbackCorrectionDraft.value, key)) {
+    return feedbackCorrectionDraft.value[key];
+  }
+  return item.corrected_reply_text ?? "";
+}
+
+function setFeedbackCardCorrectionDraft(item: LlmRepeaterFeedbackEntry, value: string) {
+  const key = feedbackCardCorrectionDraftKey(item);
+  if (!key) return;
+  feedbackCorrectionDraft.value = {
+    ...feedbackCorrectionDraft.value,
+    [key]: value,
+  };
+}
+
+function isCorrectionManageBusy(key: string): boolean {
+  return !!feedbackManageBusy.value[key];
+}
+
 const sessionTurnRows = computed(() => {
   const detail = sessionDetail.value;
   if (!detail) {
     return { rows: [] as SessionTurnRow[], orphanRuns: [] as LlmHistoryBehaviorRun[] };
   }
   const runs = [...(detail.behavior_runs || [])];
+  const feedbackEntries = [...(detail.feedback_entries || [])];
   const runConsumed = new Set<string>();
+  const feedbackConsumed = new Set<string>();
   const traceConsumed = new Set<string>();
   const traces = [...sessionDecisionTraces.value];
   let lastUserText = "";
@@ -845,27 +941,48 @@ const sessionTurnRows = computed(() => {
     const turn = detail.turns[index];
     if (turn.role === "user") {
       lastUserText = turn.content;
-      rows.push({ turn, index, behaviorRun: null, decisionTrace: null, precedingUserText: "" });
+      rows.push({
+        turn,
+        index,
+        behaviorRun: null,
+        decisionTrace: null,
+        precedingUserText: "",
+        feedbackEntry: null,
+      });
       continue;
     }
     const behaviorRun = matchBehaviorRunForAssistantTurn(turn, lastUserText, runs, runConsumed);
+    const feedbackEntry = matchFeedbackForAssistantTurn(
+      turn,
+      lastUserText,
+      feedbackEntries,
+      behaviorRun,
+      feedbackConsumed,
+    );
     const decisionTrace = matchDecisionTraceForAssistantTurn(turn, traces, traceConsumed);
-    rows.push({ turn, index, behaviorRun, decisionTrace, precedingUserText: lastUserText });
+    rows.push({
+      turn,
+      index,
+      behaviorRun,
+      decisionTrace,
+      precedingUserText: lastUserText,
+      feedbackEntry,
+    });
   }
   const orphanRuns = runs.filter((run) => !runConsumed.has(run.request_id));
   return { rows, orphanRuns };
 });
 
-const expandedSessionBehaviorIds = ref<Record<string, boolean>>({});
+const expandedSessionMaintainIds = ref<Record<string, boolean>>({});
 
-function isSessionBehaviorExpanded(requestId: string): boolean {
-  return !!expandedSessionBehaviorIds.value[requestId];
+function isSessionMaintainExpanded(key: string): boolean {
+  return !!expandedSessionMaintainIds.value[key];
 }
 
-function toggleSessionBehaviorExpanded(requestId: string): void {
-  expandedSessionBehaviorIds.value = {
-    ...expandedSessionBehaviorIds.value,
-    [requestId]: !expandedSessionBehaviorIds.value[requestId],
+function toggleSessionMaintainExpanded(key: string): void {
+  expandedSessionMaintainIds.value = {
+    ...expandedSessionMaintainIds.value,
+    [key]: !expandedSessionMaintainIds.value[key],
   };
 }
 
@@ -967,8 +1084,8 @@ async function focusPattern(patternId: string, scene?: string, groupId?: number 
   patternEditorOpen.value = true;
 }
 
-function openObserveWorkspace(groupId?: number | null) {
-  activeWorkspace.value = "observe";
+function openMaintainWorkspace(groupId?: number | null) {
+  activeWorkspace.value = "maintain";
   if (groupId != null && groupId > 0) {
     const next = String(groupId);
     observeGroup.value = next;
@@ -983,6 +1100,21 @@ function openObserveWorkspace(groupId?: number | null) {
     void refreshBehaviorRuns();
     void refreshPatterns();
   }
+}
+
+function onContextGroupChange(value: string) {
+  observeGroup.value = value;
+  observeGroupTouched.value = true;
+  feedbackGroup.value = value;
+  behaviorRunsGroup.value = value;
+  feedbackGroupTouched.value = true;
+  behaviorRunsGroupTouched.value = true;
+}
+
+function onContextSceneChange(value: string) {
+  observeScene.value = value;
+  behaviorRunsScene.value = value;
+  void refreshBehaviorRuns();
 }
 
 async function openRunInSession(run: LlmHistoryBehaviorRun) {
@@ -1166,6 +1298,162 @@ async function toggleBehaviorDisabled(run: LlmHistoryBehaviorRun) {
   await saveBehaviorRun(run, { disabled: !run.disabled });
 }
 
+async function manageFeedbackEntry(
+  entry: LlmRepeaterFeedbackEntry,
+  action: "invalidate" | "restore" | "delete",
+) {
+  const busyKey = entry.entry_id || entry.request_id;
+  if (!busyKey || feedbackManageBusy.value[busyKey]) return;
+  feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: true };
+  try {
+    await postLlmRepeaterFeedbackManage({
+      entryId: entry.entry_id,
+      requestId: entry.request_id,
+      action,
+    });
+    const toastMap = {
+      invalidate: "已标记为不适合学习",
+      restore: "已恢复参与学习",
+      delete: "已删除反哺记录",
+    };
+    pushConsoleToast(toastMap[action], "ok");
+    await refreshSessionDetail();
+    if (feedbackGroupId.value) {
+      await refreshFeedback();
+    }
+  } catch (e) {
+    pushConsoleToast(e instanceof Error ? e.message : "反哺维护失败", "err");
+  } finally {
+    feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: false };
+  }
+}
+
+async function saveFeedbackCorrectionForTurn(row: SessionTurnRow) {
+  const session = sessionDetail.value?.session;
+  if (!session) return;
+  const draft = getCorrectionDraft(row).trim();
+  if (!draft) {
+    pushConsoleToast("请填写期望回复", "err");
+    return;
+  }
+  const busyKey = row.feedbackEntry?.entry_id
+    || row.feedbackEntry?.request_id
+    || correctionDraftKey(row);
+  if (feedbackManageBusy.value[busyKey]) return;
+  feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: true };
+  try {
+    await postLlmRepeaterFeedbackManage({
+      entryId: row.feedbackEntry?.entry_id,
+      requestId: feedbackCorrectionRequestId(row),
+      action: "correct",
+      correctedReplyText: draft,
+      botId: session.bot_id,
+      groupId: session.group_id,
+      userId: session.user_id,
+      userText: row.precedingUserText,
+      replyText: row.turn.content,
+      llmRoute: row.feedbackEntry?.llm_route,
+      behaviorScene: row.feedbackEntry?.behavior_scene || row.behaviorRun?.scene,
+    });
+    pushConsoleToast("已保存期望回复，后续 @ 闲聊会参考", "ok");
+    feedbackCorrectionDraft.value = { ...feedbackCorrectionDraft.value, [correctionDraftKey(row)]: draft };
+    await refreshSessionDetail();
+    if (feedbackGroupId.value) {
+      await refreshFeedback();
+    }
+  } catch (e) {
+    pushConsoleToast(e instanceof Error ? e.message : "保存期望回复失败", "err");
+  } finally {
+    feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: false };
+  }
+}
+
+async function clearFeedbackCorrectionForTurn(row: SessionTurnRow) {
+  const requestId = row.feedbackEntry?.request_id || row.feedbackEntry?.entry_id;
+  if (!requestId) {
+    pushConsoleToast("尚无已保存的校正", "err");
+    return;
+  }
+  const busyKey = requestId;
+  if (feedbackManageBusy.value[busyKey]) return;
+  feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: true };
+  try {
+    await postLlmRepeaterFeedbackManage({
+      entryId: row.feedbackEntry?.entry_id,
+      requestId: row.feedbackEntry?.request_id,
+      action: "clear_correction",
+    });
+    pushConsoleToast("已清除期望回复", "ok");
+    feedbackCorrectionDraft.value = { ...feedbackCorrectionDraft.value, [correctionDraftKey(row)]: "" };
+    await refreshSessionDetail();
+    if (feedbackGroupId.value) {
+      await refreshFeedback();
+    }
+  } catch (e) {
+    pushConsoleToast(e instanceof Error ? e.message : "清除期望回复失败", "err");
+  } finally {
+    feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: false };
+  }
+}
+
+async function saveFeedbackCardCorrection(item: LlmRepeaterFeedbackEntry) {
+  const draft = getFeedbackCardCorrectionDraft(item).trim();
+  if (!draft) {
+    pushConsoleToast("请填写期望回复", "err");
+    return;
+  }
+  const busyKey = item.entry_id || item.request_id;
+  if (!busyKey || feedbackManageBusy.value[busyKey]) return;
+  feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: true };
+  try {
+    await postLlmRepeaterFeedbackManage({
+      entryId: item.entry_id,
+      requestId: item.request_id,
+      action: "correct",
+      correctedReplyText: draft,
+      botId: item.bot_id,
+      groupId: item.group_id,
+      userId: item.user_id,
+      userText: item.user_text,
+      replyText: item.reply_text,
+      llmRoute: item.llm_route,
+      behaviorScene: item.behavior_scene,
+    });
+    pushConsoleToast("已保存期望回复", "ok");
+    feedbackCorrectionDraft.value = { ...feedbackCorrectionDraft.value, [busyKey]: draft };
+    await refreshSessionDetail();
+    if (feedbackGroupId.value) {
+      await refreshFeedback();
+    }
+  } catch (e) {
+    pushConsoleToast(e instanceof Error ? e.message : "保存期望回复失败", "err");
+  } finally {
+    feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: false };
+  }
+}
+
+async function clearFeedbackCardCorrection(item: LlmRepeaterFeedbackEntry) {
+  const busyKey = item.entry_id || item.request_id;
+  if (!busyKey || feedbackManageBusy.value[busyKey]) return;
+  feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: true };
+  try {
+    await postLlmRepeaterFeedbackManage({
+      entryId: item.entry_id,
+      requestId: item.request_id,
+      action: "clear_correction",
+    });
+    pushConsoleToast("已清除期望回复", "ok");
+    feedbackCorrectionDraft.value = { ...feedbackCorrectionDraft.value, [busyKey]: "" };
+    if (feedbackGroupId.value) {
+      await refreshFeedback();
+    }
+  } catch (e) {
+    pushConsoleToast(e instanceof Error ? e.message : "清除期望回复失败", "err");
+  } finally {
+    feedbackManageBusy.value = { ...feedbackManageBusy.value, [busyKey]: false };
+  }
+}
+
 async function refreshSessions() {
   historyBusy.value = true;
   historyErr.value = "";
@@ -1226,7 +1514,7 @@ async function refreshSessionDetail() {
 }
 
 async function refreshAll() {
-  await Promise.all([refresh(), refreshSessions()]);
+  await refreshSessions();
 }
 
 async function refreshFeedback() {
@@ -1399,26 +1687,15 @@ async function togglePatternDisabled(item: LlmBehaviorPattern) {
   await savePattern();
 }
 
-watch(month, () => {
-  resetMonthRange();
-  showAllDailyRows.value = false;
-  void refresh();
-});
-
-watch([start, end], () => {
-  showAllDailyRows.value = false;
-  void refresh();
-});
-
 watch(pendingPromotionCandidates, (items) => {
   if (items.length > 0) {
-    observePanelExpanded.value = { ...observePanelExpanded.value, promotion: true };
+    maintainPanelExpanded.value = { ...maintainPanelExpanded.value, promotion: true };
   }
 });
 
 watch(selectedSessionKey, () => {
   expandedTurnKeys.value = {};
-  expandedSessionBehaviorIds.value = {};
+  expandedSessionMaintainIds.value = {};
   void refreshSessionDetail().then(() => {
     void nextTick(() => scrollSessionDetailIntoView());
   });
@@ -1462,7 +1739,15 @@ watch(behaviorRunsScene, (next) => {
 });
 
 onMounted(() => {
-  resetMonthRange();
+  const workspaceRaw = String(route.query.workspace ?? "").trim();
+  if (
+    workspaceRaw === "sessions"
+    || workspaceRaw === "maintain"
+    || workspaceRaw === "rules"
+    || workspaceRaw === "memory"
+  ) {
+    activeWorkspace.value = workspaceRaw;
+  }
   void refreshAll();
   feedbackGroup.value = filterGroup.value;
   behaviorRunsGroup.value = filterGroup.value;
@@ -1478,34 +1763,50 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="console-hub-page ai-surface ai-history-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        AI 历史与观测
-      </template>
-      <template #actions>
-        <div class="ai-history-page__date-filters">
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">月份</span>
-            <input v-model="month" class="inp" type="month" aria-label="选择月份">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">起始</span>
-            <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">结束</span>
-            <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
-          </label>
-          <UiButton variant="primary" :busy="anyBusy" @click="refreshAll">刷新数据</UiButton>
-        </div>
-      </template>
-      <template #extra>
-        <p v-if="persistenceHint" class="muted ai-history-page__hint">{{ persistenceHint }}</p>
-      </template>
-    </ConsoleHubMasthead>
+  <div class="ai-history-page">
+    <div class="ai-hub-toolbar ai-history-page__toolbar">
+      <AiObservationLinks exclude="history" />
+      <UiButton variant="outline" :busy="anyBusy" @click="refreshAll">刷新</UiButton>
+    </div>
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
+
+    <section
+      v-if="(showLearningLoopBanner || learningLoopHint) && (activeWorkspace === 'sessions' || activeWorkspace === 'maintain')"
+      class="ai-history-page__learning-strip"
+      :class="{ 'is-warn': showLearningLoopBanner }"
+    >
+      <div class="ai-history-page__learning-strip-main">
+        <strong>{{ showLearningLoopBanner ? "学习闭环未接通" : "学习状态" }}</strong>
+        <p class="muted ai-history-page__learning-strip-text">{{ learningLoopHint }}</p>
+        <ol v-if="showLearningLoopBanner" class="ai-history-page__learning-steps">
+          <li>在「会话」里对坏回复点「排除」，或填写「期望回复」做校正写回</li>
+          <li>到 <RouterLink :to="aiConfigSectionPath('strategy')">AI 配置 → Bot 对话策略</RouterLink> 开启「让闲聊软反馈参与接话弱打分」</li>
+          <li>（可选）开启写回晋升，把好样本审进语料</li>
+        </ol>
+      </div>
+      <div class="row-actions ai-history-page__learning-strip-actions">
+        <UiButton v-if="showLearningLoopBanner" size="sm" variant="primary" @click="openLlmCommonConfig">
+          去开启加权
+        </UiButton>
+        <UiButton
+          v-if="showLearningLoopBanner"
+          size="sm"
+          variant="ghost"
+          @click="dismissLearningLoopBanner"
+        >
+          知道了
+        </UiButton>
+        <UiButton
+          v-else-if="learningLoopState?.kind === 'idle'"
+          size="sm"
+          variant="outline"
+          @click="openLlmCommonConfig"
+        >
+          打开 LLM 配置
+        </UiButton>
+      </div>
+    </section>
 
     <nav class="ai-history-page__workspace-tabs" aria-label="AI 历史工作区">
       <div class="console-view-toggle" role="tablist">
@@ -1530,250 +1831,40 @@ onMounted(() => {
       </div>
     </nav>
 
-    <div
-      v-if="workspaceContextLabel"
-      class="ai-history-page__context-strip"
-    >
-      <span class="muted">当前会话</span>
-      <strong>{{ workspaceContextLabel }}</strong>
-      <div class="row-actions ai-history-page__context-actions">
-        <UiButton
-          size="sm"
-          variant="ghost"
-          @click="activeWorkspace = 'sessions'"
-        >
-          会话
-        </UiButton>
-        <UiButton
-          size="sm"
-          variant="outline"
-          @click="openObserveWorkspace(selectedSession?.group_id || null)"
-        >
-          观测此群
-        </UiButton>
-        <UiButton
-          size="sm"
-          variant="ghost"
-          @click="activeWorkspace = 'rules'"
-        >
-          规则
-        </UiButton>
-      </div>
-    </div>
-
-    <div v-show="activeWorkspace === 'stats'" class="ai-history-page__workspace">
-    <section class="ai-history-page__summary">
-      <UiCard class="ai-history-page__panel ai-history-page__summary-card">
-        <div class="ai-head">
-          <h3 class="ai-head__title">历史摘要</h3>
-        </div>
-        <div class="ai-stat-grid ai-history-page__summary-stats">
-          <div
-            v-for="item in historySummary"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-      </UiCard>
-    </section>
-
-    <section class="ai-history-page__overview">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">每日完成任务</h3>
-        </div>
-        <AiDailyTrendChart
-          :series="[
-            {
-              id: 'done',
-              label: 'AI 完成',
-              color: 'var(--accent)',
-              unit: '次',
-              points: historyDailyRows.map((row) => ({ date: row.date, value: row.aiOk + row.aiFail })),
-            },
-            {
-              id: 'routes',
-              label: '路径热点',
-              color: '#22c55e',
-              unit: '次',
-              points: historyRouteHeatPoints,
-            },
-          ]"
-          :summary="[
-            `完成任务 ${historyDailyRows.reduce((sum, row) => sum + row.aiOk + row.aiFail, 0).toLocaleString()} 次`,
-            `路径命中 ${historyRouteHeatPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-          ]"
-          empty-text="当前时间窗暂无历史快照。"
-        />
-      </UiCard>
-
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">回复路径</h3>
-          <span class="ai-head__hint">当前区间最常命中的路径排行</span>
-        </div>
-        <AiDailyTrendChart
-          :series="[
-            { id: 'route-heat', label: '路径命中', color: '#22c55e', unit: '次', points: historyRouteHeatPoints },
-          ]"
-          :summary="[
-            `路径命中 ${historyRouteHeatPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-            routeRowsTop[0] ? `当前最热 ${routeRowsTop[0].key} · ${routeRowsTop[0].count.toLocaleString()} 次` : '当前区间暂无热点路径',
-          ]"
-          empty-text="这段时间还没有产生回复路径统计。"
-        />
-        <div v-if="routeRowsTop.length" class="ai-dist-list ai-history-page__route-list">
-          <article
-            v-for="(row, index) in routeRowsTop"
-            :key="row.key"
-            class="ai-dist-row"
-          >
-            <div class="ai-dist-row__head">
-              <span class="ai-dist-row__label ai-history-page__route-key">{{ row.key }}</span>
-              <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
-            </div>
-            <div class="ai-dist-row__track" aria-hidden="true">
-              <span
-                class="ai-dist-row__fill"
-                :style="{ width: `${countBarWidth(row, routeRowsTop)}%`, background: routeBarColor(index) }"
-              />
-            </div>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">当前时间窗内暂无路径统计。</p>
-      </UiCard>
-    </section>
-
-    <UiCard class="ai-history-page__panel">
-      <div class="ai-head">
-          <h3 class="ai-head__title">按日趋势</h3>
-      </div>
-      <AiDailyTrendChart
-        :series="[
-          { id: 'submit', label: 'Bot 提交', color: '#38bdf8', unit: '次', points: dailySubmitPoints },
-          { id: 'callback', label: 'Bot 回调', color: '#22c55e', unit: '次', points: dailyCallbackPoints },
-          { id: 'success', label: 'AI 成功', color: 'var(--accent)', unit: '次', points: dailySuccessPoints },
-          { id: 'fail', label: 'AI 失败', color: '#fb7185', unit: '次', points: dailyFailPoints },
-        ]"
-        :summary="[
-          `Bot 提交 ${dailySubmitPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-          `Bot 回调 ${dailyCallbackPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-          `AI 成功 ${dailySuccessPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-          `AI 失败 ${dailyFailPoints.reduce((sum, row) => sum + row.value, 0).toLocaleString()} 次`,
-        ]"
-        empty-text="当前时间窗内没有 AI 历史快照。"
-      />
-      <div v-if="historyDailyRows.length" class="ai-history-page__daily-section">
-        <div class="ai-head ai-history-page__daily-subhead">
-          <h4 class="ai-head__title">最近快照明细</h4>
-        </div>
-        <div class="ai-history-page__daily-list">
-        <article v-for="row in visibleDailyRows" :key="row.date" class="ai-history-page__daily-card">
-          <div class="ai-history-page__daily-head">
-            <strong>{{ row.date }}</strong>
-            <span class="muted">路径 {{ row.routes.length }} 种</span>
-          </div>
-          <div class="ai-history-page__daily-stats">
-            <span class="ai-history-page__daily-stat">
-              <span class="ai-history-page__daily-label">Bot 提交</span>
-              <strong>{{ row.botSubmit.toLocaleString() }}</strong>
-            </span>
-            <span class="ai-history-page__daily-stat">
-              <span class="ai-history-page__daily-label">Bot 回调</span>
-              <strong>{{ row.botCallback.toLocaleString() }}</strong>
-            </span>
-            <span class="ai-history-page__daily-stat">
-              <span class="ai-history-page__daily-label">AI 成功</span>
-              <strong>{{ row.aiOk.toLocaleString() }}</strong>
-            </span>
-            <span class="ai-history-page__daily-stat">
-              <span class="ai-history-page__daily-label">AI 失败</span>
-              <strong>{{ row.aiFail.toLocaleString() }}</strong>
-            </span>
-          </div>
-          <div class="ai-history-page__daily-foot">
-            <span>排队 {{ row.queued.toLocaleString() }} / 运行 {{ row.running.toLocaleString() }}</span>
-            <span class="ai-history-page__daily-routes">
-              {{ row.routes.map((item) => `${item.key} ${item.count}`).join(" · ") || "—" }}
-            </span>
-          </div>
-        </article>
-        <button
-          v-if="historyDailyRows.length > visibleDailyRows.length"
-          type="button"
-          class="ai-history-page__more"
-          @click="showAllDailyRows = true"
-        >
-          展开其余 {{ historyDailyRows.length - visibleDailyRows.length }} 天
-        </button>
-        <button
-          v-else-if="historyDailyRows.length > 7"
-          type="button"
-          class="ai-history-page__more"
-          @click="showAllDailyRows = false"
-        >
-          收起到最近 7 天
-        </button>
-        </div>
-      </div>
-    </UiCard>
-
-    <UiCard v-if="failureRows.length" class="ai-history-page__panel ai-history-page__failure-panel">
-      <div class="ai-head">
-          <h3 class="ai-head__title">高频失败原因</h3>
-      </div>
-      <div class="ai-dist-list">
-        <article
-          v-for="row in failureRows"
-          :key="row.key"
-          class="ai-dist-row"
-        >
-          <div class="ai-dist-row__head">
-            <span class="ai-dist-row__label ai-history-page__route-key">{{ row.label }}</span>
-            <strong class="ai-dist-row__value">{{ row.count.toLocaleString() }}</strong>
-          </div>
-          <div class="ai-dist-row__track" aria-hidden="true">
-            <span
-              class="ai-dist-row__fill ai-dist-row__fill--danger"
-              :style="{ width: `${countBarWidth(row, failureRows)}%` }"
-            />
-          </div>
-        </article>
-      </div>
-    </UiCard>
-    </div>
+    <AiHistoryContextBar
+      v-show="activeWorkspace !== 'sessions' || selectedSession"
+      :title="historyContextTitle"
+      :meta="historyContextMeta"
+      :active-workspace="activeWorkspace"
+      :group-id="historyContextGroupId"
+      :compact="activeWorkspace === 'sessions'"
+      :show-group-field="activeWorkspace === 'maintain'"
+      :group-value="observeGroup"
+      :scene-value="observeScene"
+      :scene-options="BEHAVIOR_SCENE_OPTIONS"
+      :busy="kernelStatusBusy || kernelTracesBusy || feedbackBusy || promotionCandidatesBusy || behaviorRunsBusy"
+      @maintain-group="openMaintainWorkspace(historyContextGroupId)"
+      @refresh-group="refreshObservePanels"
+      @update:group-value="onContextGroupChange"
+      @update:scene-value="onContextSceneChange"
+    />
 
     <div v-show="activeWorkspace === 'sessions'" class="ai-history-page__workspace ai-history-page__workspace--sessions">
-    <section class="ai-history-page__sessions">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">最近会话</h3>
-        </div>
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>会话筛选</strong>
-            <span class="muted">留空表示不过滤</span>
+    <section class="ai-history-split ai-hub-panel">
+      <aside class="ai-history-split__list">
+        <div class="ai-history-split__list-top">
+          <div class="ai-history-split__list-title">
+            <h3>会话列表</h3>
+            <span class="muted">{{ visibleSessions.length }}/{{ sessions.length }}</span>
           </div>
-        <div class="ai-history-page__filters ai-history-page__filters--aligned">
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">Bot</span>
-            <input v-model="filterBot" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">群号</span>
-            <input v-model="filterGroup" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">用户</span>
-            <input v-model="filterUser" class="inp" inputmode="numeric" placeholder="全部" @keyup.enter="refreshSessions">
-          </label>
-          <div class="ai-history-page__filter-action">
-            <UiButton size="sm" variant="outline" :busy="historyBusy" @click="refreshSessions">筛选</UiButton>
-          </div>
-        </div>
+          <AiHistorySessionFilterBar
+            v-model:filter-bot="filterBot"
+            v-model:filter-group="filterGroup"
+            v-model:filter-user="filterUser"
+            :busy="historyBusy"
+            @apply="refreshSessions"
+            @reset="refreshSessions"
+          />
         </div>
         <div v-if="sessions.length" class="ai-history-page__session-list ai-history-page__session-list--scroll">
           <button
@@ -1813,38 +1904,26 @@ onMounted(() => {
           <span>暂无会话记录</span>
           <span class="ai-empty__hint">AI 产生对话后会显示在这里。</span>
         </div>
-      </UiCard>
+      </aside>
 
+      <main class="ai-history-split__detail">
       <div ref="sessionDetailAnchor" class="ai-history-page__detail-anchor">
-      <UiCard class="ai-history-page__panel ai-history-page__detail-panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">会话明细</h3>
-          <span class="ai-head__hint">{{ sessionDetail ? workspaceContextLabel || "当前选中会话" : "选择左侧会话查看" }}</span>
+        <div class="ai-history-split__detail-top">
+          <div>
+            <h3 class="ai-history-split__detail-title">会话明细</h3>
+            <p class="muted ai-history-split__detail-lede">
+              {{ sessionDetail ? workspaceContextLabel || "当前选中会话" : "选择左侧会话查看完整对话" }}
+            </p>
+          </div>
+          <label
+            v-if="sessionDetail"
+            class="ai-history-page__detail-trace-toggle"
+          >
+            <input v-model="showDecisionTraces" type="checkbox">
+            判定详情
+          </label>
         </div>
         <div v-if="sessionDetail" class="ai-history-page__detail">
-          <div class="ai-history-page__detail-summary">
-            <span>Bot {{ sessionDetail.session.bot_id }}</span>
-            <span>{{ sessionDetail.session.group_id === 0 ? "私聊" : `群 ${sessionDetail.session.group_id}` }}</span>
-            <span>用户 {{ sessionDetail.session.user_id }}</span>
-            <span>{{ sessionDetail.session.turn_count }} 条对话</span>
-            <span v-if="sessionDetail.behavior_runs?.length">{{ sessionDetail.behavior_runs.length }} 条 behavior</span>
-            <div v-if="sessionDetail.behavior_runs?.length" class="row-actions ai-history-page__detail-actions">
-              <UiButton
-                size="sm"
-                variant="outline"
-                @click="openObserveWorkspace(sessionDetail.session.group_id || null)"
-              >
-                打开观测
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                @click="activeWorkspace = 'rules'"
-              >
-                管理规则
-              </UiButton>
-            </div>
-          </div>
           <div class="ai-history-page__thread">
             <article
               v-for="row in sessionTurnRows.rows"
@@ -1870,7 +1949,7 @@ onMounted(() => {
               >
                 {{ isTurnExpanded(turnKey(row.turn.created_at, row.index)) ? "收起" : "展开全文" }}
               </button>
-              <div v-if="row.decisionTrace" class="ai-history-page__turn-decision">
+              <div v-if="row.decisionTrace && showDecisionTraces" class="ai-history-page__turn-decision">
                 <div class="ai-history-page__turn-behavior-bar">
                   <span class="ai-history-page__turn-behavior-tag">判定</span>
                   <strong>{{ kernelTraceSummary(row.decisionTrace) }}</strong>
@@ -1893,133 +1972,250 @@ onMounted(() => {
                   </span>
                 </div>
               </div>
-              <div v-if="row.behaviorRun" class="ai-history-page__turn-behavior">
-                <div class="ai-history-page__turn-behavior-bar">
-                  <span class="ai-history-page__turn-behavior-tag">Behavior</span>
-                  <strong>{{ row.behaviorRun.scene }}</strong>
+              <div v-if="row.turn.role === 'assistant'" class="ai-history-page__turn-maintain">
+                <div class="ai-history-page__turn-maintain-bar">
                   <span
-                    class="ai-history-page__outcome-badge"
-                    :class="outcomeClass(row.behaviorRun.final_outcome)"
+                    class="ai-history-page__maintain-pill"
+                    :class="feedbackLearningClass(row.feedbackEntry)"
                   >
-                    {{ formatOutcomeLabel(row.behaviorRun.final_outcome) }}
+                    {{ feedbackLearningLabel(row.feedbackEntry) }}
                   </span>
-                  <span class="muted ai-history-page__turn-behavior-actions">
-                    动作：{{ row.behaviorRun.selected_actions.join(" / ") || "未选" }}
-                  </span>
+                  <div
+                    v-if="row.feedbackEntry && !isSessionMaintainExpanded(turnMaintKey(row))"
+                    class="row-actions ai-history-page__turn-quick-actions"
+                  >
+                    <UiButton
+                      v-if="row.feedbackEntry.eligible_for_bias"
+                      size="sm"
+                      variant="outline"
+                      :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                      @click="manageFeedbackEntry(row.feedbackEntry, 'invalidate')"
+                    >
+                      排除
+                    </UiButton>
+                    <UiButton
+                      v-else
+                      size="sm"
+                      variant="outline"
+                      :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                      @click="manageFeedbackEntry(row.feedbackEntry, 'restore')"
+                    >
+                      恢复
+                    </UiButton>
+                    <UiButton
+                      size="sm"
+                      variant="ghost"
+                      class="ai-history-page__danger-btn"
+                      :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                      @click="manageFeedbackEntry(row.feedbackEntry, 'delete')"
+                    >
+                      删除
+                    </UiButton>
+                  </div>
                   <button
                     type="button"
-                    class="ai-history-page__turn-toggle ai-history-page__turn-behavior-toggle"
-                    @click="toggleSessionBehaviorExpanded(row.behaviorRun.request_id)"
+                    class="ai-history-page__turn-toggle ai-history-page__turn-maintain-toggle"
+                    @click="toggleSessionMaintainExpanded(turnMaintKey(row))"
                   >
-                    {{ isSessionBehaviorExpanded(row.behaviorRun.request_id) ? "收起校正" : "校正这条回复" }}
+                    {{ isSessionMaintainExpanded(turnMaintKey(row)) ? "收起" : (row.behaviorRun ? "行为标注" : "详情") }}
                   </button>
                 </div>
                 <div
-                  v-if="isSessionBehaviorExpanded(row.behaviorRun.request_id)"
-                  class="ai-history-page__turn-behavior-body"
+                  v-if="isSessionMaintainExpanded(turnMaintKey(row))"
+                  class="ai-history-page__turn-maintain-body"
                 >
-                  <div class="ai-history-page__behavior-meta">
-                    <span class="ai-history-page__pattern-links">
-                      规则：
-                      <template v-if="row.behaviorRun.selected_pattern_ids.length">
-                        <button
-                          v-for="patternId in row.behaviorRun.selected_pattern_ids"
-                          :key="`${row.behaviorRun.request_id}-${patternId}`"
-                          type="button"
-                          class="ai-history-page__pattern-link"
-                          @click="focusPattern(patternId, row.behaviorRun.scene, row.behaviorRun.group_id)"
+                  <section class="ai-history-page__maintain-section">
+                    <h5 class="ai-history-page__maintain-section-title">反哺学习</h5>
+                    <p class="muted ai-history-page__maintain-hint">
+                      控制这条回复是否参与后续复读偏好；可填写期望回复，供后续 @ 闲聊参考。
+                    </p>
+                    <template v-if="row.feedbackEntry">
+                      <div class="ai-history-page__maintain-meta">
+                        <span>路由：{{ row.feedbackEntry.llm_route || "未知" }}</span>
+                        <span>场景：{{ row.feedbackEntry.behavior_scene || "未标注" }}</span>
+                        <span>状态：{{ row.feedbackEntry.eligible_for_bias ? "参与加权" : "已排除" }}</span>
+                      </div>
+                      <div class="row-actions ai-history-page__maintain-actions">
+                        <UiButton
+                          v-if="row.feedbackEntry.eligible_for_bias"
+                          size="sm"
+                          variant="outline"
+                          :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                          @click="manageFeedbackEntry(row.feedbackEntry, 'invalidate')"
                         >
-                          {{ patternId }}
-                        </button>
-                      </template>
-                      <template v-else>无</template>
-                    </span>
-                    <span>结果：{{ row.behaviorRun.final_outcome || "未判定" }}</span>
-                  </div>
-                  <div v-if="row.behaviorRun.auto_feedback_payload" class="ai-history-page__behavior-evidence">
-                    <span>依据来源：{{ formatBehaviorSource(row.behaviorRun.auto_feedback_payload) }}</span>
-                    <span>命中信号：{{ formatBehaviorSignal(row.behaviorRun.auto_feedback_payload) }}</span>
-                    <span>命中词：{{ formatBehaviorTokens(row.behaviorRun.auto_feedback_payload) }}</span>
-                    <span>观察消息：{{ row.behaviorRun.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
-                  </div>
-                  <template v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)">
-                    <div class="ai-history-page__trace-highlights">
+                          不适合，不参与学习
+                        </UiButton>
+                        <UiButton
+                          v-else
+                          size="sm"
+                          variant="outline"
+                          :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                          @click="manageFeedbackEntry(row.feedbackEntry, 'restore')"
+                        >
+                          恢复参与学习
+                        </UiButton>
+                        <UiButton
+                          size="sm"
+                          variant="ghost"
+                          class="ai-history-page__danger-btn"
+                          :busy="isFeedbackManageBusy(row.feedbackEntry)"
+                          @click="manageFeedbackEntry(row.feedbackEntry, 'delete')"
+                        >
+                          删除反哺记录
+                        </UiButton>
+                      </div>
+                    </template>
+                    <p v-else class="muted ai-history-page__maintain-empty">
+                      此回复未进入反哺池，仍可直接填写期望回复写回。
+                    </p>
+                    <div class="ai-history-page__correction-editor">
+                      <label class="ai-history-page__correction-label">期望回复（校正写回）</label>
+                      <textarea
+                        class="inp ai-history-page__pattern-textarea ai-history-page__correction-textarea"
+                        :value="getCorrectionDraft(row)"
+                        placeholder="例如：谢谢，还行吧"
+                        rows="3"
+                        @input="setCorrectionDraft(row, ($event.target as HTMLTextAreaElement).value)"
+                      ></textarea>
+                      <div class="row-actions ai-history-page__maintain-actions">
+                        <UiButton
+                          size="sm"
+                          variant="primary"
+                          :busy="isCorrectionManageBusy(row.feedbackEntry?.entry_id || row.feedbackEntry?.request_id || correctionDraftKey(row))"
+                          @click="saveFeedbackCorrectionForTurn(row)"
+                        >
+                          保存期望回复
+                        </UiButton>
+                        <UiButton
+                          v-if="row.feedbackEntry?.corrected_reply_text"
+                          size="sm"
+                          variant="ghost"
+                          :busy="isCorrectionManageBusy(row.feedbackEntry.entry_id || row.feedbackEntry.request_id)"
+                          @click="clearFeedbackCorrectionForTurn(row)"
+                        >
+                          清除校正
+                        </UiButton>
+                      </div>
+                    </div>
+                  </section>
+                  <section v-if="row.behaviorRun" class="ai-history-page__maintain-section">
+                    <h5 class="ai-history-page__maintain-section-title">行为风格</h5>
+                    <div class="ai-history-page__turn-behavior-bar ai-history-page__maintain-behavior-bar">
+                      <strong>{{ row.behaviorRun.scene }}</strong>
                       <span
-                        v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
-                        :key="`${row.behaviorRun.request_id}-${item.label}`"
+                        class="ai-history-page__outcome-badge"
+                        :class="outcomeClass(row.behaviorRun.final_outcome)"
                       >
-                        {{ item.label }}：{{ item.value }}
+                        {{ formatOutcomeLabel(row.behaviorRun.final_outcome) }}
+                      </span>
+                      <span class="muted ai-history-page__turn-behavior-actions">
+                        动作：{{ row.behaviorRun.selected_actions.join(" / ") || "未选" }}
                       </span>
                     </div>
-                    <pre
-                      v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)]"
-                      class="ai-history-page__kernel-trace-json"
-                    >{{ JSON.stringify(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload), null, 2) }}</pre>
-                    <div class="row-actions ai-history-page__trace-actions">
+                    <div class="ai-history-page__behavior-meta">
+                      <span class="ai-history-page__pattern-links">
+                        规则：
+                        <template v-if="row.behaviorRun.selected_pattern_ids.length">
+                          <button
+                            v-for="patternId in row.behaviorRun.selected_pattern_ids"
+                            :key="`${row.behaviorRun.request_id}-${patternId}`"
+                            type="button"
+                            class="ai-history-page__pattern-link"
+                            @click="focusPattern(patternId, row.behaviorRun.scene, row.behaviorRun.group_id)"
+                          >
+                            {{ patternId }}
+                          </button>
+                        </template>
+                        <template v-else>无</template>
+                      </span>
+                      <span>结果：{{ row.behaviorRun.final_outcome || "未判定" }}</span>
+                    </div>
+                    <div v-if="row.behaviorRun.auto_feedback_payload" class="ai-history-page__behavior-evidence">
+                      <span>依据来源：{{ formatBehaviorSource(row.behaviorRun.auto_feedback_payload) }}</span>
+                      <span>命中信号：{{ formatBehaviorSignal(row.behaviorRun.auto_feedback_payload) }}</span>
+                      <span>命中词：{{ formatBehaviorTokens(row.behaviorRun.auto_feedback_payload) }}</span>
+                      <span>观察消息：{{ row.behaviorRun.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
+                    </div>
+                    <template v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)">
+                      <div class="ai-history-page__trace-highlights">
+                        <span
+                          v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
+                          :key="`${row.behaviorRun.request_id}-${item.label}`"
+                        >
+                          {{ item.label }}：{{ item.value }}
+                        </span>
+                      </div>
+                      <pre
+                        v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)]"
+                        class="ai-history-page__kernel-trace-json"
+                      >{{ JSON.stringify(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload), null, 2) }}</pre>
+                      <div class="row-actions ai-history-page__trace-actions">
+                        <button
+                          type="button"
+                          class="ai-history-page__turn-toggle"
+                          @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                        >
+                          {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                        </button>
+                        <button
+                          type="button"
+                          class="ai-history-page__turn-toggle"
+                          :disabled="replayRunBusy[row.behaviorRun.request_id]"
+                          @click="runReplay(row.behaviorRun.request_id)"
+                        >
+                          {{ replayRunBusy[row.behaviorRun.request_id] ? "Replay 中…" : "执行 Replay" }}
+                        </button>
+                        <button
+                          type="button"
+                          class="ai-history-page__turn-toggle"
+                          :disabled="replayCopyBusy[row.behaviorRun.request_id]"
+                          @click="copyReplayPayload(row.behaviorRun.request_id)"
+                        >
+                          复制 Replay Payload
+                        </button>
+                      </div>
+                    </template>
+                    <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">
+                      {{ row.behaviorRun.behavior_hint_text }}
+                    </p>
+                    <p class="muted ai-history-page__maintain-hint">点选标签描述这条回复的问题；可配合下方结果一起标注。</p>
+                    <div class="ai-history-page__behavior-labels">
                       <button
+                        v-for="label in BEHAVIOR_LABEL_OPTIONS"
+                        :key="label"
                         type="button"
-                        class="ai-history-page__turn-toggle"
-                        @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                        class="ai-history-page__behavior-chip"
+                        :class="{ 'is-on': hasBehaviorLabel(row.behaviorRun, label) }"
+                        :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
+                        @click="toggleBehaviorLabel(row.behaviorRun, label)"
                       >
-                        {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
-                      </button>
-                      <button
-                        type="button"
-                        class="ai-history-page__turn-toggle"
-                        :disabled="replayRunBusy[row.behaviorRun.request_id]"
-                        @click="runReplay(row.behaviorRun.request_id)"
-                      >
-                        {{ replayRunBusy[row.behaviorRun.request_id] ? "Replay 中…" : "执行 Replay" }}
-                      </button>
-                      <button
-                        type="button"
-                        class="ai-history-page__turn-toggle"
-                        :disabled="replayCopyBusy[row.behaviorRun.request_id]"
-                        @click="copyReplayPayload(row.behaviorRun.request_id)"
-                      >
-                        复制 Replay Payload
+                        {{ label }}
                       </button>
                     </div>
-                  </template>
-                  <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">
-                    {{ row.behaviorRun.behavior_hint_text }}
-                  </p>
-                  <div class="ai-history-page__behavior-labels">
-                    <button
-                      v-for="label in BEHAVIOR_LABEL_OPTIONS"
-                      :key="label"
-                      type="button"
-                      class="ai-history-page__behavior-chip"
-                      :class="{ 'is-on': hasBehaviorLabel(row.behaviorRun, label) }"
-                      :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
-                      @click="toggleBehaviorLabel(row.behaviorRun, label)"
-                    >
-                      {{ label }}
-                    </button>
-                  </div>
-                  <div class="ai-history-page__behavior-actions">
-                    <label class="ai-history-page__behavior-select">
-                      <span>结果</span>
-                      <select
-                        class="inp"
-                        :value="row.behaviorRun.final_outcome || ''"
-                        :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
-                        @change="changeBehaviorOutcome(row.behaviorRun, $event)"
+                    <div class="ai-history-page__behavior-actions">
+                      <label class="ai-history-page__behavior-select">
+                        <span>对话结果</span>
+                        <select
+                          class="inp"
+                          :value="row.behaviorRun.final_outcome || ''"
+                          :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
+                          @change="changeBehaviorOutcome(row.behaviorRun, $event)"
+                        >
+                          <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
+                            {{ item.label }}
+                          </option>
+                        </select>
+                      </label>
+                      <UiButton
+                        variant="outline"
+                        class="ai-history-page__behavior-action-btn"
+                        :busy="isBehaviorBusy(row.behaviorRun.request_id)"
+                        @click="toggleBehaviorDisabled(row.behaviorRun)"
                       >
-                        <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                          {{ item.label }}
-                        </option>
-                      </select>
-                    </label>
-                    <UiButton
-                      variant="outline"
-                      class="ai-history-page__behavior-action-btn"
-                      :busy="isBehaviorBusy(row.behaviorRun.request_id)"
-                      @click="toggleBehaviorDisabled(row.behaviorRun)"
-                    >
-                      {{ row.behaviorRun.disabled ? "恢复样本" : "禁用样本" }}
-                    </UiButton>
-                  </div>
+                        {{ row.behaviorRun.disabled ? "恢复样本" : "禁用样本" }}
+                      </UiButton>
+                    </div>
+                  </section>
                 </div>
               </div>
             </article>
@@ -2151,137 +2347,24 @@ onMounted(() => {
           <span>未选择会话</span>
           <span class="ai-empty__hint">点左侧任意会话查看完整对话。</span>
         </div>
-      </UiCard>
       </div>
+      </main>
     </section>
     </div>
 
-    <div v-show="activeWorkspace === 'observe'" class="ai-history-page__workspace ai-history-page__workspace--observe">
-    <UiCard class="ai-history-page__panel ai-history-page__observe-toolbar">
-      <div class="ai-history-page__filters-head">
-        <strong>观测筛选</strong>
-        <span class="muted">群号会同时作用于决策 trace、反馈样本与 behavior 记录</span>
-      </div>
-      <div class="ai-history-page__filters ai-history-page__filters--aligned">
-        <label class="ai-history-page__filter">
-          <span>群号</span>
-          <input
-            v-model="observeGroup"
-            class="inp"
-            inputmode="numeric"
-            placeholder="全部 / 必填反馈"
-            @input="observeGroupTouched = true; feedbackGroup = observeGroup; behaviorRunsGroup = observeGroup; feedbackGroupTouched = true; behaviorRunsGroupTouched = true"
-            @keyup.enter="refreshObservePanels"
-          >
-        </label>
-        <label class="ai-history-page__filter">
-          <span>场景</span>
-          <select
-            v-model="observeScene"
-            class="inp"
-            @change="behaviorRunsScene = observeScene; refreshBehaviorRuns()"
-          >
-            <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`observe-scene-${item.value || 'empty'}`" :value="item.value">
-              {{ item.label }}
-            </option>
-          </select>
-        </label>
-        <div class="ai-history-page__filter-action">
-          <UiButton
-            size="sm"
-            variant="primary"
-            :busy="kernelStatusBusy || kernelTracesBusy || feedbackBusy || promotionCandidatesBusy || behaviorRunsBusy"
-            @click="refreshObservePanels"
-          >
-            刷新观测
-          </UiButton>
-        </div>
-      </div>
-    </UiCard>
-    <section class="ai-history-page__feedback ai-history-page__kernel-panel">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">对话决策 Kernel</h3>
-        </div>
-        <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
-        <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in kernelStatusOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-          <div class="ai-stat ai-history-page__summary-stat">
-            <span class="ai-stat__label">筛选群号</span>
-            <strong class="ai-stat__value">{{ observeGroupId ? String(observeGroupId) : "全部" }}</strong>
-          </div>
-        </div>
-        <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
-          {{ kernelMemoryPolicyLine(kernelStatus) }}
-        </p>
-        <p v-else-if="kernelStatusBusy" class="muted ai-history-page__kernel-policy">正在读取 kernel 状态…</p>
-        <div class="ai-history-page__kernel-trace-block">
-          <div class="ai-head ai-history-page__kernel-trace-head">
-            <h4 class="ai-head__title">决策 Trace</h4>
-          </div>
-          <div v-if="kernelTraces.length" class="ai-history-page__feedback-list ai-history-page__kernel-trace-list">
-            <article
-              v-for="(row, index) in kernelTraces"
-              :key="kernelTraceKey(row, index)"
-              class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-            >
-              <div class="ai-history-page__feedback-top">
-                <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
-                <span
-                  class="ai-history-page__outcome-badge"
-                  :class="kernelTraceOpportunityClass(row)"
-                >
-                  {{ kernelTraceOpportunityLabel(row) }}
-                </span>
-                <span class="ai-history-page__scene-pill">{{ row.kind || "trace" }}</span>
-              </div>
-              <div class="ai-history-page__feedback-meta">
-                <span v-if="row.group_id">群 {{ row.group_id }}</span>
-                <span v-if="row.bot_id">Bot {{ row.bot_id }}</span>
-                <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
-              </div>
-              <div v-if="kernelTraceHighlights(row).length" class="ai-history-page__trace-highlights">
-                <span
-                  v-for="item in kernelTraceHighlights(row)"
-                  :key="`${kernelTraceKey(row, index)}-${item.label}`"
-                >
-                  {{ item.label }}：{{ item.value }}
-                </span>
-              </div>
-              <pre
-                v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
-                class="ai-history-page__kernel-trace-json"
-              >{{ JSON.stringify(row, null, 2) }}</pre>
-              <button
-                type="button"
-                class="ai-history-page__turn-toggle"
-                @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
-              >
-                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起原始 JSON" : "查看原始 JSON" }}
-              </button>
-            </article>
-          </div>
-          <p v-else class="muted ai-history-page__empty-hint">
-            <span>{{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}</span>
-          </p>
-        </div>
-      </UiCard>
-    </section>
+    <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain">
+    <PersonaAffectObservePanel
+      embedded
+      :sync-group-id="observeGroup"
+      class="ai-history-page__persona-panel"
+    />
     <section class="ai-history-page__feedback">
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">对话语料与软反馈</h3>
+            <h3 class="ai-history-page__observe-panel-title">反哺样本</h3>
             <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isObservePanelExpanded('feedback')">观察 llm_chat 成功回复沉淀出的软反馈样本</span>
+              <span v-if="isMaintainPanelExpanded('feedback')">批量查看与清理不适合学习的接话样本</span>
               <span v-else class="muted">{{ feedbackPanelSummary }}</span>
             </p>
           </div>
@@ -2289,45 +2372,13 @@ onMounted(() => {
             size="sm"
             variant="outline"
             class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleObservePanel('feedback')"
+            @click="toggleMaintainPanel('feedback')"
           >
-            {{ isObservePanelExpanded('feedback') ? "收起" : "展开" }}
+            {{ isMaintainPanelExpanded('feedback') ? "收起" : "展开" }}
           </UiButton>
         </div>
-        <div v-show="isObservePanelExpanded('feedback')" class="ai-history-page__observe-panel-body">
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>反馈筛选</strong>
-            <span class="muted">按群号查看最近沉淀的反馈样本</span>
-          </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <input
-                v-model="feedbackGroup"
-                class="inp"
-                inputmode="numeric"
-                placeholder="必填"
-                @input="feedbackGroupTouched = true; observeGroup = feedbackGroup; observeGroupTouched = true"
-                @keyup.enter="refreshFeedback"
-              >
-            </label>
-            <div class="ai-history-page__filter-action">
-              <UiButton size="sm" variant="outline" :busy="feedbackBusy" @click="refreshFeedback">读取反馈</UiButton>
-            </div>
-          </div>
-        </div>
+        <div v-show="isMaintainPanelExpanded('feedback')" class="ai-history-page__observe-panel-body">
         <div v-if="feedbackErr" class="alert alert--err">{{ feedbackErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in feedbackOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
         <div v-if="visibleFeedbackItems.length" class="ai-history-page__feedback-list">
           <article
             v-for="item in visibleFeedbackItems"
@@ -2354,7 +2405,67 @@ onMounted(() => {
             <div class="ai-history-page__feedback-meta">
               <span>{{ formatCompactDateTime(item.created_at) }}</span>
               <span>路由：{{ item.llm_route || "未知" }}</span>
-              <span>bias：{{ item.eligible_for_bias ? "可用" : "过滤" }}</span>
+              <span>{{ item.eligible_for_bias ? "参与学习" : "已排除" }}</span>
+              <span v-if="item.corrected_reply_text">已校正</span>
+            </div>
+            <div v-if="item.corrected_reply_text" class="ai-history-page__correction-preview muted">
+              期望：{{ item.corrected_reply_text }}
+            </div>
+            <div class="ai-history-page__correction-editor ai-history-page__correction-editor--card">
+              <label class="ai-history-page__correction-label">期望回复</label>
+              <textarea
+                class="inp ai-history-page__pattern-textarea ai-history-page__correction-textarea"
+                :value="getFeedbackCardCorrectionDraft(item)"
+                placeholder="填写更好的接话示例"
+                rows="2"
+                @input="setFeedbackCardCorrectionDraft(item, ($event.target as HTMLTextAreaElement).value)"
+              ></textarea>
+            </div>
+            <div class="row-actions ai-history-page__feedback-card-actions">
+              <UiButton
+                size="sm"
+                variant="primary"
+                :busy="isFeedbackManageBusy(item)"
+                @click="saveFeedbackCardCorrection(item)"
+              >
+                保存校正
+              </UiButton>
+              <UiButton
+                v-if="item.corrected_reply_text"
+                size="sm"
+                variant="ghost"
+                :busy="isFeedbackManageBusy(item)"
+                @click="clearFeedbackCardCorrection(item)"
+              >
+                清除
+              </UiButton>
+              <UiButton
+                v-if="item.eligible_for_bias"
+                size="sm"
+                variant="outline"
+                :busy="isFeedbackManageBusy(item)"
+                @click="manageFeedbackEntry(item, 'invalidate')"
+              >
+                不适合
+              </UiButton>
+              <UiButton
+                v-else
+                size="sm"
+                variant="outline"
+                :busy="isFeedbackManageBusy(item)"
+                @click="manageFeedbackEntry(item, 'restore')"
+              >
+                恢复
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                class="ai-history-page__danger-btn"
+                :busy="isFeedbackManageBusy(item)"
+                @click="manageFeedbackEntry(item, 'delete')"
+              >
+                删除
+              </UiButton>
             </div>
             <p
               class="ai-history-page__feedback-user"
@@ -2374,7 +2485,7 @@ onMounted(() => {
         </div>
         <div v-else class="ai-empty">
           <span>{{ feedbackGroupId ? (observeScene ? "当前群当前场景下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
-          <span class="ai-empty__hint">这里只读展示，不会直接修改复读语料。</span>
+          <span class="ai-empty__hint">可在此排除不适合学习的样本，或彻底删除反哺记录。</span>
         </div>
         </div>
       </UiCard>
@@ -2384,9 +2495,9 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">高质量语料晋升审批</h3>
+            <h3 class="ai-history-page__observe-panel-title">晋升候选</h3>
             <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isObservePanelExpanded('promotion')">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
+              <span v-if="isMaintainPanelExpanded('promotion')">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
               <span v-else class="muted">{{ promotionPanelSummary }}</span>
             </p>
           </div>
@@ -2394,12 +2505,12 @@ onMounted(() => {
             size="sm"
             variant="outline"
             class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleObservePanel('promotion')"
+            @click="toggleMaintainPanel('promotion')"
           >
-            {{ isObservePanelExpanded('promotion') ? "收起" : "展开" }}
+            {{ isMaintainPanelExpanded('promotion') ? "收起" : "展开" }}
           </UiButton>
         </div>
-        <div v-show="isObservePanelExpanded('promotion')" class="ai-history-page__observe-panel-body">
+        <div v-show="isMaintainPanelExpanded('promotion')" class="ai-history-page__observe-panel-body">
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>候选筛选</strong>
@@ -2519,9 +2630,9 @@ onMounted(() => {
       <UiCard class="ai-history-page__panel">
         <div class="ai-history-page__observe-panel-hd">
           <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">行为模式 (Behavior) 记录</h3>
+            <h3 class="ai-history-page__observe-panel-title">行为记录</h3>
             <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isObservePanelExpanded('behavior')">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
+              <span v-if="isMaintainPanelExpanded('behavior')">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
               <span v-else class="muted">{{ behaviorPanelSummary }}</span>
             </p>
           </div>
@@ -2529,12 +2640,12 @@ onMounted(() => {
             size="sm"
             variant="outline"
             class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleObservePanel('behavior')"
+            @click="toggleMaintainPanel('behavior')"
           >
-            {{ isObservePanelExpanded('behavior') ? "收起" : "展开" }}
+            {{ isMaintainPanelExpanded('behavior') ? "收起" : "展开" }}
           </UiButton>
         </div>
-        <div v-show="isObservePanelExpanded('behavior')" class="ai-history-page__observe-panel-body">
+        <div v-show="isMaintainPanelExpanded('behavior')" class="ai-history-page__observe-panel-body">
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>记录筛选</strong>
@@ -2767,6 +2878,76 @@ onMounted(() => {
           <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
           <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
         </div>
+        </div>
+      </UiCard>
+    </section>
+    <section class="ai-history-page__feedback ai-history-page__kernel-panel">
+      <UiCard class="ai-history-page__panel ai-history-page__panel--compact">
+        <div class="ai-history-page__observe-panel-hd">
+          <div class="ai-history-page__observe-panel-hd-text">
+            <h3 class="ai-history-page__observe-panel-title">诊断 · Kernel 与 Trace</h3>
+            <p class="ai-history-page__observe-panel-sub muted">排障用，日常维护可忽略</p>
+          </div>
+          <UiButton
+            size="sm"
+            variant="outline"
+            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
+            @click="toggleMaintainPanel('kernel')"
+          >
+            {{ isMaintainPanelExpanded('kernel') ? "收起" : "展开" }}
+          </UiButton>
+        </div>
+        <div v-show="isMaintainPanelExpanded('kernel')" class="ai-history-page__observe-panel-body">
+          <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
+          <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
+          <div class="ai-history-page__kernel-chip-row">
+            <span
+              v-for="item in kernelStatusOverview"
+              :key="item.label"
+              class="ai-history-page__kernel-chip"
+              :class="{ 'is-on': item.accent }"
+            >
+              {{ item.label }}：{{ item.value }}
+            </span>
+          </div>
+          <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
+            {{ kernelMemoryPolicyLine(kernelStatus) }}
+          </p>
+          <div v-if="kernelTraces.length" class="ai-history-page__feedback-list ai-history-page__kernel-trace-list">
+            <article
+              v-for="(row, index) in kernelTraces"
+              :key="kernelTraceKey(row, index)"
+              class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
+            >
+              <div class="ai-history-page__feedback-top">
+                <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
+                <span
+                  class="ai-history-page__outcome-badge"
+                  :class="kernelTraceOpportunityClass(row)"
+                >
+                  {{ kernelTraceOpportunityLabel(row) }}
+                </span>
+              </div>
+              <div class="ai-history-page__feedback-meta">
+                <span v-if="row.group_id">群 {{ row.group_id }}</span>
+                <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
+              </div>
+              <button
+                type="button"
+                class="ai-history-page__turn-toggle"
+                @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
+              >
+                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起 JSON" : "JSON" }}
+              </button>
+              <pre
+                v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
+                class="ai-history-page__kernel-trace-json"
+              >{{ JSON.stringify(row, null, 2) }}</pre>
+            </article>
+          </div>
+          <p v-else class="muted ai-history-page__empty-hint">
+            {{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}
+          </p>
         </div>
       </UiCard>
     </section>
@@ -3262,18 +3443,9 @@ onMounted(() => {
   gap: 24px;
 }
 
-.ai-history-page__date-filters {
-  display: flex;
+.ai-history-page__toolbar {
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-<style scoped>
-.ai-history-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  gap: 8px;
 }
 
 .ai-history-page__date-filters,
@@ -3316,8 +3488,7 @@ onMounted(() => {
 .ai-history-page__workspace-tabs {
   display: flex;
   gap: 8px;
-  border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
-  margin-bottom: 24px;
+  margin-bottom: 10px;
 }
 
 .ai-tab-btn {
@@ -3344,15 +3515,130 @@ onMounted(() => {
 .ai-history-page__workspace {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .ai-history-page__panel {
-  padding: 24px;
+  padding: 16px;
   background: color-mix(in srgb, var(--bg-card) 95%, transparent);
   border: none;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.ai-history-page__panel--compact {
+  padding: 12px 16px;
+}
+
+.ai-history-page__learning-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+}
+
+.ai-history-page__learning-strip.is-warn {
+  border-color: color-mix(in srgb, #f59e0b 35%, var(--border));
+  background: color-mix(in srgb, #f59e0b 8%, var(--bg-card));
+}
+
+.ai-history-page__learning-strip-main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.ai-history-page__learning-strip-text {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.ai-history-page__learning-steps {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ai-history-page__learning-strip-actions {
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.ai-history-page__detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-history-page__detail-toolbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.ai-history-page__detail-toolbar-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ai-history-page__detail-trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ai-history-page__maintain-inline-summary {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+}
+
+.ai-history-page__kernel-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ai-history-page__kernel-chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.ai-history-page__kernel-chip.is-on {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: var(--accent);
+}
+
+.ai-history-page__turn-quick-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ai-history-page__workspace--maintain .ai-history-page__maintain-toolbar {
+  margin-bottom: 0;
 }
 
 .ai-head {
@@ -3530,15 +3816,46 @@ onMounted(() => {
   line-height: 1.45;
 }
 
-.ai-history-page__context-strip {
+.ai-history-page__list-hd {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ai-history-page__list-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 650;
+}
+
+.ai-history-page__list-count {
+  font-size: 0.76rem;
+}
+
+.ai-history-page__panel--list {
+  display: grid;
+  align-content: start;
+}
+
+.ai-history-page__detail-hd {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ai-history-page__detail-lede {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ai-history-page__persona-panel {
+  margin-bottom: 0;
+}
+
+.ai-history-page__context-strip {
+  display: none;
 }
 
 .ai-history-page__context-actions {
@@ -3575,26 +3892,17 @@ onMounted(() => {
   margin-top: 2px;
 }
 
-.ai-history-page__workspace--sessions .ai-history-page__sessions {
-  align-items: stretch;
-}
-
-.ai-history-page__session-list--scroll {
-  max-height: min(68vh, 720px);
-  overflow: auto;
-  padding-right: 2px;
-}
-
 .ai-history-page__detail-panel {
   min-height: min(68vh, 720px);
 }
 
 .ai-history-page__thread {
   display: grid;
-  gap: 10px;
-  max-height: min(52vh, 560px);
+  gap: 0;
+  max-height: min(58vh, 620px);
   overflow: auto;
-  padding-right: 4px;
+  margin-inline: -4px;
+  padding-inline: 4px;
 }
 
 .ai-history-page__outcome-badge {
@@ -3856,7 +4164,14 @@ onMounted(() => {
 .ai-history-page__session-list,
 .ai-history-page__detail {
   display: grid;
-  gap: 10px;
+  gap: 0;
+}
+
+.ai-history-page__session-list--scroll {
+  max-height: min(68vh, 720px);
+  overflow: auto;
+  margin-inline: -16px;
+  padding-inline: 16px;
 }
 
 .ai-history-page__behavior {
@@ -4029,23 +4344,30 @@ onMounted(() => {
 
 .ai-history-page__session {
   display: grid;
-  gap: 6px;
+  gap: 4px;
+  width: 100%;
   text-align: left;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+  padding: 10px 4px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: transparent;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  transition: background 0.15s ease;
+}
+
+.ai-history-page__session:last-of-type {
+  border-bottom: none;
 }
 
 .ai-history-page__session:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--text) 3%, transparent);
 }
 
 .ai-history-page__session.is-on {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .ai-history-page__session-top {
@@ -4090,6 +4412,10 @@ onMounted(() => {
   word-break: break-word;
 }
 
+.ai-history-split__detail {
+  min-height: min(68vh, 720px);
+}
+
 .ai-history-page__more {
   display: inline-flex;
   align-items: center;
@@ -4125,15 +4451,20 @@ onMounted(() => {
 }
 
 .ai-history-page__turn {
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+  padding: 10px 0 12px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: transparent;
+}
+
+.ai-history-page__turn:last-child {
+  border-bottom: none;
 }
 
 .ai-history-page__turn.is-assistant {
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .ai-history-page__turn-head {
@@ -4213,6 +4544,108 @@ onMounted(() => {
   display: grid;
   gap: 10px;
   margin-top: 10px;
+}
+
+.ai-history-page__turn-maintain {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--accent) 24%, var(--border));
+}
+
+.ai-history-page__turn-maintain-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 0.75rem;
+}
+
+.ai-history-page__turn-maintain-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #22c55e 14%, transparent);
+  color: #15803d;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.ai-history-page__maintain-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.ai-history-page__maintain-pill.is-active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.ai-history-page__maintain-pill.is-excluded {
+  background: color-mix(in srgb, #f97316 14%, transparent);
+  color: #c2410c;
+}
+
+.ai-history-page__maintain-pill.is-none {
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--muted);
+}
+
+.ai-history-page__turn-maintain-toggle {
+  margin-left: auto;
+}
+
+.ai-history-page__turn-maintain-body {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.ai-history-page__maintain-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+}
+
+.ai-history-page__maintain-section-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ai-history-page__maintain-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.ai-history-page__maintain-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.75rem;
+}
+
+.ai-history-page__maintain-actions,
+.ai-history-page__feedback-card-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-history-page__maintain-empty {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.ai-history-page__maintain-behavior-bar {
+  margin-bottom: 4px;
+}
+
+.ai-history-page__danger-btn {
+  color: #dc2626;
 }
 
 .ai-history-page__orphan-behavior {
@@ -4321,6 +4754,31 @@ onMounted(() => {
   resize: vertical;
 }
 
+.ai-history-page__correction-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-history-page__correction-editor--card {
+  margin-top: 8px;
+}
+
+.ai-history-page__correction-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ai-history-page__correction-textarea {
+  min-height: 72px;
+}
+
+.ai-history-page__correction-preview {
+  margin-top: 6px;
+  font-size: 13px;
+  word-break: break-word;
+}
+
 .ai-history-page__pattern-actions {
   gap: 8px;
 }
@@ -4371,8 +4829,7 @@ onMounted(() => {
 }
 
 @media (max-width: 860px) {
-  .ai-history-page__overview,
-  .ai-history-page__sessions,
+  .ai-history-split,
   .ai-history-page__workspace--observe {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4480,9 +4937,53 @@ onMounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ai-history-page__detail-toolbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-history-page__detail-trace-toggle {
+    grid-column: 1 / -1;
+  }
+
+  .ai-history-page__learning-strip {
+    display: grid;
+    gap: 10px;
+  }
+
+  .ai-history-page__learning-strip-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-history-page__turn-quick-actions {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .ai-history-page__turn-behavior-bar {
     display: grid;
     gap: 6px;
+  }
+
+  .ai-history-page__turn-behavior-toggle,
+  .ai-history-page__turn-maintain-bar {
+    display: grid;
+    gap: 6px;
+  }
+
+  .ai-history-page__turn-maintain-toggle {
+    margin-left: 0;
+    justify-self: start;
+  }
+
+  .ai-history-page__maintain-actions,
+  .ai-history-page__feedback-card-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .ai-history-page__turn-behavior-toggle {

@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import StatTable, { type StatColumn } from "@/components/ai-config/stats/StatTable.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
-import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { installChartThemeWatcher, readChartPalette } from "@/utils/chartTheme";
 
-const panelNavIcon = usePanelNavIcon();
 const {
   loading,
   err,
@@ -51,28 +49,37 @@ const statsSummary = computed(() => [
     label: "服务连通性",
     value: stats.value?.ai_reachable ? "正常" : "异常",
     tone: stats.value?.ai_reachable ? "accent" : "danger",
+    kind: "status" as const,
   },
   {
-    label: "请求与回调 (Bot)",
+    label: "请求与回调",
+    sublabel: "Bot",
     value: botSuccess.value.toLocaleString(),
+    kind: "number" as const,
   },
   {
-    label: "处理成功 (AI)",
+    label: "处理成功",
+    sublabel: "AI",
     value: aiSuccess.value.toLocaleString(),
     tone: "accent",
+    kind: "number" as const,
   },
   {
-    label: "处理失败 (AI)",
+    label: "处理失败",
+    sublabel: "AI",
     value: aiFailed.value.toLocaleString(),
     tone: aiFailed.value > 0 ? "danger" : undefined,
+    kind: "number" as const,
   },
   {
     label: "队列积压",
     value: aiQueued.value.toLocaleString(),
+    kind: "number" as const,
   },
   {
     label: "正在处理",
     value: aiRunning.value.toLocaleString(),
+    kind: "number" as const,
   },
 ]);
 
@@ -83,6 +90,14 @@ type CountRow = { key: string; count: number };
 function dimSuccessRate(row: DimRow): string {
   if (!row.requests) return "0%";
   return `${Math.round((row.succeeded / row.requests) * 100)}%`;
+}
+
+function dimSuccessRateClass(row: DimRow): string | undefined {
+  if (!row.requests) return "stat-cell--muted";
+  const rate = (row.succeeded / row.requests) * 100;
+  if (rate >= 90) return "stat-cell--ok";
+  if (rate >= 70) return "stat-cell--warn";
+  return "stat-cell--danger";
 }
 
 const dimColumns = (head: string): StatColumn<DimRow>[] => [
@@ -99,12 +114,14 @@ const dimColumns = (head: string): StatColumn<DimRow>[] => [
     label: "失败",
     value: (r) => r.failed.toLocaleString(),
     align: "right",
+    cellClass: (r) => (r.failed > 0 ? "stat-cell--danger" : undefined),
   },
   {
     key: "success-rate",
     label: "成功率",
     value: (r) => dimSuccessRate(r),
     align: "right",
+    cellClass: (r) => dimSuccessRateClass(r),
   },
   { key: "latency", label: "均延迟", value: (r) => (r.avgLatencyMs != null ? `${r.avgLatencyMs} ms` : "—"), align: "right" },
 ];
@@ -152,33 +169,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="console-hub-page ai-surface ai-stats-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        <ConsoleNavIcon name="chart-line-up-solid" :size="24" />
-        AI 数据看板
-      </template>
-      <template #actions>
-        <div class="ai-stats-page__date-filters">
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">月份</span>
-            <input v-model="month" class="inp" type="month" aria-label="选择月份">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">起始</span>
-            <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
-          </label>
-          <label class="ai-date-field">
-            <span class="ai-date-field__label">结束</span>
-            <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
-          </label>
-          <UiButton variant="primary" :busy="loading" @click="refresh">刷新</UiButton>
-        </div>
-      </template>
-      <template #extra>
-        <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
-      </template>
-    </ConsoleHubMasthead>
+  <div class="ai-stats-page">
+    <div class="ai-hub-toolbar ai-stats-page__toolbar">
+      <AiObservationLinks exclude="statistics" />
+      <div class="ai-stats-page__date-filters">
+        <label class="ai-date-field">
+          <span class="ai-date-field__label">月份</span>
+          <input v-model="month" class="inp" type="month" aria-label="选择月份">
+        </label>
+        <label class="ai-date-field">
+          <span class="ai-date-field__label">起始</span>
+          <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
+        </label>
+        <label class="ai-date-field">
+          <span class="ai-date-field__label">结束</span>
+          <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
+        </label>
+        <UiButton variant="primary" :busy="loading" @click="refresh">刷新</UiButton>
+      </div>
+      <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
+    </div>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
 
@@ -188,10 +198,14 @@ onUnmounted(() => {
         :key="item.label"
         class="ai-stats-page__metric-card"
       >
-        <span class="ai-stats-page__metric-label">{{ item.label }}</span>
+        <span class="ai-stats-page__metric-label">
+          {{ item.label }}
+          <span v-if="item.sublabel" class="ai-stats-page__metric-sublabel">{{ item.sublabel }}</span>
+        </span>
         <strong
           class="ai-stats-page__metric-value"
           :class="{
+            'ai-stats-page__metric-value--status': item.kind === 'status',
             'text-ok': item.tone === 'accent',
             'text-danger': item.tone === 'danger',
           }"
@@ -367,8 +381,14 @@ onUnmounted(() => {
               </span>
             </div>
             <div class="ai-token-bar" aria-hidden="true">
-              <span class="ai-token-bar__prompt" :style="{ width: `${tokenPromptPercent(row)}%` }" />
-              <span class="ai-token-bar__completion" :style="{ width: `${tokenCompletionPercent(row)}%` }" />
+              <span
+                class="ai-token-bar__prompt"
+                :style="{ flexGrow: tokenPromptPercent(row) }"
+              />
+              <span
+                class="ai-token-bar__completion"
+                :style="{ flexGrow: tokenCompletionPercent(row) }"
+              />
             </div>
           </article>
         </div>
@@ -402,8 +422,14 @@ onUnmounted(() => {
               </span>
             </div>
             <div class="ai-token-bar" aria-hidden="true">
-              <span class="ai-token-bar__prompt" :style="{ width: `${tokenPromptPercent(row)}%` }" />
-              <span class="ai-token-bar__completion" :style="{ width: `${tokenCompletionPercent(row)}%` }" />
+              <span
+                class="ai-token-bar__prompt"
+                :style="{ flexGrow: tokenPromptPercent(row) }"
+              />
+              <span
+                class="ai-token-bar__completion"
+                :style="{ flexGrow: tokenCompletionPercent(row) }"
+              />
             </div>
           </article>
         </div>
@@ -420,6 +446,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.ai-stats-page__toolbar {
+  align-items: flex-end;
+}
+
+.ai-stats-page__toolbar .ai-stats-page__date-filters {
+  margin-left: auto;
 }
 
 .ai-stats-page__date-filters {
@@ -460,31 +494,57 @@ onUnmounted(() => {
 
 .ai-stats-page__top-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
 
 .ai-stats-page__metric-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 24px;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
   border: none;
   background: var(--bg-card);
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
+  container-type: inline-size;
 }
 
 .ai-stats-page__metric-label {
-  font-size: 0.875rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.ai-stats-page__metric-sublabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .ai-stats-page__metric-value {
-  font-size: 2rem;
+  font-size: clamp(1rem, 7cqi, 1.75rem);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.ai-stats-page__metric-value--status {
+  font-size: clamp(1.375rem, 9cqi, 2rem);
+  white-space: normal;
 }
 
 .ai-stats-page__hint {
@@ -654,12 +714,20 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--text-muted) 15%, transparent);
 }
 
+.ai-token-bar__prompt,
+.ai-token-bar__completion {
+  flex-shrink: 0;
+  flex-basis: 0;
+  min-width: 2px;
+  height: 100%;
+}
+
 .ai-token-bar__prompt {
-  background: var(--brand);
+  background: var(--accent);
 }
 
 .ai-token-bar__completion {
-  background: color-mix(in srgb, var(--brand) 40%, transparent);
+  background: color-mix(in srgb, var(--success) 72%, var(--accent) 28%);
 }
 
 .ai-empty {
@@ -686,6 +754,10 @@ onUnmounted(() => {
   .ai-stats-page__boards {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .ai-stats-page__top-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
@@ -700,11 +772,19 @@ onUnmounted(() => {
   }
   
   .ai-stats-page__top-metrics {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ai-stats-page__panel {
     padding: 16px;
+  }
+
+  .ai-stats-page__metric-card {
+    padding: 16px;
+  }
+
+  .ai-stats-page__metric-value {
+    font-size: clamp(1rem, 4vw + 0.5rem, 1.375rem);
   }
 }
 </style>

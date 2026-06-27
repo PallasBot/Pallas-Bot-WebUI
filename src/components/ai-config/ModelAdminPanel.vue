@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { RouterLink } from "vue-router";
 import {
   fetchLlmModelAdminStatus,
   postLlmModelAdminNumGpu,
@@ -10,11 +9,12 @@ import {
 } from "@/api/consoleApi";
 import type { LlmModelAdminStatus } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
+import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
 import AiConfirmDialog from "@/components/ai-config/AiConfirmDialog.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
-import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false });
 
@@ -233,21 +233,17 @@ onMounted(() => {
       </dl>
 
       <p class="muted model-admin__intro">
-        热切换本地 Ollama 模型、GPU 层数，或从 .env 重载；均<strong>无需重启 Celery</strong>。上游端点与 task 路由分别在
-        <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>
-        与
-        <RouterLink :to="AI_CONFIG_LAYER_LINKS.routing.path">{{ AI_CONFIG_LAYER_LINKS.routing.label }}</RouterLink>。
+        热切换本地 Ollama 模型与 GPU 层数；上游端点与 task 路由在下方「对话链路」入口，无需重启 Celery。
       </p>
       <p
         v-if="status?.local_multi_model_enabled"
         class="muted model-admin__hint"
       >
-        当前启用了本地多模型路由：切换上方“当前模型”后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
+        当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
       </p>
-      <div class="row-actions model-admin__links">
-        <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
-        <RouterLink to="/ai/statistics">查看 AI 统计</RouterLink>
-        <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+      <div class="model-admin__links">
+        <AiConfigLayerLinks active="runtime" />
+        <AiObservationLinks />
       </div>
 
       <div
@@ -409,8 +405,10 @@ onMounted(() => {
 }
 
 .model-admin__links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin: 0 0 12px;
-  flex-wrap: wrap;
 }
 
 .model-admin__status {

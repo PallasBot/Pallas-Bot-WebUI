@@ -507,6 +507,7 @@ export interface CommunityPluginActionResult {
   extra_plugin_dirs_ready?: boolean;
   restart_available?: boolean;
   activation_policy?: ExtensionActivationPolicy | null;
+  activation_action?: ExtensionActivationAction | null;
   restart_scheduled?: boolean;
   message?: string;
   stdout_tail?: string;
@@ -1159,6 +1160,8 @@ export interface LlmRepeaterFeedbackEntry {
   source_tags?: string[];
   eligible_for_bias?: boolean;
   eligible_for_writeback?: boolean;
+  corrected_reply_text?: string;
+  corrected_at?: number;
 }
 
 export interface LlmRepeaterFeedbackData {

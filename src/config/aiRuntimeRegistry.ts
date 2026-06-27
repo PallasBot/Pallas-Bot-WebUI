@@ -1,5 +1,9 @@
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
-import { aiConfigSectionPath, type AiConfigSectionId } from "@/config/aiConfigSections";
+import {
+  AI_PERSONA_OBSERVE_REDIRECT,
+  aiConfigSectionPath,
+  type AiConfigSectionId,
+} from "@/config/aiConfigSections";
 
 export type AiRuntimeState = "healthy" | "degraded" | "disabled" | "unknown";
 export type AiRuntimeGroupId = "extension" | "dialogue" | "media" | "automation";
@@ -37,7 +41,8 @@ export interface AiRuntimeCapabilityDef {
   defaultActions?: Array<{
     idSuffix: string;
     label: string;
-    section: AiConfigSectionId;
+    section?: AiConfigSectionId;
+    path?: string;
     priority?: number;
     surfaces?: Array<"page" | "card" | "quick">;
   }>;
@@ -124,7 +129,7 @@ export const AI_RUNTIME_CAPABILITIES: AiRuntimeCapabilityDef[] = [
       { idSuffix: "open-runtime", label: "去运行模型", section: "runtime", priority: 94, surfaces: ["page", "card", "quick"] },
       { idSuffix: "open-provider", label: "去 Provider", section: "provider", priority: 90, surfaces: ["card", "quick"] },
       { idSuffix: "open-routing", label: "去路由配置", section: "routing", priority: 88, surfaces: ["quick"] },
-      { idSuffix: "open-persona", label: "查看牛格观测", section: "persona", priority: 78, surfaces: ["quick"] },
+      { idSuffix: "open-persona", label: "查看牛格观测", path: AI_PERSONA_OBSERVE_REDIRECT, priority: 78, surfaces: ["quick"] },
     ],
   },
   {
@@ -218,13 +223,17 @@ export function aiRuntimeDefaultActions(capabilityId: AiRuntimeCapabilityId): Ai
         priority: 60,
         surfaces: ["page", "card", "quick"],
       }];
-  return actions.map((action) => ({
-    id: `${capabilityId}:${action.idSuffix}`,
-    kind: "navigate",
-    label: action.label,
-    section: action.section,
-    to: aiConfigSectionPath(action.section),
-    priority: action.priority ?? 50,
-    surfaces: (action.surfaces ?? ["page", "card", "quick"]) as Array<"page" | "card" | "quick">,
-  }));
+  return actions.map((action) => {
+    const section = action.section ?? meta.section;
+    const path = "path" in action ? action.path : undefined;
+    return {
+      id: `${capabilityId}:${action.idSuffix}`,
+      kind: "navigate" as const,
+      label: action.label,
+      section,
+      to: path ?? aiConfigSectionPath(section),
+      priority: action.priority ?? 50,
+      surfaces: (action.surfaces ?? ["page", "card", "quick"]) as Array<"page" | "card" | "quick">,
+    };
+  });
 }

@@ -5,7 +5,6 @@ import AiConfigConnectionSection from "@/components/ai-config/AiConfigConnection
 import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSection.vue";
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
 import AiConfigNcmSection from "@/components/ai-config/AiConfigNcmSection.vue";
-import AiConfigPersonaSection from "@/components/ai-config/AiConfigPersonaSection.vue";
 import AiConfigProviderSection from "@/components/ai-config/AiConfigProviderSection.vue";
 import AiConfigRoutingSection from "@/components/ai-config/AiConfigRoutingSection.vue";
 import AiConfigRuntimeSection from "@/components/ai-config/AiConfigRuntimeSection.vue";
@@ -16,13 +15,13 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import {
   AI_CONFIG_HUB_LEAD,
-  AI_TOP_LEVEL_NAV,
   aiConfigSectionMeta,
   aiConfigSectionPath,
   aiConfigSectionsByGroup,
   normalizeAiConfigSection,
   type AiConfigSectionId,
 } from "@/config/aiConfigSections";
+import { AI_OBSERVATION_SIDEBAR_PATH } from "@/config/aiObservationNav";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 
@@ -92,20 +91,14 @@ onMounted(() => {
     >
       <ConsoleHubMasthead :icon="panelNavIcon">
         <template #title>
-          AI配置
+          AI 配置
         </template>
         <template #lead>
           {{ AI_CONFIG_HUB_LEAD }}
         </template>
         <template #actions>
-          <RouterLink :to="AI_TOP_LEVEL_NAV[0].path">
-            <UiButton variant="ghost">AI 首页</UiButton>
-          </RouterLink>
-          <RouterLink :to="AI_TOP_LEVEL_NAV[1].path">
-            <UiButton variant="ghost">AI 统计</UiButton>
-          </RouterLink>
-          <RouterLink :to="AI_TOP_LEVEL_NAV[2].path">
-            <UiButton variant="ghost">AI 历史</UiButton>
+          <RouterLink :to="AI_OBSERVATION_SIDEBAR_PATH">
+            <UiButton variant="ghost">AI 观测</UiButton>
           </RouterLink>
         </template>
       </ConsoleHubMasthead>
@@ -163,7 +156,6 @@ onMounted(() => {
               v-else-if="activeSection === 'strategy'"
               ref="strategySectionRef"
             />
-            <AiConfigPersonaSection v-else-if="activeSection === 'persona'" />
             <AiConfigKnowledgeSection
               v-else-if="activeSection === 'knowledge'"
               ref="knowledgeSectionRef"

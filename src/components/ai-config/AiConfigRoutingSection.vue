@@ -1,16 +1,18 @@
 <script setup lang="ts">
+import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
-import { AI_CONFIG_LAYER_LINKS } from "@/config/aiEntrySemantics";
 </script>
 
 <template>
   <div class="ai-config-section ai-config-section--routing">
     <p class="muted ai-config-section__layer-hint">
-      本页配置<strong>请求如何选模型</strong>（task 路由、MoE、多模型分流）；实际加载哪套权重见
-      <RouterLink :to="AI_CONFIG_LAYER_LINKS.runtime.path">{{ AI_CONFIG_LAYER_LINKS.runtime.label }}</RouterLink>，
-      上游登记见
-      <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>。
+      本页配置<strong>请求如何选模型</strong>（task 路由、MoE、多模型分流）；权重加载与上游登记见下方入口。
     </p>
+    <div class="ai-config-section__link-stack">
+      <AiConfigLayerLinks active="routing" />
+      <AiObservationLinks />
+    </div>
     <LocalModelRoutingPanel />
   </div>
 </template>
@@ -26,5 +28,11 @@ import { AI_CONFIG_LAYER_LINKS } from "@/config/aiEntrySemantics";
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.55;
+}
+
+.ai-config-section__link-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 </style>

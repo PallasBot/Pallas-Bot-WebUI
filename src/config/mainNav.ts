@@ -2,9 +2,9 @@ import { isSidebarPinToken, SIDEBAR_PIN_DEFINITIONS } from "./sidebarPins";
 import {
   AI_CONFIG_SECTION_PATHS,
   AI_CONFIG_SIDEBAR_PATH,
-  AI_TOP_LEVEL_NAV,
   AI_TOP_LEVEL_PATHS,
 } from "./aiConfigSections";
+import { AI_SIDEBAR_NAV } from "./aiObservationNav";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import { resolveConsoleNavIcon } from "@/config/consoleNavIcons";
 
@@ -28,7 +28,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/plugins", label: "插件列表", icon: "blocks", description: "已加载", section: "模块与配置" },
   { to: "/plugin-store", label: "插件商店", icon: "store", description: "官方扩展与社区插件", section: "模块与配置" },
   { to: "/common-config", label: "通用配置", icon: "settings", description: "公共项", section: "模块与配置" },
-  ...AI_TOP_LEVEL_NAV.map((item) => ({
+  ...AI_SIDEBAR_NAV.map((item) => ({
     to: item.path,
     label: item.label,
     icon: item.icon,
@@ -85,7 +85,7 @@ function canonicalNavPath(path: string): string {
   if (p === "/community-stats-config") return "/common-config";
   if (p === "/ai") return "/ai/home";
   if (p.startsWith("/ai/home")) return "/ai/home";
-  if (p.startsWith("/ai/runtime")) return "/ai/runtime";
+  if (p.startsWith("/ai/runtime")) return "/ai/home";
   if (p.startsWith("/ai/statistics")) return "/ai/statistics";
   if (p.startsWith("/ai/history")) return "/ai/history";
   if (p.startsWith("/ai/config/")) return AI_CONFIG_SIDEBAR_PATH;
@@ -196,37 +196,31 @@ export function migrateSidebarOrderDatabaseBackups(saved: string[] | undefined |
   return [...base, "/database/backups"];
 }
 
-/** WebUI AI 配置：拆为多页并置于「通用配置」之后（历史迁移 v7–v9） */
+/** WebUI AI 配置：侧栏保留「观测 + 配置」双入口（历史迁移 v7–v10） */
 export function migrateSidebarOrderAiConfig(saved: string[] | undefined | null): string[] {
   const base = normalizeMainNavOrder(saved);
-  const without = base.filter(
-    (t) =>
-      t !== "/ai"
-      && !AI_CONFIG_SECTION_PATHS.includes(t)
-      && !AI_TOP_LEVEL_PATHS.includes(t),
-  );
+  const aiPaths = new Set<string>([
+    ...AI_SIDEBAR_NAV.map((item) => item.path),
+    ...AI_TOP_LEVEL_PATHS,
+    "/ai/runtime",
+    "/ai/statistics",
+    "/ai/history",
+  ]);
+  const without = base.filter((t) => !aiPaths.has(t) && !AI_CONFIG_SECTION_PATHS.includes(t));
   const commonIdx = without.indexOf("/common-config");
   const insertAt = commonIdx >= 0 ? commonIdx + 1 : without.length;
   const slice = without.slice(0, insertAt);
   const tail = without.slice(insertAt);
-  return [...slice, ...AI_TOP_LEVEL_PATHS, ...tail];
+  return [...slice, ...AI_SIDEBAR_NAV.map((item) => item.path), ...tail];
 }
 
-/** AI Hub：侧栏仅保留单入口「AI配置」 */
+/** AI Hub：侧栏仅保留单入口「AI配置」（旧策略；新装默认走双入口 migrateSidebarOrderAiConfig） */
 export function migrateSidebarOrderAiHubSingle(saved: string[] | undefined | null): string[] {
-  const raw = Array.isArray(saved) ? saved : [];
-  const withoutAi = raw.filter((t) => {
-    if (typeof t !== "string") return true;
-    const p = t.trim();
-    return p !== AI_CONFIG_SIDEBAR_PATH && !AI_TOP_LEVEL_PATHS.includes(p) && !p.startsWith("/ai/");
-  });
-  const base = normalizeMainNavOrder(withoutAi);
-  if (base.includes(AI_CONFIG_SIDEBAR_PATH)) return base;
-  const commonIdx = base.indexOf("/common-config");
-  const insertAt = commonIdx >= 0 ? commonIdx + 1 : base.length;
-  const slice = base.slice(0, insertAt);
-  const tail = base.slice(insertAt);
-  return [...slice, AI_CONFIG_SIDEBAR_PATH, ...tail];
+  const migrated = migrateSidebarOrderAiConfig(saved);
+  if (migrated.includes(AI_CONFIG_SIDEBAR_PATH) && migrated.includes("/ai/home")) {
+    return migrated;
+  }
+  return migrateSidebarOrderAiConfig(saved);
 }
 
 export function mainNavItemByPath(to: string): MainNavItem | undefined {

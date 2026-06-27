@@ -246,7 +246,7 @@ onMounted(() => {
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
     <div v-else-if="allChecksPassed" class="alert alert--ok">
-      配置检查已通过！各项服务均处于良好状态，可前往 AI 首页了解运行详情。
+      配置检查已通过！各项服务均处于良好状态，可前往 AI 观测了解运行详情。
     </div>
     <div v-else-if="wizardStatus?.next_step" class="alert alert--warn">
       <strong>当前急需处理：</strong>{{ wizardStatus.next_step }}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AiRuntimeOverview, AiRuntimeSnapshotGroup } from "@/utils/aiRuntimeTypes";
 import { runtimeStateClass, runtimeStateLabel } from "@/utils/aiRuntimeState";
+import { AI_CONFIG_LEGACY_RUNTIME_REDIRECT } from "@/config/aiConfigSections";
 import { RouterLink } from "vue-router";
 
 withDefaults(
@@ -46,7 +47,7 @@ withDefaults(
       class="ai-runtime-summary__hub-link muted"
     >
       完整运行态与队列观测见
-      <RouterLink :to="'/ai/runtime'">Runtime 总览</RouterLink>。
+      <RouterLink :to="AI_CONFIG_LEGACY_RUNTIME_REDIRECT">AI 观测 · Runtime 诊断</RouterLink>。
     </p>
 
     <div

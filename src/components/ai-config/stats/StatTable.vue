@@ -9,6 +9,7 @@ export type StatColumn<R> = {
   value: (row: R) => string;
   sub?: (row: R) => string;
   align?: "left" | "right";
+  cellClass?: (row: R) => string | undefined;
 };
 
 const props = withDefaults(
@@ -64,7 +65,10 @@ function keyOf(row: T, index: number): string {
             <th
               v-for="col in columns"
               :key="col.key"
-              :class="{ 'tbl__cell--right': col.align === 'right' }"
+              :class="[
+                col.key === columns[0]?.key ? 'tbl__cell--name' : '',
+                col.align === 'right' ? 'tbl__cell--num' : '',
+              ]"
             >
               {{ col.label }}
             </th>
@@ -75,9 +79,13 @@ function keyOf(row: T, index: number): string {
             <td
               v-for="col in columns"
               :key="col.key"
-              :class="{ 'tbl__cell--right': col.align === 'right' }"
+              :class="[
+                col.key === columns[0]?.key ? 'tbl__cell--name' : '',
+                col.align === 'right' ? 'tbl__cell--num' : '',
+                col.cellClass?.(row),
+              ]"
             >
-              <div>{{ col.value(row) }}</div>
+              <div class="tbl__cell-main">{{ col.value(row) }}</div>
               <div v-if="col.sub && col.sub(row)" class="ai-subcell">{{ col.sub(row) }}</div>
             </td>
           </tr>
@@ -108,21 +116,36 @@ function keyOf(row: T, index: number): string {
 
 .tbl {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: collapse;
 }
 
 .tbl td,
 .tbl th {
-  word-break: break-word;
   padding: 12px 14px;
-  vertical-align: top;
+  vertical-align: middle;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
-.tbl td:first-child,
-.tbl th:first-child {
-  width: 34%;
+.tbl__cell--name {
+  min-width: 7.5rem;
+  max-width: 14rem;
+  word-break: break-word;
+}
+
+.tbl__cell--num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+}
+
+.tbl__cell-main {
+  font-weight: 500;
+}
+
+.tbl__cell--name .tbl__cell-main {
+  font-weight: 600;
 }
 
 .tbl thead th {
@@ -144,16 +167,34 @@ function keyOf(row: T, index: number): string {
   background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
-.tbl__cell--right {
-  text-align: right;
-}
-
 .ai-subcell {
-  margin-top: 4px;
-  font-size: 0.76rem;
-  color: var(--text-muted);
+  margin-top: 6px;
+  padding: 2px 6px;
+  display: inline-block;
+  max-width: 100%;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--danger, #fb7185) 82%, var(--text));
+  background: color-mix(in srgb, var(--danger, #fb7185) 10%, transparent);
+  border-radius: 4px;
   white-space: normal;
   word-break: break-word;
+}
+
+.stat-cell--ok {
+  color: var(--ok, #22c55e);
+}
+
+.stat-cell--warn {
+  color: var(--warn, #f59e0b);
+}
+
+.stat-cell--danger {
+  color: var(--danger, #fb7185);
+}
+
+.stat-cell--muted {
+  color: var(--text-muted);
 }
 
 .stat-table__pager {
@@ -175,9 +216,14 @@ function keyOf(row: T, index: number): string {
     padding: 10px 11px;
   }
 
-  .tbl td:first-child,
-  .tbl th:first-child {
-    width: 44%;
+  .tbl__cell--name {
+    min-width: 6rem;
+    max-width: 9rem;
+  }
+
+  .tbl__cell--num {
+    min-width: 3.5rem;
+    font-size: 0.8125rem;
   }
 }
 </style>

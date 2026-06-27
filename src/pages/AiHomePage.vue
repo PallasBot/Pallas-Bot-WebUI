@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import { computed, nextTick, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
+import AiRuntimeDiagnosticPanel from "@/components/ai-config/AiRuntimeDiagnosticPanel.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
-import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
-import { AI_STATS_LIMITS } from "@/config/aiConstants";
-import { AI_CONFIG_LAYER_LINKS, AI_ENTRY_SITE_GATEWAY_CHECK } from "@/config/aiEntrySemantics";
+import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
+import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 
-const panelNavIcon = usePanelNavIcon();
+const route = useRoute();
 const {
   loading,
   err,
@@ -37,15 +36,7 @@ function stateLabel(state: AiRuntimeState): string {
   return "状态未知";
 }
 
-const routeRows = computed(() =>
-  Object.entries(llmRuntimeSummary.value.routeCounts ?? {})
-    .map(([key, count]) => ({ key, count: Number(count) || 0 }))
-    .filter((row) => row.count > 0)
-    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
-    .slice(0, AI_STATS_LIMITS.topRoutes),
-);
-
-const homeHeroStats = computed(() => [
+const overviewStats = computed(() => [
   {
     label: "正常模块",
     value: overview.value.healthyCount,
@@ -57,21 +48,13 @@ const homeHeroStats = computed(() => [
     tone: overview.value.degradedCount > 0 ? "warn" : undefined,
   },
   {
-    label: "未启用",
-    value: overview.value.disabledCount,
-  },
-  {
-    label: "配置回退",
-    value: overview.value.fallbackCount,
-  },
-  {
     label: "大模型失败",
     value: llmRuntimeSummary.value.failed,
     tone: llmRuntimeSummary.value.failed > 0 ? "danger" : undefined,
   },
   {
-    label: "排队中任务",
-    value: mediaTaskQueue.value?.queue_depth ?? 0,
+    label: "排队任务",
+    value: mediaTaskQueue.value?.queue_depth ?? llmRuntimeSummary.value.queued,
   },
 ]);
 
@@ -79,7 +62,7 @@ const wizardAlert = computed(() => {
   const status = wizardStatus.value;
   if (!status) return "";
   if (status.next_step) return `体检建议：${status.next_step}`;
-  if (!status.ai_reachable) return "服务断开连接，请检查扩展连接与地址配置。";
+  if (!status.ai_reachable) return "扩展服务不可达，请检查「AI 配置 → 扩展连接」。";
   return "";
 });
 
@@ -94,29 +77,38 @@ function primaryNavigateAction(item: AiRuntimeSnapshotItem) {
   return item.actions.find((action) => action.kind === "navigate" && action.to) ?? null;
 }
 
+function scrollToRuntimeDiagnostic() {
+  document.getElementById("runtime-diagnostic")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+watch(
+  () => route.query.panel,
+  (panel) => {
+    if (String(panel ?? "").trim() === "runtime") {
+      void nextTick(() => scrollToRuntimeDiagnostic());
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   void refresh();
 });
 </script>
 
 <template>
-  <div class="console-hub-page ai-surface ai-home-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        AI 运行总览
-      </template>
-      <template #actions>
-        <RouterLink :to="AI_CONFIG_LAYER_LINKS.runtime.path">
-          <UiButton variant="primary">管理配置</UiButton>
-        </RouterLink>
-        <RouterLink :to="AI_ENTRY_SITE_GATEWAY_CHECK.path">
-          <UiButton variant="outline">{{ AI_ENTRY_SITE_GATEWAY_CHECK.label }}</UiButton>
-        </RouterLink>
-        <UiButton variant="ghost" :busy="loading" @click="refresh">
-          刷新数据
-        </UiButton>
-      </template>
-    </ConsoleHubMasthead>
+  <div class="ai-home-page">
+    <div class="ai-hub-toolbar">
+      <AiObservationLinks exclude="overview" />
+      <UiButton
+        variant="ghost"
+        size="sm"
+        :busy="loading"
+        @click="refresh"
+      >
+        刷新
+      </UiButton>
+    </div>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
     <div v-else-if="wizardAlert" class="alert alert--warn ai-home-page__wizard-alert">
@@ -126,48 +118,56 @@ onMounted(() => {
       </RouterLink>
     </div>
 
-    <!-- 顶部数据卡片行 (gsuid_hub 风格 Metric Cards) -->
-    <div class="ai-home-page__top-metrics">
-      <div
-        v-for="item in homeHeroStats"
-        :key="item.label"
-        class="ai-home-page__metric-card"
-      >
-        <span class="ai-home-page__metric-label">{{ item.label }}</span>
-        <strong
-          class="ai-home-page__metric-value"
-          :class="{
-            'text-ok': item.accent,
-            'text-warn': item.tone === 'warn',
-            'text-danger': item.tone === 'danger',
-          }"
-        >
-          {{ item.value }}
-        </strong>
-      </div>
-    </div>
-
-    <!-- 运行状态横幅 -->
-    <UiCard class="ai-home-page__hero">
+    <UiCard
+      glass
+      class="ai-hub-panel ai-home-page__hero-compact"
+    >
       <div class="ai-home-page__hero-head">
         <div class="ai-home-page__hero-copy">
           <div class="ai-home-page__hero-state">
             <span class="ai-dot" :class="dotClass(overview.state)" />
             <span class="ai-home-page__hero-state-text">{{ stateLabel(overview.state) }}</span>
           </div>
-          <h3 class="ai-home-page__hero-title">{{ overview.title }}</h3>
+          <h2 class="ai-home-page__hero-title">{{ overview.title }}</h2>
           <p v-if="runtimeHealthSummary" class="muted ai-home-page__hero-runtime">{{ runtimeHealthSummary }}</p>
         </div>
-        <div class="ai-home-page__hero-actions">
-          <RouterLink to="/ai/runtime" class="ai-home-page__hero-btn">
-            进入诊断中心
-          </RouterLink>
+        <button
+          type="button"
+          class="ai-home-page__hero-btn"
+          @click="scrollToRuntimeDiagnostic"
+        >
+          Runtime 诊断
+        </button>
+      </div>
+      <div
+        class="ai-stat-grid ai-home-page__kpi"
+        style="--ai-stat-cols: 4"
+      >
+        <div
+          v-for="item in overviewStats"
+          :key="item.label"
+          class="ai-stat"
+        >
+          <span class="ai-stat__label">{{ item.label }}</span>
+          <strong
+            class="ai-stat__value"
+            :class="{
+              'ai-stat__value--accent': item.accent,
+              'text-warn': item.tone === 'warn',
+              'text-danger': item.tone === 'danger',
+            }"
+          >
+            {{ item.value }}
+          </strong>
         </div>
       </div>
     </UiCard>
 
     <section class="ai-home-page__grid">
-      <UiCard class="ai-home-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-home-page__panel"
+      >
         <div class="ai-head">
           <ConsoleNavIcon name="alert" class="ai-head__icon" />
           <h3 class="ai-head__title">需要关注</h3>
@@ -187,7 +187,7 @@ onMounted(() => {
             </div>
             <p class="ai-home-page__focus-desc">{{ item.description }}</p>
             <div v-if="primaryNavigateAction(item)" class="ai-home-page__focus-actions">
-              <RouterLink :to="primaryNavigateAction(item)?.to || '/ai/home'" class="ai-head__link">
+              <RouterLink :to="primaryNavigateAction(item)?.to || '/ai/config/connection'" class="ai-head__link">
                 {{ primaryNavigateAction(item)?.label || "前往处理" }} &rarr;
               </RouterLink>
             </div>
@@ -195,52 +195,17 @@ onMounted(() => {
         </div>
         <div v-else class="ai-empty">
           <span class="ai-empty__title">状态良好</span>
-          <span class="ai-empty__hint">当前没有需要紧急处理的降级或异常情况。</span>
+          <span class="ai-empty__hint">当前没有需要紧急处理的降级或异常。</span>
         </div>
       </UiCard>
 
-      <UiCard class="ai-home-page__panel">
-        <div class="ai-head">
-          <ConsoleNavIcon name="activity" class="ai-head__icon" />
-          <h3 class="ai-head__title">近期调用动态</h3>
-          <RouterLink to="/ai/statistics" class="ai-head__link">详细统计 &rarr;</RouterLink>
-        </div>
-        <div class="ai-home-page__runtime-grid">
-          <div class="ai-home-page__runtime-stat">
-            <span class="ai-home-page__metric-label">等待中</span>
-            <strong class="ai-home-page__metric-value">{{ llmRuntimeSummary.queued }}</strong>
-          </div>
-          <div class="ai-home-page__runtime-stat">
-            <span class="ai-home-page__metric-label">处理中</span>
-            <strong class="ai-home-page__metric-value">{{ llmRuntimeSummary.running }}</strong>
-          </div>
-          <div class="ai-home-page__runtime-stat">
-            <span class="ai-home-page__metric-label">请求成功</span>
-            <strong class="ai-home-page__metric-value text-ok">{{ llmRuntimeSummary.succeeded }}</strong>
-          </div>
-          <div class="ai-home-page__runtime-stat">
-            <span class="ai-home-page__metric-label">请求失败</span>
-            <strong class="ai-home-page__metric-value" :class="{ 'text-danger': llmRuntimeSummary.failed > 0 }">{{ llmRuntimeSummary.failed }}</strong>
-          </div>
-        </div>
-        <div v-if="routeRows.length" class="ai-rows ai-home-page__routes">
-          <div v-for="row in routeRows" :key="row.key" class="ai-row">
-            <span class="ai-row__key">{{ row.key }}</span>
-            <strong class="ai-row__val">{{ row.count.toLocaleString() }} 次</strong>
-          </div>
-        </div>
-        <div v-else class="ai-empty">
-          <span class="ai-empty__title">暂无数据</span>
-          <span class="ai-empty__hint">当前统计窗口内还没有大模型的调用记录。</span>
-        </div>
-      </UiCard>
-    </section>
-
-    <section class="ai-home-page__grid">
-      <UiCard class="ai-home-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-home-page__panel"
+      >
         <div class="ai-head">
           <ConsoleNavIcon name="blocks" class="ai-head__icon" />
-          <h3 class="ai-head__title">能力模块视图</h3>
+          <h3 class="ai-head__title">模块与连通</h3>
         </div>
         <div class="ai-rows">
           <div
@@ -254,24 +219,12 @@ onMounted(() => {
             </span>
             <span class="ai-row__val muted">{{ group.total }} 项</span>
           </div>
-        </div>
-      </UiCard>
-
-      <UiCard class="ai-home-page__panel">
-        <div class="ai-head">
-          <ConsoleNavIcon name="radio" class="ai-head__icon" />
-          <h3 class="ai-head__title">服务连通与队列</h3>
-        </div>
-        <div
-          v-if="llmProviderStatus.length || mediaTaskCapabilities.length"
-          class="ai-rows"
-        >
           <div
             v-for="provider in llmProviderStatus"
             :key="provider.id"
             class="ai-row"
           >
-            <span class="ai-row__key">{{ provider.id }} (Provider)</span>
+            <span class="ai-row__key">{{ provider.id }}</span>
             <strong class="ai-row__val">{{ provider.health_state || (provider.reachable ? "在线" : "未知") }}</strong>
           </div>
           <div
@@ -279,61 +232,46 @@ onMounted(() => {
             :key="cap.capability"
             class="ai-row"
           >
-            <span class="ai-row__key">{{ cap.capability }} (多媒体)</span>
-            <strong class="ai-row__val">{{ cap.queue_depth }} 排队 / {{ cap.active_tasks }} 运行</strong>
+            <span class="ai-row__key">{{ cap.capability }}</span>
+            <strong class="ai-row__val">{{ cap.queue_depth }} 排队 · {{ cap.active_tasks }} 运行</strong>
           </div>
         </div>
-        <div v-else class="ai-empty">
-          <span class="ai-empty__title">暂无外部服务状态</span>
-          <span class="ai-empty__hint">您可能还未连接独立的 Pallas-Bot-AI 扩展节点。</span>
+        <div
+          v-if="!groups.some((g) => g.total) && !llmProviderStatus.length && !mediaTaskCapabilities.length"
+          class="ai-empty"
+        >
+          <span class="ai-empty__title">暂无运行态数据</span>
+          <span class="ai-empty__hint">完成扩展连接配置后刷新本页。</span>
         </div>
       </UiCard>
     </section>
+
+    <AiRuntimeDiagnosticPanel
+      id="runtime-diagnostic"
+      embedded
+      :loading="loading"
+      :err="err"
+      :focus-items="focusItems"
+      :llm-runtime-summary="llmRuntimeSummary"
+      :runtime-overview="runtimeOverview"
+      @refresh="refresh"
+    />
   </div>
 </template>
 
 <style scoped>
-.ai-home-page__top-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.ai-home-page__metric-card {
-  padding: 20px;
+.ai-home-page {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.ai-home-page__metric-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.ai-home-page__metric-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.ai-home-page__hero {
-  display: grid;
-  gap: 20px;
-  padding: 24px;
-  margin-bottom: 24px;
+  gap: var(--hub-page-gap, 18px);
 }
 
 .ai-home-page__hero-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .ai-home-page__hero-copy {
@@ -347,52 +285,86 @@ onMounted(() => {
   gap: 8px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-muted);
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.ai-home-page__hero-title {
-  margin: 0 0 8px;
-  font-size: clamp(1.5rem, 2.5vw, 1.875rem);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
 }
 
 .ai-home-page__hero-runtime {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ai-home-page__hero-actions {
-  flex-shrink: 0;
+  line-height: 1.5;
 }
 
 .ai-home-page__hero-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 8px;
-  background: var(--brand);
-  color: #fff;
-  text-decoration: none;
-  font-size: 0.875rem;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--foreground);
+  font-size: 0.8125rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand) 25%, transparent);
-  transition: transform 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
 .ai-home-page__hero-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.ai-home-page__kpi {
+  margin-top: 4px;
+}
+
+.ai-home-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--hub-page-gap, 18px);
+}
+
+.ai-home-page__panel :deep(.ui-card__content) {
+  padding: 18px 20px 20px;
+}
+
+.ai-home-page__focus {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
+}
+
+.ai-home-page__focus-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-home-page__focus-desc {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ai-home-page__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.ai-home-page__group:last-child {
+  border-bottom: none;
+}
+
+.ai-home-page__group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ai-home-page__wizard-alert {
@@ -400,212 +372,22 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-radius: 12px;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
-.ai-home-page__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.ai-home-page__panel {
-  height: 100%;
-  min-width: 0;
-  padding: 24px;
-  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
-  border: none;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.ai-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.ai-head__icon {
-  color: var(--text-muted);
-}
-
-.ai-head__title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.ai-head__link {
-  margin-left: auto;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--brand);
-  text-decoration: none;
-}
-
-.ai-head__link:hover {
-  text-decoration: underline;
-}
-
-.ai-home-page__runtime-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.ai-home-page__runtime-stat {
-  min-width: 0;
-  padding: 16px;
-  background: color-mix(in srgb, var(--text) 2%, transparent);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ai-home-page__routes {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ai-home-page__routes .ai-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--text) 1.5%, transparent);
-  border-radius: 8px;
-}
-
-.ai-home-page__routes .ai-row__key {
-  min-width: 0;
-  word-break: break-word;
-  font-weight: 500;
-}
-
-.ai-home-page__focus {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  background: color-mix(in srgb, var(--text) 2%, transparent);
-  border-radius: 12px;
-  margin-bottom: 12px;
-}
-
-.ai-home-page__focus:last-child {
-  margin-bottom: 0;
-}
-
-.ai-home-page__focus-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ai-home-page__focus-tag {
-  margin-left: auto;
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
-  border-radius: 6px;
-}
-
-.ai-home-page__focus-desc {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.ai-home-page__focus-actions {
-  margin-top: 8px;
-}
-
-.ai-home-page__group {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px;
-  background: color-mix(in srgb, var(--text) 1.5%, transparent);
-  border-radius: 8px;
-  margin-bottom: 8px;
-}
-
-.ai-home-page__group:last-child {
-  margin-bottom: 0;
-}
-
-.ai-home-page__group-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-}
-
-.ai-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ai-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px;
-  background: color-mix(in srgb, var(--text) 1.5%, transparent);
-  border-radius: 8px;
-}
-
-.ai-row__key {
-  font-weight: 500;
-}
-
-.ai-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  text-align: center;
-}
-
-.ai-empty__title {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.ai-empty__hint {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-@media (max-width: 960px) {
+@media (max-width: 860px) {
   .ai-home-page__grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ai-home-page__hero-head {
-    flex-direction: column;
-    gap: 16px;
+  .ai-home-page__kpi {
+    --ai-stat-cols: 2;
   }
 }
 
 @media (max-width: 560px) {
-  .ai-home-page__wizard-alert {
+  .ai-home-page__hero-head {
     flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .ai-home-page__runtime-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  
-  .ai-home-page__hero-actions {
-    width: 100%;
   }
 
   .ai-home-page__hero-btn {

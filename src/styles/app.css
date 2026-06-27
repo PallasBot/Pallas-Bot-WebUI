@@ -223,6 +223,7 @@ html[data-theme="light"][data-surface="glass"] {
   );
   --surface-elevated: var(--surface-glass-fg);
   --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
+  --surface-segment-active: #ffffff;
   --surface-chip: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 92%), transparent);
 }
 
@@ -378,8 +379,8 @@ html[data-theme="light"] {
   --bg-elev: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #fafafa;
-  --border: rgba(15, 23, 42, 0.065);
-  --border-strong: rgba(15, 23, 42, 0.11);
+  --border: rgba(15, 23, 42, 0.048);
+  --border-strong: rgba(15, 23, 42, 0.09);
   --text: #0f172a;
   --text-muted: #64748b;
   --text-dim: #94a3b8;
@@ -394,11 +395,12 @@ html[data-theme="light"] {
   --shell-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
   --control-bg: #ffffff;
   --control-border: rgba(15, 23, 42, 0.14);
-  --bg-muted: color-mix(in srgb, var(--text) 4%, var(--bg-elev));
-  --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 3%, transparent);
-  --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
-  --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 7%, transparent);
-  --surface-segment: #ececee;
+  --bg-muted: color-mix(in srgb, var(--text) 2.5%, var(--bg-elev));
+  --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 2%, transparent);
+  --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 3.5%, transparent);
+  --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
+  --surface-segment: color-mix(in srgb, var(--foreground, var(--text)) 3.5%, var(--bg-elev));
+  --surface-segment-active: #ffffff;
   --surface-chip: color-mix(in srgb, var(--surface-control) 92%, var(--bg-muted) 8%);
   --surface-overlay: color-mix(in srgb, #000 8%, transparent);
   --shell-brand-mark-bg: #ffffff;
@@ -3615,50 +3617,65 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   gap: 10px;
 }
 
+/* 全局分段控件：插件管理/配置弹窗/商店筛选等统一复用 */
 .console-view-toggle {
   display: inline-flex;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  background: color-mix(in srgb, var(--bg-elev) 92%, var(--bg-deep) 8%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  background: var(--surface-segment);
+  box-shadow: none;
 }
 
 html[data-theme="light"] .console-view-toggle {
-  background: color-mix(in srgb, #fff 94%, var(--bg-deep) 6%);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
 }
 
 .console-view-toggle button {
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   transition:
     background 0.15s var(--ease),
-    color 0.15s var(--ease);
+    color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
 }
 
-.console-view-toggle button:hover {
+.console-view-toggle button:hover:not(.is-on) {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
-html[data-theme="light"] .console-view-toggle button:hover {
-  background: rgba(15, 23, 42, 0.05);
+html[data-theme="light"] .console-view-toggle button:hover:not(.is-on) {
+  background: color-mix(in srgb, var(--surface-control) 40%, transparent);
 }
 
 .console-view-toggle button.is-on {
+  background: var(--surface-segment-active);
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
   color: var(--text);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #000) 6%, transparent);
+}
+
+html[data-theme="light"] .console-view-toggle button.is-on {
+  background: var(--surface-segment-active);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #0f172a) 4%, transparent);
 }
 
 .data-card-grid {
@@ -10685,6 +10702,23 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   padding: 0;
 }
 
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 2%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 4%, transparent);
+  box-shadow: none;
+}
+
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
+html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 2%, var(--bg-card));
+}
+
+html[data-theme="light"] .plugin-config-workspace--dialog .help-image-preview__frame {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 2%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 4%, transparent);
+}
+
 .plugin-config-dialog__head {
   display: flex;
   align-items: center;
@@ -10705,14 +10739,16 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   min-width: 0;
 }
 
-.plugin-config-page__card--dialog {
-  border: 0;
-  box-shadow: none;
-  background: transparent;
+.plugin-config-workspace__body {
+  min-width: 0;
 }
 
 .plugin-config-workspace--dialog .plugin-config-page__card-bd {
-  padding: 0 16px 16px;
+  padding: 12px 16px 16px;
+}
+
+.plugin-config-workspace--dialog .plugin-config-page__loading {
+  padding-top: 12px;
 }
 
 .plugin-readme-panel__body {
@@ -10724,6 +10760,95 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.55;
+}
+
+/* 插件配置 / 插件商店 README 共用 Markdown 排版 */
+.readme-markdown {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.readme-markdown h1,
+.readme-markdown h2,
+.readme-markdown h3,
+.readme-markdown h4 {
+  margin: 1.2em 0 0.6em;
+  line-height: 1.3;
+}
+
+.readme-markdown p {
+  margin: 0.75em 0;
+}
+
+.readme-markdown ul,
+.readme-markdown ol {
+  padding-left: 1.4em;
+}
+
+.readme-markdown blockquote {
+  margin: 1em 0;
+  padding: 0.2em 0 0.2em 1em;
+  border-left: 3px solid color-mix(in srgb, var(--primary, var(--accent)) 38%, transparent);
+  color: var(--text-muted);
+}
+
+.readme-markdown code {
+  font-family: var(--font-mono);
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  font-size: 0.92em;
+}
+
+.readme-markdown pre {
+  overflow-x: auto;
+  margin: 0.85em 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  border: 1px solid color-mix(in srgb, var(--foreground, var(--text)) 4%, transparent);
+}
+
+.readme-markdown pre code {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-size: 0.9em;
+}
+
+.readme-markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.readme-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 13px;
+}
+
+.readme-markdown th,
+.readme-markdown td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.readme-markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.readme-markdown hr {
+  margin: 1.25em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
 }
 
 .plugin-store-page__detail-bd {
@@ -10857,64 +10982,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 .plugin-store-page__detail-skel-line--medium {
   width: 84%;
 }
-.plugin-store-page__readme {
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--text);
-  word-break: break-word;
-}
-.plugin-store-page__readme h1,
-.plugin-store-page__readme h2,
-.plugin-store-page__readme h3 {
-  margin: 1.2em 0 0.6em;
-  line-height: 1.3;
-}
-.plugin-store-page__readme p {
-  margin: 0.75em 0;
-}
-.plugin-store-page__readme ul,
-.plugin-store-page__readme ol {
-  padding-left: 1.4em;
-}
-.plugin-store-page__readme blockquote {
-  margin: 1em 0;
-  padding: 0.2em 0 0.2em 1em;
-  border-left: 3px solid color-mix(in srgb, var(--primary) 38%, transparent);
-  color: var(--text-muted);
-}
-.plugin-store-page__readme code {
-  padding: 0.12em 0.35em;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--bg) 56%, transparent);
-  font-size: 0.92em;
-}
-.plugin-store-page__readme pre {
-  overflow-x: auto;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg) 50%, transparent);
-}
-.plugin-store-page__readme pre code {
-  padding: 0;
-  background: transparent;
-}
-.plugin-store-page__readme img {
-  max-width: 100%;
-  height: auto;
-  border-radius: var(--radius-sm);
-}
-.plugin-store-page__readme table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
-  font-size: 13px;
-}
-.plugin-store-page__readme th,
-.plugin-store-page__readme td {
-  border: 1px solid var(--border);
-  padding: 6px 10px;
-  text-align: left;
-}
+
 .plugins-page__hero-note--shard {
   margin-top: 4px;
 }
@@ -11711,7 +11779,7 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
   }
 
   .plugin-config-workspace--dialog .plugin-config-page__card-bd {
-    padding: 0 12px 12px;
+    padding: 10px 12px 12px;
   }
 
   .plugins-page__plugin-tab-group .plugins-page__plugin-tab-btn {
@@ -11735,8 +11803,10 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
 
   .plugin-store-page__detail-bd pre,
   .plugin-store-page__detail-bd table,
-  .plugin-store-page__detail-bd .markdown-body pre,
-  .plugin-store-page__detail-bd .markdown-body table {
+  .plugin-store-page__detail-bd .readme-markdown pre,
+  .plugin-store-page__detail-bd .readme-markdown table,
+  .plugin-config-dialog__bd .readme-markdown pre,
+  .plugin-config-dialog__bd .readme-markdown table {
     max-width: 100%;
     overflow-x: auto;
     display: block;
@@ -13246,6 +13316,18 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
 .plugin-config-groups {
   display: grid;
   gap: 12px;
+}
+
+.plugin-config-group-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+}
+
+.plugin-config-group-section:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .plugin-config-group-card {

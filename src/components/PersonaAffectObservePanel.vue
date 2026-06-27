@@ -4,13 +4,26 @@ import { RouterLink } from "vue-router";
 import { fetchLlmPersonaObserve } from "@/api/consoleApi";
 import type { PersonaAxisSnapshot, PersonaObserveBotRow, PersonaObserveData } from "@/api/pallasTypes";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import { AI_CONFIG_LAYER_LINKS } from "@/config/aiEntrySemantics";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import {
   buildPersonaObserveFallback,
   isPersonaObserveApiMissing,
 } from "@/utils/personaObserveFallback";
+
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+    syncGroupId?: string;
+  }>(),
+  {
+    embedded: false,
+    syncGroupId: "",
+  },
+);
 
 const loading = ref(false);
 const err = ref("");
@@ -156,6 +169,18 @@ watch(groupIdInput, () => {
   void load();
 });
 
+watch(
+  () => props.syncGroupId,
+  (next) => {
+    if (!props.embedded) return;
+    const normalized = String(next ?? "").trim();
+    if (normalized !== groupIdInput.value.trim()) {
+      groupIdInput.value = normalized;
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   void load();
 });
@@ -167,10 +192,13 @@ onMounted(() => {
     glass
     class="persona-observe-panel"
   >
-    <div class="panel__hd panel__hd--split persona-observe-panel__hd">
+    <div
+      class="panel__hd panel__hd--split persona-observe-panel__hd"
+      :class="{ 'persona-observe-panel__hd--embedded': embedded }"
+    >
       <div class="persona-observe-panel__hd-main">
         <h2 class="panel__title">
-          牛格情感观测
+          {{ embedded ? "牛格观测" : "牛格情感观测" }}
         </h2>
         <div class="persona-observe-panel__summary">
           <div
@@ -193,7 +221,10 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div class="row-actions persona-observe-panel__hd-actions">
+      <div
+        v-if="!embedded"
+        class="row-actions persona-observe-panel__hd-actions"
+      >
         <label class="persona-observe-panel__group-field">
           <span class="persona-observe-panel__group-label">群号</span>
           <input
@@ -211,16 +242,33 @@ onMounted(() => {
           @click="load"
         />
       </div>
+      <RefreshIconButton
+        v-else
+        :busy="loading"
+        label="刷新"
+        class="persona-observe-panel__embedded-refresh"
+        @click="load"
+      />
     </div>
 
     <div class="panel__bd">
-      <p class="muted persona-observe-panel__lede">
+      <p
+        v-if="!embedded"
+        class="muted persona-observe-panel__lede"
+      >
         查看各 bot 的情感轴基线与群合并结果；数据只读，由 persona 运行时解析。
       </p>
-      <div class="row-actions persona-observe-panel__links">
-        <RouterLink to="/ai/home">AI 首页</RouterLink>
-        <RouterLink to="/ai/config/runtime">运行模型</RouterLink>
-        <RouterLink to="/ai/history">查看 AI 历史</RouterLink>
+      <div
+        v-if="!embedded"
+        class="persona-observe-panel__links"
+      >
+        <AiObservationLinks />
+        <RouterLink
+          :to="AI_CONFIG_LAYER_LINKS.runtime.path"
+          class="ai-obs-links__item"
+        >
+          {{ AI_CONFIG_LAYER_LINKS.runtime.label }}
+        </RouterLink>
       </div>
 
       <p
@@ -515,8 +563,10 @@ onMounted(() => {
 }
 
 .persona-observe-panel__links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin: 0 0 12px;
-  flex-wrap: wrap;
 }
 
 .persona-observe-panel__hd-actions {
@@ -801,6 +851,22 @@ onMounted(() => {
   margin: 0;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.persona-observe-panel__hd--embedded {
+  align-items: center;
+}
+
+.persona-observe-panel__embedded-refresh {
+  margin-left: auto;
+}
+
+@media (max-width: 560px) {
+  .persona-observe-panel__hd--embedded {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
 }
 
 @media (max-width: 560px) {

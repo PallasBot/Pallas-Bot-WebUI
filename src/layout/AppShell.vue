@@ -7,6 +7,7 @@ import { scheduleInstancesCatalogRefreshOnRoute } from "@/composables/useInstanc
 import { prefetchPriorityRouteChunks, prefetchRouteChunkByPath } from "@/utils/routePrefetch";
 import { MAIN_NAV_ITEMS, type MainNavItem } from "@/config/mainNav";
 import { AI_CONFIG_SIDEBAR_PATH } from "@/config/aiConfigSections";
+import { AI_OBSERVATION_PATHS, AI_OBSERVATION_SIDEBAR_PATH } from "@/config/aiObservationNav";
 import { SIDEBAR_PIN_DEFINITIONS, type SidebarPinDefinition } from "@/config/sidebarPins";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { initialShellLoading } from "@/utils/routeLoading";
@@ -72,6 +73,9 @@ function toggleSidebarGroup(groupId: string, children: SidebarNavMainRowView[]) 
 }
 
 function isMainLinkActiveForPath(item: MainNavItem): boolean {
+  if (item.to === AI_OBSERVATION_SIDEBAR_PATH) {
+    return AI_OBSERVATION_PATHS.some((p) => route.path === p || route.path.startsWith(`${p}/`));
+  }
   if (item.to.startsWith("/ai/")) {
     return route.path === item.to || route.path.startsWith(`${item.to}/`);
   }

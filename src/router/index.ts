@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layout/AppShell.vue";
+import AiObservationLayout from "@/layout/AiObservationLayout.vue";
 import HomePage from "@/pages/HomePage.vue";
 import { installConsoleSetupGuard } from "@/router/consoleSetupGuard";
 import { installProtocolExtensionGuard } from "@/router/protocolExtensionGuard";
@@ -23,7 +24,6 @@ const AiHomePage = routeChunkLoaders["ai-home"];
 const AiStatisticsPage = routeChunkLoaders["ai-statistics"];
 const AiHistoryPage = routeChunkLoaders["ai-history"];
 const AiWizardPage = routeChunkLoaders["ai-wizard"];
-const AiRuntimeOverviewPage = routeChunkLoaders["ai-runtime"];
 const FriendsGroupsPage = routeChunkLoaders["friends-groups"];
 const PreferencesPage = routeChunkLoaders.preferences;
 const SetupWizardPage = routeChunkLoaders["setup-wizard"];
@@ -210,42 +210,48 @@ const router = createRouter({
         },
         {
           path: "ai",
-          redirect: (to) => {
-            const raw = to.query.section ?? to.query.tab;
-            if (raw != null && String(raw).trim()) {
-              const id = String(raw).trim();
-              if (id === "runtime") return "/ai/runtime";
-              return { path: `/ai/config/${id}` };
-            }
-            return "/ai/home";
-          },
-        },
-        {
-          path: "ai/home",
-          name: "ai-home",
-          component: AiHomePage,
-          meta: {
-            title: "AI 首页",
-            description: "运行总览",
-          },
-        },
-        {
-          path: "ai/statistics",
-          name: "ai-statistics",
-          component: AiStatisticsPage,
-          meta: {
-            title: "AI 统计",
-            description: "指标与分布",
-          },
-        },
-        {
-          path: "ai/history",
-          name: "ai-history",
-          component: AiHistoryPage,
-          meta: {
-            title: "AI 历史",
-            description: "任务与会话",
-          },
+          component: AiObservationLayout,
+          children: [
+            {
+              path: "",
+              redirect: (to) => {
+                const raw = to.query.section ?? to.query.tab;
+                if (raw != null && String(raw).trim()) {
+                  const id = String(raw).trim();
+                  if (id === "runtime") return { path: "/ai/home", query: { panel: "runtime" } };
+                  return { path: `/ai/config/${id}` };
+                }
+                return "/ai/home";
+              },
+            },
+            {
+              path: "home",
+              name: "ai-home",
+              component: AiHomePage,
+              meta: {
+                title: "AI 观测",
+                description: "运行总览",
+              },
+            },
+            {
+              path: "statistics",
+              name: "ai-statistics",
+              component: AiStatisticsPage,
+              meta: {
+                title: "AI 统计",
+                description: "指标与分布",
+              },
+            },
+            {
+              path: "history",
+              name: "ai-history",
+              component: AiHistoryPage,
+              meta: {
+                title: "AI 历史",
+                description: "任务与会话",
+              },
+            },
+          ],
         },
         {
           path: "ai/wizard",
@@ -258,12 +264,10 @@ const router = createRouter({
         },
         {
           path: "ai/runtime",
-          name: "ai-runtime",
-          component: AiRuntimeOverviewPage,
-          meta: {
-            title: "Runtime 总览",
-            description: "health / queue / circuit",
-          },
+          redirect: (to) => ({
+            path: "/ai/home",
+            query: { ...to.query, panel: "runtime" },
+          }),
         },
         {
           path: "setup",
@@ -279,10 +283,16 @@ const router = createRouter({
           redirect: "/ai/config/runtime",
         },
         {
+          path: "ai/config/persona",
+          redirect: { path: "/ai/history", query: { workspace: "maintain" } },
+        },
+        {
           path: "ai/:legacySection(model|runtime|provider|routing|strategy|persona|knowledge|connection|ncm|logs)",
           redirect: (to) => {
             const raw = String(to.params.legacySection ?? "").trim();
             if (raw === "model") return "/ai/config/runtime";
+            if (raw === "runtime") return { path: "/ai/home", query: { panel: "runtime" } };
+            if (raw === "persona") return { path: "/ai/history", query: { workspace: "maintain" } };
             return `/ai/config/${raw}`;
           },
         },
@@ -334,12 +344,8 @@ router.afterEach((to) => {
   if (to.name === "plugins") {
     piece = (to.meta.title as string | undefined) ?? "插件目录";
   }
-  if (to.name === "ai-home") {
-    piece = "AI 首页";
-  } else if (to.name === "ai-statistics") {
-    piece = "AI 统计";
-  } else if (to.name === "ai-history") {
-    piece = "AI 历史";
+  if (to.name === "ai-home" || to.name === "ai-statistics" || to.name === "ai-history") {
+    piece = (to.meta.title as string | undefined) ?? "AI 观测";
   } else if (to.name === "ai-config") {
     piece = "AI 配置";
   }

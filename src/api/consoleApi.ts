@@ -74,6 +74,7 @@ import type {
   LlmBehaviorRunsData,
   LlmHistorySessionsData,
   LlmRepeaterFeedbackData,
+  LlmRepeaterFeedbackEntry,
   LlmRepeaterFeedbackSummary,
   LlmPromotionCandidate,
   LlmPromotionCandidatesData,
@@ -629,6 +630,30 @@ export function buildHelpPreviewUrl(opts: {
   return `${apiBase}/help/preview?${params.toString()}`;
 }
 
+export async function fetchHelpPreviewBlob(opts: {
+  level?: "menu" | "plugin" | "function";
+  page?: number;
+  plugin?: string;
+  function?: string;
+}): Promise<Blob> {
+  const level = opts.level || "menu";
+  const params = new URLSearchParams();
+  params.set("level", level);
+  if (level === "menu" && opts.page && opts.page > 1) {
+    params.set("page", String(opts.page));
+  }
+  if (level !== "menu" && opts.plugin) {
+    params.set("plugin", opts.plugin);
+  }
+  if (level === "function" && opts.function) {
+    params.set("function", opts.function);
+  }
+  const { data } = await http.get<Blob>(`/help/preview?${params.toString()}`, {
+    responseType: "blob",
+  });
+  return data;
+}
+
 export async function fetchPluginsHelpMenuVisibility(): Promise<HelpMenuVisibilityData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/plugins/help-menu-visibility"]["get"]>(
     "/plugins/help-menu-visibility",
@@ -1017,6 +1042,34 @@ export async function fetchLlmRepeaterFeedbackSummary(params: {
       },
     },
   )) as LlmRepeaterFeedbackSummary;
+}
+
+export async function postLlmRepeaterFeedbackManage(body: {
+  entryId?: string;
+  requestId?: string;
+  action: "invalidate" | "restore" | "delete" | "correct" | "clear_correction";
+  correctedReplyText?: string;
+  botId?: number;
+  groupId?: number;
+  userId?: number;
+  userText?: string;
+  replyText?: string;
+  llmRoute?: string;
+  behaviorScene?: string;
+}): Promise<LlmRepeaterFeedbackEntry | { deleted: true; entry_id: string }> {
+  return consoleOpenapiPost("/llm/repeater-feedback/manage", {
+    entry_id: body.entryId ?? "",
+    request_id: body.requestId ?? "",
+    action: body.action,
+    corrected_reply_text: body.correctedReplyText ?? "",
+    bot_id: body.botId,
+    group_id: body.groupId,
+    user_id: body.userId,
+    user_text: body.userText ?? "",
+    reply_text: body.replyText ?? "",
+    llm_route: body.llmRoute ?? "",
+    behavior_scene: body.behaviorScene ?? "",
+  }) as Promise<LlmRepeaterFeedbackEntry | { deleted: true; entry_id: string }>;
 }
 
 export async function fetchLlmPromotionCandidates(params: {
