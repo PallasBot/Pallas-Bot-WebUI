@@ -851,9 +851,11 @@ export async function putLlmLocalRoutingConfig(
 export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
+  // GET 响应含只读元数据，PUT 体仅允许 providers + routing
+  const payload = { providers: body.providers, routing: body.routing };
   return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["put"]>(
     "/common-config/llm/providers",
-    body,
+    payload,
   );
 }
 
