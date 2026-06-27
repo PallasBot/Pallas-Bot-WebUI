@@ -40,7 +40,101 @@ export function protocolApiErrorMessage(err: unknown, fallback: string): string 
 
 type AccountActionBody = { account?: NapcatAccountRow };
 type AccountsListBody = { accounts?: NapcatAccountRow[] };
+export type ProtocolBatchJobPayload = {
+  job_id: string;
+  action: string;
+  mode: string;
+  account_ids: string[];
+  phase: string;
+  total: number;
+  completed: number;
+  current_account_id?: string | null;
+  status: string;
+  message?: string;
+  results?: { account_id: string; ok: boolean; error?: string }[];
+};
+
+export type ProtocolBatchRequest = {
+  action: "restart" | "start" | "stop";
+  account_ids?: string[];
+  mode?: "rolling" | "parallel";
+  max_concurrency?: number;
+  stagger_ms?: number;
+};
+
+export type ProtocolRuntimeOverview = Record<string, unknown>;
 export type ProtocolQrcodeMeta = { exists?: boolean; updated_at?: number };
+
+export async function protocolStartAccountBatch(
+  mountUrl: string,
+  body: ProtocolBatchRequest,
+): Promise<{ job_id: string; job: ProtocolBatchJobPayload }> {
+  const { data } = await protocolHttp(mountUrl).post<{ job_id: string; job: ProtocolBatchJobPayload }>(
+    "/api/accounts/batch",
+    body,
+  );
+  return data;
+}
+
+export async function protocolFetchBatchJob(
+  mountUrl: string,
+  jobId: string,
+): Promise<ProtocolBatchJobPayload> {
+  const { data } = await protocolHttp(mountUrl).get<{ job: ProtocolBatchJobPayload }>(
+    `/api/accounts/batch/${encodeURIComponent(jobId)}`,
+  );
+  return data.job;
+}
+
+export function protocolStreamBatchJob(mountUrl: string, jobId: string): EventSource {
+  const base = mountUrl.replace(/\/$/, "");
+  return new EventSource(`${base}/api/accounts/batch/${encodeURIComponent(jobId)}/stream`, {
+    withCredentials: true,
+  });
+}
+
+export async function protocolCreateAccount(
+  mountUrl: string,
+  payload: Record<string, unknown>,
+): Promise<NapcatAccountRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<AccountActionBody>("/api/accounts", payload);
+  return data?.account ?? null;
+}
+
+export async function protocolImportAccounts(
+  mountUrl: string,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
+    "/api/accounts/import",
+    payload,
+  );
+  return data ?? {};
+}
+
+export async function protocolFetchRuntimeOverview(mountUrl: string): Promise<ProtocolRuntimeOverview> {
+  const { data } = await protocolHttp(mountUrl).get<ProtocolRuntimeOverview>("/api/runtime");
+  return data ?? {};
+}
+
+export async function protocolFetchRuntimeProfile(mountUrl: string): Promise<Record<string, unknown>> {
+  const { data } = await protocolHttp(mountUrl).get<Record<string, unknown>>("/api/runtime/profile");
+  return data ?? {};
+}
+
+export async function protocolDownloadRuntime(
+  mountUrl: string,
+  params?: { tag?: string; target_platform?: string },
+): Promise<Record<string, unknown>> {
+  const q = new URLSearchParams();
+  if (params?.tag) q.set("tag", params.tag);
+  if (params?.target_platform) q.set("target_platform", params.target_platform);
+  const suffix = q.toString() ? `?${q.toString()}` : "";
+  const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
+    `/api/runtime/download${suffix}`,
+  );
+  return data ?? {};
+}
 
 /** 协议内置页账号列表（运行态实时，与内置管理页 refreshAccounts 一致） */
 export async function protocolListAccounts(mountUrl: string): Promise<NapcatAccountRow[]> {

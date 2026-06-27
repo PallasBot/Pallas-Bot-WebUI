@@ -7604,6 +7604,49 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   overflow: hidden;
 }
 
+.protocol-page__subnav {
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.protocol-page__batch {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+}
+
+.protocol-page__batch-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.protocol-page__batch-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  transition: width 0.25s var(--ease);
+}
+
+.protocol-page__batch-msg {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .protocol-page__subnav > .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  .inst-db-panel__actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
 .friends-groups-page__panel.ui-card .ui-card__content,
 .database-page__panel.ui-card .ui-card__content,
 .update-page__panel.ui-card .ui-card__content,

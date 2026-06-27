@@ -15,6 +15,7 @@ import {
   protocolStartAccount,
   protocolStopAccount,
 } from "@/api/protocolApi";
+import { useProtocolAccountBatch } from "@/composables/useProtocolAccountBatch";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
@@ -23,6 +24,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { isProtocolExtensionInstalled } from "@/utils/protocolExtension";
 import {
   accountConnectedWsPortLabel,
   accountProtocolId,
@@ -71,7 +73,10 @@ const snap = computed(() => {
   return base;
 });
 const protocolExtension = computed(() => instances.value?.protocol_extension ?? null);
-const protocolNotInstalled = computed(() => protocolExtension.value?.installed === false);
+const protocolExtensionInstalled = computed(() =>
+  isProtocolExtensionInstalled(instances.value),
+);
+const protocolNotInstalled = computed(() => !protocolExtensionInstalled.value);
 const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
@@ -81,6 +86,8 @@ const deleteModalOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteErr = ref("");
 const restartSelectedBusy = ref(false);
+const restartAllBusy = ref(false);
+const batch = useProtocolAccountBatch(() => protoMountUrl.value);
 const qrcodeModalOpen = ref(false);
 const qrcodeTarget = ref<{ id: string; title: string } | null>(null);
 
@@ -509,13 +516,52 @@ async function restartSelectedAccounts() {
   if (restartSelectedBusy.value) return;
   restartSelectedBusy.value = true;
   try {
-    await Promise.all(ids.map((id) => protocolRestartAccount(mount, id)));
-    pushConsoleToast(`已重启 ${ids.length} 个账号`, "ok");
+    const job = await batch.runBatch(
+      { action: "restart", account_ids: ids, mode: "rolling" },
+      `将按间隔依次重启 ${ids.length} 个账号，以降低系统负载。继续？`,
+    );
+    if (!job) {
+      if (batch.batchErr.value) pushConsoleToast(batch.batchErr.value, "err");
+      return;
+    }
+    const failed = (job.results ?? []).filter((r) => !r.ok).length;
+    pushConsoleToast(
+      failed ? `重启完成，${failed} 个失败` : `已重启 ${ids.length} 个账号`,
+      failed ? "warn" : "ok",
+    );
     await refreshAfterAction();
-  } catch (e) {
-    pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
   } finally {
     restartSelectedBusy.value = false;
+    batch.closeBatchPanel();
+  }
+}
+
+async function restartAllAccounts() {
+  const mount = protoMountUrl.value;
+  const ids = protocolAccountsSorted.value
+    .map((a) => accountProtocolId(a))
+    .filter((id): id is string => Boolean(id));
+  if (!mount || !ids.length) {
+    pushConsoleToast("当前没有可重启的账号", "warn");
+    return;
+  }
+  if (restartAllBusy.value) return;
+  restartAllBusy.value = true;
+  try {
+    const job = await batch.runBatch(
+      { action: "restart", account_ids: ids, mode: "rolling" },
+      `将按间隔依次重启全部 ${ids.length} 个账号。继续？`,
+    );
+    if (!job) {
+      if (batch.batchErr.value) pushConsoleToast(batch.batchErr.value, "err");
+      return;
+    }
+    const failed = (job.results ?? []).filter((r) => !r.ok).length;
+    pushConsoleToast(failed ? `重启完成，${failed} 个失败` : "已重启全部账号", failed ? "warn" : "ok");
+    await refreshAfterAction();
+  } finally {
+    restartAllBusy.value = false;
+    batch.closeBatchPanel();
   }
 }
 
@@ -630,6 +676,55 @@ onUnmounted(() => {
         · 迁移期也可设置 <code>PALLAS_LOAD_BUNDLED_EXTRA=1</code> 加载本体 bundled 副本
       </p>
     </div>
+    <div
+      v-if="batch.batchOpen.value"
+      class="protocol-page__batch panel"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="protocol-page__batch-track">
+        <div
+          class="protocol-page__batch-fill"
+          :style="{ width: `${batch.batchProgressPercent()}%` }"
+        />
+      </div>
+      <p class="muted protocol-page__batch-msg">
+        {{ batch.batchBusy.value ? batch.batchPhaseLabel() || "批量任务进行中…" : batch.batchPhaseLabel() }}
+      </p>
+    </div>
+    <nav
+      v-if="protocolExtensionInstalled && protoActionsEnabled"
+      class="protocol-page__subnav row-actions"
+      aria-label="协议端管理"
+    >
+      <RouterLink
+        class="btn secondary"
+        to="/protocol/create"
+      >
+        创建账号
+      </RouterLink>
+      <RouterLink
+        class="btn secondary"
+        to="/protocol/import"
+      >
+        导入账号
+      </RouterLink>
+      <RouterLink
+        class="btn secondary"
+        to="/protocol/assets"
+      >
+        协议资产
+      </RouterLink>
+      <UiButton
+        v-if="dashUrl"
+        variant="outline"
+        :href="dashUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        内置管理页
+      </UiButton>
+    </nav>
     <UiCard
       tag="div"
       glass
@@ -696,14 +791,29 @@ onUnmounted(() => {
             variant="outline"
             :disabled="
               !protoActionsEnabled ||
+              restartAllBusy ||
+              batch.batchBusy.value ||
+              protocolAccountsTotalCount === 0 ||
+              actionBusy.size > 0
+            "
+            :busy="restartAllBusy"
+            @click="restartAllAccounts"
+          >
+            {{ restartAllBusy ? "重启全部中…" : "重启全部" }}
+          </UiButton>
+          <UiButton
+            variant="outline"
+            :disabled="
+              !protoActionsEnabled ||
               restartSelectedBusy ||
+              batch.batchBusy.value ||
               unref(bulk.selectedCount) === 0 ||
               actionBusy.size > 0
             "
             :busy="restartSelectedBusy"
             @click="restartSelectedAccounts"
           >
-            {{ restartSelectedBusy ? "重启中…" : "重启" }}
+            {{ restartSelectedBusy ? "重启中…" : "重启所选" }}
           </UiButton>
         </div>
       </div>

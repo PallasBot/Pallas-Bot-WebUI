@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layout/AppShell.vue";
 import HomePage from "@/pages/HomePage.vue";
 import { installConsoleSetupGuard } from "@/router/consoleSetupGuard";
+import { installProtocolExtensionGuard } from "@/router/protocolExtensionGuard";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 import { routeChunkLoaders } from "@/router/chunkLoaders";
@@ -128,6 +129,36 @@ const router = createRouter({
           meta: {
             title: "协议端实例",
             description: "协议运维",
+          },
+        },
+        {
+          path: "protocol/create",
+          name: "protocol-create",
+          component: routeChunkLoaders["protocol-create"],
+          meta: {
+            title: "创建协议账号",
+            description: "新建 NapCat / SnowLuma 实例",
+            requiresProtocolExtension: true,
+          },
+        },
+        {
+          path: "protocol/import",
+          name: "protocol-import",
+          component: routeChunkLoaders["protocol-import"],
+          meta: {
+            title: "导入协议账号",
+            description: "批量导入旧实例目录",
+            requiresProtocolExtension: true,
+          },
+        },
+        {
+          path: "protocol/assets",
+          name: "protocol-assets",
+          component: routeChunkLoaders["protocol-assets"],
+          meta: {
+            title: "协议资产",
+            description: "运行时与镜像",
+            requiresProtocolExtension: true,
           },
         },
         {
@@ -294,6 +325,7 @@ const router = createRouter({
 const consoleSurfaceTitle = "控制台";
 
 installConsoleSetupGuard(router);
+installProtocolExtensionGuard(router);
 
 router.afterEach((to) => {
   const h = (to.hash || "").trim();
