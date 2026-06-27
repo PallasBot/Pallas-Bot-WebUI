@@ -536,7 +536,7 @@ const learningLoopHint = computed(() => {
     return "反哺加权已开启；可在会话里排除坏样本，好样本会逐步影响接话偏好。";
   }
   if (state.kind === "full") {
-    return "收集、加权与写回均已开启，维护操作会参与完整学习闭环。";
+    return "收集、加权与自动写回均已开启；好样本达标后会写入接话语料，维护操作可加速收敛。";
   }
   return "反哺收集未开启，可在 AI 配置 → Bot 对话策略 中打开。";
 });
@@ -614,8 +614,14 @@ const feedbackPanelSummary = computed(() => {
   if (feedbackBusy.value) return "读取中…";
   const count = visibleFeedbackItems.value.length;
   const pending = feedbackSummary.value?.promotion_candidate_count ?? 0;
+  const stats = feedbackSummary.value?.learning_stats;
+  const hitRate = stats?.feedback_bias_hit_rate;
+  const hitLabel =
+    typeof hitRate === "number" && stats?.repeater_reply_count
+      ? ` · 7日加权命中 ${Math.round(hitRate * 100)}%`
+      : "";
   if (!count) return observeScene.value ? "当前场景下暂无样本" : "当前群暂无样本";
-  return `样本 ${count}${pending ? ` · 待晋升 ${pending}` : ""}`;
+  return `样本 ${count}${pending ? ` · 待晋升 ${pending}` : ""}${hitLabel}`;
 });
 
 const promotionPanelSummary = computed(() => {

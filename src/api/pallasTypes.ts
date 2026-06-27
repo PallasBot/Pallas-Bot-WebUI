@@ -1192,8 +1192,18 @@ export interface LlmRepeaterFeedbackData {
 export interface LlmRepeaterFeedbackSummary {
   count: number;
   top_replies: string[];
+  matched_replies?: string[];
+  semantic_matched_replies?: string[];
+  penalized_replies?: string[];
   scenes: string[];
   promotion_candidate_count?: number;
+  learning_stats?: {
+    window_sec?: number;
+    repeater_reply_count?: number;
+    feedback_bias_hit_count?: number;
+    feedback_bias_hit_rate?: number;
+    auto_promote_count?: number;
+  };
 }
 
 export interface LlmPromotionCandidate {

@@ -22,25 +22,27 @@ export const AI_CONFIG_PROFILES: AiConfigProfileDef[] = [
   {
     id: "chat_repeater",
     title: "@ + 智能接话",
-    lead: "闲聊 + 语料选句，并开启反哺维护（大多数群推荐）。",
-    patches: {
-      llm_chat_enabled: "true",
-      llm_repeater_mode: "select_polish_lite",
-      llm_repeater_feedback_enabled: "true",
-      llm_repeater_bias_enabled: "true",
-      llm_repeater_writeback_enabled: "false",
-    },
-  },
-  {
-    id: "full_learning",
-    title: "完整学习闭环",
-    lead: "接话 + 反哺 + 弱打分 + 语料写回晋升。",
+    lead: "闲聊 + 语料选句 + 反哺自动学习与写回（大多数群推荐）。",
     patches: {
       llm_chat_enabled: "true",
       llm_repeater_mode: "select_polish_lite",
       llm_repeater_feedback_enabled: "true",
       llm_repeater_bias_enabled: "true",
       llm_repeater_writeback_enabled: "true",
+      llm_vector_retrieve: "hybrid",
+    },
+  },
+  {
+    id: "full_learning",
+    title: "完整学习闭环",
+    lead: "与「@ + 智能接话」相同；强调反哺、弱打分、自动写回与向量近似。",
+    patches: {
+      llm_chat_enabled: "true",
+      llm_repeater_mode: "select_polish_lite",
+      llm_repeater_feedback_enabled: "true",
+      llm_repeater_bias_enabled: "true",
+      llm_repeater_writeback_enabled: "true",
+      llm_vector_retrieve: "hybrid",
     },
   },
 ];
