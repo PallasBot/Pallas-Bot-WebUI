@@ -26,6 +26,7 @@ import type {
   PluginRow,
 } from "@/api/pallasTypes";
 import {
+  communityActivationDetailHint,
   extensionActionStateLabel,
   extensionActivationDetailHint,
   extensionResultAction,
@@ -125,12 +126,13 @@ const {
   restartProgressLabel,
   restartInProgress,
   restartAvailable: systemRestartAvailable,
+  shardedRuntime,
   ensureRestartContext,
   restartBot,
 } = useBotSystemRestart();
-async function restartBotNow() {
+async function restartBotNow(workersOnly = false) {
   storeErr.value = "";
-  const ok = await restartBot(false);
+  const ok = await restartBot(workersOnly);
   if (ok) {
     storeActionNeedsRestart.value = false;
     storeActionHint.value = restartProgressLabel.value || "Bot 已恢复在线。";
@@ -350,6 +352,10 @@ function officialActivationHint(row: OfficialExtensionRow): string {
   return extensionActivationDetailHint(row.activation_policy);
 }
 
+function communityActivationHint(row: CommunityPluginRow): string {
+  return communityActivationDetailHint(row.activation_policy);
+}
+
 function officialInstalledVersionLabel(row: OfficialExtensionRow): string {
   const result = extensionResultState(row);
   if (resultAction(result) === "hot-reload" && row.latest_ref) return row.latest_ref;
@@ -365,10 +371,14 @@ function officialLatestVersionLabel(row: OfficialExtensionRow): string {
 }
 
 function communityInstalledVersionLabel(row: CommunityPluginRow): string {
+  const result = communityResultState(row);
+  if (resultAction(result) === "hot-reload" && row.latest_ref) return row.latest_ref;
   return (row.installed_ref || "").trim();
 }
 
 function communityLatestVersionLabel(row: CommunityPluginRow): string {
+  const result = communityResultState(row);
+  if (resultAction(result) === "hot-reload") return "";
   const latest = (row.latest_ref || "").trim();
   const installed = communityInstalledVersionLabel(row);
   return latest && latest !== installed ? latest : "";
@@ -523,7 +533,8 @@ function officialUpdateEnabled(row: OfficialExtensionRow): boolean {
 }
 
 function communityUpdateEnabled(row: CommunityPluginRow): boolean {
-  if (resultNeedsRestart(communityResultState(row))) return false;
+  const result = communityResultState(row);
+  if (resultAction(result) === "hot-reload" || resultNeedsRestart(result)) return false;
   return Boolean(row.can_update) && row.has_update === true;
 }
 
@@ -894,8 +905,7 @@ async function installCommunityFromGit(restart = false) {
     });
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [pluginId]: out };
-    const base = out.message || payload.message || "安装完成。";
-    await noteStoreActionResult(restart ? base : `${base} 请重启 Bot 后加载。`, out);
+    await noteStoreActionResult(out.message || payload.message || "安装完成。", out);
     gitInstallOpen.value = false;
     await refreshCommunityStore();
   } catch (e) {
@@ -932,7 +942,7 @@ async function executeInstallCommunity(
     const out = (payload.result ?? {}) as CommunityPluginActionResult;
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     await noteStoreActionResult(
-      out.message || payload.message || (restart ? "安装完成。" : "安装完成，请重启 Bot。"),
+      out.message || payload.message || "安装完成。",
       out,
     );
     await refreshCommunityStore();
@@ -962,7 +972,7 @@ async function uninstallCommunity(row: CommunityPluginRow, restart = false) {
     const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     await noteStoreActionResult(
-      out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"),
+      out.message || "已卸载。",
       out,
     );
     await refreshCommunityStore();
@@ -995,7 +1005,7 @@ async function executeUpdateCommunity(
     });
     communityActionState.value = { ...communityActionState.value, [row.plugin_id]: out };
     await noteStoreActionResult(
-      out.message || (restart ? "更新完成。" : "更新完成，请重启 Bot。"),
+      out.message || "更新完成。",
       out,
     );
     await refreshCommunityStore();
@@ -1035,7 +1045,7 @@ function handleCommunityMenu(row: CommunityPluginRow, actionId: string) {
   if (actionId === "install-restart") void installCommunity(row, true);
   if (actionId === "uninstall-restart") void uninstallCommunity(row, true);
   if (actionId === "update-restart") void updateCommunity(row, true);
-  if (actionId === "restart-now") void restartBotNow();
+  if (actionId === "restart-now") void restartBotNow(Boolean(shardedRuntime.value));
   if (actionId === "open-homepage" && row.homepage) openExternalUrl(row.homepage);
   if (actionId === "open-repo" && row.repository_url) openExternalUrl(row.repository_url);
 }
@@ -1634,6 +1644,12 @@ onDeactivated(() => {
             class="plugin-store-page__detail-activation"
           >
             {{ officialActivationHint(detailTarget.official) }}
+          </p>
+          <p
+            v-if="detailTarget?.kind === 'community' && detailTarget.community"
+            class="plugin-store-page__detail-activation"
+          >
+            {{ communityActivationHint(detailTarget.community) }}
           </p>
         </div>
         <button

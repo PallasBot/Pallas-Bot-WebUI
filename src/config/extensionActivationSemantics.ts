@@ -22,6 +22,39 @@ export const EXTENSION_ACTIVATION_POLICY_LABELS: Record<
   },
 };
 
+/** 社区插件商店展示（安装/更新策略与官方扩展不同） */
+export const COMMUNITY_ACTIVATION_POLICY_LABELS: Record<
+  Exclude<ExtensionActivationPolicy, null | undefined>,
+  { catalog: string; detail: string }
+> = {
+  "hot-reloadable": {
+    catalog: "单机可热加载",
+    detail: "单机 unified 首次安装可热加载；git 更新/卸载须重启",
+  },
+  "workers-restart": {
+    catalog: "Worker 重启生效",
+    detail: "更新后须重启 Worker（分片）或 Bot；不支持运行时热更",
+  },
+  "full-restart": {
+    catalog: "全进程重启",
+    detail: "卸载后须重启 Bot 以卸载内存中的 matcher",
+  },
+};
+
+export function communityActivationCatalogHint(
+  policy: ExtensionActivationPolicy | null | undefined,
+): string {
+  if (!policy) return "社区插件";
+  return COMMUNITY_ACTIVATION_POLICY_LABELS[policy].catalog;
+}
+
+export function communityActivationDetailHint(
+  policy: ExtensionActivationPolicy | null | undefined,
+): string {
+  if (!policy) return "社区插件";
+  return COMMUNITY_ACTIVATION_POLICY_LABELS[policy].detail;
+}
+
 export function extensionActivationCatalogHint(
   policy: ExtensionActivationPolicy | null | undefined,
 ): string {

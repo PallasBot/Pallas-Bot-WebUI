@@ -1040,6 +1040,7 @@ export interface LlmHistorySessionDetailData {
   session: LlmHistorySessionSummary;
   turns: LlmHistoryTurn[];
   behavior_runs: LlmHistoryBehaviorRun[];
+  feedback_entries?: LlmRepeaterFeedbackEntry[];
 }
 
 export interface LlmHistoryBehaviorAutoFeedbackPayload {
