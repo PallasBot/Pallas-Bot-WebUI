@@ -223,7 +223,7 @@ watch(
       </div>
     </div>
 
-    <div class="plugin-store-card__body">
+    <div class="plugin-store-card__layout">
       <div class="plugin-store-card__media">
         <div class="plugin-store-card__cover">
           <PluginIcon
@@ -252,7 +252,7 @@ watch(
         </h3>
         <p
           v-if="author"
-          class="plugin-store-card__author muted"
+          class="plugin-store-card__byline muted"
           :title="author"
         >
           {{ author }}
@@ -281,18 +281,18 @@ watch(
           </span>
         </div>
       </div>
-    </div>
 
-    <div
-      v-if="description"
-      class="plugin-store-card__summary"
-    >
-      <p
-        class="plugin-store-card__desc muted"
-        :title="description"
+      <div
+        v-if="description"
+        class="plugin-store-card__summary"
       >
-        {{ description }}
-      </p>
+        <p
+          class="plugin-store-card__desc muted"
+          :title="description"
+        >
+          {{ description }}
+        </p>
+      </div>
     </div>
 
     <template #footer>

@@ -96,10 +96,20 @@ function commandTrigger(cmd: CommandLimitsUiCommand): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.016)) 99%, transparent);
+  padding: 12px 0;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 94%, transparent);
+  background: transparent;
+}
+
+.cmd-limit-list .cmd-limit-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.cmd-limit-list .cmd-limit-card:first-child {
+  padding-top: 0;
 }
 
 .cmd-limit-card__main {
@@ -128,7 +138,7 @@ function commandTrigger(cmd: CommandLimitsUiCommand): string {
   padding: 0 6px;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 96%, transparent);
   font-size: 10px;
   word-break: break-all;
 }
@@ -141,7 +151,7 @@ function commandTrigger(cmd: CommandLimitsUiCommand): string {
 
 .cmd-limit-card__trigger {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.5;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -165,15 +175,20 @@ function commandTrigger(cmd: CommandLimitsUiCommand): string {
 @media (max-width: 560px) {
   .cmd-limit-card {
     flex-direction: column;
-    align-items: flex-start;
+    gap: 10px;
+    align-items: stretch;
+    padding: 12px 0;
   }
 
   .cmd-limit-card__editor {
     width: 100%;
+    justify-content: flex-start;
   }
 
   .cmd-limit-card__input {
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
   }
 }
 </style>

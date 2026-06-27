@@ -8,9 +8,11 @@ const props = withDefaults(
     modelValue: boolean;
     title: string;
     disabled?: boolean;
+    variant?: "card" | "plain";
   }>(),
   {
     disabled: false,
+    variant: "card",
   },
 );
 
@@ -24,7 +26,10 @@ const switchLabel = computed(() => boolSwitchLabel(props.modelValue));
 <template>
   <div
     class="plugin-runtime-switch"
-    :class="{ 'plugin-runtime-switch--disabled': disabled }"
+    :class="{
+      'plugin-runtime-switch--disabled': disabled,
+      'plugin-runtime-switch--plain': variant === 'plain',
+    }"
   >
     <div class="plugin-runtime-switch__row">
       <span class="plugin-runtime-switch__title">{{ title }}</span>
@@ -55,6 +60,25 @@ const switchLabel = computed(() => boolSwitchLabel(props.modelValue));
 
 .plugin-runtime-switch--disabled {
   opacity: 0.72;
+}
+
+.plugin-runtime-switch--plain {
+  gap: 6px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 82%, transparent);
+}
+
+.plugin-runtime-switch--plain:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.plugin-runtime-switch--plain:first-child {
+  padding-top: 0;
 }
 
 .plugin-runtime-switch__row {

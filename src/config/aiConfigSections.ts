@@ -29,24 +29,10 @@ export const AI_CONFIG_NAV_GROUPS: AiConfigNavGroupDef[] = [
 
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
-    id: "runtime",
-    label: "运行模型",
-    lead: "热切换本地 Ollama 模型与 GPU 层数；决定当前进程实际加载哪一套权重。",
-    icon: "server",
-    groupId: "dialogue",
-  },
-  {
     id: "provider",
-    label: "上游 Provider",
-    lead: "登记 OpenAI 兼容、本地 Ollama 等上游端点，并做连通性检测。",
-    icon: "radio",
-    groupId: "dialogue",
-  },
-  {
-    id: "routing",
-    label: "路由与分流",
-    lead: "配置 task 路由、本地 MoE 与多模型分流策略；决定请求走哪条模型链路。",
-    icon: "activity",
+    label: "模型与 Provider",
+    lead: "本地 Ollama 热切换、上游端点登记与连通性检测；专家模式下含 task 路由与 MoE。",
+    icon: "server",
     groupId: "dialogue",
   },
   {
@@ -88,9 +74,11 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
 
-/** 旧分区 id → 现行分区（信息架构收口后保留书签兼容） */
+/** 旧分区 id → 现行分区 */
 const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
-  model: "runtime",
+  model: "provider",
+  runtime: "provider",
+  routing: "provider",
 };
 
 /** @deprecated 侧栏已收口为 AI_SIDEBAR_NAV；保留供旧链接与迁移识别 */
@@ -107,7 +95,7 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
     label: "AI 配置",
     lead: "运行模型、Provider、路由、Bot 策略与扩展能力的分层配置中心。",
     icon: "sparkles",
-    path: "/ai/config/runtime",
+    path: "/ai/config/provider",
   },
 ];
 
@@ -118,8 +106,8 @@ const GROUP_BY_ID = new Map(AI_CONFIG_NAV_GROUPS.map((g) => [g.id, g]));
 export const AI_CONFIG_SECTION_PATHS = AI_CONFIG_SECTIONS.map((s) => aiConfigSectionPath(s.id));
 export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 
-/** AI 配置主入口（默认落在「运行模型」） */
-export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/runtime";
+/** AI 配置主入口（默认落在「模型与 Provider」） */
+export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/provider";
 
 export const AI_CONFIG_HUB_LEAD =
   "按左侧分区改对应链路；不确定从顶部「入门引导」或体检向导开始，高级项可稍后再动。";
@@ -140,7 +128,7 @@ export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   const s = typeof raw === "string" ? raw.trim() : "";
   if (SECTION_IDS.has(s)) return s as AiConfigSectionId;
   if (s && LEGACY_SECTION_ALIASES[s]) return LEGACY_SECTION_ALIASES[s];
-  return "runtime";
+  return "provider";
 }
 
 /** 旧 runtime 分区与独立 Runtime 页已并入 AI 观测总览。 */

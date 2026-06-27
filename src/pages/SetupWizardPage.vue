@@ -244,9 +244,9 @@ onActivated(() => {
           </RouterLink>
           <UiButton v-else variant="outline" block disabled>完成改密后可进入 AI 体检</UiButton>
           <RouterLink v-if="canEnterAiFlow" to="/ai/home">
-            <UiButton variant="ghost" block>查看 AI 首页</UiButton>
+            <UiButton variant="ghost" block>打开 AI 观测</UiButton>
           </RouterLink>
-          <UiButton v-else variant="ghost" block disabled>完成改密后可查看 AI 首页</UiButton>
+          <UiButton v-else variant="ghost" block disabled>完成改密后可打开 AI 观测</UiButton>
         </div>
       </details>
     </UiCard>

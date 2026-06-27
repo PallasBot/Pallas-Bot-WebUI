@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { fetchLlmLocalRoutingConfig } from "@/api/consoleApi";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
+import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
+import { collectSavedProviderModels } from "@/utils/llmModelOptionSources";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
-import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
 
 const props = withDefaults(defineProps<{ simpleMode?: boolean }>(), { simpleMode: false });
 
 const store = useLlmProviders();
+const picker = useLlmModelPickerOptions();
+const runtimeModel = picker.runtimeModel;
+const discoveredModels = picker.discoveredModels;
+const discoveringModels = picker.discoveringModels;
 const {
   doc,
   providers,
@@ -32,6 +38,18 @@ const dialogOpen = ref(false);
 const editIndex = ref<number | null>(null);
 const editRow = ref<LlmProviderConfigRow | null>(null);
 const deleteIndex = ref<number | null>(null);
+const envTaskModels = ref<Record<string, string>>({});
+
+const modelSelectGroups = computed(() =>
+  picker.buildGroups({
+    providers: providers.value,
+    savedValues: collectSavedProviderModels({
+      taskModelRows: providers.value.flatMap((provider) =>
+        Object.values(provider.task_models || {}).map((model) => ({ model: String(model) })),
+      ),
+    }),
+  }),
+);
 
 const statusById = computed(() => {
   const map = new Map<string, (typeof providerStatus.value)[number]>();
@@ -74,6 +92,20 @@ function openEdit(index: number) {
   dialogOpen.value = true;
 }
 
+async function loadEnvTaskModels() {
+  try {
+    const routing = await fetchLlmLocalRoutingConfig();
+    envTaskModels.value = { ...(routing.task_models || {}) };
+  } catch {
+    envTaskModels.value = {};
+  }
+}
+
+async function onRefreshDialogModels(providerId: string) {
+  await picker.refreshPickerContext(providers.value);
+  if (providerId) await store.discoverModels(providerId);
+}
+
 function onSubmit(row: LlmProviderConfigRow) {
   if (editIndex.value === null) store.addProvider(row);
   else store.updateProvider(editIndex.value, row);
@@ -107,8 +139,9 @@ function reachLabel(id: string, enabled: boolean): { label: string; cls: string 
 
 defineExpose({ save: store.save, canSave: () => dirty.value && !saving.value, saving });
 
-onMounted(() => {
-  void store.load();
+onMounted(async () => {
+  await store.load();
+  await Promise.all([picker.refreshPickerContext(providers.value), loadEnvTaskModels()]);
 });
 </script>
 
@@ -166,11 +199,7 @@ onMounted(() => {
         <p class="muted provider-manager__intro">
           {{ AI_TASK_CONFIG_HINTS.providerIntro }}
         </p>
-        <div v-if="!props.simpleMode" class="provider-manager__links">
-          <AiConfigLayerLinks active="provider" />
-          <AiObservationLinks />
-        </div>
-        <div v-else class="provider-manager__links">
+        <div class="provider-manager__links">
           <AiObservationLinks />
         </div>
 
@@ -263,10 +292,14 @@ onMounted(() => {
         class="provider-manager__routing"
       >
         <ProviderRoutingEditor
+          :providers="providers"
           :tasks="doc.routing.tasks"
           :chain-fallback="doc.routing.chain_fallback"
           :provider-ids="providerIds"
+          :env-task-models="envTaskModels"
+          :model-select-groups="modelSelectGroups"
           @set-task="store.setTaskRoute"
+          @set-task-model="store.setTaskModelRoute"
           @set-chain="store.setChainFallback"
         />
       </div>
@@ -284,10 +317,15 @@ onMounted(() => {
     :open="dialogOpen"
     :row="editRow"
     :existing-ids="providerIds"
+    :providers="providers"
+    :runtime-model="runtimeModel"
+    :discovered-by-provider="discoveredModels"
+    :discovering-models="discoveringModels"
     :models-state="editRow ? modelsStates[editRow.id] : modelsStates['']"
     @close="dialogOpen = false"
     @submit="onSubmit"
     @discover="store.discoverModels"
+    @refresh-models="onRefreshDialogModels"
   />
 
   <ConsoleDeleteConfirmModal

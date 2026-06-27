@@ -1,40 +1,25 @@
 <script setup lang="ts">
-import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
-import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
-import { AI_CONFIG_LAYER_LINKS, AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
+import { RouterLink } from "vue-router";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { useAiConfigExpertMode } from "@/composables/useAiConfigExpertMode";
 
-const { isSimpleMode, setExpertMode } = useAiConfigExpertMode();
+const { setExpertMode } = useAiConfigExpertMode();
 </script>
 
 <template>
   <div class="ai-config-section ai-config-section--routing">
-    <p class="muted ai-config-section__layer-hint">
-      {{ AI_TASK_CONFIG_HINTS.routingSection }}
-      上游登记与 task→Provider 见
-      <RouterLink :to="AI_CONFIG_LAYER_LINKS.provider.path">{{ AI_CONFIG_LAYER_LINKS.provider.label }}</RouterLink>。
-    </p>
-    <div v-if="isSimpleMode" class="ai-config-section__simple-card">
-      <strong>简单模式默认单模型跟随运行态</strong>
+    <div class="ai-config-section__simple-card">
+      <strong>路由与分流已并入「模型与 Provider」</strong>
       <p class="muted">
-        多数站点无需改 task / MoE。若需多模型分流或按 task 指定模型，请开启专家模式。
+        task→模型、MoE 与多模型分流请在专家模式下于 Provider 页底部编辑；此处保留链接兼容旧书签。
       </p>
       <button type="button" class="ai-config-section__simple-link" @click="setExpertMode(true)">
-        开启专家模式编辑路由
+        开启专家模式
       </button>
-      <RouterLink :to="aiConfigSectionPath('runtime')" class="ai-config-section__simple-link">
-        先去确认运行模型
+      <RouterLink :to="aiConfigSectionPath('provider')" class="ai-config-section__simple-link">
+        前往模型与 Provider
       </RouterLink>
     </div>
-    <template v-else>
-      <div class="ai-config-section__link-stack">
-        <AiConfigLayerLinks active="routing" />
-        <AiObservationLinks />
-      </div>
-      <LocalModelRoutingPanel />
-    </template>
   </div>
 </template>
 
@@ -43,18 +28,6 @@ const { isSimpleMode, setExpertMode } = useAiConfigExpertMode();
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.ai-config-section__layer-hint {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-}
-
-.ai-config-section__link-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .ai-config-section__simple-card {

@@ -29,6 +29,7 @@ import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import AiRuntimeSummaryPanel from "@/components/ai-config/AiRuntimeSummaryPanel.vue";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel.vue";
 import HelpImagePreview from "@/components/HelpImagePreview.vue";
+import ReadmeMarkdown from "@/components/ReadmeMarkdown.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import PluginIcon from "@/components/PluginIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -111,6 +112,13 @@ const readmeLoading = ref(false);
 const readmeErr = ref("");
 
 const isDialogPresentation = computed(() => props.presentation === "dialog");
+const configShellComponent = computed(() => (isDialogPresentation.value ? "div" : UiCard));
+const configShellClass = computed(() =>
+  isDialogPresentation.value
+    ? ["plugin-config-workspace__body", { "plugin-config-workspace__body--loading": loading.value }]
+    : ["plugin-config-page__card", { "plugin-config-page__card--loading": loading.value }],
+);
+const configShellBind = computed(() => (isDialogPresentation.value ? {} : { glass: true }));
 const showReadmeTab = computed(() => isDialogPresentation.value);
 
 const pluginName = computed(() => props.pluginName.trim());
@@ -717,11 +725,11 @@ defineExpose({
     class="plugin-config-page plugin-config-workspace"
     :class="{ 'plugin-config-workspace--dialog': isDialogPresentation }"
   >
-    <UiCard
+    <component
+      :is="configShellComponent"
       v-if="pluginName"
-      class="plugin-config-page__card"
-      :class="{ 'plugin-config-page__card--loading': loading, 'plugin-config-page__card--dialog': isDialogPresentation }"
-      glass
+      :class="configShellClass"
+      v-bind="configShellBind"
     >
       <div
         v-if="!isDialogPresentation"
@@ -781,6 +789,7 @@ defineExpose({
       </div>
 
       <div
+        v-if="!isDialogPresentation"
         class="plugin-config-page__divider"
         aria-hidden="true"
       />
@@ -805,45 +814,73 @@ defineExpose({
         v-else-if="data"
         class="plugin-config-page__card-bd"
       >
-          <div
-            class="console-view-toggle plugin-config-page__tabs"
-            role="tablist"
-            aria-label="插件工作区"
-          >
-            <button
-              v-if="hasGovernanceTab"
-              type="button"
-              role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'governance' }"
-              :aria-selected="pluginConfigTab === 'governance'"
-              @click="pluginConfigTab = 'governance'"
+          <div class="plugin-config-page__toolbar">
+            <div
+              class="console-view-toggle plugin-config-page__tabs"
+              role="tablist"
+              aria-label="插件工作区"
             >
-              治理
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'config' }"
-              :aria-selected="pluginConfigTab === 'config'"
-              @click="pluginConfigTab = 'config'"
+              <button
+                v-if="hasGovernanceTab"
+                type="button"
+                role="tab"
+                :class="{ 'is-on': pluginConfigTab === 'governance' }"
+                :aria-selected="pluginConfigTab === 'governance'"
+                @click="pluginConfigTab = 'governance'"
+              >
+                治理
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :class="{ 'is-on': pluginConfigTab === 'config' }"
+                :aria-selected="pluginConfigTab === 'config'"
+                @click="pluginConfigTab = 'config'"
+              >
+                插件配置
+              </button>
+              <button
+                v-if="showReadmeTab"
+                type="button"
+                role="tab"
+                :class="{ 'is-on': pluginConfigTab === 'readme' }"
+                :aria-selected="pluginConfigTab === 'readme'"
+                @click="pluginConfigTab = 'readme'"
+              >
+                README
+              </button>
+            </div>
+            <div
+              v-if="pluginConfigTab === 'config' && (hasConfigFields || isHelpPlugin)"
+              class="plugin-config-page__mode-toggle console-view-toggle"
+              role="tablist"
+              aria-label="配置编辑模式"
             >
-              插件配置
-            </button>
-            <button
-              v-if="showReadmeTab"
-              type="button"
-              role="tab"
-              :class="{ 'is-on': pluginConfigTab === 'readme' }"
-              :aria-selected="pluginConfigTab === 'readme'"
-              @click="pluginConfigTab = 'readme'"
-            >
-              README
-            </button>
+              <button
+                type="button"
+                role="tab"
+                :class="{ 'is-on': configEditMode === 'form' }"
+                :aria-selected="configEditMode === 'form'"
+                @click="void switchConfigEditMode('form')"
+              >
+                表单
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :class="{ 'is-on': configEditMode === 'raw' }"
+                :aria-selected="configEditMode === 'raw'"
+                @click="void switchConfigEditMode('raw')"
+              >
+                Raw TOML
+              </button>
+            </div>
           </div>
 
           <HelpImagePreview
-            v-if="isHelpPlugin && pluginConfigTab === 'config'"
+            v-if="isHelpPlugin && pluginConfigTab === 'config' && configEditMode === 'form'"
             class="plugin-config-page__help-preview"
+            :embedded="isDialogPresentation"
           />
 
           <p
@@ -896,9 +933,14 @@ defineExpose({
           </div>
           <section
             v-if="pluginConfigTab === 'governance' && hasGovernanceTab"
-            class="plugin-config-page__tab-panel"
+            :class="
+              isDialogPresentation
+                ? 'plugin-config-page__governance-dialog'
+                : 'plugin-config-page__tab-panel'
+            "
           >
             <PluginGovernancePanel
+              :presentation="isDialogPresentation ? 'dialog' : 'page'"
               :governance-data="governanceData"
               :governance-loading="governanceLoading"
               :governance-saving="governanceSaving"
@@ -1013,10 +1055,10 @@ defineExpose({
             >
               {{ readmeErr }}
             </p>
-            <div
+            <ReadmeMarkdown
               v-else-if="readmeHtml"
-              class="plugin-readme-panel__body markdown-body"
-              v-html="readmeHtml"
+              extra-class="plugin-readme-panel__body"
+              :html="readmeHtml"
             />
             <p
               v-else
@@ -1034,38 +1076,13 @@ defineExpose({
             站点级批量探测见
             <router-link :to="AI_ENTRY_SITE_GATEWAY_CHECK.path">通用配置 → 服务网关</router-link>；
             {{ AI_ENTRY_RUNTIME.label }}见
-            <router-link :to="AI_ENTRY_RUNTIME.path">AI 首页</router-link>。
+            <router-link :to="AI_ENTRY_RUNTIME.path">AI 观测</router-link>。
           </p>
           <PallasImageGatewaysEditor
             v-if="pluginConfigTab === 'config' && usesGatewayEditor && configEditMode === 'form'"
             :field-values="fieldValues"
             @update:field-values="onGatewayFieldValues"
           />
-          <div
-            v-if="pluginConfigTab === 'config' && hasConfigFields"
-            class="plugin-config-page__mode-toggle console-view-toggle"
-            role="tablist"
-            aria-label="配置编辑模式"
-          >
-            <button
-              type="button"
-              role="tab"
-              :class="{ 'is-on': configEditMode === 'form' }"
-              :aria-selected="configEditMode === 'form'"
-              @click="void switchConfigEditMode('form')"
-            >
-              表单
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :class="{ 'is-on': configEditMode === 'raw' }"
-              :aria-selected="configEditMode === 'raw'"
-              @click="void switchConfigEditMode('raw')"
-            >
-              Raw TOML
-            </button>
-          </div>
           <p
             v-if="pluginConfigTab === 'config' && configDirty"
             class="alert alert--warn plugin-config-page__dirty-hint"
@@ -1089,6 +1106,7 @@ defineExpose({
             :fields="visibleFields"
             :field-groups="data.field_groups"
             :unexpected-keys="data.unexpected_keys"
+            :hide-single-group-header="isDialogPresentation"
             v-model="fieldValues"
             :active-field-popover-name="activeFieldPopoverName"
             @help-click="onFieldHelpClick"
@@ -1151,7 +1169,7 @@ defineExpose({
             "
           />
       </div>
-    </UiCard>
+    </component>
   </div>
 </template>
 
@@ -1225,6 +1243,12 @@ defineExpose({
     width: 100%;
   }
 
+  .plugin-config-page__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
   .plugin-config-page__tabs :deep(button) {
     flex: 1 1 0;
     min-width: 0;
@@ -1235,8 +1259,13 @@ defineExpose({
     padding: 12px;
   }
 
+  .plugin-config-page__governance-dialog {
+    min-width: 0;
+  }
+
   .plugin-config-page__mode-toggle {
     width: 100%;
+    margin-inline-start: 0;
   }
 
   .plugin-config-page__mode-toggle :deep(button) {
@@ -1274,15 +1303,25 @@ defineExpose({
   margin-bottom: 14px;
 }
 
+.plugin-config-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
 .plugin-config-page__tabs {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .plugin-config-page__mode-toggle {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  margin-inline-start: auto;
+  flex-shrink: 0;
 }
 
 .plugin-config-page__dirty-hint {
@@ -1300,6 +1339,12 @@ defineExpose({
     linear-gradient(180deg, color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.05)) 70%, transparent), transparent 62%),
     color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow, rgba(15, 23, 42, 0.08)) 30%, transparent);
+}
+
+.plugin-config-page__governance-dialog {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .plugin-config-page__panel-head {

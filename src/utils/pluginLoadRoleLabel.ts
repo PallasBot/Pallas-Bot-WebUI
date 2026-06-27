@@ -22,6 +22,19 @@ export function loadRoleDisplayLabel(
   return LOAD_WHERE[role] ?? "";
 }
 
+export function pluginLoadProcessTags(
+  p: Pick<PluginRow, "load_role" | "catalog_process_role">,
+): string[] {
+  const catalog = p.catalog_process_role;
+  if (!catalog || catalog === "unified") return [];
+  const role = p.load_role;
+  if (!role || role === "infra") return [];
+  if (role === "both") return ["Hub", "Worker"];
+  if (role === "hub") return ["Hub"];
+  if (role === "worker" || role === "internal") return ["Worker"];
+  return [];
+}
+
 export function pluginExpectsCatalogProcess(
   p: Pick<PluginRow, "load_role" | "expected_in_catalog_process">,
 ): boolean {

@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
 import StatTable, { type StatColumn } from "@/components/ai-config/stats/StatTable.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
@@ -171,7 +170,6 @@ onUnmounted(() => {
 <template>
   <div class="ai-stats-page">
     <div class="ai-hub-toolbar ai-stats-page__toolbar">
-      <AiObservationLinks exclude="statistics" />
       <div class="ai-stats-page__date-filters">
         <label class="ai-date-field">
           <span class="ai-date-field__label">月份</span>

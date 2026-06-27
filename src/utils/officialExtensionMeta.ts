@@ -2,6 +2,17 @@
 
 export const OFFICIAL_EXTENSION_REPO_OWNER = "TogetsuDo";
 
+export const OFFICIAL_EXTENSION_TITLES: Record<string, string> = {
+  "pallas-plugin-duel": "牛牛决斗",
+  "pallas-plugin-draw": "牛牛画画",
+  "pallas-plugin-dream": "牛牛做梦",
+  "pallas-plugin-maa": "MAA 远控",
+  "pallas-plugin-protocol": "协议端管理",
+  "pallas-plugin-who-is-spy": "谁是卧底",
+  "pallas-plugin-ai-media": "唱歌 / 酒后聊天",
+  "pallas-plugin-bot-status": "牛牛状态",
+};
+
 export const OFFICIAL_EXTENSION_DESCRIPTIONS: Record<string, string> = {
   "pallas-plugin-duel": "牛牛决斗。",
   "pallas-plugin-draw": "牛牛画画（AI 生图网关）。",
@@ -27,6 +38,36 @@ function isOfficialIconSvg(url: string): boolean {
 
 export function officialExtensionDescription(packageName: string): string {
   return OFFICIAL_EXTENSION_DESCRIPTIONS[(packageName || "").trim()] || "";
+}
+
+export function officialExtensionTitle(packageName: string): string {
+  return OFFICIAL_EXTENSION_TITLES[(packageName || "").trim()] || "";
+}
+
+export function officialExtensionPackageShortName(packageName: string): string {
+  const pkg = (packageName || "").trim();
+  return pkg.replace(/^pallas-plugin-/, "") || pkg;
+}
+
+export function resolveOfficialExtensionTitle(
+  packageName: string,
+  displayName?: string | null,
+): string {
+  const fromApi = (displayName || "").trim();
+  if (fromApi) return fromApi;
+  const fallback = officialExtensionTitle(packageName);
+  if (fallback) return fallback;
+  return officialExtensionPackageShortName(packageName);
+}
+
+export function resolveOfficialExtensionSubtitle(
+  packageName: string,
+  displayName?: string | null,
+): string {
+  const short = officialExtensionPackageShortName(packageName);
+  const title = resolveOfficialExtensionTitle(packageName, displayName);
+  if (short && short !== title) return short;
+  return "";
 }
 
 export function officialExtensionCoverPath(packageName: string): string {

@@ -17,10 +17,12 @@ import {
 const props = withDefaults(
   defineProps<{
     embedded?: boolean;
+    headless?: boolean;
     syncGroupId?: string;
   }>(),
   {
     embedded: false,
+    headless: false,
     syncGroupId: "",
   },
 );
@@ -184,15 +186,22 @@ watch(
 onMounted(() => {
   void load();
 });
+
+defineExpose({ reload: load });
 </script>
 
 <template>
   <UiCard
     tag="div"
-    glass
+    :glass="!headless"
     class="persona-observe-panel"
+    :class="{
+      'persona-observe-panel--headless': headless,
+      'persona-observe-panel--embedded': embedded && !headless,
+    }"
   >
     <div
+      v-if="!headless"
       class="panel__hd panel__hd--split persona-observe-panel__hd"
       :class="{ 'persona-observe-panel__hd--embedded': embedded }"
     >
@@ -264,10 +273,10 @@ onMounted(() => {
       >
         <AiObservationLinks />
         <RouterLink
-          :to="AI_CONFIG_LAYER_LINKS.runtime.path"
+          :to="AI_CONFIG_LAYER_LINKS.provider.path"
           class="ai-obs-links__item"
         >
-          {{ AI_CONFIG_LAYER_LINKS.runtime.label }}
+          {{ AI_CONFIG_LAYER_LINKS.provider.label }}
         </RouterLink>
       </div>
 
@@ -855,6 +864,16 @@ onMounted(() => {
 
 .persona-observe-panel__hd--embedded {
   align-items: center;
+}
+
+.persona-observe-panel--headless {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.persona-observe-panel--headless :deep(.panel__bd) {
+  padding: 0;
 }
 
 .persona-observe-panel__embedded-refresh {

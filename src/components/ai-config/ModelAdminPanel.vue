@@ -9,7 +9,6 @@ import {
 } from "@/api/consoleApi";
 import type { LlmModelAdminStatus } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
-import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
 import AiConfirmDialog from "@/components/ai-config/AiConfirmDialog.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -236,7 +235,7 @@ onMounted(() => {
       </dl>
 
       <p class="muted model-admin__intro">
-        热切换本地 Ollama 模型与 GPU 层数；上游端点与 task 路由在下方「对话链路」入口，无需重启 Celery。
+        热切换本地 Ollama 模型与 GPU 层数；下方登记上游 Provider，专家模式页底可编辑 task / MoE 路由。
       </p>
       <p
         v-if="status?.local_multi_model_enabled"
@@ -245,7 +244,6 @@ onMounted(() => {
         当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
       </p>
       <div class="model-admin__links">
-        <AiConfigLayerLinks v-if="!props.simpleMode" active="runtime" />
         <AiObservationLinks />
       </div>
 

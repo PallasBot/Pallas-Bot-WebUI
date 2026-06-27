@@ -181,7 +181,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
 </script>
 
 <template>
-  <div class="plugins-page console-hub-page">
+  <div class="plugins-page plugins-page--hub console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"

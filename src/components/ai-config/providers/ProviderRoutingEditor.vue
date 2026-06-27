@@ -1,34 +1,24 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import UiButton from "@/components/ui/UiButton.vue";
-import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
+import LlmTaskRouteMatrix from "@/components/ai-config/LlmTaskRouteMatrix.vue";
+import type { LlmProviderConfigRow } from "@/api/pallasTypes";
+import type { LlmModelSelectGroup } from "@/utils/llmModelOptionSources";
 
 const props = defineProps<{
-  /** 当前 routing.tasks。 */
+  providers: LlmProviderConfigRow[];
   tasks: Record<string, string>;
-  /** routing.chain_fallback。 */
   chainFallback: string[];
-  /** 可选 provider id 列表。 */
   providerIds: string[];
+  envTaskModels: Record<string, string>;
+  modelSelectGroups: LlmModelSelectGroup[];
 }>();
 
 const emit = defineEmits<{
   "set-task": [task: string, providerId: string];
+  "set-task-model": [task: string, providerId: string, model: string];
   "set-chain": [ids: string[]];
 }>();
-
-const TASK_KEYS = Object.keys(LLM_TASK_ROUTE_LABELS).filter((k) => k !== "other");
-
-function taskLabel(task: string): string {
-  return LLM_TASK_ROUTE_LABELS[task] ?? task;
-}
-
-/** 所有已知 task（内置 + 当前已配但不在内置列表里的）。 */
-const allTasks = computed(() => {
-  const set = new Set<string>(TASK_KEYS);
-  for (const t of Object.keys(props.tasks)) set.add(t);
-  return [...set];
-});
 
 const fallbackChoices = computed(() =>
   props.providerIds.filter((id) => !props.chainFallback.includes(id)),
@@ -54,35 +44,16 @@ function addFallback(id: string) {
 
 <template>
   <div class="routing-editor">
-    <div class="routing-editor__block">
-      <h4 class="routing-editor__title">按 task 指定 Provider</h4>
-      <p class="muted routing-editor__hint">
-        指定后该 task 优先走对应 Provider；留「自动」则按下方链路与模式选择。
-      </p>
-      <div class="routing-editor__tasks">
-        <div
-          v-for="task in allTasks"
-          :key="task"
-          class="routing-editor__task-row"
-        >
-          <span class="routing-editor__task-label">{{ taskLabel(task) }}</span>
-          <select
-            class="inp"
-            :value="tasks[task] ?? ''"
-            @change="emit('set-task', task, ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">自动</option>
-            <option
-              v-for="pid in providerIds"
-              :key="pid"
-              :value="pid"
-            >
-              {{ pid }}
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
+    <LlmTaskRouteMatrix
+      :providers="providers"
+      :tasks="tasks"
+      :chain-fallback="chainFallback"
+      :provider-ids="providerIds"
+      :env-task-models="envTaskModels"
+      :model-select-groups="modelSelectGroups"
+      @set-task="(task, providerId) => emit('set-task', task, providerId)"
+      @set-task-model="(task, providerId, model) => emit('set-task-model', task, providerId, model)"
+    />
 
     <div class="routing-editor__block">
       <h4 class="routing-editor__title">链路兜底顺序（chain_fallback）</h4>
@@ -172,23 +143,6 @@ function addFallback(id: string) {
   line-height: 1.5;
 }
 
-.routing-editor__tasks {
-  display: grid;
-  gap: 8px;
-}
-
-.routing-editor__task-row {
-  display: grid;
-  grid-template-columns: minmax(90px, 160px) 1fr;
-  gap: 12px;
-  align-items: center;
-}
-
-.routing-editor__task-label {
-  font-size: 13px;
-  font-weight: 600;
-}
-
 .routing-editor__chain {
   list-style: none;
   margin: 0 0 10px;
@@ -223,9 +177,9 @@ function addFallback(id: string) {
 }
 
 @media (max-width: 560px) {
-  .routing-editor__task-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+  .routing-editor__chain-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

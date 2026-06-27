@@ -280,7 +280,15 @@ const router = createRouter({
         },
         {
           path: "ai/config/model",
-          redirect: "/ai/config/runtime",
+          redirect: "/ai/config/provider",
+        },
+        {
+          path: "ai/config/runtime",
+          redirect: "/ai/config/provider",
+        },
+        {
+          path: "ai/config/routing",
+          redirect: "/ai/config/provider",
         },
         {
           path: "ai/config/persona",
@@ -290,7 +298,7 @@ const router = createRouter({
           path: "ai/:legacySection(model|runtime|provider|routing|strategy|persona|knowledge|connection|ncm|logs)",
           redirect: (to) => {
             const raw = String(to.params.legacySection ?? "").trim();
-            if (raw === "model") return "/ai/config/runtime";
+            if (raw === "model" || raw === "routing") return "/ai/config/provider";
             if (raw === "runtime") return { path: "/ai/home", query: { panel: "runtime" } };
             if (raw === "persona") return { path: "/ai/history", query: { workspace: "maintain" } };
             return `/ai/config/${raw}`;

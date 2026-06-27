@@ -45,7 +45,6 @@ import type {
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistorySessionFilterBar from "@/components/ai-history/AiHistorySessionFilterBar.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
@@ -590,10 +589,6 @@ function pickGroupFromSessions(): void {
 
 function sessionIsPrivate(item: LlmHistorySessionSummary): boolean {
   return item.group_id === 0;
-}
-
-function sessionLastRoleLabel(item: LlmHistorySessionSummary): string {
-  return item.last_role === "assistant" ? "末条 Bot" : "末条用户";
 }
 
 function relativeDayLabel(tsSeconds: number): string {
@@ -1818,7 +1813,6 @@ onMounted(() => {
 <template>
   <div class="ai-history-page">
     <div class="ai-hub-toolbar ai-history-page__toolbar">
-      <AiObservationLinks exclude="history" />
       <UiButton variant="outline" :busy="anyBusy" @click="refreshAll">刷新</UiButton>
     </div>
 
@@ -1951,12 +1945,6 @@ onMounted(() => {
                   {{ relativeDayLabel(item.last_created_at) }}
                 </span>
                 <span class="ai-history-session__tag is-count">{{ item.turn_count }} 条</span>
-                <span
-                  class="ai-history-session__tag"
-                  :class="item.last_role === 'assistant' ? 'is-last-bot' : 'is-last-user'"
-                >
-                  {{ sessionLastRoleLabel(item) }}
-                </span>
                 <span class="ai-history-session__tag is-bot">Bot {{ item.bot_id }}</span>
               </div>
               <time class="ai-history-session__time muted">{{ formatCompactDateTime(item.last_created_at) }}</time>
@@ -2565,7 +2553,7 @@ onMounted(() => {
               <span>{{ item.eligible_for_bias ? "参与学习" : "已排除" }}</span>
               <span v-if="item.corrected_reply_text">已校正</span>
             </div>
-            <div v-if="item.corrected_reply_text" class="ai-history-page__correction-preview muted">
+            <div v-if="item.corrected_reply_text" class="ai-history-page__correction-preview">
               期望：{{ item.corrected_reply_text }}
             </div>
             <div class="ai-history-page__correction-editor ai-history-page__correction-editor--card">
@@ -3603,6 +3591,7 @@ onMounted(() => {
 .ai-history-page__toolbar {
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .ai-history-page__date-filters,
@@ -4903,17 +4892,27 @@ onMounted(() => {
 }
 
 .ai-history-page__correction-label {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
 }
 
 .ai-history-page__correction-textarea {
   min-height: 72px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg-card, var(--surface)) 92%, var(--text) 4%);
+  border-color: color-mix(in srgb, var(--text) 18%, var(--border));
+}
+
+.ai-history-page__correction-textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text) 12%);
 }
 
 .ai-history-page__correction-preview {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text) 82%, var(--text-muted));
   word-break: break-word;
 }
 

@@ -6,8 +6,6 @@ import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSe
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
 import AiConfigNcmSection from "@/components/ai-config/AiConfigNcmSection.vue";
 import AiConfigProviderSection from "@/components/ai-config/AiConfigProviderSection.vue";
-import AiConfigRoutingSection from "@/components/ai-config/AiConfigRoutingSection.vue";
-import AiConfigRuntimeSection from "@/components/ai-config/AiConfigRuntimeSection.vue";
 import AiConfigStrategySection from "@/components/ai-config/AiConfigStrategySection.vue";
 import AiConfigSetupGuide from "@/components/ai-config/AiConfigSetupGuide.vue";
 import AiConfigExpertModeToggle from "@/components/ai-config/AiConfigExpertModeToggle.vue";
@@ -39,7 +37,7 @@ const pageReady = ref(false);
 const navGroups = aiConfigSectionsByGroup();
 const { isSimpleMode } = useAiConfigExpertMode();
 
-const SIMPLE_SECTION_IDS = new Set(["runtime", "strategy", "connection", "knowledge"]);
+const SIMPLE_SECTION_IDS = new Set(["provider", "strategy", "connection", "knowledge"]);
 
 const visibleNavGroups = computed(() => {
   if (!isSimpleMode.value) return navGroups;
@@ -77,7 +75,7 @@ watch(
   [isSimpleMode, activeSection],
   ([simple, section]) => {
     if (simple && !SIMPLE_SECTION_IDS.has(section)) {
-      void router.replace(aiConfigSectionPath("runtime"));
+      void router.replace(aiConfigSectionPath("provider"));
     }
   },
   { immediate: true },
@@ -185,12 +183,10 @@ onMounted(() => {
           </header>
 
           <div class="ai-config-page__content">
-            <AiConfigRuntimeSection v-if="activeSection === 'runtime'" />
             <AiConfigProviderSection
-              v-else-if="activeSection === 'provider'"
+              v-if="activeSection === 'provider'"
               ref="providerSectionRef"
             />
-            <AiConfigRoutingSection v-else-if="activeSection === 'routing'" />
             <AiConfigStrategySection
               v-else-if="activeSection === 'strategy'"
               ref="strategySectionRef"

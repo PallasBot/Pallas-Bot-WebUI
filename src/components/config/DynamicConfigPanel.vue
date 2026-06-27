@@ -13,12 +13,16 @@ const props = withDefaults(
     modelValue: Record<string, string>;
     disabled?: boolean;
     activeFieldPopoverName?: string | null;
+    groupVariant?: "card" | "section";
+    hideSingleGroupHeader?: boolean;
   }>(),
   {
     fieldGroups: undefined,
     unexpectedKeys: () => [],
     disabled: false,
     activeFieldPopoverName: null,
+    groupVariant: "card",
+    hideSingleGroupHeader: false,
   },
 );
 
@@ -55,6 +59,25 @@ const groupViewModels = computed(() =>
   })),
 );
 
+const isSectionGroups = computed(() => props.groupVariant === "section");
+
+const showGroupHeaders = computed(() => {
+  if (isSectionGroups.value) {
+    return groupViewModels.value.length > 1;
+  }
+  if (props.hideSingleGroupHeader && groupViewModels.value.length === 1) {
+    return false;
+  }
+  return true;
+});
+
+function groupShellClass(advanced: boolean) {
+  if (isSectionGroups.value) {
+    return ["plugin-config-group-section", { "plugin-config-group-section--advanced": advanced }];
+  }
+  return ["plugin-config-group-card", { "plugin-config-group-card--advanced": advanced }];
+}
+
 function toggleGroup(id: string) {
   groupOpen.value = { ...groupOpen.value, [id]: !groupOpen.value[id] };
 }
@@ -65,19 +88,27 @@ function updateField(name: string, value: string) {
 </script>
 
 <template>
-  <section class="plugin-config-groups dynamic-config-panel">
+  <section
+    class="plugin-config-groups dynamic-config-panel"
+    :class="{ 'dynamic-config-panel--section': isSectionGroups }"
+  >
     <section
       v-for="group in groupViewModels"
       :key="group.id"
-      class="plugin-config-group-card"
-      :class="{ 'plugin-config-group-card--advanced': group.advanced }"
+      :class="groupShellClass(Boolean(group.advanced))"
     >
-      <header class="plugin-config-group-card__hero">
+      <header
+        v-if="showGroupHeaders"
+        class="plugin-config-group-card__hero"
+      >
         <div class="plugin-config-group-card__hero-main">
           <div class="plugin-config-group-card__hero-text">
             <div class="plugin-config-group-card__title-row">
               <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
-              <span class="plugin-config-group-card__chip">
+              <span
+                v-if="!isSectionGroups || !group.summary.filled || group.summary.required"
+                class="plugin-config-group-card__chip"
+              >
                 {{ group.summary.filled ? "已配置" : "待配置" }}
               </span>
               <span
@@ -87,12 +118,16 @@ function updateField(name: string, value: string) {
                 必填 {{ group.summary.requiredFilled }}/{{ group.summary.required }}
               </span>
             </div>
-            <p class="plugin-config-group-card__desc">
+            <p
+              v-if="!isSectionGroups"
+              class="plugin-config-group-card__desc"
+            >
               共 {{ group.summary.total }} 项，已填写 {{ group.summary.filled }} 项
             </p>
           </div>
         </div>
         <button
+          v-if="!isSectionGroups || groupViewModels.length > 1"
           type="button"
           class="btn panel-hd-collapse-btn plugin-config-group-card__collapse"
           :aria-expanded="groupOpen[group.id] ?? true"
@@ -103,7 +138,10 @@ function updateField(name: string, value: string) {
         </button>
       </header>
 
-      <div v-show="groupOpen[group.id] ?? true" class="plugin-config-form-grid">
+      <div
+        v-show="!showGroupHeaders || (groupOpen[group.id] ?? true)"
+        class="plugin-config-form-grid"
+      >
         <PluginConfigFieldShell
           v-for="f in group.fields"
           :key="f.name"
@@ -121,7 +159,10 @@ function updateField(name: string, value: string) {
 
     <section
       v-if="unexpectedKeys?.length"
-      class="plugin-config-group-card dynamic-config-panel__unexpected"
+      :class="[
+        isSectionGroups ? 'plugin-config-group-section' : 'plugin-config-group-card',
+        'dynamic-config-panel__unexpected',
+      ]"
     >
       <header class="dynamic-config-panel__unexpected-head">
         <h4 class="plugin-config-group-card__title">未声明的环境键</h4>
@@ -171,7 +212,24 @@ function updateField(name: string, value: string) {
   font-size: 13px;
 }
 
-.plugin-config-group-card--advanced .plugin-config-group-card__title {
+.plugin-config-group-card--advanced .plugin-config-group-card__title,
+.plugin-config-group-section--advanced .plugin-config-group-card__title {
   color: var(--pallas-muted, #94a3b8);
+}
+
+.dynamic-config-panel--section {
+  gap: 0;
+}
+
+.dynamic-config-panel--section .dynamic-config-panel__unexpected {
+  margin-top: 0;
+}
+
+.dynamic-config-panel--section .dynamic-config-panel__unexpected-head {
+  padding: 0;
+}
+
+.dynamic-config-panel--section .dynamic-config-panel__unexpected-list {
+  padding: 0;
 }
 </style>

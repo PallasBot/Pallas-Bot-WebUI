@@ -62,7 +62,7 @@ export const AI_SIDEBAR_NAV: AiSidebarNavDef[] = [
     label: "AI 配置",
     lead: "运行模型、Provider、路由、Bot 策略与扩展能力。",
     icon: "sparkles",
-    path: "/ai/config/runtime",
+    path: "/ai/config/provider",
   },
 ];
 

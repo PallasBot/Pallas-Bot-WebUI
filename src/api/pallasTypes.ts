@@ -406,6 +406,7 @@ export type ExtensionActivationAction = "none" | "hot-reload" | "workers-restart
 export interface OfficialExtensionRow {
   package: string;
   plugin_ids: string[];
+  display_name?: string;
   uv_extra?: string | null;
   install_cli?: string | null;
   icon?: string | null;

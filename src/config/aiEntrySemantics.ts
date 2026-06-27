@@ -43,10 +43,28 @@ export const AI_ENTRY_CONNECTION_DIAG = {
 } as const;
 
 export const AI_CONFIG_LAYER_LINKS = {
-  runtime: { label: "运行模型", path: aiConfigSectionPath("runtime") },
-  provider: { label: "上游 Provider", path: aiConfigSectionPath("provider") },
-  routing: { label: "路由与分流", path: aiConfigSectionPath("routing") },
+  provider: { label: "模型与 Provider", path: aiConfigSectionPath("provider") },
   strategy: { label: "Bot 对话策略", path: aiConfigSectionPath("strategy") },
 } as const;
 
 export type AiConfigLayerLinkId = keyof typeof AI_CONFIG_LAYER_LINKS;
+
+/** task 相关配置分层说明（Provider / 路由页共用，避免同名 task 被当成同一项） */
+export const AI_TASK_CONFIG_HINTS = {
+  providerSection:
+    "本页写入 providers.toml：登记上游端点；专家模式下「Task 路由与模型」矩阵统一指定 task→Provider 与模型。",
+  providerIntro:
+    "保存到 providers.toml，无需重启 Celery。远程密钥以环境变量名引用，明文仍在 .env。",
+  providerTaskRoute:
+    "Provider 留「自动」时按 chain_fallback 顺序解析；显式指定则固定走该 Provider。",
+  providerTaskModel:
+    "模型写入对应 Provider 的 task_models；未填则回退 Provider 默认模型。",
+  routingSection:
+    "本页写入 AI 服务 .env：默认本地模型与 MoE 分档；task→Provider/模型见上方 Provider 矩阵。",
+  routingIntro:
+    "单模型模式下主本地 Provider 跟随「运行模型」；开启多模型分流后 MoE 与 Provider 默认模型可继续分流。",
+  routingTaskModels:
+    "已并入 Provider 区「Task 路由与模型」矩阵；.env 中旧项仅作兼容回退显示。",
+  routingProviderTaskReadonly:
+    "只读摘要，来自 providers.toml；修改请在上游 Provider 页编辑对应 Provider。",
+} as const;

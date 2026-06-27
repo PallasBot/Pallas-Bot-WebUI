@@ -2,10 +2,14 @@
 import { computed, ref, watch } from "vue";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
+import LlmModelSelect from "@/components/ai-config/LlmModelSelect.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
-import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
 import type { ProviderModelsState } from "@/composables/useLlmProviders";
+import {
+  buildLlmModelSelectGroups,
+  collectSavedProviderModels,
+} from "@/utils/llmModelOptionSources";
 
 const props = defineProps<{
   open: boolean;
@@ -13,7 +17,15 @@ const props = defineProps<{
   row: LlmProviderConfigRow | null;
   /** 已存在的 provider id，用于新增时校验重名。 */
   existingIds: string[];
-  /** 在线发现的模型状态（由父组件按 id 提供）。 */
+  /** 全部 Provider 登记（用于模型下拉聚合）。 */
+  providers: LlmProviderConfigRow[];
+  /** 当前 Ollama 运行模型。 */
+  runtimeModel: string;
+  /** 各 Provider 在线发现的模型。 */
+  discoveredByProvider: Record<string, string[]>;
+  /** 是否正在刷新模型列表。 */
+  discoveringModels?: boolean;
+  /** 当前编辑 Provider 的在线发现状态。 */
   modelsState?: ProviderModelsState;
 }>();
 
@@ -21,12 +33,10 @@ const emit = defineEmits<{
   close: [];
   submit: [row: LlmProviderConfigRow];
   discover: [providerId: string];
+  "refresh-models": [providerId: string];
 }>();
 
-const TASK_KEYS = Object.keys(LLM_TASK_ROUTE_LABELS).filter((k) => k !== "other");
-
 const draft = ref<LlmProviderConfigRow>(blank());
-const taskModelRows = ref<Array<{ task: string; model: string }>>([]);
 const localErr = ref("");
 
 const isEdit = computed(() => props.row !== null);
@@ -49,31 +59,39 @@ watch(
     if (!open) return;
     localErr.value = "";
     draft.value = props.row ? JSON.parse(JSON.stringify(props.row)) : blank();
-    taskModelRows.value = Object.entries(draft.value.task_models || {}).map(([task, model]) => ({
-      task,
-      model,
-    }));
   },
   { immediate: true },
 );
 
-const taskOptions = computed(() => {
-  const used = new Set(taskModelRows.value.map((r) => r.task));
-  return TASK_KEYS.filter((k) => !used.has(k));
+const mergedDiscovered = computed(() => {
+  const map = { ...props.discoveredByProvider };
+  const id = draft.value.id.trim();
+  if (id && props.modelsState?.models?.length) {
+    map[id] = props.modelsState.models;
+  }
+  return map;
 });
 
-function addTaskModel() {
-  const next = taskOptions.value[0] ?? "";
-  if (!next) return;
-  taskModelRows.value = [...taskModelRows.value, { task: next, model: "" }];
-}
+const savedModelValues = computed(() =>
+  collectSavedProviderModels({
+    default_model: draft.value.default_model,
+    task_models: draft.value.task_models,
+  }),
+);
 
-function removeTaskModel(index: number) {
-  taskModelRows.value = taskModelRows.value.filter((_, i) => i !== index);
-}
+const modelSelectGroups = computed(() =>
+  buildLlmModelSelectGroups({
+    providers: props.providers,
+    runtimeModel: props.runtimeModel,
+    discoveredByProvider: mergedDiscovered.value,
+    savedValues: savedModelValues.value,
+  }),
+);
 
-function taskLabel(task: string): string {
-  return LLM_TASK_ROUTE_LABELS[task] ?? task;
+function refreshModels() {
+  const providerId = draft.value.id.trim();
+  emit("refresh-models", providerId);
+  if (providerId) emit("discover", providerId);
 }
 
 function submit() {
@@ -90,10 +108,7 @@ function submit() {
     localErr.value = "远程 Provider 需要填写 Base URL";
     return;
   }
-  const task_models: Record<string, string> = {};
-  for (const r of taskModelRows.value) {
-    if (r.task && r.model.trim()) task_models[r.task] = r.model.trim();
-  }
+  const task_models = { ...(draft.value.task_models || {}) };
   emit("submit", {
     id,
     kind: draft.value.kind,
@@ -105,9 +120,6 @@ function submit() {
   });
 }
 
-function applyDiscoveredModel(model: string) {
-  draft.value.default_model = model;
-}
 </script>
 
 <template>
@@ -197,110 +209,32 @@ function applyDiscoveredModel(model: string) {
           <div class="form-field">
             <span class="form-field__label">默认模型</span>
             <div class="provider-edit-dialog__model-row">
-              <input
+              <LlmModelSelect
                 v-model="draft.default_model"
-                class="inp"
-                placeholder="gpt-4o-mini / qwen2.5:7b / 自定义模型名"
-              >
+                :groups="modelSelectGroups"
+                empty-label="（未指定，回退路由）"
+                aria-label="Provider 默认模型"
+              />
               <UiButton
                 variant="outline"
                 class="provider-edit-dialog__row-btn"
-                :busy="modelsState?.loading"
+                :busy="discoveringModels || modelsState?.loading"
                 :disabled="!draft.id.trim()"
-                @click="emit('discover', draft.id.trim())"
+                @click="refreshModels"
               >
-                在线发现
+                刷新模型列表
               </UiButton>
             </div>
-            <div
-              v-if="modelsState?.loaded"
-              class="provider-edit-dialog__models"
+            <span
+              v-if="modelsState?.loaded && modelsState.error"
+              class="muted provider-edit-dialog__models-err"
             >
-              <span
-                v-if="modelsState.error"
-                class="muted provider-edit-dialog__models-err"
-              >发现失败：{{ modelsState.error }}</span>
-              <template v-else-if="modelsState.models.length">
-                <button
-                  v-for="m in modelsState.models"
-                  :key="m"
-                  type="button"
-                  class="provider-edit-dialog__model-chip"
-                  :class="{ 'is-on': draft.default_model === m }"
-                  @click="applyDiscoveredModel(m)"
-                >
-                  {{ m }}
-                </button>
-              </template>
-              <span
-                v-else
-                class="muted provider-edit-dialog__models-err"
-              >未发现模型</span>
-            </div>
+              当前 Provider 发现失败：{{ modelsState.error }}
+            </span>
           </div>
-        </div>
-      </section>
-
-      <section class="provider-edit-dialog__section provider-edit-dialog__tasks">
-        <div class="provider-edit-dialog__tasks-head">
-          <div class="provider-edit-dialog__section-head provider-edit-dialog__section-head--tight">
-            <strong>按 task 覆盖模型</strong>
-            <span class="muted">不配置时，沿用上面的默认模型。</span>
-          </div>
-          <UiButton
-            variant="outline"
-            class="provider-edit-dialog__row-btn"
-            :disabled="!taskOptions.length"
-            @click="addTaskModel"
-          >
-            + 添加
-          </UiButton>
-        </div>
-        <div
-          v-if="taskModelRows.length"
-          class="provider-edit-dialog__task-list"
-        >
-          <div
-            v-for="(r, i) in taskModelRows"
-            :key="i"
-            class="provider-edit-dialog__task-row"
-          >
-            <select
-              v-model="r.task"
-              class="inp"
-            >
-              <option
-                :value="r.task"
-              >
-                {{ taskLabel(r.task) }}
-              </option>
-              <option
-                v-for="opt in taskOptions"
-                :key="opt"
-                :value="opt"
-              >
-                {{ taskLabel(opt) }}
-              </option>
-            </select>
-            <input
-              v-model="r.model"
-              class="inp"
-              placeholder="模型名"
-            >
-            <UiButton
-              variant="ghost"
-              class="provider-edit-dialog__row-btn provider-edit-dialog__row-btn--ghost"
-              @click="removeTaskModel(i)"
-            >
-              删除
-            </UiButton>
-          </div>
-        </div>
-        <div
-          v-else
-          class="provider-edit-dialog__task-empty muted"
-        >
-          当前没有按 task 的覆盖规则。
+          <p class="muted provider-edit-dialog__task-note">
+            各 task 的模型请在关闭弹窗后，于下方「Task 路由与模型」矩阵统一配置。
+          </p>
         </div>
       </section>
     </div>
@@ -430,72 +364,19 @@ function applyDiscoveredModel(model: string) {
   padding-inline: 14px;
 }
 
-.provider-edit-dialog__task-row .inp {
-  min-height: var(--ui-ctrl-height);
-  height: var(--ui-ctrl-height);
-}
-
-.provider-edit-dialog__models {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
 .provider-edit-dialog__models-err {
   font-size: 12px;
+  line-height: 1.45;
 }
 
-.provider-edit-dialog__model-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
+.provider-edit-dialog__task-note {
+  margin: 0;
   font-size: 12px;
-  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  cursor: pointer;
-}
-
-.provider-edit-dialog__model-chip.is-on {
-  border-color: var(--primary, var(--accent));
-  background: color-mix(in srgb, var(--primary, var(--accent)) 16%, transparent);
+  line-height: 1.5;
 }
 
 .provider-edit-dialog__switch-field {
   align-content: start;
-}
-
-.provider-edit-dialog__tasks {
-  gap: 12px;
-}
-
-.provider-edit-dialog__tasks-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.provider-edit-dialog__task-list {
-  display: grid;
-  gap: 10px;
-}
-
-.provider-edit-dialog__task-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 200px) 1fr auto;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 2%, transparent);
-  align-items: center;
-}
-
-.provider-edit-dialog__task-empty {
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  font-size: 0.82rem;
 }
 
 .provider-edit-dialog__footer {
@@ -537,14 +418,6 @@ function applyDiscoveredModel(model: string) {
 
   .provider-edit-dialog__model-row :deep(.ui-btn) {
     width: 100%;
-  }
-
-  .provider-edit-dialog__tasks-head {
-    display: grid;
-  }
-
-  .provider-edit-dialog__task-row {
-    grid-template-columns: 1fr;
   }
 
   .provider-edit-dialog__footer {

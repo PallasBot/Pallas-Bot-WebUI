@@ -18,7 +18,7 @@ export const AI_SETUP_GUIDE_PATHS: AiSetupGuidePath[] = [
   {
     id: "connect",
     title: "先让 @ 能聊",
-    lead: "首次部署按顺序做；多数站点只需这 4 步。",
+    lead: "首次部署按顺序做；多数站点只需这 3 步。",
     steps: [
       {
         label: "1. 扩展连接",
@@ -26,22 +26,17 @@ export const AI_SETUP_GUIDE_PATHS: AiSetupGuidePath[] = [
         to: aiConfigSectionPath("connection"),
       },
       {
-        label: "2. 运行模型",
-        detail: "确认本地 Ollama / GPU 层数与当前加载模型。",
-        to: aiConfigSectionPath("runtime"),
-      },
-      {
-        label: "3. 上游 Provider",
-        detail: "登记至少一个可用上游并测试连通。",
+        label: "2. 模型与 Provider",
+        detail: "确认本地 Ollama / GPU，并登记至少一个可用上游、测试连通。",
         to: aiConfigSectionPath("provider"),
       },
       {
-        label: "4. 对话策略",
+        label: "3. 对话策略",
         detail: "开启「智能对话」等 Bot 侧总开关并保存。",
         to: aiConfigSectionPath("strategy"),
       },
       {
-        label: "5. 历史验证",
+        label: "4. 历史验证",
         detail: "改完配置后 @ 试聊，并在会话里排除坏回复或填期望回复。",
         to: "/ai/history?workspace=sessions",
       },

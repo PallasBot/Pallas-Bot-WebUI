@@ -118,10 +118,20 @@ function commandTrigger(commandId: string, cmd: CommandPermUiCommand): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.016)) 99%, transparent);
+  padding: 12px 0;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 94%, transparent);
+  background: transparent;
+}
+
+.cmd-perm-list .cmd-perm-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.cmd-perm-list .cmd-perm-card:first-child {
+  padding-top: 0;
 }
 
 .cmd-perm-card__main {
@@ -160,28 +170,40 @@ function commandTrigger(commandId: string, cmd: CommandPermUiCommand): string {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 2px;
   flex: 0 0 auto;
   max-width: 26rem;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 96%, transparent);
+  background: var(--surface-segment, color-mix(in srgb, var(--text) 4%, var(--bg-card)));
 }
 
 .cmd-perm-choice {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  justify-content: center;
+  min-height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted, rgba(255, 255, 255, 0.72));
   cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cmd-perm-choice:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .cmd-perm-choice--active {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 84%, var(--text, #fff) 10%);
+  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 70%, transparent);
+  background: var(--surface-segment-active, var(--surface-control, var(--bg-elev)));
+  color: var(--text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #000) 6%, transparent);
 }
 
 .cmd-perm-choice__input {
@@ -201,17 +223,18 @@ function commandTrigger(commandId: string, cmd: CommandPermUiCommand): string {
     flex-direction: column;
     gap: 10px;
     align-items: stretch;
+    padding: 12px 0;
   }
 
   .cmd-perm-card__choices {
     width: 100%;
     max-width: none;
     justify-content: flex-start;
+    border-radius: 12px;
   }
 
   .cmd-perm-choice {
-    flex: 1 1 calc(50% - 3px);
-    justify-content: center;
+    flex: 1 1 calc(50% - 2px);
     min-width: 0;
   }
 }

@@ -1,22 +1,29 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { PluginGovernanceData, PluginGovernanceMenuItem } from "@/api/pallasTypes";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
 
-defineProps<{
-  governanceData: PluginGovernanceData | null;
-  governanceLoading: boolean;
-  governanceSaving: boolean;
-  governanceErr: string;
-  commandMenuMap: Map<string, PluginGovernanceMenuItem>;
-  permSelections: Record<string, string>;
-  limitSelections: Record<string, string>;
-  globalDisable: boolean;
-  showInHelpMenu: boolean;
-  globalDisableProtected: boolean;
-  helpIgnored: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    governanceData: PluginGovernanceData | null;
+    governanceLoading: boolean;
+    governanceSaving: boolean;
+    governanceErr: string;
+    commandMenuMap: Map<string, PluginGovernanceMenuItem>;
+    permSelections: Record<string, string>;
+    limitSelections: Record<string, string>;
+    globalDisable: boolean;
+    showInHelpMenu: boolean;
+    globalDisableProtected: boolean;
+    helpIgnored: boolean;
+    presentation?: "page" | "dialog";
+  }>(),
+  {
+    presentation: "page",
+  },
+);
 
 const emit = defineEmits<{
   permChange: [commandId: string, newLevel: string];
@@ -24,11 +31,27 @@ const emit = defineEmits<{
   toggleGlobalDisable: [value: boolean];
   toggleHelpMenuVisible: [value: boolean];
 }>();
+
+const isDialogPresentation = computed(() => props.presentation === "dialog");
+
+const showDialogMeta = computed(
+  () =>
+    isDialogPresentation.value &&
+    Boolean(props.governanceData?.reload_policy || props.governanceData?.activation_policy),
+);
+
+const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "card"));
 </script>
 
 <template>
-  <section class="plugin-governance-panel">
-    <header class="plugin-governance-panel__head">
+  <section
+    class="plugin-governance-panel"
+    :class="{ 'plugin-governance-panel--dialog': isDialogPresentation }"
+  >
+    <header
+      v-if="!isDialogPresentation"
+      class="plugin-governance-panel__head"
+    >
       <div>
         <h3 class="plugin-governance-panel__title">治理面板</h3>
         <p class="muted plugin-governance-panel__desc">
@@ -45,6 +68,18 @@ const emit = defineEmits<{
       </div>
     </header>
 
+    <div
+      v-else-if="showDialogMeta"
+      class="plugin-governance-panel__dialog-meta"
+    >
+      <span v-if="governanceData?.reload_policy" class="plugin-governance-panel__badge">
+        热重载：{{ governanceData.reload_policy }}
+      </span>
+      <span v-if="governanceData?.activation_policy" class="plugin-governance-panel__badge">
+        生效方式：{{ governanceData.activation_policy }}
+      </span>
+    </div>
+
     <p v-if="governanceLoading" class="muted">加载治理配置…</p>
     <div v-else-if="governanceErr" class="alert alert--err">{{ governanceErr }}</div>
     <p v-else-if="!governanceData" class="muted plugin-governance-panel__empty">
@@ -54,12 +89,18 @@ const emit = defineEmits<{
       <section class="plugin-governance-panel__group">
         <header class="plugin-governance-panel__group-head">
           <h4 class="plugin-governance-panel__group-title">运行控制</h4>
-          <p class="muted plugin-governance-panel__group-desc">控制插件是否参与运行，以及是否出现在帮助菜单中。</p>
+          <p
+            v-if="!isDialogPresentation"
+            class="muted plugin-governance-panel__group-desc"
+          >
+            控制插件是否参与运行，以及是否出现在帮助菜单中。
+          </p>
         </header>
         <div class="plugin-governance-panel__switches">
           <PluginRuntimeSwitchRow
             title="全实例禁用（所有牛牛、所有群）"
             :model-value="globalDisable"
+            :variant="switchVariant"
             :disabled="governanceSaving || globalDisableProtected"
             @update:model-value="emit('toggleGlobalDisable', $event)"
           >
@@ -69,6 +110,7 @@ const emit = defineEmits<{
           <PluginRuntimeSwitchRow
             title="在「牛牛帮助」总列表中显示该插件"
             :model-value="showInHelpMenu"
+            :variant="switchVariant"
             :disabled="governanceSaving || helpIgnored"
             @update:model-value="emit('toggleHelpMenuVisible', $event)"
           >
@@ -81,7 +123,10 @@ const emit = defineEmits<{
       <section class="plugin-governance-panel__group">
         <header class="plugin-governance-panel__group-head">
           <h4 class="plugin-governance-panel__group-title">命令权限</h4>
-          <p class="muted plugin-governance-panel__group-desc">
+          <p
+            v-if="!isDialogPresentation"
+            class="muted plugin-governance-panel__group-desc"
+          >
             展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。
           </p>
         </header>
@@ -100,7 +145,10 @@ const emit = defineEmits<{
       <section class="plugin-governance-panel__group">
         <header class="plugin-governance-panel__group-head">
           <h4 class="plugin-governance-panel__group-title">命令冷却</h4>
-          <p class="muted plugin-governance-panel__group-desc">
+          <p
+            v-if="!isDialogPresentation"
+            class="muted plugin-governance-panel__group-desc"
+          >
             主显示中文名与触发口令；输入秒数后会自动保存，留空或设为默认值表示不覆盖默认冷却。
           </p>
         </header>
@@ -130,6 +178,12 @@ const emit = defineEmits<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.plugin-governance-panel__dialog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .plugin-governance-panel__title {
@@ -198,6 +252,10 @@ const emit = defineEmits<{
   gap: 10px;
 }
 
+.plugin-governance-panel--dialog .plugin-governance-panel__switches {
+  gap: 0;
+}
+
 .plugin-governance-panel__empty,
 .plugin-governance-panel__saving {
   font-size: 13px;
@@ -209,7 +267,8 @@ const emit = defineEmits<{
     flex-direction: column;
   }
 
-  .plugin-governance-panel__badges {
+  .plugin-governance-panel__badges,
+  .plugin-governance-panel__dialog-meta {
     width: 100%;
     justify-content: flex-start;
   }

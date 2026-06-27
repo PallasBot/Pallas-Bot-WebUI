@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
+import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
+import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
 import ProviderManager from "@/components/ai-config/providers/ProviderManager.vue";
-import AiWizardChecklist from "@/components/ai-config/AiWizardChecklist.vue";
-import { AI_CONFIG_LAYER_LINKS, AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
-import { wizardChecksForSection } from "@/config/aiWizardGuide";
+import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
+import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
 import { useAiConfigExpertMode } from "@/composables/useAiConfigExpertMode";
 
 const { isSimpleMode } = useAiConfigExpertMode();
 const providerRef = ref<InstanceType<typeof ProviderManager> | null>(null);
-const sectionChecks = computed(() => wizardChecksForSection("provider"));
 
 defineExpose({
   save: () => providerRef.value?.save?.(),
@@ -19,22 +19,17 @@ defineExpose({
 
 <template>
   <div class="ai-config-section ai-config-section--provider">
-    <AiWizardChecklist
-      compact
-      title="Provider 自检"
-      :check-ids="sectionChecks"
-    />
     <p class="muted ai-config-section__layer-hint">
-      {{ AI_TASK_CONFIG_HINTS.providerSection }}
-      全局 task→模型与 MoE 见
-      <RouterLink :to="AI_CONFIG_LAYER_LINKS.routing.path">{{ AI_CONFIG_LAYER_LINKS.routing.label }}</RouterLink>；
-      本地权重热切换见
-      <RouterLink :to="AI_CONFIG_LAYER_LINKS.runtime.path">{{ AI_CONFIG_LAYER_LINKS.runtime.label }}</RouterLink>。
+      本地 Ollama 热切换与上游 Provider 登记都在本页：前者管当前进程加载哪套权重，后者管 OpenAI 兼容 / 本地端点与连通性。
+      {{ AI_TASK_CONFIG_HINTS.providerIntro }}
     </p>
-    <p v-if="isSimpleMode" class="muted ai-config-section__simple-note">
-      简单模式下可登记与测试 Provider；task→Provider 路由矩阵请开启专家模式。
-    </p>
+    <AiObservationLinks />
+    <ModelAdminPanel :simple-mode="isSimpleMode" embedded />
     <ProviderManager ref="providerRef" :simple-mode="isSimpleMode" />
+    <LocalModelRoutingPanel v-if="!isSimpleMode" />
+    <p v-else class="muted ai-config-section__simple-note">
+      简单模式下可切换本地模型并登记 / 测试 Provider；task→Provider 矩阵与 MoE 分流请开启专家模式。
+    </p>
   </div>
 </template>
 
@@ -42,7 +37,7 @@ defineExpose({
 .ai-config-section--provider {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ai-config-section__layer-hint {
@@ -54,5 +49,9 @@ defineExpose({
 .ai-config-section__simple-note {
   margin: 0;
   font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
 }
 </style>

@@ -38,7 +38,7 @@ import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import ReadmeMarkdown from "@/components/ReadmeMarkdown.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import PluginStoreCard from "@/components/PluginStoreCard.vue";
@@ -54,6 +54,8 @@ import {
 } from "@/utils/pluginReadme";
 import {
   resolveOfficialExtensionDescription,
+  resolveOfficialExtensionSubtitle,
+  resolveOfficialExtensionTitle,
 } from "@/utils/officialExtensionMeta";
 import {
   resolveCommunityPluginIconUrlWithBust,
@@ -275,8 +277,12 @@ function resolveCommunityIndexSourceDisplay(source: string): IndexSourceDisplay 
   return { label: name, href: null };
 }
 
-function extensionPackageTitle(pkg: string): string {
-  return pkg.replace(/^pallas-plugin-/, "") || pkg;
+function officialRowTitle(row: OfficialExtensionRow): string {
+  return resolveOfficialExtensionTitle(row.package, row.display_name);
+}
+
+function officialRowSubtitle(row: OfficialExtensionRow): string {
+  return resolveOfficialExtensionSubtitle(row.package, row.display_name);
 }
 
 function officialRowDescription(row: OfficialExtensionRow): string {
@@ -394,11 +400,12 @@ const filteredRows = computed(() => {
   }
   if (!q) return list;
   return list.filter((row) => {
-    const title = extensionPackageTitle(row.package).toLowerCase();
+    const title = officialRowTitle(row).toLowerCase();
+    const subtitle = officialRowSubtitle(row).toLowerCase();
     const pkg = row.package.toLowerCase();
     const ids = row.plugin_ids.join(" ").toLowerCase();
     const desc = officialRowDescription(row).toLowerCase();
-    return title.includes(q) || pkg.includes(q) || ids.includes(q) || desc.includes(q);
+    return title.includes(q) || subtitle.includes(q) || pkg.includes(q) || ids.includes(q) || desc.includes(q);
   });
 });
 
@@ -1122,8 +1129,8 @@ async function openOfficialReadme(row: OfficialExtensionRow) {
   detailTarget.value = {
     kind: "official",
     id: row.package,
-    title: extensionPackageTitle(row.package),
-    subtitle: row.package,
+    title: officialRowTitle(row),
+    subtitle: officialRowSubtitle(row) || row.package,
     description: officialRowDescription(row),
     repositoryUrl: row.repository_url || null,
     official: row,
@@ -1372,7 +1379,7 @@ onDeactivated(() => {
           variant="outline"
           :busy="restartBusy || restartInProgress"
           :disabled="restartBusy || restartInProgress"
-          @click="restartBotNow"
+          @click="() => restartBotNow()"
         >
           {{ restartInProgress ? "重启中…" : "立即重启 Bot" }}
         </UiButton>
@@ -1427,7 +1434,7 @@ onDeactivated(() => {
           <PluginStoreCard
             v-for="row in filteredRows"
             :key="row.package"
-            :title="extensionPackageTitle(row.package)"
+            :title="officialRowTitle(row)"
             subtitle=""
             :description="officialRowDescription(row)"
             :plugin-id="officialRowPluginId(row)"
@@ -1703,10 +1710,9 @@ onDeactivated(() => {
           >
             {{ detailReadmeErr }}
           </p>
-          <div
+          <ReadmeMarkdown
             v-else-if="detailReadmeHtml"
-            class="plugin-store-page__readme markdown-body"
-            v-html="detailReadmeHtml"
+            :html="detailReadmeHtml"
           />
           <p
             v-else
@@ -1739,10 +1745,7 @@ onDeactivated(() => {
             >
               该插件未提供 CHANGELOG.md，以下为根据 git 提交历史自动生成。
             </p>
-            <div
-              class="plugin-store-page__readme markdown-body"
-              v-html="detailChangelogHtml"
-            />
+            <ReadmeMarkdown :html="detailChangelogHtml" />
           </template>
           <p
             v-else

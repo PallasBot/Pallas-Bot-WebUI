@@ -5,24 +5,30 @@ import { fetchLlmWizardStatus } from "@/api/consoleApi";
 import type { LlmWizardStatusData } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
 import { AI_CONFIG_WIZARD_PATH } from "@/config/aiSetupGuide";
-import { wizardActionForCheckId } from "@/config/aiWizardGuide";
+import { AI_WIZARD_CHECKLIST_DISMISS_KEY, wizardActionForCheckId } from "@/config/aiWizardGuide";
 
 const props = withDefaults(
   defineProps<{
     compact?: boolean;
     checkIds?: string[];
     title?: string;
+    dismissible?: boolean;
   }>(),
   {
     compact: false,
     checkIds: undefined,
     title: "接通自检",
+    dismissible: true,
   },
 );
 
 const loading = ref(false);
 const err = ref("");
 const wizardStatus = ref<LlmWizardStatusData | null>(null);
+const dismissed = ref(
+  props.dismissible && typeof localStorage !== "undefined"
+    && localStorage.getItem(AI_WIZARD_CHECKLIST_DISMISS_KEY) === "1",
+);
 
 const checkRows = computed(() => {
   const rows = wizardStatus.value?.checks ?? [];
@@ -51,15 +57,42 @@ async function refresh() {
   }
 }
 
-onMounted(() => {
+function dismissChecklist() {
+  dismissed.value = true;
+  localStorage.setItem(AI_WIZARD_CHECKLIST_DISMISS_KEY, "1");
+}
+
+function restoreChecklist() {
+  dismissed.value = false;
+  localStorage.removeItem(AI_WIZARD_CHECKLIST_DISMISS_KEY);
   void refresh();
+}
+
+onMounted(() => {
+  if (!dismissed.value) {
+    void refresh();
+  }
 });
 
-defineExpose({ refresh, allPassed, failedRows });
+defineExpose({ refresh, allPassed, failedRows, dismissed, restoreChecklist });
 </script>
 
 <template>
+  <p
+    v-if="dismissible && dismissed"
+    class="muted ai-wizard-checklist__collapsed"
+  >
+    已收起接通自检。
+    <button type="button" class="ai-wizard-checklist__restore" @click="restoreChecklist">
+      再次显示
+    </button>
+    <span class="ai-wizard-checklist__collapsed-sep">·</span>
+    <RouterLink :to="AI_CONFIG_WIZARD_PATH" class="ai-wizard-checklist__restore">
+      打开完整体检
+    </RouterLink>
+  </p>
   <section
+    v-else
     class="ai-wizard-checklist"
     :class="{ 'ai-wizard-checklist--compact': compact, 'is-ok': allPassed }"
     aria-label="AI 体检清单"
@@ -77,6 +110,14 @@ defineExpose({ refresh, allPassed, failedRows });
         <RouterLink :to="AI_CONFIG_WIZARD_PATH">
           <UiButton size="sm" variant="outline">完整体检</UiButton>
         </RouterLink>
+        <UiButton
+          v-if="dismissible"
+          size="sm"
+          variant="ghost"
+          @click="dismissChecklist"
+        >
+          关闭
+        </UiButton>
       </div>
     </div>
     <div v-if="err" class="alert alert--err">{{ err }}</div>
@@ -114,6 +155,30 @@ defineExpose({ refresh, allPassed, failedRows });
 
 .ai-wizard-checklist.is-ok {
   border-color: color-mix(in srgb, var(--ok, #22c55e) 35%, var(--border));
+}
+
+.ai-wizard-checklist__collapsed {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.ai-wizard-checklist__restore {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.ai-wizard-checklist__restore:hover {
+  text-decoration: underline;
+}
+
+.ai-wizard-checklist__collapsed-sep {
+  margin: 0 4px;
+  color: var(--text-muted);
 }
 
 .ai-wizard-checklist__head {

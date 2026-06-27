@@ -2,9 +2,7 @@
 import { computed, nextTick, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import AiRuntimeDiagnosticPanel from "@/components/ai-config/AiRuntimeDiagnosticPanel.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import AiConfigHealthFlow from "@/components/ai-config/AiConfigHealthFlow.vue";
-import AiWizardChecklist from "@/components/ai-config/AiWizardChecklist.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -101,7 +99,6 @@ onMounted(() => {
 <template>
   <div class="ai-home-page">
     <div class="ai-hub-toolbar">
-      <AiObservationLinks exclude="overview" />
       <UiButton
         variant="ghost"
         size="sm"
@@ -114,7 +111,6 @@ onMounted(() => {
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
     <AiConfigHealthFlow />
-    <AiWizardChecklist />
     <div v-if="!err && wizardAlert" class="alert alert--warn ai-home-page__wizard-alert">
       <span>{{ wizardAlert }}</span>
       <RouterLink to="/ai/wizard">
@@ -268,6 +264,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--hub-page-gap, 18px);
+}
+
+.ai-home-page .ai-hub-toolbar {
+  justify-content: flex-end;
 }
 
 .ai-home-page__hero-head {

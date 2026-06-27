@@ -921,9 +921,75 @@ html[data-layout="hub"] .plugins-page__catalog-hd {
   margin-top: 2px;
 }
 
+html[data-layout="hub"] .plugins-page--hub {
+  --plugin-store-hub-surface: var(--bg-card);
+  --plugin-store-hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+  --plugin-store-hub-radius: calc(var(--radius-md) + 2px);
+}
+
+html[data-layout="hub"][data-theme="light"] .plugins-page--hub {
+  --plugin-store-hub-surface: #ffffff;
+  --plugin-store-hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 560px) {
+  html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
+    gap: 14px;
+  }
+}
+
+@media (min-width: 900px) {
+  html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1480px) {
+  html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+html[data-layout="hub"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--plugin-store-hub-radius);
+  background: var(--plugin-store-hub-surface);
+  box-shadow: var(--plugin-store-hub-shadow);
+}
+
+html[data-layout="hub"][data-theme="light"] .plugins-page--hub .plugins-page__plugin-grid > .plugin-catalog-card {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card.ui-card--interactive:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent),
+    var(--plugin-store-hub-shadow);
+}
+
+html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card .plugin-store-card__layout {
+  padding: 12px 42px 2px 14px;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
 html[data-layout="hub"] .plugins-page__plugin-grid > .plugin-catalog-card {
   height: 100%;
-  min-height: 10.5rem;
+  min-height: 0;
 }
 
 html[data-layout="hub"] .plugin-catalog-card__action:active:not(:disabled) {

@@ -152,6 +152,24 @@ export function useLlmProviders() {
     doc.value.routing = { ...doc.value.routing, chain_fallback: ids };
   }
 
+  function setProviderTaskModel(providerId: string, task: string, model: string) {
+    const index = doc.value.providers.findIndex((row) => row.id === providerId);
+    if (index < 0) return;
+    const row = doc.value.providers[index];
+    const task_models = { ...row.task_models };
+    const trimmed = model.trim();
+    if (trimmed) task_models[task] = trimmed;
+    else delete task_models[task];
+    updateProvider(index, { ...row, task_models });
+  }
+
+  function setTaskModelRoute(task: string, providerId: string, model: string) {
+    if (providerId && !doc.value.routing.tasks[task]) {
+      setTaskRoute(task, providerId);
+    }
+    if (providerId) setProviderTaskModel(providerId, task, model);
+  }
+
   async function testProvider(providerId: string) {
     testStates.value = {
       ...testStates.value,
@@ -225,6 +243,8 @@ export function useLlmProviders() {
     removeProvider,
     setTaskRoute,
     setChainFallback,
+    setProviderTaskModel,
+    setTaskModelRoute,
     testProvider,
     discoverModels,
   };

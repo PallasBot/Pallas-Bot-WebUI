@@ -11,9 +11,12 @@ import type {
   LlmProviderConfigRow,
 } from "@/api/pallasTypes";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
+import LlmModelSelect from "@/components/ai-config/LlmModelSelect.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { LLM_TASK_ROUTE_LABELS } from "@/config/configFieldLabels";
+import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
+import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
+import { collectSavedRoutingModels } from "@/utils/llmModelOptionSources";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
 function emptyRouting(): LlmLocalRoutingConfig {
@@ -39,8 +42,16 @@ const err = ref("");
 const baseline = ref("");
 const draft = ref<LlmLocalRoutingConfig>(emptyRouting());
 const providers = ref<LlmProviderConfigRow[]>([]);
+const picker = useLlmModelPickerOptions();
+const { discoveringModels } = picker;
 
 const dirty = computed(() => JSON.stringify(draft.value) !== baseline.value);
+const modelSelectGroups = computed(() =>
+  picker.buildGroups({
+    providers: providers.value,
+    savedValues: collectSavedRoutingModels(draft.value),
+  }),
+);
 const localProviders = computed(() => providers.value.filter((row) => row.kind === "local"));
 const localProviderDefaults = computed(() =>
   localProviders.value
@@ -53,13 +64,6 @@ const localProviderTaskModels = computed(() =>
       .filter(([, model]) => String(model || "").trim())
       .map(([task, model]) => ({ providerId: row.id, task, model: String(model).trim() })),
   ),
-);
-const taskRows = computed(() =>
-  (Object.entries(draft.value.task_models) as Array<[keyof LlmLocalRoutingConfig["task_models"], string]>).map(([task, model]) => ({
-    task,
-    label: LLM_TASK_ROUTE_LABELS[task] ?? task,
-    model,
-  })),
 );
 const moeRows = computed(() =>
   (Object.entries(draft.value.moe_models) as Array<[keyof LlmLocalRoutingConfig["moe_models"], string]>).map(([tier, model]) => ({
@@ -87,6 +91,7 @@ async function load() {
     draft.value = JSON.parse(JSON.stringify(routing)) as LlmLocalRoutingConfig;
     providers.value = doc.providers || [];
     markClean();
+    await picker.refreshPickerContext(providers.value);
   } catch (e) {
     err.value = axiosErrorDetail(e);
   } finally {
@@ -147,7 +152,9 @@ onMounted(() => {
 
     <div class="panel__bd local-routing-panel__body">
       <p class="muted local-routing-panel__intro">
-        这里编辑 AI 服务本地模型解析链，保存写入 <code>.env</code>。单模型模式下，主本地 provider 默认跟随“当前运行模型”；多模型模式下，task / MoE / provider 默认模型可继续分流。
+        {{ AI_TASK_CONFIG_HINTS.routingIntro }}
+        Task→Provider / 模型请在上方 Provider 区的「Task 路由与模型」统一配置；本面板只管默认本地模型与 MoE 分档。
+        保存写入 <code>.env</code>。
       </p>
 
       <div
@@ -172,16 +179,30 @@ onMounted(() => {
         </div>
       </div>
 
+      <div class="row-actions local-routing-panel__model-actions">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="loading || discoveringModels || !providers.length"
+          :busy="discoveringModels"
+          @click="picker.discoverProviderModels(providers)"
+        >
+          {{ discoveringModels ? "发现中…" : "刷新模型列表" }}
+        </UiButton>
+      </div>
+
       <div class="local-routing-panel__editor">
         <section class="local-routing-panel__block">
           <h3>基础策略</h3>
           <label class="form-field">
             <span class="form-field__label">默认本地模型</span>
-            <input
+            <LlmModelSelect
               v-model="draft.llm_model"
-              class="inp"
-              placeholder="qwen3:8b"
-            >
+              :groups="modelSelectGroups"
+              empty-label="（回退当前运行模型）"
+              :disabled="loading"
+              aria-label="默认本地模型"
+            />
           </label>
           <label class="form-field local-routing-panel__switch-field">
             <span class="form-field__label">启用本地多模型分流</span>
@@ -196,25 +217,10 @@ onMounted(() => {
         </section>
 
         <section class="local-routing-panel__block">
-          <h3>AI 侧 task 模型覆盖</h3>
-          <div class="local-routing-panel__field-grid">
-            <label
-              v-for="row in taskRows"
-              :key="row.task"
-              class="form-field"
-            >
-              <span class="form-field__label">{{ row.label }}</span>
-              <input
-                v-model="draft.task_models[row.task]"
-                class="inp"
-                :placeholder="`${row.label} 不填则回退默认本地模型`"
-              >
-            </label>
-          </div>
-        </section>
-
-        <section class="local-routing-panel__block">
           <h3>本地 MoE 模型</h3>
+          <p class="muted local-routing-panel__block-hint">
+            按复杂度分档选模型；与上方 task 矩阵独立，仅在开启 MoE 分流时生效。
+          </p>
           <div class="local-routing-panel__field-grid">
             <label
               v-for="row in moeRows"
@@ -222,11 +228,12 @@ onMounted(() => {
               class="form-field"
             >
               <span class="form-field__label">{{ row.label }}</span>
-              <input
+              <LlmModelSelect
                 v-model="draft.moe_models[row.tier]"
-                class="inp"
-                :placeholder="`${row.label} 不填则回退默认本地模型`"
-              >
+                :groups="modelSelectGroups"
+                :disabled="loading"
+                :aria-label="`${row.label} MoE 模型`"
+              />
             </label>
           </div>
         </section>
@@ -256,7 +263,10 @@ onMounted(() => {
         </section>
 
         <section class="local-routing-panel__block">
-          <h3>Provider 内 task 覆盖</h3>
+          <h3>Provider task 覆盖（摘要）</h3>
+          <p class="muted local-routing-panel__block-hint">
+            在上方 Provider 区「Task 路由与模型」统一编辑；此处只读展示 providers.toml 中的结果。
+          </p>
           <p
             v-if="!localProviderTaskModels.length"
             class="muted"
@@ -292,6 +302,10 @@ onMounted(() => {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.local-routing-panel__model-actions {
+  justify-content: flex-end;
 }
 
 .local-routing-panel__summary {
@@ -345,6 +359,12 @@ onMounted(() => {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
+}
+
+.local-routing-panel__block-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
 }
 
 .local-routing-panel__field-grid {

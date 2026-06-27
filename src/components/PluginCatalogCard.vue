@@ -5,10 +5,16 @@ import PluginIcon from "@/components/PluginIcon.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import {
+  pluginDisplayDescription,
+  pluginDisplaySubtitle,
+  pluginDisplayTitle,
+  pluginResolvedId,
+} from "@/utils/pluginDisplayMeta";
 import { pluginFavoriteNames, toggleFavoritePlugin } from "@/utils/pluginFavorites";
 import {
-  hasPluginLoadWhere,
   pluginLoadBadgeText,
+  pluginLoadProcessTags,
   pluginLoadWhere,
 } from "@/utils/pluginLoadRoleLabel";
 import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
@@ -31,13 +37,11 @@ const resolvedAvatarUrl = computed(() => {
   return (props.avatarUrl || "").trim() || null;
 });
 
-function displayTitle(p: PluginRow): string {
-  return p.metadata?.name || p.nb_plugin_name || p.name;
-}
-
-function pluginId(p: PluginRow): string {
-  return (p.resolved_plugin_id || p.name || "").trim();
-}
+const title = computed(() => pluginDisplayTitle(props.plugin));
+const subtitle = computed(() => pluginDisplaySubtitle(props.plugin));
+const description = computed(() => pluginDisplayDescription(props.plugin));
+const pluginIdValue = computed(() => pluginResolvedId(props.plugin));
+const loadProcessTags = computed(() => pluginLoadProcessTags(props.plugin));
 
 function isFavorite(name: string): boolean {
   return pluginFavoriteNames.value.has(name);
@@ -53,41 +57,65 @@ watch(
 
 <template>
   <UiCard
-    class="plugin-catalog-card"
+    class="plugin-store-card plugin-catalog-card"
     :active="active"
-    interactive
     glass
+    interactive
   >
-    <div class="plugin-catalog-card__body">
-      <button
-        type="button"
-        class="plugin-catalog-card__main"
-        @click="emit('select')"
-      >
-        <div class="plugin-catalog-card__media">
-          <PluginIcon
-            :plugin-id="pluginId(plugin)"
-            :label="displayTitle(plugin)"
-            :icon-url="iconUrl"
-            size="md"
-          />
-          <span
+    <button
+      type="button"
+      class="plugin-catalog-card__fav"
+      :aria-pressed="isFavorite(pluginIdValue)"
+      :title="isFavorite(pluginIdValue) ? '取消收藏' : '收藏'"
+      :aria-label="isFavorite(pluginIdValue) ? `取消收藏「${title}」` : `收藏「${title}」`"
+      @click.stop="toggleFavoritePlugin(pluginIdValue)"
+    >
+      ★
+    </button>
+
+    <button
+      type="button"
+      class="plugin-catalog-card__hit"
+      @click="emit('select')"
+    >
+      <div class="plugin-store-card__layout">
+        <div class="plugin-store-card__media">
+          <div class="plugin-store-card__cover">
+            <PluginIcon
+              :plugin-id="pluginIdValue"
+              :label="title"
+              :icon-url="iconUrl"
+              size="xl"
+            />
+          </div>
+          <div
             v-if="resolvedAvatarUrl"
-            class="plugin-catalog-card__avatar"
+            class="plugin-store-card__avatar"
           >
             <img
               :src="resolvedAvatarUrl"
-              :alt="displayTitle(plugin)"
+              :alt="title"
               loading="lazy"
               @error="avatarImageFailed = true"
             >
-          </span>
+          </div>
         </div>
-        <div class="plugin-catalog-card__text">
-          <div class="plugin-catalog-card__title-row">
-            <h3 class="plugin-catalog-card__title" :title="displayTitle(plugin)">
-              {{ displayTitle(plugin) }}
-            </h3>
+
+        <div class="plugin-store-card__info">
+          <h3 class="plugin-store-card__title" :title="title">
+            {{ title }}
+          </h3>
+          <p
+            v-if="subtitle"
+            class="plugin-store-card__byline muted"
+            :title="subtitle"
+          >
+            {{ subtitle }}
+          </p>
+          <div
+            v-if="plugin.globally_disabled || pluginLoadBadgeText(plugin) || hasPluginSource(plugin) || loadProcessTags.length"
+            class="plugin-store-card__meta-row"
+          >
             <UiBadge
               v-if="plugin.globally_disabled"
               variant="muted"
@@ -101,47 +129,37 @@ watch(
             >
               {{ pluginLoadBadgeText(plugin) }}
             </UiBadge>
+            <span
+              v-if="hasPluginSource(plugin)"
+              class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+              :title="pluginSourceDir(plugin) || pluginSourceLabel(plugin.plugin_source)"
+            >
+              {{ pluginSourceLabel(plugin.plugin_source) }}
+            </span>
+            <span
+              v-for="tag in loadProcessTags"
+              :key="tag"
+              class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+            >
+              {{ tag }} 进程
+            </span>
           </div>
+        </div>
+
+        <div
+          v-if="description"
+          class="plugin-store-card__summary"
+        >
           <p
-            v-if="plugin.nb_plugin_name && plugin.nb_plugin_name !== pluginId(plugin) && displayTitle(plugin) !== plugin.nb_plugin_name"
-            class="muted plugin-catalog-card__id"
+            class="plugin-store-card__desc muted"
+            :title="description"
           >
-            {{ plugin.nb_plugin_name }}
-          </p>
-          <p
-            class="muted plugin-catalog-card__desc"
-            :title="(plugin.metadata?.description || plugin.module) || undefined"
-          >
-            {{ plugin.metadata?.description || plugin.module }}
-          </p>
-          <p
-            v-if="hasPluginSource(plugin)"
-            class="plugin-catalog-card__meta muted"
-          >
-            {{ pluginSourceLabel(plugin.plugin_source) }}
-            <template v-if="pluginSourceDir(plugin)">
-              · {{ pluginSourceDir(plugin) }}
-            </template>
-          </p>
-          <p
-            v-if="hasPluginLoadWhere(plugin)"
-            class="plugin-catalog-card__meta muted"
-          >
-            {{ pluginLoadWhere(plugin) }}
+            {{ description }}
           </p>
         </div>
-      </button>
-      <button
-        type="button"
-        class="plugin-catalog-card__fav"
-        :aria-pressed="isFavorite(pluginId(plugin))"
-        :title="isFavorite(pluginId(plugin)) ? '取消收藏' : '收藏'"
-        :aria-label="isFavorite(pluginId(plugin)) ? `取消收藏「${displayTitle(plugin)}」` : `收藏「${displayTitle(plugin)}」`"
-        @click.stop="toggleFavoritePlugin(pluginId(plugin))"
-      >
-        ★
-      </button>
-    </div>
+      </div>
+    </button>
+
     <template #footer>
       <UiButton
         variant="primary"
@@ -153,33 +171,3 @@ watch(
     </template>
   </UiCard>
 </template>
-
-<style scoped>
-.plugin-catalog-card__media {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-}
-
-.plugin-catalog-card__avatar {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 2px solid var(--surface);
-  background: var(--surface);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
-}
-
-.plugin-catalog-card__avatar img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-</style>
