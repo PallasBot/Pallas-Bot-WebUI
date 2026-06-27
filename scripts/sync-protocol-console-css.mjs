@@ -1,41 +1,24 @@
 /**
- * 从 WebUI app.css 抽取与协议端共用的控制台样式，写入 Pallas-Bot 静态资源。
+ * 从 WebUI app.css 抽取与协议端共用的控制台样式，写入 Pallas-Plugin-Protocol 静态资源。
  * 运行：npm run sync:protocol-css（在 Pallas-Bot-WebUI 目录）
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildConsoleSharedCss } from "./protocol-css-lib.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webuiRoot = path.resolve(__dirname, "..");
 const appCssPath = path.join(webuiRoot, "src/styles/app.css");
-const outShared = path.resolve(
+const protoUiDir = path.resolve(
   webuiRoot,
-  "../Pallas-Bot/src/plugins/pallas_protocol/web/static/pallas_ui/console-shared.css",
+  "../Pallas-Plugin-Protocol/src/pallas_plugin_protocol/web/static/pallas_ui",
 );
-const outShell = path.resolve(
-  webuiRoot,
-  "../Pallas-Bot/src/plugins/pallas_protocol/web/static/pallas_ui/shell.css",
-);
-const shellProtocolPath = path.resolve(
-  webuiRoot,
-  "../Pallas-Bot/src/plugins/pallas_protocol/web/static/pallas_ui/shell-protocol.css",
-);
+const outShared = path.join(protoUiDir, "console-shared.css");
+const outShell = path.join(protoUiDir, "shell.css");
+const shellProtocolPath = path.join(protoUiDir, "shell-protocol.css");
 
-/** 与 app.css 行号同步；结构大改时需更新 */
-const EXTRACT_RANGES = [
-  [1, 245],
-  [247, 306],
-  [308, 2131],
-  [2189, 2233],
-  [1366, 1369],
-  [1946, 2009],
-  [4718, 4835],
-  [4837, 4843],
-  [5215, 5363],
-  [5424, 5429],
-  [5431, 5693],
-];
+/** 与 app.css 行号同步；结构大改时需更新 protocol-css-lib.mjs */
 
 const PROTOCOL_COMPAT = `
 /* —— 协议端 HTML 类名 / 变量别名（勿删）—— */
@@ -50,6 +33,15 @@ const PROTOCOL_COMPAT = `
   --ok: var(--success);
   --err: var(--danger);
   --accent-subtle: var(--accent-soft);
+  --radius-xl: var(--radius-lg);
+  --pallas-text-xs: 0.75rem;
+  --pallas-text-sm: var(--ui-field-label-size, 0.8125rem);
+  --pallas-text-base: var(--ui-ctrl-font, 0.9375rem);
+  --pallas-text-lg: var(--console-panel-title-size, 1.0625rem);
+  --pallas-text-stat: 1.125rem;
+  --pallas-weight-body: 450;
+  --pallas-weight-semibold: 600;
+  --pallas-weight-bold: 700;
 }
 
 .btn.linkish {
@@ -104,12 +96,7 @@ function pruneProtocolCss(content) {
 }
 
 const lines = fs.readFileSync(appCssPath, "utf8").split("\n");
-const chunks = EXTRACT_RANGES.map(([start, end]) => lines.slice(start - 1, end).join("\n"));
-const sharedBody = `/* 由 Pallas-Bot-WebUI/scripts/sync-protocol-console-css.mjs 生成 — 勿手改 */
-/* 源文件：src/styles/app.css  生成时间：${new Date().toISOString()} */
-
-${chunks.join("\n\n")}
-`;
+const sharedBody = buildConsoleSharedCss(appCssPath, new Date().toISOString());
 
 fs.mkdirSync(path.dirname(outShared), { recursive: true });
 fs.writeFileSync(outShared, sharedBody, "utf8");
@@ -143,10 +130,11 @@ const shellEntry = `/* 协议端样式入口：与 Pallas WebUI 共用 console-s
 fs.writeFileSync(outShell, shellEntry, "utf8");
 
 let protocolBody = "";
+let preservedExtras = "";
 if (protocolExtras.includes(PROTOCOL_EXTRAS_MARKER)) {
-  protocolBody = stripProtocolCompatBlock(
-    protocolExtras.split(PROTOCOL_EXTRAS_MARKER)[0].trim(),
-  );
+  const parts = protocolExtras.split(PROTOCOL_EXTRAS_MARKER);
+  protocolBody = stripProtocolCompatBlock(parts[0].trim());
+  preservedExtras = parts.slice(1).join(PROTOCOL_EXTRAS_MARKER).trim();
 } else if (protocolExtras.includes("协议端壳层")) {
   protocolBody = pruneProtocolCss(protocolExtras);
 } else {
@@ -154,12 +142,16 @@ if (protocolExtras.includes(PROTOCOL_EXTRAS_MARKER)) {
 }
 
 if (protocolBody || fs.existsSync(shellProtocolPath) || protocolExtras) {
+  const extrasBlock = preservedExtras ? `\n${preservedExtras}\n` : "";
   fs.writeFileSync(
     shellProtocolPath,
-    `${PROTOCOL_COMPAT}\n\n${protocolBody.trim()}\n${PROTOCOL_EXTRAS_MARKER}\n`,
+    `${PROTOCOL_COMPAT}\n\n${protocolBody.trim()}\n${PROTOCOL_EXTRAS_MARKER}${extrasBlock}`,
     "utf8",
   );
 }
 
 console.log(`Wrote ${outShared} (${sharedBody.length} bytes)`);
 console.log(`Wrote ${outShell}`);
+if (fs.existsSync(shellProtocolPath)) {
+  console.log(`Wrote ${shellProtocolPath}`);
+}

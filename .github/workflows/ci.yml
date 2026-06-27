@@ -35,5 +35,8 @@ jobs:
       - name: Check generated OpenAPI types drift
         run: npm run check:console-openapi-types
 
+      - name: Check protocol console-shared.css drift
+        run: npm run check:protocol-css
+
       - name: Type check and build
         run: npm run build:ci
