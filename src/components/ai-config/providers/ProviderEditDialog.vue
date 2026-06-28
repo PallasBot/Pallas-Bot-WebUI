@@ -32,8 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   submit: [row: LlmProviderConfigRow];
-  discover: [providerId: string];
-  "refresh-models": [providerId: string];
+  "refresh-models": [row: LlmProviderConfigRow];
 }>();
 
 const draft = ref<LlmProviderConfigRow>(blank());
@@ -93,18 +92,45 @@ const modelSelectGroups = computed(() =>
   }),
 );
 
+function buildDraftRow(): LlmProviderConfigRow | null {
+  const id = draft.value.id.trim();
+  if (!id) return null;
+  const apiKeyInput = draftApiKey.value.trim();
+  const apiKeyEnv = useEnvVar.value ? draft.value.api_key_env.trim() : "";
+  return {
+    id,
+    kind: draft.value.kind,
+    base_url: draft.value.base_url.trim(),
+    api_key: apiKeyInput,
+    api_key_env: apiKeyEnv,
+    api_key_set: draft.value.api_key_set,
+    default_model: draft.value.default_model.trim(),
+    enabled: draft.value.enabled,
+    task_models: { ...(draft.value.task_models || {}) },
+  };
+}
+
 function refreshModels() {
-  const providerId = draft.value.id.trim();
-  emit("refresh-models", providerId);
-  if (providerId) emit("discover", providerId);
+  const row = buildDraftRow();
+  if (!row) {
+    localErr.value = "请先填写 Provider ID";
+    return;
+  }
+  if (row.kind !== "local" && !row.base_url) {
+    localErr.value = "远程 Provider 需要填写 Base URL";
+    return;
+  }
+  localErr.value = "";
+  emit("refresh-models", row);
 }
 
 function submit() {
-  const id = draft.value.id.trim();
-  if (!id) {
+  const row = buildDraftRow();
+  if (!row) {
     localErr.value = "请填写 Provider ID";
     return;
   }
+  const id = row.id;
   if (!isEdit.value && props.existingIds.includes(id)) {
     localErr.value = `Provider ID「${id}」已存在`;
     return;
@@ -122,18 +148,7 @@ function submit() {
       return;
     }
   }
-  const task_models = { ...(draft.value.task_models || {}) };
-  emit("submit", {
-    id,
-    kind: draft.value.kind,
-    base_url: draft.value.base_url.trim(),
-    api_key: apiKeyInput,
-    api_key_env: apiKeyEnv,
-    api_key_set: draft.value.api_key_set,
-    default_model: draft.value.default_model.trim(),
-    enabled: draft.value.enabled,
-    task_models,
-  });
+  emit("submit", row);
 }
 
 </script>
@@ -293,7 +308,7 @@ function submit() {
           class="provider-edit-dialog__footer-btn"
           @click="submit"
         >
-          {{ isEdit ? "应用修改" : "添加" }}
+          {{ isEdit ? (draftApiKey.trim() || useEnvVar ? "保存" : "应用修改") : "添加" }}
         </UiButton>
       </div>
     </template>

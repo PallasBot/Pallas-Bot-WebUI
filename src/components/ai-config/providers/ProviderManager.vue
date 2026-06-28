@@ -102,15 +102,30 @@ async function loadEnvTaskModels() {
   }
 }
 
-async function onRefreshDialogModels(providerId: string) {
-  await picker.refreshPickerContext(providers.value);
-  if (providerId) await store.discoverModels(providerId);
+async function persistDraftRow(row: LlmProviderConfigRow) {
+  if (editIndex.value === null) store.addProvider(row);
+  else store.updateProvider(editIndex.value, row);
+  if (row.kind === "local") return;
+  const hasAuth = Boolean(row.api_key?.trim() || row.api_key_env?.trim() || row.api_key_set);
+  if (hasAuth) await store.save();
 }
 
-function onSubmit(row: LlmProviderConfigRow) {
+async function onRefreshDialogModels(row: LlmProviderConfigRow) {
+  const providerId = row.id.trim();
+  if (!providerId) return;
+  await persistDraftRow(row);
+  await picker.refreshPickerContext(providers.value);
+  await store.discoverModels(providerId);
+}
+
+async function onSubmit(row: LlmProviderConfigRow) {
   if (editIndex.value === null) store.addProvider(row);
   else store.updateProvider(editIndex.value, row);
   dialogOpen.value = false;
+  // 密钥只在弹窗内填写，须立即落盘；否则用户以为「应用修改」已保存。
+  if (row.api_key?.trim() || row.api_key_env?.trim()) {
+    await store.save();
+  }
 }
 
 const deleteRow = computed(() =>
@@ -325,7 +340,6 @@ onMounted(async () => {
     :models-state="editRow ? modelsStates[editRow.id] : modelsStates['']"
     @close="dialogOpen = false"
     @submit="onSubmit"
-    @discover="store.discoverModels"
     @refresh-models="onRefreshDialogModels"
   />
 
