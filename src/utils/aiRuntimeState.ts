@@ -3,9 +3,7 @@ import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
 /**
  * AI 运行态 → 标签/样式 的唯一映射。
  *
- * 此前 AiHomePage、AiConfigRuntimeSection、AiRuntimeSummaryPanel 与
- * aiRuntimeResolver 各自维护一份 state→class / state→label 副本，行为略有出入
- * （例如 disabled 的圆点样式）。统一收敛到这里，避免再次漂移。
+ * 各页面曾各自维护 state 标签/样式，现统一在此。
  */
 
 /** 状态标签文案，对应 tag / 徽标。 */

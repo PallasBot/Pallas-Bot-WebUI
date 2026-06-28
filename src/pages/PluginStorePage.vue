@@ -1236,7 +1236,7 @@ onDeactivated(() => {
             浏览并安装 Pallas 官方插件（<span class="console-hub-chip">uv run pallas ext install</span>）。
             <template v-if="webuiInstallEnabled">
               <template v-if="restartAvailable">
-                支持一键安装；结果会按扩展生效策略提示（可热加载 / Worker 重启 / 全栈重启）。
+                支持一键安装；结果会按扩展生效策略提示（可热更新 / 重启分片节点 / 重启全部进程）。
               </template>
               <template v-else>安装后请按页面提示重启或手动生效。</template>
             </template>

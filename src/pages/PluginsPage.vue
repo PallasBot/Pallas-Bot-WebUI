@@ -309,7 +309,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
           class="panel__bd"
         >
           <p class="muted plugins-page__capabilities-note">
-            聚合命令权限、冷却、LLM 工具与存储键声明；热重载策略对应 L1 配置 / L2 元数据 / L3 代码三级。
+            聚合命令权限、冷却、LLM 工具与存储键声明；热重载策略分为仅配置、配置与说明、含代码变更三档。
           </p>
           <div class="table-wrap plugins-page__capabilities-table-wrap">
             <table class="data console-data-table plugins-page__capabilities-table">

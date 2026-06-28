@@ -84,7 +84,7 @@ function askSwitch() {
   }
   confirm.action = "switch";
   confirm.title = "切换模型";
-  confirm.message = `切换为「${model}」？将先卸载常驻模型${pullOnSwitch.value ? "并尝试拉取" : ""}；无需重启 Celery。`;
+  confirm.message = `切换为「${model}」？将先卸载常驻模型${pullOnSwitch.value ? "并尝试拉取" : ""}；无需重启后台任务。`;
   confirm.tone = "default";
   confirm.open = true;
 }
@@ -98,7 +98,7 @@ function askNumGpu() {
   }
   confirm.action = "numGpu";
   confirm.title = "设置 GPU 层数";
-  confirm.message = `将 GPU 层数设为 ${n}？会先卸载常驻权重，下次对话按新层数加载；无需重启 Celery。`;
+  confirm.message = `将 GPU 层数设为 ${n}？会先卸载常驻权重，下次对话按新层数加载；无需重启后台任务。`;
   confirm.tone = "default";
   confirm.open = true;
 }
@@ -106,7 +106,7 @@ function askNumGpu() {
 function askReload() {
   confirm.action = "reload";
   confirm.title = "从配置重载";
-  confirm.message = "从 AI 服务 .env 重载模型与 GPU 层数？将自动卸载常驻权重，无需重启 Celery。";
+  confirm.message = "从 AI 服务 .env 重载模型与 GPU 层数？将自动卸载常驻权重，无需重启后台任务。";
   confirm.tone = "default";
   confirm.open = true;
 }
@@ -230,18 +230,18 @@ onMounted(() => {
           class="model-admin__status-row"
         >
           <dt>本地模型策略</dt>
-          <dd>{{ status.local_model_policy === "single_runtime" ? "单模型：当前运行模型优先" : "多模型：任务/MoE 可分流" }}</dd>
+          <dd>{{ status.local_model_policy === "single_runtime" ? "单模型：当前运行模型优先" : "多模型：按任务与分档分流" }}</dd>
         </div>
       </dl>
 
       <p class="muted model-admin__intro">
-        热切换本地 Ollama 模型与 GPU 层数；下方登记上游 Provider，专家模式页底可编辑 task / MoE 路由。
+        热切换本地模型与 GPU 层数；下方登记上游 Provider，专家模式页底可编辑任务路由与多模型分流。
       </p>
       <p
         v-if="status?.local_multi_model_enabled"
         class="muted model-admin__hint"
       >
-        当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按 task / MoE / provider 默认模型分流。
+        当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按任务场景、分档或 Provider 默认模型分流。
       </p>
       <div class="model-admin__links">
         <AiObservationLinks />

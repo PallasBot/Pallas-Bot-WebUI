@@ -91,7 +91,7 @@ export function botHttpBaseFromSystem(system: SystemData | null): string | null 
   return raw.replace(/\/$/, "");
 }
 
-/** NoneBot driver 监听（仅供参考，可能为 0.0.0.0） */
+/** 消息框架 driver 监听（可能为 0.0.0.0，仅作提示） */
 export function nonebotDriverHint(system: SystemData | null): string | null {
   const host = system?.nonebot2_driver?.host;
   const port = system?.nonebot2_driver?.port;

@@ -17,7 +17,7 @@ export function visibleBots<T extends { adapter: string }>(rows: T[] | undefined
 }
 
 /**
- * 好友/群等按账号维度选择：合并 NoneBot 当前连接与数据库中的 Bot 配置。
+ * 好友/群等按账号维度选择：合并消息框架当前连接与数据库中的 Bot 配置。
  * 不过滤 OneBot V11（NapCat 等仍使用该适配器名）；未在线的账号用占位行展示。
  */
 export function botPickerRowsFromInstances(inst: InstancesData | null | undefined): BotRow[] {

@@ -148,8 +148,8 @@ const shardPgHintWarn = computed(() => Boolean((shardObs.value?.pg_pool?.warning
 
 const lede = computed(() =>
   shardObsVisible.value
-    ? "Hub 汇总 worker 今日 ingress_dispatch；配置见通用配置 → ingress_dispatch。"
-    : "单进程今日 ingress_dispatch；配置见通用配置 → ingress_dispatch。",
+    ? "分片部署下由主节点汇总各节点今日消息分发统计；配置见通用配置 → 消息处理与发送。"
+    : "单进程今日消息分发统计；配置见通用配置 → 消息处理与发送。",
 );
 
 async function load() {

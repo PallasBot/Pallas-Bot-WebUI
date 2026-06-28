@@ -151,7 +151,7 @@ async function load() {
         data.value = await buildPersonaObserveFallback(groupIdParsed.value);
         legacyMode.value = true;
         err.value =
-          "当前 Bot 尚未注册 persona-observe 接口：已用群配置与在线账号降级展示。分片部署请确认访问 Hub 控制台并已重启 Hub，再查看完整情感轴。";
+          "当前 Bot 尚未注册 persona-observe 接口：已用群配置与在线账号降级展示。分片部署请确认访问主节点控制台并已重启主节点，再查看完整情感轴。";
       } catch (fallbackErr) {
         data.value = null;
         err.value = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);

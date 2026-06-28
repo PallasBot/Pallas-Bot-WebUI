@@ -1,6 +1,6 @@
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 
-/** 收起 AI 配置 Hub 内的「接通自检」卡片（侧栏「AI 体检」仍可用）。 */
+/** 收起 AI 配置页内的「接通自检」卡片（侧栏「AI 体检」仍可用）。 */
 export const AI_WIZARD_CHECKLIST_DISMISS_KEY = "pallas.aiConfig.wizardChecklistDismissed";
 
 export interface AiWizardCheckAction {

@@ -869,7 +869,7 @@ watch(sortedDbBots, () => {
 
 const HOME_CONN_DURATION_TICK_MS = 1_000;
 
-/** NoneBot 在线会话中与当前选中账号对应的条目（含接入时刻） */
+/** 在线会话中与当前选中账号对应的条目（含接入时刻） */
 const selectedNonebotRuntimeBot = computed(() => {
   const acc = selectedAccount.value;
   if (acc == null) return null;
@@ -1252,7 +1252,7 @@ onUnmounted(() => {
       <div v-if="pageReady" class="home-body">
         <p v-if="overviewBusy" class="home-sync" role="status">正在加载概况…</p>
 
-        <!-- ═══ KPI Bar（GsHub 风格） ═══ -->
+        <!-- KPI 指标条 -->
         <div class="home-kpi-head">
           <div class="home-kpi-bar">
             <div class="home-kpi-cell">
@@ -1423,7 +1423,7 @@ onUnmounted(() => {
               <p class="muted">请选择一个 Bot 账号</p>
             </div>
             <div class="home-card__bd home-card__bd--empty" v-else>
-              <p class="muted">数据库中暂无 Bot 配置记录。请在后端创建 <code>bot_config</code> 后刷新。</p>
+              <p class="muted">数据库中暂无牛牛账号记录，请先添加账号配置后刷新。</p>
             </div>
           </div>
 
@@ -1518,7 +1518,7 @@ onUnmounted(() => {
             <div class="home-card__bd">
               <HomeLazyReveal :loading="versionMetaPending" variant="version-dl">
                 <dl class="home-ver-dl">
-                  <div class="home-ver-dl__row"><dt>NoneBot2</dt><dd><span class="home-ver-dl__val">{{ nonebot2VersionDisplay }}</span><span class="home-ver-dl__tag">框架</span></dd></div>
+                  <div class="home-ver-dl__row"><dt>消息框架</dt><dd><span class="home-ver-dl__val">{{ nonebot2VersionDisplay }}</span><span class="home-ver-dl__tag">底层</span></dd></div>
                   <div class="home-ver-dl__row"><dt>Pallas-Bot</dt><dd>
                     <span class="home-ver-dl__val">{{ pallasBotVersionDisplay }}</span>
                     <RouterLink v-if="botUpdateCheck?.has_update" class="home-ver-dl__link" to="/update#console-update-bot"><UiBadge variant="warn">有更新</UiBadge></RouterLink>
@@ -1584,7 +1584,7 @@ onUnmounted(() => {
                       :busy="restartBusy || restartInProgress"
                       @click="triggerHomeRestart(false)"
                     >
-                      {{ shardedRuntime ? "全栈重启" : "重启 Bot" }}
+                      {{ shardedRuntime ? "重启全部进程" : "重启 Bot" }}
                     </UiButton>
                   </div>
                 </div>

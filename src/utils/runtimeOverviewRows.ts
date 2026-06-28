@@ -1,11 +1,20 @@
 import type { LlmRuntimeOverviewData } from "@/api/pallasTypes";
+import {
+  aiCircuitStateLabel,
+  aiDegradedStateLabel,
+  aiFailureClassLabel,
+  aiHealthStateLabel,
+} from "@/utils/aiHealthLabel";
 
 export interface RuntimeOverviewRow {
   id: string;
   title: string;
   healthState: string;
+  healthStateRaw: string;
   circuitState: string;
+  circuitStateRaw: string;
   degradedState: string;
+  degradedStateRaw: string;
   detail: string;
   queueDepth?: number;
   activeTasks?: number;
@@ -14,6 +23,24 @@ export interface RuntimeOverviewRow {
 function labelOrDash(value?: string | null): string {
   const text = String(value ?? "").trim();
   return text || "—";
+}
+
+function overviewStateFields(
+  health?: string | null,
+  circuit?: string | null,
+  degraded?: string | null,
+): Pick<
+  RuntimeOverviewRow,
+  "healthState" | "healthStateRaw" | "circuitState" | "circuitStateRaw" | "degradedState" | "degradedStateRaw"
+> {
+  return {
+    healthState: aiHealthStateLabel(health),
+    healthStateRaw: labelOrDash(health),
+    circuitState: aiCircuitStateLabel(circuit),
+    circuitStateRaw: labelOrDash(circuit),
+    degradedState: aiDegradedStateLabel(degraded),
+    degradedStateRaw: labelOrDash(degraded),
+  };
 }
 
 export function buildRuntimeOverviewRows(
@@ -30,12 +57,10 @@ export function buildRuntimeOverviewRows(
     rows.push({
       id: "llm.chat",
       title: "LLM 对话",
-      healthState: labelOrDash(llm.health_state),
-      circuitState: labelOrDash(llm.circuit_state),
-      degradedState: labelOrDash(llm.degraded_state),
-      detail: `Provider ${reachable}/${providers.length} 可达`
+      ...overviewStateFields(llm.health_state, llm.circuit_state, llm.degraded_state),
+      detail: `上游 ${reachable}/${providers.length} 可用`
         + (llm.consecutive_failures ? ` · 连续失败 ${llm.consecutive_failures}` : "")
-        + (llm.recent_failure_class ? ` · 最近失败 ${llm.recent_failure_class}` : ""),
+        + (llm.recent_failure_class ? ` · 最近失败 ${aiFailureClassLabel(llm.recent_failure_class)}` : ""),
     });
   }
 
@@ -44,11 +69,9 @@ export function buildRuntimeOverviewRows(
     rows.push({
       id: "image.generate",
       title: "绘图运行时",
-      healthState: labelOrDash(image.health_state),
-      circuitState: labelOrDash(image.circuit_state),
-      degradedState: labelOrDash(image.degraded_state),
+      ...overviewStateFields(image.health_state, image.circuit_state, image.degraded_state),
       detail: `连续失败 ${image.consecutive_failures ?? 0}`
-        + (image.recent_failure_class ? ` · ${image.recent_failure_class}` : ""),
+        + (image.recent_failure_class ? ` · ${aiFailureClassLabel(image.recent_failure_class)}` : ""),
     });
   }
 
@@ -57,9 +80,7 @@ export function buildRuntimeOverviewRows(
     rows.push({
       id: "media.tasks",
       title: "媒体任务平台",
-      healthState: labelOrDash(media.health_state),
-      circuitState: labelOrDash(media.circuit_state),
-      degradedState: labelOrDash(media.degraded_state),
+      ...overviewStateFields(media.health_state, media.circuit_state, media.degraded_state),
       detail: `队列 ${media.queue_depth ?? 0} · 执行中 ${media.active_tasks ?? 0} · 累计 ${media.total_tasks ?? 0}`,
       queueDepth: Number(media.queue_depth ?? 0),
       activeTasks: Number(media.active_tasks ?? 0),
@@ -70,9 +91,7 @@ export function buildRuntimeOverviewRows(
       rows.push({
         id: capability,
         title: capability === "media.sing" ? "点歌运行时" : capability,
-        healthState: labelOrDash(cap.health_state),
-        circuitState: "—",
-        degradedState: "—",
+        ...overviewStateFields(cap.health_state, null, null),
         detail: `队列 ${cap.queue_depth ?? 0} · 执行中 ${cap.active_tasks ?? 0}`,
         queueDepth: Number(cap.queue_depth ?? 0),
         activeTasks: Number(cap.active_tasks ?? 0),
@@ -85,10 +104,8 @@ export function buildRuntimeOverviewRows(
     rows.push({
       id: "tts.synthesize",
       title: "TTS 合成",
-      healthState: labelOrDash(tts.health_state),
-      circuitState: labelOrDash(tts.circuit_state),
-      degradedState: labelOrDash(tts.degraded_state),
-      detail: tts.celery_enabled == null ? "—" : tts.celery_enabled ? "Celery 已启用" : "Celery 未启用",
+      ...overviewStateFields(tts.health_state, tts.circuit_state, tts.degraded_state),
+      detail: tts.celery_enabled == null ? "—" : tts.celery_enabled ? "后台任务已启用" : "后台任务未启用",
     });
   }
 
@@ -105,14 +122,14 @@ export function runtimeOverviewHeadline(
   if (!health.ok) {
     return {
       ok: false,
-      title: "AI Runtime 不可达",
+      title: "AI 服务不可达",
       detail: health.error || health.llm_runtime_detail || "健康检查失败",
     };
   }
   const rows = buildRuntimeOverviewRows(overview);
   const degraded = rows.filter((row) => {
-    const hs = row.healthState.toLowerCase();
-    const cs = row.circuitState.toLowerCase();
+    const hs = row.healthStateRaw.toLowerCase();
+    const cs = row.circuitStateRaw.toLowerCase();
     return hs === "degraded" || hs === "unhealthy" || cs === "open" || cs === "half_open";
   }).length;
   if (degraded > 0) {

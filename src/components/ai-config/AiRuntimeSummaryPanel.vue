@@ -47,7 +47,7 @@ withDefaults(
       class="ai-runtime-summary__hub-link muted"
     >
       完整运行态与队列观测见
-      <RouterLink :to="AI_CONFIG_LEGACY_RUNTIME_REDIRECT">AI 观测 · Runtime 诊断</RouterLink>。
+      <RouterLink :to="AI_CONFIG_LEGACY_RUNTIME_REDIRECT">AI 观测 · 运行诊断</RouterLink>。
     </p>
 
     <div

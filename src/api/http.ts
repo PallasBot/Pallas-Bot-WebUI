@@ -59,7 +59,7 @@ export function isCatchAllApiError(err: unknown): boolean {
 }
 
 export function catchAllApiHint(): string {
-  return "接口未注册：请确认访问的是分片 Hub 控制台入口，并已重启 Hub 加载最新代码。";
+  return "接口未注册：请确认访问的是分片部署的主节点控制台入口，并已重启主节点加载最新代码。";
 }
 
 export const http = axios.create({

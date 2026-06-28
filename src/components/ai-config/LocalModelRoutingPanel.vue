@@ -153,7 +153,7 @@ onMounted(() => {
     <div class="panel__bd local-routing-panel__body">
       <p class="muted local-routing-panel__intro">
         {{ AI_TASK_CONFIG_HINTS.routingIntro }}
-        Task→Provider / 模型请在上方 Provider 区的「Task 路由与模型」统一配置；本面板只管默认本地模型与 MoE 分档。
+        任务→Provider / 模型请在上方 Provider 区的「任务路由与模型」统一配置；本面板只管默认本地模型与多模型分档。
         保存写入 <code>.env</code>。
       </p>
 
@@ -212,14 +212,14 @@ onMounted(() => {
               aria-label="启用本地多模型分流"
               @update:model-value="(v) => (draft.local_multi_model_enabled = v)"
             />
-            <span class="form-field__hint muted">关闭时，主本地 provider 优先跟随当前运行模型；开启后，下方 task / MoE / provider 默认模型可能继续分流。</span>
+            <span class="form-field__hint muted">关闭时，主本地 provider 优先跟随当前运行模型；开启后，下方任务场景、分档或 provider 默认模型可能继续分流。</span>
           </label>
         </section>
 
         <section class="local-routing-panel__block">
-          <h3>本地 MoE 模型</h3>
+          <h3>本地多模型分档</h3>
           <p class="muted local-routing-panel__block-hint">
-            按复杂度分档选模型；与上方 task 矩阵独立，仅在开启 MoE 分流时生效。
+            按复杂度分档选模型；与上方任务矩阵独立，仅在开启多模型分流时生效。
           </p>
           <div class="local-routing-panel__field-grid">
             <label
@@ -232,7 +232,7 @@ onMounted(() => {
                 v-model="draft.moe_models[row.tier]"
                 :groups="modelSelectGroups"
                 :disabled="loading"
-                :aria-label="`${row.label} MoE 模型`"
+                :aria-label="`${row.label} 分档模型`"
               />
             </label>
           </div>
@@ -263,15 +263,15 @@ onMounted(() => {
         </section>
 
         <section class="local-routing-panel__block">
-          <h3>Provider task 覆盖（摘要）</h3>
+          <h3>Provider 任务覆盖（摘要）</h3>
           <p class="muted local-routing-panel__block-hint">
-            在上方 Provider 区「Task 路由与模型」统一编辑；此处只读展示 providers.toml 中的结果。
+            在上方 Provider 区「任务路由与模型」统一编辑；此处只读展示 Provider 配置中的结果。
           </p>
           <p
             v-if="!localProviderTaskModels.length"
             class="muted"
           >
-            当前没有本地 provider 自身的 task 覆盖。
+            当前没有本地 provider 自身的任务覆盖。
           </p>
           <ul
             v-else

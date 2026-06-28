@@ -89,7 +89,7 @@ function circuitTone(state: string): string {
   >
     <div class="ai-runtime-diagnostic__head">
       <div>
-        <h3 class="ai-runtime-diagnostic__title">Runtime 诊断</h3>
+        <h3 class="ai-runtime-diagnostic__title">运行诊断</h3>
         <p class="muted ai-runtime-diagnostic__lead">
           健康度、熔断与任务路由链；用于排查降级与队列堆积。
         </p>
@@ -187,8 +187,8 @@ function circuitTone(state: string): string {
           <thead>
             <tr>
               <th>能力项</th>
-              <th>健康度 (Health)</th>
-              <th>熔断器 (Circuit)</th>
+              <th>健康度</th>
+              <th>熔断状态</th>
               <th>降级状态</th>
               <th>详细信息</th>
             </tr>
@@ -200,12 +200,12 @@ function circuitTone(state: string): string {
                 <span class="muted ai-runtime-diagnostic__row-id">{{ row.id }}</span>
               </td>
               <td data-label="健康度">
-                <span class="ai-runtime-diagnostic__pill" :class="`ai-runtime-diagnostic__pill--${healthTone(row.healthState)}`">
+                <span class="ai-runtime-diagnostic__pill" :class="`ai-runtime-diagnostic__pill--${healthTone(row.healthStateRaw)}`">
                   {{ row.healthState }}
                 </span>
               </td>
-              <td data-label="熔断器">
-                <span class="ai-runtime-diagnostic__pill" :class="`ai-runtime-diagnostic__pill--${circuitTone(row.circuitState)}`">
+              <td data-label="熔断状态">
+                <span class="ai-runtime-diagnostic__pill" :class="`ai-runtime-diagnostic__pill--${circuitTone(row.circuitStateRaw)}`">
                   {{ row.circuitState }}
                 </span>
               </td>
@@ -232,7 +232,7 @@ function circuitTone(state: string): string {
             <tr>
               <th>任务场景</th>
               <th>主用模型</th>
-              <th>备选模型 (Fallback)</th>
+              <th>备选模型</th>
             </tr>
           </thead>
           <tbody>

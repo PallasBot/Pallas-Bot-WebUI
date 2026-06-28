@@ -17,7 +17,7 @@ const _nonebotBracketBodyRe =
 const _loguruBodyRe =
   /^(?<dt>\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\|\s+(?<lev>\S+)\s+\|\s+(?<scope>[^:]+):(?<lineno>\d+)\s+-\s+(?<msg>.*)$/;
 
-/** 与 NoneBot loguru 行首一致：`MM-DD HH:mm:ss`（不含年份） */
+/** 与 loguru 行首一致：`MM-DD HH:mm:ss`（不含年份） */
 export function formatLogDisplayTime(raw: string | number): string {
   if (typeof raw === "number") {
     if (!Number.isFinite(raw) || raw <= 0) return "—";

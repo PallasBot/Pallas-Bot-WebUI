@@ -457,7 +457,7 @@ onActivated(() => {
               </div>
               <div class="panel__bd">
                 <p class="muted charts-page__section-lead">
-                  按自然日汇总（磁盘持久化）；左轴为发送/接收消息，右轴为 Matcher 与协议 API。鼠标悬停查看每日明细，与 GS 控制台同款交互折线。
+                  按自然日汇总（磁盘持久化）；左轴为发送/接收消息，右轴为 Matcher 与协议 API。鼠标悬停查看每日明细。
                 </p>
                 <ChartsMonthlyCommandChart
                   :rows="monthlyDailyRows"
@@ -488,7 +488,7 @@ onActivated(() => {
               <div class="panel__bd">
                 <ChartsDailyBarChart
                   :points="rangeCommandPoints"
-                  title="Matcher 执行"
+                  title="Matcher"
                   unit="次"
                   accent="#d946ef"
                 />
@@ -568,7 +568,7 @@ onActivated(() => {
                     to="/ai/home"
                   >
                     <strong>AI 观测</strong>
-                    <span class="muted">运行态、异常与 Runtime 诊断</span>
+                    <span class="muted">运行态、异常与运行诊断</span>
                   </RouterLink>
                   <RouterLink
                     class="charts-page__ai-link"

@@ -778,7 +778,7 @@ onMounted(() => {
         <div class="panel__bd update-page__bd">
           <p class="muted update-page__ops-lead">
             安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
-            <template v-if="shardedRuntime">分片部署下可选择仅重启 Worker 或全栈重启。</template>
+            <template v-if="shardedRuntime">分片部署下可选择仅重启分片节点或重启全部进程。</template>
           </p>
           <p
             v-if="restartInProgress || restartMsg"
@@ -810,7 +810,7 @@ onMounted(() => {
               :busy="restartBusy || restartInProgress"
               @click="triggerBotRestart(false)"
             >
-              {{ restartInProgress ? "重启中…" : shardedRuntime ? "全栈重启" : "重启 Bot" }}
+              {{ restartInProgress ? "重启中…" : shardedRuntime ? "重启全部进程" : "重启 Bot" }}
             </UiButton>
           </div>
         </div>

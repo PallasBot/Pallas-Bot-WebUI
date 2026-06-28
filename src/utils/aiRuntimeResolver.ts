@@ -11,6 +11,11 @@ import {
   type AiRuntimeCapabilityId,
   type AiRuntimeState,
 } from "@/config/aiRuntimeRegistry";
+import {
+  aiCircuitStateLabel,
+  aiFailureClassLabel,
+  aiHealthStateLabel,
+} from "@/utils/aiHealthLabel";
 import type {
   AiRuntimeNormalizedSource,
   AiRuntimeOverview,
@@ -41,13 +46,13 @@ function compactDetail(row: RuntimeRow): string {
     (item): item is string => Boolean(item && String(item).trim()),
   );
   if (row.circuit_state && row.circuit_state !== "closed") {
-    parts.push(`熔断 ${row.circuit_state}`);
+    parts.push(`熔断 ${aiCircuitStateLabel(row.circuit_state)}`);
   }
   if (row.consecutive_failures != null && row.consecutive_failures > 0) {
     parts.push(`连续失败 ${row.consecutive_failures}`);
   }
   if (row.recent_failure_class) {
-    parts.push(`最近错误 ${row.recent_failure_class}`);
+    parts.push(`最近错误 ${aiFailureClassLabel(row.recent_failure_class)}`);
   }
   if (!parts.length) return "无额外状态信息";
   return [...new Set(parts)].join(" · ");
@@ -140,19 +145,19 @@ function itemFromExtensionTest(test: AiExtensionTestData): AiRuntimeSnapshotItem
   }
   const llmHealth = test.llm_health;
   if (llmHealth?.circuit_state && llmHealth.circuit_state !== "closed") {
-    detail = `${detail} · LLM 熔断 ${llmHealth.circuit_state}`;
+    detail = `${detail} · LLM 熔断 ${aiCircuitStateLabel(llmHealth.circuit_state)}`;
   } else if (llmHealth?.recent_failure_class) {
-    detail = `${detail} · LLM 最近错误 ${llmHealth.recent_failure_class}`;
+    detail = `${detail} · LLM 最近错误 ${aiFailureClassLabel(llmHealth.recent_failure_class)}`;
   }
   const ttsHealth = test.tts_health;
   if (ttsHealth?.health_state && ttsHealth.health_state !== "healthy") {
-    detail = `${detail} · TTS ${ttsHealth.health_state}`;
+    detail = `${detail} · TTS ${aiHealthStateLabel(ttsHealth.health_state)}`;
   } else if (ttsHealth?.celery_enabled === false) {
-    detail = `${detail} · TTS worker 未注册`;
+    detail = `${detail} · TTS 后台任务未注册`;
   }
   const imageCircuit = test.image_circuit;
   if (imageCircuit?.circuit_state && imageCircuit.circuit_state !== "closed") {
-    detail = `${detail} · 图像熔断 ${imageCircuit.circuit_state}`;
+    detail = `${detail} · 图像熔断 ${aiCircuitStateLabel(imageCircuit.circuit_state)}`;
   } else if (imageCircuit?.consecutive_failures && imageCircuit.consecutive_failures > 0) {
     detail = `${detail} · 图像连续失败 ${imageCircuit.consecutive_failures}`;
   }

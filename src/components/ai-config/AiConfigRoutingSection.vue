@@ -11,7 +11,7 @@ const { setExpertMode } = useAiConfigExpertMode();
     <div class="ai-config-section__simple-card">
       <strong>路由与分流已并入「模型与 Provider」</strong>
       <p class="muted">
-        task→模型、MoE 与多模型分流请在专家模式下于 Provider 页底部编辑；此处保留链接兼容旧书签。
+        任务→模型、多模型分档与分流请在专家模式下于 Provider 页底部编辑；此处保留链接兼容旧书签。
       </p>
       <button type="button" class="ai-config-section__simple-link" @click="setExpertMode(true)">
         开启专家模式

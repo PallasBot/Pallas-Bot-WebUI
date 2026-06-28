@@ -44,7 +44,7 @@ function externalBotToAccount(
   };
 }
 
-/** 插件托管账号 + NoneBot 当前在线连接 */
+/** 插件托管账号 + 消息框架当前在线连接 */
 export function mergeProtocolDisplayAccounts(
   instances: InstancesData | null | undefined,
   pluginAccounts: readonly NapcatAccountRow[],

@@ -10,7 +10,7 @@ const { expertMode, setExpertMode } = useAiConfigExpertMode();
     <span class="ai-config-expert-toggle__copy">
       <strong>专家模式</strong>
       <span class="muted ai-config-expert-toggle__hint">
-        {{ expertMode ? "本页底部显示 task 路由与 MoE 分流" : "简单模式：模型与 Provider 同页可改，高级路由请开专家模式" }}
+        {{ expertMode ? "本页底部显示任务路由与多模型分流" : "简单模式：模型与 Provider 同页可改，高级路由请开专家模式" }}
       </span>
     </span>
     <ConsoleSwitch

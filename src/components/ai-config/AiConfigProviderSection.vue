@@ -20,7 +20,7 @@ defineExpose({
 <template>
   <div class="ai-config-section ai-config-section--provider">
     <p class="muted ai-config-section__layer-hint">
-      本地 Ollama 热切换与上游 Provider 登记都在本页：前者管当前进程加载哪套权重，后者管 OpenAI 兼容 / 本地端点与连通性。
+      本地模型热切换与上游 Provider 登记都在本页：前者管当前进程加载哪套权重，后者管 OpenAI 兼容 / 本地端点与连通性。
       {{ AI_TASK_CONFIG_HINTS.providerIntro }}
     </p>
     <AiObservationLinks />
@@ -28,7 +28,7 @@ defineExpose({
     <ProviderManager ref="providerRef" :simple-mode="isSimpleMode" />
     <LocalModelRoutingPanel v-if="!isSimpleMode" />
     <p v-else class="muted ai-config-section__simple-note">
-      简单模式下可切换本地模型并登记 / 测试 Provider；task→Provider 矩阵与 MoE 分流请开启专家模式。
+      简单模式下可切换本地模型并登记 / 测试 Provider；任务→Provider 矩阵与多模型分流请开启专家模式。
     </p>
   </div>
 </template>

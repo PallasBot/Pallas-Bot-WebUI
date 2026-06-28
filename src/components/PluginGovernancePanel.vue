@@ -4,6 +4,8 @@ import type { PluginGovernanceData, PluginGovernanceMenuItem } from "@/api/palla
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
+import { activationPolicyShortLabel } from "@/config/extensionActivationSemantics";
+import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
 const props = withDefaults(
   defineProps<{
@@ -60,10 +62,10 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
       </div>
       <div class="plugin-governance-panel__badges">
         <span v-if="governanceData?.reload_policy" class="plugin-governance-panel__badge">
-          热重载：{{ governanceData.reload_policy }}
+          热更新：{{ reloadPolicyLabel(governanceData.reload_policy) }}
         </span>
         <span v-if="governanceData?.activation_policy" class="plugin-governance-panel__badge">
-          生效方式：{{ governanceData.activation_policy }}
+          生效方式：{{ activationPolicyShortLabel(governanceData.activation_policy) }}
         </span>
       </div>
     </header>
@@ -73,10 +75,10 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
       class="plugin-governance-panel__dialog-meta"
     >
       <span v-if="governanceData?.reload_policy" class="plugin-governance-panel__badge">
-        热重载：{{ governanceData.reload_policy }}
+        热更新：{{ reloadPolicyLabel(governanceData.reload_policy) }}
       </span>
       <span v-if="governanceData?.activation_policy" class="plugin-governance-panel__badge">
-        生效方式：{{ governanceData.activation_policy }}
+        生效方式：{{ activationPolicyShortLabel(governanceData.activation_policy) }}
       </span>
     </div>
 
@@ -105,7 +107,7 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
             @update:model-value="emit('toggleGlobalDisable', $event)"
           >
             <p v-if="globalDisableProtected">基础设施插件，不可全实例禁用。</p>
-            <p v-else>开启后立即拦截该插件的 matcher，与实例级、群级禁用共同生效。</p>
+            <p v-else>开启后立即拦截该插件的 Matcher，与实例级、群级禁用共同生效。</p>
           </PluginRuntimeSwitchRow>
           <PluginRuntimeSwitchRow
             title="在「牛牛帮助」总列表中显示该插件"
@@ -115,7 +117,7 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
             @update:model-value="emit('toggleHelpMenuVisible', $event)"
           >
             <p v-if="helpIgnored">该插件被帮助系统忽略，无法出现在帮助菜单。</p>
-            <p v-else>关闭后会立即从帮助菜单隐藏，但不影响实际 matcher 运行。</p>
+            <p v-else>关闭后会立即从帮助菜单隐藏，但不影响实际 Matcher 运行。</p>
           </PluginRuntimeSwitchRow>
         </div>
       </section>

@@ -256,7 +256,7 @@ onActivated(() => {
         <div>
           <h3 class="setup-wizard-page__title">使用须知</h3>
           <p class="muted setup-wizard-page__lead">
-            牛牛会学习群聊语料；管理员可用「不可以」或撤回处理不当发言。部署与配置详见仓库文档。
+            牛牛会学习群聊语料；管理员可用「不可以」或撤回处理不当发言。部署与配置请查阅仓库文档。
           </p>
         </div>
       </div>

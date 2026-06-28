@@ -9,6 +9,7 @@ import UiCard from "@/components/ui/UiCard.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import type { AiRuntimeState } from "@/config/aiRuntimeRegistry";
 import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
+import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 
@@ -129,7 +130,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
           class="ai-home-page__hero-btn"
           @click="scrollToRuntimeDiagnostic"
         >
-          Runtime 诊断
+          运行诊断
         </button>
       </div>
       <div
@@ -218,7 +219,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
             class="ai-row"
           >
             <span class="ai-row__key">{{ provider.id }}</span>
-            <strong class="ai-row__val">{{ provider.health_state || (provider.reachable ? "在线" : "未知") }}</strong>
+            <strong class="ai-row__val">{{ aiHealthStateLabel(provider.health_state) || (provider.reachable ? "在线" : "未知") }}</strong>
           </div>
           <div
             v-for="cap in mediaTaskCapabilities"

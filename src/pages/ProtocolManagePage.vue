@@ -217,7 +217,7 @@ const deleteModalWarnings = computed(() => {
   }
   if (connected.length) {
     out.push(
-      `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+      `其中以下账号当前仍在线连接：${connected.join("、")}。删除后可能导致运行异常，请确认。`,
     );
   }
   return out;

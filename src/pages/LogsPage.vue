@@ -57,7 +57,7 @@ const payload = ref<LogsData | null>(null);
 const view = ref<"feed" | "raw">("feed");
 const q = ref("");
 const enabledLevels = ref<Set<LogEntryLevel>>(loadLogsEnabledLevels());
-/** SSE 追加的实时条目 */
+/** 日志流实时追加的条目 */
 const liveEntries = ref<LogEntry[]>([]);
 const MAX_LIVE_ENTRIES = 1200;
 const streamReconnectCount = ref(0);
@@ -399,7 +399,7 @@ const statusDetail = computed(() => {
   const parts: string[] = [];
   if (payload.value?.max != null) parts.push(`单次拉取上限 ${payload.value.max} 条`);
   parts.push(`历史条目 ${historyEntryCount.value} 条`);
-  if (liveExtraCount.value) parts.push(`SSE 追加 ${liveExtraCount.value} 条（去重后）`);
+  if (liveExtraCount.value) parts.push(`实时追加 ${liveExtraCount.value} 条（去重后）`);
   if (lastStreamEventId.value > 0) parts.push(`续传 ID ${lastStreamEventId.value}`);
   if (view.value === "feed") {
     parts.push(`级别筛选后 ${levelFilteredEntries.value.length} 条`);
@@ -408,7 +408,7 @@ const statusDetail = computed(() => {
   }
   if (payload.value?.sharded_logs) {
     parts.push(
-      logSource.value === "all" ? "分片：已合并 hub/worker" : `分片：仅 ${logSource.value}`,
+      logSource.value === "all" ? "分片：已合并主节点与各节点" : `分片：仅 ${logSource.value}`,
     );
   }
   if (q.value.trim()) parts.push(`关键词「${q.value.trim()}」`);

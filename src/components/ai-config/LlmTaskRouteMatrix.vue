@@ -72,15 +72,15 @@ function onModelChange(task: string, routedProvider: string, effectiveProvider: 
 <template>
   <div class="task-route-matrix">
     <div class="task-route-matrix__head">
-      <h4 class="task-route-matrix__title">Task 路由与模型</h4>
+      <h4 class="task-route-matrix__title">任务路由与模型</h4>
       <p class="muted task-route-matrix__hint">
-        同一 task 在此统一指定走哪家 Provider 与用哪个模型；保存后写入 providers.toml。
-        不再在 MoE 面板与 Provider 弹窗里重复配置 task 模型。
+        同一任务场景在此统一指定走哪家 Provider 与用哪个模型；保存后写入 Provider 配置。
+        不再在多模型分档面板与 Provider 弹窗里重复配置任务模型。
       </p>
     </div>
     <div class="task-route-matrix__table">
       <div class="task-route-matrix__row task-route-matrix__row--head">
-        <span>Task</span>
+        <span>任务</span>
         <span>Provider</span>
         <span>模型</span>
       </div>

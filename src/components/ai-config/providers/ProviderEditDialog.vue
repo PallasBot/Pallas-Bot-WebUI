@@ -219,7 +219,7 @@ function submit() {
               :placeholder="isEdit && draft.api_key_set ? '已配置，留空不修改' : 'sk-…'"
             >
             <span class="form-field__hint muted">
-              保存后写入 AI 服务 providers.toml；控制台不会回显明文。
+              保存后写入 AI 服务 Provider 配置；控制台不会回显明文。
               <template v-if="isEdit && draft.api_key_set">当前已配置。</template>
             </span>
           </label>

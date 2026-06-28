@@ -2,10 +2,10 @@
 export function reloadPolicyLabel(policy?: string | null): string {
   switch ((policy || "config_only").trim().toLowerCase()) {
     case "metadata":
-      return "L2 元数据";
+      return "配置与说明";
     case "full":
-      return "L3 代码";
+      return "含代码变更";
     default:
-      return "L1 配置";
+      return "仅配置";
   }
 }

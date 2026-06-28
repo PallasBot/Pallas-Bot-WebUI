@@ -1664,7 +1664,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         lede: "当前账号 · Matcher 墙钟耗时，新→旧。",
         items: [
           { dt: "含义", dd: "单次 matcher 执行耗时，非今日平均。" },
-          { dt: "持久化", dd: `matcher_durations.jsonl，每账号最多 ${cap} 条。` },
+          { dt: "持久化", dd: `本地日志，每账号最多 ${cap} 条。` },
           { dt: "读图", dd: "按插件勾选；P50/P95/Max 基于当前样本。" },
         ],
       };
@@ -1700,10 +1700,10 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
       };
     case "daily_msg_matcher":
       return {
-        lede: "当前账号 · 按日汇总 console_daily_stats.json。",
+        lede: "当前账号 · 按日汇总持久化统计。",
         items: [
           { dt: "读图", dd: "左轴发送/接收消息，右轴 Matcher 与 API；悬停看每日明细。" },
-          { dt: "来源", dd: "分片时 hub 合并 worker 快照。" },
+          { dt: "来源", dd: "分片部署时由主节点合并各节点快照。" },
         ],
       };
     case "api_hourly":
@@ -1711,7 +1711,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         lede: "当前账号 · 协议 API 今日各小时累计。",
         items: [
           { dt: "读图", dd: "横轴 0–23 本地小时；纵轴累计次数。" },
-          { dt: "勾选", dd: "下方勾选要绘制的 OneBot 接口；可切换「按时间桶」对照原始曲线。" },
+          { dt: "勾选", dd: "下方勾选要绘制的 OneBot 接口；可切换「按时间桶」对比原始曲线。" },
         ],
       };
     case "api_bucket":
@@ -1727,7 +1727,7 @@ const chartPanelExplain = computed((): ChartPanelExplain | null => {
         lede: "当前账号 · 插件 Matcher 今日各小时累计。",
         items: [
           { dt: "读图方式", dd: "横轴 0–23 每小时一刻度；纵轴为该小时执行次数。" },
-          { dt: "勾选", dd: "插件名优先 metadata.name；勾选控制曲线显示。" },
+          { dt: "勾选", dd: "插件名优先展示帮助里的中文名；勾选控制曲线显示。" },
         ],
       };
     case "matcher_bucket":
@@ -2299,7 +2299,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
         chart-uid="home-daily-msg"
         :rows="dailyStatRows ?? []"
         :busy="busy"
-        empty-text="暂无按日持久化数据。请保持 Bot 运行；跨自然日后会写入 console_daily_stats.json。"
+        empty-text="暂无按日持久化数据。请保持 Bot 运行，跨自然日后会自动写入。"
         :show-summary="false"
       />
       </div>
@@ -2320,7 +2320,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
-          横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对照原始桶曲线。
+          横轴 0–23 点为本地自然日，每小时一刻度；将各接口时间桶累计到对应小时。可切换到「按时间桶」视图对比原始桶曲线。
         </p>
         <div
           v-if="apiCandidates.length"
@@ -2494,7 +2494,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
       <div class="home-plugin-charts__flip">
       <template v-if="false">
         <p class="muted home-plugin-charts__hint">
-          插件名优先展示 <code>metadata.name</code>（与帮助系统一致），无则显示内部名。横轴 0–23 每小时一刻度。
+          插件名优先展示帮助里的中文名，无则显示内部名。横轴 0–23 每小时一刻度。
         </p>
         <div
           v-if="matcherRunCandidates.length"

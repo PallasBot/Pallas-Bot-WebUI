@@ -16,19 +16,19 @@ export interface AiSidebarNavDef {
   path: string;
 }
 
-/** 观测 Hub 页内 tab（console-view-toggle） */
+/** AI 观测页内 tab（console-view-toggle） */
 export const AI_OBSERVATION_TABS: AiObservationTabDef[] = [
   {
     id: "overview",
     label: "总览",
-    lead: "运行健康、需关注项与 Runtime 诊断一屏掌握。",
+    lead: "运行健康、需关注项与运行诊断一屏掌握。",
     path: "/ai/home",
     routeName: "ai-home",
   },
   {
     id: "statistics",
     label: "统计",
-    lead: "调用量、成功率、Provider / 模型与 Token 消耗趋势。",
+    lead: "调用量、成功率、上游 Provider 与 Token 消耗趋势。",
     path: "/ai/statistics",
     routeName: "ai-statistics",
   },

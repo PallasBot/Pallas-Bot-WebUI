@@ -196,7 +196,7 @@ const deleteModalWarnings = computed(() => {
   const connected = selectedConnectedAccounts.value;
   if (!connected.length) return [];
   return [
-    `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+    `其中以下账号当前仍与消息框架连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
   ];
 });
 
@@ -555,7 +555,7 @@ onUnmounted(() => {
             class="muted"
             style="margin: 0 0 10px"
           >
-            数据库中尚无 Bot 配置。下方「NoneBot 框架」中已连接但未入库的牛牛可点
+            数据库中尚无 Bot 配置。下方「消息框架」中已连接但未入库的牛牛可点
             <strong>初始化配置</strong> 写入号主与其它选项（不依赖协议端「创建牛牛」流程）。
           </p>
           <p
@@ -767,7 +767,7 @@ onUnmounted(() => {
       >
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
-            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />NoneBot 框架
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />消息框架
           </h2>
           <div class="row-actions">
             <UiButton

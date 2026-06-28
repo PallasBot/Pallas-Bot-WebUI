@@ -20,7 +20,7 @@ export function botRestartPhaseLabel(phase: BotRestartPhase): string {
     case "disconnecting":
       return "Bot 已离线，等待重新拉起…";
     case "reconnecting":
-      return "正在探测 Hub 是否恢复…";
+      return "正在探测主节点是否恢复…";
     case "online":
       return "Bot 已恢复在线。";
     case "timeout":

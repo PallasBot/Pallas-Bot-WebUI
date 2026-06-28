@@ -31,7 +31,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "provider",
     label: "模型与 Provider",
-    lead: "本地 Ollama 热切换、上游端点登记与连通性检测；专家模式下含 task 路由与 MoE。",
+    lead: "本地模型热切换、上游端点登记与连通性检测；专家模式下含任务路由与多模型分流。",
     icon: "server",
     groupId: "dialogue",
   },
@@ -66,7 +66,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "logs",
     label: "扩展日志",
-    lead: "查看扩展侧 uvicorn / celery 的日志片段。",
+    lead: "查看扩展侧 HTTP 服务与后台任务的日志片段。",
     icon: "logs",
     groupId: "extension",
   },
@@ -131,7 +131,7 @@ export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   return "provider";
 }
 
-/** 旧 runtime 分区与独立 Runtime 页已并入 AI 观测总览。 */
+/** 旧运行态分区已并入 AI 观测总览。 */
 export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/home?panel=runtime";
 
 /** 牛格观测已迁入 AI 历史 · 群维护工作区。 */

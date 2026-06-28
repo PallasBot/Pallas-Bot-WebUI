@@ -177,7 +177,7 @@ export function useBotSystemRestart(options?: {
     await ensureRestartContext();
     if (!restartAvailable.value) return false;
     const prompt = workersOnly
-      ? "确定仅重启分片 worker 进程？Hub 与其它组件不受影响。"
+      ? "确定仅重启分片节点进程？主节点与其它组件不受影响。"
       : "确定重启 Bot 进程？数秒内连接会短暂中断。";
     if (!confirm(prompt)) return false;
     restartBusy.value = true;

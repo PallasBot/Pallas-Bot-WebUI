@@ -17,6 +17,7 @@ import type {
   LlmWizardStatusData,
   PluginConfigCheckResult,
 } from "@/api/pallasTypes";
+import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -114,14 +115,14 @@ function providerReachUi(row: LlmProviderConfigRow): { label: string; cls: strin
     return {
       label: "连通状态良好",
       cls: "tag--ok",
-      detail: runtimeRow.health_state || "根据运行环境状态判断该提供商正常。",
+      detail: aiHealthStateLabel(runtimeRow.health_state) || "根据运行环境状态判断该提供商正常。",
     };
   }
   if (runtimeRow?.reachable === false) {
     return {
       label: "连通异常",
       cls: "tag--warn",
-      detail: runtimeRow.health_state || "运行环境状态显示该提供商无法连接。",
+      detail: aiHealthStateLabel(runtimeRow.health_state) || "运行环境状态显示该提供商无法连接。",
     };
   }
   return { label: "等待测试", cls: "tag--muted", detail: "暂未执行网络连通性测试。" };

@@ -1402,7 +1402,7 @@ export interface LogsData {
   scope?: LogScope;
   /** 当前筛选来源：all | hub | worker-N */
   source?: string;
-  /** 分片 hub：已合并 data/pallas_shard/logs 下 hub/worker 落盘尾行 */
+  /** 分片部署：已合并主节点与各节点日志落盘尾行 */
   sharded_logs?: boolean;
   /** 分片时可选的日志来源列表 */
   log_sources?: string[];
@@ -1566,7 +1566,7 @@ export interface NapcatAccountRow {
   running?: boolean;
   connected?: boolean;
   process_running?: boolean;
-  /** plugin=插件托管 external=自建协议端经 NoneBot 接入 */
+  /** plugin=插件托管 external=自建协议端经消息框架接入 */
   account_source?: "plugin" | "external";
   external_adapter?: string;
   connection_key?: string;
@@ -1894,7 +1894,7 @@ export interface ShardObservabilityData {
   pg_pool?: ShardPgPoolEstimate;
 }
 
-/** OpenAPI 第二波：codegen 与手写类型对齐锚点（逐步迁移 UI 引用） */
+/** 生成 OpenAPI 类型与手写类型的对齐入口 */
 export type OpenapiSystemData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/system"]["get"]>;
 export type OpenapiPluginsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>;
 export type OpenapiCommonConfigSectionsData =
