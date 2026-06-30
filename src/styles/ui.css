@@ -71,7 +71,7 @@ html[data-theme="light"] {
 }
 
 .ui-btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.94);
 }
 
 .ui-btn--block {

@@ -782,6 +782,7 @@ async function drainInstallUpdateQueue(first?: InstallUpdateQueueEntry): Promise
   installUpdateQueueDeferredRestart.value = false;
   let current: InstallUpdateQueueEntry | undefined = first;
   let processedCount = 0;
+  let batchHadUpdate = false;
   try {
     while (true) {
       if (!current) {
@@ -800,16 +801,41 @@ async function drainInstallUpdateQueue(first?: InstallUpdateQueueEntry): Promise
       } else {
         await executeUpdateCommunity(current.row, current.restart, pendingAfter);
       }
+      if (current.action === "update") batchHadUpdate = true;
       processedCount += 1;
       current = undefined;
     }
-    const batchHint = formatPluginStoreBatchCompleteHint(processedCount);
-    if (batchHint && !storeErr.value) {
-      storeActionHint.value = batchHint;
+    if (batchHadUpdate && !storeErr.value) {
+      // 更新后版本快照仍是旧的：自动重算一次，避免刷新页面后仍显示可更新。
+      await refreshUpdateSnapshotAfterUpdate();
+      if (!storeErr.value) {
+        const base = processedCount > 1 ? `已完成 ${processedCount} 项安装/更新。` : "更新完成，已刷新版本状态。";
+        storeActionHint.value = storeActionNeedsRestart.value
+          ? `${base}需重启 Bot 才能加载新版本。`
+          : base;
+      }
+    } else {
+      const batchHint = formatPluginStoreBatchCompleteHint(processedCount);
+      if (batchHint && !storeErr.value) {
+        storeActionHint.value = batchHint;
+      }
     }
   } finally {
     installUpdateQueueRunning.value = false;
     installUpdateQueueDeferredRestart.value = false;
+  }
+}
+
+async function refreshUpdateSnapshotAfterUpdate(): Promise<void> {
+  try {
+    await refreshPluginUpdateSnapshot();
+    if (storeSection.value === "official") {
+      await refreshOfficialStore();
+    } else if (storeSection.value === "community") {
+      await refreshCommunityStore(true);
+    }
+  } catch {
+    // 快照刷新失败不阻断更新结果，保留上一步的提示
   }
 }
 

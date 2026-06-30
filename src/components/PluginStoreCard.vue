@@ -385,7 +385,7 @@ watch(
           <UiButton
             v-if="repoUrl"
             class="plugin-store-card__foot-btn"
-            variant="outline"
+            variant="default"
             block
             :href="repoUrl"
             target="_blank"
@@ -396,7 +396,7 @@ watch(
           <UiButton
             v-else-if="canOpen"
             class="plugin-store-card__foot-btn"
-            variant="outline"
+            variant="default"
             block
             @click="emit('open')"
           >
@@ -407,7 +407,7 @@ watch(
           <UiButton
             v-if="canOpen"
             class="plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
-            variant="outline"
+            variant="default"
             block
             @click="emit('open')"
           >
@@ -416,7 +416,7 @@ watch(
           <UiButton
             v-else-if="repoUrl"
             class="plugin-store-card__foot-btn plugin-store-card__foot-btn--full"
-            variant="outline"
+            variant="default"
             block
             :href="repoUrl"
             target="_blank"

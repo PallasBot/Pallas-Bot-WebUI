@@ -421,8 +421,8 @@ async function persistGovernance(): Promise<boolean> {
       global_disable: Boolean(governanceData.value.runtime.global_disable),
       help_hidden: Boolean(governanceData.value.runtime.help_hidden),
     };
-    const result = await putPluginGovernance(pluginResolvedId.value, body);
-    governanceData.value = { ...governanceData.value, ...result };
+    await putPluginGovernance(pluginResolvedId.value, body);
+    await loadGovernance();
     const rows = await fetchPlugins({ bypassCache: true });
     pluginRow.value = rows.find((r) => (r.resolved_plugin_id || r.name) === pluginResolvedId.value) ?? null;
     return true;

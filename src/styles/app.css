@@ -4384,6 +4384,24 @@ html[data-theme="light"] .bot-config-edit {
   gap: 10px;
 }
 
+/* 实例编辑弹窗：开关平铺为无卡片列表（与插件配置弹窗 plain 风格一致），不再用卡片框 */
+.bot-config-edit--modal .bot-config-edit__grid--switches {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bot-config-edit--modal .form-bool-switch-field {
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.bot-config-edit--modal .form-bool-switch-field:first-child {
+  padding-top: 0;
+}
+
 @media (max-width: 560px) {
   .bot-config-edit__grid--pair {
     grid-template-columns: 1fr;
@@ -10135,19 +10153,26 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/* 卸载按钮：红色实心（危险动作） */
 .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--destructive {
-  background: color-mix(in srgb, var(--destructive) 12%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--destructive) 24%, var(--border));
-  color: color-mix(in srgb, var(--destructive) 78%, var(--text));
-  box-shadow: none;
+  background: var(--destructive);
+  border-color: color-mix(in srgb, var(--destructive) 72%, transparent);
+  color: var(--destructive-foreground);
+  box-shadow: var(--shadow-sm);
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--destructive:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--destructive) 24%, var(--plugin-store-hub-surface));
-  border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
-  color: color-mix(in srgb, var(--destructive) 92%, var(--text));
+  background: color-mix(in srgb, var(--destructive) 88%, #ffffff 10%);
+  border-color: color-mix(in srgb, var(--destructive) 82%, transparent);
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--destructive) 16%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--destructive) 22%, transparent);
+}
+
+/* 点击动效统一：整体缩放回弹（与「编辑配置」一致并加强），覆盖 hover 的位移 */
+.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--primary:active:not(:disabled),
+.plugin-store-page--hub .plugin-store-card__foot-btn.ui-btn--destructive:active:not(:disabled) {
+  transform: scale(0.94);
+  box-shadow: none;
 }
 
 .plugin-store-page--hub .plugin-store-card__foot-btn.btn:not(.btn--primary):not(.btn--danger) {
