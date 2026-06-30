@@ -3250,26 +3250,30 @@ html[data-theme="light"] .console-modal__close:hover {
   background: rgba(15, 23, 42, 0.06);
 }
 
-.console-modal__hd-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.console-modal__hd-btns {
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-
 .console-modal__bd {
   padding: 16px 20px 22px;
   overflow-y: auto;
   flex: 0 1 auto;
   min-height: 0;
   max-height: min(75vh, calc(100dvh - 140px));
+}
+
+/* 窄屏：统一所有弹窗（含 UiDialog 与原生 console-modal）顶/底间隔与占比 */
+@media (max-width: 560px) {
+  .console-modal {
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px
+      max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .console-modal .console-modal__dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .console-modal .console-modal__bd {
+    max-height: none;
+  }
 }
 
 .protocol-qrcode-modal__dialog {
@@ -4381,34 +4385,6 @@ html[data-theme="light"] .bot-config-edit {
 }
 
 @media (max-width: 560px) {
-  .console-modal__hd--with-actions {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .console-modal__hd--with-actions .console-modal__head-text {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .console-modal__hd--with-actions .console-modal__hd-actions {
-    flex: 1 1 100%;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .console-modal__hd--with-actions .console-modal__hd-btns {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .console-modal__hd--with-actions .console-modal__hd-btns > .btn,
-  .console-modal__hd--with-actions .console-modal__hd-btns > .ui-btn {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
   .bot-config-edit__grid--pair {
     grid-template-columns: 1fr;
   }
@@ -12081,8 +12057,8 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     display: grid;
   }
   .plugin-store-page--hub .plugin-store-page__grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
   .plugin-store-page--hub .plugin-store-page__filter-bar {
     flex-direction: column;
@@ -12122,7 +12098,7 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     flex-wrap: wrap;
   }
   .plugin-store-card__foot-btn {
-    flex: 1 1 calc(50% - 3px);
+    flex: 1 1 100%;
     min-width: 0;
   }
   .plugin-store-card__foot-btn--full {

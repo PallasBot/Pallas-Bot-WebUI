@@ -891,7 +891,7 @@ onUnmounted(() => {
           class="console-modal__dialog"
           @click.stop
         >
-          <div class="console-modal__hd console-modal__hd--with-actions">
+          <div class="console-modal__hd">
             <div class="console-modal__head-text">
               <h2
                 id="bot-config-modal-title"
@@ -913,34 +913,14 @@ onUnmounted(() => {
                 首次写入数据库配置；请至少添加一名号主 QQ。保存后该牛牛会出现在上方「数据库中的实例」列表。
               </p>
             </div>
-            <div class="console-modal__hd-actions">
-              <div class="row-actions console-modal__hd-btns">
-                <UiButton
-                  variant="primary"
-                  :disabled="saveBusy"
-                  :busy="saveBusy"
-                  title="Ctrl+S"
-                  @click="saveBotConfig()"
-                >
-                  {{ saveBusy ? "保存中…" : editModalIsInit ? "初始化" : "保存" }}
-                </UiButton>
-                <UiButton
-                  variant="outline"
-                  :disabled="saveBusy"
-                  @click="cancelEdit"
-                >
-                  取消
-                </UiButton>
-              </div>
-              <button
-                type="button"
-                class="console-modal__close"
-                aria-label="关闭"
-                @click="cancelEdit"
-              >
-                ×
-              </button>
-            </div>
+            <button
+              type="button"
+              class="console-modal__close"
+              aria-label="关闭"
+              @click="cancelEdit"
+            >
+              ×
+            </button>
           </div>
           <div class="console-modal__bd">
             <div class="bot-config-edit bot-config-edit--modal">
@@ -1067,6 +1047,19 @@ onUnmounted(() => {
                   </label>
                 </div>
               </div>
+            </div>
+          </div>
+          <div class="ui-dialog__ft">
+            <div class="plugin-config-dialog__foot row-actions">
+              <UiButton
+                variant="primary"
+                :disabled="saveBusy"
+                :busy="saveBusy"
+                title="Ctrl+S"
+                @click="saveBotConfig()"
+              >
+                {{ saveBusy ? "保存中…" : editModalIsInit ? "初始化" : "保存" }}
+              </UiButton>
             </div>
           </div>
         </div>

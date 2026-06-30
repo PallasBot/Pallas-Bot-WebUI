@@ -194,7 +194,7 @@ function commandTrigger(commandId: string, cmd: CommandPermUiCommand): string {
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.cmd-perm-choice:hover {
+.cmd-perm-choice:not(.cmd-perm-choice--active):hover {
   color: var(--text);
   background: color-mix(in srgb, var(--text) 4%, transparent);
 }
