@@ -9191,7 +9191,8 @@ html[data-theme="light"] .shell__topbar-dev--active .shell__topbar-dev__label {
   position: fixed;
   right: max(16px, env(safe-area-inset-right, 0px));
   bottom: max(16px, env(safe-area-inset-bottom, 0px));
-  z-index: 280;
+  /* 全局反馈须在弹窗(.console-modal 300)与导航下拉(12000)之上，否则保存 toast 被弹窗遮罩盖住 */
+  z-index: 12100;
   display: flex;
   flex-direction: column;
   gap: 8px;
