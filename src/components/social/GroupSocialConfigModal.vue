@@ -74,6 +74,11 @@ const groupSingProgressUi = computed(() =>
 
 const groupStyleSnapshot = computed(() => groupCfg.value?.style_profile_snapshot ?? null);
 
+const groupStyleContaminationSkipped = computed(() => {
+  const count = groupStyleSnapshot.value?.contamination_skipped_count;
+  return typeof count === "number" && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+});
+
 function formatStyleUpdatedAt(ts: number | null | undefined): string {
   if (ts == null || !Number.isFinite(ts)) return "—";
   const ms = ts > 1e12 ? ts : ts * 1000;
@@ -455,6 +460,12 @@ watch(
                 >
                   尚无显著特征摘要。
                 </p>
+                <p
+                  v-if="groupStyleContaminationSkipped > 0"
+                  class="style-profile-card__contamination muted"
+                >
+                  画像计算时已跳过污染样本 {{ groupStyleContaminationSkipped }} 条（庆典腔、客服腔等）。
+                </p>
                 <dl
                   v-if="groupStyleSnapshot.ready && groupStyleSnapshot.signals"
                   class="style-profile-card__dl"
@@ -573,6 +584,12 @@ watch(
   margin: 0 0 10px;
   font-size: 13px;
   line-height: 1.45;
+}
+.style-profile-card__contamination {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
 }
 .style-profile-card__dl {
   display: grid;

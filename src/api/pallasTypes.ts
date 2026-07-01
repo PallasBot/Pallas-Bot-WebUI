@@ -1530,6 +1530,8 @@ export interface GroupStyleProfileSnapshot {
   sample?: Record<string, unknown> | null;
   signals?: Record<string, unknown> | null;
   hints?: string[];
+  /** 画像计算时跳过的污染 message/answer 样本总数 */
+  contamination_skipped_count?: number | null;
 }
 
 export interface GroupConfigPublic {
