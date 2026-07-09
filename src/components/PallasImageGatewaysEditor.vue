@@ -8,6 +8,7 @@ import {
   maskApiKey,
   migrateLegacyGatewayFieldValues,
   parseGatewaysFromFieldValues,
+  promoteFallbackToPrimary,
   renormalizeGatewayRows,
   type PallasImageGatewayRow,
 } from "@/utils/pallasImageGateways";
@@ -171,6 +172,13 @@ function moveFallback(id: string, delta: number) {
   rows.value = renormalizeGatewayRows([...primary, ...next]);
 }
 
+function setAsPrimary(id: string) {
+  const next = promoteFallbackToPrimary(rows.value, id);
+  if (gatewayRowsEqual(rows.value, next)) return;
+  rows.value = next;
+  pushConsoleToast("已将备选设为主网关（原主网关降为备线 1）");
+}
+
 const listItems = computed(() => {
   const fallbackCount = rows.value.filter((r) => r.role === "fallback").length;
   let fallbackIdx = 0;
@@ -209,7 +217,7 @@ const editingKeyHint = computed(() => {
           画图网关
         </div>
         <p class="pallas-gw-editor__desc muted">
-          主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入运行配置。
+          主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序，或点「设为主」与主网关对调。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入运行配置。
         </p>
       </div>
       <button
@@ -271,6 +279,15 @@ const editingKeyHint = computed(() => {
               ↓
             </button>
           </div>
+          <button
+            v-if="item.row.role === 'fallback'"
+            type="button"
+            class="btn"
+            title="与主网关对调"
+            @click="setAsPrimary(item.row.id)"
+          >
+            设为主
+          </button>
           <button
             type="button"
             class="btn"
@@ -515,6 +532,17 @@ const editingKeyHint = computed(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .pallas-gw-editor__item-actions {
+    width: 100%;
+  }
+
+  .pallas-gw-editor__item-actions > .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
 .pallas-gw-editor__sort {
