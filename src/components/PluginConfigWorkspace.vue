@@ -1393,7 +1393,8 @@ defineExpose({
 }
 
 .plugin-config-field-popover {
-  z-index: 60;
+  /* Teleport 到 body；须高于 .console-modal(300)，低于 toast(12100) */
+  z-index: 400;
   display: grid;
   gap: 12px;
   padding: 16px;
