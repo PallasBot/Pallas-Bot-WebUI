@@ -7,14 +7,13 @@ import { installProtocolExtensionGuard } from "@/router/protocolExtensionGuard";
 import { installRouteLoading } from "@/utils/routeLoading";
 import { SIDEBAR_PIN_DEFINITIONS } from "@/config/sidebarPins";
 import { routeChunkLoaders } from "@/router/chunkLoaders";
-import { commonConfigSectionRedirectTarget } from "@/utils/commonConfigRedirects";
+import { commonConfigLegacyRedirectTarget } from "@/utils/commonConfigRedirects";
 
 const ChartsPage = routeChunkLoaders.charts;
 const LogsPage = routeChunkLoaders.logs;
 const LogErrorsPage = routeChunkLoaders["log-errors"];
 const PluginsPage = routeChunkLoaders.plugins;
 const PluginStorePage = routeChunkLoaders["plugin-store"];
-const CommonConfigPage = routeChunkLoaders["common-config"];
 const InstancesPage = routeChunkLoaders.instances;
 const ProtocolManagePage = routeChunkLoaders.protocol;
 const DatabasePage = routeChunkLoaders.database;
@@ -91,32 +90,19 @@ const router = createRouter({
             description: "官方扩展",
           },
         },
+        /** 兼容旧书签 /common-config?section=… */
         {
           path: "common-config",
-          name: "common-config",
-          component: CommonConfigPage,
-          meta: {
-            title: "通用配置",
-            description: "公共项",
+          redirect: (to) => {
+            const q = String(to.query.section ?? "").trim();
+            if (q) return commonConfigLegacyRedirectTarget(q);
+            return { name: "plugins" };
           },
         },
-        /** 兼容旧链接 /common-config/{id}（API 或书签）；插件分区进插件配置，其余进 query */
+        /** 兼容旧链接 /common-config/{id} */
         {
           path: "common-config/:sectionId",
-          redirect: (to) => {
-            const id = String(to.params.sectionId ?? "").trim();
-            if (id === "llm") {
-              return { name: "ai-config", params: { section: "strategy" } };
-            }
-            if (id === "arknights_kb") {
-              return { name: "ai-config", params: { section: "knowledge" } };
-            }
-            const pluginRedirect = commonConfigSectionRedirectTarget(id);
-            if (pluginRedirect) {
-              return pluginRedirect;
-            }
-            return { name: "common-config", query: { section: id } };
-          },
+          redirect: (to) => commonConfigLegacyRedirectTarget(String(to.params.sectionId ?? "")),
         },
         {
           path: "instances",
@@ -204,11 +190,11 @@ const router = createRouter({
         },
         {
           path: "corpus-config",
-          redirect: { name: "common-config", query: { section: "corpus_federation" } },
+          redirect: { name: "plugins", params: { name: "pb_core" } },
         },
         {
           path: "community-stats-config",
-          redirect: { name: "common-config", query: { section: "community_stats" } },
+          redirect: { name: "plugins", params: { name: "pb_stats" } },
         },
         {
           path: "ai",

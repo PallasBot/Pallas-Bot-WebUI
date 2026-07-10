@@ -1,3 +1,5 @@
+import type { RouteLocationRaw } from "vue-router";
+
 /** 已从通用配置迁往插件页的分区（含 legacy id）。 */
 export const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
   "cmd_perm",
@@ -7,6 +9,14 @@ export const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
   "help",
   "pallas_webui",
   "pallas_protocol",
+  "community_stats",
+  "repeater_learn",
+  "mail",
+  "message_scrub",
+  "ingress_fanout",
+  "ingress_dispatch",
+  "control_plane",
+  "corpus_federation",
 ]);
 
 export function commonConfigSectionRedirectTarget(
@@ -23,5 +33,40 @@ export function commonConfigSectionRedirectTarget(
   if (id === "pb_protocol" || id === "pallas_protocol") {
     return { name: "plugins", params: { name: "pb_protocol" } };
   }
+  if (id === "community_stats") {
+    return { name: "plugins", params: { name: "pb_stats" } };
+  }
+  if (id === "repeater_learn") {
+    return { name: "plugins", params: { name: "repeater" } };
+  }
+  if (
+    id === "mail" ||
+    id === "message_scrub" ||
+    id === "ingress_fanout" ||
+    id === "ingress_dispatch" ||
+    id === "control_plane" ||
+    id === "corpus_federation"
+  ) {
+    return { name: "plugins", params: { name: "pb_core" } };
+  }
   return { name: "plugins", params: { name: "help" } };
+}
+
+/** 旧 /common-config 链接统一重定向（含 query.section 与 path 段 id）。 */
+export function commonConfigLegacyRedirectTarget(sectionId: string): RouteLocationRaw {
+  const id = sectionId.trim();
+  if (id === "llm") {
+    return { name: "ai-config", params: { section: "strategy" } };
+  }
+  if (id === "arknights_kb") {
+    return { name: "ai-config", params: { section: "knowledge" } };
+  }
+  if (id === "service_gateways") {
+    return { name: "plugins", params: { name: "draw" } };
+  }
+  const pluginRedirect = commonConfigSectionRedirectTarget(id);
+  if (pluginRedirect) {
+    return pluginRedirect;
+  }
+  return { name: "plugins" };
 }

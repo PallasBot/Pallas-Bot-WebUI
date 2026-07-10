@@ -8,6 +8,7 @@ import {
   migrateSidebarOrderAiConfig,
   migrateSidebarOrderAiHubSingle,
   migrateSidebarOrderPluginStore,
+  migrateSidebarOrderRemoveCommonConfig,
   migrateSidebarOrderUpdateToEnd,
   normalizeMainNavOrder,
 } from "@/config/mainNav";
@@ -155,6 +156,10 @@ function load(): ConsolePrefsState {
     if (layoutVerOut < 13) {
       nextOrder = migrateSidebarOrderAiConfig(nextOrder);
       layoutVerOut = 13;
+    }
+    if (layoutVerOut < 14) {
+      nextOrder = migrateSidebarOrderRemoveCommonConfig(nextOrder);
+      layoutVerOut = 14;
     }
     const layoutMigrated = layoutVerOut !== layoutVer;
     merged.sidebarNavLayoutVersion = layoutVerOut;

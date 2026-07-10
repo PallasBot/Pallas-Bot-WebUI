@@ -27,7 +27,6 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/protocol", label: "协议连接", icon: "radio", description: "Bot 在线账号", section: "接入与实例" },
   { to: "/plugins", label: "插件列表", icon: "blocks", description: "已加载", section: "模块与配置" },
   { to: "/plugin-store", label: "插件商店", icon: "store", description: "官方扩展与社区插件", section: "模块与配置" },
-  { to: "/common-config", label: "通用配置", icon: "settings", description: "公共项", section: "模块与配置" },
   ...AI_SIDEBAR_NAV.map((item) => ({
     to: item.path,
     label: item.label,
@@ -81,8 +80,7 @@ function canonicalNavPath(path: string): string {
   const p = path.trim();
   if (p === "/security") return "/preferences";
   if (p === "/bot-social-config") return "/friends-groups";
-  if (p === "/corpus-config") return "/common-config";
-  if (p === "/community-stats-config") return "/common-config";
+  if (p === "/corpus-config" || p === "/community-stats-config" || p === "/common-config") return "";
   if (p === "/ai") return "/ai/home";
   if (p.startsWith("/ai/home")) return "/ai/home";
   if (p.startsWith("/ai/runtime")) return "/ai/home";
@@ -156,7 +154,7 @@ export function migrateSidebarOrderChartsPage(saved: string[] | undefined | null
 export function migrateSidebarOrderCommunityPage(saved: string[] | undefined | null): string[] {
   const base = normalizeMainNavOrder(saved);
   if (base.includes("/community")) return base;
-  const insertAfter = ["/database", "/common-config", "/friends-groups"].find((t) => base.includes(t));
+  const insertAfter = ["/database", "/plugin-store", "/plugins", "/friends-groups"].find((t) => base.includes(t));
   if (insertAfter) {
     const idx = base.indexOf(insertAfter);
     const out = [...base];
@@ -208,8 +206,8 @@ export function migrateSidebarOrderAiConfig(saved: string[] | undefined | null):
     "/ai/history",
   ]);
   const without = base.filter((t) => !aiPaths.has(t) && !AI_CONFIG_SECTION_PATHS.includes(t));
-  const commonIdx = without.indexOf("/common-config");
-  const insertAt = commonIdx >= 0 ? commonIdx + 1 : without.length;
+  const anchorIdx = without.findIndex((t) => t === "/plugin-store" || t === "/plugins");
+  const insertAt = anchorIdx >= 0 ? anchorIdx + 1 : without.length;
   const slice = without.slice(0, insertAt);
   const tail = without.slice(insertAt);
   return [...slice, ...AI_SIDEBAR_NAV.map((item) => item.path), ...tail];
@@ -222,6 +220,11 @@ export function migrateSidebarOrderAiHubSingle(saved: string[] | undefined | nul
     return migrated;
   }
   return migrateSidebarOrderAiConfig(saved);
+}
+
+/** 移除已废弃的「通用配置」侧栏项（layout v14） */
+export function migrateSidebarOrderRemoveCommonConfig(saved: string[] | undefined | null): string[] {
+  return normalizeMainNavOrder(saved);
 }
 
 export function mainNavItemByPath(to: string): MainNavItem | undefined {

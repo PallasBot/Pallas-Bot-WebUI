@@ -392,7 +392,7 @@ onMounted(() => {
             <h3 class="ai-wizard-page__check-title">系统网关探测</h3>
             <p class="muted ai-wizard-page__check-detail">对服务网关（Service Gateways）执行探测，直接反馈其网络可达性及响应状况。</p>
           </div>
-          <RouterLink to="/common-config?section=service_gateways" class="ai-wizard-page__header-action">
+          <RouterLink to="/plugins/draw" class="ai-wizard-page__header-action">
             <UiButton variant="ghost" size="sm">网关设置</UiButton>
           </RouterLink>
         </div>

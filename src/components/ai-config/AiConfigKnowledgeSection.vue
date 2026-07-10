@@ -84,14 +84,14 @@ defineExpose({ save, canSave, saving });
       <div class="panel__bd">
         <p class="muted ai-config-section__intro">
           <strong>群记忆 RAG</strong>（「记住：…」）在「模型与对话」的 Bot 对话策略中配置。
-          社区共享语料与回填策略见通用配置；热词与同步状态在「统计与语料」页查看。
+          社区共享语料与回填策略见<strong>牛牛核心</strong>插件配置；热词与同步状态在「统计与语料」页查看。
         </p>
         <div class="row-actions ai-config-section__links">
           <UiButton
             variant="outline"
-            @click="router.push({ name: 'common-config', query: { section: 'corpus_federation' } })"
+            @click="router.push({ name: 'plugins', params: { name: 'pb_core' } })"
           >
-            接话语料（通用配置）
+            接话语料（牛牛核心）
           </UiButton>
           <UiButton
             variant="outline"

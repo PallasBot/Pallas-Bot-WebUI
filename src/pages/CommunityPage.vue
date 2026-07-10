@@ -247,10 +247,8 @@ const communityHubUrl = computed(
 );
 
 const controlPlaneConfigLink = computed(() => ({
-  name: "common-config" as const,
-  query: {
-    section: (federationOnboarding.value?.config_section_id || "control_plane").trim() || "control_plane",
-  },
+  name: "plugins" as const,
+  params: { name: "pb_core" },
 }));
 
 function ingressEnabledLabel(raw: string | undefined): string {
@@ -390,9 +388,9 @@ onMounted(() => {
               rel="noopener noreferrer"
             >社区主站</a>
             ·
-            <RouterLink to="/common-config?section=community_stats">在线统计</RouterLink>
+            <RouterLink :to="{ name: 'plugins', params: { name: 'pb_stats' } }">在线统计</RouterLink>
             ·
-            <RouterLink to="/common-config?section=corpus_federation">共享接话库</RouterLink>
+            <RouterLink :to="{ name: 'plugins', params: { name: 'pb_core' } }">共享接话库</RouterLink>
             ·
             <RouterLink to="/corpus-config">语料设置</RouterLink>
           </p>

@@ -27,8 +27,8 @@ export const AI_OBSERVATION_LINKS_LIST = [
 
 export const AI_ENTRY_SITE_GATEWAY_CHECK = {
   label: "站点级网关检测",
-  shortLead: "按通用配置中的服务网关地址，批量探测画画、点歌、MAA 等站点连通性。",
-  path: "/common-config?section=service_gateways",
+  shortLead: "按画画插件等服务网关地址，批量探测画画、点歌、MAA 等站点连通性。",
+  path: "/plugins/draw",
 } as const;
 
 export const AI_ENTRY_PLUGIN_CONFIG_CHECK = {
