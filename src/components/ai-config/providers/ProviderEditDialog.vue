@@ -3,9 +3,16 @@ import { computed, ref, watch } from "vue";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import LlmModelSelect from "@/components/ai-config/LlmModelSelect.vue";
+import ProviderPresetPicker from "@/components/ai-config/providers/ProviderPresetPicker.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import type { ProviderModelsState } from "@/composables/useLlmProviders";
+import {
+  LLM_PROVIDER_PRESETS,
+  applyPresetToDraft,
+  findPresetByBaseUrl,
+} from "@/config/llmProviderPresets";
+import type { LlmProviderPresetId } from "@/config/llmProviderPresets";
 import {
   buildLlmModelSelectGroups,
   collectSavedProviderModels,
@@ -41,6 +48,10 @@ const useEnvVar = ref(false);
 const localErr = ref("");
 
 const isEdit = computed(() => props.row !== null);
+const selectedPresetId = computed<LlmProviderPresetId>(() => {
+  if (draft.value.kind === "local") return "custom";
+  return findPresetByBaseUrl(draft.value.base_url)?.id ?? "custom";
+});
 
 function blank(): LlmProviderConfigRow {
   return {
@@ -91,6 +102,20 @@ const modelSelectGroups = computed(() =>
     savedValues: savedModelValues.value,
   }),
 );
+
+function selectPreset(presetId: LlmProviderPresetId) {
+  const preset = LLM_PROVIDER_PRESETS.find((item) => item.id === presetId);
+  if (!preset) return;
+  const next = applyPresetToDraft(presetId, draft.value);
+  draft.value = {
+    ...next,
+    id: isEdit.value || draft.value.id.trim() ? draft.value.id : preset.id,
+    api_key_env: draft.value.api_key_env,
+    api_key_set: draft.value.api_key_set,
+    task_models: { ...(draft.value.task_models || {}) },
+  };
+  if (presetId !== "custom") localErr.value = "";
+}
 
 function buildDraftRow(): LlmProviderConfigRow | null {
   const id = draft.value.id.trim();
@@ -169,6 +194,20 @@ function submit() {
     </div>
 
     <div class="provider-edit-dialog__stack">
+      <section
+        v-if="draft.kind !== 'local'"
+        class="provider-edit-dialog__section"
+      >
+        <div class="provider-edit-dialog__section-head">
+          <strong>服务商预设</strong>
+          <span class="muted">选择常见 OpenAI 兼容服务商后，会自动填入 Base URL。</span>
+        </div>
+        <ProviderPresetPicker
+          :selected-id="selectedPresetId"
+          @select="selectPreset"
+        />
+      </section>
+
       <section class="provider-edit-dialog__section">
         <div class="provider-edit-dialog__section-head">
           <strong>基础信息</strong>
@@ -193,7 +232,13 @@ function submit() {
               class="inp provider-edit-dialog__select"
             >
               <option value="local">本地（Ollama）</option>
-              <option value="remote">远程（OpenAI 兼容）</option>
+              <option value="openai-compatible">远程（OpenAI 兼容）</option>
+              <option
+                v-if="draft.kind === 'remote'"
+                value="remote"
+              >
+                远程（旧配置）
+              </option>
             </select>
           </label>
 

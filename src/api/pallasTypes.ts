@@ -181,6 +181,8 @@ export interface CorpusControlPlaneStatusData {
 
 export interface CorpusStatusData {
   composite_active: boolean;
+  /** off | sync | prefetch */
+  remote_find_mode?: string;
   merge_order: string[];
   merge_strategy: string;
   on_remote_failure: string;
@@ -730,7 +732,8 @@ export interface PluginConfigFieldGroup {
   id: string;
   title: string;
   field_names: string[];
-  plugin_config_path: string;
+  /** 通用配置跳转用；插件内分组可省略 */
+  plugin_config_path?: string;
 }
 
 export interface PluginConfigData {
@@ -1216,6 +1219,9 @@ export interface LlmPromotionCandidate {
   last_seen_at: number;
   promoted: boolean;
   rejected_reason: string;
+  writeback_status?: string;
+  writeback_message?: string;
+  writeback_at?: number;
   behavior_scene: string;
   source_request_id: string;
 }

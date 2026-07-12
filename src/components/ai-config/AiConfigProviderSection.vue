@@ -1,35 +1,110 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { RouterLink } from "vue-router";
+import AiExtensionStatusBar from "@/components/ai-config/AiExtensionStatusBar.vue";
 import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
 import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
+import SimpleAccessPanel from "@/components/ai-config/SimpleAccessPanel.vue";
 import ProviderManager from "@/components/ai-config/providers/ProviderManager.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
-import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
+import UiCard from "@/components/ui/UiCard.vue";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { useAiConfigExpertMode } from "@/composables/useAiConfigExpertMode";
+
+export type ExpertProviderTab = "upstream" | "tasks" | "local";
 
 const { isSimpleMode } = useAiConfigExpertMode();
 const providerRef = ref<InstanceType<typeof ProviderManager> | null>(null);
+const simpleRef = ref<InstanceType<typeof SimpleAccessPanel> | null>(null);
+const expertTab = ref<ExpertProviderTab>("upstream");
+
+function saveSimpleMode() {
+  const panel = simpleRef.value;
+  if (!panel) return undefined;
+  return panel.activeMode?.() === "local" ? panel.saveLocal?.() : panel.saveCloud?.();
+}
+
+function canSaveSimpleMode() {
+  const panel = simpleRef.value;
+  if (!panel) return false;
+  return panel.activeMode?.() === "local" ? panel.canSaveLocal?.() ?? false : panel.canSaveCloud?.() ?? false;
+}
 
 defineExpose({
-  save: () => providerRef.value?.save?.(),
-  canSave: () => providerRef.value?.canSave?.() ?? false,
-  saving: () => providerRef.value?.saving ?? false,
+  save: () => (isSimpleMode.value ? saveSimpleMode() : providerRef.value?.save?.()),
+  canSave: () => (isSimpleMode.value ? canSaveSimpleMode() : providerRef.value?.canSave?.()) ?? false,
+  saving: () => (isSimpleMode.value ? simpleRef.value?.saving : providerRef.value?.saving) ?? false,
 });
 </script>
 
 <template>
   <div class="ai-config-section ai-config-section--provider">
-    <p class="muted ai-config-section__layer-hint">
-      本地模型热切换与上游 Provider 登记都在本页：前者管当前进程加载哪套权重，后者管 OpenAI 兼容 / 本地端点与连通性。
-      {{ AI_TASK_CONFIG_HINTS.providerIntro }}
-    </p>
-    <AiObservationLinks />
-    <ModelAdminPanel :simple-mode="isSimpleMode" embedded />
-    <ProviderManager ref="providerRef" :simple-mode="isSimpleMode" />
-    <LocalModelRoutingPanel v-if="!isSimpleMode" />
-    <p v-else class="muted ai-config-section__simple-note">
-      简单模式下可切换本地模型并登记 / 测试 Provider；任务→Provider 矩阵与多模型分流请开启专家模式。
-    </p>
+    <SimpleAccessPanel
+      v-if="isSimpleMode"
+      ref="simpleRef"
+    />
+    <template v-else>
+      <AiExtensionStatusBar />
+      <p class="muted ai-config-section__layer-hint">
+        上游、任务与本地运行收在同一面板；完整地址配置见
+        <RouterLink :to="aiConfigSectionPath('connection')">AI 服务</RouterLink>。
+      </p>
+
+      <UiCard
+        tag="section"
+        glass
+        class="ai-config-section__expert"
+      >
+        <div
+          class="console-view-toggle ai-config-section__tabs"
+          role="tablist"
+          aria-label="专家配置分区"
+        >
+          <button
+            type="button"
+            role="tab"
+            :class="{ 'is-on': expertTab === 'upstream' }"
+            :aria-selected="expertTab === 'upstream'"
+            @click="expertTab = 'upstream'"
+          >
+            上游
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :class="{ 'is-on': expertTab === 'tasks' }"
+            :aria-selected="expertTab === 'tasks'"
+            @click="expertTab = 'tasks'"
+          >
+            任务编排
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :class="{ 'is-on': expertTab === 'local' }"
+            :aria-selected="expertTab === 'local'"
+            @click="expertTab = 'local'"
+          >
+            本地运行
+          </button>
+        </div>
+
+        <div class="ai-config-section__tab-body">
+          <ProviderManager
+            v-show="expertTab === 'upstream' || expertTab === 'tasks'"
+            ref="providerRef"
+            compact
+            :panel="expertTab === 'tasks' ? 'tasks' : 'upstream'"
+          />
+          <div
+            v-show="expertTab === 'local'"
+            class="ai-config-section__local"
+          >
+            <ModelAdminPanel embedded />
+            <LocalModelRoutingPanel compact />
+          </div>
+        </div>
+      </UiCard>
+    </template>
   </div>
 </template>
 
@@ -46,12 +121,31 @@ defineExpose({
   line-height: 1.55;
 }
 
-.ai-config-section__simple-note {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+.ai-config-section__expert {
+  overflow: hidden;
+}
+
+.ai-config-section__tabs {
+  margin: 12px 12px 0;
+}
+
+.ai-config-section__tab-body {
+  padding: 12px;
+}
+
+.ai-config-section__local {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .ai-config-section__tabs {
+    margin: 10px 10px 0;
+  }
+
+  .ai-config-section__tab-body {
+    padding: 10px;
+  }
 }
 </style>

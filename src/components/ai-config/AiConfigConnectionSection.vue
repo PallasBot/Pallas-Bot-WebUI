@@ -1,133 +1,39 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted } from "vue";
 import { RouterLink } from "vue-router";
-import {
-  fetchAiExtensionConfig,
-  postAiExtensionTest,
-  putAiExtensionConfig,
-} from "@/api/consoleApi";
-import type { AiExtensionConfig, AiExtensionTestData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { AI_EXTENSION_DEFAULTS } from "@/config/aiConstants";
-import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { pushConsoleToast } from "@/utils/consoleToast";
-import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import { AI_ENTRY_CONNECTION_DIAG, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
+import { useAiExtensionConnection } from "@/composables/useAiExtensionConnection";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
-const err = ref("");
-const saving = ref(false);
-const testOut = ref<AiExtensionTestData | null>(null);
-
-const baseScheme = ref<"http" | "https">("http");
-const baseHostPort = ref<string>(AI_EXTENSION_DEFAULTS.hostPort);
-const apiPrefix = ref<string>(AI_EXTENSION_DEFAULTS.apiPrefix);
-const token = ref("");
-const healthPathsText = ref<string>(AI_EXTENSION_DEFAULTS.healthPaths.join("\n"));
-const uvicornLogFile = ref("");
-const celeryLogFile = ref("");
-const timeoutSec = ref<number>(AI_EXTENSION_DEFAULTS.timeoutSec);
-
-function parseBaseUrlParts(raw: string): { scheme: "http" | "https"; hostPort: string } {
-  const s = (raw || "").trim();
-  const m = s.match(/^(https?):\/\/([^/?#]+)/i);
-  if (m) {
-    const scheme = m[1].toLowerCase() === "https" ? "https" : "http";
-    return { scheme, hostPort: m[2] };
-  }
-  const t = s.replace(/\/+$/, "");
-  if (t && !/\s/.test(t)) {
-    const hostPart = t.split("/")[0] ?? "";
-    if (hostPart) return { scheme: "http", hostPort: hostPart };
-  }
-  return { scheme: "http", hostPort: AI_EXTENSION_DEFAULTS.hostPort };
-}
-
-function buildBaseUrl(scheme: "http" | "https", hostPort: string): string {
-  const hp = hostPort.trim().replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!hp) return `${scheme}://${AI_EXTENSION_DEFAULTS.hostPort}`;
-  return `${scheme}://${hp}`;
-}
-
-function hydrateFromConfig(c: AiExtensionConfig): void {
-  const { scheme, hostPort } = parseBaseUrlParts(c.base_url);
-  baseScheme.value = scheme;
-  baseHostPort.value = hostPort;
-  apiPrefix.value = c.api_prefix || AI_EXTENSION_DEFAULTS.apiPrefix;
-  token.value = c.token || "";
-  healthPathsText.value = (c.health_paths?.length ? c.health_paths : AI_EXTENSION_DEFAULTS.healthPaths).join("\n");
-  uvicornLogFile.value = c.uvicorn_log_file || "";
-  celeryLogFile.value = c.celery_log_file || "";
-  timeoutSec.value = c.timeout_sec ?? AI_EXTENSION_DEFAULTS.timeoutSec;
-}
-
-function buildConfigPayload(): AiExtensionConfig {
-  const paths = healthPathsText.value
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const ap = apiPrefix.value.trim();
-  const api_prefix = ap.startsWith("/") ? ap : `/${ap}`;
-  const t = Math.min(
-    AI_EXTENSION_DEFAULTS.timeoutMax,
-    Math.max(AI_EXTENSION_DEFAULTS.timeoutMin, Math.floor(Number(timeoutSec.value)) || AI_EXTENSION_DEFAULTS.timeoutSec),
-  );
-  return {
-    base_url: buildBaseUrl(baseScheme.value, baseHostPort.value),
-    api_prefix,
-    token: token.value,
-    health_paths: paths.length ? paths : [...AI_EXTENSION_DEFAULTS.healthPaths],
-    uvicorn_log_file: uvicornLogFile.value.trim(),
-    celery_log_file: celeryLogFile.value.trim(),
-    timeout_sec: t,
-  };
-}
-
-async function load() {
-  err.value = "";
-  try {
-    const c = await fetchAiExtensionConfig();
-    hydrateFromConfig(c);
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-  }
-}
-
-async function save() {
-  err.value = "";
-  saving.value = true;
-  try {
-    const c = await putAiExtensionConfig(buildConfigPayload());
-    hydrateFromConfig(c);
-    toastSaveSuccess("连接配置已保存");
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-    toastApiError(e, "保存失败");
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function runTest() {
-  err.value = "";
-  testOut.value = null;
-  try {
-    const r = await postAiExtensionTest();
-    testOut.value = r;
-    pushConsoleToast("连通测试完成", "ok");
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-    toastApiError(e, "连通测试失败");
-  }
-}
+const conn = useAiExtensionConnection();
+const {
+  err,
+  saving,
+  testOut,
+  baseScheme,
+  baseHostPort,
+  apiPrefix,
+  token,
+  healthPathsText,
+  uvicornLogFile,
+  celeryLogFile,
+  timeoutSec,
+  load,
+  save,
+  runTest,
+  canSave,
+} = conn;
 
 onMounted(() => {
   void load();
 });
 
-defineExpose({ save, canSave: () => !saving.value, saving });
+defineExpose({ save, canSave, saving });
 </script>
 
 <template>
@@ -141,7 +47,7 @@ defineExpose({ save, canSave: () => !saving.value, saving });
         <ConsoleNavIcon
           class="panel__title-ico"
           :name="panelNavIcon"
-        />扩展服务连接
+        />AI 服务连接
       </h2>
       <div class="row-actions">
         <UiButton
@@ -154,13 +60,13 @@ defineExpose({ save, canSave: () => !saving.value, saving });
           variant="primary"
           :disabled="saving"
           title="Ctrl+S"
-          @click="save"
+          @click="() => save()"
         >
           {{ saving ? "保存中…" : "保存" }}
         </UiButton>
         <UiButton
           :disabled="saving"
-          @click="runTest"
+          @click="() => runTest()"
         >
           连接诊断
         </UiButton>
@@ -174,7 +80,7 @@ defineExpose({ save, canSave: () => !saving.value, saving });
         {{ err }}
       </div>
       <p class="muted ai-config-section__intro">
-        Bot 访问 Pallas-Bot-AI 扩展服务所用的地址与鉴权；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
+        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（智能对话依赖此项）；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
         <strong>{{ AI_ENTRY_CONNECTION_DIAG.label }}</strong>：{{ AI_ENTRY_CONNECTION_DIAG.shortLead }}
       </p>
       <div class="ai-config-connection__links">
@@ -270,15 +176,15 @@ defineExpose({ save, canSave: () => !saving.value, saving });
         v-if="testOut"
         class="ai-config-connection__test-result"
       >
-        <p class="muted ai-config-connection__test-label">连接诊断结果</p>
+        <p class="muted ai-config-connection__test-label">AI 扩展诊断结果</p>
         <div class="ai-config-connection__diag-card">
           <div class="ai-config-connection__diag-head">
-            <strong>{{ testOut.ok ? "扩展连接正常" : "扩展连接异常" }}</strong>
+            <strong>{{ testOut.ok ? "AI 扩展在线" : "AI 扩展不可达" }}</strong>
             <span
               class="tag"
               :class="testOut.ok ? 'tag--ok' : 'tag--warn'"
             >
-              {{ testOut.ok ? "正常" : "异常" }}
+              {{ testOut.ok ? "在线" : "不可达" }}
             </span>
           </div>
           <div class="ai-config-connection__diag-grid">

@@ -8,6 +8,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
 import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
+import { findPresetByBaseUrl } from "@/config/llmProviderPresets";
 import { collectSavedProviderModels } from "@/utils/llmModelOptionSources";
 import { providerAuthSummary } from "@/utils/llmProviderAuth";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
@@ -15,7 +16,16 @@ import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
 
-const props = withDefaults(defineProps<{ simpleMode?: boolean }>(), { simpleMode: false });
+const props = withDefaults(
+  defineProps<{
+    simpleMode?: boolean;
+    /** 精简统计条与观测外链 */
+    compact?: boolean;
+    /** upstream=仅 Provider；tasks=仅编排；all=两者 */
+    panel?: "upstream" | "tasks" | "all";
+  }>(),
+  { simpleMode: false, compact: false, panel: "all" },
+);
 
 const store = useLlmProviders();
 const picker = useLlmModelPickerOptions();
@@ -153,6 +163,11 @@ function reachLabel(id: string, enabled: boolean): { label: string; cls: string 
   return { label: "待测试", cls: "tag--muted" };
 }
 
+function providerPresetLabel(row: LlmProviderConfigRow): string {
+  if (row.kind === "local") return "本地";
+  return findPresetByBaseUrl(row.base_url)?.label ?? "自定义";
+}
+
 defineExpose({ save: store.save, canSave: () => dirty.value && !saving.value, saving });
 
 onMounted(async () => {
@@ -168,7 +183,7 @@ onMounted(async () => {
     class="provider-manager"
   >
     <div class="panel__hd panel__hd--split">
-      <h2 class="panel__title">Provider 与路由</h2>
+      <h2 class="panel__title">{{ props.panel === "tasks" ? "任务编排" : "上游 Provider" }}</h2>
       <div class="row-actions">
         <UiButton
           variant="outline"
@@ -190,7 +205,10 @@ onMounted(async () => {
     </div>
 
     <div class="panel__bd">
-      <div class="provider-manager__summary">
+      <div
+        v-if="!props.compact"
+        class="provider-manager__summary"
+      >
         <div
           v-for="item in providerSummary"
           :key="item.label"
@@ -211,7 +229,10 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="provider-manager__meta">
+      <div
+        v-if="!props.compact"
+        class="provider-manager__meta"
+      >
         <p class="muted provider-manager__intro">
           {{ AI_TASK_CONFIG_HINTS.providerIntro }}
         </p>
@@ -227,6 +248,14 @@ onMounted(async () => {
         </div>
       </div>
 
+      <div
+        v-else-if="err"
+        class="alert alert--err provider-manager__alert"
+      >
+        {{ err }}
+      </div>
+
+      <template v-if="props.panel !== 'tasks'">
       <div class="provider-manager__list-head">
         <strong>Providers（{{ providers.length }}）</strong>
         <UiButton
@@ -255,7 +284,7 @@ onMounted(async () => {
           <div class="provider-manager__card-main">
             <div class="provider-manager__card-head">
               <strong class="provider-manager__card-id">{{ p.id }}</strong>
-              <span class="tag provider-manager__kind">{{ p.kind === "local" ? "本地" : "远程" }}</span>
+              <span class="tag provider-manager__kind">{{ providerPresetLabel(p) }}</span>
               <span
                 class="tag"
                 :class="reachLabel(p.id, p.enabled).cls"
@@ -302,9 +331,10 @@ onMounted(async () => {
           </div>
         </li>
       </ul>
+      </template>
 
       <div
-        v-if="providers.length && !props.simpleMode"
+        v-if="providers.length && !props.simpleMode && props.panel !== 'upstream'"
         class="provider-manager__routing"
       >
         <ProviderRoutingEditor
@@ -314,6 +344,7 @@ onMounted(async () => {
           :provider-ids="providerIds"
           :env-task-models="envTaskModels"
           :model-select-groups="modelSelectGroups"
+          :discovered-by-provider="discoveredModels"
           @set-task="store.setTaskRoute"
           @set-task-model="store.setTaskModelRoute"
           @set-chain="store.setChainFallback"

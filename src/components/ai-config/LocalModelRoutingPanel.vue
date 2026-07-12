@@ -19,6 +19,8 @@ import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
 import { collectSavedRoutingModels } from "@/utils/llmModelOptionSources";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 
+withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
+
 function emptyRouting(): LlmLocalRoutingConfig {
   return {
     llm_model: "",
@@ -124,12 +126,22 @@ onMounted(() => {
 <template>
   <UiCard
     tag="section"
-    glass
+    :glass="!compact"
     class="local-routing-panel"
+    :class="{ 'local-routing-panel--compact': compact }"
   >
     <div class="panel__hd panel__hd--split">
-      <h2 class="panel__title">本地模型路由 / MoE</h2>
+      <h2 class="panel__title">本地分流</h2>
       <div class="row-actions">
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="loading || discoveringModels || !providers.length"
+          :busy="discoveringModels"
+          @click="picker.discoverProviderModels(providers)"
+        >
+          {{ discoveringModels ? "发现中…" : "刷新模型列表" }}
+        </UiButton>
         <UiButton
           variant="outline"
           size="sm"
@@ -145,17 +157,34 @@ onMounted(() => {
           :busy="saving"
           @click="save"
         >
-          {{ saving ? "保存中…" : dirty ? "保存改动" : "已保存" }}
+          {{ saving ? "保存中…" : dirty ? "保存" : "已保存" }}
         </UiButton>
       </div>
     </div>
 
     <div class="panel__bd local-routing-panel__body">
-      <p class="muted local-routing-panel__intro">
+      <p
+        v-if="!compact"
+        class="muted local-routing-panel__intro"
+      >
         {{ AI_TASK_CONFIG_HINTS.routingIntro }}
         任务→Provider / 模型请在上方 Provider 区的「任务路由与模型」统一配置；本面板只管默认本地模型与多模型分档。
         保存写入 <code>.env</code>。
       </p>
+      <p
+        v-else
+        class="muted local-routing-panel__intro local-routing-panel__intro--compact"
+      >
+        任务编排优先；未指定时按下方默认模型与分档。保存写入 <code>.env</code>。
+      </p>
+
+      <div
+        v-if="!compact"
+        class="local-routing-panel__rule-callout"
+      >
+        <strong>分流规则</strong>
+        <span>任务编排优先；未指定任务模型且启用多模型分流时，才按简单 / 中等 / 复杂 / 视觉选择本地模型。</span>
+      </div>
 
       <div
         v-if="err"
@@ -164,7 +193,10 @@ onMounted(() => {
         {{ err }}
       </div>
 
-      <div class="local-routing-panel__summary">
+      <div
+        v-if="!compact"
+        class="local-routing-panel__summary"
+      >
         <div class="local-routing-panel__summary-item">
           <span class="local-routing-panel__summary-label">当前策略</span>
           <strong class="local-routing-panel__summary-value">{{ loading ? "读取中…" : strategyLabel }}</strong>
@@ -179,21 +211,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="row-actions local-routing-panel__model-actions">
-        <UiButton
-          variant="outline"
-          size="sm"
-          :disabled="loading || discoveringModels || !providers.length"
-          :busy="discoveringModels"
-          @click="picker.discoverProviderModels(providers)"
-        >
-          {{ discoveringModels ? "发现中…" : "刷新模型列表" }}
-        </UiButton>
-      </div>
-
       <div class="local-routing-panel__editor">
         <section class="local-routing-panel__block">
-          <h3>基础策略</h3>
+          <h3 v-if="!compact">基础策略</h3>
           <label class="form-field">
             <span class="form-field__label">默认本地模型</span>
             <LlmModelSelect
@@ -205,21 +225,30 @@ onMounted(() => {
             />
           </label>
           <label class="form-field local-routing-panel__switch-field">
-            <span class="form-field__label">启用本地多模型分流</span>
+            <span class="form-field__label">多模型分流</span>
             <ConsoleSwitch
               :model-value="draft.local_multi_model_enabled"
               :show-label="false"
               aria-label="启用本地多模型分流"
               @update:model-value="(v) => (draft.local_multi_model_enabled = v)"
             />
-            <span class="form-field__hint muted">关闭时，主本地 provider 优先跟随当前运行模型；开启后，下方任务场景、分档或 provider 默认模型可能继续分流。</span>
+            <span
+              v-if="!compact"
+              class="form-field__hint muted"
+            >关闭时跟随当前运行模型；开启后未命中任务编排时按分档分流。</span>
           </label>
         </section>
 
-        <section class="local-routing-panel__block">
-          <h3>本地多模型分档</h3>
-          <p class="muted local-routing-panel__block-hint">
-            按复杂度分档选模型；与上方任务矩阵独立，仅在开启多模型分流时生效。
+        <section
+          v-if="draft.local_multi_model_enabled || !compact"
+          class="local-routing-panel__block"
+        >
+          <h3>分档模型</h3>
+          <p
+            v-if="!compact"
+            class="muted local-routing-panel__block-hint"
+          >
+            按简单 / 中等 / 复杂 / 视觉选择模型；仅在启用多模型分流且任务编排没有指定模型时生效。
           </p>
           <div class="local-routing-panel__field-grid">
             <label
@@ -239,7 +268,10 @@ onMounted(() => {
         </section>
       </div>
 
-      <div class="local-routing-panel__grid">
+      <div
+        v-if="!compact"
+        class="local-routing-panel__grid"
+      >
         <section class="local-routing-panel__block">
           <h3>本地 Provider 默认模型</h3>
           <p
@@ -292,6 +324,35 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.local-routing-panel--compact {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.local-routing-panel--compact .local-routing-panel__body {
+  gap: 12px;
+}
+
+.local-routing-panel--compact .local-routing-panel__block {
+  padding: 12px;
+}
+
+.local-routing-panel--compact .local-routing-panel__intro--compact {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.local-routing-panel--compact :deep(.panel__hd--split) {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.local-routing-panel--compact :deep(.row-actions) {
+  flex-wrap: wrap;
+}
+
 .local-routing-panel__body {
   display: flex;
   flex-direction: column;
@@ -304,8 +365,21 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.local-routing-panel__model-actions {
-  justify-content: flex-end;
+.local-routing-panel__rule-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.local-routing-panel__rule-callout strong {
+  flex: 0 0 auto;
 }
 
 .local-routing-panel__summary {
@@ -411,6 +485,11 @@ onMounted(() => {
   .local-routing-panel__grid,
   .local-routing-panel__field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .local-routing-panel__rule-callout {
+    flex-direction: column;
+    gap: 4px;
   }
 
   .local-routing-panel__list li {

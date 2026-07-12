@@ -222,7 +222,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
       <ConsoleHubFilterBar>
         <template #primary>
           <div
-            class="console-view-toggle"
+            class="console-view-toggle console-view-toggle--full"
             role="tablist"
             aria-label="插件分类"
           >
