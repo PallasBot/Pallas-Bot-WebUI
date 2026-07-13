@@ -2448,6 +2448,11 @@ export interface components {
              */
             celery_log_file: string;
             /**
+             * Celery Media Log File
+             * @default
+             */
+            celery_media_log_file: string;
+            /**
              * Timeout Sec
              * @default 8
              */
@@ -7896,7 +7901,7 @@ export interface operations {
     _ai_extension_logs_pallas_api_ai_extension_logs_get: {
         parameters: {
             query?: {
-                kind?: "uvicorn" | "celery";
+                kind?: "uvicorn" | "celery" | "celery-media";
                 n?: number;
                 token?: string | null;
             };

@@ -44,6 +44,7 @@ export function useAiExtensionConnection() {
   const healthPathsText = ref<string>(AI_EXTENSION_DEFAULTS.healthPaths.join("\n"));
   const uvicornLogFile = ref("");
   const celeryLogFile = ref("");
+  const celeryMediaLogFile = ref("");
   const timeoutSec = ref<number>(AI_EXTENSION_DEFAULTS.timeoutSec);
 
   function hydrateFromConfig(c: AiExtensionConfig): void {
@@ -55,6 +56,7 @@ export function useAiExtensionConnection() {
     healthPathsText.value = (c.health_paths?.length ? c.health_paths : AI_EXTENSION_DEFAULTS.healthPaths).join("\n");
     uvicornLogFile.value = c.uvicorn_log_file || "";
     celeryLogFile.value = c.celery_log_file || "";
+    celeryMediaLogFile.value = c.celery_media_log_file || "";
     timeoutSec.value = c.timeout_sec ?? AI_EXTENSION_DEFAULTS.timeoutSec;
   }
 
@@ -76,6 +78,7 @@ export function useAiExtensionConnection() {
       health_paths: paths.length ? paths : [...AI_EXTENSION_DEFAULTS.healthPaths],
       uvicorn_log_file: uvicornLogFile.value.trim(),
       celery_log_file: celeryLogFile.value.trim(),
+      celery_media_log_file: celeryMediaLogFile.value.trim(),
       timeout_sec: t,
     };
   }
@@ -133,6 +136,7 @@ export function useAiExtensionConnection() {
     healthPathsText,
     uvicornLogFile,
     celeryLogFile,
+    celeryMediaLogFile,
     timeoutSec,
     parseBaseUrlParts,
     buildBaseUrl,

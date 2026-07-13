@@ -9,6 +9,7 @@ import {
 } from "./consoleOpenapiClient";
 import { notifyInstancesCatalogUpdated } from "@/utils/catalogSync";
 import { protocolAccountsSignature } from "@/utils/protocolUi";
+import type { AiExtensionLogKind } from "@/config/aiConstants";
 import type {
   UpdateCheckData,
   UpdateCheckAllData,
@@ -2322,7 +2323,7 @@ export async function postAiExtensionTest(): Promise<AiExtensionTestData> {
 }
 
 export async function fetchAiExtensionLogs(
-  kind: "uvicorn" | "celery",
+  kind: AiExtensionLogKind,
   n = 200,
 ): Promise<AiExtensionLogsData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ai-extension/logs"]["get"]>(
@@ -2333,7 +2334,7 @@ export async function fetchAiExtensionLogs(
 
 /** AI 扩展本地日志文件 SSE（Bot 跟读 uvicorn/celery 日志路径） */
 export function openAiExtensionLogsEventSource(
-  kind: "uvicorn" | "celery" = "uvicorn",
+  kind: AiExtensionLogKind = "uvicorn",
   lastEventId?: number,
 ): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");

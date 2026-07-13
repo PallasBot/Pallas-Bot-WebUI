@@ -10,7 +10,7 @@ import {
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { AI_EXTENSION_DEFAULTS } from "@/config/aiConstants";
+import { AI_EXTENSION_DEFAULTS, AI_EXTENSION_DOCKER_LOG_MOUNT } from "@/config/aiConstants";
 import { AI_ENTRY_CONNECTION_DIAG, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 import { useAiExtensionConnection } from "@/composables/useAiExtensionConnection";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -31,6 +31,7 @@ const {
   healthPathsText,
   uvicornLogFile,
   celeryLogFile,
+  celeryMediaLogFile,
   timeoutSec,
   load,
   save,
@@ -246,19 +247,34 @@ defineExpose({ save, canSave, saving });
             class="inp"
             type="text"
             autocomplete="off"
-            placeholder="例如 /var/log/pallas-ai/uvicorn.log"
+            :placeholder="`${AI_EXTENSION_DOCKER_LOG_MOUNT}/uvicorn.log`"
           >
         </div>
         <div class="form-field">
-          <label class="form-field__label">任务队列日志路径</label>
+          <label class="form-field__label">任务队列日志 · LLM（default）</label>
           <input
             v-model="celeryLogFile"
             class="inp"
             type="text"
             autocomplete="off"
-            placeholder="例如 /var/log/pallas-ai/celery.log"
+            :placeholder="`${AI_EXTENSION_DOCKER_LOG_MOUNT}/celery.log`"
           >
         </div>
+        <div class="form-field">
+          <label class="form-field__label">任务队列日志 · 媒体（media）</label>
+          <input
+            v-model="celeryMediaLogFile"
+            class="inp"
+            type="text"
+            autocomplete="off"
+            :placeholder="`${AI_EXTENSION_DOCKER_LOG_MOUNT}/celery-media.log`"
+          >
+        </div>
+        <p class="muted ai-config-connection__log-hint">
+          留空时 Bot 会按 uvicorn / api / app 与 celery / celery-media 自动探测。
+          Docker 全栈请将 AI 日志卷挂到 Bot 的 <code>{{ AI_EXTENSION_DOCKER_LOG_MOUNT }}</code>（见 compose 注释）。
+          实时查看请用 <RouterLink to="/ai/home#ai-service-logs">AI 观测 · 服务日志</RouterLink>。
+        </p>
       </div>
       <div
         v-if="testOut"
@@ -311,6 +327,16 @@ defineExpose({ save, canSave, saving });
 </template>
 
 <style scoped>
+.ai-config-connection__log-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.ai-config-connection__log-hint code {
+  word-break: break-all;
+}
+
 .ai-config-connection__links {
   display: flex;
   flex-wrap: wrap;

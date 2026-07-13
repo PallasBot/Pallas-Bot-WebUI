@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import AiRuntimeDiagnosticPanel from "@/components/ai-config/AiRuntimeDiagnosticPanel.vue";
+import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -11,6 +12,7 @@ import { useAiRuntimeSnapshot } from "@/composables/useAiRuntimeSnapshot";
 import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
+import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
 
 const route = useRoute();
 const {
@@ -273,7 +275,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
             :key="cap.capability"
             class="ai-home-page__row"
           >
-            <span class="ai-home-page__row-key">{{ cap.capability }}</span>
+            <span class="ai-home-page__row-key">{{ mediaCapabilityLabel(cap.capability) }}</span>
             <strong class="ai-home-page__row-val">{{ cap.queue_depth }} 排队 · {{ cap.active_tasks }} 运行</strong>
           </div>
         </div>
@@ -297,6 +299,14 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
       :runtime-overview="runtimeOverview"
       @refresh="refresh"
     />
+
+    <section
+      id="ai-service-logs"
+      class="ai-home-page__logs"
+      aria-label="AI 服务日志"
+    >
+      <AiConfigLogsSection embedded />
+    </section>
   </div>
 </template>
 
@@ -446,6 +456,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.ai-home-page__logs {
+  scroll-margin-top: 12px;
 }
 
 @media (max-width: 860px) {

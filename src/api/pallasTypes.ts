@@ -1660,6 +1660,7 @@ export interface AiExtensionConfig {
   health_paths: string[];
   uvicorn_log_file: string;
   celery_log_file: string;
+  celery_media_log_file: string;
   timeout_sec: number;
 }
 
@@ -1675,7 +1676,7 @@ export type PluginConfigCheckResult = Omit<GeneratedPluginConfigCheckResult, "li
 };
 
 export interface AiExtensionLogsData {
-  kind: "uvicorn" | "celery";
+  kind: "uvicorn" | "celery" | "celery-media";
   path: string;
   lines: string[];
   error: string | null;

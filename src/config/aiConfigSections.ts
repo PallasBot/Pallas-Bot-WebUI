@@ -81,7 +81,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "logs",
     label: "扩展日志",
-    lead: "实时跟读或拉取扩展侧 HTTP 服务与后台任务日志。",
+    lead: "拉取扩展侧日志；日常实时查看请用 AI 观测 · 服务日志。",
     icon: "logs",
     groupId: "extension",
   },

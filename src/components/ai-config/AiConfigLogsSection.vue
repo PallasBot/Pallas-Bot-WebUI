@@ -6,16 +6,32 @@ import type { AiExtensionLogsData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { AI_LOG_DEFAULTS } from "@/config/aiConstants";
+import {
+  AI_EXTENSION_DOCKER_LOG_MOUNT,
+  AI_EXTENSION_LOG_KINDS,
+  AI_LOG_DEFAULTS,
+  type AiExtensionLogKind,
+} from "@/config/aiConstants";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+    defaultKind?: AiExtensionLogKind;
+  }>(),
+  {
+    embedded: false,
+    defaultKind: "uvicorn",
+  },
+);
+
 const MAX_LIVE_LINES = 2000;
 
 const panelNavIcon = usePanelNavIcon();
-const logKind = ref<"uvicorn" | "celery">("uvicorn");
+const logKind = ref<AiExtensionLogKind>(props.defaultKind);
 const logLines = ref<number>(AI_LOG_DEFAULTS.lines);
 const logData = ref<AiExtensionLogsData | null>(null);
 const liveLines = ref<string[]>([]);
@@ -30,12 +46,20 @@ const lastStreamEventId = ref(0);
 let logEs: EventSource | null = null;
 let streamReconnectTimer: number | null = null;
 
+const kindMeta = computed(() => AI_EXTENSION_LOG_KINDS.find((row) => row.id === logKind.value));
+
 const lines = computed(() =>
   liveMode.value ? liveLines.value : (logData.value?.lines ?? []),
 );
 
 const displayPath = computed(() =>
   liveMode.value ? livePath.value || logData.value?.path || "" : logData.value?.path || "",
+);
+
+const dockerHintVisible = computed(
+  () =>
+    Boolean(logErr.value) &&
+    (logErr.value.includes("不存在") || logErr.value.includes("越界")),
 );
 
 function stopLogStreamConnection() {
@@ -182,18 +206,28 @@ onBeforeUnmount(() => {
     tag="div"
     glass
     class="ai-config-section__panel"
+    :class="{ 'ai-logs--embedded': embedded }"
   >
     <div class="panel__hd panel__hd--split">
       <h2 class="panel__title">
         <ConsoleNavIcon
           class="panel__title-ico"
           :name="panelNavIcon"
-        />扩展日志
+        />{{ embedded ? "服务日志" : "扩展日志" }}
       </h2>
       <div class="row-actions ai-logs__actions">
-        <select v-model="logKind" class="sel">
-          <option value="uvicorn">Web 服务（uvicorn）</option>
-          <option value="celery">任务队列（celery）</option>
+        <select
+          v-model="logKind"
+          class="sel"
+          aria-label="日志类型"
+        >
+          <option
+            v-for="row in AI_EXTENSION_LOG_KINDS"
+            :key="row.id"
+            :value="row.id"
+          >
+            {{ row.label }}
+          </option>
         </select>
         <label class="ai-logs__live-toggle">
           <input
@@ -204,29 +238,63 @@ onBeforeUnmount(() => {
           实时
         </label>
         <template v-if="!liveMode">
-          <select v-model.number="logLines" class="sel" aria-label="拉取行数">
-            <option v-for="n in AI_LOG_DEFAULTS.lineOptions" :key="n" :value="n">最近 {{ n }} 行</option>
+          <select
+            v-model.number="logLines"
+            class="sel"
+            aria-label="拉取行数"
+          >
+            <option
+              v-for="n in AI_LOG_DEFAULTS.lineOptions"
+              :key="n"
+              :value="n"
+            >
+              最近 {{ n }} 行
+            </option>
           </select>
-          <UiButton variant="primary" :busy="busy" @click="loadLogs">拉取</UiButton>
+          <UiButton
+            variant="primary"
+            :busy="busy"
+            @click="loadLogs"
+          >
+            拉取
+          </UiButton>
         </template>
-        <UiButton v-if="lines.length" @click="copyLogs">复制</UiButton>
+        <UiButton
+          v-if="lines.length"
+          @click="copyLogs"
+        >
+          复制
+        </UiButton>
       </div>
     </div>
     <div class="panel__bd">
       <p
-        v-if="!lines.length && !logErr && liveMode"
+        v-if="embedded"
         class="muted ai-config-section__intro"
       >
-        实时跟读扩展服务本地日志（Bot 可读路径）。远端部署或文件不存在时会提示错误，可关闭「实时」改用拉取。
+        跟读 Pallas-Bot-AI 落盘日志（由 Bot 本机路径提供 SSE）。
+        路径在 <RouterLink to="/ai/config/connection">AI 配置 · AI 服务</RouterLink> 配置或留空自动探测。
+      </p>
+      <p
+        v-else-if="!lines.length && !logErr && liveMode"
+        class="muted ai-config-section__intro"
+      >
+        实时跟读扩展服务本地日志。也可在
+        <RouterLink to="/ai/home#ai-service-logs">AI 观测</RouterLink>
+        查看；路径在「AI 服务」配置。
       </p>
       <p
         v-else-if="!logData && !logErr && !liveMode"
         class="muted ai-config-section__intro"
       >
-        选择日志类型与行数后点「拉取」，读取扩展服务最近若干行日志。路径在「扩展连接」配置。
+        选择日志类型与行数后点「拉取」。日常排障建议在
+        <RouterLink to="/ai/home#ai-service-logs">AI 观测 · 服务日志</RouterLink>。
       </p>
-      <div v-if="!lines.length && !logErr" class="ai-logs__links">
-        <RouterLink to="/ai/config/connection">前往扩展连接</RouterLink>
+      <div
+        v-if="!lines.length && !logErr"
+        class="ai-logs__links"
+      >
+        <RouterLink to="/ai/config/connection">配置日志路径</RouterLink>
         <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
       </div>
       <div
@@ -235,21 +303,48 @@ onBeforeUnmount(() => {
       >
         {{ logErr }}
       </div>
-      <div v-if="lines.length || displayPath" class="ai-logs__meta muted">
-        <span v-if="liveMode" class="ai-logs__status" :data-on="streamLive ? '1' : '0'">
+      <p
+        v-if="dockerHintVisible"
+        class="muted ai-logs__docker-hint"
+      >
+        Docker 部署请确认 compose 已将 AI 日志目录挂到 Bot 的
+        <code>{{ AI_EXTENSION_DOCKER_LOG_MOUNT }}</code>，或在「AI 服务」填写 Bot 可读路径。
+        容器内也可执行：<code>docker exec -it pallasbot-ai tail -f /server/logs/{{ logKind === 'uvicorn' ? 'uvicorn.log' : logKind === 'celery-media' ? 'celery-media.log' : 'celery.log' }}</code>
+      </p>
+      <div
+        v-if="lines.length || displayPath"
+        class="ai-logs__meta muted"
+      >
+        <span
+          v-if="liveMode"
+          class="ai-logs__status"
+          :data-on="streamLive ? '1' : '0'"
+        >
           {{ streamLive ? "已连接" : streamReconnecting ? "重连中…" : "未连接" }}
         </span>
-        <span>{{ logKind === "uvicorn" ? "Web 服务" : "任务队列" }}</span>
+        <span>{{ kindMeta?.shortLabel ?? logKind }}</span>
         <code v-if="displayPath">{{ displayPath }}</code>
         <span>{{ lines.length }} 行</span>
       </div>
-      <ol v-if="lines.length" class="ai-logs__list">
-        <li v-for="(line, idx) in lines" :key="idx" class="ai-logs__line">
+      <ol
+        v-if="lines.length"
+        class="ai-logs__list"
+      >
+        <li
+          v-for="(line, idx) in lines"
+          :key="idx"
+          class="ai-logs__line"
+        >
           <span class="ai-logs__lineno">{{ idx + 1 }}</span>
           <span class="ai-logs__text">{{ line }}</span>
         </li>
       </ol>
-      <p v-else-if="logData && !liveMode" class="muted">日志为空。</p>
+      <p
+        v-else-if="logData && !liveMode"
+        class="muted"
+      >
+        日志为空。
+      </p>
     </div>
   </UiCard>
 </template>
@@ -274,6 +369,16 @@ onBeforeUnmount(() => {
 
 .ai-logs__err {
   margin-bottom: 10px;
+}
+
+.ai-logs__docker-hint {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.ai-logs__docker-hint code {
+  word-break: break-all;
 }
 
 .ai-logs__links {
@@ -305,6 +410,10 @@ onBeforeUnmount(() => {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.ai-logs--embedded .ai-logs__list {
+  max-height: 360px;
 }
 
 .ai-logs__line {
