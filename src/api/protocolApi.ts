@@ -63,7 +63,25 @@ export type ProtocolBatchRequest = {
 };
 
 export type ProtocolRuntimeOverview = Record<string, unknown>;
-export type ProtocolQrcodeMeta = { exists?: boolean; updated_at?: number };
+export type ProtocolQrcodeMeta = {
+  exists?: boolean;
+  updated_at?: number;
+  host_deps?: { qr_capture_ready?: boolean; issues?: string[] };
+};
+
+export async function protocolFetchQrcodeImageBlob(
+  mountUrl: string,
+  accountId: string,
+  updatedAt?: number,
+): Promise<Blob> {
+  const params =
+    updatedAt != null && updatedAt > 0 ? { t: String(updatedAt) } : undefined;
+  const { data } = await protocolHttp(mountUrl).get<Blob>(
+    `/api/accounts/${encodeURIComponent(accountId)}/qrcode`,
+    { params, responseType: "blob" },
+  );
+  return data;
+}
 
 export async function protocolStartAccountBatch(
   mountUrl: string,
@@ -176,6 +194,17 @@ export async function protocolFetchQrcodeMeta(
 ): Promise<ProtocolQrcodeMeta> {
   const { data } = await protocolHttp(mountUrl).get<ProtocolQrcodeMeta>(
     `/api/accounts/${encodeURIComponent(accountId)}/qrcode/meta`,
+  );
+  return data ?? {};
+}
+
+/** 触发协议端重新生成二维码（NapCat WebUI / SnowLuma 截屏），返回最新 meta */
+export async function protocolRefreshAccountQrcode(
+  mountUrl: string,
+  accountId: string,
+): Promise<ProtocolQrcodeMeta> {
+  const { data } = await protocolHttp(mountUrl).post<ProtocolQrcodeMeta>(
+    `/api/accounts/${encodeURIComponent(accountId)}/qrcode/refresh`,
   );
   return data ?? {};
 }
