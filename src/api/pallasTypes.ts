@@ -581,6 +581,7 @@ export interface PluginGovernanceData {
   runtime: PluginGovernanceRuntime;
   perm_ui_filtered: CommandPermUiData;
   limits_ui_filtered: CommandLimitsUiData;
+  blocked_user_ids?: number[];
   reload_policy?: string | null;
   activation_policy?: string | null;
 }
@@ -590,6 +591,7 @@ export interface PluginGovernanceBody {
   command_limit_overrides: Record<string, number>;
   global_disable: boolean;
   help_hidden: boolean;
+  blocked_user_ids?: number[];
 }
 
 export interface PluginRow {
@@ -1571,6 +1573,19 @@ export interface NapcatAccountRow {
   native_webui_url?: string;
   /** 兼容字段 */
   napcat_native_webui_url?: string;
+  /** SnowLuma Docker noVNC 元数据（协议插件 compose） */
+  snowluma_docker_novnc?: {
+    url?: string;
+    bind_host?: string;
+    host_port?: number;
+    uses_default_vnc_password?: boolean;
+  };
+  /** Bot 自动改密后写入 accounts.json 的 SnowLuma WebUI 管理口令 */
+  snowluma_managed_webui_password?: string;
+  /** 日志解析的一次性初始口令（改密前） */
+  snowluma_runtime_webui_password?: string;
+  snowluma_webui_default_user?: string;
+  snowluma_linux_docker?: boolean;
   running?: boolean;
   connected?: boolean;
   process_running?: boolean;

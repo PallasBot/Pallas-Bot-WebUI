@@ -3,6 +3,7 @@ import { computed } from "vue";
 import type { PluginGovernanceData, PluginGovernanceMenuItem } from "@/api/pallasTypes";
 import CmdLimitsTable from "@/components/config/CmdLimitsTable.vue";
 import CmdPermMatrix from "@/components/config/CmdPermMatrix.vue";
+import PluginAclBlockedUsers from "@/components/config/PluginAclBlockedUsers.vue";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow.vue";
 import { activationPolicyShortLabel } from "@/config/extensionActivationSemantics";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
@@ -16,6 +17,7 @@ const props = withDefaults(
     commandMenuMap: Map<string, PluginGovernanceMenuItem>;
     permSelections: Record<string, string>;
     limitSelections: Record<string, string>;
+    blockedUserIds: number[];
     globalDisable: boolean;
     showInHelpMenu: boolean;
     globalDisableProtected: boolean;
@@ -30,6 +32,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   permChange: [commandId: string, newLevel: string];
   limitInput: [commandId: string, value: string];
+  blockedUsersChange: [userIds: number[]];
   toggleGlobalDisable: [value: boolean];
   toggleHelpMenuVisible: [value: boolean];
 }>();
@@ -120,6 +123,23 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
             <p v-else>关闭后会立即从帮助菜单隐藏，但不影响实际 Matcher 运行。</p>
           </PluginRuntimeSwitchRow>
         </div>
+      </section>
+
+      <section class="plugin-governance-panel__group">
+        <header class="plugin-governance-panel__group-head">
+          <h4 class="plugin-governance-panel__group-title">用户禁用</h4>
+          <p
+            v-if="!isDialogPresentation"
+            class="muted plugin-governance-panel__group-desc"
+          >
+            名单中的 QQ 无法使用该插件的任何功能（全群、私聊均生效）；号主不受此限制。
+          </p>
+        </header>
+        <PluginAclBlockedUsers
+          :model-value="blockedUserIds"
+          :disabled="governanceSaving"
+          @update:model-value="emit('blockedUsersChange', $event)"
+        />
       </section>
 
       <section class="plugin-governance-panel__group">

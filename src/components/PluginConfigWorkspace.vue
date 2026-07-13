@@ -106,6 +106,7 @@ const governanceSaving = ref(false);
 const governanceErr = ref("");
 const permSelections = ref<Record<string, string>>({});
 const limitSelections = ref<Record<string, string>>({});
+const blockedUserIds = ref<number[]>([]);
 const limitDebounceTimers = ref<Record<string, ReturnType<typeof setTimeout>>>({});
 const pluginConfigTab = ref<PluginConfigTab>("governance");
 const readmeHtml = ref("");
@@ -380,6 +381,7 @@ async function loadGovernance() {
       }
     }
     limitSelections.value = limitNext;
+    blockedUserIds.value = [...(g.blocked_user_ids ?? [])];
   } catch (e) {
     governanceErr.value = isCatchAllApiError(e)
       ? catchAllApiHint()
@@ -421,6 +423,7 @@ async function persistGovernance(): Promise<boolean> {
       command_limit_overrides: limitOverrides,
       global_disable: Boolean(governanceData.value.runtime.global_disable),
       help_hidden: Boolean(governanceData.value.runtime.help_hidden),
+      blocked_user_ids: [...blockedUserIds.value],
     };
     await putPluginGovernance(pluginResolvedId.value, body);
     await loadGovernance();
@@ -433,6 +436,11 @@ async function persistGovernance(): Promise<boolean> {
   } finally {
     governanceSaving.value = false;
   }
+}
+
+async function onBlockedUsersChange(userIds: number[]) {
+  blockedUserIds.value = [...userIds];
+  await persistGovernance();
 }
 
 async function onPermChange(commandId: string, newLevel: string) {
@@ -961,11 +969,13 @@ defineExpose({
               :command-menu-map="commandMenuMap"
               :perm-selections="permSelections"
               :limit-selections="limitSelections"
+              :blocked-user-ids="blockedUserIds"
               :global-disable="isGloballyDisabled"
               :show-in-help-menu="showInHelpMenu"
               :global-disable-protected="globalDisableProtected"
               :help-ignored="helpIgnored"
               @perm-change="onPermChange"
+              @blocked-users-change="onBlockedUsersChange"
               @limit-input="(cmdId, val) => onLimitInput(cmdId, val)"
               @toggle-global-disable="void toggleGovernanceRuntime('global_disable', $event)"
               @toggle-help-menu-visible="void toggleGovernanceRuntime('help_hidden', !$event)"
