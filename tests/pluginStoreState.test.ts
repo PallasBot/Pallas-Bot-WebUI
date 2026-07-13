@@ -19,7 +19,7 @@ describe("plugin store action state", () => {
       needs_restart: false,
       restart_scheduled: false,
       activation_action: "hot-reload",
-    })).toBe("已热重载");
+    })).toBe("已热更新");
   });
 
   it("marks worker restart plugins as pending worker restart", () => {
@@ -27,7 +27,7 @@ describe("plugin store action state", () => {
       needs_restart: true,
       restart_scheduled: false,
       activation_action: "none",
-    })).toBe("待重启 Worker");
+    })).toBe("待重启分片节点");
   });
 
   it("marks full restart plugins as pending full restart", () => {
@@ -35,7 +35,7 @@ describe("plugin store action state", () => {
       needs_restart: true,
       restart_scheduled: false,
       activation_action: "none",
-    })).toBe("待全栈重启");
+    })).toBe("待重启全部进程");
   });
 
   it("distinguishes scheduled worker restart from generic restart", () => {
@@ -43,7 +43,7 @@ describe("plugin store action state", () => {
       needs_restart: true,
       restart_scheduled: true,
       activation_action: "workers-restart",
-    })).toBe("已安排 Worker 重启");
+    })).toBe("已安排重启分片节点");
   });
 
   it("treats scheduled restart as not pending manual restart", () => {

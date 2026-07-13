@@ -13,6 +13,14 @@ export interface AiConfigSectionDef {
   groupId: string;
 }
 
+export interface AiConfigMoreNavItemDef {
+  id: "more";
+  label: string;
+  lead: string;
+  icon: ConsoleNavIconId;
+  targetSectionId: AiConfigSectionId;
+}
+
 export interface AiTopLevelNavDef {
   id: "home" | "config";
   label: string;
@@ -30,29 +38,29 @@ export const AI_CONFIG_NAV_GROUPS: AiConfigNavGroupDef[] = [
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "provider",
-    label: "模型与 Provider",
-    lead: "本地模型热切换、上游端点登记与连通性检测；专家模式下含任务路由与多模型分流。",
+    label: "接入",
+    lead: "连接模型服务，选择云端或本地模型。",
     icon: "server",
     groupId: "dialogue",
   },
   {
     id: "strategy",
-    label: "Bot 对话策略",
-    lead: "Bot 侧总开关、接话模式与限流；保存后热载，不直接改动上游模型。",
+    label: "对话",
+    lead: "设置 Bot 如何接话、限流与热载开关。",
     icon: "sparkles",
     groupId: "dialogue",
   },
   {
     id: "knowledge",
-    label: "方舟知识库",
-    lead: "查询干员与敌人数据，管理接话语料入口。",
+    label: "知识库",
+    lead: "查询方舟数据，管理接话语料入口。",
     icon: "database",
     groupId: "observe",
   },
   {
     id: "connection",
-    label: "扩展连接",
-    lead: "配置 Bot 访问 Pallas-Bot-AI 的地址、Token，并检查连通性。",
+    label: "AI 服务",
+    lead: "Bot 访问 Pallas-Bot-AI 的地址与 Token（智能对话依赖此项）。",
     icon: "radio",
     groupId: "extension",
   },
@@ -80,6 +88,16 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
 ];
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
+
+export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = ["provider", "strategy", "knowledge"];
+
+export const AI_CONFIG_MORE_NAV_ITEM: AiConfigMoreNavItemDef = {
+  id: "more",
+  label: "更多",
+  lead: "AI 服务、画画、网易云与扩展日志",
+  icon: "blocks",
+  targetSectionId: "connection",
+};
 
 /** 旧分区 id → 现行分区 */
 const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
@@ -117,7 +135,7 @@ export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/provider";
 
 export const AI_CONFIG_HUB_LEAD =
-  "按左侧分区改对应链路；不确定从顶部「入门引导」或体检向导开始，高级项可稍后再动。";
+  "用上方分区切换链路；不确定可从「诊断」或体检向导开始，高级项可稍后再动。";
 
 export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;

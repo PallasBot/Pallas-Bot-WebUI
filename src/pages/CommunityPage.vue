@@ -193,6 +193,26 @@ const corpusSummaryFlow = computed(() => {
   return mergeOrderSteps.value.map((k) => sourceLabel(k)).join(" → ");
 });
 
+const corpusMultiSourceBadge = computed((): { label: string; ok: boolean } => {
+  const status = corpusStatus.value;
+  if (!status) return { label: "多源接话未启用", ok: false };
+  const community = status.sources?.community;
+  if (status.composite_active) {
+    if (community?.wanted && !community?.readable) {
+      return { label: "多源接话已启用（待接入）", ok: true };
+    }
+    return { label: "多源接话已启用", ok: true };
+  }
+  if (community?.wanted) {
+    return { label: "多源接话已开启（待就绪）", ok: false };
+  }
+  const mode = String(status.remote_find_mode || "").trim();
+  if (mode === "prefetch" || mode === "sync") {
+    return { label: "本机未命中时查社区已开", ok: true };
+  }
+  return { label: "多源接话未启用", ok: false };
+});
+
 const corpusSnapshotText = computed(() => formatUnixSec(corpusStatus.value?.as_of));
 
 const communityUsage = computed(() => corpusStatus.value?.sources?.community?.usage ?? null);
@@ -884,8 +904,8 @@ onMounted(() => {
                 <div class="community-page__corpus-summary-main">
                   <UiBadge
                     class="community-page__status-badge"
-                    :variant="corpusStatus.composite_active ? 'ok' : 'secondary'"
-                  >{{ corpusStatus.composite_active ? "多源接话已启用" : "多源接话未启用" }}</UiBadge>
+                    :variant="corpusMultiSourceBadge.ok ? 'ok' : 'secondary'"
+                  >{{ corpusMultiSourceBadge.label }}</UiBadge>
                   <span
                     v-if="corpusSummaryFlow"
                     class="community-page__corpus-summary-flow"

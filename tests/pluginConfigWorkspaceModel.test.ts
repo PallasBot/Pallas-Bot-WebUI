@@ -89,26 +89,18 @@ describe("pluginConfigWorkspaceModel", () => {
     expect(summary.requiredFilled).toBe(2);
   });
 
-  it("prefers permission tab as default landing section", () => {
+  it("prefers governance tab when available, else config", () => {
     expect(resolveInitialPluginConfigTab({
-      hasPermConfig: true,
-      hasLimitConfig: true,
+      hasGovernance: true,
       hasConfigFields: true,
-    })).toBe("perm");
+    })).toBe("governance");
     expect(resolveInitialPluginConfigTab({
-      hasPermConfig: false,
-      hasLimitConfig: true,
-      hasConfigFields: true,
-    })).toBe("limit");
-    expect(resolveInitialPluginConfigTab({
-      hasPermConfig: false,
-      hasLimitConfig: false,
+      hasGovernance: false,
       hasConfigFields: true,
     })).toBe("config");
     expect(resolveInitialPluginConfigTab({
-      hasPermConfig: false,
-      hasLimitConfig: false,
+      hasGovernance: false,
       hasConfigFields: false,
-    })).toBe("runtime");
+    })).toBe("governance");
   });
 });

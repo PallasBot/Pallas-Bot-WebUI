@@ -8,11 +8,14 @@ const props = withDefaults(
     modelValue: string;
     groups: LlmModelSelectGroup[];
     emptyLabel?: string;
+    /** false：不提供空选项（云端接入必须选具体模型） */
+    allowEmpty?: boolean;
     disabled?: boolean;
     ariaLabel?: string;
   }>(),
   {
     emptyLabel: "（回退默认本地模型）",
+    allowEmpty: true,
     disabled: false,
     ariaLabel: "选择模型",
   },
@@ -43,7 +46,17 @@ function onChange(event: Event) {
     :aria-label="ariaLabel"
     @change="onChange"
   >
-    <option value="">
+    <option
+      v-if="allowEmpty"
+      value=""
+    >
+      {{ emptyLabel }}
+    </option>
+    <option
+      v-else
+      value=""
+      disabled
+    >
       {{ emptyLabel }}
     </option>
     <template

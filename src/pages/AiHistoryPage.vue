@@ -46,14 +46,26 @@ import type {
   ConversationKernelTraceRow,
 } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
-import UiCard from "@/components/ui/UiCard.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
+import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
 import AiHistorySessionFilterBar from "@/components/ai-history/AiHistorySessionFilterBar.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import {
+  BEHAVIOR_ACTION_OPTIONS,
+  BEHAVIOR_OUTCOME_OPTIONS,
+  BEHAVIOR_SCENE_OPTIONS,
+  PATTERN_SORT_OPTIONS,
+  labelAction,
+  labelActions,
+  labelFeatureLevel,
+  labelOutcome,
+  labelRepeaterMode,
+  labelScene,
+} from "@/utils/aiHistoryLabels";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatCompactDateTime, formatRelativeDayLabel } from "@/utils/formatDateTime";
@@ -170,33 +182,18 @@ const showAllSessions = ref(false);
 const behaviorBusy = ref<Record<string, boolean>>({});
 
 const BEHAVIOR_LABEL_OPTIONS = ["像人", "模板感强", "姿态不对", "带偏话题", "作为参考保留"] as const;
-const BEHAVIOR_SCENE_OPTIONS = [
-  { label: "全部场景", value: "" },
-  { label: "provocation", value: "provocation" },
-  { label: "banter", value: "banter" },
-  { label: "smalltalk", value: "smalltalk" },
-  { label: "venting", value: "venting" },
-  { label: "group_threading", value: "group_threading" },
-  { label: "light_help", value: "light_help" },
-] as const;
-const BEHAVIOR_ACTION_OPTIONS = [
-  { label: "light_tease_and_close", value: "light_tease_and_close" },
-  { label: "ack_then_short_reply", value: "ack_then_short_reply" },
-  { label: "follow_joke_once", value: "follow_joke_once" },
-  { label: "ack_emotion_no_lecture", value: "ack_emotion_no_lecture" },
-  { label: "stay_on_current_topic", value: "stay_on_current_topic" },
-  { label: "avoid_forced_topic_shift", value: "avoid_forced_topic_shift" },
-  { label: "brief_multi_party_anchor", value: "brief_multi_party_anchor" },
-  { label: "short_help_then_stop", value: "short_help_then_stop" },
-] as const;
-const BEHAVIOR_OUTCOME_OPTIONS = [
-  { label: "未判定", value: "" },
-  { label: "接住了", value: "engaged" },
-  { label: "一般", value: "neutral" },
-  { label: "被无视", value: "ignored" },
-  { label: "很尬", value: "awkward" },
-  { label: "带偏了", value: "derailed" },
-] as const;
+const advancedDebugKeys = ref<Record<string, boolean>>({});
+
+function isAdvancedDebugExpanded(key: string): boolean {
+  return !!advancedDebugKeys.value[key];
+}
+
+function toggleAdvancedDebug(key: string): void {
+  advancedDebugKeys.value = {
+    ...advancedDebugKeys.value,
+    [key]: !advancedDebugKeys.value[key],
+  };
+}
 
 function parseFilter(raw: string): number | null {
   const n = Number(raw.trim());
@@ -223,7 +220,7 @@ const behaviorRunsOverview = computed(() => [
   },
   {
     label: "筛选结果",
-    value: behaviorRunsOutcome.value || "全部",
+    value: behaviorRunsOutcome.value ? labelOutcome(behaviorRunsOutcome.value) : "全部",
   },
 ]);
 const patternsOverview = computed(() => [
@@ -238,7 +235,7 @@ const patternsOverview = computed(() => [
   },
   {
     label: "场景",
-    value: patternsScene.value || "全部",
+    value: patternsScene.value ? labelScene(patternsScene.value) : "全部",
   },
 ]);
 
@@ -250,17 +247,17 @@ const kernelStatusOverview = computed(() => {
   const status = kernelStatus.value;
   if (!status) return [];
   return [
-    { label: "功能层级", value: status.feature_level, accent: true },
-    { label: "llm_chat", value: status.llm_chat_enabled ? "开" : "关" },
+    { label: "能力档位", value: labelFeatureLevel(status.feature_level), accent: true },
+    { label: "大模型闲聊", value: status.llm_chat_enabled ? "开" : "关" },
     { label: "反哺收集", value: kernelFlagLabel(status.feedback_collect_active), accent: status.feedback_collect_active },
-    { label: "反哺加权", value: kernelFlagLabel(status.feedback_bias_active), accent: status.feedback_bias_active },
-    { label: "写回晋升", value: kernelFlagLabel(status.writeback_active), accent: status.writeback_active },
+    { label: "学习加权", value: kernelFlagLabel(status.feedback_bias_active), accent: status.feedback_bias_active },
+    { label: "写回语料", value: kernelFlagLabel(status.writeback_active), accent: status.writeback_active },
     {
       label: "会话摘要",
       value: kernelFlagLabel(Boolean(status.runtime_state_summary_active)),
       accent: Boolean(status.runtime_state_summary_active),
     },
-    { label: "最近 trace", value: String(kernelTraces.value.length), accent: kernelTraces.value.length > 0 },
+    { label: "最近轨迹", value: String(kernelTraces.value.length), accent: kernelTraces.value.length > 0 },
   ];
 });
 const memoryOverview = computed(() => [
@@ -278,13 +275,13 @@ function kernelMemoryPolicyLine(status: ConversationKernelStatus | null): string
   const readAffect = policy.read_affect ?? policy.allow_behavioral_learning;
   const writeSession = policy.write_session ?? policy.runtime_state_summary_enabled;
   const flags = [
-    `read_session=${readSession ? "是" : "否"}`,
-    `read_persistent=${readPersistent ? "是" : "否"}`,
-    `read_group_style=${policy.read_group_style ? "是" : "否"}`,
-    `read_affect=${readAffect ? "是" : "否"}`,
-    `write_session=${writeSession ? "是" : "否"}`,
+    `读会话=${readSession ? "是" : "否"}`,
+    `读长期记忆=${readPersistent ? "是" : "否"}`,
+    `读群风格=${policy.read_group_style ? "是" : "否"}`,
+    `读情感=${readAffect ? "是" : "否"}`,
+    `写会话=${writeSession ? "是" : "否"}`,
   ];
-  return `repeater ${status.llm_repeater_mode || "—"} · memory ${flags.join(" / ")}`;
+  return `复读模式 ${labelRepeaterMode(status.llm_repeater_mode)} · 记忆读写：${flags.join(" / ")}`;
 }
 
 function kernelTraceKey(row: ConversationKernelTraceRow, index: number): string {
@@ -294,12 +291,12 @@ function kernelTraceKey(row: ConversationKernelTraceRow, index: number): string 
 function kernelTraceSummary(row: ConversationKernelTraceRow): string {
   const parts: string[] = [];
   const action = String(row.action || "").trim();
-  if (action) parts.push(action.replace(/_/g, " "));
+  if (action) parts.push(labelAction(action));
   const scene = String(row.scene || "").trim();
-  if (scene) parts.push(scene);
+  if (scene) parts.push(labelScene(scene));
   const path = String(row.path || "").trim();
   if (path) parts.push(path.replace(/_/g, " "));
-  return parts.join(" · ") || "conversation_decision_trace";
+  return parts.join(" · ") || "对话决策轨迹";
 }
 
 function kernelTraceHighlights(row: ConversationKernelTraceRow): Array<{ label: string; value: string }> {
@@ -310,7 +307,7 @@ function kernelTraceHighlights(row: ConversationKernelTraceRow): Array<{ label: 
   const stages = Array.isArray(row.generation_stages)
     ? row.generation_stages.map((item) => String(item)).filter(Boolean)
     : [];
-  if (mode) items.push({ label: "mode", value: mode });
+  if (mode) items.push({ label: "模式", value: mode });
   if (reason) items.push({ label: "原因", value: reason });
   if (typeof confidence === "number" && Number.isFinite(confidence)) {
     items.push({ label: "置信", value: `${Math.round(confidence * 100)}%` });
@@ -393,9 +390,9 @@ async function copyReplayPayload(requestId: string) {
   try {
     const payload = await fetchLlmRuntimeReplay(key);
     const ok = await copyTextToClipboard(JSON.stringify(payload, null, 2));
-    pushConsoleToast(ok ? `已复制 Replay Payload：${key}` : "复制 Replay Payload 失败", ok ? "ok" : "err");
+    pushConsoleToast(ok ? `已复制重放数据：${key}` : "复制重放数据失败", ok ? "ok" : "err");
   } catch {
-    pushConsoleToast("复制 Replay Payload 失败", "err");
+    pushConsoleToast("复制重放数据失败", "err");
   } finally {
     replayCopyBusy.value = { ...replayCopyBusy.value, [key]: false };
   }
@@ -458,21 +455,21 @@ async function loadPersonaShapingForTurn(row: SessionTurnRow) {
 async function copyReplayRunResult() {
   if (!replayRunResult.value) return;
   const ok = await copyTextToClipboard(JSON.stringify(replayRunResult.value, null, 2));
-  pushConsoleToast(ok ? "已复制 Replay 结果" : "复制 Replay 结果失败", ok ? "ok" : "err");
+  pushConsoleToast(ok ? "已复制重放结果" : "复制重放结果失败", ok ? "ok" : "err");
 }
 
 async function runReplay(requestId: string) {
   const key = requestId.trim();
   if (!key || replayRunBusy.value[key]) return;
   replayRunBusy.value = { ...replayRunBusy.value, [key]: true };
-  replayRunDialogTitle.value = `Replay 结果 · ${key}`;
+  replayRunDialogTitle.value = `重放结果 · ${key}`;
   replayRunDialogSubtitle.value = "mock_tools";
   replayRunResult.value = null;
   replayRunError.value = "";
   replayRunRawExpanded.value = false;
   try {
     const result = await postLlmRuntimeReplayRun(key);
-    replayRunDialogSubtitle.value = `${result.mode || "mock_tools"} · ${result.task || "llm_chat"}`;
+    replayRunDialogSubtitle.value = `${result.mode === "mock_tools" || !result.mode ? "模拟工具" : result.mode} · ${result.task === "llm_chat" || !result.task ? "@ 闲聊" : result.task}`;
     replayRunResult.value = result;
     replayPersonaShaping.value = result.persona_shaping ?? (await loadPersonaShaping(key));
   } catch (e) {
@@ -638,7 +635,7 @@ const behaviorPanelSummary = computed(() => {
   const count = behaviorRunsItems.value.length;
   if (!count) return "当前筛选下暂无记录";
   const group = behaviorRunsGroupId.value ? `群 ${behaviorRunsGroupId.value}` : "全部群";
-  const scene = behaviorRunsScene.value || "全部场景";
+  const scene = behaviorRunsScene.value ? labelScene(behaviorRunsScene.value) : "全部场景";
   const outcome = behaviorRunsOutcome.value;
   const outcomeLabel = outcome
     ? BEHAVIOR_OUTCOME_OPTIONS.find((item) => item.value === outcome)?.label || outcome
@@ -676,9 +673,25 @@ function toggleMaintainPanel(key: MaintainPanelKey): void {
 }
 
 function promotionCandidateStatusLabel(item: LlmPromotionCandidate): string {
-  if (item.promoted) return "已晋升";
+  if (item.promoted) {
+    const wb = String(item.writeback_status || "").trim();
+    if (wb === "written") return "已晋升并写回";
+    if (wb === "failed") return "已晋升（写回失败）";
+    return "已晋升";
+  }
   if (String(item.rejected_reason || "").trim()) return "已拒绝";
   return "待审批";
+}
+
+function promotionWritebackHint(item: LlmPromotionCandidate): string {
+  const wb = String(item.writeback_status || "").trim();
+  if (!wb) return "";
+  if (wb === "written") return "已写入本机接话语料";
+  if (wb === "failed") {
+    const msg = String(item.writeback_message || "").trim();
+    return msg ? `写回失败：${msg}` : "写回失败";
+  }
+  return `写回状态：${wb}`;
 }
 
 const sortedPatternsItems = computed(() => {
@@ -821,8 +834,7 @@ function behaviorAgentTraceHighlights(
 }
 
 function formatOutcomeLabel(outcome?: string | null): string {
-  const hit = BEHAVIOR_OUTCOME_OPTIONS.find((item) => item.value === (outcome || ""));
-  return hit?.label || outcome || "未判定";
+  return labelOutcome(outcome);
 }
 
 function outcomeClass(outcome?: string | null): string {
@@ -1697,20 +1709,34 @@ async function resolvePromotionCandidate(
 ) {
   if (promotionResolveBusyId.value) return;
   const prompt = action === "promote"
-    ? `批准将「${candidate.reply_text}」标记为晋升候选？\n（语料实际写回尚未接通，仅记录审批结果）`
+    ? `批准将「${candidate.reply_text}」写入本群接话语料？`
     : `拒绝候选「${candidate.reply_text}」？`;
   if (!confirm(prompt)) return;
   promotionResolveBusyId.value = candidate.candidate_id;
   promotionCandidatesErr.value = "";
   try {
-    await postLlmPromotionCandidateResolve({
+    const updated = await postLlmPromotionCandidateResolve({
       candidateId: candidate.candidate_id,
       action,
       reason: action === "reject" ? "webui_reject" : "",
     });
+    if (action === "promote") {
+      const wb = String(updated.writeback_status || "").trim();
+      if (wb === "written") {
+        pushConsoleToast("已批准并写入接话语料", "ok");
+      } else if (wb === "failed") {
+        const msg = String(updated.writeback_message || "").trim();
+        pushConsoleToast(msg ? `已批准，但写回失败：${msg}` : "已批准，但写回失败", "err");
+      } else {
+        pushConsoleToast("已批准晋升", "ok");
+      }
+    } else {
+      pushConsoleToast("已拒绝该候选", "ok");
+    }
     await Promise.all([refreshPromotionCandidates(), refreshFeedback()]);
   } catch (e) {
     promotionCandidatesErr.value = e instanceof Error ? e.message : String(e);
+    pushConsoleToast(promotionCandidatesErr.value, "err");
   } finally {
     promotionResolveBusyId.value = "";
   }
@@ -1756,7 +1782,7 @@ async function refreshPatterns() {
 
 async function savePattern() {
   if (!patternEditor.value.pattern_id.trim()) {
-    patternErr.value = "pattern_id 不能为空";
+    patternErr.value = "规则 ID 不能为空";
     return;
   }
   patternSaveBusy.value = true;
@@ -1785,7 +1811,7 @@ async function savePattern() {
 }
 
 async function deletePattern(item: LlmBehaviorPattern) {
-  const ok = window.confirm(`确定删除 pattern ${item.pattern_id}？此操作不可恢复。`);
+  const ok = window.confirm(`确定删除规则「${item.pattern_id}」？此操作不可恢复。`);
   if (!ok) return;
   patternErr.value = "";
   try {
@@ -1901,7 +1927,7 @@ onMounted(() => {
         <ol v-if="showLearningLoopBanner" class="ai-history-page__learning-steps">
           <li>在「会话」里对坏回复点「排除」，或填写「期望回复」做校正写回</li>
           <li>到 <RouterLink :to="aiConfigSectionPath('strategy')">AI 配置 → Bot 对话策略</RouterLink> 开启「让闲聊软反馈参与接话弱打分」</li>
-          <li>（可选）开启写回晋升，把好样本审进语料</li>
+          <li>（可选）开启写回语料，把好样本审进接话库</li>
         </ol>
       </div>
       <div class="row-actions ai-history-page__learning-strip-actions">
@@ -1936,7 +1962,7 @@ onMounted(() => {
     </section>
 
     <nav class="ai-history-page__workspace-tabs" aria-label="AI 历史工作区">
-      <div class="console-view-toggle" role="tablist">
+      <div class="console-view-toggle console-view-toggle--full" role="tablist">
         <button
           v-for="tab in WORKSPACE_TABS"
           :key="tab.value"
@@ -2272,7 +2298,7 @@ onMounted(() => {
                     <template v-if="row.feedbackEntry">
                       <div class="ai-history-page__maintain-meta">
                         <span>路由：{{ row.feedbackEntry.llm_route || "未知" }}</span>
-                        <span>场景：{{ row.feedbackEntry.behavior_scene || "未标注" }}</span>
+                        <span>场景：{{ labelScene(row.feedbackEntry.behavior_scene) }}</span>
                         <span>状态：{{ row.feedbackEntry.eligible_for_bias ? "参与加权" : "已排除" }}</span>
                       </div>
                       <div class="row-actions ai-history-page__maintain-actions">
@@ -2341,7 +2367,7 @@ onMounted(() => {
                   <section v-if="row.behaviorRun" class="ai-history-page__maintain-section">
                     <h5 class="ai-history-page__maintain-section-title">行为风格</h5>
                     <div class="ai-history-page__turn-behavior-bar ai-history-page__maintain-behavior-bar">
-                      <strong>{{ row.behaviorRun.scene }}</strong>
+                      <strong>{{ labelScene(row.behaviorRun.scene) }}</strong>
                       <span
                         class="ai-history-page__outcome-badge"
                         :class="outcomeClass(row.behaviorRun.final_outcome)"
@@ -2349,7 +2375,7 @@ onMounted(() => {
                         {{ formatOutcomeLabel(row.behaviorRun.final_outcome) }}
                       </span>
                       <span class="muted ai-history-page__turn-behavior-actions">
-                        动作：{{ row.behaviorRun.selected_actions.join(" / ") || "未选" }}
+                        动作：{{ labelActions(row.behaviorRun.selected_actions) }}
                       </span>
                     </div>
                     <div class="ai-history-page__behavior-meta">
@@ -2377,6 +2403,17 @@ onMounted(() => {
                       <span>观察消息：{{ row.behaviorRun.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
                     </div>
                     <template v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)">
+                      <button
+                        type="button"
+                        class="ai-history-page__turn-toggle"
+                        @click="toggleAdvancedDebug(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                      >
+                        {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
+                      </button>
+                      <div
+                        v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                        class="ai-history-page__advanced-debug"
+                      >
                       <div class="ai-history-page__trace-highlights">
                         <span
                           v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
@@ -2395,7 +2432,7 @@ onMounted(() => {
                           class="ai-history-page__turn-toggle"
                           @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
                         >
-                          {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                          {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
                         </button>
                         <button
                           type="button"
@@ -2403,7 +2440,7 @@ onMounted(() => {
                           :disabled="replayRunBusy[row.behaviorRun.request_id]"
                           @click="runReplay(row.behaviorRun.request_id)"
                         >
-                          {{ replayRunBusy[row.behaviorRun.request_id] ? "Replay 中…" : "执行 Replay" }}
+                          {{ replayRunBusy[row.behaviorRun.request_id] ? "重放中…" : "执行重放" }}
                         </button>
                         <button
                           type="button"
@@ -2411,8 +2448,9 @@ onMounted(() => {
                           :disabled="replayCopyBusy[row.behaviorRun.request_id]"
                           @click="copyReplayPayload(row.behaviorRun.request_id)"
                         >
-                          复制 Replay Payload
+                          复制重放数据
                         </button>
+                      </div>
                       </div>
                     </template>
                     <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">
@@ -2462,7 +2500,7 @@ onMounted(() => {
           </div>
           <section v-if="sessionTurnRows.orphanRuns.length" class="ai-history-page__orphan-behavior">
             <div class="ai-head ai-history-page__orphan-behavior-head">
-              <h4 class="ai-head__title">未对齐的 Behavior</h4>
+              <h4 class="ai-head__title">未挂上会话的行为记录</h4>
             </div>
             <article
               v-for="run in sessionTurnRows.orphanRuns"
@@ -2470,7 +2508,7 @@ onMounted(() => {
               class="ai-history-page__behavior-card"
             >
               <div class="ai-history-page__behavior-top">
-                <strong>{{ run.scene }}</strong>
+                <strong>{{ labelScene(run.scene) }}</strong>
                 <span
                   class="ai-history-page__outcome-badge"
                   :class="outcomeClass(run.final_outcome)"
@@ -2479,7 +2517,7 @@ onMounted(() => {
                 </span>
               </div>
               <div class="ai-history-page__behavior-meta">
-                <span>动作：{{ run.selected_actions.join(" / ") || "未选" }}</span>
+                <span>动作：{{ labelActions(run.selected_actions) }}</span>
                 <span class="ai-history-page__pattern-links">
                   规则：
                   <template v-if="run.selected_pattern_ids.length">
@@ -2505,6 +2543,17 @@ onMounted(() => {
                 <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
               </div>
               <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
+                <button
+                  type="button"
+                  class="ai-history-page__turn-toggle"
+                  @click="toggleAdvancedDebug(behaviorAgentTraceKey('orphan', run.request_id))"
+                >
+                  {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
+                </button>
+                <div
+                  v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
+                  class="ai-history-page__advanced-debug"
+                >
                 <div class="ai-history-page__trace-highlights">
                   <span
                     v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
@@ -2523,7 +2572,7 @@ onMounted(() => {
                     class="ai-history-page__turn-toggle"
                     @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
                   >
-                    {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                    {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
                   </button>
                   <button
                     type="button"
@@ -2531,7 +2580,7 @@ onMounted(() => {
                     :disabled="replayRunBusy[run.request_id]"
                     @click="runReplay(run.request_id)"
                   >
-                    {{ replayRunBusy[run.request_id] ? "Replay 中…" : "执行 Replay" }}
+                    {{ replayRunBusy[run.request_id] ? "重放中…" : "执行重放" }}
                   </button>
                   <button
                     type="button"
@@ -2539,8 +2588,9 @@ onMounted(() => {
                     :disabled="replayCopyBusy[run.request_id]"
                     @click="copyReplayPayload(run.request_id)"
                   >
-                    复制 Replay Payload
+                    复制重放数据
                   </button>
+                </div>
                 </div>
               </template>
               <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
@@ -2592,46 +2642,33 @@ onMounted(() => {
     </section>
     </div>
 
-    <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain">
-    <UiCard class="ai-history-page__panel ai-history-page__persona-wrap">
-      <div class="ai-history-page__observe-panel-hd ai-history-page__observe-panel-hd--persona">
-        <div class="ai-history-page__observe-panel-hd-text">
-          <h3 class="ai-history-page__observe-panel-title">牛格观测</h3>
-          <p class="ai-history-page__observe-panel-sub">
-            <span v-if="isMaintainPanelExpanded('persona')">按群查看情感轴、群画像与 affect-refine</span>
-            <span v-else class="muted">{{ personaPanelSummary }}</span>
-          </p>
-        </div>
-        <div class="row-actions ai-history-page__observe-panel-hd-actions">
-          <UiButton
-            size="sm"
-            variant="ghost"
-            @click="pickGroupFromSessions"
-          >
-            从会话选群
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="ghost"
-            :disabled="!isMaintainPanelExpanded('persona')"
-            @click="personaPanelRef?.reload?.()"
-          >
-            刷新
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleMaintainPanel('persona')"
-          >
-            {{ isMaintainPanelExpanded('persona') ? "收起" : "展开" }}
-          </UiButton>
-        </div>
+    <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain plugin-config-page">
+    <div class="plugin-config-page__hero ai-history-page__workspace-hero">
+      <div class="plugin-config-page__hero-text">
+        <h2 class="plugin-config-page__hero-title">群维护</h2>
+        <p class="plugin-config-page__hero-desc">按群整理接话学习：样本、晋升写回、行为判定与对话内核状态。</p>
       </div>
-      <div
-        v-show="isMaintainPanelExpanded('persona')"
-        class="ai-history-page__observe-panel-body ai-history-page__observe-panel-body--persona"
-      >
+    </div>
+    <AiHistoryPanelShell
+      title="牛格观测"
+      purpose="按群查看情感轴、群画像与情感细化"
+      :summary="personaPanelSummary"
+      :expanded="isMaintainPanelExpanded('persona')"
+      panel-class="ai-history-page__persona-wrap"
+      @toggle="toggleMaintainPanel('persona')"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="ghost" @click="pickGroupFromSessions">从会话选群</UiButton>
+        <UiButton
+          size="sm"
+          variant="ghost"
+          :disabled="!isMaintainPanelExpanded('persona')"
+          @click="personaPanelRef?.reload?.()"
+        >
+          刷新
+        </UiButton>
+      </template>
+      <div class="ai-history-page__observe-panel-body ai-history-page__observe-panel-body--persona">
         <PersonaAffectObservePanel
           ref="personaPanelRef"
           embedded
@@ -2640,27 +2677,15 @@ onMounted(() => {
           class="ai-history-page__persona-panel"
         />
       </div>
-    </UiCard>
+    </AiHistoryPanelShell>
     <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-history-page__observe-panel-hd">
-          <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">反哺样本</h3>
-            <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isMaintainPanelExpanded('feedback')">批量查看与清理不适合学习的接话样本</span>
-              <span v-else class="muted">{{ feedbackPanelSummary }}</span>
-            </p>
-          </div>
-          <UiButton
-            size="sm"
-            variant="outline"
-            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleMaintainPanel('feedback')"
-          >
-            {{ isMaintainPanelExpanded('feedback') ? "收起" : "展开" }}
-          </UiButton>
-        </div>
-        <div v-show="isMaintainPanelExpanded('feedback')" class="ai-history-page__observe-panel-body">
+      <AiHistoryPanelShell
+        title="反哺样本"
+        purpose="挑出适合继续学的接话，排除不合适样本"
+        :summary="feedbackPanelSummary"
+        :expanded="isMaintainPanelExpanded('feedback')"
+        @toggle="toggleMaintainPanel('feedback')"
+      >
         <div v-if="feedbackErr" class="alert alert--err">{{ feedbackErr }}</div>
         <div v-if="visibleFeedbackItems.length" class="ai-history-page__feedback-list">
           <article
@@ -2681,7 +2706,7 @@ onMounted(() => {
                 class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
                 @click="applyObserveScene(item.behavior_scene || '')"
               >
-                {{ item.behavior_scene }}
+                {{ labelScene(item.behavior_scene) }}
               </button>
               <span v-else class="ai-history-page__scene-pill">未标注</span>
             </div>
@@ -2770,34 +2795,21 @@ onMounted(() => {
           <span>{{ feedbackGroupId ? (observeScene ? "当前群当前场景下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
           <span class="ai-empty__hint">可在此排除不适合学习的样本，或彻底删除反哺记录。</span>
         </div>
-        </div>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
 
     <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-history-page__observe-panel-hd">
-          <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">晋升候选</h3>
-            <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isMaintainPanelExpanded('promotion')">同群重复出现的接话可审批为晋升候选；语料实际写回尚未接通</span>
-              <span v-else class="muted">{{ promotionPanelSummary }}</span>
-            </p>
-          </div>
-          <UiButton
-            size="sm"
-            variant="outline"
-            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleMaintainPanel('promotion')"
-          >
-            {{ isMaintainPanelExpanded('promotion') ? "收起" : "展开" }}
-          </UiButton>
-        </div>
-        <div v-show="isMaintainPanelExpanded('promotion')" class="ai-history-page__observe-panel-body">
+      <AiHistoryPanelShell
+        title="晋升候选"
+        purpose="批准后写入本群接话语料"
+        :summary="promotionPanelSummary"
+        :expanded="isMaintainPanelExpanded('promotion')"
+        @toggle="toggleMaintainPanel('promotion')"
+      >
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>候选筛选</strong>
-            <span class="muted">与上方反馈共用群号；需开启 writeback 开关后才会生成候选</span>
+            <span class="muted">与上方反馈共用群号；需在对话策略中开启「写回语料」后才会生成候选</span>
           </div>
           <div class="ai-history-page__filters ai-history-page__filters--aligned">
             <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
@@ -2862,6 +2874,7 @@ onMounted(() => {
               <span>支持 {{ item.support_count }} 次</span>
               <span v-if="item.behavior_scene">{{ item.behavior_scene }}</span>
               <span>{{ formatCompactDateTime(item.last_seen_at) }}</span>
+              <span v-if="promotionWritebackHint(item)">{{ promotionWritebackHint(item) }}</span>
             </div>
             <p
               class="ai-history-page__feedback-user"
@@ -2905,30 +2918,17 @@ onMounted(() => {
         <p v-else class="muted ai-history-page__empty-hint">
           <span>{{ promotionCandidatesBusy ? "正在读取候选…" : (feedbackGroupId ? "当前群暂无晋升候选" : "请先输入群号并读取反馈") }}</span>
         </p>
-        </div>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
 
     <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-history-page__observe-panel-hd">
-          <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">行为记录</h3>
-            <p class="ai-history-page__observe-panel-sub">
-              <span v-if="isMaintainPanelExpanded('behavior')">跨会话观察最近自动判定结果，判断当前规则是否稳定</span>
-              <span v-else class="muted">{{ behaviorPanelSummary }}</span>
-            </p>
-          </div>
-          <UiButton
-            size="sm"
-            variant="outline"
-            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleMaintainPanel('behavior')"
-          >
-            {{ isMaintainPanelExpanded('behavior') ? "收起" : "展开" }}
-          </UiButton>
-        </div>
-        <div v-show="isMaintainPanelExpanded('behavior')" class="ai-history-page__observe-panel-body">
+      <AiHistoryPanelShell
+        title="行为记录"
+        purpose="看自动判定是否稳，快速扫最近结果"
+        :summary="behaviorPanelSummary"
+        :expanded="isMaintainPanelExpanded('behavior')"
+        @toggle="toggleMaintainPanel('behavior')"
+      >
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>记录筛选</strong>
@@ -2965,7 +2965,7 @@ onMounted(() => {
             <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
               <label class="ai-history-page__behavior-check">
                 <input v-model="behaviorRunsIncludeDisabled" type="checkbox">
-                <span>包含 disabled</span>
+                <span>包含已禁用</span>
               </label>
             </div>
             <div class="ai-history-page__filter-action">
@@ -2998,7 +2998,7 @@ onMounted(() => {
                 class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
                 @click="applyObserveScene(run.scene)"
               >
-                {{ run.scene }}
+                {{ labelScene(run.scene) }}
               </button>
               <span
                 class="ai-history-page__outcome-badge"
@@ -3058,6 +3058,17 @@ onMounted(() => {
               <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
             </div>
             <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
+              <button
+                type="button"
+                class="ai-history-page__turn-toggle"
+                @click="toggleAdvancedDebug(behaviorAgentTraceKey('observe', run.request_id))"
+              >
+                {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
+              </button>
+              <div
+                v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id))"
+                class="ai-history-page__advanced-debug"
+              >
               <div class="ai-history-page__trace-highlights">
                 <span
                   v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
@@ -3076,7 +3087,7 @@ onMounted(() => {
                   class="ai-history-page__turn-toggle"
                   @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('observe', run.request_id))"
                 >
-                  {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)] ? "收起 Agent Trace" : "查看 Agent Trace" }}
+                  {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
                 </button>
                 <button
                   type="button"
@@ -3084,7 +3095,7 @@ onMounted(() => {
                   :disabled="replayRunBusy[run.request_id]"
                   @click="runReplay(run.request_id)"
                 >
-                  {{ replayRunBusy[run.request_id] ? "Replay 中…" : "执行 Replay" }}
+                  {{ replayRunBusy[run.request_id] ? "重放中…" : "执行重放" }}
                 </button>
                 <button
                   type="button"
@@ -3092,8 +3103,9 @@ onMounted(() => {
                   :disabled="replayCopyBusy[run.request_id]"
                   @click="copyReplayPayload(run.request_id)"
                 >
-                  复制 Replay Payload
+                  复制重放数据
                 </button>
+              </div>
               </div>
             </template>
             <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
@@ -3158,29 +3170,20 @@ onMounted(() => {
           </article>
         </div>
         <div v-else class="ai-empty">
-          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无 behavior 记录" }}</span>
-          <span class="ai-empty__hint">这里适合快速观察最近哪些 rule 在生效、哪些结果被自动判成 ignored 或 derailed。</span>
+          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无行为记录" }}</span>
+          <span class="ai-empty__hint">适合快速观察最近哪些规则在生效、哪些结果被自动判成被无视或带偏。</span>
         </div>
-        </div>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
     <section class="ai-history-page__feedback ai-history-page__kernel-panel">
-      <UiCard class="ai-history-page__panel ai-history-page__panel--compact">
-        <div class="ai-history-page__observe-panel-hd">
-          <div class="ai-history-page__observe-panel-hd-text">
-            <h3 class="ai-history-page__observe-panel-title">诊断 · Kernel 与 Trace</h3>
-            <p class="ai-history-page__observe-panel-sub muted">排障用，日常维护可忽略</p>
-          </div>
-          <UiButton
-            size="sm"
-            variant="outline"
-            class="panel-hd-collapse-btn ai-history-page__observe-panel-toggle"
-            @click="toggleMaintainPanel('kernel')"
-          >
-            {{ isMaintainPanelExpanded('kernel') ? "收起" : "展开" }}
-          </UiButton>
-        </div>
-        <div v-show="isMaintainPanelExpanded('kernel')" class="ai-history-page__observe-panel-body">
+      <AiHistoryPanelShell
+        title="对话内核"
+        purpose="查看学习链路是否打开；排障时再展开"
+        summary="学习开关与决策轨迹"
+        :expanded="isMaintainPanelExpanded('kernel')"
+        panel-class="ai-history-page__panel--compact"
+        @toggle="toggleMaintainPanel('kernel')"
+      >
           <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
           <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
           <div class="ai-history-page__kernel-chip-row">
@@ -3220,7 +3223,7 @@ onMounted(() => {
                 class="ai-history-page__turn-toggle"
                 @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
               >
-                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起 JSON" : "JSON" }}
+                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起原始数据" : "查看原始数据" }}
               </button>
               <pre
                 v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
@@ -3229,19 +3232,19 @@ onMounted(() => {
             </article>
           </div>
           <p v-else class="muted ai-history-page__empty-hint">
-            {{ kernelTracesBusy ? "正在读取 trace…" : "当前筛选下暂无决策 trace" }}
+            {{ kernelTracesBusy ? "正在读取决策轨迹…" : "当前筛选下暂无决策轨迹" }}
           </p>
-        </div>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
     </div>
 
-    <div v-show="activeWorkspace === 'memory'" class="ai-history-page__workspace">
+    <div v-show="activeWorkspace === 'memory'" class="ai-history-page__workspace plugin-config-page">
     <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">记忆与知识管理</h3>
-        </div>
+      <AiHistoryPanelShell
+        title="记忆与知识"
+        purpose="按 Bot / 群号查看群内旧事、关系备注与知识源"
+        :collapsible="false"
+      >
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>范围筛选</strong>
@@ -3347,7 +3350,7 @@ onMounted(() => {
             </div>
             <div class="ai-history-page__feedback-meta">
               <span>群：{{ item.group_id || "全局" }}</span>
-              <span>来源：{{ item.source || "teach" }}</span>
+              <span>来源：{{ item.source === "teach" || !item.source ? "教导" : item.source }}</span>
               <span>权重：{{ typeof item.weight === "number" ? item.weight.toFixed(2) : "—" }}</span>
               <span v-if="item.updated_at">{{ formatCompactDateTime(item.updated_at) }}</span>
             </div>
@@ -3378,13 +3381,13 @@ onMounted(() => {
           >
             <div class="ai-history-page__feedback-top">
               <strong class="ai-history-page__feedback-reply">{{ item.title }}</strong>
-              <span class="ai-history-page__scene-pill">{{ item.scope || "global" }}</span>
+              <span class="ai-history-page__scene-pill">{{ item.scope === "global" || !item.scope ? "全局" : item.scope }}</span>
             </div>
             <div class="ai-history-page__feedback-meta">
               <span>{{ item.source_id }}</span>
               <span>来源：{{ item.plugin_title || item.plugin_name || item.origin || "未知" }}</span>
-              <span>模式：{{ item.retrieval_mode || "prompt_inject" }}</span>
-              <span>chunks：{{ item.chunk_count ?? 0 }}</span>
+              <span>模式：{{ item.retrieval_mode === "prompt_inject" || !item.retrieval_mode ? "提示注入" : item.retrieval_mode }}</span>
+              <span>片段数：{{ item.chunk_count ?? 0 }}</span>
             </div>
             <p v-if="item.description" class="ai-history-page__feedback-user">说明：{{ item.description }}</p>
           </article>
@@ -3392,16 +3395,17 @@ onMounted(() => {
         <p v-else class="muted ai-history-page__empty-hint">
           {{ memoryBusy ? "正在读取知识源…" : "当前暂无知识源" }}
         </p>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
     </div>
 
-    <div v-show="activeWorkspace === 'rules'" class="ai-history-page__workspace">
+    <div v-show="activeWorkspace === 'rules'" class="ai-history-page__workspace plugin-config-page">
     <section class="ai-history-page__feedback">
-      <UiCard class="ai-history-page__panel">
-        <div class="ai-head">
-          <h3 class="ai-head__title">Behavior 规则管理</h3>
-        </div>
+      <AiHistoryPanelShell
+        title="行为规则"
+        purpose="维护自动判定用的场景规则与动作偏好"
+        :collapsible="false"
+      >
         <div class="ai-history-page__filters-card">
           <div class="ai-history-page__filters-head">
             <strong>规则筛选</strong>
@@ -3430,15 +3434,19 @@ onMounted(() => {
             <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
               <label class="ai-history-page__behavior-check">
                 <input v-model="patternsIncludeDisabled" type="checkbox">
-                <span>包含 disabled</span>
+                <span>包含已禁用</span>
               </label>
             </div>
             <label class="ai-history-page__filter">
               <span>排序</span>
               <select v-model="patternSortKey" class="inp">
-                <option value="success_score">success 优先</option>
-                <option value="manual_score">manual 优先</option>
-                <option value="pattern_id">ID 字母序</option>
+                <option
+                  v-for="item in PATTERN_SORT_OPTIONS"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </option>
               </select>
             </label>
             <div class="ai-history-page__filter-action ai-history-page__filter-action--row">
@@ -3467,10 +3475,10 @@ onMounted(() => {
           <table class="ai-history-page__pattern-table">
             <thead>
               <tr>
-                <th>pattern_id</th>
-                <th>scene / action</th>
+                <th>规则 ID</th>
+                <th>场景 / 动作</th>
                 <th>群</th>
-                <th>分数</th>
+                <th>自动分 / 人工分</th>
                 <th>状态</th>
                 <th>操作</th>
               </tr>
@@ -3482,10 +3490,10 @@ onMounted(() => {
                 :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
               >
                 <td class="ai-history-page__pattern-id">{{ item.pattern_id }}</td>
-                <td>{{ item.scene }} / {{ item.action }}</td>
+                <td>{{ labelScene(item.scene) }} / {{ labelAction(item.action) }}</td>
                 <td>{{ item.scope_group_id || "全局" }}</td>
                 <td>{{ item.success_score ?? 0 }} / {{ item.manual_score ?? 0 }}</td>
-                <td>{{ item.disabled ? "disabled" : "active" }}</td>
+                <td>{{ item.disabled ? "已禁用" : "生效中" }}</td>
                 <td>
                   <div class="row-actions ai-history-page__pattern-actions ai-history-page__pattern-actions--table">
                     <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
@@ -3517,18 +3525,18 @@ onMounted(() => {
             :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
           >
             <div class="ai-history-page__feedback-top">
-              <strong>{{ item.pattern_id }}</strong>
-              <span class="muted">{{ item.scene }} / {{ item.action }}</span>
+              <strong>{{ labelScene(item.scene) }} · {{ labelAction(item.action) }}</strong>
+              <span class="muted ai-history-page__pattern-id" :title="item.pattern_id">{{ item.pattern_id }}</span>
             </div>
             <div class="ai-history-page__feedback-meta">
               <span>群：{{ item.scope_group_id || "全局" }}</span>
-              <span>success：{{ item.success_score ?? 0 }}</span>
-              <span>manual：{{ item.manual_score ?? 0 }}</span>
+              <span>自动分：{{ item.success_score ?? 0 }}</span>
+              <span>人工分：{{ item.manual_score ?? 0 }}</span>
               <span>已禁用：{{ item.disabled ? "是" : "否" }}</span>
             </div>
-            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">persona：{{ item.persona_affinity }}</p>
-            <p class="ai-history-page__feedback-user">features：{{ item.trigger_features?.join(" / ") || "无" }}</p>
-            <p class="ai-history-page__feedback-user">examples：{{ item.reference_examples?.join(" / ") || "无" }}</p>
+            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">人设倾向：{{ item.persona_affinity }}</p>
+            <p class="ai-history-page__feedback-user">触发特征：{{ item.trigger_features?.join(" / ") || "无" }}</p>
+            <p class="ai-history-page__feedback-user">参考示例：{{ item.reference_examples?.join(" / ") || "无" }}</p>
             <div class="row-actions ai-history-page__pattern-actions">
               <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
                 编辑
@@ -3549,35 +3557,35 @@ onMounted(() => {
         </div>
         <div v-else class="ai-empty">
           <span>{{ patternBusy ? "正在读取规则" : "当前筛选下暂无规则" }}</span>
-          <span class="ai-empty__hint">这块先承接最基础的 pattern 维护，后续再考虑更强的 run 联动和人工纠偏。</span>
+          <span class="ai-empty__hint">在此维护基础行为规则；可与会话里的行为记录互相跳转。</span>
         </div>
-      </UiCard>
+      </AiHistoryPanelShell>
     </section>
     </div>
 
     <UiDialog
       :open="patternEditorOpen"
       :title="patternEditorMode === 'edit' ? '编辑规则' : '新建规则'"
-      :subtitle="'trigger_features 与 reference_examples 按行输入'"
+      :subtitle="'触发特征与参考示例按行输入'"
       :busy="patternSaveBusy"
       panel-class="ai-history-page__pattern-dialog"
       @close="closePatternEditor"
     >
       <div class="ai-history-page__pattern-form">
         <label class="ai-history-page__filter">
-          <span>pattern_id</span>
+          <span>规则 ID</span>
           <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
         </label>
         <label class="ai-history-page__filter">
-          <span>scene</span>
+          <span>场景</span>
           <select v-model="patternEditor.scene" class="inp">
             <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
-              {{ item.value }}
+              {{ item.label }}
             </option>
           </select>
         </label>
         <label class="ai-history-page__filter">
-          <span>action</span>
+          <span>动作</span>
           <select v-model="patternEditor.action" class="inp">
             <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
               {{ item.label }}
@@ -3585,7 +3593,7 @@ onMounted(() => {
           </select>
         </label>
         <label class="ai-history-page__filter">
-          <span>scope_group_id</span>
+          <span>限定群号</span>
           <input
             :value="patternEditor.scope_group_id ?? ''"
             class="inp"
@@ -3595,7 +3603,7 @@ onMounted(() => {
           >
         </label>
         <label class="ai-history-page__filter">
-          <span>success_score</span>
+          <span>自动分</span>
           <input
             :value="patternEditor.success_score ?? 0"
             class="inp"
@@ -3604,7 +3612,7 @@ onMounted(() => {
           >
         </label>
         <label class="ai-history-page__filter">
-          <span>manual_score</span>
+          <span>人工分</span>
           <input
             :value="patternEditor.manual_score ?? 0"
             class="inp"
@@ -3613,11 +3621,11 @@ onMounted(() => {
           >
         </label>
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>persona_affinity</span>
+          <span>人设倾向</span>
           <input v-model="patternEditor.persona_affinity" class="inp" placeholder="可留空">
         </label>
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>trigger_features</span>
+          <span>触发特征</span>
           <textarea
             class="inp ai-history-page__pattern-textarea"
             :value="patternEditorTriggerText()"
@@ -3626,7 +3634,7 @@ onMounted(() => {
           ></textarea>
         </label>
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>reference_examples</span>
+          <span>参考示例</span>
           <textarea
             class="inp ai-history-page__pattern-textarea"
             :value="patternEditorExampleText()"
@@ -3636,13 +3644,13 @@ onMounted(() => {
         </label>
         <label class="ai-history-page__behavior-check">
           <input v-model="patternEditor.disabled" type="checkbox">
-          <span>保存为 disabled</span>
+          <span>保存为已禁用</span>
         </label>
       </div>
       <template #footer>
         <div class="row-actions ai-history-page__pattern-actions">
           <UiButton size="sm" :busy="patternSaveBusy" @click="savePattern">
-            {{ patternEditorMode === "edit" ? "保存修改" : "创建 Pattern" }}
+            {{ patternEditorMode === "edit" ? "保存修改" : "创建规则" }}
           </UiButton>
           <UiButton size="sm" variant="ghost" :disabled="patternSaveBusy" @click="closePatternEditor">
             取消
@@ -3695,7 +3703,7 @@ onMounted(() => {
           </div>
           <div v-if="replayRunTrace" class="ai-history-page__replay-block">
             <div class="ai-head ai-history-page__replay-block-head">
-              <h4 class="ai-head__title">Agent Trace 摘要</h4>
+              <h4 class="ai-head__title">决策轨迹摘要</h4>
             </div>
             <div v-if="behaviorAgentTraceHighlights(replayRunTrace).length" class="ai-history-page__trace-highlights">
               <span
@@ -3705,26 +3713,26 @@ onMounted(() => {
                 {{ item.label }}：{{ item.value }}
               </span>
             </div>
-            <p v-else class="muted">本次 replay 未返回可展示的 trace 摘要。</p>
+            <p v-else class="muted">本次重放未返回可展示的轨迹摘要。</p>
           </div>
           <button
             type="button"
             class="ai-history-page__turn-toggle"
             @click="replayRunRawExpanded = !replayRunRawExpanded"
           >
-            {{ replayRunRawExpanded ? "收起完整结果 JSON" : "查看完整结果 JSON" }}
+            {{ replayRunRawExpanded ? "收起完整结果" : "查看完整结果（高级）" }}
           </button>
           <pre
             v-if="replayRunRawExpanded"
             class="ai-history-page__kernel-trace-json"
           >{{ JSON.stringify(replayRunResult, null, 2) }}</pre>
         </template>
-        <p v-else class="muted">暂无 replay 结果。</p>
+        <p v-else class="muted">暂无重放结果。</p>
       </div>
       <template #footer>
         <div class="row-actions ai-history-page__pattern-actions">
           <UiButton size="sm" variant="outline" :disabled="!replayRunResult" @click="copyReplayRunResult">
-            复制结果 JSON
+            复制完整结果
           </UiButton>
           <UiButton size="sm" variant="ghost" @click="closeReplayRunDialog">
             关闭
@@ -3786,8 +3794,8 @@ onMounted(() => {
 }
 
 .ai-history-page__workspace-tabs {
-  display: flex;
-  gap: 8px;
+  display: block;
+  width: 100%;
   margin-bottom: 10px;
 }
 
@@ -5370,5 +5378,46 @@ onMounted(() => {
     width: 100%;
     justify-content: space-between;
   }
+}
+
+.ai-history-page__workspace.plugin-config-page {
+  gap: 16px;
+}
+
+.ai-history-page__workspace-hero {
+  margin-bottom: 4px;
+  padding: 4px 2px 8px;
+}
+
+.ai-history-page__workspace-hero .plugin-config-page__hero-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.ai-history-page__workspace-hero .plugin-config-page__hero-desc {
+  margin: 6px 0 0;
+  max-width: 42rem;
+}
+
+.ai-history-page__advanced-debug {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-2, #f3f4f6) 88%, transparent);
+}
+
+.ai-history-page__feedback-meta {
+  gap: 8px 12px;
+  font-size: 0.8rem;
+}
+
+.ai-history-page__workspace--maintain,
+.ai-history-page__workspace.plugin-config-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 </style>

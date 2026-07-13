@@ -39,26 +39,36 @@ const confirm = reactive<{ open: boolean; action: ConfirmAction | null; title: s
 });
 
 const reachable = computed(() => status.value?.ai_reachable ?? false);
-const statusSummary = computed(() => [
-  {
-    label: "当前模型",
-    value: loading.value ? "读取中…" : status.value?.model || "—",
-    accent: true,
-  },
-  {
-    label: "GPU 层数",
-    value: loading.value ? "…" : status.value?.num_gpu ?? "—",
-  },
-  {
-    label: "AI 服务",
-    value: loading.value ? "检测中…" : reachable.value ? "可达" : "不可达",
-    tone: loading.value ? "muted" : reachable.value ? "ok" : "warn",
-  },
-  {
-    label: "路由模式",
-    value: status.value?.provider_mode || "—",
-  },
-]);
+const statusSummary = computed(() => {
+  const items: Array<{
+    label: string;
+    value: string | number;
+    accent?: boolean;
+    tone?: string;
+  }> = [
+    {
+      label: "当前模型",
+      value: loading.value ? "读取中…" : status.value?.model || "—",
+      accent: true,
+    },
+    {
+      label: "GPU 层数",
+      value: loading.value ? "…" : status.value?.num_gpu ?? "—",
+    },
+    {
+      label: "AI 服务",
+      value: loading.value ? "检测中…" : reachable.value ? "可达" : "不可达",
+      tone: loading.value ? "muted" : reachable.value ? "ok" : "warn",
+    },
+  ];
+  if (!props.embedded) {
+    items.push({
+      label: "路由模式",
+      value: status.value?.provider_mode || "—",
+    });
+  }
+  return items;
+});
 
 async function refresh() {
   loading.value = true;
@@ -201,7 +211,7 @@ onMounted(() => {
       </div>
 
       <dl
-        v-if="!props.simpleMode && (status?.provider_mode || status?.categorizer_enabled || status?.moe_tier_routing)"
+        v-if="!embedded && !props.simpleMode && (status?.provider_mode || status?.categorizer_enabled || status?.moe_tier_routing)"
         class="model-admin__status"
       >
         <div
@@ -234,16 +244,28 @@ onMounted(() => {
         </div>
       </dl>
 
-      <p class="muted model-admin__intro">
+      <p
+        v-if="!embedded"
+        class="muted model-admin__intro"
+      >
         热切换本地模型与 GPU 层数；下方登记上游 Provider，专家模式页底可编辑任务路由与多模型分流。
       </p>
       <p
-        v-if="status?.local_multi_model_enabled"
+        v-else
+        class="muted model-admin__intro model-admin__intro--embedded"
+      >
+        热切换当前 Ollama 模型与 GPU 层数。
+      </p>
+      <p
+        v-if="!embedded && status?.local_multi_model_enabled"
         class="muted model-admin__hint"
       >
         当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按任务场景、分档或 Provider 默认模型分流。
       </p>
-      <div class="model-admin__links">
+      <div
+        v-if="!embedded"
+        class="model-admin__links"
+      >
         <AiObservationLinks />
       </div>
 
@@ -357,6 +379,20 @@ onMounted(() => {
   margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.model-admin__intro--embedded {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.model-admin--embedded .model-admin__summary {
+  margin-bottom: 10px;
+}
+
+.model-admin--embedded .model-admin__summary-item {
+  padding: 10px 12px;
 }
 
 .model-admin__summary {

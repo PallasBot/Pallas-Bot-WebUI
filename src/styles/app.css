@@ -3721,6 +3721,21 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   box-shadow: none;
 }
 
+/* 页面级大分栏：占满内容区宽度，按钮均分 */
+.console-view-toggle--full {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.console-view-toggle--full > button,
+.console-view-toggle--full > .console-view-toggle__item {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+
 html[data-theme="light"] .console-view-toggle {
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
 }
@@ -15555,12 +15570,6 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   100% {
     transform: translateX(320%);
   }
-}
-
-.database-page__backup-lead {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.55;
 }
 
 @media (max-width: 560px) {

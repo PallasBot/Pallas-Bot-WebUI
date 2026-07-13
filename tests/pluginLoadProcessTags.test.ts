@@ -10,12 +10,12 @@ describe("pluginLoadProcessTags", () => {
   it("returns worker tag on sharded hub catalog", () => {
     expect(
       pluginLoadProcessTags({ catalog_process_role: "hub", load_role: "worker" } as PluginRow),
-    ).toEqual(["Worker"]);
+    ).toEqual(["分片节点"]);
   });
 
   it("returns both tags for dual-role plugins", () => {
     expect(
       pluginLoadProcessTags({ catalog_process_role: "hub", load_role: "both" } as PluginRow),
-    ).toEqual(["Hub", "Worker"]);
+    ).toEqual(["主节点", "分片节点"]);
   });
 });

@@ -1,19 +1,28 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import type { PluginConfigField } from "@/api/pallasTypes";
+import type { PluginConfigField, PluginConfigFieldGroup } from "@/api/pallasTypes";
 import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
 import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
-import ConfigFieldRenderer from "@/components/config/ConfigFieldRenderer.vue";
+import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
+import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { LLM_BOT_FIELD_GROUPS } from "@/config/configFieldLabels";
+import { llmBotFieldGroupsForMode } from "@/config/configFieldLabels";
 import { useCommonConfigSection } from "@/composables/useCommonConfigSection";
+import { useAiConfigExpertMode } from "@/composables/useAiConfigExpertMode";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
 const panelNavIcon = usePanelNavIcon();
 const advancedExpanded = ref(false);
+const fieldDialog = ref<{ open: boolean; mode: "help" | "edit"; name: string | null }>({
+  open: false,
+  mode: "help",
+  name: null,
+});
+
+const { isSimpleMode } = useAiConfigExpertMode();
 const { err, data, fieldValues, saving, setFieldValue, save, canSave } = useCommonConfigSection({
   sectionId: "llm",
   savedMessage: "Bot 对话配置已保存",
@@ -25,29 +34,80 @@ const fieldByName = computed(() => {
   return map;
 });
 
-const groupedFieldViews = computed(() => {
-  const used = new Set<string>();
-  const essential = LLM_BOT_FIELD_GROUPS.filter((group) => group.tier === "essential")
-    .map((group) => {
-      const fields = group.keys
-        .map((key) => fieldByName.value.get(key))
-        .filter((f): f is PluginConfigField => Boolean(f));
-      for (const f of fields) used.add(f.name);
-      return { ...group, fields };
-    })
-    .filter((group) => group.fields.length > 0);
-  const advanced = LLM_BOT_FIELD_GROUPS.filter((group) => group.tier === "advanced")
-    .map((group) => {
-      const fields = group.keys
-        .map((key) => fieldByName.value.get(key))
-        .filter((f): f is PluginConfigField => Boolean(f));
-      for (const f of fields) used.add(f.name);
-      return { ...group, fields };
-    })
-    .filter((group) => group.fields.length > 0);
-  const rest = (data.value?.fields ?? []).filter((f) => !used.has(f.name));
-  return { essential, advanced, rest };
+const modeGroups = computed(() => llmBotFieldGroupsForMode(isSimpleMode.value));
+
+const essentialDefs = computed(() => modeGroups.value.filter((group) => group.tier === "essential"));
+const advancedDefs = computed(() => modeGroups.value.filter((group) => group.tier === "advanced"));
+
+function fieldsForDefs(defs: typeof modeGroups.value): PluginConfigField[] {
+  const out: PluginConfigField[] = [];
+  const seen = new Set<string>();
+  for (const group of defs) {
+    for (const key of group.keys) {
+      const field = fieldByName.value.get(key);
+      if (!field || seen.has(field.name)) continue;
+      seen.add(field.name);
+      out.push(field);
+    }
+  }
+  return out;
+}
+
+function groupsForDefs(defs: typeof modeGroups.value): PluginConfigFieldGroup[] {
+  return defs.map((group, index) => ({
+    id: group.anchorId || `llm-${group.tier}-${index}`,
+    title: group.title,
+    field_names: [...group.keys],
+    plugin_config_path: "llm",
+  }));
+}
+
+const essentialFields = computed(() => fieldsForDefs(essentialDefs.value));
+const essentialGroups = computed(() => groupsForDefs(essentialDefs.value));
+const advancedFields = computed(() => fieldsForDefs(advancedDefs.value));
+const advancedGroups = computed(() => groupsForDefs(advancedDefs.value));
+
+const restFields = computed(() => {
+  if (isSimpleMode.value) return [] as PluginConfigField[];
+  const used = new Set([
+    ...essentialFields.value.map((f) => f.name),
+    ...advancedFields.value.map((f) => f.name),
+  ]);
+  return (data.value?.fields ?? []).filter((f) => !used.has(f.name));
 });
+
+const restGroups = computed((): PluginConfigFieldGroup[] =>
+  restFields.value.length
+    ? [{
+        id: "llm-rest",
+        title: "其他项",
+        field_names: restFields.value.map((f) => f.name),
+        plugin_config_path: "llm",
+      }]
+    : [],
+);
+
+const activeField = computed(() =>
+  fieldDialog.value.name ? fieldByName.value.get(fieldDialog.value.name) ?? null : null,
+);
+
+const activeFieldValue = computed(() =>
+  fieldDialog.value.name ? (fieldValues.value[fieldDialog.value.name] ?? "") : "",
+);
+
+function openFieldDialog(name: string, mode: "help" | "edit") {
+  fieldDialog.value = { open: true, mode, name };
+}
+
+function closeFieldDialog() {
+  fieldDialog.value = { open: false, mode: "help", name: null };
+}
+
+function onFieldValuesUpdate(next: Record<string, string>) {
+  for (const [name, value] of Object.entries(next)) {
+    if ((fieldValues.value[name] ?? "") !== value) setFieldValue(name, value);
+  }
+}
 
 onMounted(() => {
   const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
@@ -60,7 +120,7 @@ defineExpose({ save, canSave, saving });
 </script>
 
 <template>
-  <div class="ai-config-section ai-config-section--strategy">
+  <div class="ai-config-section ai-config-section--strategy plugin-config-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -72,16 +132,32 @@ defineExpose({ save, canSave, saving });
       v-if="data"
       tag="div"
       glass
-      class="ai-config-section__panel"
+      class="plugin-config-page__card"
     >
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <ConsoleNavIcon
-            class="panel__title-ico"
-            :name="panelNavIcon"
-          />Bot 对话策略
-        </h2>
-        <div class="row-actions">
+      <div class="plugin-config-page__hero">
+        <div class="plugin-config-page__hero-main">
+          <div class="plugin-config-page__hero-text">
+            <h2 class="plugin-config-page__hero-title">
+              <ConsoleNavIcon
+                class="panel__title-ico"
+                :name="panelNavIcon"
+              />
+              Bot 对话策略
+            </h2>
+            <p class="plugin-config-page__hero-desc">
+              总开关、接话模式与限流；模型与路由请到「接入」分区配置。
+            </p>
+            <p
+              v-if="isSimpleMode"
+              class="muted plugin-config-page__hero-meta"
+            >
+              扩展服务地址请到
+              <RouterLink to="/ai/config/provider">「接入」</RouterLink>
+              页配置。
+            </p>
+          </div>
+        </div>
+        <div class="row-actions plugin-config-page__hero-actions">
           <UiButton
             variant="primary"
             :disabled="saving"
@@ -93,87 +169,79 @@ defineExpose({ save, canSave, saving });
           </UiButton>
         </div>
       </div>
-      <div class="panel__bd ai-config-strategy-fields">
-        <p class="muted ai-config-section__intro">
-          本页只管 Bot 侧总开关、接话模式与限流；模型与路由见下方「对话链路」快捷入口。
-        </p>
-        <div class="ai-config-strategy-fields__links">
+
+      <div
+        class="plugin-config-page__divider"
+        aria-hidden="true"
+      />
+
+      <div class="plugin-config-page__card-bd ai-config-strategy__body">
+        <div class="ai-config-strategy__links">
           <AiConfigLayerLinks active="strategy" />
           <AiObservationLinks />
         </div>
-        <section
-          v-for="group in groupedFieldViews.essential"
-          :id="group.anchorId || undefined"
-          :key="group.title"
-          class="ai-config-strategy-fields__group"
+
+        <p
+          v-if="essentialDefs.some((g) => g.anchorId === 'learning-loop')"
+          class="ai-config-strategy__learning-link"
         >
-          <div class="ai-config-strategy-fields__group-head">
-            <h3 class="ai-config-strategy-fields__group-title">
-              {{ group.title }}
-            </h3>
-            <RouterLink
-              v-if="group.anchorId === 'learning-loop'"
-              to="/ai/history?workspace=sessions"
-              class="ai-config-strategy-fields__group-link"
-            >
-              去 AI 历史维护
-            </RouterLink>
-          </div>
-          <p v-if="group.hint" class="muted ai-config-strategy-fields__group-hint">
-            {{ group.hint }}
-          </p>
-          <ConfigFieldRenderer
-            v-for="f in group.fields"
-            :key="f.name"
-            :field="f"
-            :model-value="fieldValues[f.name] ?? ''"
-            :show-meta="false"
-            :json-title="`llm · ${f.name}（JSON）`"
-            @update:model-value="(v) => setFieldValue(f.name, v)"
+          <RouterLink to="/ai/history?workspace=sessions">
+            去 AI 历史维护学习闭环 →
+          </RouterLink>
+        </p>
+
+        <div id="learning-loop">
+          <DynamicConfigPanel
+            :fields="essentialFields"
+            :field-groups="essentialGroups"
+            :model-value="fieldValues"
+            @update:model-value="onFieldValuesUpdate"
+            @help-click="(name) => openFieldDialog(name, 'help')"
+            @edit-click="(name) => openFieldDialog(name, 'edit')"
           />
-        </section>
+        </div>
+
         <details
-          v-if="groupedFieldViews.advanced.length"
-          class="ai-config-strategy-fields__advanced"
+          v-if="advancedFields.length"
+          class="ai-config-strategy__advanced"
           :open="advancedExpanded"
           @toggle="advancedExpanded = ($event.target as HTMLDetailsElement).open"
         >
-          <summary class="ai-config-strategy-fields__advanced-summary">
+          <summary class="ai-config-strategy__advanced-summary">
             高级选项（记忆 / 过滤 / 限流）
           </summary>
-          <section
-            v-for="group in groupedFieldViews.advanced"
-            :key="group.title"
-            class="ai-config-strategy-fields__group"
-          >
-            <h3 class="ai-config-strategy-fields__group-title">
-              {{ group.title }}
-            </h3>
-            <p v-if="group.hint" class="muted ai-config-strategy-fields__group-hint">
-              {{ group.hint }}
-            </p>
-            <ConfigFieldRenderer
-              v-for="f in group.fields"
-              :key="f.name"
-              :field="f"
-              :model-value="fieldValues[f.name] ?? ''"
-              :show-meta="false"
-              :json-title="`llm · ${f.name}（JSON）`"
-              @update:model-value="(v) => setFieldValue(f.name, v)"
-            />
-          </section>
+          <DynamicConfigPanel
+            :fields="advancedFields"
+            :field-groups="advancedGroups"
+            :model-value="fieldValues"
+            @update:model-value="onFieldValuesUpdate"
+            @help-click="(name) => openFieldDialog(name, 'help')"
+            @edit-click="(name) => openFieldDialog(name, 'edit')"
+          />
         </details>
-        <ConfigFieldRenderer
-          v-for="f in groupedFieldViews.rest"
-          :key="f.name"
-          :field="f"
-          :model-value="fieldValues[f.name] ?? ''"
-          :show-meta="false"
-          :json-title="`llm · ${f.name}（JSON）`"
-          @update:model-value="(v) => setFieldValue(f.name, v)"
+
+        <DynamicConfigPanel
+          v-if="restFields.length"
+          :fields="restFields"
+          :field-groups="restGroups"
+          :model-value="fieldValues"
+          @update:model-value="onFieldValuesUpdate"
+          @help-click="(name) => openFieldDialog(name, 'help')"
+          @edit-click="(name) => openFieldDialog(name, 'edit')"
         />
       </div>
     </UiCard>
+
+    <PluginConfigFieldDialog
+      :open="fieldDialog.open"
+      :field="activeField"
+      :mode="fieldDialog.mode"
+      :model-value="activeFieldValue"
+      :json-title="activeField ? `llm · ${activeField.name}（JSON）` : undefined"
+      @close="closeFieldDialog"
+      @edit-request="fieldDialog.mode = 'edit'"
+      @update:model-value="(value) => fieldDialog.name && setFieldValue(fieldDialog.name, value)"
+    />
   </div>
 </template>
 
@@ -184,66 +252,52 @@ defineExpose({ save, canSave, saving });
   gap: 16px;
 }
 
-.ai-config-strategy-fields {
+.ai-config-strategy__body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
-.ai-config-strategy-fields__group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ai-config-strategy-fields__links {
+.ai-config-strategy__links {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.ai-config-strategy-fields__group-title {
+.ai-config-strategy__learning-link {
   margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: var(--text-muted, #94a3b8);
+  font-size: 0.8125rem;
 }
 
-.ai-config-strategy-fields__group-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ai-config-strategy-fields__group-link {
-  font-size: 0.78rem;
+.ai-config-strategy__learning-link a {
   color: var(--accent);
   text-decoration: none;
-  white-space: nowrap;
 }
 
-.ai-config-strategy-fields__group-link:hover {
+.ai-config-strategy__learning-link a:hover {
   text-decoration: underline;
 }
 
-.ai-config-strategy-fields__group-hint {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
+.ai-config-strategy__advanced {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--hub-radius-shell, 12px);
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
 }
 
-.ai-config-strategy-fields__advanced {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-
-.ai-config-strategy-fields__advanced-summary {
+.ai-config-strategy__advanced-summary {
   cursor: pointer;
-  font-size: 0.84rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 650;
   color: var(--text);
+  margin-bottom: 0;
+}
+
+.ai-config-strategy__advanced[open] .ai-config-strategy__advanced-summary {
+  margin-bottom: 12px;
+}
+
+.ai-config-strategy__advanced :deep(.plugin-config-groups) {
+  gap: 12px;
 }
 </style>

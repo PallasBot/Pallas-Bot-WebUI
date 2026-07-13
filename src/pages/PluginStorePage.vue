@@ -1355,7 +1355,7 @@ onDeactivated(() => {
       <ConsoleHubFilterBar>
         <template #primary>
           <div
-            class="console-view-toggle"
+            class="console-view-toggle console-view-toggle--full"
             role="tablist"
             aria-label="商店类型"
           >

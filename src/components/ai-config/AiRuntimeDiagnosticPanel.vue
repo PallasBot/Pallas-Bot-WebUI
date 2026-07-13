@@ -260,49 +260,62 @@ function circuitTone(state: string): string {
 .ai-runtime-diagnostic {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
+}
+
+.ai-runtime-diagnostic--embedded {
+  padding: 16px 18px 18px;
+  border-radius: var(--hub-radius-lg, 14px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 16px rgba(15, 23, 42, 0.03);
 }
 
 .ai-runtime-diagnostic__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .ai-runtime-diagnostic__title {
   margin: 0 0 4px;
-  font-size: 1.125rem;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .ai-runtime-diagnostic__lead {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .ai-runtime-diagnostic__top-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
 }
 
 .ai-runtime-diagnostic__metric-card {
-  padding: 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  gap: 6px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
   border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .ai-runtime-diagnostic__metric-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
   color: var(--text-muted);
 }
 
 .ai-runtime-diagnostic__metric-value {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
@@ -310,7 +323,10 @@ function circuitTone(state: string): string {
 .ai-runtime-diagnostic__table-card,
 .ai-runtime-diagnostic__routing-card,
 .ai-runtime-diagnostic__focus-card {
-  padding: 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--text) 2%, transparent);
 }
 
 .ai-runtime-diagnostic__hero-state {

@@ -6,7 +6,7 @@ import {
 
 describe("communityActivationSemantics", () => {
   it("shows community-specific install hint", () => {
-    expect(communityActivationDetailHint("hot-reloadable")).toContain("首次安装可热加载");
+    expect(communityActivationDetailHint("hot-reloadable")).toContain("首次安装可立即生效");
     expect(communityActivationDetailHint("hot-reloadable")).toContain("更新");
   });
 
@@ -16,7 +16,7 @@ describe("communityActivationSemantics", () => {
         needs_restart: false,
         activation_action: "hot-reload",
       }),
-    ).toBe("已热重载");
+    ).toBe("已热更新");
   });
 
   it("marks pending community update as worker restart", () => {
@@ -25,6 +25,6 @@ describe("communityActivationSemantics", () => {
         needs_restart: true,
         activation_action: "none",
       }),
-    ).toBe("待重启 Worker");
+    ).toBe("待重启分片节点");
   });
 });

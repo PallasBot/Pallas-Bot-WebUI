@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { RouterLink } from "vue-router";
 import {
   fetchDbOverview,
   fetchGroupConfigs,
@@ -370,42 +369,6 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-
-    <UiCard
-      v-if="overview && (overview.backend === 'mongodb' || overview.backend === 'postgres')"
-      id="db-backup"
-      tag="section"
-      glass
-      class="database-page__panel"
-    >
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <ConsoleNavIcon
-            class="panel__title-ico"
-            name="backup"
-          />备份管理
-        </h2>
-        <div class="row-actions">
-          <RouterLink
-            custom
-            v-slot="{ navigate }"
-            to="/database/backups"
-          >
-            <UiButton
-              variant="primary"
-              @click="navigate"
-            >
-              前往备份管理
-            </UiButton>
-          </RouterLink>
-        </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted database-page__backup-lead">
-          创建逻辑备份、查看进度与清理历史目录已整合至备份管理页。
-        </p>
-      </div>
-    </UiCard>
 
     <UiCard
       id="db-group-configs"

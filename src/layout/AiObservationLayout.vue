@@ -49,7 +49,7 @@ const activeTab = computed(() =>
       aria-label="AI 观测分区"
     >
       <div
-        class="console-view-toggle"
+        class="console-view-toggle console-view-toggle--full"
         role="tablist"
       >
         <RouterLink
@@ -87,10 +87,8 @@ const activeTab = computed(() =>
 }
 
 .ai-observation-layout__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
+  display: block;
+  width: 100%;
 }
 
 .ai-observation-layout__tab {
@@ -99,16 +97,11 @@ const activeTab = computed(() =>
 
 @media (max-width: 560px) {
   .ai-observation-layout__tabs .console-view-toggle {
-    display: flex;
-    width: 100%;
-    max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .ai-observation-layout__tabs .console-view-toggle button {
-    flex: 1 1 auto;
-    min-width: 4.5rem;
     white-space: nowrap;
   }
 }

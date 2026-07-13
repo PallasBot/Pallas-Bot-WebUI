@@ -195,7 +195,8 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
       <UiCard
         v-for="item in statsSummary"
         :key="item.label"
-        class="ai-stats-page__metric-card"
+        glass
+        class="ai-hub-panel ai-stats-page__metric-card"
       >
         <span class="ai-stats-page__metric-label">
           {{ item.label }}
@@ -215,7 +216,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     </div>
 
     <section class="ai-stats-page__charts">
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">Bot 端请求趋势</h3>
         </div>
@@ -232,7 +236,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
         />
       </UiCard>
 
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">模型成功与失败趋势</h3>
         </div>
@@ -249,7 +256,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
         />
       </UiCard>
 
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">直接对话调用趋势</h3>
         </div>
@@ -270,7 +280,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     </section>
 
     <section class="ai-stats-page__boards">
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">高频失败原因</h3>
         </div>
@@ -298,7 +311,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
         </div>
       </UiCard>
 
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">路由命中排行</h3>
         </div>
@@ -355,7 +371,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     </section>
 
     <section class="ai-stats-page__boards">
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">Token 消耗 (按 Provider)</h3>
         </div>
@@ -396,7 +415,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
         </div>
       </UiCard>
 
-      <UiCard class="ai-stats-page__panel">
+      <UiCard
+        glass
+        class="ai-hub-panel ai-stats-page__panel"
+      >
         <div class="ai-head">
           <h3 class="ai-head__title">Token 消耗 (按模型)</h3>
         </div>
@@ -444,7 +466,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 .ai-stats-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--hub-page-gap, 18px);
 }
 
 .ai-stats-page__toolbar {
@@ -459,7 +481,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ai-date-field {
@@ -467,13 +489,14 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   align-items: center;
   gap: 8px;
   background: color-mix(in srgb, var(--text) 3%, transparent);
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .ai-date-field__label {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -482,7 +505,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   background: transparent;
   padding: 2px 4px;
   min-height: 28px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--text);
 }
 
@@ -494,19 +517,21 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 .ai-stats-page__top-metrics {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .ai-stats-page__metric-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  padding: 20px;
-  border: none;
-  background: var(--bg-card);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+  border-radius: var(--hub-radius-lg, 14px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 16px rgba(15, 23, 42, 0.03);
   container-type: inline-size;
 }
 
@@ -556,28 +581,32 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 .ai-stats-page__boards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: var(--hub-page-gap, 18px);
 }
 
 .ai-stats-page__panel {
   height: 100%;
-  padding: 24px;
-  background: var(--bg-card);
-  border: none;
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--hub-radius-lg, 14px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 16px rgba(15, 23, 42, 0.03);
+}
+
+.ai-stats-page__panel :deep(.ui-card__content) {
+  padding: 16px 18px 18px;
 }
 
 .ai-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .ai-head__title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 0.98rem;
   font-weight: 700;
 }
 

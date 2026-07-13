@@ -132,3 +132,8 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     ],
   },
 ];
+
+export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {
+  if (!isSimpleMode) return LLM_BOT_FIELD_GROUPS;
+  return LLM_BOT_FIELD_GROUPS.filter((group) => group.tier === "essential" && group.title !== "AI 服务连接");
+}
