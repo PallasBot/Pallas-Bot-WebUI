@@ -71,7 +71,19 @@ npm run build
 | 写操作鉴权 | 主仓可配置 `PALLAS_WEBUI_API_TOKEN` |
 | 健康检查 | `GET /pallas/api/health` |
 
-协议进程自带页（非本仓路由）常见为 **`/protocol/console`**；若主仓配置了 `PALLAS_PROTOCOL_WEBUI_PATH`，以实际环境为准。
+### 协议端管理（`pallas-plugin-protocol`）
+
+协议管理 UI 已迁入本仓，不再使用独立 HTML 壳 **`/protocol/console`**。安装官方扩展 `pallas-plugin-protocol` 后，在控制台侧栏打开 **协议连接**（`/pallas/protocol`）即可；旧书签会自动 307 跳转。
+
+| 本仓路由 | 说明 |
+| --- | --- |
+| `/pallas/protocol` | 协议账号列表与工作区 |
+| `/pallas/protocol/create` | 新建 NapCat / SnowLuma 账号 |
+| `/pallas/protocol/import` | 批量导入旧实例目录 |
+| `/pallas/protocol/assets` | 运行时下载与 Docker 镜像 |
+| `/pallas/protocol/settings` | 重定向至 `/pallas/preferences`（外观、轮询、口令） |
+
+协议 **HTTP API** 仍挂在主仓配置的路径（常见 `PALLAS_PROTOCOL_WEBUI_PATH`，默认类似 `/protocol/napcat`），供上列页面调用；仅 **`/protocol/napcat/login`** 等登录入口保留在协议插件侧。若环境自定义了 `PALLAS_PROTOCOL_WEBUI_PATH`，以实例接口返回的 `webui_path` 为准。
 
 ## 发版（可选）
 
