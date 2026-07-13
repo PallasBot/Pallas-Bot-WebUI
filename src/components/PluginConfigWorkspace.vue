@@ -32,6 +32,7 @@ import HelpImagePreview from "@/components/HelpImagePreview.vue";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import PluginIcon from "@/components/PluginIcon.vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import PallasImageGatewaysEditor from "@/components/PallasImageGatewaysEditor.vue";
@@ -828,7 +829,11 @@ defineExpose({
                 :aria-selected="pluginConfigTab === 'governance'"
                 @click="pluginConfigTab = 'governance'"
               >
-                治理
+                <ConsoleNavIcon
+                  name="settings"
+                  :size="16"
+                />
+                <span>治理</span>
               </button>
               <button
                 type="button"
@@ -837,7 +842,11 @@ defineExpose({
                 :aria-selected="pluginConfigTab === 'config'"
                 @click="pluginConfigTab = 'config'"
               >
-                插件配置
+                <ConsoleNavIcon
+                  name="sliders"
+                  :size="16"
+                />
+                <span>插件配置</span>
               </button>
               <button
                 v-if="showReadmeTab"
@@ -847,7 +856,11 @@ defineExpose({
                 :aria-selected="pluginConfigTab === 'readme'"
                 @click="pluginConfigTab = 'readme'"
               >
-                README
+                <ConsoleNavIcon
+                  name="list"
+                  :size="16"
+                />
+                <span>README</span>
               </button>
             </div>
             <div

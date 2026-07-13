@@ -25,7 +25,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames } from "@/utils/pluginFavorites";
 import { buildPluginIconMap, resolvePluginIconForRow, shouldShowPluginAvatar } from "@/utils/pluginIconUrl";
-import { PLUGIN_CATEGORY_LABELS, type PluginCategory, pluginCategory } from "@/utils/pluginCategory";
+import { PLUGIN_LIST_CATEGORY_TABS, type PluginCategory, pluginCategory } from "@/utils/pluginCategory";
 import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
@@ -65,12 +65,7 @@ const sortedPlugins = computed(() => {
 
 const categoryOf = (p: PluginRow): PluginCategory => pluginCategory(p, officialExtensions.value);
 
-const categoryTabs = computed<{ id: PluginCategory | "all"; label: string }[]>(() => [
-  { id: "all", label: "全部" },
-  { id: "core", label: PLUGIN_CATEGORY_LABELS.core },
-  { id: "extra", label: PLUGIN_CATEGORY_LABELS.extra },
-  { id: "local", label: PLUGIN_CATEGORY_LABELS.local },
-]);
+const categoryTabs = PLUGIN_LIST_CATEGORY_TABS;
 
 const filteredPlugins = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
@@ -235,7 +230,11 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
               :aria-selected="activeCategory === tab.id"
               @click="activeCategory = tab.id"
             >
-              {{ tab.label }}
+              <ConsoleNavIcon
+                :name="tab.icon"
+                :size="16"
+              />
+              <span>{{ tab.label }}</span>
             </button>
           </div>
         </template>

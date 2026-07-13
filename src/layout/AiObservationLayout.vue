@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import { provideAiObservationRefresh } from "@/composables/useAiObservationRefresh";
@@ -67,7 +68,11 @@ const activeTab = computed(() =>
             :aria-selected="isActive"
             @click="navigate"
           >
-            {{ tab.label }}
+            <ConsoleNavIcon
+              :name="tab.icon"
+              :size="16"
+            />
+            <span>{{ tab.label }}</span>
           </button>
         </RouterLink>
       </div>

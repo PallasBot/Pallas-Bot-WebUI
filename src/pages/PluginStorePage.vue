@@ -35,6 +35,7 @@ import {
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -222,16 +223,16 @@ const gitInstallBusy = ref(false);
 
 const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 
-const sectionOptions: { value: StoreSection; label: string }[] = [
-  { value: "official", label: "官方插件" },
-  { value: "community", label: "社区插件" },
-  { value: "local", label: "本地插件" },
+const sectionOptions: { value: StoreSection; label: string; icon: ConsoleNavIconId }[] = [
+  { value: "official", label: "官方插件", icon: "plugin" },
+  { value: "community", label: "社区插件", icon: "globe" },
+  { value: "local", label: "本地插件", icon: "terminal" },
 ];
 
-const tabOptions: { value: StoreTab; label: string }[] = [
-  { value: "all", label: "全部插件" },
-  { value: "installed", label: "已安装" },
-  { value: "available", label: "可安装" },
+const tabOptions: { value: StoreTab; label: string; icon: ConsoleNavIconId }[] = [
+  { value: "all", label: "全部插件", icon: "list" },
+  { value: "installed", label: "已安装", icon: "plugin" },
+  { value: "available", label: "可安装", icon: "download" },
 ];
 
 const webuiInstallEnabled = computed(() => rows.value.some((row) => row.webui_install));
@@ -1368,7 +1369,11 @@ onDeactivated(() => {
               :aria-selected="storeSection === sec.value"
               @click="storeSection = sec.value"
             >
-              {{ sec.label }}
+              <ConsoleNavIcon
+                :name="sec.icon"
+                :size="16"
+              />
+              <span>{{ sec.label }}</span>
             </button>
           </div>
         </template>
@@ -1387,7 +1392,11 @@ onDeactivated(() => {
               :aria-selected="activeTab === tab.value"
               @click="activeTab = tab.value"
             >
-              {{ tab.label }}
+              <ConsoleNavIcon
+                :name="tab.icon"
+                :size="16"
+              />
+              <span>{{ tab.label }}</span>
             </button>
           </div>
         </template>

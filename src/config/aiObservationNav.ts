@@ -4,6 +4,7 @@ export interface AiObservationTabDef {
   id: "overview" | "statistics" | "history";
   label: string;
   lead: string;
+  icon: ConsoleNavIconId;
   path: string;
   routeName: "ai-home" | "ai-statistics" | "ai-history";
 }
@@ -22,6 +23,7 @@ export const AI_OBSERVATION_TABS: AiObservationTabDef[] = [
     id: "overview",
     label: "总览",
     lead: "运行健康、需关注项与运行诊断一屏掌握。",
+    icon: "dashboard",
     path: "/ai/home",
     routeName: "ai-home",
   },
@@ -29,6 +31,7 @@ export const AI_OBSERVATION_TABS: AiObservationTabDef[] = [
     id: "statistics",
     label: "统计",
     lead: "调用量、成功率、上游 Provider 与 Token 消耗趋势。",
+    icon: "charts",
     path: "/ai/statistics",
     routeName: "ai-statistics",
   },
@@ -36,6 +39,7 @@ export const AI_OBSERVATION_TABS: AiObservationTabDef[] = [
     id: "history",
     label: "历史",
     lead: "会话回放、规则维护与学习闭环，无需另开统计页。",
+    icon: "logs",
     path: "/ai/history",
     routeName: "ai-history",
   },

@@ -46,6 +46,8 @@ import type {
   ConversationKernelTraceRow,
 } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
@@ -165,11 +167,15 @@ const learningLoopDismissed = ref(
 const showDecisionTraces = ref(false);
 
 type AiHistoryWorkspace = "sessions" | "maintain" | "rules" | "memory";
-const WORKSPACE_TABS = [
-  { label: "会话", value: "sessions" as const },
-  { label: "群维护", value: "maintain" as const },
-  { label: "规则", value: "rules" as const },
-  { label: "记忆", value: "memory" as const },
+const WORKSPACE_TABS: Array<{
+  label: string;
+  value: AiHistoryWorkspace;
+  icon: ConsoleNavIconId;
+}> = [
+  { label: "会话", value: "sessions", icon: "list" },
+  { label: "群维护", value: "maintain", icon: "users" },
+  { label: "规则", value: "rules", icon: "sliders" },
+  { label: "记忆", value: "memory", icon: "database" },
 ];
 const activeWorkspace = ref<AiHistoryWorkspace>("sessions");
 
@@ -1973,6 +1979,10 @@ onMounted(() => {
           :aria-selected="activeWorkspace === tab.value"
           @click="activeWorkspace = tab.value"
         >
+          <ConsoleNavIcon
+            :name="tab.icon"
+            :size="16"
+          />
           <span>{{ tab.label }}</span>
           <span
             v-if="workspaceTabBadges[tab.value] > 0"

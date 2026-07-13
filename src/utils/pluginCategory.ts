@@ -1,4 +1,5 @@
 import type { OfficialExtensionRow, PluginRow } from "@/api/pallasTypes";
+import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 
 export type PluginCategory = "core" | "extra" | "local";
 
@@ -34,3 +35,20 @@ export const PLUGIN_CATEGORY_LABELS: Record<PluginCategory, string> = {
   extra: "拓展",
   local: "本地",
 };
+
+export const PLUGIN_CATEGORY_ICONS: Record<PluginCategory, ConsoleNavIconId> = {
+  core: "blocks",
+  extra: "plugin",
+  local: "terminal",
+};
+
+export const PLUGIN_LIST_CATEGORY_TABS: Array<{
+  id: PluginCategory | "all";
+  label: string;
+  icon: ConsoleNavIconId;
+}> = [
+  { id: "all", label: "全部", icon: "list" },
+  { id: "core", label: PLUGIN_CATEGORY_LABELS.core, icon: PLUGIN_CATEGORY_ICONS.core },
+  { id: "extra", label: PLUGIN_CATEGORY_LABELS.extra, icon: PLUGIN_CATEGORY_ICONS.extra },
+  { id: "local", label: PLUGIN_CATEGORY_LABELS.local, icon: PLUGIN_CATEGORY_ICONS.local },
+];
