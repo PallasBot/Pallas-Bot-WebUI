@@ -18,6 +18,7 @@ import type {
   PluginConfigCheckResult,
 } from "@/api/pallasTypes";
 import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
+import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -375,7 +376,7 @@ onMounted(() => {
                 :key="cap.capability"
                 class="ai-wizard-page__row"
               >
-                <span class="ai-wizard-page__row-key">{{ cap.capability }}</span>
+                <span class="ai-wizard-page__row-key">{{ mediaCapabilityLabel(cap.capability) }}</span>
                 <strong class="ai-wizard-page__row-val">{{ cap.queue_depth }} 待处理 / {{ cap.active_tasks }} 运行中</strong>
               </div>
             </div>

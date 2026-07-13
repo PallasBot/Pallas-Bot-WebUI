@@ -20,6 +20,15 @@ export interface RuntimeOverviewRow {
   activeTasks?: number;
 }
 
+/** media_tasks.capabilities 能力 ID → 观测展示名 */
+export function mediaCapabilityLabel(capability?: string | null): string {
+  const id = String(capability ?? "").trim();
+  if (!id) return "—";
+  if (id === "media.sing") return "点歌运行时";
+  if (id === "image.generate") return "绘图任务队列";
+  return id;
+}
+
 function labelOrDash(value?: string | null): string {
   const text = String(value ?? "").trim();
   return text || "—";
@@ -43,12 +52,22 @@ function overviewStateFields(
   };
 }
 
+function findMediaCapability(
+  overview: LlmRuntimeOverviewData | null | undefined,
+  capabilityId: string,
+) {
+  const caps = overview?.health?.media_tasks?.capabilities;
+  if (!Array.isArray(caps)) return null;
+  return caps.find((item) => String(item.capability ?? "").trim() === capabilityId) ?? null;
+}
+
 export function buildRuntimeOverviewRows(
   overview: LlmRuntimeOverviewData | null | undefined,
 ): RuntimeOverviewRow[] {
   if (!overview?.health) return [];
   const health = overview.health;
   const rows: RuntimeOverviewRow[] = [];
+  const hasImageHealth = Boolean(health.image_health);
 
   if (health.llm_health) {
     const llm = health.llm_health;
@@ -66,12 +85,19 @@ export function buildRuntimeOverviewRows(
 
   if (health.image_health) {
     const image = health.image_health;
+    const imageQueue = findMediaCapability(overview, "image.generate");
+    let detail = `连续失败 ${image.consecutive_failures ?? 0}`
+      + (image.recent_failure_class ? ` · ${aiFailureClassLabel(image.recent_failure_class)}` : "");
+    if (imageQueue) {
+      detail += ` · 任务队列 ${imageQueue.queue_depth ?? 0} · 执行中 ${imageQueue.active_tasks ?? 0}`;
+    }
     rows.push({
       id: "image.generate",
       title: "绘图运行时",
       ...overviewStateFields(image.health_state, image.circuit_state, image.degraded_state),
-      detail: `连续失败 ${image.consecutive_failures ?? 0}`
-        + (image.recent_failure_class ? ` · ${aiFailureClassLabel(image.recent_failure_class)}` : ""),
+      detail,
+      queueDepth: imageQueue ? Number(imageQueue.queue_depth ?? 0) : undefined,
+      activeTasks: imageQueue ? Number(imageQueue.active_tasks ?? 0) : undefined,
     });
   }
 
@@ -88,9 +114,11 @@ export function buildRuntimeOverviewRows(
     for (const cap of media.capabilities ?? []) {
       const capability = String(cap.capability ?? "").trim();
       if (!capability) continue;
+      // 已有 image_health「绘图运行时」时，不再并列能力 ID 行（队列信息已并入 detail）
+      if (capability === "image.generate" && hasImageHealth) continue;
       rows.push({
         id: capability,
-        title: capability === "media.sing" ? "点歌运行时" : capability,
+        title: mediaCapabilityLabel(capability),
         ...overviewStateFields(cap.health_state, null, null),
         detail: `队列 ${cap.queue_depth ?? 0} · 执行中 ${cap.active_tasks ?? 0}`,
         queueDepth: Number(cap.queue_depth ?? 0),
