@@ -11208,7 +11208,7 @@ html[data-theme="light"] .plugin-config-workspace--dialog .help-image-preview__f
 
   html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card .plugin-store-card__layout {
     grid-template-columns: 40px minmax(0, 1fr);
-    padding: 10px 34px 2px 10px;
+    padding: 10px 10px 2px;
     column-gap: 8px;
   }
 
@@ -11688,16 +11688,21 @@ button.plugin-card__link {
   font-family: inherit;
 }
 
+.plugin-catalog-card .plugin-store-card__info {
+  padding-right: 28px;
+}
+
 .plugin-catalog-card__fav {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   z-index: 2;
   margin: 0;
-  padding: 6px 8px;
+  padding: 4px 6px;
   border: none;
+  border-radius: 6px;
   background: transparent;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
   color: inherit;
   cursor: pointer;
@@ -11705,11 +11710,13 @@ button.plugin-card__link {
   transition:
     opacity 0.15s var(--ease),
     color 0.15s var(--ease),
-    transform 0.12s var(--ease);
+    transform 0.12s var(--ease),
+    background 0.15s var(--ease);
 }
 
 .plugin-catalog-card__fav:hover {
   opacity: 0.72;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
 .plugin-catalog-card__fav:active {
@@ -13363,8 +13370,8 @@ html[data-theme="light"] .home-cpu-core {
 }
 .config-field-group__title {
   margin: 0;
-  font-size: 0.94rem;
-  font-weight: 650;
+  font-size: var(--console-panel-title-size, 1.0625rem);
+  font-weight: var(--console-panel-title-weight, 650);
   letter-spacing: 0.01em;
   display: inline-flex;
   align-items: baseline;
@@ -13526,9 +13533,9 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
 
 .plugin-config-group-card__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--console-panel-title-size, 1.0625rem);
   line-height: 1.35;
-  font-weight: 700;
+  font-weight: var(--console-panel-title-weight, 650);
 }
 
 .plugin-config-group-card__desc {

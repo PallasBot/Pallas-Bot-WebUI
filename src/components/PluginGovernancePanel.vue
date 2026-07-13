@@ -234,13 +234,16 @@ const switchVariant = computed(() => (isDialogPresentation.value ? "plain" : "ca
 .plugin-governance-panel__group-head {
   display: grid;
   gap: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 72%, transparent);
 }
 
 .plugin-governance-panel__group-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--console-panel-title-size, 1.0625rem);
   line-height: 1.35;
-  font-weight: 700;
+  font-weight: var(--console-panel-title-weight, 650);
 }
 
 .plugin-governance-panel__group-desc {

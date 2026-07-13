@@ -1356,9 +1356,9 @@ defineExpose({
 
 .plugin-config-page__panel-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--console-panel-title-size, 1.0625rem);
   line-height: 1.35;
-  font-weight: 700;
+  font-weight: var(--console-panel-title-weight, 650);
 }
 
 .plugin-config-page__panel-desc {

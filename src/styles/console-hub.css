@@ -975,7 +975,7 @@ html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card.ui-card--interac
 }
 
 html[data-layout="hub"] .plugins-page--hub .plugin-catalog-card .plugin-store-card__layout {
-  padding: 12px 42px 2px 14px;
+  padding: 12px 14px 2px;
   column-gap: 10px;
   row-gap: 2px;
 }
