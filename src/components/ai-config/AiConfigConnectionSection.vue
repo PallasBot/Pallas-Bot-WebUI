@@ -217,7 +217,7 @@ defineExpose({ save, canSave, saving });
             class="inp ai-config-connection__inp--token"
             type="password"
             autocomplete="off"
-            placeholder="留空表示不携带 Authorization"
+            placeholder="与 AI 侧 PALLAS_AI_API_TOKEN 一致；留空则不鉴权"
           >
         </div>
         <div class="form-field">

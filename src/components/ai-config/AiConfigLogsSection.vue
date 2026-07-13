@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { fetchAiExtensionLogs, openAiExtensionLogsEventSource } from "@/api/consoleApi";
 import type { AiExtensionLogsData } from "@/api/pallasTypes";
@@ -42,6 +42,8 @@ const liveMode = ref(true);
 const streamLive = ref(false);
 const streamReconnecting = ref(false);
 const lastStreamEventId = ref(0);
+const logListEl = ref<HTMLElement | null>(null);
+const followLogTail = ref(true);
 
 let logEs: EventSource | null = null;
 let streamReconnectTimer: number | null = null;
@@ -56,10 +58,20 @@ const displayPath = computed(() =>
   liveMode.value ? livePath.value || logData.value?.path || "" : logData.value?.path || "",
 );
 
+const logSourceLabel = computed(() => {
+  const source = liveMode.value ? undefined : logData.value?.source;
+  if (source === "remote") return "远端 HTTP";
+  if (source === "local") return "本机文件";
+  return "";
+});
+
 const dockerHintVisible = computed(
   () =>
     Boolean(logErr.value) &&
-    (logErr.value.includes("不存在") || logErr.value.includes("越界")),
+    (logErr.value.includes("不存在") ||
+      logErr.value.includes("越界") ||
+      logErr.value.includes("未找到") ||
+      logErr.value.includes("远端")),
 );
 
 function stopLogStreamConnection() {
@@ -86,6 +98,34 @@ function pushLiveLine(line: string) {
   }
 }
 
+function isLogListNearBottom(el: HTMLElement): boolean {
+  const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return gap <= Math.max(48, Math.floor(el.clientHeight * 0.12));
+}
+
+async function scrollLogListToBottom(force = false) {
+  if (!force && !followLogTail.value) return;
+  await nextTick();
+  const el = logListEl.value;
+  if (!el) return;
+  const apply = () => {
+    el.scrollTop = el.scrollHeight;
+  };
+  apply();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      apply();
+      window.requestAnimationFrame(apply);
+    });
+  }
+}
+
+function onLogListScroll() {
+  const el = logListEl.value;
+  if (!el) return;
+  followLogTail.value = isLogListNearBottom(el);
+}
+
 function startLogStream() {
   stopLogStreamConnection();
   streamLive.value = false;
@@ -110,6 +150,7 @@ function startLogStream() {
         };
         if (row.type === "ready") {
           if (row.path) livePath.value = row.path;
+          void scrollLogListToBottom(true);
           return;
         }
         if (row.type === "error") {
@@ -121,6 +162,7 @@ function startLogStream() {
         if (row.type === "line" && typeof row.line === "string") {
           if (row.path) livePath.value = row.path;
           pushLiveLine(row.line);
+          void scrollLogListToBottom();
           if (ev.lastEventId) {
             const parsed = Number(ev.lastEventId);
             if (Number.isFinite(parsed) && parsed > 0) {
@@ -159,6 +201,7 @@ async function loadLogs() {
     logData.value = null;
   } finally {
     busy.value = false;
+    void scrollLogListToBottom(true);
   }
 }
 
@@ -189,11 +232,21 @@ watch(logKind, () => {
   liveLines.value = [];
   logData.value = null;
   logErr.value = "";
+  followLogTail.value = true;
   if (liveMode.value) startLogStream();
 });
 
+watch(
+  () => lines.value.length,
+  () => {
+    void scrollLogListToBottom();
+  },
+  { flush: "post" },
+);
+
 onMounted(() => {
   if (liveMode.value) startLogStream();
+  void scrollLogListToBottom(true);
 });
 
 onBeforeUnmount(() => {
@@ -309,6 +362,7 @@ onBeforeUnmount(() => {
       >
         Docker 部署请确认 compose 已将 AI 日志目录挂到 Bot 的
         <code>{{ AI_EXTENSION_DOCKER_LOG_MOUNT }}</code>，或在「AI 服务」填写 Bot 可读路径。
+        远端 AI 需将日志共享到 Bot 本机；未本地启动 AI 时不会有落盘日志。
         容器内也可执行：<code>docker exec -it pallasbot-ai tail -f /server/logs/{{ logKind === 'uvicorn' ? 'uvicorn.log' : logKind === 'celery-media' ? 'celery-media.log' : 'celery.log' }}</code>
       </p>
       <div
@@ -323,12 +377,15 @@ onBeforeUnmount(() => {
           {{ streamLive ? "已连接" : streamReconnecting ? "重连中…" : "未连接" }}
         </span>
         <span>{{ kindMeta?.shortLabel ?? logKind }}</span>
+        <span v-if="logSourceLabel">{{ logSourceLabel }}</span>
         <code v-if="displayPath">{{ displayPath }}</code>
         <span>{{ lines.length }} 行</span>
       </div>
       <ol
         v-if="lines.length"
+        ref="logListEl"
         class="ai-logs__list"
+        @scroll.passive="onLogListScroll"
       >
         <li
           v-for="(line, idx) in lines"

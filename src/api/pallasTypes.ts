@@ -1680,6 +1680,7 @@ export interface AiExtensionLogsData {
   path: string;
   lines: string[];
   error: string | null;
+  source?: "local" | "remote" | "none";
 }
 
 export interface AiProxyResult {
