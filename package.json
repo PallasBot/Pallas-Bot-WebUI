@@ -12,8 +12,6 @@
     "check:console-openapi-types": "node ./scripts/check-console-openapi-types.mjs",
     "test:smoke": "vitest run",
     "optimize:standee": "node ./scripts/compress-standee.mjs",
-    "sync:protocol-css": "node ./scripts/sync-protocol-console-css.mjs",
-    "check:protocol-css": "node ./scripts/check-protocol-console-css.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

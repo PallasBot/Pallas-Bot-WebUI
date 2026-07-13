@@ -9,7 +9,7 @@ export function joinHttpPath(base: string, path: string): string {
   return `${b}${p2}`;
 }
 
-/** 协议管理页挂载路径（站点根相对，如 ``/protocol/console``） */
+/** 协议 API 挂载路径（站点根相对，如 ``/protocol/napcat``） */
 export function resolveProtocolMountPath(snap: NapcatManagerSnapshot | null): string | null {
   if (!snap?.webui_enabled) return null;
   const raw = snap.webui_path?.trim();
