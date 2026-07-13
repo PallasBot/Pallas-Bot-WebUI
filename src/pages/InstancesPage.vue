@@ -675,7 +675,15 @@ onUnmounted(() => {
                 </label>
                 <div class="data-summary-card__head-main">
                   <div class="data-summary-card__title-line">
-                    <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                    <div class="data-summary-card__primary">
+                      <a
+                        href="#"
+                        class="data-summary-card__title-link"
+                        @click.prevent="startEdit(c)"
+                      >
+                        {{ botNickname(c.account) || "BOT" }}
+                      </a>
+                    </div>
                     <button
                       type="button"
                       class="data-card-fav-star"
@@ -735,9 +743,6 @@ onUnmounted(() => {
                     : "无"
                 }}
               </div>
-              </div>
-              <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
-                <ConsoleTableEdit @click="startEdit(c)" />
               </div>
             </div>
           </div>
@@ -934,23 +939,26 @@ onUnmounted(() => {
               <div class="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches">
                 <FormBoolSwitchField
                   label="安全模式"
+                  hint="开启后，牛牛回复发送失败时会直接 ban 掉这句话。"
                   :model-value="draft.security"
                   @update:model-value="setDraftBool('security', $event)"
                 />
                 <FormBoolSwitchField
                   label="自动同意好友"
+                  hint="自动通过好友申请，无需在协议端手动确认。"
                   :model-value="draft.auto_accept_friend"
                   @update:model-value="setDraftBool('auto_accept_friend', $event)"
                 />
                 <FormBoolSwitchField
                   label="自动同意入群"
+                  hint="自动通过入群邀请或加群申请。"
                   :model-value="draft.auto_accept_group"
                   @update:model-value="setDraftBool('auto_accept_group', $event)"
                 />
                 <FormBoolSwitchField
                   label="社区名册公开"
-                  :model-value="draft.community_roster_show_qq"
                   hint="关闭后该牛不上报社区名册（气泡墙不展示）。"
+                  :model-value="draft.community_roster_show_qq"
                   @update:model-value="setDraftBool('community_roster_show_qq', $event)"
                 />
               </div>

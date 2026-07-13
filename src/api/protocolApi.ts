@@ -67,6 +67,11 @@ export type ProtocolQrcodeMeta = {
   exists?: boolean;
   updated_at?: number;
   host_deps?: { qr_capture_ready?: boolean; issues?: string[] };
+  login_mode?: string;
+  message?: string;
+  available?: boolean;
+  inject_hook?: Record<string, unknown>;
+  inject_hook_error?: string;
 };
 
 export async function protocolFetchQrcodeImageBlob(
@@ -135,9 +140,38 @@ export async function protocolFetchRuntimeOverview(mountUrl: string): Promise<Pr
   return data ?? {};
 }
 
-export async function protocolFetchRuntimeProfile(mountUrl: string): Promise<Record<string, unknown>> {
-  const { data } = await protocolHttp(mountUrl).get<Record<string, unknown>>("/api/runtime/profile");
-  return data ?? {};
+export type ProtocolRuntimeProfile = {
+  runtime_mode?: string;
+  napcat_runtime_mode?: string;
+  snowluma_runtime_mode?: string;
+  target_platform?: string;
+  docker_image?: string;
+  snowluma_docker_image?: string;
+  follow_bot_lifecycle?: boolean;
+};
+
+export type ProtocolRuntimeJob = {
+  status?: string;
+  message?: string;
+  tag?: string;
+};
+
+export async function protocolFetchRuntimeProfile(mountUrl: string): Promise<ProtocolRuntimeProfile> {
+  const { data } = await protocolHttp(mountUrl).get<{ profile?: ProtocolRuntimeProfile }>(
+    "/api/runtime/profile",
+  );
+  return data?.profile ?? {};
+}
+
+export async function protocolUpdateRuntimeProfile(
+  mountUrl: string,
+  payload: ProtocolRuntimeProfile & { prune_containers?: string },
+): Promise<ProtocolRuntimeProfile> {
+  const { data } = await protocolHttp(mountUrl).put<{ profile?: ProtocolRuntimeProfile }>(
+    "/api/runtime/profile",
+    payload,
+  );
+  return data?.profile ?? {};
 }
 
 export async function protocolDownloadRuntime(
@@ -150,6 +184,54 @@ export async function protocolDownloadRuntime(
   const suffix = q.toString() ? `?${q.toString()}` : "";
   const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
     `/api/runtime/download${suffix}`,
+  );
+  return data ?? {};
+}
+
+export async function protocolDownloadSnowlumaRuntime(
+  mountUrl: string,
+  params?: { tag?: string; target_platform?: string },
+): Promise<Record<string, unknown>> {
+  const q = new URLSearchParams();
+  if (params?.tag) q.set("tag", params.tag);
+  if (params?.target_platform) q.set("target_platform", params.target_platform);
+  const suffix = q.toString() ? `?${q.toString()}` : "";
+  const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
+    `/api/snowluma/runtime/download${suffix}`,
+  );
+  return data ?? {};
+}
+
+export async function protocolPullDockerImage(
+  mountUrl: string,
+  image?: string,
+): Promise<{ ok?: boolean; image?: string; output?: string; code?: number }> {
+  const body = image?.trim() ? { image: image.trim() } : {};
+  const { data } = await protocolHttp(mountUrl).post<{
+    ok?: boolean;
+    image?: string;
+    output?: string;
+    code?: number;
+  }>("/api/runtime/docker/pull", body);
+  return data ?? {};
+}
+
+export async function protocolListDockerImages(
+  mountUrl: string,
+  protocol?: "napcat" | "snowluma",
+): Promise<{ ok?: boolean; detail?: string; images?: string[] }> {
+  const params = protocol ? { protocol } : undefined;
+  const { data } = await protocolHttp(mountUrl).get<{
+    ok?: boolean;
+    detail?: string;
+    images?: string[];
+  }>("/api/runtime/docker/images", { params });
+  return data ?? {};
+}
+
+export async function protocolCleanupRuntimeDist(mountUrl: string): Promise<Record<string, unknown>> {
+  const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
+    "/api/runtime/cleanup-dist",
   );
   return data ?? {};
 }
@@ -217,4 +299,53 @@ export function protocolQrcodeImageUrl(
   const base = mountUrl.replace(/\/$/, "");
   const q = updatedAt != null && updatedAt > 0 ? `?t=${updatedAt}` : "";
   return `${base}/api/accounts/${encodeURIComponent(accountId)}/qrcode${q}`;
+}
+
+export async function protocolFetchAccount(
+  mountUrl: string,
+  accountId: string,
+  opts?: { brief?: boolean },
+): Promise<NapcatAccountRow | null> {
+  const params = opts?.brief ? { brief: "1" } : undefined;
+  const { data } = await protocolHttp(mountUrl).get<AccountActionBody>(
+    `/api/accounts/${encodeURIComponent(accountId)}`,
+    { params },
+  );
+  return data?.account ?? null;
+}
+
+export async function protocolUpdateAccount(
+  mountUrl: string,
+  accountId: string,
+  payload: Record<string, unknown>,
+  restart = true,
+): Promise<Record<string, unknown>> {
+  const { data } = await protocolHttp(mountUrl).put<Record<string, unknown>>(
+    `/api/accounts/${encodeURIComponent(accountId)}`,
+    payload,
+    { params: { restart: restart ? "true" : "false" } },
+  );
+  return data ?? {};
+}
+
+export async function protocolFetchAccountLogs(
+  mountUrl: string,
+  accountId: string,
+  lines = 120,
+): Promise<string[]> {
+  const { data } = await protocolHttp(mountUrl).get<{ logs?: string[] }>(
+    `/api/accounts/${encodeURIComponent(accountId)}/logs`,
+    { params: { lines: String(lines) } },
+  );
+  return Array.isArray(data?.logs) ? data.logs : [];
+}
+
+export async function protocolSnowlumaInjectHook(
+  mountUrl: string,
+  accountId: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await protocolHttp(mountUrl).post<Record<string, unknown>>(
+    `/api/accounts/${encodeURIComponent(accountId)}/snowluma/inject-hook`,
+  );
+  return data ?? {};
 }

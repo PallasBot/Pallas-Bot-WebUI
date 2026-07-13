@@ -42,21 +42,25 @@ export function protocolMountAbsoluteUrl(
   return `${window.location.origin}${mount}`;
 }
 
-/** pallas_protocol 内置管理页 URL：``webui_path`` 在站点根下，勿与 ``console.http_base``（WebUI 前缀）拼接。 */
-export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
-  return protocolMountAbsoluteUrl(system, snap);
+/** 协议管理列表（Bot WebUI 内嵌页，非独立 HTML 壳） */
+export function protocolDashboardUrl(
+  _system: SystemData | null,
+  snap: NapcatManagerSnapshot | null,
+): string | null {
+  if (!snap?.webui_enabled) return null;
+  return `${consolePublicRoot()}/protocol`;
 }
 
 /** 协议账号工作区（详情） */
 export function protocolAccountDetailUrl(
-  system: SystemData | null,
+  _system: SystemData | null,
   snap: NapcatManagerSnapshot | null,
   accountId: string,
 ): string | null {
-  const root = protocolMountAbsoluteUrl(system, snap);
+  if (!snap?.webui_enabled) return null;
   const id = String(accountId ?? "").trim();
-  if (!root || !id) return null;
-  return `${root.replace(/\/$/, "")}/account/${encodeURIComponent(id)}`;
+  if (!id) return null;
+  return `${consolePublicRoot()}/protocol/${encodeURIComponent(id)}`;
 }
 
 /** 协议账号设置（编辑） */
@@ -156,18 +160,72 @@ export function accountWebUiHref(account: NapcatAccountRow, system: SystemData |
   if (direct) return direct;
   const port = account.webui_port;
   if (port == null || port === "") return null;
-  const base = botHttpBaseFromSystem(system);
-  if (!base) return null;
   const portStr = String(port).trim();
   if (!portStr) return null;
+  return replaceUrlPort(system, portStr);
+}
+
+export interface SnowlumaDockerNovncMeta {
+  url?: string;
+  bind_host?: string;
+  host_port?: number;
+  uses_default_vnc_password?: boolean;
+}
+
+/** SnowLuma Docker noVNC 桌面链接（`/vnc.html`） */
+export function accountSnowlumaNovncHref(
+  account: NapcatAccountRow | null,
+  system: SystemData | null,
+): string | null {
+  if (!account) return null;
+  const nv = account.snowluma_docker_novnc as SnowlumaDockerNovncMeta | undefined;
+  const direct = String(nv?.url ?? "").trim();
+  if (direct) return direct;
+  const port = nv?.host_port;
+  if (port == null || port < 1 || port > 65535) return null;
+  const href = replaceUrlPort(system, String(port));
+  if (!href) return null;
   try {
-    const raw = base.includes("://") ? base : `http://${base}`;
-    const u = new URL(raw);
-    u.port = portStr;
+    const u = new URL(href);
+    u.pathname = "/vnc.html";
+    u.search = "";
+    u.hash = "";
     return u.toString();
   } catch {
     return null;
   }
+}
+
+export function snowlumaManagedWebuiPassword(account: NapcatAccountRow | null): string {
+  return String(account?.snowluma_managed_webui_password ?? "").trim();
+}
+
+export function snowlumaRuntimeWebuiPassword(account: NapcatAccountRow | null): string {
+  return String(account?.snowluma_runtime_webui_password ?? "").trim();
+}
+
+export function snowlumaNovncPasswordHint(account: NapcatAccountRow | null): string {
+  const nv = account?.snowluma_docker_novnc as SnowlumaDockerNovncMeta | undefined;
+  if (nv?.uses_default_vnc_password === false) {
+    return "见服务端 PALLAS_PROTOCOL_SNOWLUMA_DOCKER_VNC_PASSWD";
+  }
+  return "vncpasswd（默认）";
+}
+
+function replaceUrlPort(system: SystemData | null, portStr: string): string | null {
+  const base = botHttpBaseFromSystem(system);
+  if (base) {
+    try {
+      const raw = base.includes("://") ? base : `http://${base}`;
+      const u = new URL(raw);
+      u.port = portStr;
+      return u.toString();
+    } catch {
+      return null;
+    }
+  }
+  if (typeof window === "undefined") return null;
+  return `${window.location.protocol}//${window.location.hostname}:${portStr}`;
 }
 
 export function protocolSnapshot(data: InstancesData | null) {

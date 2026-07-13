@@ -4413,25 +4413,28 @@ html[data-theme="light"] .bot-config-edit {
   gap: 10px;
 }
 
-/* 实例编辑弹窗：开关平铺为无卡片列表（与插件配置弹窗 plain 风格一致），不再用卡片框 */
+/* 实例编辑弹窗：开关两列卡片，附说明文字 */
 .bot-config-edit--modal .bot-config-edit__grid--switches {
-  display: block;
-  margin-bottom: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-bottom: 12px;
 }
 
-.bot-config-edit--modal .form-bool-switch-field {
-  padding: 12px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+.bot-config-edit--modal .bot-config-edit__grid--switches .form-bool-switch-field {
+  height: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
 }
 
-.bot-config-edit--modal .form-bool-switch-field:first-child {
-  padding-top: 0;
+.bot-config-edit--modal .bot-config-edit__grid--switches .form-bool-switch-field__row {
+  min-height: 30px;
 }
 
 @media (max-width: 560px) {
+  .bot-config-edit--modal .bot-config-edit__grid--switches,
   .bot-config-edit__grid--pair {
     grid-template-columns: 1fr;
   }
@@ -7759,6 +7762,12 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   line-height: 1.35;
 }
 
+.protocol-page__entry-hint {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .protocol-page__entry-actions {
   flex-wrap: wrap;
 }
@@ -10838,6 +10847,14 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   padding: 0;
 }
 
+.protocol-account-config-dialog__bd {
+  padding: 12px 16px 16px;
+}
+
+.protocol-account-config-dialog__bd .protocol-account-workspace--dialog {
+  min-height: 0;
+}
+
 html[data-theme="light"] .plugin-config-workspace--dialog .plugin-config-group-card,
 html[data-theme="light"] .plugin-config-workspace--dialog .plugin-governance-panel .plugin-governance-panel__group {
   background: color-mix(in srgb, var(--foreground, var(--text)) 2%, var(--bg-card));
@@ -11684,10 +11701,14 @@ button.plugin-card__link {
   line-height: 1.4;
 }
 
-.plugin-catalog-card .plugin-store-card__meta-row {
-  flex-wrap: nowrap;
-  gap: 4px;
-  overflow: hidden;
+.plugin-catalog-card .plugin-catalog-card__meta-row {
+  grid-column: 2;
+  grid-row: 2;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 0;
+  overflow: visible;
+  min-width: 0;
 }
 
 .plugin-catalog-card .plugin-store-card__meta-link {
@@ -11696,6 +11717,11 @@ button.plugin-card__link {
   min-height: 20px;
   padding: 2px 6px;
   font-size: 10px;
+  max-width: 100%;
+}
+
+.plugin-catalog-card .plugin-store-card__summary {
+  grid-row: auto;
 }
 
 .plugin-catalog-card .plugin-store-card__meta-link--version {

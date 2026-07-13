@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   fetchInstances,
   fetchSystem,
@@ -19,7 +20,9 @@ import { useProtocolAccountBatch } from "@/composables/useProtocolAccountBatch";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
+import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog.vue";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal.vue";
+import type { ProtocolAccountTab } from "@/components/ProtocolAccountWorkspace.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -34,8 +37,6 @@ import {
   accountConnectedWsPortLabel,
   accountProtocolId,
   accountWebUiHref,
-  protocolAccountDetailUrl,
-  protocolDashboardUrl,
   protocolMountAbsoluteUrl,
   protocolSnapshot,
 } from "@/utils/protocolLinks";
@@ -57,6 +58,8 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
+const route = useRoute();
+const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
@@ -81,7 +84,6 @@ const protocolExtensionInstalled = computed(() =>
   isProtocolExtensionInstalled(instances.value),
 );
 const skeletonPanels = computed(() => (protocolExtensionInstalled.value ? 2 : 1));
-const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
 
@@ -94,6 +96,19 @@ const restartAllBusy = ref(false);
 const batch = useProtocolAccountBatch(() => protoMountUrl.value);
 const qrcodeModalOpen = ref(false);
 const qrcodeTarget = ref<{ id: string; title: string } | null>(null);
+
+const selectedAccountId = computed(() => String(route.params.accountId ?? "").trim());
+
+const accountConfigTab = computed((): ProtocolAccountTab => {
+  const tab = String(route.query.tab ?? "").trim().toLowerCase();
+  return tab === "settings" ? "settings" : "overview";
+});
+
+const accountConfigDialogOpen = computed(() => {
+  const id = selectedAccountId.value;
+  if (!id || !pageReady.value) return false;
+  return protocolAccountsSorted.value.some((a) => accountProtocolId(a) === id);
+});
 
 const tablePageSize = computed({
   get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
@@ -256,7 +271,9 @@ watch(
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
   document.body.style.overflow =
-    deleteModalOpen.value || qrcodeModalOpen.value ? "hidden" : "";
+    deleteModalOpen.value || qrcodeModalOpen.value || accountConfigDialogOpen.value
+      ? "hidden"
+      : "";
 }
 
 watch(deleteModalOpen, () => {
@@ -267,6 +284,37 @@ watch(qrcodeModalOpen, () => {
   syncBodyOverflow();
 });
 
+watch(accountConfigDialogOpen, () => {
+  syncBodyOverflow();
+});
+
+function openAccountConfig(accountId: string, tab: ProtocolAccountTab = "overview") {
+  const id = String(accountId ?? "").trim();
+  if (!id) return;
+  void router.push({
+    name: "protocol",
+    params: { accountId: id },
+    query: tab === "settings" ? { tab: "settings" } : {},
+  });
+}
+
+function closeAccountConfig() {
+  if (!selectedAccountId.value) return;
+  void router.replace({ name: "protocol" });
+}
+
+function syncAccountConfigRoute() {
+  if (route.name !== "protocol") return;
+  if (!pageReady.value) return;
+  const id = selectedAccountId.value;
+  if (!id) return;
+  if (accountConfigDialogOpen.value) return;
+  void router.replace({ name: "protocol" });
+}
+
+function onAccountConfigDeleted() {
+  void pollProtocolAccounts();
+}
 
 function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -283,12 +331,6 @@ function profileNick(a: NapcatAccountRow): string {
 
 function webUiHref(a: NapcatAccountRow): string | null {
   return accountWebUiHref(a, system.value);
-}
-
-function detailHref(a: NapcatAccountRow): string | null {
-  const id = accountProtocolId(a);
-  if (!id) return null;
-  return protocolAccountDetailUrl(system.value, snap.value, id);
 }
 
 function primaryTitle(a: NapcatAccountRow): string {
@@ -610,8 +652,16 @@ onMounted(async () => {
     await pollProtocolAccounts();
   } finally {
     pageReady.value = true;
+    syncAccountConfigRoute();
   }
 });
+
+watch(
+  () => [route.params.accountId, route.query.tab, protocolAccountsSorted.value.length] as const,
+  () => {
+    syncAccountConfigRoute();
+  },
+);
 
 onActivated(() => {
   protoRouteActive.value = true;
@@ -635,6 +685,9 @@ onDeactivated(() => {
   deleteErr.value = "";
   qrcodeModalOpen.value = false;
   qrcodeTarget.value = null;
+  if (selectedAccountId.value) {
+    void router.replace({ name: "protocol" });
+  }
   syncBodyOverflow();
 });
 
@@ -833,14 +886,12 @@ onUnmounted(() => {
                   <div class="inst-actions protocol-acc-table-actions">
                     <template v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled">
                     <UiButton
-                      v-if="detailHref(a)"
+                      v-if="accountProtocolId(a)"
                       variant="outline"
                       size="sm"
-                      :href="detailHref(a)!"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      @click="openAccountConfig(accountProtocolId(a)!)"
                     >
-                      详情
+                      配置
                     </UiButton>
                     <UiButton
                       variant="outline"
@@ -925,13 +976,13 @@ onUnmounted(() => {
               <div class="data-summary-card__head-main">
                 <div class="data-summary-card__title-line">
                   <div class="data-summary-card__primary">
-                    <a
-                      v-if="detailHref(a)"
+                    <RouterLink
+                      v-if="accountProtocolId(a)"
                       class="data-summary-card__title-link"
-                      :href="detailHref(a)!"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >{{ primaryTitle(a) }}</a>
+                      :to="{ name: 'protocol', params: { accountId: accountProtocolId(a)! } }"
+                    >
+                      {{ primaryTitle(a) }}
+                    </RouterLink>
                     <span v-else>{{ primaryTitle(a) }}</span>
                   </div>
                   <button
@@ -1007,6 +1058,14 @@ onUnmounted(() => {
               v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled"
               class="data-summary-card__tags data-summary-card__foot inst-card-actions"
             >
+              <UiButton
+                v-if="accountProtocolId(a)"
+                variant="outline"
+                size="sm"
+                @click="openAccountConfig(accountProtocolId(a)!)"
+              >
+                配置
+              </UiButton>
               <UiButton
                 variant="outline"
                 size="sm"
@@ -1108,6 +1167,13 @@ onUnmounted(() => {
             >{{ pillLabel(consoleAuthDisp) }}</span>
           </div>
         </div>
+        <p class="muted protocol-page__entry-hint">
+          运行时下载、Docker 镜像与全局运行模式已迁入本控制台
+          <RouterLink
+            class="link-quiet"
+            to="/protocol/assets"
+          >协议资产</RouterLink>；下方按钮仍可打开协议插件内置页（创建 / 导入账号等）。
+        </p>
         <div class="row-actions protocol-page__actions protocol-page__entry-actions">
           <RouterLink
             class="btn secondary"
@@ -1127,15 +1193,6 @@ onUnmounted(() => {
           >
             协议资产
           </RouterLink>
-          <UiButton
-            v-if="dashUrl"
-            variant="primary"
-            :href="dashUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            内置管理页
-          </UiButton>
         </div>
       </div>
     </UiCard>
@@ -1151,6 +1208,15 @@ onUnmounted(() => {
       title-id="proto-delete-modal-title"
       @close="closeDeleteModal"
       @confirm="confirmDeleteSelected"
+    />
+    <ProtocolAccountConfigDialog
+      :open="accountConfigDialogOpen"
+      :account-id="selectedAccountId"
+      :mount-url="protoMountUrl"
+      :system="system"
+      :initial-tab="accountConfigTab"
+      @close="closeAccountConfig"
+      @deleted="onAccountConfigDeleted"
     />
     <ProtocolAccountQrcodeModal
       :open="qrcodeModalOpen"

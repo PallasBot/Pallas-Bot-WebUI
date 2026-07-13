@@ -112,38 +112,40 @@ watch(
           >
             {{ subtitle }}
           </p>
-          <div
-            v-if="plugin.globally_disabled || pluginLoadBadgeText(plugin) || hasPluginSource(plugin) || loadProcessTags.length"
-            class="plugin-store-card__meta-row"
+        </div>
+
+        <div
+          v-if="plugin.globally_disabled || pluginLoadBadgeText(plugin) || hasPluginSource(plugin) || loadProcessTags.length"
+          class="plugin-store-card__meta-row plugin-catalog-card__meta-row"
+        >
+          <UiBadge
+            v-if="plugin.globally_disabled"
+            variant="muted"
           >
-            <UiBadge
-              v-if="plugin.globally_disabled"
-              variant="muted"
-            >
-              已禁用
-            </UiBadge>
-            <UiBadge
-              v-if="pluginLoadBadgeText(plugin)"
-              variant="warn"
-              :title="pluginLoadWhere(plugin)"
-            >
-              {{ pluginLoadBadgeText(plugin) }}
-            </UiBadge>
-            <span
-              v-if="hasPluginSource(plugin)"
-              class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
-              :title="pluginSourceDir(plugin) || pluginSourceLabel(plugin.plugin_source)"
-            >
-              {{ pluginSourceLabel(plugin.plugin_source) }}
-            </span>
-            <span
-              v-for="tag in loadProcessTags"
-              :key="tag"
-              class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
-            >
-              {{ tag }} 进程
-            </span>
-          </div>
+            已禁用
+          </UiBadge>
+          <UiBadge
+            v-if="pluginLoadBadgeText(plugin)"
+            variant="warn"
+            :title="pluginLoadWhere(plugin)"
+          >
+            {{ pluginLoadBadgeText(plugin) }}
+          </UiBadge>
+          <span
+            v-if="hasPluginSource(plugin)"
+            class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+            :title="pluginSourceDir(plugin) || pluginSourceLabel(plugin.plugin_source)"
+          >
+            {{ pluginSourceLabel(plugin.plugin_source) }}
+          </span>
+          <span
+            v-for="tag in loadProcessTags"
+            :key="tag"
+            class="plugin-store-card__meta-link plugin-store-card__meta-link--version"
+            :title="`${tag} 进程`"
+          >
+            {{ tag }} 进程
+          </span>
         </div>
 
         <div

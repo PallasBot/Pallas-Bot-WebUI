@@ -111,15 +111,6 @@ const router = createRouter({
           meta: { title: "数据库实例", description: "Bot 连接" },
         },
         {
-          path: "protocol",
-          name: "protocol",
-          component: ProtocolManagePage,
-          meta: {
-            title: "协议连接",
-            description: "Bot 在线账号",
-          },
-        },
-        {
           path: "protocol/create",
           name: "protocol-create",
           component: routeChunkLoaders["protocol-create"],
@@ -148,6 +139,27 @@ const router = createRouter({
             description: "运行时与镜像",
             requiresProtocolExtension: true,
           },
+        },
+        {
+          path: "protocol/settings",
+          redirect: { name: "preferences" },
+        },
+        {
+          path: "protocol/:accountId?",
+          name: "protocol",
+          component: ProtocolManagePage,
+          meta: {
+            title: "协议连接",
+            description: "Bot 在线账号",
+          },
+        },
+        {
+          path: "protocol/account/:accountId",
+          redirect: (to) => ({
+            name: "protocol",
+            params: { accountId: to.params.accountId },
+            query: to.query,
+          }),
         },
         {
           path: "friends-groups",
