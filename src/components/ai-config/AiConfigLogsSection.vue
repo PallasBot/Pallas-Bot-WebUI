@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
-import { fetchAiExtensionLogs } from "@/api/consoleApi";
+import { fetchAiExtensionLogs, openAiExtensionLogsEventSource } from "@/api/consoleApi";
 import type { AiExtensionLogsData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -12,14 +12,117 @@ import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import { AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
 
+const MAX_LIVE_LINES = 2000;
+
 const panelNavIcon = usePanelNavIcon();
 const logKind = ref<"uvicorn" | "celery">("uvicorn");
 const logLines = ref<number>(AI_LOG_DEFAULTS.lines);
 const logData = ref<AiExtensionLogsData | null>(null);
+const liveLines = ref<string[]>([]);
+const livePath = ref("");
 const logErr = ref("");
 const busy = ref(false);
+const liveMode = ref(true);
+const streamLive = ref(false);
+const streamReconnecting = ref(false);
+const lastStreamEventId = ref(0);
 
-const lines = computed(() => logData.value?.lines ?? []);
+let logEs: EventSource | null = null;
+let streamReconnectTimer: number | null = null;
+
+const lines = computed(() =>
+  liveMode.value ? liveLines.value : (logData.value?.lines ?? []),
+);
+
+const displayPath = computed(() =>
+  liveMode.value ? livePath.value || logData.value?.path || "" : logData.value?.path || "",
+);
+
+function stopLogStreamConnection() {
+  if (logEs) {
+    logEs.close();
+    logEs = null;
+  }
+  streamLive.value = false;
+}
+
+function stopLogStream() {
+  stopLogStreamConnection();
+  if (streamReconnectTimer != null) {
+    window.clearTimeout(streamReconnectTimer);
+    streamReconnectTimer = null;
+  }
+  streamReconnecting.value = false;
+}
+
+function pushLiveLine(line: string) {
+  liveLines.value.push(line);
+  if (liveLines.value.length > MAX_LIVE_LINES) {
+    liveLines.value.splice(0, liveLines.value.length - MAX_LIVE_LINES);
+  }
+}
+
+function startLogStream() {
+  stopLogStreamConnection();
+  streamLive.value = false;
+  streamReconnecting.value = false;
+  logErr.value = "";
+  try {
+    const resumeId = lastStreamEventId.value > 0 ? lastStreamEventId.value : undefined;
+    logEs = openAiExtensionLogsEventSource(logKind.value, resumeId);
+    logEs.onopen = () => {
+      streamLive.value = true;
+      streamReconnecting.value = false;
+    };
+    logEs.onmessage = (ev) => {
+      if (!ev.data) return;
+      try {
+        const row = JSON.parse(ev.data) as {
+          type?: string;
+          line?: string;
+          path?: string;
+          error?: string;
+          kind?: string;
+        };
+        if (row.type === "ready") {
+          if (row.path) livePath.value = row.path;
+          return;
+        }
+        if (row.type === "error") {
+          logErr.value = row.error || "日志流不可用";
+          if (row.path) livePath.value = row.path;
+          stopLogStreamConnection();
+          return;
+        }
+        if (row.type === "line" && typeof row.line === "string") {
+          if (row.path) livePath.value = row.path;
+          pushLiveLine(row.line);
+          if (ev.lastEventId) {
+            const parsed = Number(ev.lastEventId);
+            if (Number.isFinite(parsed) && parsed > 0) {
+              lastStreamEventId.value = parsed;
+            }
+          }
+        }
+      } catch {
+        /* ignore malformed */
+      }
+    };
+    logEs.onerror = () => {
+      streamLive.value = false;
+      stopLogStreamConnection();
+      if (streamReconnectTimer != null) return;
+      streamReconnecting.value = true;
+      streamReconnectTimer = window.setTimeout(() => {
+        streamReconnectTimer = null;
+        if (liveMode.value) startLogStream();
+      }, 3000);
+    };
+  } catch (e) {
+    logErr.value = e instanceof Error ? e.message : String(e);
+    stopLogStreamConnection();
+  }
+}
 
 async function loadLogs() {
   logErr.value = "";
@@ -45,6 +148,33 @@ async function copyLogs() {
     toastApiError(e, "复制失败");
   }
 }
+
+function onToggleLive(on: boolean) {
+  liveMode.value = on;
+  if (on) {
+    liveLines.value = [];
+    lastStreamEventId.value = 0;
+    startLogStream();
+  } else {
+    stopLogStream();
+  }
+}
+
+watch(logKind, () => {
+  lastStreamEventId.value = 0;
+  liveLines.value = [];
+  logData.value = null;
+  logErr.value = "";
+  if (liveMode.value) startLogStream();
+});
+
+onMounted(() => {
+  if (liveMode.value) startLogStream();
+});
+
+onBeforeUnmount(() => {
+  stopLogStream();
+});
 </script>
 
 <template>
@@ -65,21 +195,37 @@ async function copyLogs() {
           <option value="uvicorn">Web 服务（uvicorn）</option>
           <option value="celery">任务队列（celery）</option>
         </select>
-        <select v-model.number="logLines" class="sel" aria-label="拉取行数">
-          <option v-for="n in AI_LOG_DEFAULTS.lineOptions" :key="n" :value="n">最近 {{ n }} 行</option>
-        </select>
-        <UiButton variant="primary" :busy="busy" @click="loadLogs">拉取</UiButton>
+        <label class="ai-logs__live-toggle">
+          <input
+            type="checkbox"
+            :checked="liveMode"
+            @change="onToggleLive(($event.target as HTMLInputElement).checked)"
+          />
+          实时
+        </label>
+        <template v-if="!liveMode">
+          <select v-model.number="logLines" class="sel" aria-label="拉取行数">
+            <option v-for="n in AI_LOG_DEFAULTS.lineOptions" :key="n" :value="n">最近 {{ n }} 行</option>
+          </select>
+          <UiButton variant="primary" :busy="busy" @click="loadLogs">拉取</UiButton>
+        </template>
         <UiButton v-if="lines.length" @click="copyLogs">复制</UiButton>
       </div>
     </div>
     <div class="panel__bd">
       <p
-        v-if="!logData && !logErr"
+        v-if="!lines.length && !logErr && liveMode"
+        class="muted ai-config-section__intro"
+      >
+        实时跟读扩展服务本地日志（Bot 可读路径）。远端部署或文件不存在时会提示错误，可关闭「实时」改用拉取。
+      </p>
+      <p
+        v-else-if="!logData && !logErr && !liveMode"
         class="muted ai-config-section__intro"
       >
         选择日志类型与行数后点「拉取」，读取扩展服务最近若干行日志。路径在「扩展连接」配置。
       </p>
-      <div v-if="!logData && !logErr" class="ai-logs__links">
+      <div v-if="!lines.length && !logErr" class="ai-logs__links">
         <RouterLink to="/ai/config/connection">前往扩展连接</RouterLink>
         <RouterLink :to="AI_ENTRY_RUNTIME.path">{{ AI_ENTRY_RUNTIME.label }}</RouterLink>
       </div>
@@ -89,9 +235,12 @@ async function copyLogs() {
       >
         {{ logErr }}
       </div>
-      <div v-if="logData" class="ai-logs__meta muted">
-        <span>{{ logData.kind === "uvicorn" ? "Web 服务" : "任务队列" }}</span>
-        <code>{{ logData.path }}</code>
+      <div v-if="lines.length || displayPath" class="ai-logs__meta muted">
+        <span v-if="liveMode" class="ai-logs__status" :data-on="streamLive ? '1' : '0'">
+          {{ streamLive ? "已连接" : streamReconnecting ? "重连中…" : "未连接" }}
+        </span>
+        <span>{{ logKind === "uvicorn" ? "Web 服务" : "任务队列" }}</span>
+        <code v-if="displayPath">{{ displayPath }}</code>
         <span>{{ lines.length }} 行</span>
       </div>
       <ol v-if="lines.length" class="ai-logs__list">
@@ -100,7 +249,7 @@ async function copyLogs() {
           <span class="ai-logs__text">{{ line }}</span>
         </li>
       </ol>
-      <p v-else-if="logData" class="muted">日志为空。</p>
+      <p v-else-if="logData && !liveMode" class="muted">日志为空。</p>
     </div>
   </UiCard>
 </template>
@@ -109,6 +258,18 @@ async function copyLogs() {
 .ai-logs__actions {
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.ai-logs__live-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  user-select: none;
+}
+
+.ai-logs__status[data-on="1"] {
+  color: var(--ok, #2f9e44);
 }
 
 .ai-logs__err {
@@ -168,5 +329,16 @@ async function copyLogs() {
   white-space: pre-wrap;
   word-break: break-word;
   min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .ai-logs__actions {
+    width: 100%;
+  }
+
+  .ai-logs__actions .sel,
+  .ai-logs__actions :deep(.btn) {
+    flex: 1 1 auto;
+  }
 }
 </style>

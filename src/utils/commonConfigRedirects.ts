@@ -62,7 +62,7 @@ export function commonConfigLegacyRedirectTarget(sectionId: string): RouteLocati
     return { name: "ai-config", params: { section: "knowledge" } };
   }
   if (id === "service_gateways") {
-    return { name: "plugins", params: { name: "draw" } };
+    return { name: "ai-config", params: { section: "draw" } };
   }
   const pluginRedirect = commonConfigSectionRedirectTarget(id);
   if (pluginRedirect) {

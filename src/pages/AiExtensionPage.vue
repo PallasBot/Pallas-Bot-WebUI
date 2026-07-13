@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import AiConfigConnectionSection from "@/components/ai-config/AiConfigConnectionSection.vue";
+import AiConfigDrawSection from "@/components/ai-config/AiConfigDrawSection.vue";
 import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSection.vue";
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
 import AiConfigNcmSection from "@/components/ai-config/AiConfigNcmSection.vue";
@@ -37,7 +38,7 @@ const pageReady = ref(false);
 const navGroups = aiConfigSectionsByGroup();
 const { isSimpleMode } = useAiConfigExpertMode();
 
-const SIMPLE_SECTION_IDS = new Set(["provider", "strategy", "connection", "knowledge"]);
+const SIMPLE_SECTION_IDS = new Set(["provider", "strategy", "connection", "knowledge", "draw"]);
 
 const visibleNavGroups = computed(() => {
   if (!isSimpleMode.value) return navGroups;
@@ -199,6 +200,7 @@ onMounted(() => {
               v-else-if="activeSection === 'connection'"
               ref="connectionSectionRef"
             />
+            <AiConfigDrawSection v-else-if="activeSection === 'draw'" />
             <AiConfigNcmSection v-else-if="activeSection === 'ncm'" />
             <AiConfigLogsSection v-else-if="activeSection === 'logs'" />
           </div>

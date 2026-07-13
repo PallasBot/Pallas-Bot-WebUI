@@ -2331,6 +2331,59 @@ export async function fetchAiExtensionLogs(
   )) as AiExtensionLogsData;
 }
 
+/** AI 扩展本地日志文件 SSE（Bot 跟读 uvicorn/celery 日志路径） */
+export function openAiExtensionLogsEventSource(
+  kind: "uvicorn" | "celery" = "uvicorn",
+  lastEventId?: number,
+): EventSource {
+  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
+  const apiBase = `${root}/api`;
+  const qs = new URLSearchParams({ kind });
+  if (lastEventId != null && lastEventId > 0) qs.set("last_event_id", String(lastEventId));
+  return new EventSource(`${apiBase}/ai-extension/logs/stream?${qs.toString()}`, {
+    withCredentials: true,
+  });
+}
+
+export type AiInstallStatus = {
+  detected: boolean;
+  ai_root: string | null;
+  clone_target: string;
+  bootstrap_script: string;
+  bootstrap_ready: boolean;
+  git_available: boolean;
+  can_clone: boolean;
+  can_bootstrap: boolean;
+  docker_hint: string;
+  git_url: string;
+};
+
+export async function fetchAiInstallStatus(): Promise<AiInstallStatus> {
+  return (await consoleOpenapiGet("/ai-extension/install/status")) as AiInstallStatus;
+}
+
+export async function postAiInstall(body: {
+  action: "clone" | "bootstrap" | "clone_and_bootstrap";
+  no_start?: boolean;
+  remote_only?: boolean;
+  with_media?: boolean;
+  use_gpu?: boolean;
+}): Promise<{ job_id: string; action: string }> {
+  return (await consoleOpenapiPost("/ai-extension/install", body)) as {
+    job_id: string;
+    action: string;
+  };
+}
+
+export function openAiInstallJobEventSource(jobId: string): EventSource {
+  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
+  const apiBase = `${root}/api`;
+  return new EventSource(
+    `${apiBase}/ai-extension/install/jobs/${encodeURIComponent(jobId)}/stream`,
+    { withCredentials: true },
+  );
+}
+
 export async function fetchAiNcmStatus(): Promise<AiProxyResult> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ai-extension/ncm/status"]["get"]>(
     "/ai-extension/ncm/status",

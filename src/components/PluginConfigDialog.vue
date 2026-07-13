@@ -6,7 +6,9 @@ import PluginIcon from "@/components/PluginIcon.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import { resolvePluginReadmeTarget } from "@/utils/pluginReadmeTarget";
+import { RouterLink } from "vue-router";
 
 const props = defineProps<{
   open: boolean;
@@ -45,6 +47,8 @@ const canSave = computed(
     !workspaceRef.value?.saving &&
     !workspaceRef.value?.checking,
 );
+
+const showDrawAiConfigHint = computed(() => pluginResolvedId.value === "draw");
 
 function requestClose() {
   emit("close");
@@ -90,6 +94,15 @@ function requestClose() {
       </button>
     </template>
 
+    <p
+      v-if="showDrawAiConfigHint"
+      class="muted plugin-config-dialog__ai-hint"
+    >
+      推荐在
+      <RouterLink :to="aiConfigSectionPath('draw')">AI 配置 · 画画</RouterLink>
+      管理网关；本页为兼容入口，配置键相同。
+    </p>
+
     <PluginConfigWorkspace
       v-if="pluginName"
       :key="pluginName"
@@ -125,3 +138,10 @@ function requestClose() {
     </template>
   </UiDialog>
 </template>
+
+<style scoped>
+.plugin-config-dialog__ai-hint {
+  margin: 0 16px 12px;
+  font-size: 0.8125rem;
+}
+</style>

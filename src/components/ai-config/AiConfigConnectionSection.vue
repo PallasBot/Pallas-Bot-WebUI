@@ -3,8 +3,12 @@ import { onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import {
   fetchAiExtensionConfig,
+  fetchAiInstallStatus,
+  openAiInstallJobEventSource,
   postAiExtensionTest,
+  postAiInstall,
   putAiExtensionConfig,
+  type AiInstallStatus,
 } from "@/api/consoleApi";
 import type { AiExtensionConfig, AiExtensionTestData } from "@/api/pallasTypes";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -15,11 +19,18 @@ import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
 import { AI_ENTRY_CONNECTION_DIAG, AI_ENTRY_RUNTIME } from "@/config/aiEntrySemantics";
+import { waitForInstallJob } from "@/utils/installJobStream";
 
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const saving = ref(false);
 const testOut = ref<AiExtensionTestData | null>(null);
+const installStatus = ref<AiInstallStatus | null>(null);
+const installBusy = ref(false);
+const installProgress = ref("");
+const installErr = ref("");
+const remoteOnly = ref(true);
+const noStart = ref(false);
 
 const baseScheme = ref<"http" | "https">("http");
 const baseHostPort = ref<string>(AI_EXTENSION_DEFAULTS.hostPort);
@@ -95,6 +106,37 @@ async function load() {
   }
 }
 
+async function loadInstallStatus() {
+  try {
+    installStatus.value = await fetchAiInstallStatus();
+  } catch {
+    installStatus.value = null;
+  }
+}
+
+async function runInstall(action: "clone" | "bootstrap" | "clone_and_bootstrap") {
+  installErr.value = "";
+  installProgress.value = "";
+  installBusy.value = true;
+  try {
+    const job = await postAiInstall({
+      action,
+      no_start: noStart.value,
+      remote_only: remoteOnly.value,
+    });
+    await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (message) => {
+      installProgress.value = message;
+    });
+    pushConsoleToast("AI Runtime 安装任务完成", "ok");
+    await loadInstallStatus();
+  } catch (e) {
+    installErr.value = e instanceof Error ? e.message : String(e);
+    toastApiError(e, "AI 安装失败");
+  } finally {
+    installBusy.value = false;
+  }
+}
+
 async function save() {
   err.value = "";
   saving.value = true;
@@ -125,6 +167,7 @@ async function runTest() {
 
 onMounted(() => {
   void load();
+  void loadInstallStatus();
 });
 
 defineExpose({ save, canSave: () => !saving.value, saving });
@@ -172,6 +215,46 @@ defineExpose({ save, canSave: () => !saving.value, saving });
         class="alert alert--err"
       >
         {{ err }}
+      </div>
+      <div class="ai-config-connection__install">
+        <h3 class="ai-config-connection__install-title">安装 AI Runtime（源码）</h3>
+        <p class="muted ai-config-section__intro">
+          可一键克隆同级 <code>Pallas-Bot-AI</code> 并运行 <code>ai_bootstrap.sh</code>。Docker 不代跑，请按下方提示在宿主机执行。
+        </p>
+        <div v-if="installStatus" class="ai-config-connection__install-meta muted">
+          <span>{{ installStatus.detected ? "已检测到" : "未检测到" }} AI 仓</span>
+          <code v-if="installStatus.ai_root || installStatus.clone_target">
+            {{ installStatus.ai_root || installStatus.clone_target }}
+          </code>
+          <span v-if="!installStatus.git_available">本机无 git，无法克隆</span>
+        </div>
+        <div class="row-actions ai-config-connection__install-opts">
+          <label class="ai-config-connection__opt">
+            <input v-model="remoteOnly" type="checkbox" />
+            remote-only（跳过本机 Ollama）
+          </label>
+          <label class="ai-config-connection__opt">
+            <input v-model="noStart" type="checkbox" />
+            仅安装不启动
+          </label>
+        </div>
+        <div class="row-actions">
+          <UiButton
+            variant="primary"
+            :busy="installBusy"
+            :disabled="installBusy || (installStatus != null && !installStatus.can_clone && !installStatus.can_bootstrap)"
+            @click="runInstall(installStatus?.can_clone ? 'clone_and_bootstrap' : 'bootstrap')"
+          >
+            {{ installStatus?.can_clone ? "克隆并安装" : "运行 bootstrap" }}
+          </UiButton>
+          <UiButton :disabled="installBusy" @click="loadInstallStatus">刷新状态</UiButton>
+        </div>
+        <p v-if="installProgress" class="muted">{{ installProgress }}</p>
+        <div v-if="installErr" class="alert alert--err">{{ installErr }}</div>
+        <pre
+          v-if="installStatus?.docker_hint"
+          class="ai-config-connection__docker-hint"
+        >{{ installStatus.docker_hint }}</pre>
       </div>
       <p class="muted ai-config-section__intro">
         Bot 访问 Pallas-Bot-AI 扩展服务所用的地址与鉴权；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
@@ -323,6 +406,47 @@ defineExpose({ save, canSave: () => !saving.value, saving });
   gap: 8px 14px;
   margin-bottom: 12px;
   font-size: 0.8125rem;
+}
+
+.ai-config-connection__install {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.ai-config-connection__install-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.ai-config-connection__install-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 0.75rem;
+  margin-bottom: 10px;
+}
+
+.ai-config-connection__install-opts {
+  margin-bottom: 10px;
+}
+
+.ai-config-connection__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  user-select: none;
+}
+
+.ai-config-connection__docker-hint {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-x: auto;
 }
 
 .ai-config-connection__form {

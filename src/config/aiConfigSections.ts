@@ -57,6 +57,13 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     groupId: "extension",
   },
   {
+    id: "draw",
+    label: "画画",
+    lead: "画画服务网关与连通性（与插件 draw 同一配置）。",
+    icon: "palette",
+    groupId: "extension",
+  },
+  {
     id: "ncm",
     label: "网易云",
     lead: "在扩展服务内登录网易云账号并查看状态。",
@@ -66,7 +73,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "logs",
     label: "扩展日志",
-    lead: "查看扩展侧 HTTP 服务与后台任务的日志片段。",
+    lead: "实时跟读或拉取扩展侧 HTTP 服务与后台任务日志。",
     icon: "logs",
     groupId: "extension",
   },
