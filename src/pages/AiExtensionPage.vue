@@ -286,10 +286,20 @@ onMounted(() => {
   gap: 4px;
 }
 
-.ai-config-page__tabs button {
+.ai-config-page__tabs button :deep(.console-nav-icon) {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+
+.ai-config-page__tabs button :deep(.console-nav-icon__svg) {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .ai-config-page__tabs-more {

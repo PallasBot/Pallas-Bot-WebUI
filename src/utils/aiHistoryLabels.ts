@@ -86,6 +86,12 @@ export function labelRepeaterMode(raw?: string | null): string {
   if (!key) return "—";
   if (key === "off" || key === "disabled") return "关闭";
   if (key === "on" || key === "enabled") return "开启";
+  if (key === "select") return "AI 选句";
+  if (key === "select_polish_lite") return "选句 + 轻润色";
+  if (key === "select_fallback") return "选句 + 现编";
+  if (key === "fallback") return "仅现编";
+  if (key === "polish") return "完整润色（遗留）";
+  if (key === "both") return "现编 + 完整润色（遗留）";
   if (key === "hybrid") return "混合";
   if (key === "llm_first") return "优先大模型";
   if (key === "corpus_first") return "优先语料";
