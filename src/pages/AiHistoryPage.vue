@@ -7,6 +7,7 @@ import {
   fetchConversationKernelRelationshipNotes,
   fetchConversationKernelStatus,
   fetchConversationKernelTraces,
+  fetchInstances,
   fetchLlmBehaviorRuns,
   fetchLlmBehaviorPatterns,
   fetchLlmHistorySession,
@@ -44,6 +45,8 @@ import type {
   ConversationKernelMemoryEntry,
   ConversationKernelRelationshipNote,
   ConversationKernelTraceRow,
+  BotRow,
+  InstancesData,
 } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -72,6 +75,8 @@ import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { formatCompactDateTime, formatRelativeDayLabel } from "@/utils/formatDateTime";
 import { deriveFeedbackGroupFromSession } from "@/utils/llmRepeaterFeedbackLink";
+import { botPickerRowsFromInstances } from "@/utils/botDisplay";
+import { memoryScopeSummary } from "@/utils/memoryScope";
 
 const router = useRouter();
 const route = useRoute();
@@ -146,6 +151,7 @@ const memoryEntries = ref<ConversationKernelMemoryEntry[]>([]);
 const relationshipNotes = ref<ConversationKernelRelationshipNote[]>([]);
 const knowledgeSources = ref<ConversationKernelKnowledgeSource[]>([]);
 const memoryDeleteBusy = ref("");
+const memoryInstances = ref<InstancesData | null>(null);
 const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
@@ -212,6 +218,8 @@ const feedbackGroupId = computed(() => parseFilter(feedbackGroup.value));
 const observeGroupId = computed(() => parseFilter(observeGroup.value));
 const memoryBotId = computed(() => parseFilter(memoryBot.value));
 const memoryGroupId = computed(() => parseFilter(memoryGroup.value));
+const memoryBots = computed(() => botPickerRowsFromInstances(memoryInstances.value));
+const memoryScope = computed(() => memoryScopeSummary(memoryBot.value, memoryGroup.value));
 const behaviorRunsGroupId = computed(() => parseFilter(behaviorRunsGroup.value));
 const patternsGroupId = computed(() => parseFilter(patternsGroup.value));
 const behaviorRunsOverview = computed(() => [
@@ -266,6 +274,19 @@ const kernelStatusOverview = computed(() => {
     { label: "最近轨迹", value: String(kernelTraces.value.length), accent: kernelTraces.value.length > 0 },
   ];
 });
+function memoryBotOptionLabel(bot: BotRow): string {
+  const nickname = memoryInstances.value?.bot_profiles?.[bot.self_id]?.nickname?.trim();
+  return nickname ? `${nickname}（${bot.self_id}）` : bot.self_id;
+}
+
+async function loadMemoryBots() {
+  try {
+    memoryInstances.value = await fetchInstances();
+  } catch (e) {
+    memoryErr.value = e instanceof Error ? e.message : String(e);
+  }
+}
+
 const memoryOverview = computed(() => [
   { label: "群内旧事", value: String(memoryEntries.value.length), accent: true },
   { label: "关系备注", value: String(relationshipNotes.value.length), accent: relationshipNotes.value.length > 0 },
@@ -1318,7 +1339,7 @@ async function refreshMemoryWorkspace() {
     memoryEntries.value = [];
     relationshipNotes.value = [];
     knowledgeSources.value = [];
-    memoryErr.value = "请先输入 Bot QQ";
+    memoryErr.value = "请先选择 Bot QQ";
     return;
   }
   memoryBusy.value = true;
@@ -1904,6 +1925,7 @@ onMounted(() => {
     activeWorkspace.value = workspaceRaw;
   }
   void refreshAll();
+  void loadMemoryBots();
   feedbackGroup.value = filterGroup.value;
   behaviorRunsGroup.value = filterGroup.value;
   patternsGroup.value = filterGroup.value;
@@ -3261,16 +3283,23 @@ onMounted(() => {
             <span class="muted">优先跟随当前会话的 Bot / 群号，也可手动指定</span>
           </div>
           <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter">
+            <label class="ai-history-page__filter ai-history-page__filter--memory-bot">
               <span>Bot QQ</span>
-              <input
+              <select
                 v-model="memoryBot"
                 class="inp"
-                inputmode="numeric"
-                placeholder="必填"
-                @input="memoryBotTouched = true"
-                @keyup.enter="refreshMemoryWorkspace"
+                aria-label="选择 Bot QQ"
+                @change="memoryBotTouched = true"
               >
+                <option value="">请选择 Bot</option>
+                <option
+                  v-for="bot in memoryBots"
+                  :key="bot.self_id"
+                  :value="bot.self_id"
+                >
+                  {{ memoryBotOptionLabel(bot) }}
+                </option>
+              </select>
             </label>
             <label class="ai-history-page__filter">
               <span>群号</span>
@@ -3278,7 +3307,7 @@ onMounted(() => {
                 v-model="memoryGroup"
                 class="inp"
                 inputmode="numeric"
-                placeholder="0 / 空 = 全局"
+                placeholder="留空查看全部范围"
                 @input="memoryGroupTouched = true"
                 @keyup.enter="refreshMemoryWorkspace"
               >
@@ -3297,6 +3326,10 @@ onMounted(() => {
                 读取记忆
               </UiButton>
             </div>
+          </div>
+          <div v-if="memoryScope" class="ai-history-page__memory-scope-card">
+            <strong>{{ memoryScope.title }}</strong>
+            <span class="muted">{{ memoryScope.detail }}</span>
           </div>
         </div>
         <div v-if="memoryErr" class="alert alert--err">{{ memoryErr }}</div>
@@ -4659,6 +4692,24 @@ onMounted(() => {
 
 .ai-history-page__filter .inp {
   width: 96px;
+}
+
+.ai-history-page__filter--memory-bot .inp {
+  width: 172px;
+}
+
+.ai-history-page__memory-scope-card {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  font-size: 0.78rem;
+}
+
+.ai-history-page__memory-scope-card strong {
+  color: var(--text);
 }
 
 .ai-history-page__behavior-check {
