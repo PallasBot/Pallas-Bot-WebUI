@@ -544,6 +544,19 @@ defineExpose({
             </UiButton>
             </div>
             <div
+              v-if="!isSnowluma && nativeWebUiHref"
+              class="protocol-account-workspace__extras"
+            >
+              <a
+                class="protocol-account-workspace__extra-link"
+                :href="nativeWebUiHref"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                打开 NapCat WebUI
+              </a>
+            </div>
+            <div
               v-if="showSnowlumaAccess"
               class="protocol-account-workspace__snowluma-access"
             >

@@ -155,14 +155,18 @@ export function accountConnectedWsPortLabel(account: NapcatAccountRow): string {
   return port != null ? String(port) : "—";
 }
 
-export function accountWebUiHref(account: NapcatAccountRow, system: SystemData | null): string | null {
-  const direct = accountNativeWebUiUrl(account);
-  if (direct) return direct;
+function accountConsoleProxyHref(account: NapcatAccountRow, surface: "webui" | "novnc"): string | null {
+  const accountId = String(account.id ?? "").trim();
+  if (!accountId) return null;
+  return `${consolePublicRoot()}/protocol/instances/${encodeURIComponent(accountId)}/${surface}/`;
+}
+
+export function accountWebUiHref(account: NapcatAccountRow, _system: SystemData | null): string | null {
   const port = account.webui_port;
   if (port == null || port === "") return null;
   const portStr = String(port).trim();
   if (!portStr) return null;
-  return replaceUrlPort(system, portStr);
+  return accountConsoleProxyHref(account, "webui");
 }
 
 export interface SnowlumaDockerNovncMeta {
@@ -175,25 +179,13 @@ export interface SnowlumaDockerNovncMeta {
 /** SnowLuma Docker noVNC 桌面链接（`/vnc.html`） */
 export function accountSnowlumaNovncHref(
   account: NapcatAccountRow | null,
-  system: SystemData | null,
+  _system: SystemData | null,
 ): string | null {
   if (!account) return null;
   const nv = account.snowluma_docker_novnc as SnowlumaDockerNovncMeta | undefined;
-  const direct = String(nv?.url ?? "").trim();
-  if (direct) return direct;
   const port = nv?.host_port;
   if (port == null || port < 1 || port > 65535) return null;
-  const href = replaceUrlPort(system, String(port));
-  if (!href) return null;
-  try {
-    const u = new URL(href);
-    u.pathname = "/vnc.html";
-    u.search = "";
-    u.hash = "";
-    return u.toString();
-  } catch {
-    return null;
-  }
+  return accountConsoleProxyHref(account, "novnc");
 }
 
 export function snowlumaManagedWebuiPassword(account: NapcatAccountRow | null): string {
@@ -212,21 +204,6 @@ export function snowlumaNovncPasswordHint(account: NapcatAccountRow | null): str
   return "vncpasswd（默认）";
 }
 
-function replaceUrlPort(system: SystemData | null, portStr: string): string | null {
-  const base = botHttpBaseFromSystem(system);
-  if (base) {
-    try {
-      const raw = base.includes("://") ? base : `http://${base}`;
-      const u = new URL(raw);
-      u.port = portStr;
-      return u.toString();
-    } catch {
-      return null;
-    }
-  }
-  if (typeof window === "undefined") return null;
-  return `${window.location.protocol}//${window.location.hostname}:${portStr}`;
-}
 
 export function protocolSnapshot(data: InstancesData | null) {
   return data?.pallas_protocol ?? data?.napcat ?? null;
