@@ -14,8 +14,4 @@ describe("ProtocolAccountWorkspace 登录加载", () => {
     expect(bootWorkspace).not.toContain("void refreshQrcode(true);");
   });
 
-  it("为 NapCat 账号显示控制台反代 WebUI 入口", () => {
-    expect(source).toContain('v-if="!isSnowluma && nativeWebUiHref"');
-    expect(source).toContain("打开 NapCat WebUI");
-  });
 });

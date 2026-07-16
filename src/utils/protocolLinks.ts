@@ -161,12 +161,9 @@ function accountConsoleProxyHref(account: NapcatAccountRow, surface: "webui" | "
   return `${consolePublicRoot()}/protocol/instances/${encodeURIComponent(accountId)}/${surface}/`;
 }
 
-export function accountWebUiHref(account: NapcatAccountRow, _system: SystemData | null): string | null {
-  const port = account.webui_port;
-  if (port == null || port === "") return null;
-  const portStr = String(port).trim();
-  if (!portStr) return null;
-  return accountConsoleProxyHref(account, "webui");
+/** 原生 WebUI 不支持控制台子路径反代，保留空结果以隐藏历史入口。 */
+export function accountWebUiHref(_account: NapcatAccountRow, _system: SystemData | null): string | null {
+  return null;
 }
 
 export interface SnowlumaDockerNovncMeta {

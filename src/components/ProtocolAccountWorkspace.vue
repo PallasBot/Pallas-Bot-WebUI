@@ -22,7 +22,6 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import {
   accountSnowlumaNovncHref,
-  accountWebUiHref,
   snowlumaManagedWebuiPassword,
   snowlumaNovncPasswordHint,
   snowlumaRuntimeWebuiPassword,
@@ -115,10 +114,6 @@ const statusMetrics = computed(() => {
   ];
 });
 
-const nativeWebUiHref = computed(() =>
-  account.value ? accountWebUiHref(account.value, resolvedSystem.value) : null,
-);
-
 const isSnowluma = computed(
   () => String(account.value?.protocol_backend ?? "").toLowerCase() === "snowluma",
 );
@@ -152,8 +147,7 @@ const showSnowlumaAccess = computed(
     (snowlumaNovncHref.value ||
       isSnowlumaDocker.value ||
       snowlumaManagedPassword.value ||
-      snowlumaInitialPassword.value ||
-      nativeWebUiHref.value),
+      snowlumaInitialPassword.value),
 );
 
 const isDialog = computed(() => props.presentation === "dialog");
@@ -544,19 +538,6 @@ defineExpose({
             </UiButton>
             </div>
             <div
-              v-if="!isSnowluma && nativeWebUiHref"
-              class="protocol-account-workspace__extras"
-            >
-              <a
-                class="protocol-account-workspace__extra-link"
-                :href="nativeWebUiHref"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                打开 NapCat WebUI
-              </a>
-            </div>
-            <div
               v-if="showSnowlumaAccess"
               class="protocol-account-workspace__snowluma-access"
             >
@@ -623,15 +604,6 @@ defineExpose({
                     复制
                   </UiButton>
                 </p>
-                <a
-                  v-if="nativeWebUiHref"
-                  class="protocol-account-workspace__extra-link"
-                  :href="nativeWebUiHref"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  打开 SnowLuma 原生 WebUI
-                </a>
               </div>
             </div>
           </div>
