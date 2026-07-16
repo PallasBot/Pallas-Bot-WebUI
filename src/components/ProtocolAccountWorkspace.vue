@@ -273,7 +273,7 @@ async function bootWorkspace() {
   if (!props.mountUrl || !props.accountId) return;
   await loadAccount(true);
   void loadAccount(false);
-  void refreshQrcode(true);
+  void refreshQrcode(false);
   void loadLogs();
 }
 
