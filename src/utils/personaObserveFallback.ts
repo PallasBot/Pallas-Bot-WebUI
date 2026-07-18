@@ -98,6 +98,8 @@ export async function buildPersonaObserveFallback(
   const bots: PersonaObserveBotRow[] = accounts.map((account) => ({
     account,
     group_style_enabled: true,
+    seed_prefs: [],
+    seed_source: "auto",
     base: emptyAxis(),
     base_hints: [],
     resolved: null,

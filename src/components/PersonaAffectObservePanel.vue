@@ -419,6 +419,14 @@ defineExpose({ reload: load });
             >
               群风格关
             </UiBadge>
+            <UiBadge
+              v-if="row.seed_prefs?.length"
+              variant="default"
+            >
+              种子{{ row.seed_source === "manual" ? "·手改" : "·自动" }}：{{
+                row.seed_prefs.join(" / ")
+              }}
+            </UiBadge>
           </header>
 
           <div

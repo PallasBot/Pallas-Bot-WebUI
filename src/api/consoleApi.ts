@@ -2227,6 +2227,8 @@ export async function putBotConfig(
     auto_accept_group: boolean;
     security: boolean;
     community_roster_show_qq: boolean;
+    persona: Record<string, unknown> | null;
+    group_style_enabled: boolean;
   }>,
 ): Promise<BotConfigPublic> {
   const out = (await consoleOpenapiPut<

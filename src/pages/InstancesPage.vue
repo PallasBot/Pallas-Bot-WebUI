@@ -9,7 +9,16 @@ import {
   peekPluginsCache,
   putBotConfig,
 } from "@/api/consoleApi";
-import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
+import type {
+  BotConfigPublic,
+  InstancesData,
+  PersonaSeedPref,
+  PluginRow,
+} from "@/api/pallasTypes";
+import {
+  PERSONA_SEED_PREF_OPTIONS,
+  readBotPersonaSeedPrefs,
+} from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
@@ -64,6 +73,8 @@ const draft = ref<{
   community_roster_show_qq: boolean;
   disabled_plugins: string[];
   admins: number[];
+  seedPrefs: PersonaSeedPref[];
+  seedManual: boolean;
 } | null>(null);
 
 const addAdminInput = ref<string>("");
@@ -329,6 +340,8 @@ function defaultBotConfigDraft() {
     community_roster_show_qq: true,
     disabled_plugins: [] as string[],
     admins: [] as number[],
+    seedPrefs: [] as PersonaSeedPref[],
+    seedManual: false,
   };
 }
 
@@ -346,6 +359,7 @@ function startEdit(c: BotConfigPublic) {
   editModalIsInit.value = false;
   addAdminInput.value = "";
   adminAddHint.value = "";
+  const seed = readBotPersonaSeedPrefs(c.persona ?? null);
   draft.value = {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
@@ -353,6 +367,8 @@ function startEdit(c: BotConfigPublic) {
     community_roster_show_qq: c.community_roster_show_qq !== false,
     disabled_plugins: [...(c.disabled_plugins ?? [])],
     admins: [...(c.admins ?? [])],
+    seedPrefs: [...seed.prefs],
+    seedManual: seed.source === "manual",
   };
   saveErr.value = "";
 }
@@ -400,6 +416,27 @@ async function reloadFromUser() {
   }
 }
 
+function toggleSeedPref(pref: PersonaSeedPref, checked: boolean) {
+  if (!draft.value) return;
+  const set = new Set(draft.value.seedPrefs);
+  if (checked) {
+    if (set.size >= 2 && !set.has(pref)) return;
+    set.add(pref);
+  } else {
+    set.delete(pref);
+  }
+  draft.value.seedPrefs = PERSONA_SEED_PREF_OPTIONS.map((opt) => opt.id).filter((id) =>
+    set.has(id),
+  );
+  draft.value.seedManual = draft.value.seedPrefs.length > 0;
+}
+
+function clearSeedOverride() {
+  if (!draft.value) return;
+  draft.value.seedPrefs = [];
+  draft.value.seedManual = false;
+}
+
 async function saveBotConfig() {
   const account = editModalAccount.value;
   if (!draft.value || account == null) return;
@@ -410,7 +447,14 @@ async function saveBotConfig() {
   saveBusy.value = true;
   saveErr.value = "";
   try {
-    await putBotConfig(account, { ...draft.value });
+    const { seedPrefs, seedManual, ...rest } = draft.value;
+    const body: Parameters<typeof putBotConfig>[1] = { ...rest };
+    if (!editModalIsInit.value) {
+      body.persona = seedManual
+        ? { seed_override: { prefs: seedPrefs } }
+        : { seed_override: null };
+    }
+    await putBotConfig(account, body);
     await reload();
     const wasInit = editModalIsInit.value;
     cancelEdit();
@@ -1025,6 +1069,52 @@ onUnmounted(() => {
                   style="margin: 4px 0 0; font-size: 12px"
                 >
                   尚未添加管理员。
+                </p>
+              </div>
+              <div class="bot-config-edit__field">
+                <label>牛格种子（最多 2 项）</label>
+                <p class="muted" style="margin: 0 0 8px; font-size: 12px">
+                  自动按账号派生；勾选后为手改覆盖，主要影响复读选句风格。清空勾选可恢复自动。
+                </p>
+                <div class="plugin-check-grid">
+                  <label
+                    v-for="opt in PERSONA_SEED_PREF_OPTIONS"
+                    :key="`seed-${editModalAccount}-${opt.id}`"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="draft.seedPrefs.includes(opt.id)"
+                      :disabled="
+                        !draft.seedPrefs.includes(opt.id) && draft.seedPrefs.length >= 2
+                      "
+                      @change="
+                        toggleSeedPref(opt.id, ($event.target as HTMLInputElement).checked)
+                      "
+                    >
+                    <span>{{ opt.label }}</span>
+                  </label>
+                </div>
+                <p
+                  v-if="draft.seedManual"
+                  class="muted"
+                  style="margin: 8px 0 0; font-size: 12px"
+                >
+                  当前：手改覆盖
+                  <button
+                    type="button"
+                    class="btn btn--ghost"
+                    style="margin-left: 8px; padding: 2px 8px; font-size: 12px"
+                    @click="clearSeedOverride"
+                  >
+                    恢复自动
+                  </button>
+                </p>
+                <p
+                  v-else
+                  class="muted"
+                  style="margin: 8px 0 0; font-size: 12px"
+                >
+                  当前：自动种子（未手改）
                 </p>
               </div>
               <div class="bot-config-edit__field">

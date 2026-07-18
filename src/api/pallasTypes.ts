@@ -1351,6 +1351,8 @@ export interface PersonaAxisSnapshot {
 export interface PersonaObserveBotRow {
   account: number;
   group_style_enabled: boolean;
+  seed_prefs?: string[];
+  seed_source?: "auto" | "manual" | string;
   base: PersonaAxisSnapshot;
   base_hints: string[];
   resolved: PersonaAxisSnapshot | null;
@@ -1529,6 +1531,46 @@ export interface BotConfigPublic {
   disabled_plugins: string[];
   /** 是否在社区主站名册展示本牛 QQ（默认开；需通用配置开启「公开牛牛 QQ」） */
   community_roster_show_qq: boolean;
+  /** 账号 persona JSON（含 seed / seed_override / cross_group） */
+  persona?: Record<string, unknown> | null;
+  group_style_enabled?: boolean;
+}
+
+export type PersonaSeedPref = "short" | "long" | "chaotic" | "restrained" | "warm";
+
+export const PERSONA_SEED_PREF_OPTIONS: { id: PersonaSeedPref; label: string }[] = [
+  { id: "short", label: "偏短" },
+  { id: "long", label: "偏长" },
+  { id: "chaotic", label: "偏跳" },
+  { id: "restrained", label: "偏克制" },
+  { id: "warm", label: "偏暖" },
+];
+
+export function readBotPersonaSeedPrefs(persona: Record<string, unknown> | null | undefined): {
+  prefs: PersonaSeedPref[];
+  source: "auto" | "manual";
+} {
+  const override = persona?.seed_override;
+  if (override && typeof override === "object" && Array.isArray((override as { prefs?: unknown }).prefs)) {
+    const prefs = ((override as { prefs: unknown[] }).prefs as unknown[])
+      .map((item) => String(item || "").trim())
+      .filter((item): item is PersonaSeedPref =>
+        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
+      )
+      .slice(0, 2);
+    if (prefs.length) return { prefs, source: "manual" };
+  }
+  const seed = persona?.seed;
+  if (seed && typeof seed === "object" && Array.isArray((seed as { prefs?: unknown }).prefs)) {
+    const prefs = ((seed as { prefs: unknown[] }).prefs as unknown[])
+      .map((item) => String(item || "").trim())
+      .filter((item): item is PersonaSeedPref =>
+        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
+      )
+      .slice(0, 2);
+    if (prefs.length) return { prefs, source: "auto" };
+  }
+  return { prefs: [], source: "auto" };
 }
 
 export interface GroupStyleProfileSnapshot {
