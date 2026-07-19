@@ -23,7 +23,7 @@ export const AI_WIZARD_CHECK_DEFS: AiWizardCheckDef[] = [
 export function wizardActionForCheckId(checkId: string): AiWizardCheckAction {
   switch (checkId) {
     case "ai_service":
-      return { to: aiConfigSectionPath("connection"), label: "检查扩展连接" };
+      return { to: aiConfigSectionPath("connection"), label: "安装或检查扩展连接" };
     case "provider_configured":
       return { to: aiConfigSectionPath("provider"), label: "配置 Provider" };
     case "provider_reachable":

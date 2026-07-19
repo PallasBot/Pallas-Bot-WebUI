@@ -16,7 +16,7 @@ import { useAiExtensionConnection } from "@/composables/useAiExtensionConnection
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
-import { waitForInstallJob } from "@/utils/installJobStream";
+import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 
 const panelNavIcon = usePanelNavIcon();
 const conn = useAiExtensionConnection();
@@ -43,6 +43,8 @@ const installStatus = ref<AiInstallStatus | null>(null);
 const installBusy = ref(false);
 const installProgress = ref("");
 const installErr = ref("");
+const installOutputTail = ref("");
+const installOutputOpen = ref(false);
 const remoteOnly = ref(true);
 const noStart = ref(false);
 
@@ -54,9 +56,16 @@ async function loadInstallStatus() {
   }
 }
 
+function takeOutputTail(result: { output_tail?: string } | null | undefined): string {
+  const raw = result?.output_tail;
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
 async function runInstall(action: "clone" | "bootstrap" | "clone_and_bootstrap") {
   installErr.value = "";
   installProgress.value = "";
+  installOutputTail.value = "";
+  installOutputOpen.value = false;
   installBusy.value = true;
   try {
     const job = await postAiInstall({
@@ -64,12 +73,26 @@ async function runInstall(action: "clone" | "bootstrap" | "clone_and_bootstrap")
       no_start: noStart.value,
       remote_only: remoteOnly.value,
     });
-    await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (message) => {
+    const complete = await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (message) => {
       installProgress.value = message;
     });
-    pushConsoleToast("AI Runtime 安装任务完成", "ok");
-    await loadInstallStatus();
+    const result = complete.result ?? null;
+    installOutputTail.value = takeOutputTail(result);
+    const wroteExt = Boolean(result?.wrote_ai_extension);
+    const wroteServer = Boolean(result?.wrote_ai_server);
+    if (wroteExt || wroteServer) {
+      pushConsoleToast("AI Runtime 安装完成，已写入默认连接", "ok");
+    } else {
+      pushConsoleToast("AI Runtime 安装任务完成", "ok");
+    }
+    await Promise.all([loadInstallStatus(), load()]);
   } catch (e) {
+    if (e instanceof InstallJobFailedError) {
+      installOutputTail.value = takeOutputTail(e.result);
+      if (installOutputTail.value) {
+        installOutputOpen.value = true;
+      }
+    }
     installErr.value = e instanceof Error ? e.message : String(e);
     toastApiError(e, "AI 安装失败");
   } finally {
@@ -133,7 +156,10 @@ defineExpose({ save, canSave, saving });
         <p class="muted ai-config-section__intro">
           可一键克隆同级 <code>Pallas-Bot-AI</code> 并运行 <code>ai_bootstrap.sh</code>。Docker 不代跑，请按下方提示在宿主机执行。
         </p>
-        <div v-if="installStatus" class="ai-config-connection__install-meta muted">
+        <div
+          v-if="installStatus"
+          class="ai-config-connection__install-meta muted"
+        >
           <span>{{ installStatus.detected ? "已检测到" : "未检测到" }} AI 仓</span>
           <code v-if="installStatus.ai_root || installStatus.clone_target">
             {{ installStatus.ai_root || installStatus.clone_target }}
@@ -142,15 +168,21 @@ defineExpose({ save, canSave, saving });
         </div>
         <div class="row-actions ai-config-connection__install-opts">
           <label class="ai-config-connection__opt">
-            <input v-model="remoteOnly" type="checkbox" />
+            <input
+              v-model="remoteOnly"
+              type="checkbox"
+            >
             remote-only（跳过本机 Ollama）
           </label>
           <label class="ai-config-connection__opt">
-            <input v-model="noStart" type="checkbox" />
+            <input
+              v-model="noStart"
+              type="checkbox"
+            >
             仅安装不启动
           </label>
         </div>
-        <div class="row-actions">
+        <div class="row-actions ai-config-connection__install-actions">
           <UiButton
             variant="primary"
             :busy="installBusy"
@@ -159,10 +191,33 @@ defineExpose({ save, canSave, saving });
           >
             {{ installStatus?.can_clone ? "克隆并安装" : "运行 bootstrap" }}
           </UiButton>
-          <UiButton :disabled="installBusy" @click="loadInstallStatus">刷新状态</UiButton>
+          <UiButton
+            :disabled="installBusy"
+            @click="loadInstallStatus"
+          >
+            刷新状态
+          </UiButton>
         </div>
-        <p v-if="installProgress" class="muted">{{ installProgress }}</p>
-        <div v-if="installErr" class="alert alert--err">{{ installErr }}</div>
+        <p
+          v-if="installProgress"
+          class="muted"
+        >
+          {{ installProgress }}
+        </p>
+        <div
+          v-if="installErr"
+          class="alert alert--err"
+        >
+          {{ installErr }}
+        </div>
+        <details
+          v-if="installOutputTail"
+          class="ai-config-connection__output"
+          :open="installOutputOpen"
+        >
+          <summary>安装输出</summary>
+          <pre class="ai-config-connection__output-pre">{{ installOutputTail }}</pre>
+        </details>
         <pre
           v-if="installStatus?.docker_hint"
           class="ai-config-connection__docker-hint"
@@ -364,8 +419,17 @@ defineExpose({ save, canSave, saving });
   margin-bottom: 10px;
 }
 
+.ai-config-connection__install-meta code {
+  word-break: break-all;
+}
+
 .ai-config-connection__install-opts {
   margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ai-config-connection__install-actions {
+  flex-wrap: wrap;
 }
 
 .ai-config-connection__opt {
@@ -376,14 +440,32 @@ defineExpose({ save, canSave, saving });
   user-select: none;
 }
 
+.ai-config-connection__output {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+}
+
+.ai-config-connection__output summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-config-connection__output-pre,
 .ai-config-connection__docker-hint {
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 10px 12px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--text) 4%, transparent);
   font-size: 12px;
   white-space: pre-wrap;
   overflow-x: auto;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ai-config-connection__docker-hint {
+  margin-top: 12px;
+  max-height: none;
 }
 
 .ai-config-connection__form {
@@ -469,6 +551,18 @@ defineExpose({ save, canSave, saving });
 @media (max-width: 720px) {
   .ai-config-connection__diag-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .ai-config-connection__url-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-config-connection__install-actions.row-actions > :deep(.btn),
+  .ai-config-connection__install-actions.row-actions > :deep(button) {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
 </style>

@@ -5,8 +5,27 @@ export type InstallJobCompletePayload = {
   phase?: string;
   message?: string;
   error?: string;
-  result?: { message?: string; needs_restart?: boolean; restart_scheduled?: boolean } | null;
+  result?: {
+    message?: string;
+    needs_restart?: boolean;
+    restart_scheduled?: boolean;
+    output_tail?: string;
+    wrote_ai_extension?: boolean;
+    wrote_ai_server?: boolean;
+    ai_root?: string;
+    exit_code?: number;
+  } | null;
 };
+
+export class InstallJobFailedError extends Error {
+  result: InstallJobCompletePayload["result"];
+
+  constructor(message: string, result: InstallJobCompletePayload["result"] = null) {
+    super(message);
+    this.name = "InstallJobFailedError";
+    this.result = result;
+  }
+}
 
 export function waitForInstallJob(
   jobId: string,
@@ -26,7 +45,7 @@ export function waitForInstallJob(
         if (payload.type === "complete") {
           if (payload.phase === "failed") {
             closeStream();
-            reject(new Error(payload.error || payload.message || "安装失败"));
+            reject(new InstallJobFailedError(payload.error || payload.message || "安装失败", payload.result));
             return;
           }
           closeStream();

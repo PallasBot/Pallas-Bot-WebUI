@@ -22,7 +22,7 @@ export const AI_SETUP_GUIDE_PATHS: AiSetupGuidePath[] = [
     steps: [
       {
         label: "1. 扩展连接",
-        detail: "填 Pallas-Bot-AI 地址与 Token，点连通性检测。",
+        detail: "可先一键克隆安装 AI Runtime，再填地址/Token 并检测连通。",
         to: aiConfigSectionPath("connection"),
       },
       {
