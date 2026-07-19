@@ -14,4 +14,16 @@ describe("ProtocolAccountWorkspace 登录加载", () => {
     expect(bootWorkspace).not.toContain("void refreshQrcode(true);");
   });
 
+  it("已连接时展示登录成功而不是暂无二维码", () => {
+    expect(source).toContain('if (isAccountConnected.value) return "登录成功 · Bot 已连接"');
+    expect(source).toContain("const showQrImage = computed(");
+    expect(source).toContain("{{ displayQrHint }}");
+    expect(source).not.toContain("friends-groups-hd-pin-wrap");
+  });
+
+  it("协议日志在刷新后会滚到底部", () => {
+    expect(source).toContain("scrollLogsToBottom");
+    expect(source).toContain('ref="logPreEl"');
+    expect(source).toContain('@scroll="onLogPreScroll"');
+  });
 });

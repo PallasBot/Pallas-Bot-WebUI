@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { fetchSystem } from "@/api/consoleApi";
 import type { NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import {
@@ -74,6 +74,8 @@ const qrRefreshBusy = ref(false);
 const qrImageUrl = ref("");
 let qrPollTimer: ReturnType<typeof setInterval> | null = null;
 let logsPollTimer: ReturnType<typeof setInterval> | null = null;
+const logPreEl = ref<HTMLElement | null>(null);
+const followLogTail = ref(true);
 
 const resolvedSystem = computed(() => props.system ?? systemLocal.value);
 
@@ -116,6 +118,19 @@ const statusMetrics = computed(() => {
 
 const isSnowluma = computed(
   () => String(account.value?.protocol_backend ?? "").toLowerCase() === "snowluma",
+);
+
+const isAccountConnected = computed(() => account.value?.connected === true);
+
+/** 已连接时优先展示登录成功，避免「暂无二维码 / 恢复登录」误导 */
+const displayQrHint = computed(() => {
+  if (qrRefreshBusy.value) return qrHint.value || "正在恢复登录…";
+  if (isAccountConnected.value) return "登录成功 · Bot 已连接";
+  return qrHint.value || "加载中…";
+});
+
+const showQrImage = computed(
+  () => !isAccountConnected.value && qrExists.value && Boolean(qrImageUrl.value),
 );
 
 const isSnowlumaDocker = computed(() => account.value?.snowluma_linux_docker === true);
@@ -211,9 +226,13 @@ async function refreshQrcode(force = false) {
       await loadQrImage(force ? Date.now() : ts);
     }
     qrExists.value = nowExists;
-    qrHint.value = nowExists
-      ? `更新于 ${new Date((ts || Date.now() / 1000) * 1000).toLocaleString()} · 可直接扫码`
-      : meta.message || "暂无二维码；可点「恢复登录」尝试一键登录或刷新二维码";
+    if (account.value?.connected) {
+      qrHint.value = "登录成功 · Bot 已连接";
+    } else {
+      qrHint.value = nowExists
+        ? `更新于 ${new Date((ts || Date.now() / 1000) * 1000).toLocaleString()} · 可直接扫码`
+        : meta.message || "暂无二维码；可点「恢复登录」尝试一键登录或刷新二维码";
+    }
   } catch (e) {
     if (force) {
       qrExists.value = false;
@@ -255,9 +274,38 @@ async function loadLogs() {
   if (!mount || !id) return;
   try {
     logs.value = await protocolFetchAccountLogs(mount, id, 120);
+    await scrollLogsToBottom();
   } catch {
     /* polling */
   }
+}
+
+function isLogPreNearBottom(el: HTMLElement): boolean {
+  const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return gap <= Math.max(48, Math.floor(el.clientHeight * 0.12));
+}
+
+async function scrollLogsToBottom(force = false) {
+  if (!force && !followLogTail.value) return;
+  await nextTick();
+  const el = logPreEl.value;
+  if (!el) return;
+  const apply = () => {
+    el.scrollTop = el.scrollHeight;
+  };
+  apply();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(() => {
+      apply();
+      window.requestAnimationFrame(apply);
+    });
+  }
+}
+
+function onLogPreScroll() {
+  const el = logPreEl.value;
+  if (!el) return;
+  followLogTail.value = isLogPreNearBottom(el);
 }
 
 async function bootWorkspace() {
@@ -375,6 +423,7 @@ watch(
     revokeQrUrl();
     account.value = null;
     logs.value = [];
+    followLogTail.value = true;
     if (props.accountId && props.mountUrl) {
       void bootWorkspace();
       startPollers();
@@ -387,6 +436,13 @@ watch(
   () => props.system,
   (next) => {
     if (next) systemLocal.value = next;
+  },
+);
+
+watch(
+  () => props.activeTab,
+  (tab) => {
+    if (tab === "overview") void scrollLogsToBottom(true);
   },
 );
 
@@ -616,7 +672,7 @@ defineExpose({
           :class="{ 'protocol-account-workspace__panel--compact': isDialog }"
         >
           <div
-            class="panel__hd panel__hd--split friends-groups-hd-pin-wrap"
+            class="panel__hd panel__hd--split protocol-account-workspace__login-hd"
             :class="{ 'protocol-account-workspace__login-hd--dialog': isDialog }"
           >
             <div class="protocol-account-workspace__qr-head">
@@ -626,8 +682,15 @@ defineExpose({
               >
                 登录
               </h3>
-              <p class="muted protocol-account-workspace__panel-lead">
-                {{ qrHint || "加载中…" }}
+              <p
+                class="muted"
+                :class="
+                  isDialog
+                    ? 'protocol-account-workspace__login-hint'
+                    : 'protocol-account-workspace__panel-lead'
+                "
+              >
+                {{ displayQrHint }}
               </p>
             </div>
             <UiButton
@@ -640,7 +703,7 @@ defineExpose({
             </UiButton>
           </div>
           <div
-            v-if="qrExists && qrImageUrl"
+            v-if="showQrImage"
             class="panel__bd protocol-account-workspace__qr-body"
           >
             <img
@@ -678,7 +741,11 @@ defineExpose({
             <span class="muted protocol-account-workspace__log-meta">每 5 秒刷新</span>
           </div>
           <div class="panel__bd protocol-account-workspace__log-wrap">
-            <pre class="protocol-account-workspace__log-pre">{{ logs.join("\n") || "暂无进程输出" }}</pre>
+            <pre
+              ref="logPreEl"
+              class="protocol-account-workspace__log-pre"
+              @scroll="onLogPreScroll"
+            >{{ logs.join("\n") || "暂无进程输出" }}</pre>
           </div>
         </UiCard>
       </section>
@@ -833,6 +900,11 @@ defineExpose({
   padding: 10px 14px 0;
 }
 
+.protocol-account-workspace__panel--compact.ui-card :deep(.panel__hd.protocol-account-workspace__login-hd--dialog) {
+  padding: 10px 14px;
+  border-bottom: none;
+}
+
 .protocol-account-workspace__panel--compact.ui-card :deep(.panel__bd) {
   padding: 10px 14px 14px;
 }
@@ -849,8 +921,20 @@ defineExpose({
   line-height: 1.45;
 }
 
+.protocol-account-workspace__login-hd {
+  align-items: center;
+  gap: 10px 12px;
+}
+
 .protocol-account-workspace__login-hd--dialog {
-  padding-top: 10px;
+  padding: 10px 14px;
+  border-bottom: none;
+}
+
+.protocol-account-workspace__login-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .protocol-account-workspace__settings-hd {
@@ -985,7 +1069,15 @@ defineExpose({
 }
 
 .protocol-account-workspace__qr-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.protocol-account-workspace__login-hd--dialog .protocol-account-workspace__qr-head {
+  justify-content: center;
 }
 
 .protocol-account-workspace__qr-body {
@@ -1053,10 +1145,10 @@ defineExpose({
   }
 
   .protocol-account-workspace__panel-hd.panel__hd--split,
-  .protocol-account-workspace__panel .panel__hd.friends-groups-hd-pin-wrap {
+  .protocol-account-workspace__login-hd.panel__hd--split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    align-items: center;
     gap: 8px 10px;
   }
 
