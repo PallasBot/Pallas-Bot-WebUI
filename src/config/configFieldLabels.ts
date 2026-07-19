@@ -70,12 +70,6 @@ export interface LlmBotFieldGroupDef {
 
 export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
   {
-    title: "AI 服务连接",
-    tier: "essential",
-    keys: ["ai_server_host", "ai_server_port"],
-    hint: "Bot 访问 Pallas-Bot-AI 的地址；扩展连接页也可改同一组项。",
-  },
-  {
     title: "功能开关",
     tier: "essential",
     keys: [
@@ -85,7 +79,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_tools_enabled",
       "llm_governance_enabled",
     ],
-    hint: "先开「智能对话」与接话模式；记忆 / 工具可稍后再动。",
+    hint: "先开「智能对话」与接话模式；记忆 / 工具可稍后再动。AI 地址请到「AI 服务」连接页修改（会同步 Bot）。",
   },
   {
     title: "学习闭环",
@@ -135,5 +129,5 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
 
 export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {
   if (!isSimpleMode) return LLM_BOT_FIELD_GROUPS;
-  return LLM_BOT_FIELD_GROUPS.filter((group) => group.tier === "essential" && group.title !== "AI 服务连接");
+  return LLM_BOT_FIELD_GROUPS.filter((group) => group.tier === "essential");
 }

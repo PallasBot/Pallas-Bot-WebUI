@@ -65,13 +65,17 @@ const essentialGroups = computed(() => groupsForDefs(essentialDefs.value));
 const advancedFields = computed(() => fieldsForDefs(advancedDefs.value));
 const advancedGroups = computed(() => groupsForDefs(advancedDefs.value));
 
+const HIDDEN_LLM_FIELDS = new Set(["ai_server_host", "ai_server_port"]);
+
 const restFields = computed(() => {
   if (isSimpleMode.value) return [] as PluginConfigField[];
   const used = new Set([
     ...essentialFields.value.map((f) => f.name),
     ...advancedFields.value.map((f) => f.name),
   ]);
-  return (data.value?.fields ?? []).filter((f) => !used.has(f.name));
+  return (data.value?.fields ?? []).filter(
+    (f) => !used.has(f.name) && !HIDDEN_LLM_FIELDS.has(f.name),
+  );
 });
 
 const restGroups = computed((): PluginConfigFieldGroup[] =>
@@ -143,15 +147,12 @@ defineExpose({ save, canSave, saving });
               Bot 对话策略
             </h2>
             <p class="plugin-config-page__hero-desc">
-              总开关、接话模式与限流；模型与路由请到「接入」分区配置。
+              总开关、接话模式与限流；AI 服务地址请到「AI 服务」连接页（保存时同步 Bot），模型请到「接入」拉取/切换。
             </p>
-            <p
-              v-if="isSimpleMode"
-              class="muted plugin-config-page__hero-meta"
-            >
-              扩展服务地址请到
-              <RouterLink to="/ai/config/provider">「接入」</RouterLink>
-              页配置。
+            <p class="muted plugin-config-page__hero-meta">
+              <RouterLink to="/ai/config/connection">AI 服务连接</RouterLink>
+              ·
+              <RouterLink to="/ai/config/provider">接入与模型</RouterLink>
             </p>
           </div>
         </div>

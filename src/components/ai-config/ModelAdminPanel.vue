@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import {
   fetchLlmModelAdminStatus,
+  fetchLlmProviderModels,
   postLlmModelAdminNumGpu,
   postLlmModelAdminReload,
   postLlmModelAdminSwitch,
@@ -28,6 +29,9 @@ const err = ref("");
 const draftModel = ref("");
 const draftNumGpu = ref("");
 const pullOnSwitch = ref(true);
+/** 本地 Ollama 已安装模型名（用于下拉建议）；空表示尚未拉取 */
+const localModels = ref<string[]>([]);
+const SUGGESTED_MODELS = ["qwen2.5:7b", "qwen2.5:0.5b", "qwen3:8b"] as const;
 
 const confirm = reactive<{ open: boolean; action: ConfirmAction | null; title: string; message: string; tone: "default" | "danger" }>({
   open: false,
@@ -80,10 +84,22 @@ async function refresh() {
   } catch (e) {
     err.value = axiosErrorDetail(e);
     status.value = null;
+  }
+  try {
+    const result = await fetchLlmProviderModels("local");
+    localModels.value = Array.isArray(result?.models)
+      ? result.models.map((m) => String(m || "").trim()).filter(Boolean)
+      : [];
+  } catch {
+    localModels.value = [];
   } finally {
     loading.value = false;
   }
 }
+
+const showEmptyModelGuide = computed(
+  () => Boolean(status.value?.ai_reachable) && localModels.value.length === 0 && !loading.value,
+);
 
 function askSwitch() {
   const model = draftModel.value.trim();
@@ -253,7 +269,7 @@ onMounted(() => {
         v-else
         class="muted model-admin__intro model-admin__intro--embedded"
       >
-        热切换当前 Ollama 模型与 GPU 层数。
+        热切换当前 Ollama 模型与 GPU 层数；勾选「切换时拉取」可首次下载权重。
       </p>
       <p
         v-if="!embedded && status?.local_multi_model_enabled"
@@ -261,6 +277,27 @@ onMounted(() => {
       >
         当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按任务场景、分档或 Provider 默认模型分流。
       </p>
+
+      <div
+        v-if="showEmptyModelGuide"
+        class="alert alert--warn model-admin__alert"
+        role="status"
+      >
+        本地尚无 Ollama 模型。填写模型名（如 qwen2.5:7b），勾选「切换时拉取」后点切换即可下载；无需重启 AI 服务。
+        <span class="model-admin__suggest">
+          常用：
+          <button
+            v-for="name in SUGGESTED_MODELS"
+            :key="name"
+            type="button"
+            class="model-admin__suggest-btn"
+            :disabled="busy || loading"
+            @click="draftModel = name"
+          >
+            {{ name }}
+          </button>
+        </span>
+      </div>
 
       <div
         v-if="err"
@@ -277,9 +314,17 @@ onMounted(() => {
             v-model="draftModel"
             class="inp"
             type="text"
+            list="model-admin-local-models"
             placeholder="qwen2.5:7b"
             :disabled="busy || loading"
           >
+          <datalist id="model-admin-local-models">
+            <option
+              v-for="name in localModels"
+              :key="name"
+              :value="name"
+            />
+          </datalist>
         </label>
         <label class="model-admin__check">
           <input
@@ -434,6 +479,29 @@ onMounted(() => {
 
 .model-admin__alert {
   margin-bottom: 12px;
+}
+
+.model-admin__suggest {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.model-admin__suggest-btn {
+  border: 1px solid var(--border, #d0d5dd);
+  background: var(--card, #fff);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.model-admin__suggest-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .model-admin__status {
