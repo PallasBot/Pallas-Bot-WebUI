@@ -67,7 +67,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "capabilities",
     label: "能力包",
-    lead: "对话模型与唱歌/TTS 媒体权重：源码可下载，Docker 引导换镜像。",
+    lead: "对话用 LLM；唱歌/TTS 权重；遗留 RWKV 仅兼容。",
     icon: "layers",
     groupId: "extension",
   },

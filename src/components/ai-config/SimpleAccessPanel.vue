@@ -18,6 +18,14 @@ import {
 import type { LlmProviderPresetId } from "@/config/llmProviderPresets";
 import { buildLlmModelSelectGroups, collectSavedProviderModels } from "@/utils/llmModelOptionSources";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import {
+  TRAFFIC_ROUTE_PRESET_OPTIONS,
+  buildTrafficChainFallback,
+  buildTrafficRouteTasks,
+  detectTrafficRoutePreset,
+  trafficPresetSummary,
+  type TrafficRoutePresetId,
+} from "@/utils/trafficRoutePreset";
 
 type AccessMode = "cloud" | "local";
 type ResultTone = "ok" | "err" | "muted";
@@ -35,6 +43,8 @@ const {
 } = providerStore;
 
 const accessMode = ref<AccessMode>("cloud");
+const trafficPreset = ref<TrafficRoutePresetId>("default_split");
+const trafficPresetTouched = ref(false);
 const localSaving = ref(false);
 const selectedCloudId = ref("");
 const selectedPresetId = ref<LlmProviderPresetId>("openai");
@@ -50,6 +60,14 @@ const configuredCloudProviders = computed(() =>
   providers.value.filter((row) => row.kind !== "local" && row.id !== "local"),
 );
 
+const localProvider = computed(
+  () => providers.value.find((row) => row.kind === "local" || row.id === "local") ?? null,
+);
+
+const dualUpstreamReady = computed(
+  () => configuredCloudProviders.value.length > 0 && Boolean(localProvider.value),
+);
+
 const primaryProvider = computed(() => {
   const enabled = providers.value.filter((row) => row.enabled !== false);
   for (const id of doc.value.routing.chain_fallback) {
@@ -57,6 +75,36 @@ const primaryProvider = computed(() => {
     if (hit) return hit;
   }
   return enabled[0] ?? providers.value[0] ?? null;
+});
+
+const preferredCloudId = computed(() => {
+  if (selectedCloudId.value && configuredCloudProviders.value.some((row) => row.id === selectedCloudId.value)) {
+    return selectedCloudId.value;
+  }
+  const primary = primaryProvider.value;
+  if (primary && primary.kind !== "local" && primary.id !== "local") return primary.id;
+  return configuredCloudProviders.value[0]?.id || "";
+});
+
+const detectedTrafficPreset = computed(() => {
+  const cloudId = preferredCloudId.value;
+  const localId = localProvider.value?.id || "";
+  if (!cloudId || !localId) return "custom" as const;
+  return detectTrafficRoutePreset(doc.value.routing.tasks, cloudId, localId);
+});
+
+const trafficPresetHint = computed(() => {
+  if (!dualUpstreamReady.value) return "两侧都配好后可选择流量预设";
+  if (!trafficPresetTouched.value && detectedTrafficPreset.value === "custom") {
+    return trafficPresetSummary("custom");
+  }
+  const preset = trafficPresetTouched.value ? trafficPreset.value : detectedTrafficPreset.value;
+  return trafficPresetSummary(preset === "custom" ? trafficPreset.value : preset);
+});
+
+const activeTrafficPresetId = computed(() => {
+  if (trafficPresetTouched.value) return trafficPreset.value;
+  return detectedTrafficPreset.value === "custom" ? "" : detectedTrafficPreset.value;
 });
 
 const activeSourceLabel = computed(() => {
@@ -200,10 +248,52 @@ function upsertProvider(row: LlmProviderConfigRow) {
   const index = providers.value.findIndex((provider) => provider.id === row.id);
   if (index >= 0) providerStore.updateProvider(index, row);
   else providerStore.addProvider(row);
+  const shouldApplyPreset =
+    dualUpstreamReady.value
+    && (trafficPresetTouched.value || detectedTrafficPreset.value !== "custom");
+  if (shouldApplyPreset) {
+    applyTrafficPreset(trafficPreset.value, row);
+    return;
+  }
   providerStore.setChainFallback([
     row.id,
     ...doc.value.routing.chain_fallback.filter((id) => id !== row.id),
   ]);
+}
+
+function applyTrafficPreset(preset: TrafficRoutePresetId, preferredRow?: LlmProviderConfigRow) {
+  const local = localProvider.value;
+  const cloudId =
+    (preferredRow && preferredRow.kind !== "local" && preferredRow.id !== "local" ? preferredRow.id : "")
+    || preferredCloudId.value
+    || configuredCloudProviders.value[0]?.id
+    || "";
+  const localId = local?.id || "";
+  if (!cloudId || !localId) return;
+  providerStore.setRoutingTasks(buildTrafficRouteTasks(preset, cloudId, localId));
+  providerStore.setChainFallback(
+    buildTrafficChainFallback(preset, cloudId, localId, doc.value.routing.chain_fallback),
+  );
+  trafficPreset.value = preset;
+}
+
+async function selectTrafficPreset(preset: TrafficRoutePresetId) {
+  trafficPresetTouched.value = true;
+  applyTrafficPreset(preset);
+  if (!dualUpstreamReady.value) return;
+  providerErr.value = "";
+  resultTone.value = "muted";
+  resultText.value = "正在保存对话流量预设…";
+  await providerStore.save();
+  if (providerErr.value) {
+    resultTone.value = "err";
+    resultText.value = `保存流量预设失败：${providerErr.value}`;
+    pushConsoleToast(resultText.value, "warn");
+    return;
+  }
+  resultTone.value = "ok";
+  resultText.value = `${trafficPresetSummary(preset)}，已保存。`;
+  pushConsoleToast(resultText.value, "ok");
 }
 
 async function maybeDiscoverModels(providerId: string) {
@@ -405,11 +495,15 @@ async function hydrateFromExistingProviders() {
   if (preferred) {
     showAddVendor.value = false;
     await selectConfiguredProvider(preferred.id);
-    return;
+  } else {
+    showAddVendor.value = true;
+    selectPreset(selectedPresetId.value);
   }
 
-  showAddVendor.value = true;
-  selectPreset(selectedPresetId.value);
+  const detected = detectedTrafficPreset.value;
+  if (detected !== "custom") trafficPreset.value = detected;
+  else trafficPreset.value = "default_split";
+  trafficPresetTouched.value = false;
 }
 
 async function refreshLocalRuntimeModel() {
@@ -455,7 +549,43 @@ onMounted(async () => {
         <span class="simple-access-panel__active-source">{{ loading ? "…" : activeSourceLabel }}</span>
       </div>
       <p class="muted simple-access-panel__active-hint">
-        按链路首选上游解析；改下方接入后需「测通并保存」才会生效。
+        {{ trafficPresetHint }}；改接入或预设后需「测通并保存」才会生效。
+      </p>
+    </div>
+
+    <div
+      v-if="dualUpstreamReady"
+      class="simple-access-panel__traffic"
+    >
+      <div class="simple-access-panel__section-hd">
+        <h3 class="simple-access-panel__section-title">对话流量</h3>
+        <span
+          v-if="detectedTrafficPreset === 'custom'"
+          class="muted"
+        >当前为专家模式自定义</span>
+      </div>
+      <div
+        class="console-view-toggle simple-access-panel__traffic-segments"
+        role="radiogroup"
+        aria-label="对话流量预设"
+      >
+        <button
+          v-for="opt in TRAFFIC_ROUTE_PRESET_OPTIONS"
+          :key="opt.id"
+          type="button"
+          role="radio"
+          :class="{ 'is-on': activeTrafficPresetId === opt.id }"
+          :aria-checked="activeTrafficPresetId === opt.id"
+          :title="opt.hint"
+          :disabled="saving || loading || localSaving"
+          @click="selectTrafficPreset(opt.id)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+      <p class="muted simple-access-panel__traffic-hint">
+        {{ TRAFFIC_ROUTE_PRESET_OPTIONS.find((opt) => opt.id === trafficPreset)?.hint }}
+        。点选后立即保存任务路由。
       </p>
     </div>
 
@@ -734,6 +864,31 @@ onMounted(async () => {
   line-height: 1.45;
 }
 
+.simple-access-panel__traffic {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-card, transparent) 92%, var(--border));
+}
+
+.simple-access-panel__traffic-segments {
+  width: 100%;
+}
+
+.simple-access-panel__traffic-segments :deep(button),
+.simple-access-panel__traffic-segments button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.simple-access-panel__traffic-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .simple-access-panel__segments {
   align-self: flex-start;
 }
@@ -887,8 +1042,14 @@ onMounted(async () => {
 
 @media (max-width: 560px) {
   .simple-access-panel__segments,
-  .simple-access-panel__segments button {
+  .simple-access-panel__segments button,
+  .simple-access-panel__traffic-segments,
+  .simple-access-panel__traffic-segments button {
     width: 100%;
+  }
+
+  .simple-access-panel__traffic-segments {
+    flex-direction: column;
   }
 
   .simple-access-panel__configured-grid,

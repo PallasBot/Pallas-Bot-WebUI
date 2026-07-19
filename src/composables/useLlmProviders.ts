@@ -149,6 +149,10 @@ export function useLlmProviders() {
     doc.value.routing = { ...doc.value.routing, tasks };
   }
 
+  function setRoutingTasks(tasks: Record<string, string>) {
+    doc.value.routing = { ...doc.value.routing, tasks: { ...tasks } };
+  }
+
   function setChainFallback(ids: string[]) {
     doc.value.routing = { ...doc.value.routing, chain_fallback: ids };
   }
@@ -243,6 +247,7 @@ export function useLlmProviders() {
     updateProvider,
     removeProvider,
     setTaskRoute,
+    setRoutingTasks,
     setChainFallback,
     setProviderTaskModel,
     setTaskModelRoute,

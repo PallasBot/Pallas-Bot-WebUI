@@ -183,9 +183,11 @@ onUnmounted(() => {
         </div>
 
         <section class="ai-capabilities__card">
-          <h3 class="ai-capabilities__card-title">对话模型（Ollama / 本地）</h3>
+          <h3 class="ai-capabilities__card-title">对话模型（LLM）</h3>
           <p class="muted ai-capabilities__card-lead">
-            闲聊与接话用的是对话模型，不是唱歌权重。全栈默认不预拉，请在「接入」拉取（如 <code>qwen2.5:7b</code>）。
+            v4 默认用 LLM 闲聊（Ollama 本地或云端 Provider），请打开
+            <code>LLM_CHAT_ENABLED</code>。与下方媒体权重里的遗留 RWKV
+            <code>chat</code> 不是同一条路径。
           </p>
           <ul class="ai-capabilities__status-list">
             <li>AI 服务：{{ aiReachable ? "可达" : "不可达" }}</li>
@@ -194,7 +196,7 @@ onUnmounted(() => {
           </ul>
           <div class="row-actions ai-capabilities__card-actions">
             <RouterLink :to="aiConfigSectionPath('provider')">
-              <UiButton variant="primary">去拉取默认模型</UiButton>
+              <UiButton variant="primary">去拉取 / 接入模型</UiButton>
             </RouterLink>
             <RouterLink :to="aiConfigSectionPath('strategy')">
               <UiButton variant="outline">打开对话总闸</UiButton>
@@ -205,7 +207,8 @@ onUnmounted(() => {
         <section class="ai-capabilities__card">
           <h3 class="ai-capabilities__card-title">唱歌 · TTS · 媒体权重</h3>
           <p class="muted ai-capabilities__card-lead">
-            唱歌 / TTS / 醉聊 RWKV 依赖媒体栈与本地 zip 权重（与 Ollama 无关）。
+            唱歌 / TTS 依赖本地媒体栈与 zip 权重（与 Ollama / 云端 LLM 无关）。
+            其中 <code>chat</code> 是遗留醉聊 RWKV 权重，仅为老用户兼容；新用户一般不必下载。
           </p>
           <ul class="ai-capabilities__status-list">
             <li>部署模式：{{ deployMode }}</li>
