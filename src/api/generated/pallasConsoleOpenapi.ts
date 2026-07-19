@@ -38,6 +38,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/acl/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Acl Rules */
+        get: operations["_list_acl_rules_pallas_api_acl_rules_get"];
+        put?: never;
+        /** Create Acl Rule */
+        post: operations["_create_acl_rule_pallas_api_acl_rules_post"];
+        /**
+         * Delete Acl Rule
+         * @description 按自然键或主键删除；推荐 ``by=signature`` 以保证跨后端一致。
+         */
+        delete: operations["_delete_acl_rule_pallas_api_acl_rules_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/acl/rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Acl Rule By Id */
+        delete: operations["_delete_acl_rule_by_id_pallas_api_acl_rules__rule_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/acl/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Acl Summary */
+        get: operations["_acl_summary_pallas_api_acl_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/admin_members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Admin Members */
+        get: operations["_list_admin_members_pallas_api_admin_members_get"];
+        put?: never;
+        /** Create Admin Member */
+        post: operations["_create_admin_member_pallas_api_admin_members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/admin_members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Admin Member
+         * @description 按主键直删，避免 list 后再按 scope/bot_id 删除的竞态。
+         */
+        delete: operations["_delete_admin_member_pallas_api_admin_members__member_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/system": {
         parameters: {
             query?: never;
@@ -47,6 +141,23 @@ export interface paths {
         };
         /** System */
         get: operations["_system_pallas_api_system_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/home/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Home Overview */
+        get: operations["_home_overview_pallas_api_home_overview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -251,6 +362,23 @@ export interface paths {
         };
         /** Plugin Run Stats */
         get: operations["_plugin_run_stats_pallas_api_plugin_run_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/log-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Log Errors */
+        get: operations["_log_errors_pallas_api_log_errors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1025,6 +1153,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/media-assets/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Media Assets Status Get */
+        get: operations["_llm_media_assets_status_get_pallas_api_common_config_llm_media_assets_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/media-assets/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Media Assets Download Post */
+        post: operations["_llm_media_assets_download_post_pallas_api_common_config_llm_media_assets_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/common-config/llm/media-assets/download/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Media Assets Download Job Get */
+        get: operations["_llm_media_assets_download_job_get_pallas_api_common_config_llm_media_assets_download_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/runtime-overview": {
         parameters: {
             query?: never;
@@ -1127,6 +1306,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/repeater-feedback/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Repeater Feedback Manage */
+        post: operations["_llm_repeater_feedback_manage_pallas_api_llm_repeater_feedback_manage_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/repeater-feedback/promotion-candidates": {
         parameters: {
             query?: never;
@@ -1204,6 +1400,24 @@ export interface paths {
         };
         /** Llm Conversation Kernel Memory Get */
         get: operations["_llm_conversation_kernel_memory_get_pallas_api_llm_conversation_kernel_memory_get"];
+        put?: never;
+        /** Llm Conversation Kernel Memory Create */
+        post: operations["_llm_conversation_kernel_memory_create_pallas_api_llm_conversation_kernel_memory_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/knowledge/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Knowledge Sources List */
+        get: operations["_llm_knowledge_sources_list_pallas_api_llm_knowledge_sources_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1890,6 +2104,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/ai-extension/logs/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ai Extension Logs Stream */
+        get: operations["_ai_extension_logs_stream_pallas_api_ai_extension_logs_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/ai-extension/install/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ai Extension Install Status */
+        get: operations["_ai_extension_install_status_pallas_api_ai_extension_install_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/ai-extension/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ai Extension Install */
+        post: operations["_ai_extension_install_pallas_api_ai_extension_install_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/ai-extension/install/jobs/{job_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ai Extension Install Job Stream */
+        get: operations["_ai_extension_install_job_stream_pallas_api_ai_extension_install_jobs__job_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/ai-extension/ncm/status": {
         parameters: {
             query?: never;
@@ -2211,6 +2493,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/help/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Help Preview */
+        get: operations["help_preview_pallas_api_help_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2290,7 +2589,10 @@ export interface components {
             /** Log Sources */
             log_sources?: string[];
         };
-        /** PluginConfigData */
+        /**
+         * PluginConfigData
+         * @description 插件 / 通用配置表单载荷。须声明 field_groups 等扩展键，否则 GET 的 response_model 会剥掉分组。
+         */
         PluginConfigData: {
             /** Plugin */
             plugin: string;
@@ -2307,6 +2609,30 @@ export interface components {
             unexpected_keys?: {
                 [key: string]: string;
             }[];
+            /** Field Groups */
+            field_groups?: {
+                [key: string]: unknown;
+            }[];
+            /** Hot Reload */
+            hot_reload?: boolean | null;
+            /** Gateway Editor */
+            gateway_editor?: boolean | null;
+            /** Supports Connectivity Check */
+            supports_connectivity_check?: boolean | null;
+            /** Llm Model Admin */
+            llm_model_admin?: boolean | null;
+            /** Dev Mode Hot Reload */
+            dev_mode_hot_reload?: boolean | null;
+            /** Command Perm Ui */
+            command_perm_ui?: {
+                [key: string]: unknown;
+            } | null;
+            /** Command Limits Ui */
+            command_limits_ui?: {
+                [key: string]: unknown;
+            } | null;
+        } & {
+            [key: string]: unknown;
         };
         /** PluginConfigRawData */
         PluginConfigRawData: {
@@ -2342,6 +2668,8 @@ export interface components {
             limits_ui_filtered?: {
                 [key: string]: unknown;
             };
+            /** Blocked User Ids */
+            blocked_user_ids?: number[];
             /** Reload Policy */
             reload_policy?: string | null;
             /** Activation Policy */
@@ -2421,6 +2749,66 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** _AclRuleBody */
+        _AclRuleBody: {
+            /** Role */
+            role: string;
+            /** Subject */
+            subject?: string | null;
+            /** Action */
+            action: string;
+            /** Target Scope */
+            target_scope: string;
+            /** Target */
+            target: string;
+            /** Effect */
+            effect: string;
+            /**
+             * Priority
+             * @default 100
+             */
+            priority: number;
+            /**
+             * Source
+             * @default user
+             */
+            source: string;
+        };
+        /**
+         * _AclRuleDeleteBody
+         * @description 按自然键 (role, subject, action, target_scope, target) 删除，
+         *     比主键删除跨后端一致（Mongo ObjectId / PG int）；同时支持按主键。
+         */
+        _AclRuleDeleteBody: {
+            /**
+             * By
+             * @default signature
+             */
+            by: string;
+            /** Id */
+            id?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Subject */
+            subject?: string | null;
+            /** Action */
+            action?: string | null;
+            /** Target Scope */
+            target_scope?: string | null;
+            /** Target */
+            target?: string | null;
+        };
+        /** _AdminMemberBody */
+        _AdminMemberBody: {
+            /** User Id */
+            user_id: number;
+            /** Scope */
+            scope: string;
+            /** Bot Id */
+            bot_id?: number | null;
+            /** Note */
+            note?: string | null;
+        };
         /** _AiExtensionConfigBody */
         _AiExtensionConfigBody: {
             /** Base Url */
@@ -2432,6 +2820,7 @@ export interface components {
             api_prefix: string;
             /**
              * Token
+             * @description Bearer Token；须与 AI 侧 PALLAS_AI_API_TOKEN 一致，供 /api/ops/logs 等 HTTP 回退鉴权
              * @default
              */
             token: string;
@@ -2479,6 +2868,35 @@ export interface components {
             image_circuit?: components["schemas"]["_LlmImageHealthData"] | null;
             llm_health?: components["schemas"]["_LlmHealthSummaryData"] | null;
             tts_health?: components["schemas"]["_LlmTtsHealthData"] | null;
+        };
+        /** _AiInstallBody */
+        _AiInstallBody: {
+            /**
+             * Action
+             * @default clone_and_bootstrap
+             * @enum {string}
+             */
+            action: "clone" | "bootstrap" | "clone_and_bootstrap";
+            /**
+             * No Start
+             * @default false
+             */
+            no_start: boolean;
+            /**
+             * Remote Only
+             * @default false
+             */
+            remote_only: boolean;
+            /**
+             * With Media
+             * @default false
+             */
+            with_media: boolean;
+            /**
+             * Use Gpu
+             * @default false
+             */
+            use_gpu: boolean;
         };
         /** _AiNcmSendSmsBody */
         _AiNcmSendSmsBody: {
@@ -3005,6 +3423,11 @@ export interface components {
              */
             api_key_env: string;
             /**
+             * Api Key Set
+             * @default false
+             */
+            api_key_set: boolean;
+            /**
              * Default Model
              * @default
              */
@@ -3033,6 +3456,11 @@ export interface components {
              * @default
              */
             base_url: string;
+            /**
+             * Api Key
+             * @default
+             */
+            api_key: string;
             /**
              * Api Key Env
              * @default
@@ -3278,6 +3706,8 @@ export interface components {
              * @default false
              */
             help_hidden: boolean;
+            /** Blocked User Ids */
+            blocked_user_ids?: number[];
         };
         /** _RequestActionBody */
         _RequestActionBody: {
@@ -3446,7 +3876,342 @@ export interface operations {
             };
         };
     };
+    _list_acl_rules_pallas_api_acl_rules_get: {
+        parameters: {
+            query?: {
+                action?: string | null;
+                target?: string | null;
+                role?: string | null;
+                subject?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _create_acl_rule_pallas_api_acl_rules_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_AclRuleBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _delete_acl_rule_pallas_api_acl_rules_delete: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_AclRuleDeleteBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _delete_acl_rule_by_id_pallas_api_acl_rules__rule_id__delete: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                rule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _acl_summary_pallas_api_acl_summary_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _list_admin_members_pallas_api_admin_members_get: {
+        parameters: {
+            query?: {
+                scope?: string | null;
+                bot_id?: number | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _create_admin_member_pallas_api_admin_members_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_AdminMemberBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _delete_admin_member_pallas_api_admin_members__member_id__delete: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _system_pallas_api_system_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _home_overview_pallas_api_home_overview_get: {
         parameters: {
             query?: {
                 token?: string | null;
@@ -3862,6 +4627,47 @@ export interface operations {
                 log_source?: string | null;
                 /** @description log_error_log 单条 traceback 最大字符数，0 表示不截断 */
                 tb_limit?: number;
+                /** @description log_errors 时仅返回 log_error_log 与来源元数据，跳过 Bot 统计聚合 */
+                view?: string | null;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _log_errors_pallas_api_log_errors_get: {
+        parameters: {
+            query?: {
+                /** @description 报错来源筛选：all|hub|worker-N */
+                log_source?: string | null;
+                /** @description 单条 traceback 最大字符数，0 表示不截断 */
+                tb_limit?: number;
+                /** @description 最多返回条数 */
+                limit?: number;
                 token?: string | null;
             };
             header?: {
@@ -5054,7 +5860,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["_ApiOkResponse_PluginConfigData_"];
                 };
             };
             /** @description Validation Error */
@@ -5893,6 +6699,107 @@ export interface operations {
             };
         };
     };
+    _llm_media_assets_status_get_pallas_api_common_config_llm_media_assets_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_media_assets_download_post_pallas_api_common_config_llm_media_assets_download_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_media_assets_download_job_get_pallas_api_common_config_llm_media_assets_download_jobs__job_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _llm_runtime_overview_get_pallas_api_common_config_llm_runtime_overview_get: {
         parameters: {
             query?: {
@@ -6111,6 +7018,45 @@ export interface operations {
             };
         };
     };
+    _llm_repeater_feedback_manage_pallas_api_llm_repeater_feedback_manage_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _llm_repeater_feedback_promotion_candidates_get_pallas_api_llm_repeater_feedback_promotion_candidates_get: {
         parameters: {
             query: {
@@ -6271,6 +7217,78 @@ export interface operations {
                 /** @description 内容/关键词搜索 */
                 query?: string | null;
                 limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_conversation_kernel_memory_create_pallas_api_llm_conversation_kernel_memory_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_knowledge_sources_list_pallas_api_llm_knowledge_sources_get: {
+        parameters: {
+            query?: {
                 token?: string | null;
             };
             header?: {
@@ -7933,6 +8951,148 @@ export interface operations {
             };
         };
     };
+    _ai_extension_logs_stream_pallas_api_ai_extension_logs_stream_get: {
+        parameters: {
+            query?: {
+                kind?: "uvicorn" | "celery" | "celery-media";
+                /** @description 断点续传：仅发送字节偏移大于该值的新行 */
+                last_event_id?: number | null;
+                token?: string | null;
+            };
+            header?: {
+                "Last-Event-ID"?: number | null;
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _ai_extension_install_status_pallas_api_ai_extension_install_status_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _ai_extension_install_pallas_api_ai_extension_install_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_AiInstallBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _ai_extension_install_job_stream_pallas_api_ai_extension_install_jobs__job_id__stream_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _ai_extension_ncm_status_pallas_api_ai_extension_ncm_status_get: {
         parameters: {
             query?: {
@@ -8113,7 +9273,7 @@ export interface operations {
     _friend_list_pallas_api_friend_list_get: {
         parameters: {
             query: {
-                /** @description Bot QQ（须当前在 NoneBot 已连接） */
+                /** @description Bot QQ（须当前在消息框架已连接） */
                 self_id: number;
                 limit?: number;
                 token?: string | null;
@@ -8149,7 +9309,7 @@ export interface operations {
     _group_list_pallas_api_group_list_get: {
         parameters: {
             query: {
-                /** @description Bot QQ（须当前在 NoneBot 已连接） */
+                /** @description Bot QQ（须当前在消息框架已连接） */
                 self_id: number;
                 limit?: number;
                 token?: string | null;
@@ -8550,6 +9710,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["_ApiOkResponse__ConsoleLoginChangeData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    help_preview_pallas_api_help_preview_get: {
+        parameters: {
+            query?: {
+                level?: "menu" | "plugin" | "function";
+                page?: number;
+                plugin?: string | null;
+                function?: string | null;
+                show_ignored?: boolean;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

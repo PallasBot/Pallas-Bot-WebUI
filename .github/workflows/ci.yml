@@ -33,7 +33,7 @@ jobs:
           sparse-checkout-cone-mode: true
 
       - name: Check generated OpenAPI types drift
-        run: npm run check:console-openapi-types
+        run: npm run check:console-openapi-types -- --input Pallas-Bot/openspec/pallas-console-v1.json
 
       - name: Type check and build
         run: npm run build:ci
