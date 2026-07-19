@@ -1,16 +1,16 @@
 # Pallas-Bot-WebUI
 
-面向 [**Pallas-Bot**](https://github.com/PallasBot/Pallas-Bot) 的独立 Web 控制台前端：Vue 3、TypeScript、Vite、Vue Router、Axios。构建产物由主仓插件 `pallas_webui` 挂载，浏览器访问路径与 API 前缀均以 **`/pallas/`** 为基址。
+面向 [**Pallas-Bot**](https://github.com/PallasBot/Pallas-Bot) 的独立 Web 控制台前端：Vue 3、TypeScript、Vite、Vue Router、Axios。构建产物由主仓插件 **`pb_webui`** 挂载，浏览器访问路径与 API 前缀均以 **`/pallas/`** 为基址。
 
 ## 与主仓的关系
 
 | 项目 | 说明 |
 | --- | --- |
 | **本仓库** | 前端源码与发版产物（如 `dist.zip`） |
-| **Pallas-Bot** | NoneBot2 运行时、`/pallas/api` 与静态资源托管 |
+| **Pallas-Bot** | NoneBot2 运行时、`/pallas/api` 与静态资源托管（插件包名 `pb_webui`） |
 | **典型访问** | `http://<主机>:<端口>/pallas/`（端口见主仓 `config/pallas.toml` 中 `[bootstrap] port`，默认多为 `8088`） |
 
-主仓文档入口：[控制台插件说明](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/plugins/pallas_webui/README.md)、[部署](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/Deployment.md)、[FAQ](https://github.com/PallasBot/Pallas-Bot/blob/main/docs/FAQ.md)。
+文档入口：[网页控制台](https://PallasBot.github.io/Pallas-Bot-Docs/guide/web-console)、[快速开始](https://PallasBot.github.io/Pallas-Bot-Docs/guide/quickstart)、[FAQ](https://PallasBot.github.io/Pallas-Bot-Docs/deploy/faq)。插件包说明见主仓 `docs/plugins/pb_webui/`（现行包名 **`pb_webui`**，旧称 `pallas_webui`）。
 
 ## 仓库结构（简要）
 
@@ -95,6 +95,15 @@ git push origin v0.4.14
 ```
 
 主仓侧也可在 release 流程中拉取本仓库源码并执行构建，两种方式可并存。
+
+## 相关仓库
+
+| 仓库 | 说明 |
+| --- | --- |
+| [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot) | Bot 本体（挂载本仓构建产物） |
+| [Pallas-Bot-AI](https://github.com/PallasBot/Pallas-Bot-AI) | AI 对话 / 唱歌 / TTS 等后端 |
+| [Pallas-Bot-Docs](https://github.com/PallasBot/Pallas-Bot-Docs) | 文档站 |
+| [community-plugin-index](https://github.com/PallasBot/community-plugin-index) | 社区插件商店索引 |
 
 ## 许可证
 
