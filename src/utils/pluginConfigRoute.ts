@@ -4,16 +4,16 @@ import type { RouteLocationRaw } from "vue-router";
 export function pluginConfigRouteFromPath(rawPath: string, sectionPlugin?: string): RouteLocationRaw {
   const section = (sectionPlugin || "").trim();
   if (section) {
-    return { name: "plugin-config", params: { name: section } };
+    return { name: "plugins", params: { name: section } };
   }
   const trimmed = (rawPath || "").trim();
   const fromPlugins = trimmed.match(/^\/plugins\/([a-z0-9_]+)$/i)?.[1];
   if (fromPlugins) {
-    return { name: "plugin-config", params: { name: fromPlugins } };
+    return { name: "plugins", params: { name: fromPlugins } };
   }
   const fromLegacyCommon = trimmed.match(/^\/common-config\/([a-z0-9_]+)$/i)?.[1];
   if (fromLegacyCommon) {
-    return { name: "plugin-config", params: { name: fromLegacyCommon } };
+    return { name: "plugins", params: { name: fromLegacyCommon } };
   }
   if (trimmed.startsWith("/")) {
     return trimmed;

@@ -1,5 +1,5 @@
 import { onActivated, onDeactivated, ref, watch, type Ref } from "vue";
-import { fetchInstances, peekInstancesCache, refreshInstancesCatalogGlobal } from "@/api/consoleApi";
+import { fetchInstances, peekInstancesCache, peekInstancesCacheAgeMs, refreshInstancesCatalogGlobal } from "@/api/consoleApi";
 import type { InstancesData } from "@/api/pallasTypes";
 import { instancesCatalogEpoch } from "@/utils/catalogSync";
 
@@ -50,7 +50,9 @@ export function useInstancesCatalogSync(instancesRef: Ref<InstancesData | null>,
   return { applyCache, refreshFromNetwork };
 }
 
-/** AppShell 路由切换：后台刷新全局目录（不依赖各页 onActivated 时序） */
+/** AppShell 路由切换：缓存仍新鲜时跳过后台强制刷新，减轻与目标页抢带宽 */
 export function scheduleInstancesCatalogRefreshOnRoute(): void {
+  const age = peekInstancesCacheAgeMs();
+  if (age != null && age < 45_000) return;
   void refreshInstancesCatalogGlobal().catch(() => {});
 }

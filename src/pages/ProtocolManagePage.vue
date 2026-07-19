@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, unref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   fetchInstances,
   fetchSystem,
@@ -14,19 +16,27 @@ import {
   protocolStartAccount,
   protocolStopAccount,
 } from "@/api/protocolApi";
+import { useProtocolAccountBatch } from "@/composables/useProtocolAccountBatch";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
+import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog.vue";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal.vue";
+import type { ProtocolAccountTab } from "@/components/ProtocolAccountWorkspace.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { isProtocolExtensionInstalled } from "@/utils/protocolExtension";
 import {
+  isExternalProtocolAccount,
+  isPluginManagedProtocolAccount,
+  mergeProtocolDisplayAccounts,
+} from "@/utils/protocolDisplayAccounts";
+import {
+  accountConnectedWsPortLabel,
   accountProtocolId,
   accountWebUiHref,
-  protocolAccountDetailUrl,
-  protocolDashboardUrl,
   protocolMountAbsoluteUrl,
   protocolSnapshot,
 } from "@/utils/protocolLinks";
@@ -41,12 +51,15 @@ import {
 } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
 
+const route = useRoute();
+const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(false);
@@ -67,7 +80,10 @@ const snap = computed(() => {
   }
   return base;
 });
-const dashUrl = computed(() => protocolDashboardUrl(system.value, snap.value));
+const protocolExtensionInstalled = computed(() =>
+  isProtocolExtensionInstalled(instances.value),
+);
+const skeletonPanels = computed(() => (protocolExtensionInstalled.value ? 2 : 1));
 const protoMountUrl = computed(() => protocolMountAbsoluteUrl(system.value, snap.value));
 const protoActionsEnabled = computed(() => Boolean(protoMountUrl.value && snap.value?.webui_enabled));
 
@@ -76,8 +92,23 @@ const deleteModalOpen = ref(false);
 const deleteBusy = ref(false);
 const deleteErr = ref("");
 const restartSelectedBusy = ref(false);
+const restartAllBusy = ref(false);
+const batch = useProtocolAccountBatch(() => protoMountUrl.value);
 const qrcodeModalOpen = ref(false);
 const qrcodeTarget = ref<{ id: string; title: string } | null>(null);
+
+const selectedAccountId = computed(() => String(route.params.accountId ?? "").trim());
+
+const accountConfigTab = computed((): ProtocolAccountTab => {
+  const tab = String(route.query.tab ?? "").trim().toLowerCase();
+  return tab === "settings" ? "settings" : "overview";
+});
+
+const accountConfigDialogOpen = computed(() => {
+  const id = selectedAccountId.value;
+  if (!id || !pageReady.value) return false;
+  return protocolAccountsSorted.value.some((a) => accountProtocolId(a) === id);
+});
 
 const tablePageSize = computed({
   get: () => Math.min(80, Math.max(4, consolePrefs.tablePageSize ?? 12)),
@@ -107,7 +138,8 @@ const consoleAuthDisp = computed(() =>
 );
 
 const protocolAccountsSorted = computed(() => {
-  const list = [...(snap.value?.accounts ?? [])];
+  const pluginAccounts = protoAccountsLive.value ?? snap.value?.accounts ?? [];
+  const list = mergeProtocolDisplayAccounts(instances.value, pluginAccounts);
   list.sort((a, b) => {
     const fa = protocolAccountNumber(a);
     const fb = protocolAccountNumber(b);
@@ -149,6 +181,7 @@ const pagedProtocolAccounts = computed(() =>
 
 const pagedProtocolIds = computed(() =>
   pagedProtocolAccounts.value
+    .filter((a) => isPluginManagedProtocolAccount(a))
     .map((a) => accountProtocolId(a))
     .filter((id): id is string => Boolean(id)),
 );
@@ -199,7 +232,7 @@ const deleteModalWarnings = computed(() => {
   }
   if (connected.length) {
     out.push(
-      `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+      `其中以下账号当前仍在线连接：${connected.join("、")}。删除后可能导致运行异常，请确认。`,
     );
   }
   return out;
@@ -238,7 +271,9 @@ watch(
 function syncBodyOverflow() {
   if (typeof document === "undefined") return;
   document.body.style.overflow =
-    deleteModalOpen.value || qrcodeModalOpen.value ? "hidden" : "";
+    deleteModalOpen.value || qrcodeModalOpen.value || accountConfigDialogOpen.value
+      ? "hidden"
+      : "";
 }
 
 watch(deleteModalOpen, () => {
@@ -249,6 +284,37 @@ watch(qrcodeModalOpen, () => {
   syncBodyOverflow();
 });
 
+watch(accountConfigDialogOpen, () => {
+  syncBodyOverflow();
+});
+
+function openAccountConfig(accountId: string, tab: ProtocolAccountTab = "overview") {
+  const id = String(accountId ?? "").trim();
+  if (!id) return;
+  void router.push({
+    name: "protocol",
+    params: { accountId: id },
+    query: tab === "settings" ? { tab: "settings" } : {},
+  });
+}
+
+function closeAccountConfig() {
+  if (!selectedAccountId.value) return;
+  void router.replace({ name: "protocol" });
+}
+
+function syncAccountConfigRoute() {
+  if (route.name !== "protocol") return;
+  if (!pageReady.value) return;
+  const id = selectedAccountId.value;
+  if (!id) return;
+  if (accountConfigDialogOpen.value) return;
+  void router.replace({ name: "protocol" });
+}
+
+function onAccountConfigDeleted() {
+  void pollProtocolAccounts();
+}
 
 function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -265,12 +331,6 @@ function profileNick(a: NapcatAccountRow): string {
 
 function webUiHref(a: NapcatAccountRow): string | null {
   return accountWebUiHref(a, system.value);
-}
-
-function detailHref(a: NapcatAccountRow): string | null {
-  const id = accountProtocolId(a);
-  if (!id) return null;
-  return protocolAccountDetailUrl(system.value, snap.value, id);
 }
 
 function primaryTitle(a: NapcatAccountRow): string {
@@ -296,9 +356,15 @@ function isProcessRunning(a: NapcatAccountRow): boolean {
 }
 
 function runningCapsuleClass(a: NapcatAccountRow): string {
+  if (isExternalProtocolAccount(a)) return "muted";
   return isProcessRunning(a)
     ? "data-conn-capsule data-conn-capsule--run"
     : "data-conn-capsule data-conn-capsule--off";
+}
+
+function processStateLabel(a: NapcatAccountRow): string {
+  if (isExternalProtocolAccount(a)) return "—";
+  return isProcessRunning(a) ? "运行中" : "未运行";
 }
 
 function cardKey(a: NapcatAccountRow, index: number): string {
@@ -504,13 +570,52 @@ async function restartSelectedAccounts() {
   if (restartSelectedBusy.value) return;
   restartSelectedBusy.value = true;
   try {
-    await Promise.all(ids.map((id) => protocolRestartAccount(mount, id)));
-    pushConsoleToast(`已重启 ${ids.length} 个账号`, "ok");
+    const job = await batch.runBatch(
+      { action: "restart", account_ids: ids, mode: "rolling" },
+      `将按间隔依次重启 ${ids.length} 个账号，以降低系统负载。继续？`,
+    );
+    if (!job) {
+      if (batch.batchErr.value) pushConsoleToast(batch.batchErr.value, "err");
+      return;
+    }
+    const failed = (job.results ?? []).filter((r) => !r.ok).length;
+    pushConsoleToast(
+      failed ? `重启完成，${failed} 个失败` : `已重启 ${ids.length} 个账号`,
+      failed ? "warn" : "ok",
+    );
     await refreshAfterAction();
-  } catch (e) {
-    pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
   } finally {
     restartSelectedBusy.value = false;
+    batch.closeBatchPanel();
+  }
+}
+
+async function restartAllAccounts() {
+  const mount = protoMountUrl.value;
+  const ids = protocolAccountsSorted.value
+    .map((a) => accountProtocolId(a))
+    .filter((id): id is string => Boolean(id));
+  if (!mount || !ids.length) {
+    pushConsoleToast("当前没有可重启的账号", "warn");
+    return;
+  }
+  if (restartAllBusy.value) return;
+  restartAllBusy.value = true;
+  try {
+    const job = await batch.runBatch(
+      { action: "restart", account_ids: ids, mode: "rolling" },
+      `将按间隔依次重启全部 ${ids.length} 个账号。继续？`,
+    );
+    if (!job) {
+      if (batch.batchErr.value) pushConsoleToast(batch.batchErr.value, "err");
+      return;
+    }
+    const failed = (job.results ?? []).filter((r) => !r.ok).length;
+    pushConsoleToast(failed ? `重启完成，${failed} 个失败` : "已重启全部账号", failed ? "warn" : "ok");
+    await refreshAfterAction();
+  } finally {
+    restartAllBusy.value = false;
+    batch.closeBatchPanel();
   }
 }
 
@@ -547,8 +652,16 @@ onMounted(async () => {
     await pollProtocolAccounts();
   } finally {
     pageReady.value = true;
+    syncAccountConfigRoute();
   }
 });
+
+watch(
+  () => [route.params.accountId, route.query.tab, protocolAccountsSorted.value.length] as const,
+  () => {
+    syncAccountConfigRoute();
+  },
+);
 
 onActivated(() => {
   protoRouteActive.value = true;
@@ -572,6 +685,9 @@ onDeactivated(() => {
   deleteErr.value = "";
   qrcodeModalOpen.value = false;
   qrcodeTarget.value = null;
+  if (selectedAccountId.value) {
+    void router.replace({ name: "protocol" });
+  }
   syncBodyOverflow();
 });
 
@@ -593,32 +709,54 @@ onUnmounted(() => {
     {{ err }}
   </div>
 
-  <ConsolePageSkeleton
-    v-if="!pageReady"
-    :panels="2"
-  />
-  <template v-else>
-    <div class="panel">
+  <div class="console-hub-page">
+    <ConsolePageSkeleton
+      v-if="!pageReady"
+      :panels="skeletonPanels"
+    />
+    <template v-else>
+    <div
+      v-if="batch.batchOpen.value"
+      class="protocol-page__batch panel"
+      role="status"
+      aria-live="polite"
+    >
+      <div class="protocol-page__batch-track">
+        <div
+          class="protocol-page__batch-fill"
+          :style="{ width: `${batch.batchProgressPercent()}%` }"
+        />
+      </div>
+      <p class="muted protocol-page__batch-msg">
+        {{ batch.batchBusy.value ? batch.batchPhaseLabel() || "批量任务进行中…" : batch.batchPhaseLabel() }}
+      </p>
+    </div>
+    <UiCard
+      tag="div"
+      glass
+      class="protocol-page__panel"
+    >
       <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
-          <span
+          <ConsoleNavIcon
             class="panel__title-ico"
-            aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议端中的实例
+            :name="panelNavIcon"
+          />已连接账号
           <RefreshIconButton
+            :show-label="false"
             :busy="loadBusy"
             label="刷新实例数据"
             @click="load"
           />
         </h2>
         <div class="inst-db-panel__hd-side">
-          <button
-            type="button"
-            class="btn panel-hd-collapse-btn"
+          <UiButton
+            variant="outline"
+            class="panel-hd-collapse-btn"
             @click="expProtocolAccounts = !expProtocolAccounts"
           >
             {{ expProtocolAccounts ? "收起" : "展开" }}
-          </button>
+          </UiButton>
           <div
             class="console-view-toggle"
             role="group"
@@ -655,20 +793,34 @@ onUnmounted(() => {
               title="按账号、昵称、协议、ID 筛选"
             >
           </div>
-          <button
-            type="button"
-            class="btn"
+          <UiButton
+            v-if="protoActionsEnabled"
+            variant="outline"
             :disabled="
-              !protoActionsEnabled ||
+              restartAllBusy ||
+              batch.batchBusy.value ||
+              protocolAccountsTotalCount === 0 ||
+              actionBusy.size > 0
+            "
+            :busy="restartAllBusy"
+            @click="restartAllAccounts"
+          >
+            {{ restartAllBusy ? "重启全部中…" : "重启全部" }}
+          </UiButton>
+          <UiButton
+            v-if="protoActionsEnabled"
+            variant="outline"
+            :disabled="
               restartSelectedBusy ||
+              batch.batchBusy.value ||
               unref(bulk.selectedCount) === 0 ||
               actionBusy.size > 0
             "
+            :busy="restartSelectedBusy"
             @click="restartSelectedAccounts"
           >
-            {{ restartSelectedBusy ? "重启中…" : "重启" }}
-          </button>
-          <PanelSidebarAdd main-path="/protocol" />
+            {{ restartSelectedBusy ? "重启中…" : "重启所选" }}
+          </UiButton>
         </div>
       </div>
       <div
@@ -687,6 +839,7 @@ onUnmounted(() => {
                 <th>连接</th>
                 <th>进程</th>
                 <th>WebUI</th>
+                <th>WS 端口</th>
                 <th style="width: 220px">操作</th>
               </tr>
             </thead>
@@ -713,9 +866,7 @@ onUnmounted(() => {
                   >{{ a.connected === true ? "已连接" : "未连接" }}</span>
                 </td>
                 <td>
-                  <span :class="runningCapsuleClass(a)">{{
-                    isProcessRunning(a) ? "运行中" : "未运行"
-                  }}</span>
+                  <span :class="runningCapsuleClass(a)">{{ processStateLabel(a) }}</span>
                 </td>
                 <td>
                   <a
@@ -730,15 +881,45 @@ onUnmounted(() => {
                     class="muted"
                   >—</span>
                 </td>
+                <td>{{ isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a) }}</td>
                 <td>
                   <div class="inst-actions protocol-acc-table-actions">
-                    <a
-                      v-if="detailHref(a)"
-                      class="btn"
-                      :href="detailHref(a)!"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >详情</a>
+                    <template v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled">
+                    <UiButton
+                      v-if="accountProtocolId(a)"
+                      variant="outline"
+                      size="sm"
+                      @click="openAccountConfig(accountProtocolId(a)!)"
+                    >
+                      配置
+                    </UiButton>
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      :disabled="isAnyAccountActionBusy(a)"
+                      :busy="isAnyAccountActionBusy(a)"
+                      @click="restartAccount(a)"
+                    >
+                      {{ restartLabel(a) }}
+                    </UiButton>
+                    <UiButton
+                      variant="outline"
+                      size="sm"
+                      :disabled="!protoMountUrl || !accountProtocolId(a)"
+                      @click="openQrcodeModal(a)"
+                    >
+                      二维码
+                    </UiButton>
+                    <UiButton
+                      size="sm"
+                      :variant="isProcessRunning(a) ? 'outline' : 'primary'"
+                      :disabled="isAnyAccountActionBusy(a)"
+                      :busy="isAnyAccountActionBusy(a)"
+                      @click="toggleAccountPower(a)"
+                    >
+                      {{ togglePowerLabel(a) }}
+                    </UiButton>
+                    </template>
                     <button
                       v-if="protocolAccountNumber(a) != null"
                       type="button"
@@ -752,30 +933,6 @@ onUnmounted(() => {
                       @click="toggleFavoriteBot(protocolAccountNumber(a)!)"
                     >
                       ★
-                    </button>
-                    <button
-                      type="button"
-                      class="btn"
-                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
-                      @click="restartAccount(a)"
-                    >
-                      {{ restartLabel(a) }}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn"
-                      :disabled="!protoMountUrl || !accountProtocolId(a)"
-                      @click="openQrcodeModal(a)"
-                    >
-                      二维码
-                    </button>
-                    <button
-                      type="button"
-                      :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
-                      :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
-                      @click="toggleAccountPower(a)"
-                    >
-                      {{ togglePowerLabel(a) }}
                     </button>
                   </div>
                 </td>
@@ -800,7 +957,7 @@ onUnmounted(() => {
           >
             <div class="data-summary-card__head data-summary-card__head--bot">
               <label
-                v-if="accountProtocolId(a)"
+                v-if="protoActionsEnabled && accountProtocolId(a) && isPluginManagedProtocolAccount(a)"
                 class="inst-db-card-select"
                 @click.stop
               >
@@ -819,13 +976,13 @@ onUnmounted(() => {
               <div class="data-summary-card__head-main">
                 <div class="data-summary-card__title-line">
                   <div class="data-summary-card__primary">
-                    <a
-                      v-if="detailHref(a)"
+                    <RouterLink
+                      v-if="accountProtocolId(a)"
                       class="data-summary-card__title-link"
-                      :href="detailHref(a)!"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >{{ primaryTitle(a) }}</a>
+                      :to="{ name: 'protocol', params: { accountId: accountProtocolId(a)! } }"
+                    >
+                      {{ primaryTitle(a) }}
+                    </RouterLink>
                     <span v-else>{{ primaryTitle(a) }}</span>
                   </div>
                   <button
@@ -855,9 +1012,7 @@ onUnmounted(() => {
                       : 'data-conn-capsule data-conn-capsule--off'
                   "
                 >{{ a.connected === true ? "已连接" : "未连接" }}</span>
-                <span :class="runningCapsuleClass(a)">{{
-                  isProcessRunning(a) ? "运行中" : "未运行"
-                }}</span>
+                <span :class="runningCapsuleClass(a)">{{ processStateLabel(a) }}</span>
               </div>
             </div>
             <div class="data-summary-card__body">
@@ -892,32 +1047,51 @@ onUnmounted(() => {
                 class="data-summary-card__val muted"
               >{{ a.webui_port ?? "—" }}</span>
             </div>
+            <div class="data-summary-card__row">
+              <span class="data-summary-card__label">WS 端口</span>
+              <span class="data-summary-card__val">{{
+                isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a)
+              }}</span>
             </div>
-            <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
-              <button
-                type="button"
-                class="btn"
+            </div>
+            <div
+              v-if="isPluginManagedProtocolAccount(a) && protoActionsEnabled"
+              class="data-summary-card__tags data-summary-card__foot inst-card-actions"
+            >
+              <UiButton
+                v-if="accountProtocolId(a)"
+                variant="outline"
+                size="sm"
+                @click="openAccountConfig(accountProtocolId(a)!)"
+              >
+                配置
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                :busy="isAnyAccountActionBusy(a)"
                 @click="restartAccount(a)"
               >
                 {{ restartLabel(a) }}
-              </button>
-              <button
-                type="button"
-                class="btn"
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :disabled="!protoMountUrl || !accountProtocolId(a)"
                 @click="openQrcodeModal(a)"
               >
                 二维码
-              </button>
-              <button
-                type="button"
-                :class="isProcessRunning(a) ? 'btn' : 'btn btn--primary'"
+              </UiButton>
+              <UiButton
+                size="sm"
+                :variant="isProcessRunning(a) ? 'outline' : 'primary'"
                 :disabled="!protoActionsEnabled || isAnyAccountActionBusy(a)"
+                :busy="isAnyAccountActionBusy(a)"
                 @click="toggleAccountPower(a)"
               >
                 {{ togglePowerLabel(a) }}
-              </button>
+              </UiButton>
             </div>
           </div>
         </div>
@@ -928,7 +1102,7 @@ onUnmounted(() => {
           :total="filteredProtocolAccounts.length"
         />
         <ConsoleCardBulkBar
-          v-if="protoView === 'cards' && filteredProtocolAccounts.length > 0"
+          v-if="protoActionsEnabled && protoView === 'cards' && filteredProtocolAccounts.length > 0"
           :page-all-selected="protoCardsPageAllSelected"
           :selected-count="unref(bulk.selectedCount)"
           :delete-busy="deleteBusy"
@@ -937,30 +1111,29 @@ onUnmounted(() => {
           @clear-selection="bulk.clearSelection()"
           @delete="openDeleteModal"
         />
-        <p
-          v-if="!protoActionsEnabled"
-          class="muted protocol-page__hint"
-        >
-          协议内置页未启用时，无法在控制台内启停或删除；请使用下方「协议端入口」或检查主仓配置。
-        </p>
       </div>
-    </div>
+    </UiCard>
 
-    <div class="panel">
+    <UiCard
+      v-if="protocolExtensionInstalled"
+      tag="div"
+      glass
+      class="protocol-page__panel"
+    >
       <div class="panel__hd panel__hd--split inst-db-panel__hd">
         <h2 class="panel__title">
-          <span
+          <ConsoleNavIcon
             class="panel__title-ico"
-            aria-hidden="true"
-          >{{ panelNavIcon }}</span>协议端入口
+            :name="panelNavIcon"
+          />协议端入口
           <RefreshIconButton
+            :show-label="false"
             :busy="loadBusy"
             label="刷新协议端数据"
             @click="load"
           />
         </h2>
         <div class="row-actions">
-          <PanelSidebarAdd main-path="/protocol" />
         </div>
       </div>
       <div class="panel__bd">
@@ -994,29 +1167,35 @@ onUnmounted(() => {
             >{{ pillLabel(consoleAuthDisp) }}</span>
           </div>
         </div>
-        <div class="row-actions protocol-page__actions">
-          <a
-            v-if="dashUrl"
-            class="btn btn--primary"
-            :href="dashUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >打开协议端管理</a>
-          <span
-            v-else
-            class="muted"
-          >当前无法拼接管理页 URL（请检查 http_base、webui_enabled 与 webui_path）。</span>
+        <p class="muted protocol-page__entry-hint">
+          运行时下载、Docker 镜像与全局运行模式已迁入本控制台
           <RouterLink
-            class="btn"
-            to="/instances"
-          >数据库实例</RouterLink>
+            class="link-quiet"
+            to="/protocol/assets"
+          >协议资产</RouterLink>；下方按钮仍可打开协议插件内置页（创建 / 导入账号等）。
+        </p>
+        <div class="row-actions protocol-page__actions protocol-page__entry-actions">
           <RouterLink
-            class="btn"
-            to="/"
-          >返回总览</RouterLink>
+            class="btn secondary"
+            to="/protocol/create"
+          >
+            创建账号
+          </RouterLink>
+          <RouterLink
+            class="btn secondary"
+            to="/protocol/import"
+          >
+            导入账号
+          </RouterLink>
+          <RouterLink
+            class="btn secondary"
+            to="/protocol/assets"
+          >
+            协议资产
+          </RouterLink>
         </div>
       </div>
-    </div>
+    </UiCard>
 
     <ConsoleDeleteConfirmModal
       :open="deleteModalOpen"
@@ -1030,6 +1209,15 @@ onUnmounted(() => {
       @close="closeDeleteModal"
       @confirm="confirmDeleteSelected"
     />
+    <ProtocolAccountConfigDialog
+      :open="accountConfigDialogOpen"
+      :account-id="selectedAccountId"
+      :mount-url="protoMountUrl"
+      :system="system"
+      :initial-tab="accountConfigTab"
+      @close="closeAccountConfig"
+      @deleted="onAccountConfigDeleted"
+    />
     <ProtocolAccountQrcodeModal
       :open="qrcodeModalOpen"
       :mount-url="protoMountUrl"
@@ -1037,7 +1225,8 @@ onUnmounted(() => {
       :account-title="qrcodeTarget?.title ?? ''"
       @close="closeQrcodeModal"
     />
-  </template>
+    </template>
+  </div>
 </template>
 
 <style scoped>
@@ -1057,10 +1246,6 @@ onUnmounted(() => {
 }
 .protocol-page__actions {
   margin-top: 4px;
-}
-.protocol-page__hint {
-  margin: 12px 0 0;
-  font-size: 12px;
 }
 
 .protocol-acc-table-actions {

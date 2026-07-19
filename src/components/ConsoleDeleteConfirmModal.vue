@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiDialog from "@/components/ui/UiDialog.vue";
 
 export type ConsoleDeleteListItem = {
   key: string;
@@ -27,100 +29,63 @@ const headingId = computed(() => props.titleId || "console-delete-modal-title");
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="console-modal"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="headingId"
+  <UiDialog
+    :open="open"
+    :title-id="headingId"
+    :title="title"
+    :subtitle="subtitle"
+    :busy="busy"
+    :show-close="true"
+    @close="emit('close')"
+  >
+    <p
+      v-if="error"
+      class="alert alert--err"
+      style="margin: 0 0 12px"
     >
-      <div
-        class="console-modal__backdrop"
-        aria-hidden="true"
-        @click="emit('close')"
-      />
-      <div
-        class="console-modal__dialog"
-        @click.stop
+      {{ error }}
+    </p>
+    <p
+      v-for="(w, wi) in warnings ?? []"
+      :key="`warn-${wi}`"
+      class="alert alert--err"
+      style="margin: 0 0 12px"
+    >
+      {{ w }}
+    </p>
+    <p
+      class="muted"
+      style="margin: 0 0 8px; font-size: 13px"
+    >
+      账号列表
+    </p>
+    <ul class="inst-delete-account-list muted">
+      <li
+        v-for="item in items"
+        :key="item.key"
       >
-        <div class="console-modal__hd">
-          <div class="console-modal__head-text">
-            <h2
-              :id="headingId"
-              class="console-modal__title"
-            >
-              {{ title }}
-            </h2>
-            <p class="console-modal__subtitle muted">
-              {{ subtitle }}
-            </p>
-          </div>
-          <button
-            type="button"
-            class="console-modal__close"
-            aria-label="关闭"
-            :disabled="busy"
-            @click="emit('close')"
-          >
-            ×
-          </button>
-        </div>
-        <div class="console-modal__bd">
-          <p
-            v-if="error"
-            class="alert alert--err"
-            style="margin: 0 0 12px"
-          >
-            {{ error }}
-          </p>
-          <p
-            v-for="(w, wi) in warnings ?? []"
-            :key="`warn-${wi}`"
-            class="alert alert--err"
-            style="margin: 0 0 12px"
-          >
-            {{ w }}
-          </p>
-          <p
-            class="muted"
-            style="margin: 0 0 8px; font-size: 13px"
-          >
-            账号列表
-          </p>
-          <ul class="inst-delete-account-list muted">
-            <li
-              v-for="item in items"
-              :key="item.key"
-            >
-              {{ item.label }}
-            </li>
-          </ul>
-          <div
-            class="row-actions"
-            style="margin-top: 18px; flex-wrap: wrap; gap: 8px"
-          >
-            <button
-              type="button"
-              class="btn btn--danger"
-              :disabled="busy"
-              @click="emit('confirm')"
-            >
-              {{ busy ? "删除中…" : (confirmLabel || "确认删除") }}
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="busy"
-              @click="emit('close')"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      </div>
+        {{ item.label }}
+      </li>
+    </ul>
+    <div
+      class="row-actions"
+      style="margin-top: 18px; flex-wrap: wrap; gap: 8px"
+    >
+      <UiButton
+        variant="destructive"
+        :disabled="busy"
+        @click="emit('confirm')"
+      >
+        {{ busy ? "删除中…" : (confirmLabel || "确认删除") }}
+      </UiButton>
+      <UiButton
+        :disabled="busy"
+        @click="emit('close')"
+      >
+        取消
+      </UiButton>
     </div>
-  </Teleport>
+  </UiDialog>
 </template>
 
 <style>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding } from "@/api/consoleApi";
+import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding, peekCommunityStatsCache } from "@/api/consoleApi";
 import type {
   CommunityStatsData,
   CommunityVersionCountData,
@@ -11,20 +12,24 @@ import type {
 } from "@/api/pallasTypes";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { copyTextToClipboard } from "@/utils/clipboard";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import CorpusWordCloud from "@/components/CorpusWordCloud.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatCard from "@/components/StatCard.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 
 const panelNavIcon = usePanelNavIcon();
-const pageReady = ref(false);
+const warmCommunity = peekCommunityStatsCache();
+const pageReady = ref(Boolean(warmCommunity));
 const refreshBusy = ref(false);
 const hotReloadToken = ref(0);
 const err = ref("");
-const communityStats = ref<CommunityStatsData | null>(null);
+const communityStats = ref<CommunityStatsData | null>(warmCommunity);
 const corpusStatus = ref<CorpusStatusData | null>(null);
 const federationOnboarding = ref<FederationOnboardingData | null>(null);
 const federationOnboardingUnavailable = ref(false);
@@ -188,6 +193,26 @@ const corpusSummaryFlow = computed(() => {
   return mergeOrderSteps.value.map((k) => sourceLabel(k)).join(" → ");
 });
 
+const corpusMultiSourceBadge = computed((): { label: string; ok: boolean } => {
+  const status = corpusStatus.value;
+  if (!status) return { label: "多源接话未启用", ok: false };
+  const community = status.sources?.community;
+  if (status.composite_active) {
+    if (community?.wanted && !community?.readable) {
+      return { label: "多源接话已启用（待接入）", ok: true };
+    }
+    return { label: "多源接话已启用", ok: true };
+  }
+  if (community?.wanted) {
+    return { label: "多源接话已开启（待就绪）", ok: false };
+  }
+  const mode = String(status.remote_find_mode || "").trim();
+  if (mode === "prefetch" || mode === "sync") {
+    return { label: "本机未命中时查社区已开", ok: true };
+  }
+  return { label: "多源接话未启用", ok: false };
+});
+
 const corpusSnapshotText = computed(() => formatUnixSec(corpusStatus.value?.as_of));
 
 const communityUsage = computed(() => corpusStatus.value?.sources?.community?.usage ?? null);
@@ -242,10 +267,8 @@ const communityHubUrl = computed(
 );
 
 const controlPlaneConfigLink = computed(() => ({
-  name: "common-config" as const,
-  query: {
-    section: (federationOnboarding.value?.config_section_id || "control_plane").trim() || "control_plane",
-  },
+  name: "plugins" as const,
+  params: { name: "pb_core" },
 }));
 
 function ingressEnabledLabel(raw: string | undefined): string {
@@ -321,7 +344,7 @@ function formatUnixSec(ts: number | null | undefined): string {
 
 function sourceLabel(key: SourceKey): string {
   if (key === "local") return "本机";
-  if (key === "fed") return "联邦库";
+  if (key === "fed") return "协同接话库";
   return "共享池";
 }
 
@@ -360,37 +383,47 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="community-page">
+  <div class="community-page console-hub-page">
     <ConsolePageSkeleton
       v-if="!pageReady"
       :panels="3"
     />
     <template v-else>
-      <section class="community-page__intro panel">
-        <div class="panel__bd">
-          <p class="community-page__intro-lead">
-            本页汇总<strong>社区中心</strong>的公开统计，以及<strong>本部署</strong>的语料与联邦状态。公开页面：
+      <ConsoleHubMasthead
+        :icon="panelNavIcon"
+        class="community-page__masthead"
+      >
+        <template #title>
+          统计与语料
+        </template>
+        <template #lead>
+          社区中心公开统计与本部署语料、多机协同状态；数据只读。
+        </template>
+        <template #extra>
+          <p class="community-page__masthead-links muted">
             <a
               class="community-page__inline-link"
               :href="communityHubUrl"
               target="_blank"
               rel="noopener noreferrer"
-            >社区主站</a>。
-            数据只读；改设置请前往
-            <RouterLink to="/common-config?section=corpus_federation">语料联邦</RouterLink>
-            或
-            <RouterLink to="/common-config?section=community_stats">在线统计与社区主站</RouterLink>。
+            >社区主站</a>
+            ·
+            <RouterLink :to="{ name: 'plugins', params: { name: 'pb_stats' } }">在线统计</RouterLink>
+            ·
+            <RouterLink :to="{ name: 'plugins', params: { name: 'pb_core' } }">共享接话库</RouterLink>
+            ·
+            <RouterLink to="/corpus-config">语料设置</RouterLink>
           </p>
-          <ul class="community-page__intro-list muted">
-            <li><strong>在线统计</strong>：默认开启，向社区中心上报本机在线牛牛数量（不含消息内容）。</li>
-            <li><strong>主站展示</strong>：默认向社区主站气泡墙公开牛牛<strong>头像昵称</strong>；QQ 默认不公开。可在
-              <RouterLink to="/common-config?section=community_stats">在线统计与社区主站</RouterLink>
-              调整。</li>
-            <li><strong>共享语料</strong>：默认关闭，开启后可读取社区大家贡献的接话素材，也可选择上传本机新回复。</li>
-            <li><strong>社区联邦</strong>：多套牛牛共池时，避免对同一条群消息重复回复；需填写入池密钥。</li>
-          </ul>
-        </div>
-      </section>
+        </template>
+        <template #actions>
+          <RefreshIconButton
+            class="hub-refresh-wide-only"
+            :busy="refreshBusy"
+            label="刷新"
+            @click="refresh"
+          />
+        </template>
+      </ConsoleHubMasthead>
 
       <p
         v-if="err"
@@ -414,27 +447,34 @@ onMounted(() => {
         id="community-deploy"
         class="community-page__section"
       >
-        <div class="panel community-page__panel">
+        <UiCard tag="div" glass class="community-page__panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd community-page__deploy-panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >{{ panelNavIcon }}</span>全网部署
+                :name="panelNavIcon"
+              />全网部署
               <RefreshIconButton
+                class="hub-refresh-narrow-only"
+                :show-label="false"
                 :busy="refreshBusy"
-                label="刷新本页数据"
+                label="刷新"
                 @click="refresh"
               />
             </h2>
             <div class="row-actions community-page__hd-actions community-page__deploy-hd-actions">
-              <span class="friends-groups-hd-pin-wrap community-page__deploy-hd-pin-wrap">
-                <PanelSidebarAdd main-path="/community" />
-              </span>
               <RouterLink
-                class="btn btn--ghost btn--sm community-page__deploy-settings-btn"
+                custom
+                v-slot="{ navigate }"
                 to="/community-stats-config"
-              >在线统计设置</RouterLink>
+              >
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  class="community-page__deploy-settings-btn"
+                  @click="navigate"
+                >在线统计设置</UiButton>
+              </RouterLink>
             </div>
           </div>
           <div class="panel__bd">
@@ -471,11 +511,10 @@ onMounted(() => {
               <dd>{{ formatCommunityStatNum(communityStats?.catalog_bots_online_sum) }} 只牛牛</dd>
               <dt>共享语料</dt>
               <dd>
-                <span
+                <UiBadge
                   v-if="communityStats != null"
-                  class="badge"
-                  :class="communityStats.corpus_enabled ? 'badge--ok' : ''"
-                >{{ communityStats.corpus_enabled ? "已接入" : "未接入" }}</span>
+                  :variant="communityStats.corpus_enabled ? 'ok' : 'secondary'"
+                >{{ communityStats.corpus_enabled ? "已接入" : "未接入" }}</UiBadge>
                 <span
                   v-else
                   class="community-page__mono"
@@ -515,26 +554,33 @@ onMounted(() => {
               </ul>
             </div>
           </div>
-        </div>
+        </UiCard>
       </section>
 
       <section
         id="community-federation"
         class="community-page__section"
       >
-        <div class="panel community-page__panel community-page__federation-panel">
+        <UiCard tag="div" glass class="community-page__panel community-page__federation-panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >◇</span>{{ federationOnboarding?.title || "社区联邦" }}
+                name="network"
+              />{{ federationOnboarding?.title || "多机协同" }}
             </h2>
             <div class="row-actions community-page__hd-actions">
               <RouterLink
-                class="btn btn--ghost btn--sm"
+                custom
+                v-slot="{ navigate }"
                 :to="controlPlaneConfigLink"
-              >联邦控制</RouterLink>
+              >
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  @click="navigate"
+                >多机协同</UiButton>
+              </RouterLink>
             </div>
           </div>
           <div class="panel__bd community-page__federation-bd">
@@ -548,7 +594,7 @@ onMounted(() => {
               v-else-if="federationOnboardingUnavailable"
               class="muted community-page__federation-summary"
             >
-              社区中心暂未提供入池说明；你仍可在「联邦控制」中手动填写密钥与相关项。
+              社区中心暂未提供入池说明；你仍可在「多机协同」配置中手动填写密钥与相关项。
             </p>
             <p
               v-if="federationOnboarding?.ingress_note"
@@ -558,14 +604,14 @@ onMounted(() => {
             </p>
 
             <p class="muted community-page__federation-pool-note">
-              左两列：已向中心登记联邦配置、并在近期上报在线统计的安装。右列：去重服务上仍有活跃标记的安装（表示近期确实处理过群消息），与左两列统计口径不同。
+              左两列为已登记协同配置且近期上报在线统计的安装；右列为去重服务上仍有活跃标记的安装。
             </p>
             <div class="grid-stats community-page__federation-pool-grid">
               <StatCard
                 dense
                 label="累计入池"
                 :value="formatCommunityStatNum(federationPoolStats?.members_total)"
-                hint="曾成功从社区中心领取联邦配置的安装套数"
+                hint="曾成功从社区中心领取协同配置的安装套数"
               />
               <StatCard
                 dense
@@ -589,13 +635,13 @@ onMounted(() => {
                 <span class="community-page__federation-secret-label">{{
                   federationOnboarding?.instance_secret_label || "入池密钥"
                 }}</span>
-                <button
-                  type="button"
-                  class="btn btn--ghost btn--sm"
+                <UiButton
+                  variant="ghost"
+                  size="sm"
                   @click="copyFederationSecret"
                 >
                   复制密钥
-                </button>
+                </UiButton>
               </div>
               <code class="community-page__federation-secret-value community-page__mono">{{ federationSecret }}</code>
               <p
@@ -610,14 +656,13 @@ onMounted(() => {
               v-if="federationOnboarding"
               class="home-dl community-page__detail-dl community-page__federation-meta"
             >
-              <dt>联邦池</dt>
+              <dt>协同池</dt>
               <dd class="community-page__mono">{{ federationOnboarding.federate_id || "—" }}</dd>
               <dt>自动拉取配置</dt>
               <dd>
-                <span
-                  class="badge"
-                  :class="federationOnboarding.bootstrap_enabled ? 'badge--ok' : ''"
-                >{{ federationOnboarding.bootstrap_enabled ? "已开启" : "已关闭" }}</span>
+                <UiBadge
+                  :variant="federationOnboarding.bootstrap_enabled ? 'ok' : 'secondary'"
+                >{{ federationOnboarding.bootstrap_enabled ? "已开启" : "已关闭" }}</UiBadge>
               </dd>
               <dt>去重服务器</dt>
               <dd class="community-page__federation-coord-dd">
@@ -626,13 +671,13 @@ onMounted(() => {
                   class="community-page__federation-coord-row"
                 >
                   <code class="community-page__federation-coord-value community-page__mono">{{ federationCoordDisplay || federationCoordEndpoint }}</code>
-                  <button
-                    type="button"
-                    class="btn btn--ghost btn--sm"
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
                     @click="copyCoordAddress"
                   >
                     复制地址
-                  </button>
+                  </UiButton>
                 </div>
                 <span
                   v-else
@@ -654,7 +699,7 @@ onMounted(() => {
               <h3 class="community-page__subhd">本部署状态</h3>
               <div class="community-page__corpus-meta-bar">
                 <span class="community-page__corpus-meta-item">
-                  <span class="community-page__corpus-meta-k">联邦控制</span>
+                  <span class="community-page__corpus-meta-k">多机协同</span>
                   <span
                     class="community-page__corpus-meta-v"
                     :class="controlPlane.enabled ? 'is-ok' : 'is-off'"
@@ -702,26 +747,33 @@ onMounted(() => {
               </li>
             </ol>
           </div>
-        </div>
+        </UiCard>
       </section>
 
       <section
         id="community-corpus"
         class="community-page__section"
       >
-        <div class="panel community-page__panel">
+        <UiCard tag="div" glass class="community-page__panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >▦</span>共享语料
+                name="list"
+              />共享语料
             </h2>
             <div class="row-actions community-page__hd-actions">
               <RouterLink
-                class="btn btn--ghost btn--sm"
+                custom
+                v-slot="{ navigate }"
                 to="/corpus-config"
-              >语料设置</RouterLink>
+              >
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  @click="navigate"
+                >语料设置</UiButton>
+              </RouterLink>
             </div>
           </div>
           <div class="panel__bd">
@@ -764,45 +816,45 @@ onMounted(() => {
               />
             </div>
           </div>
-        </div>
+        </UiCard>
       </section>
 
       <section
         id="community-hot"
         class="community-page__section"
       >
-        <div class="panel community-page__panel">
+        <UiCard tag="div" glass class="community-page__panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >☁</span>共享语料热词
+                name="sparkles"
+              />共享语料热词
             </h2>
           </div>
           <div class="panel__bd">
             <p class="muted community-page__hot-lead">
-              默认展示近24h各部署热词叠加（机群榜）；「高频池」为共享语料累计，「今日/本周/本月」为近期活跃窗口。
+              默认展示近24h各部署热词叠加（机群榜）；「高频池」为共享语料累计，「本月」为近期活跃窗口。
             </p>
             <CorpusWordCloud
               source="community"
               :reload-token="hotReloadToken"
             />
           </div>
-        </div>
+        </UiCard>
       </section>
 
       <section
         id="community-local-hot"
         class="community-page__section"
       >
-        <div class="panel community-page__panel">
+        <UiCard tag="div" glass class="community-page__panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >◉</span>本机语料热词
+                name="globe"
+              />本机语料热词
             </h2>
           </div>
           <div class="panel__bd">
@@ -814,26 +866,33 @@ onMounted(() => {
               :reload-token="hotReloadToken"
             />
           </div>
-        </div>
+        </UiCard>
       </section>
 
       <section
         id="community-local"
         class="community-page__section"
       >
-        <div class="panel community-page__panel">
+        <UiCard tag="div" glass class="community-page__panel">
           <div class="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 class="panel__title">
-              <span
+            <h2 class="panel__title community-page__section-title">
+              <ConsoleNavIcon
                 class="panel__title-ico"
-                aria-hidden="true"
-              >◎</span>本部署语料
+                name="database"
+              />本部署语料
             </h2>
             <div class="row-actions community-page__hd-actions">
               <RouterLink
-                class="btn btn--ghost btn--sm"
+                custom
+                v-slot="{ navigate }"
                 to="/corpus-config"
-              >语料设置</RouterLink>
+              >
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  @click="navigate"
+                >语料设置</UiButton>
+              </RouterLink>
             </div>
           </div>
           <div
@@ -843,10 +902,10 @@ onMounted(() => {
             <div class="community-page__corpus-board">
               <div class="community-page__corpus-summary">
                 <div class="community-page__corpus-summary-main">
-                  <span
-                    class="badge community-page__status-badge"
-                    :class="corpusStatus.composite_active ? 'badge--ok' : ''"
-                  >{{ corpusStatus.composite_active ? "多源接话已启用" : "多源接话未启用" }}</span>
+                  <UiBadge
+                    class="community-page__status-badge"
+                    :variant="corpusMultiSourceBadge.ok ? 'ok' : 'secondary'"
+                  >{{ corpusMultiSourceBadge.label }}</UiBadge>
                   <span
                     v-if="corpusSummaryFlow"
                     class="community-page__corpus-summary-flow"
@@ -964,7 +1023,7 @@ onMounted(() => {
           >
             无法读取本部署语料状态。
           </div>
-        </div>
+        </UiCard>
       </section>
     </template>
   </div>

@@ -206,3 +206,30 @@ export function defaultGatewayDisplayName(row: PallasImageGatewayRow, fallbackIn
   if (row.role === "primary") return "主网关";
   return `备线${fallbackIndex}`;
 }
+
+/** 将指定备选与当前主网关对调：备选升为主，原主降为备线首位。 */
+export function promoteFallbackToPrimary(
+  rows: PallasImageGatewayRow[],
+  fallbackId: string,
+): PallasImageGatewayRow[] {
+  const primary = rows.find((r) => r.role === "primary");
+  const target = rows.find((r) => r.id === fallbackId && r.role === "fallback");
+  if (!primary || !target) return rows;
+
+  const otherFallbacks = rows.filter(
+    (r) => r.role === "fallback" && r.id !== fallbackId,
+  );
+  const demoted: PallasImageGatewayRow = {
+    ...primary,
+    id: "fallback-temp",
+    role: "fallback",
+    omit_response_format: false,
+  };
+  const promoted: PallasImageGatewayRow = {
+    ...target,
+    id: "primary",
+    role: "primary",
+    omit_response_format: false,
+  };
+  return renormalizeGatewayRows([promoted, demoted, ...otherFallbacks]);
+}

@@ -1,16 +1,16 @@
 import type { PluginLoadRole, PluginRow } from "@/api/pallasTypes";
 
 const LOAD_WHERE: Record<PluginLoadRole, string> = {
-  hub: "Hub",
-  worker: "Worker",
-  both: "Hub + Worker",
+  hub: "主节点",
+  worker: "分片节点",
+  both: "主节点 + 分片节点",
   infra: "依赖",
-  internal: "Worker",
+  internal: "分片节点",
 };
 
 export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
-/** 分片部署下的角色文案；unified 时显示「本进程」，避免误解为 hub/worker 双进程。 */
+/** 分片部署插件加载角色文案；单进程时 unified 显示「本进程」。 */
 export function loadRoleDisplayLabel(
   role: PluginLoadRole,
   catalog?: PluginCatalogProcessRole,
@@ -20,6 +20,19 @@ export function loadRoleDisplayLabel(
     return "本进程";
   }
   return LOAD_WHERE[role] ?? "";
+}
+
+export function pluginLoadProcessTags(
+  p: Pick<PluginRow, "load_role" | "catalog_process_role">,
+): string[] {
+  const catalog = p.catalog_process_role;
+  if (!catalog || catalog === "unified") return [];
+  const role = p.load_role;
+  if (!role || role === "infra") return [];
+  if (role === "both") return ["主节点", "分片节点"];
+  if (role === "hub") return ["主节点"];
+  if (role === "worker" || role === "internal") return ["分片节点"];
+  return [];
 }
 
 export function pluginExpectsCatalogProcess(
@@ -43,27 +56,27 @@ export function pluginLoadWhere(
   const expectsHere = pluginExpectsCatalogProcess(p);
 
   if ((role === "worker" || role === "internal") && catalog === "hub" && !loaded) {
-    return "Worker 进程";
+    return "分片节点进程";
   }
   if (role === "infra") {
     if (!loaded && expectsHere) {
-      return catalog === "hub" ? "Hub 未加载" : "未加载";
+      return catalog === "hub" ? "主节点未加载" : "未加载";
     }
     if (!loaded) {
       return "依赖";
     }
-    return catalog === "hub" ? "依赖 · Hub" : "依赖";
+    return catalog === "hub" ? "依赖 · 主节点" : "依赖";
   }
   if (!loaded && expectsHere) {
-    if (catalog === "hub") return "Hub 未加载";
-    if (catalog === "worker") return "Worker 未加载";
+    if (catalog === "hub") return "主节点未加载";
+    if (catalog === "worker") return "分片节点未加载";
     return "未加载";
   }
   if (!loaded) {
     return loadRoleDisplayLabel(role, catalog);
   }
   if (catalog === "hub" && (role === "worker" || role === "internal")) {
-    return "Worker 进程";
+    return "分片节点进程";
   }
   return loadRoleDisplayLabel(role, catalog);
 }
@@ -77,8 +90,8 @@ export function pluginLoadBadgeText(
   if (p.loaded_in_process !== false) return null;
   if (!pluginExpectsCatalogProcess(p)) return null;
   const catalog = p.catalog_process_role;
-  if (catalog === "hub") return "Hub 未加载";
-  if (catalog === "worker") return "Worker 未加载";
+  if (catalog === "hub") return "主节点未加载";
+  if (catalog === "worker") return "分片节点未加载";
   return "未加载";
 }
 
@@ -104,13 +117,13 @@ export function hasPluginLoadWhere(
 
 export function catalogProcessHint(catalog?: PluginCatalogProcessRole): string {
   if (catalog === "unified") {
-    return "当前为单进程部署：下列「加载」均为本进程；启用多进程分片后，请以 Hub / 各 Worker 进程内的插件目录为准。";
+    return "当前为单进程部署：下列「加载」均为本进程；启用多进程分片后，请以主节点与各分片节点内的插件目录为准。";
   }
   if (catalog === "hub") {
-    return "目录来自 Hub 进程：标注 Worker 的插件在分片 worker 中运行，Hub 未加载属正常。";
+    return "目录来自主节点：标注为分片节点的插件在各分片节点运行，主节点未加载属正常。";
   }
   if (catalog === "worker") {
-    return "目录来自 Worker 进程：仅反映本分片已加载的插件。";
+    return "目录来自当前分片节点：仅反映本分片已加载的插件。";
   }
   return "";
 }

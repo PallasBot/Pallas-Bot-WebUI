@@ -9,7 +9,7 @@ export function joinHttpPath(base: string, path: string): string {
   return `${b}${p2}`;
 }
 
-/** 协议管理页挂载路径（站点根相对，如 ``/protocol/console``） */
+/** 协议 API 挂载路径（站点根相对，如 ``/protocol/napcat``） */
 export function resolveProtocolMountPath(snap: NapcatManagerSnapshot | null): string | null {
   if (!snap?.webui_enabled) return null;
   const raw = snap.webui_path?.trim();
@@ -42,21 +42,25 @@ export function protocolMountAbsoluteUrl(
   return `${window.location.origin}${mount}`;
 }
 
-/** pallas_protocol 内置管理页 URL：``webui_path`` 在站点根下，勿与 ``console.http_base``（WebUI 前缀）拼接。 */
-export function protocolDashboardUrl(system: SystemData | null, snap: NapcatManagerSnapshot | null): string | null {
-  return protocolMountAbsoluteUrl(system, snap);
+/** 协议管理列表（Bot WebUI 内嵌页，非独立 HTML 壳） */
+export function protocolDashboardUrl(
+  _system: SystemData | null,
+  snap: NapcatManagerSnapshot | null,
+): string | null {
+  if (!snap?.webui_enabled) return null;
+  return `${consolePublicRoot()}/protocol`;
 }
 
 /** 协议账号工作区（详情） */
 export function protocolAccountDetailUrl(
-  system: SystemData | null,
+  _system: SystemData | null,
   snap: NapcatManagerSnapshot | null,
   accountId: string,
 ): string | null {
-  const root = protocolMountAbsoluteUrl(system, snap);
+  if (!snap?.webui_enabled) return null;
   const id = String(accountId ?? "").trim();
-  if (!root || !id) return null;
-  return `${root.replace(/\/$/, "")}/account/${encodeURIComponent(id)}`;
+  if (!id) return null;
+  return `${consolePublicRoot()}/protocol/${encodeURIComponent(id)}`;
 }
 
 /** 协议账号设置（编辑） */
@@ -91,7 +95,7 @@ export function botHttpBaseFromSystem(system: SystemData | null): string | null 
   return raw.replace(/\/$/, "");
 }
 
-/** NoneBot driver 监听（仅供参考，可能为 0.0.0.0） */
+/** 消息框架 driver 监听（可能为 0.0.0.0，仅作提示） */
 export function nonebotDriverHint(system: SystemData | null): string | null {
   const host = system?.nonebot2_driver?.host;
   const port = system?.nonebot2_driver?.port;
@@ -106,24 +110,97 @@ export function accountNativeWebUiUrl(account: NapcatAccountRow): string | null 
 }
 
 /** 协议账号 WebUI：优先 native_url，否则用 console.http_base 替换端口 */
-export function accountWebUiHref(account: NapcatAccountRow, system: SystemData | null): string | null {
-  const direct = accountNativeWebUiUrl(account);
-  if (direct) return direct;
-  const port = account.webui_port;
-  if (port == null || port === "") return null;
-  const base = botHttpBaseFromSystem(system);
-  if (!base) return null;
-  const portStr = String(port).trim();
-  if (!portStr) return null;
+function parseUrlPort(raw: string | null | undefined): number | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
   try {
-    const raw = base.includes("://") ? base : `http://${base}`;
-    const u = new URL(raw);
-    u.port = portStr;
-    return u.toString();
+    const u = new URL(s);
+    if (u.port) {
+      const p = parseInt(u.port, 10);
+      return Number.isFinite(p) && p >= 1 && p <= 65535 ? p : null;
+    }
+    if (u.protocol === "wss:" || u.protocol === "https:") return 443;
+    if (u.protocol === "ws:" || u.protocol === "http:") return 80;
   } catch {
     return null;
   }
+  return null;
 }
+
+/** 协议账号配置的 OneBot WS 端口（自 ws_url 或 Docker 映射解析） */
+export function accountOnebotWsPort(account: NapcatAccountRow): number | null {
+  const wsUrl = typeof account.ws_url === "string" ? account.ws_url : null;
+  const fromUrl = parseUrlPort(wsUrl);
+  if (fromUrl != null) return fromUrl;
+
+  const docker = account.snowluma_docker_host_onebot_ws;
+  if (docker != null && String(docker).trim() !== "") {
+    const p = parseInt(String(docker), 10);
+    if (Number.isFinite(p) && p >= 1 && p <= 65535) return p;
+  }
+
+  const publish = account.snowluma_publish_ports as
+    | { items?: { label?: string; host?: number }[] }
+    | undefined;
+  const item = publish?.items?.find((i) => i.label === "OneBot WS");
+  if (item?.host != null && item.host >= 1 && item.host <= 65535) return item.host;
+
+  return null;
+}
+
+/** 已连接时展示 WS 端口，未连接为 — */
+export function accountConnectedWsPortLabel(account: NapcatAccountRow): string {
+  if (account.connected !== true) return "—";
+  const port = accountOnebotWsPort(account);
+  return port != null ? String(port) : "—";
+}
+
+function accountConsoleProxyHref(account: NapcatAccountRow, surface: "webui" | "novnc"): string | null {
+  const accountId = String(account.id ?? "").trim();
+  if (!accountId) return null;
+  return `${consolePublicRoot()}/protocol/instances/${encodeURIComponent(accountId)}/${surface}/`;
+}
+
+/** 原生 WebUI 不支持控制台子路径反代，保留空结果以隐藏历史入口。 */
+export function accountWebUiHref(_account: NapcatAccountRow, _system: SystemData | null): string | null {
+  return null;
+}
+
+export interface SnowlumaDockerNovncMeta {
+  url?: string;
+  bind_host?: string;
+  host_port?: number;
+  uses_default_vnc_password?: boolean;
+}
+
+/** SnowLuma Docker noVNC 桌面链接（`/vnc.html`） */
+export function accountSnowlumaNovncHref(
+  account: NapcatAccountRow | null,
+  _system: SystemData | null,
+): string | null {
+  if (!account) return null;
+  const nv = account.snowluma_docker_novnc as SnowlumaDockerNovncMeta | undefined;
+  const port = nv?.host_port;
+  if (port == null || port < 1 || port > 65535) return null;
+  return accountConsoleProxyHref(account, "novnc");
+}
+
+export function snowlumaManagedWebuiPassword(account: NapcatAccountRow | null): string {
+  return String(account?.snowluma_managed_webui_password ?? "").trim();
+}
+
+export function snowlumaRuntimeWebuiPassword(account: NapcatAccountRow | null): string {
+  return String(account?.snowluma_runtime_webui_password ?? "").trim();
+}
+
+export function snowlumaNovncPasswordHint(account: NapcatAccountRow | null): string {
+  const nv = account?.snowluma_docker_novnc as SnowlumaDockerNovncMeta | undefined;
+  if (nv?.uses_default_vnc_password === false) {
+    return "见服务端 PALLAS_PROTOCOL_SNOWLUMA_DOCKER_VNC_PASSWD";
+  }
+  return "vncpasswd（默认）";
+}
+
 
 export function protocolSnapshot(data: InstancesData | null) {
   return data?.pallas_protocol ?? data?.napcat ?? null;

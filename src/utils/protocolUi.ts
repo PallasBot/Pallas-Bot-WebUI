@@ -34,6 +34,13 @@ export function protocolBackendKey(account: Record<string, unknown>): ProtocolBa
 }
 
 export function protocolBackendDisplayName(account: Record<string, unknown>): string {
+  if (
+    account.account_source === "external" ||
+    String(account.protocol_backend ?? "").trim().toLowerCase() === "external"
+  ) {
+    const adapter = String(account.external_adapter ?? account.adapter ?? "").trim();
+    return adapter || "OneBot";
+  }
   return protocolBackendKey(account) === "snowluma" ? "SnowLuma" : "NapCat";
 }
 
@@ -47,6 +54,12 @@ function coerceRuntimeModeToken(raw: unknown): string {
 
 /** 账号实际运行方式（与协议内置页 docker / shell / appimage 一致） */
 export function protocolRuntimeModeLabel(account: Record<string, unknown>): string {
+  if (
+    account.account_source === "external" ||
+    String(account.protocol_backend ?? "").trim().toLowerCase() === "external"
+  ) {
+    return "—";
+  }
   const bk = protocolBackendKey(account);
   if (bk === "snowluma") {
     if (coerceBoolean(account.snowluma_linux_docker) === true) return "Docker";

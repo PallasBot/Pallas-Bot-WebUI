@@ -1,5 +1,7 @@
 <script setup lang="ts">
-export type HourlyChartLayer = { label: string; color: string; poly: string };
+import { computed, ref, watch } from "vue";
+
+export type HourlyChartLayer = { label: string; color: string; poly: string; hours?: number[] };
 
 export type HourlyChartPack = {
   W: number;
@@ -12,21 +14,79 @@ export type HourlyChartPack = {
   layers: HourlyChartLayer[];
 };
 
-defineProps<{
+const props = defineProps<{
   pack: HourlyChartPack;
 }>();
 
 const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const plotRef = ref<HTMLElement | null>(null);
+const svgRef = ref<SVGSVGElement | null>(null);
+const hoverHour = ref<number | null>(null);
+const tooltipX = ref(0);
+
+watch(
+  () => props.pack,
+  () => {
+    hoverHour.value = null;
+  },
+);
+
+const hoverX = computed(() => {
+  if (hoverHour.value == null) return null;
+  return props.pack.left + (hoverHour.value / 23) * props.pack.innerW;
+});
+
+const hoverRows = computed(() => {
+  if (hoverHour.value == null) return [];
+  const h = hoverHour.value;
+  return props.pack.layers
+    .map((ly) => ({
+      label: ly.label,
+      color: ly.color,
+      value: ly.hours?.[h] ?? 0,
+    }))
+    .filter((r) => r.value > 0);
+});
+
+function onPlotMove(ev: PointerEvent) {
+  const svg = svgRef.value;
+  const wrap = plotRef.value;
+  const p = props.pack;
+  if (!svg || !wrap) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX;
+  pt.y = ev.clientY;
+  const svgPt = pt.matrixTransform(ctm.inverse());
+  const ratio = (svgPt.x - p.left) / Math.max(1, p.innerW);
+  hoverHour.value = Math.max(0, Math.min(23, Math.round(ratio * 23)));
+  const rect = wrap.getBoundingClientRect();
+  const pad = 12;
+  tooltipX.value = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
+}
+
+function onPlotLeave() {
+  hoverHour.value = null;
+}
 </script>
 
 <template>
-  <div class="home-plugin-hourly-chart">
+  <div
+    ref="plotRef"
+    class="home-plugin-hourly-chart home-plugin-hourly-chart--interactive"
+    @pointermove="onPlotMove"
+    @pointerleave="onPlotLeave"
+  >
     <svg
+      ref="svgRef"
       class="home-plugin-hourly-chart__svg home-plugin-bucket__svg"
       :viewBox="`0 0 ${pack.W} ${pack.H}`"
       preserveAspectRatio="xMidYMid meet"
-      overflow="visible"
-      aria-hidden="true"
+      overflow="hidden"
+      role="img"
+      aria-label="今日各小时折线图"
     >
       <line
         v-for="(gy, gi) in pack.gridYs"
@@ -60,7 +120,34 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
         stroke-opacity="0.92"
         :points="ly.poly"
       />
+      <line
+        v-if="hoverX != null"
+        class="home-plugin-bucket__cursor"
+        :x1="hoverX"
+        :y1="10"
+        :x2="hoverX"
+        :y2="pack.bottom"
+      />
     </svg>
+    <div
+      v-if="hoverHour != null && hoverRows.length"
+      class="home-plugin-chart-tooltip"
+      :style="{ left: `${tooltipX}px` }"
+    >
+      <div class="home-plugin-chart-tooltip__hd">{{ hoverHour }} 时</div>
+      <div
+        v-for="row in hoverRows"
+        :key="row.label"
+        class="home-plugin-chart-tooltip__row"
+      >
+        <span
+          class="home-plugin-chart-tooltip__dot"
+          :style="{ background: row.color }"
+        />
+        <span class="home-plugin-chart-tooltip__label">{{ row.label }}</span>
+        <span class="home-plugin-chart-tooltip__val">{{ row.value.toLocaleString() }}</span>
+      </div>
+    </div>
     <div
       class="home-plugin-hour-ticks muted"
       :style="{
@@ -84,6 +171,11 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.home-plugin-hourly-chart--interactive {
+  position: relative;
+  touch-action: none;
 }
 
 .home-plugin-hourly-chart__svg {
@@ -124,9 +216,8 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
   display: grid;
   grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 0 1px;
-  font-size: 8px;
-  margin: 2px 0 0;
-  letter-spacing: -0.03em;
+  font-size: 10px;
+  margin: 4px 0 0;
   min-width: 0;
   box-sizing: border-box;
 }
@@ -139,7 +230,7 @@ const HOURLY_AXIS_HOURS = Array.from({ length: 24 }, (_, i) => i);
 }
 
 .home-plugin-hour-ticks__unit {
-  font-size: 7px;
-  opacity: 0.88;
+  font-size: 10px;
+  opacity: 0.72;
 }
 </style>

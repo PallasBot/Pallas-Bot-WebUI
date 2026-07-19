@@ -1,27 +1,36 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
-  fetchPluginConfig,
+  fetchCommunityPluginStore,
+  fetchOfficialExtensions,
+  fetchPluginCapabilities,
   fetchPlugins,
-  fetchPluginsGlobalDisable,
   peekPluginsCache,
-  putPluginsGlobalDisable,
 } from "@/api/consoleApi";
-import type { PluginConfigData, PluginRow, PluginSourceKind } from "@/api/pallasTypes";
+import type {
+  CommunityPluginRow,
+  OfficialExtensionRow,
+  PluginCapabilitiesRow,
+  PluginRow,
+} from "@/api/pallasTypes";
+import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
+import PluginCatalogCard from "@/components/PluginCatalogCard.vue";
+import PluginConfigDialog from "@/components/PluginConfigDialog.vue";
+import UiButton from "@/components/ui/UiButton.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
-import { pluginFavoriteNames, toggleFavoritePlugin } from "@/utils/pluginFavorites";
-import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
-import {
-  catalogProcessHint,
-  hasPluginLoadWhere,
-  pluginCountsAsCatalogLoadProblem,
-  pluginCountsAsLoadedInCatalog,
-  pluginLoadBadgeText,
-  pluginLoadWhere,
-} from "@/utils/pluginLoadRoleLabel";
+import { pluginFavoriteNames } from "@/utils/pluginFavorites";
+import { buildPluginIconMap, resolvePluginIconForRow, shouldShowPluginAvatar } from "@/utils/pluginIconUrl";
+import { PLUGIN_LIST_CATEGORY_TABS, type PluginCategory, pluginCategory } from "@/utils/pluginCategory";
+import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
+import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
+const route = useRoute();
+const router = useRouter();
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
 const pageReady = ref(true);
@@ -30,19 +39,16 @@ const list = ref<PluginRow[]>([]);
   const warm = peekPluginsCache();
   if (warm?.length) list.value = warm;
 }
-const open = ref<string | null>(null);
-const preview = ref<Record<string, PluginConfigData | "loading" | null>>({});
-type SourceFilter = "all" | PluginSourceKind;
-const sourceFilter = ref<SourceFilter>("all");
-const loadFilter = ref<"all" | "loaded" | "problem">("all");
-const globalDisabled = ref<string[]>([]);
-const globalDisableProtected = ref<string[]>([]);
-const globalDisableBusy = ref(false);
-const globalDisableErr = ref("");
+const searchQuery = ref("");
+const activeCategory = ref<PluginCategory | "all">("all");
+const capabilities = ref<PluginCapabilitiesRow[]>([]);
+const capabilitiesOverviewOpen = ref(false);
+const iconByPlugin = ref<Record<string, string>>({});
+const officialExtensions = ref<OfficialExtensionRow[]>([]);
+const communityPlugins = ref<CommunityPluginRow[]>([]);
+const configDialogOpen = ref(false);
 
-const catalogProcessRole = computed(
-  () => list.value.find((p) => p.catalog_process_role)?.catalog_process_role,
-);
+const selectedPluginName = computed(() => String(route.params.name || "").trim());
 
 const sortedPlugins = computed(() => {
   const rows = [...list.value];
@@ -57,113 +63,120 @@ const sortedPlugins = computed(() => {
   return rows;
 });
 
+const categoryOf = (p: PluginRow): PluginCategory => pluginCategory(p, officialExtensions.value);
+
+const categoryTabs = PLUGIN_LIST_CATEGORY_TABS;
+
 const filteredPlugins = computed(() => {
-  let rows = sortedPlugins.value;
-  if (sourceFilter.value !== "all") {
-    rows = rows.filter((p) => p.plugin_source === sourceFilter.value);
-  }
-  if (loadFilter.value === "loaded") {
-    rows = rows.filter((p) => pluginCountsAsLoadedInCatalog(p));
-  } else if (loadFilter.value === "problem") {
-    rows = rows.filter((p) => pluginCountsAsCatalogLoadProblem(p));
-  }
-  return rows;
+  const q = searchQuery.value.trim().toLowerCase();
+  const cat = activeCategory.value;
+  return sortedPlugins.value.filter((p) => {
+    if (cat !== "all" && categoryOf(p) !== cat) return false;
+    if (!q) return true;
+    const name = (p.metadata?.name || p.name).toLowerCase();
+    const id = p.name.toLowerCase();
+    const desc = (p.metadata?.description || "").toLowerCase();
+    return name.includes(q) || id.includes(q) || desc.includes(q);
+  });
 });
 
-const sourceCounts = computed(() => {
-  const counts: Record<SourceFilter, number> = {
-    all: list.value.length,
-    main: 0,
-    local: 0,
-    pip: 0,
-  };
-  for (const p of list.value) {
-    const src = p.plugin_source;
-    if (src === "main" || src === "local" || src === "pip") {
-      counts[src] += 1;
-    }
+function pluginIconUrl(name: string): string {
+  const row = list.value.find((p) => p.name === name);
+  if (!row) return "";
+  return resolvePluginIconForRow(row, iconByPlugin.value);
+}
+
+function pluginAvatarUrl(name: string): string {
+  const row = list.value.find((p) => p.name === name);
+  if (!row) return "";
+  const avatar = (row.avatar || "").trim();
+  const icon = pluginIconUrl(name);
+  return shouldShowPluginAvatar(icon, avatar) ? avatar : "";
+}
+
+const selectedPluginRow = computed(
+  () => list.value.find((p) => p.name === selectedPluginName.value) ?? null,
+);
+
+function selectPlugin(name: string) {
+  if (selectedPluginName.value === name && configDialogOpen.value) return;
+  void router.push({ name: "plugins", params: { name } });
+}
+
+function closeConfigDialog() {
+  configDialogOpen.value = false;
+  if (selectedPluginName.value) {
+    void router.replace({ name: "plugins" });
   }
-  return counts;
+}
+
+const capabilitiesSorted = computed(() =>
+  [...capabilities.value].sort((a, b) =>
+    (a.title || a.plugin).localeCompare(b.title || b.plugin, "zh-CN"),
+  ),
+);
+
+const catalogProcessRole = computed(
+  () => list.value.find((p) => p.catalog_process_role)?.catalog_process_role,
+);
+
+function syncPluginDialogRoute() {
+  if (route.name !== "plugins") return;
+  if (!pageReady.value) return;
+  const name = selectedPluginName.value;
+  if (!name) {
+    configDialogOpen.value = false;
+    return;
+  }
+  const pool = filteredPlugins.value.length ? filteredPlugins.value : sortedPlugins.value;
+  if (pool.some((p) => p.name === name)) {
+    configDialogOpen.value = true;
+    return;
+  }
+  configDialogOpen.value = false;
+  void router.replace({ name: "plugins" });
+}
+
+onMounted(() => {
+  void loadPluginsPage(true);
 });
 
-function isPluginFavorite(name: string): boolean {
-  return pluginFavoriteNames.value.has(name);
-}
+onActivated(() => {
+  syncPluginDialogRoute();
+  void loadPluginsPage(true);
+});
 
-function isGloballyDisabled(name: string): boolean {
-  return globalDisabled.value.includes(name);
-}
-
-function isGlobalDisableProtected(p: PluginRow): boolean {
-  return Boolean(p.global_disable_protected);
-}
-
-async function loadGlobalDisable() {
-  globalDisableErr.value = "";
+async function loadPluginsPage(refreshCommunityIndex = false) {
   try {
-    const data = await fetchPluginsGlobalDisable();
-    globalDisabled.value = [...data.disabled_plugins];
-    globalDisableProtected.value = [...data.protected_plugins];
-  } catch (e) {
-    globalDisableErr.value = e instanceof Error ? e.message : String(e);
-  }
-}
-
-async function toggleGlobalDisable(name: string, wantDisabled: boolean) {
-  if (globalDisableBusy.value) return;
-  const p = list.value.find((row) => row.name === name);
-  if (p && isGlobalDisableProtected(p)) return;
-  globalDisableBusy.value = true;
-  globalDisableErr.value = "";
-  const set = new Set(globalDisabled.value);
-  if (wantDisabled) set.add(name);
-  else set.delete(name);
-  try {
-    const out = await putPluginsGlobalDisable([...set].sort((a, b) => a.localeCompare(b)));
-    globalDisabled.value = [...out.disabled_plugins];
-    globalDisableProtected.value = [...out.protected_plugins];
-    list.value = list.value.map((row) => ({
-      ...row,
-      globally_disabled: out.disabled_plugins.includes(row.name),
-    }));
-  } catch (e) {
-    globalDisableErr.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    globalDisableBusy.value = false;
-  }
-}
-
-onMounted(async () => {
-  try {
-    const [rows] = await Promise.all([fetchPlugins(), loadGlobalDisable()]);
+    const [rows, caps, official, community] = await Promise.all([
+      fetchPlugins(),
+      fetchPluginCapabilities().catch(() => ({ plugins: [] })),
+      fetchOfficialExtensions().catch(() => []),
+      fetchCommunityPluginStore({ refresh: refreshCommunityIndex }).catch(() => null),
+    ]);
     list.value = rows;
+    capabilities.value = caps.plugins ?? [];
+    officialExtensions.value = official;
+    communityPlugins.value = community?.plugins ?? [];
+    const indexUpdatedAt =
+      community?.meta && typeof community.meta === "object"
+        ? String((community.meta as { updated_at?: unknown }).updated_at ?? "").trim()
+        : "";
+    iconByPlugin.value = buildPluginIconMap(official, community?.plugins, { indexUpdatedAt });
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     pageReady.value = true;
   }
-});
-
-async function togglePreview(name: string) {
-  if (open.value === name) {
-    open.value = null;
-    return;
-  }
-  open.value = name;
-  if (preview.value[name] && preview.value[name] !== "loading") return;
-  preview.value = { ...preview.value, [name]: "loading" };
-  try {
-    const cfg = await fetchPluginConfig(name);
-    preview.value = { ...preview.value, [name]: cfg };
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e);
-    preview.value = { ...preview.value, [name]: null };
-  }
 }
+
+watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPluginDialogRoute, {
+  immediate: true,
+});
 </script>
 
 <template>
-  <div>
+  <div class="plugins-page plugins-page--hub console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -173,243 +186,206 @@ async function togglePreview(name: string) {
 
     <ConsolePageSkeleton
       v-if="!pageReady"
-      :panels="3"
+      :panels="2"
     />
     <div
       v-else
       class="plugins-page__body"
     >
-      <div class="plugins-page__hero">
-        <div class="plugins-page__hero-main">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>插件目录
-          </h2>
-          <p class="muted plugins-page__hero-note">
-            「全实例禁用」对本站所有牛牛、所有群立即生效（无需重启）；帮助菜单展示请在各插件配置页设置。
-          </p>
-          <p
-            v-if="globalDisableErr"
-            class="alert alert--err plugins-page__hero-note"
-          >
-            {{ globalDisableErr }}
-          </p>
+      <ConsoleHubMasthead :icon="panelNavIcon">
+        <template #title>
+          插件管理
+        </template>
+        <template #lead>
+          点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。
+        </template>
+        <template #extra>
           <p
             v-if="catalogProcessHint(catalogProcessRole)"
-            class="muted plugins-page__hero-note plugins-page__hero-note--shard"
+            class="muted console-hub-page__lead plugins-page__hero-note--shard"
           >
             {{ catalogProcessHint(catalogProcessRole) }}
           </p>
-        </div>
-        <PanelSidebarAdd main-path="/plugins" />
-      </div>
-      <div class="plugins-page__filters row-actions">
-        <label class="plugins-page__filter-label">
-          <span class="muted">来源</span>
-          <select
-            v-model="sourceFilter"
-            class="sel"
-            aria-label="按插件来源筛选"
+        </template>
+      </ConsoleHubMasthead>
+
+      <ConsoleHubSearch
+        v-model="searchQuery"
+        placeholder="搜索插件名、ID 或说明…"
+      />
+
+      <ConsoleHubFilterBar>
+        <template #primary>
+          <div
+            class="console-view-toggle console-view-toggle--full"
+            role="tablist"
+            aria-label="插件分类"
           >
-            <option value="all">
-              全部（{{ sourceCounts.all }}）
-            </option>
-            <option value="main">
-              主仓（{{ sourceCounts.main }}）
-            </option>
-            <option value="local">
-              站点 local（{{ sourceCounts.local }}）
-            </option>
-            <option value="pip">
-              pip / 依赖（{{ sourceCounts.pip }}）
-            </option>
-          </select>
-        </label>
-        <label class="plugins-page__filter-label">
-          <span class="muted">加载</span>
-          <select
-            v-model="loadFilter"
-            class="sel"
-            aria-label="按应在当前目录进程中的加载状态筛选"
-          >
-            <option value="all">
-              全部
-            </option>
-            <option value="loaded">
-              已就绪
-            </option>
-            <option value="problem">
-              缺载异常
-            </option>
-          </select>
-        </label>
-        <span
-          v-if="filteredPlugins.length !== sortedPlugins.length"
-          class="muted plugins-page__filter-hint"
-        >
-          显示 {{ filteredPlugins.length }} / {{ sortedPlugins.length }}
-        </span>
-      </div>
-      <div
-        class="grid-stats plugins-page__plugin-grid"
+            <button
+              v-for="tab in categoryTabs"
+              :key="tab.id"
+              type="button"
+              role="tab"
+              :class="{ 'is-on': activeCategory === tab.id }"
+              :aria-selected="activeCategory === tab.id"
+              @click="activeCategory = tab.id"
+            >
+              <ConsoleNavIcon
+                :name="tab.icon"
+                :size="16"
+              />
+              <span>{{ tab.label }}</span>
+            </button>
+          </div>
+        </template>
+      </ConsoleHubFilterBar>
+
+      <section
+        class="plugins-page__catalog"
+        aria-label="已加载插件"
       >
+        <div class="plugins-page__catalog-hd">
+          <h2 class="plugins-page__catalog-title">
+            已加载插件
+          </h2>
+          <span class="muted plugins-page__catalog-count">
+            共 {{ list.length }} 个
+            <template v-if="filteredPlugins.length !== sortedPlugins.length">
+              · 显示 {{ filteredPlugins.length }}
+            </template>
+          </span>
+        </div>
+
         <p
           v-if="!filteredPlugins.length"
           class="muted plugins-page__empty"
         >
-          没有符合筛选条件的插件。
+          {{ sortedPlugins.length ? "没有符合搜索条件的插件。" : "暂无已加载插件。" }}
         </p>
         <div
-          v-for="p in filteredPlugins"
-          :key="p.name"
-          class="plugin-card"
+          v-else
+          class="plugins-page__plugin-grid"
         >
-          <div class="plugin-card__top">
-            <div class="plugin-card__head-row">
-              <RouterLink
-                class="plugin-card__link"
-                :to="{ name: 'plugin-config', params: { name: p.name } }"
-              >
-                <div class="plugin-card__title-line">
-                  {{ p.metadata?.name || p.nb_plugin_name || p.name }}
-                  <span
-                    v-if="p.globally_disabled"
-                    class="plugins-page__badge plugins-page__badge--muted"
-                    title="全实例已禁用"
-                  >已禁用</span>
-                  <span
-                    v-if="pluginLoadBadgeText(p)"
-                    class="plugins-page__badge plugins-page__badge--warn"
-                    :title="pluginLoadWhere(p)"
-                  >{{ pluginLoadBadgeText(p) }}</span>
-                </div>
-                <div
-                  v-if="p.nb_plugin_name && p.nb_plugin_name !== p.name && (p.metadata?.name || p.name) !== p.nb_plugin_name"
-                  class="muted plugin-card__id-line"
-                >
-                  {{ p.nb_plugin_name }}
-                </div>
-                <div
-                  class="muted plugin-card__desc-line"
-                  :title="(p.metadata?.description || p.module) || undefined"
-                >
-                  {{ p.metadata?.description || p.module }}
-                </div>
-                <div
-                  v-if="hasPluginSource(p)"
-                  class="plugin-card__source-block"
-                >
-                  <div class="plugin-card__source-kind">
-                    来源：{{ pluginSourceLabel(p.plugin_source) }}
-                  </div>
-                  <div
-                    v-if="pluginSourceDir(p)"
-                    class="plugin-card__source-path muted"
-                  >
-                    {{ pluginSourceDir(p) }}
-                  </div>
-                </div>
-                <div
-                  v-if="hasPluginLoadWhere(p)"
-                  class="muted plugin-card__role-line"
-                >
-                  加载：{{ pluginLoadWhere(p) }}
-                </div>
-              </RouterLink>
-              <button
-                type="button"
-                class="plugin-card__fav"
-                :aria-pressed="isPluginFavorite(p.name)"
-                :title="isPluginFavorite(p.name) ? '取消收藏' : '收藏'"
-                :aria-label="isPluginFavorite(p.name) ? `取消收藏「${p.metadata?.name || p.name}」` : `收藏「${p.metadata?.name || p.name}」`"
-                @click.stop="toggleFavoritePlugin(p.name)"
-              >
-                ★
-              </button>
-            </div>
-          </div>
-          <label
-            class="plugin-global-disable-label"
-            :class="{
-              'plugin-global-disable-label--disabled': globalDisableBusy || isGlobalDisableProtected(p),
-            }"
-          >
-            <input
-              type="checkbox"
-              :checked="isGloballyDisabled(p.name)"
-              :disabled="globalDisableBusy || isGlobalDisableProtected(p)"
-              @click.prevent="void toggleGlobalDisable(p.name, !isGloballyDisabled(p.name))"
+          <PluginCatalogCard
+            v-for="p in filteredPlugins"
+            :key="p.name"
+            :plugin="p"
+            :icon-url="pluginIconUrl(p.name)"
+            :avatar-url="pluginAvatarUrl(p.name)"
+            :active="selectedPluginName === p.name && configDialogOpen"
+            @select="selectPlugin(p.name)"
+          />
+        </div>
+      </section>
+
+      <div
+        v-if="capabilitiesSorted.length"
+        class="panel plugins-page__capabilities-overview"
+      >
+        <div class="panel__hd panel__hd--split plugins-page__capabilities-hd">
+          <h2 class="panel__title">
+            <ConsoleNavIcon
+              class="panel__title-ico"
+              name="plugin"
+            />插件能力总览
+          </h2>
+          <div class="row-actions plugins-page__capabilities-hd-actions">
+            <span class="muted plugins-page__catalog-count">
+              {{ capabilitiesSorted.length }} 个插件
+            </span>
+            <UiButton
+              variant="outline"
+              size="sm"
+              class="panel-hd-collapse-btn"
+              @click="capabilitiesOverviewOpen = !capabilitiesOverviewOpen"
             >
-            <span>全实例禁用</span>
-          </label>
-          <p
-            v-if="isGlobalDisableProtected(p)"
-            class="muted plugin-global-disable-hint"
-          >
-            基础设施插件，不可全实例禁用。
+              {{ capabilitiesOverviewOpen ? "收起" : "展开" }}
+            </UiButton>
+          </div>
+        </div>
+        <div
+          v-show="capabilitiesOverviewOpen"
+          class="panel__bd"
+        >
+          <p class="muted plugins-page__capabilities-note">
+            聚合命令权限、冷却、LLM 工具与存储键声明；热重载策略分为仅配置、配置与说明、含代码变更三档。
           </p>
-          <div class="plugin-card__actions plugin-card__actions--pair">
-            <RouterLink
-              class="btn btn--primary plugin-card__action-btn"
-              :to="{ name: 'plugin-config', params: { name: p.name } }"
-              @click.stop
-            >
-              编辑配置
-            </RouterLink>
-            <button
-              type="button"
-              class="btn plugin-card__action-btn"
-              @click.stop="togglePreview(p.name)"
-            >
-              {{ open === p.name ? "收起预览" : "预览配置项" }}
-            </button>
+          <div class="table-wrap plugins-page__capabilities-table-wrap">
+            <table class="data console-data-table plugins-page__capabilities-table">
+              <thead>
+                <tr>
+                  <th>插件</th>
+                  <th>命令</th>
+                  <th>LLM</th>
+                  <th>存储</th>
+                  <th>热重载</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in capabilitiesSorted"
+                  :key="row.plugin"
+                >
+                  <td>
+                    <div class="plugins-page__cap-plugin-title">
+                      {{ row.title || row.plugin }}
+                    </div>
+                    <div class="muted plugins-page__cap-plugin-id">
+                      {{ row.plugin }}
+                    </div>
+                  </td>
+                  <td>{{ row.commands.length }}</td>
+                  <td>{{ row.llm_tools.length }}</td>
+                  <td>{{ row.storage_keys.length }}</td>
+                  <td>{{ reloadPolicyLabel(row.reload_policy) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div
-            v-if="open === p.name"
-            class="plugin-preview"
-          >
-            <div
-              v-if="preview[p.name] === 'loading'"
-              class="muted"
+          <ul class="plugins-page__capabilities-cards">
+            <li
+              v-for="row in capabilitiesSorted"
+              :key="`card-${row.plugin}`"
+              class="plugins-page__capabilities-card"
             >
-              加载中…
-            </div>
-            <div
-              v-else-if="preview[p.name] === null"
-              class="muted"
-            >
-              加载失败。
-            </div>
-            <template v-else-if="preview[p.name]">
-              <div class="muted">
-                共 <strong style="color: var(--text)">{{ (preview[p.name] as PluginConfigData).fields.length }}</strong> 个字段
+              <div class="plugins-page__cap-plugin-title">
+                {{ row.title || row.plugin }}
               </div>
-              <div class="table-wrap">
-                <table class="data console-data-table">
-                  <thead>
-                    <tr>
-                      <th>字段</th>
-                      <th>类型</th>
-                      <th>必填</th>
-                      <th>配置键</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="f in (preview[p.name] as PluginConfigData).fields"
-                      :key="f.name"
-                    >
-                      <td style="font-weight: 600">{{ f.name }}</td>
-                      <td class="muted">{{ f.kind }}</td>
-                      <td>{{ f.required ? "是" : "否" }}</td>
-                      <td class="muted" style="font-size: 11px">{{ f.env_key }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="muted plugins-page__cap-plugin-id">
+                {{ row.plugin }}
               </div>
-            </template>
-          </div>
+              <dl class="plugins-page__capabilities-card-dl">
+                <div>
+                  <dt>命令</dt>
+                  <dd>{{ row.commands.length }}</dd>
+                </div>
+                <div>
+                  <dt>LLM</dt>
+                  <dd>{{ row.llm_tools.length }}</dd>
+                </div>
+                <div>
+                  <dt>存储</dt>
+                  <dd>{{ row.storage_keys.length }}</dd>
+                </div>
+                <div>
+                  <dt>热重载</dt>
+                  <dd>{{ reloadPolicyLabel(row.reload_policy) }}</dd>
+                </div>
+              </dl>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
+
+    <PluginConfigDialog
+      :open="configDialogOpen"
+      :plugin-name="selectedPluginName"
+      :plugin-row="selectedPluginRow"
+      :icon-url="selectedPluginName ? pluginIconUrl(selectedPluginName) : null"
+      :official-extensions="officialExtensions"
+      :community-plugins="communityPlugins"
+      @close="closeConfigDialog"
+    />
   </div>
 </template>

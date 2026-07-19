@@ -8,25 +8,58 @@ const apiBase = `${base.replace(/\/$/, "")}/api`;
 export function axiosErrorDetail(err: unknown): string {
   if (isAxiosError(err)) {
     const d = err.response?.data;
-    if (d && typeof d === "object" && "detail" in d) {
-      const detail = (d as { detail: unknown }).detail;
-      if (typeof detail === "string" && detail.trim()) return detail.trim();
-      if (Array.isArray(detail)) {
-        const parts = detail
-          .map((item) => {
-            if (item && typeof item === "object" && "msg" in item) {
-              const msg = (item as { msg: unknown }).msg;
-              return typeof msg === "string" ? msg.trim() : "";
-            }
-            return "";
-          })
-          .filter(Boolean);
-        if (parts.length) return parts.join("；");
+    if (d && typeof d === "object") {
+      if ("error" in d) {
+        const errorText = (d as { error: unknown }).error;
+        if (typeof errorText === "string" && errorText.trim()) {
+          return errorText.trim();
+        }
+      }
+      if ("detail" in d) {
+        const detail = (d as { detail: unknown }).detail;
+        if (typeof detail === "string" && detail.trim()) {
+          const text = detail.trim();
+          if (text === "Method Not Allowed") return "请求方法不被允许，请重启牛牛并更新控制台静态资源后重试";
+          if (text === "Field required") return "缺少必填字段";
+          return text;
+        }
+        if (Array.isArray(detail)) {
+          const parts = detail
+            .map((item) => {
+              if (item && typeof item === "object" && "msg" in item) {
+                const msg = (item as { msg: unknown }).msg;
+                if (typeof msg === "string") {
+                  const text = msg.trim();
+                  if (text === "Field required") return "缺少必填字段";
+                  return text;
+                }
+                return "";
+              }
+              return "";
+            })
+            .filter(Boolean);
+          if (parts.length) return parts.join("；");
+        }
       }
     }
     return err.message;
   }
   return err instanceof Error ? err.message : String(err);
+}
+
+/** 静态 catch-all 未匹配到 API 路由时的 404（分片下常见于未重启 Hub）。 */
+export function isCatchAllApiError(err: unknown): boolean {
+  if (!isAxiosError(err)) return false;
+  const detail = err.response?.data;
+  if (detail && typeof detail === "object" && "detail" in detail) {
+    const text = String((detail as { detail: unknown }).detail ?? "");
+    if (text.includes("catch-all") || text.includes("勿走静态")) return true;
+  }
+  return false;
+}
+
+export function catchAllApiHint(): string {
+  return "接口未注册：请确认访问的是分片部署的主节点控制台入口，并已重启主节点加载最新代码。";
 }
 
 export const http = axios.create({

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { putCommonConfig } from "@/api/consoleApi";
-import { PALLAS_WEBUI_SECTION_ID } from "@/api/pallasTypes";
+import { putPluginConfig } from "@/api/consoleApi";
+import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import { axiosErrorDetail } from "@/api/http";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
+
+const PB_WEBUI_PLUGIN = "pb_webui";
 
 const DEV_MODE_TOOLTIP =
   "联调时可跳过登录与 API token；保存后立即生效，无需重启 Bot。CORS 等中间件变更仍需重启 hub。";
@@ -45,7 +47,7 @@ async function applyDevMode(next: boolean) {
   busy.value = true;
   err.value = "";
   try {
-    await putCommonConfig(PALLAS_WEBUI_SECTION_ID, { pallas_webui_dev_mode: next });
+    await putPluginConfig(PB_WEBUI_PLUGIN, { pallas_webui_dev_mode: next });
     emit("updated", next);
     toastSaveSuccess(next ? "开发模式已开启（鉴权已跳过，立即生效）" : "开发模式已关闭（鉴权已恢复）");
   } catch (e) {
@@ -56,12 +58,8 @@ async function applyDevMode(next: boolean) {
   }
 }
 
-function onToggleInput(ev: Event) {
-  const el = ev.target as HTMLInputElement;
-  const want = el.checked;
+function onToggleInput(want: boolean) {
   if (want === props.active) return;
-  void el.blur();
-  el.checked = props.active;
   void applyDevMode(want);
 }
 </script>
@@ -75,7 +73,7 @@ function onToggleInput(ev: Event) {
     <strong>开发模式已开启</strong>
     <span>
       控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
-      <RouterLink :to="{ path: '/common-config', query: { section: PALLAS_WEBUI_SECTION_ID } }">通用配置</RouterLink>
+      <RouterLink :to="{ name: 'plugins', params: { name: PB_WEBUI_PLUGIN } }">网页控制台配置</RouterLink>
     </span>
   </div>
 
@@ -86,27 +84,14 @@ function onToggleInput(ev: Event) {
     :title="DEV_MODE_TOOLTIP"
   >
     <span class="shell__topbar-dev__label">开发模式</span>
-    <label
-      class="console-bool-switch"
-      :class="{ 'console-bool-switch--on': active }"
-    >
-      <input
-        type="checkbox"
-        class="console-bool-switch__input"
-        :checked="active"
-        :disabled="busy"
-        :aria-busy="busy || undefined"
-        :aria-label="active ? '关闭开发模式' : '开启开发模式'"
-        :aria-description="DEV_MODE_TOOLTIP"
-        @change="onToggleInput"
-      >
-      <span
-        class="console-bool-switch__track"
-        aria-hidden="true"
-      >
-        <span class="console-bool-switch__thumb" />
-      </span>
-    </label>
+    <ConsoleSwitch
+      :model-value="active"
+      :disabled="busy"
+      tone="amber"
+      :show-label="false"
+      :aria-label="active ? '关闭开发模式' : '开启开发模式'"
+      @update:model-value="onToggleInput"
+    />
   </div>
 
   <div
@@ -126,26 +111,14 @@ function onToggleInput(ev: Event) {
           <template v-if="!compact"> CORS 等中间件变更仍需重启 hub。</template>
         </p>
       </div>
-      <label
-        class="console-bool-switch"
-        :class="{ 'console-bool-switch--on': active }"
-      >
-        <input
-          type="checkbox"
-          class="console-bool-switch__input"
-          :checked="active"
-          :disabled="busy"
-          :aria-busy="busy || undefined"
-          :aria-label="active ? '关闭开发模式' : '开启开发模式'"
-          @change="onToggleInput"
-        >
-        <span
-          class="console-bool-switch__track"
-          aria-hidden="true"
-        >
-          <span class="console-bool-switch__thumb" />
-        </span>
-      </label>
+      <ConsoleSwitch
+        :model-value="active"
+        :disabled="busy"
+        tone="amber"
+        :show-label="false"
+        :aria-label="active ? '关闭开发模式' : '开启开发模式'"
+        @update:model-value="onToggleInput"
+      />
     </div>
   </div>
 </template>

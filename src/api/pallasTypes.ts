@@ -1,9 +1,29 @@
+import type { paths as ConsoleOpenapiPaths } from "./generated/pallasConsoleOpenapi";
+import type { HealthResponse } from "./health";
+
 /** 标准响应结构 */
 
 export interface ApiOk<T> {
   ok: boolean;
   data: T;
 }
+
+/** 首页聚合只读快照（/home/overview） */
+export interface HomeOverviewData {
+  health: HealthResponse | null;
+  system: SystemData | null;
+  bots: BotRow[];
+  instances: InstancesData | null;
+  plugins: PluginRow[];
+  message_stats: MessageStatsData | null;
+  plugin_run_stats: PluginRunStatsData | null;
+  community_stats: CommunityStatsData | null;
+}
+
+type OpenapiJson200<TOperation> =
+  TOperation extends { responses: { 200: { content: { "application/json": infer TBody } } } } ? TBody : never;
+
+type OpenapiOkData<TOperation> = OpenapiJson200<TOperation> extends { data: infer TData } ? TData : never;
 
 export interface SystemData {
   nonebot2_driver: { host: string | null; port: number | null };
@@ -161,6 +181,8 @@ export interface CorpusControlPlaneStatusData {
 
 export interface CorpusStatusData {
   composite_active: boolean;
+  /** off | sync | prefetch */
+  remote_find_mode?: string;
   merge_order: string[];
   merge_strategy: string;
   on_remote_failure: string;
@@ -315,6 +337,7 @@ export interface ConsoleDailyStatRow {
   received: number;
   sent: number;
   matcher_runs: number;
+  api_calls?: number;
 }
 
 export interface ConsoleDailyStatsData {
@@ -369,11 +392,213 @@ export type PluginLoadRole = "hub" | "worker" | "both" | "infra" | "internal";
 
 export type PluginCatalogProcessRole = "hub" | "worker" | "unified";
 
-export type PluginSourceKind = "main" | "local" | "pip";
+export type PluginSourceKind = "main" | "core" | "extra" | "local" | "pip";
+
+export type OfficialExtensionStatus =
+  | "installed"
+  | "pip_installed"
+  | "bundled"
+  | "bundled_active"
+  | "external";
+
+export type ExtensionActivationPolicy = "hot-reloadable" | "workers-restart" | "full-restart";
+
+export type ExtensionActivationAction = "none" | "hot-reload" | "workers-restart" | "full-restart";
+
+export interface OfficialExtensionRow {
+  package: string;
+  plugin_ids: string[];
+  display_name?: string;
+  uv_extra?: string | null;
+  install_cli?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  avatar?: string | null;
+  repository_url?: string | null;
+  description?: string;
+  bundled_in_repo?: boolean;
+  bundled_plugin_ids?: string[];
+  bundled_load_enabled?: boolean;
+  loaded_plugin_ids?: string[];
+  installed?: boolean;
+  pip_installed?: boolean;
+  install_local_dir?: string;
+  webui_install?: boolean;
+  restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  can_install?: boolean;
+  can_uninstall?: boolean;
+  can_update?: boolean;
+  /** 版本快照判定：是否有新版本；null/undefined 表示尚未检查 */
+  has_update?: boolean | null;
+  /** 已安装版本（官方为 PyPI 版本号） */
+  installed_ref?: string | null;
+  /** 远端最新版本（官方为 PyPI 版本号） */
+  latest_ref?: string | null;
+  status?: OfficialExtensionStatus;
+}
+
+export interface OfficialExtensionInstallResult {
+  package: string;
+  uv_extra?: string;
+  pip_installed?: boolean;
+  needs_restart?: boolean;
+  already_installed?: boolean;
+  already_removed?: boolean;
+  restart_scheduled?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  activation_action?: ExtensionActivationAction | null;
+  message?: string;
+  stdout_tail?: string;
+}
+
+export type CommunityPluginStatus = "available" | "installed" | "loaded";
+
+export interface CommunityPluginRow {
+  plugin_id: string;
+  name: string;
+  description?: string;
+  icon?: string | null;
+  cover?: string | null;
+  avatar?: string | null;
+  repository_url?: string | null;
+  ref?: string;
+  author?: string;
+  homepage?: string | null;
+  tags?: string[];
+  min_pallas_version?: string | null;
+  local_only?: boolean;
+  local_installed?: boolean;
+  loaded?: boolean;
+  local_path?: string | null;
+  install_local_dir?: string;
+  extra_plugin_dirs_ready?: boolean;
+  webui_install?: boolean;
+  restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  can_install?: boolean;
+  can_uninstall?: boolean;
+  can_update?: boolean;
+  /** 版本快照判定：是否有新版本；null/undefined 表示尚未检查 */
+  has_update?: boolean | null;
+  /** 已安装 commit（短哈希） */
+  installed_ref?: string | null;
+  /** 远端最新 commit（短哈希） */
+  latest_ref?: string | null;
+  status?: CommunityPluginStatus;
+}
+
+export interface CommunityPluginStoreData {
+  source?: string | null;
+  meta?: Record<string, unknown>;
+  error?: string | null;
+  extra_plugin_dirs_ready?: boolean;
+  webui_install?: boolean;
+  restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  /** 插件更新快照检查时间（秒）；null 表示从未检查 */
+  update_checked_at?: number | null;
+  plugins: CommunityPluginRow[];
+}
+
+export interface CommunityPluginActionResult {
+  plugin_id: string;
+  local_path?: string;
+  installed?: boolean;
+  needs_restart?: boolean;
+  already_removed?: boolean;
+  extra_plugin_dirs_ready?: boolean;
+  restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
+  activation_action?: ExtensionActivationAction | null;
+  restart_scheduled?: boolean;
+  message?: string;
+  stdout_tail?: string;
+}
+
+export interface PluginCapabilitiesCommand {
+  command_id: string;
+  label: string;
+  trigger_condition?: string;
+  default_level?: string;
+  effective_level?: string;
+  default_cd_sec?: number;
+  effective_cd_sec?: number;
+}
+
+export interface PluginCapabilitiesLlmTool {
+  name: string;
+  command_id: string;
+  description: string;
+}
+
+export interface PluginCapabilitiesStorageKey {
+  key: string;
+  scope: string;
+  label: string;
+  ephemeral: boolean;
+}
+
+export interface PluginCapabilitiesRow {
+  plugin: string;
+  title: string;
+  commands: PluginCapabilitiesCommand[];
+  llm_tools: PluginCapabilitiesLlmTool[];
+  storage_keys: PluginCapabilitiesStorageKey[];
+  reload_policy?: string | null;
+}
+
+export interface PluginCapabilitiesData {
+  plugins: PluginCapabilitiesRow[];
+  levels?: { id: string; label: string }[];
+}
+
+// ── Plugin Governance API ──────────────────────────────────────────
+
+export interface PluginGovernanceMenuItem {
+  func: string;
+  trigger_method?: string;
+  trigger_scene?: string;
+  trigger_condition?: string;
+  brief_des?: string;
+  detail_des?: string;
+  command_permission?: string;
+  command_permissions?: string[];
+}
+
+export interface PluginGovernanceRuntime {
+  global_disable: boolean;
+  help_hidden: boolean;
+  global_disable_protected?: boolean;
+  help_ignored?: boolean;
+}
+
+export interface PluginGovernanceData {
+  plugin: string;
+  title: string;
+  commands: PluginCapabilitiesCommand[];
+  menu_items: PluginGovernanceMenuItem[];
+  runtime: PluginGovernanceRuntime;
+  perm_ui_filtered: CommandPermUiData;
+  limits_ui_filtered: CommandLimitsUiData;
+  blocked_user_ids?: number[];
+  reload_policy?: string | null;
+  activation_policy?: string | null;
+}
+
+export interface PluginGovernanceBody {
+  command_permission_overrides: Record<string, string>;
+  command_limit_overrides: Record<string, number>;
+  global_disable: boolean;
+  help_hidden: boolean;
+  blocked_user_ids?: number[];
+}
 
 export interface PluginRow {
   name: string;
   module: string;
+  resolved_plugin_id?: string;
+  resolved_module?: string;
   nb_plugin_name?: string;
   load_role?: PluginLoadRole;
   loaded_in_process?: boolean;
@@ -382,6 +607,7 @@ export interface PluginRow {
   /** 是否应在 catalog_process_role 进程中加载 */
   expected_in_catalog_process?: boolean;
   has_config?: boolean;
+  configurable?: boolean;
   help_visible?: boolean;
   help_ignored?: boolean;
   help_hidden?: boolean;
@@ -389,10 +615,14 @@ export interface PluginRow {
   globally_disabled?: boolean;
   /** 基础设施插件，不可全实例禁用 */
   global_disable_protected?: boolean;
-  /** 插件代码来源：主仓 src/plugins、站点 local/plugins、pip 基础设施 */
+  /** 插件代码来源 */
   plugin_source?: PluginSourceKind;
+  extra_package?: string | null;
   /** 相对仓库根的目录，如 local/plugins/draw */
   plugin_source_dir?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  avatar?: string | null;
   metadata: {
     name?: string;
     description?: string;
@@ -434,6 +664,27 @@ export interface PluginConfigField {
   current: unknown;
   /** kind 为 enum 时由后端 Literal 推导 */
   choices?: string[];
+  /** 枚举选项展示文案；键为内部值，缺省时前端本地映射 */
+  choice_labels?: Record<string, string>;
+  /** string 字段密钥语义：前端打码 + 眼睛切换 */
+  secret?: boolean;
+  /** string 字段多行：前端用 textarea */
+  multiline?: boolean;
+  /** int/float 字段下界（含），由 Pydantic ge/gt 推导 */
+  min_value?: number;
+  /** int/float 字段上界（含），由 Pydantic le/lt 推导 */
+  max_value?: number;
+  /** DynamicConfigPanel 分组标题 */
+  ui_group?: string;
+  /** 组内排序，越小越靠前 */
+  ui_order?: number;
+  /** 进阶项，默认折叠 */
+  ui_hidden?: boolean;
+}
+
+export interface PluginConfigUnexpectedKey {
+  env_key: string;
+  value_preview: string;
 }
 
 /** GET/PUT 通用配置「命令权限」段时后端可附带，用于矩阵单选 UI */
@@ -445,6 +696,7 @@ export interface CommandPermUiLevel {
 export interface CommandPermUiCommand {
   command_id: string;
   label: string;
+  trigger_condition?: string;
   default_level: string;
   effective_level: string;
 }
@@ -463,6 +715,7 @@ export interface CommandPermUiData {
 export interface CommandLimitsUiCommand {
   command_id: string;
   label: string;
+  trigger_condition?: string;
   default_cd_sec: number;
   effective_cd_sec: number;
 }
@@ -481,7 +734,8 @@ export interface PluginConfigFieldGroup {
   id: string;
   title: string;
   field_names: string[];
-  plugin_config_path: string;
+  /** 通用配置跳转用；插件内分组可省略 */
+  plugin_config_path?: string;
 }
 
 export interface PluginConfigData {
@@ -496,10 +750,23 @@ export interface PluginConfigData {
   gateway_editor?: boolean;
   /** 可调用全链路连通检测 API */
   supports_connectivity_check?: boolean;
+  /** 智能对话分区：展示模型切换面板 */
+  llm_model_admin?: boolean;
   /** 控制台 dev_mode 等可热重载（保存后立即生效） */
   dev_mode_hot_reload?: boolean;
   /** 保存后无需重启即可生效（语料联邦等） */
   hot_reload?: boolean;
+  /** webui.json 中存在但 schema 未声明的键 */
+  unexpected_keys?: PluginConfigUnexpectedKey[];
+}
+
+export interface PluginConfigRawData {
+  toml: string;
+}
+
+export interface ExtensionInstallJobData {
+  job_id: string;
+  package: string;
 }
 
 /** 通用配置 → 服务网关 / 连通性 */
@@ -514,6 +781,607 @@ export const PALLAS_WEBUI_SECTION_ID = "pallas_webui";
 export interface CommonConfigSectionMeta {
   id: string;
   title: string;
+}
+
+export interface LlmProviderStatusRow {
+  id: string;
+  kind: string;
+  enabled: boolean;
+  configured: boolean;
+  default_model: string;
+  base_url: string;
+  reachable: boolean | null;
+}
+
+type GeneratedLlmProvidersConfig =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers"]["get"]>;
+
+type GeneratedLlmProvidersRouting = NonNullable<GeneratedLlmProvidersConfig["routing"]>;
+
+export interface LlmProviderConfigRow {
+  id: string;
+  kind: string;
+  base_url: string;
+  /** 保存时填写；GET 不返回明文，留空表示不修改。 */
+  api_key?: string;
+  api_key_env: string;
+  /** GET：是否已配置可用密钥（inline 或环境变量）。 */
+  api_key_set?: boolean;
+  default_model: string;
+  enabled: boolean;
+  task_models: Record<string, string>;
+}
+
+export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
+  providers: LlmProviderConfigRow[];
+  routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
+    chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
+    tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
+  };
+};
+
+export interface LlmProvidersSaveResult {
+  providers_file: string;
+  provider_status?: LlmProviderStatusRow[];
+  task_routing?: Record<string, string>;
+}
+
+/** Provider 在线模型发现结果（经 BFF 代理 AI 仓拉取）。 */
+export interface LlmProviderModelsResult {
+  provider_id: string;
+  ok: boolean;
+  models: string[];
+  source: string;
+  error?: string;
+}
+
+/** Provider 实时连通性测试结果（经 BFF 代理 AI 仓 ping）。 */
+export type LlmProviderTestResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/test"]["post"]>;
+
+export interface LlmModelAdminStatus {
+  model: string;
+  num_gpu?: number | null;
+  ai_reachable: boolean;
+  llm_chat_enabled: boolean;
+  health_url: string;
+  error: string;
+  provider_mode?: string;
+  provider_status?: LlmProviderStatusRow[];
+  task_routing?: Record<string, string>;
+  categorizer_enabled?: boolean;
+  categorizer_model?: string;
+  tools_selective?: boolean;
+  moe_tier_routing?: boolean;
+  local_multi_model_enabled?: boolean;
+  local_model_policy?: string;
+  local_task_models?: Record<string, string>;
+  local_moe_models?: Record<string, string>;
+}
+
+export type ConsoleLoginChangeResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/security/console-login"]["post"]>;
+
+export type ConsoleSetupStatus =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/auth/setup-status"]["get"]>;
+
+export interface LlmLocalRoutingModels {
+  simple: string;
+  medium: string;
+  complex: string;
+  vision: string;
+}
+
+export interface LlmLocalRoutingTaskModels {
+  llm_chat: string;
+  drunk: string;
+  repeater_fallback: string;
+  repeater_polish: string;
+  repeater_polish_lite: string;
+  repeater_select: string;
+}
+
+export interface LlmLocalRoutingConfig {
+  llm_model: string;
+  local_multi_model_enabled: boolean;
+  moe_models: LlmLocalRoutingModels;
+  task_models: LlmLocalRoutingTaskModels;
+  env_file: string;
+}
+
+export interface LlmModelAdminModelResult {
+  model: string;
+  num_gpu?: number | null;
+}
+
+export interface LlmTaskMetricRow {
+  queued?: number;
+  running?: number;
+  submit_ok?: number;
+  submit_skip?: number;
+  callback_ok?: number;
+  callback_fail?: number;
+  task_ok?: number;
+  task_fail?: number;
+  reply_gate_skip?: number;
+  reply_gate_defer?: number;
+  route_counts?: Record<string, number>;
+}
+
+export interface LlmTokenMetricBreakdownRow {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface LlmTokenMetricsSlice {
+  source: string;
+  day_key: string;
+  updated_at?: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  by_task: Record<string, LlmTokenMetricBreakdownRow>;
+  by_provider?: Record<string, LlmTokenMetricBreakdownRow>;
+  by_model?: Record<string, LlmTokenMetricBreakdownRow>;
+}
+
+export interface LlmClassificationTotals {
+  tier_simple?: number;
+  tier_medium?: number;
+  tier_complex?: number;
+  tools_on?: number;
+  tools_off?: number;
+  vision_on?: number;
+  vision_off?: number;
+}
+
+export interface LlmTaskMetricsSlice {
+  source: string;
+  day_key: string;
+  updated_at?: number;
+  by_task: Record<string, LlmTaskMetricRow>;
+  totals: Record<string, number>;
+  state_counts?: Record<string, number>;
+  failure_counts?: Record<string, number>;
+  provider_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
+  model_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
+  tokens?: LlmTokenMetricsSlice;
+  classification?: {
+    totals: LlmClassificationTotals;
+  };
+}
+
+export interface LlmRuntimeDimensionStatsRow {
+  requests?: number;
+  succeeded?: number;
+  failed?: number;
+  total_latency_ms?: number;
+  avg_latency_ms?: number | null;
+  recent_failure_class?: string | null;
+}
+
+export interface LlmTaskStatsHistoryRow {
+  date: string;
+  bot?: LlmTaskMetricsSlice | null;
+  ai?: LlmTaskMetricsSlice | null;
+}
+
+export interface LlmTaskStatsPersistence {
+  store_file?: string;
+  bot_collecting?: boolean;
+  bot_day_key?: string;
+  ai_collecting?: boolean;
+  ai_reachable?: boolean;
+}
+
+export interface LlmTaskStatsData {
+  bot: LlmTaskMetricsSlice;
+  ai: LlmTaskMetricsSlice;
+  ai_reachable: boolean;
+  error?: string;
+  persistence?: LlmTaskStatsPersistence;
+  history?: {
+    start: string;
+    end: string;
+    query_start: string;
+    query_end: string;
+    rows: LlmTaskStatsHistoryRow[];
+    server_date: string;
+  };
+}
+
+type GeneratedLlmWizardStatusData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/wizard/status"]["get"]>;
+
+export type LlmWizardCheckRow = NonNullable<GeneratedLlmWizardStatusData["checks"]>[number];
+
+export type LlmWizardStatusData = Omit<GeneratedLlmWizardStatusData, "checks"> & {
+  checks: LlmWizardCheckRow[];
+};
+
+type GeneratedLlmRuntimeOverviewData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>;
+
+export type LlmRuntimeOverviewHealthData = GeneratedLlmRuntimeOverviewData["health"] & {
+  llm_health?: AiExtensionTestData["llm_health"];
+  image_health?: AiExtensionTestData["image_circuit"];
+  tts_health?: AiExtensionTestData["tts_health"];
+  media_tasks?: AiExtensionTestData["media_tasks"];
+};
+
+export type LlmRuntimeOverviewData = Omit<
+  GeneratedLlmRuntimeOverviewData,
+  "health" | "model_admin" | "task_stats" | "conversation_kernel"
+> & {
+  health: LlmRuntimeOverviewHealthData;
+  model_admin?: Partial<LlmModelAdminStatus>;
+  task_stats?: Partial<LlmTaskStatsData>;
+  conversation_kernel?: Partial<ConversationKernelStatus>;
+};
+
+export interface LlmHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+  user_id: number;
+  created_at: number;
+}
+
+export interface LlmHistorySessionSummary {
+  session_key: string;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  turn_count: number;
+  first_created_at: number;
+  last_created_at: number;
+  last_role: "user" | "assistant";
+  last_content: string;
+}
+
+export interface LlmHistorySessionsData {
+  items: LlmHistorySessionSummary[];
+  limit: number;
+}
+
+export interface LlmHistorySessionDetailData {
+  session: LlmHistorySessionSummary;
+  turns: LlmHistoryTurn[];
+  behavior_runs: LlmHistoryBehaviorRun[];
+  feedback_entries?: LlmRepeaterFeedbackEntry[];
+}
+
+export interface LlmHistoryBehaviorAutoFeedbackPayload {
+  source?: "session" | "ambient" | "mixed" | "timeout" | string;
+  matched_signal?: string;
+  matched_tokens?: string[];
+  observed_turn_count?: number;
+  agent_trace?: LlmHistoryBehaviorAgentTrace;
+}
+
+export interface LlmHistoryBehaviorAgentTraceRound {
+  round?: number;
+  tool_calls?: string[];
+  used_prefetch?: boolean;
+}
+
+export interface LlmHistoryBehaviorAgentTraceToolCall {
+  tool?: string;
+  args_keys?: string[];
+  ok?: boolean;
+  error?: string | null;
+  result_preview?: string | null;
+}
+
+export interface LlmHistoryBehaviorAgentTraceStage {
+  stage?: string;
+  status?: string;
+  provider?: string;
+  model?: string;
+  latency_ms?: number;
+  tool_calls?: LlmHistoryBehaviorAgentTraceToolCall[];
+}
+
+export interface LlmHistoryBehaviorAgentTrace {
+  version?: string;
+  agent_stage_plan?: string[];
+  planner_enabled?: boolean;
+  retrieve_enabled?: boolean;
+  tool_loop_enabled?: boolean;
+  tool_schema_count?: number;
+  tool_call_count?: number;
+  request_snapshot_id?: string | null;
+  tool_catalog_version?: string | null;
+  rounds?: LlmHistoryBehaviorAgentTraceRound[];
+  stages?: LlmHistoryBehaviorAgentTraceStage[];
+  prefetched_tool?: string | null;
+  final_stage?: string | null;
+  status?: string | null;
+}
+
+export interface LlmRuntimeReplayResult {
+  request_id?: string;
+  request_snapshot_id?: string | null;
+  mode?: string;
+  task?: string;
+  reply?: string;
+  trace?: LlmHistoryBehaviorAgentTrace | null;
+  assistant_message?: Record<string, unknown>;
+  persona_shaping?: LlmPersonaShapingSummary | null;
+}
+
+export interface LlmPersonaShapingSummary {
+  source_task?: string;
+  persona_shaping_active?: boolean;
+  affect_block?: string;
+  dynamic_expression?: string;
+  variation_hint?: string;
+  lines?: string[];
+  compare_note?: string;
+  corpus_ending?: string;
+}
+
+export interface LlmRuntimeDebugData {
+  request_id?: string;
+  snapshot?: Record<string, unknown> | null;
+  trace?: LlmHistoryBehaviorAgentTrace | null;
+  persona_shaping?: LlmPersonaShapingSummary | null;
+}
+
+export interface LlmBehaviorPattern {
+  pattern_id: string;
+  scene: string;
+  action: string;
+  scope_group_id?: number | null;
+  success_score?: number;
+  manual_score?: number;
+  disabled?: boolean;
+  persona_affinity?: string;
+  trigger_features?: string[];
+  reference_examples?: string[];
+}
+
+export interface LlmBehaviorRunsData {
+  items: LlmHistoryBehaviorRun[];
+  count: number;
+  limit: number;
+}
+
+export interface LlmBehaviorPatternsData {
+  items: LlmBehaviorPattern[];
+  count: number;
+}
+
+export interface LlmHistoryBehaviorRun {
+  request_id: string;
+  group_id?: number | null;
+  user_id?: number | null;
+  bot_id?: number | null;
+  created_at?: number;
+  scene: string;
+  user_text?: string;
+  reply_text?: string;
+  selected_pattern_ids: string[];
+  selected_actions: string[];
+  behavior_hint_text: string;
+  final_outcome?: string | null;
+  score_delta?: number;
+  auto_feedback_payload?: LlmHistoryBehaviorAutoFeedbackPayload;
+  manual_labels: string[];
+  disabled?: boolean;
+}
+
+export interface LlmRepeaterFeedbackEntry {
+  entry_id: string;
+  created_at: number;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  request_id: string;
+  user_text: string;
+  reply_text: string;
+  behavior_scene?: string;
+  behavior_actions?: string[];
+  llm_route?: string;
+  source_tags?: string[];
+  eligible_for_bias?: boolean;
+  eligible_for_writeback?: boolean;
+  corrected_reply_text?: string;
+  corrected_at?: number;
+}
+
+export interface LlmRepeaterFeedbackData {
+  items: LlmRepeaterFeedbackEntry[];
+  limit: number;
+}
+
+export interface LlmRepeaterFeedbackSummary {
+  count: number;
+  top_replies: string[];
+  matched_replies?: string[];
+  semantic_matched_replies?: string[];
+  penalized_replies?: string[];
+  scenes: string[];
+  promotion_candidate_count?: number;
+  learning_stats?: {
+    window_sec?: number;
+    repeater_reply_count?: number;
+    feedback_bias_hit_count?: number;
+    feedback_bias_hit_rate?: number;
+    auto_promote_count?: number;
+  };
+}
+
+export interface LlmPromotionCandidate {
+  candidate_id: string;
+  group_id: number;
+  trigger_text: string;
+  reply_text: string;
+  support_count: number;
+  last_seen_at: number;
+  promoted: boolean;
+  rejected_reason: string;
+  writeback_status?: string;
+  writeback_message?: string;
+  writeback_at?: number;
+  behavior_scene: string;
+  source_request_id: string;
+}
+
+export interface LlmPromotionCandidatesData {
+  items: LlmPromotionCandidate[];
+  limit: number;
+}
+
+export interface ConversationKernelMemoryPolicy {
+  allow_runtime_state?: boolean;
+  allow_persistent_memory?: boolean;
+  allow_corpus_foundation?: boolean;
+  allow_behavioral_learning?: boolean;
+  allow_writeback?: boolean;
+  runtime_state_summary_enabled?: boolean;
+  read_persistent_memory?: boolean;
+  read_session?: boolean;
+  read_group_style?: boolean;
+  read_affect?: boolean;
+  write_session?: boolean;
+}
+
+export interface ConversationKernelStatus {
+  feature_level: string;
+  llm_chat_enabled: boolean;
+  conversation_feature_level_raw?: string;
+  llm_repeater_mode?: string;
+  llm_repeater_feedback_enabled?: boolean;
+  llm_repeater_bias_enabled?: boolean;
+  llm_repeater_writeback_enabled?: boolean;
+  feedback_collect_active: boolean;
+  feedback_bias_active: boolean;
+  writeback_active: boolean;
+  runtime_state_summary_active?: boolean;
+  memory_policy: ConversationKernelMemoryPolicy;
+}
+
+export interface ConversationKernelTraceRow {
+  kind?: string;
+  group_id?: number;
+  bot_id?: number;
+  action?: string;
+  opportunity_accepted?: boolean;
+  created_at?: number;
+  [key: string]: unknown;
+}
+
+export interface ConversationKernelTracesData {
+  items: ConversationKernelTraceRow[];
+  limit: number;
+}
+
+export interface ConversationKernelMemoryEntry {
+  id: number;
+  bot_id: number;
+  group_id: number;
+  keywords?: string;
+  content: string;
+  source?: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface ConversationKernelRelationshipNote {
+  id: number;
+  bot_id: number;
+  group_id: number;
+  user_id: number;
+  content: string;
+  source?: string;
+  weight?: number;
+  created_at?: number;
+  updated_at?: number;
+}
+
+export interface ConversationKernelKnowledgeSource {
+  source_id: string;
+  title: string;
+  description?: string;
+  scope?: string;
+  retrieval_mode?: string;
+  origin?: string;
+  plugin_name?: string;
+  plugin_title?: string;
+  default?: boolean;
+  chunk_count?: number;
+}
+
+export interface ConversationKernelMemoryData {
+  items: ConversationKernelMemoryEntry[];
+  count: number;
+  limit: number;
+}
+
+export interface ConversationKernelRelationshipNotesData {
+  items: ConversationKernelRelationshipNote[];
+  count: number;
+  limit: number;
+}
+
+export interface ConversationKernelKnowledgeSourcesData {
+  items: ConversationKernelKnowledgeSource[];
+  count: number;
+}
+
+export interface PersonaAxisSnapshot {
+  source?: string;
+  preset_label?: string;
+  archetype?: string;
+  tone?: string;
+  reply_bias?: number;
+  speak_bias?: number;
+  length_pref?: string;
+  chaos_bias?: number;
+  warmth: number;
+  assertiveness: number;
+  bluntness: number;
+  harsh_msg_ratio?: number;
+  polite_msg_ratio?: number;
+  msgs_per_hour_active?: number;
+  activity_level?: string;
+}
+
+export interface PersonaObserveBotRow {
+  account: number;
+  group_style_enabled: boolean;
+  seed_prefs?: string[];
+  seed_source?: "auto" | "manual" | string;
+  base: PersonaAxisSnapshot;
+  base_hints: string[];
+  resolved: PersonaAxisSnapshot | null;
+  resolved_hints: string[];
+}
+
+export interface PersonaAffectRefineSnapshot {
+  source: string;
+  warmth_delta: number;
+  assertiveness_delta: number;
+  confidence: number;
+  summary: string;
+  updated_at?: number | null;
+}
+
+export interface PersonaAffectTriggerRow {
+  phrase: string;
+  warmth_delta: number;
+  assertiveness_delta: number;
+  weight: number;
+  expires_at?: number | null;
+}
+
+export interface PersonaObserveData {
+  group_id: number | null;
+  group_style_snapshot: GroupStyleProfileSnapshot | null;
+  affect_refine: PersonaAffectRefineSnapshot | null;
+  affect_triggers: PersonaAffectTriggerRow[];
+  bots: PersonaObserveBotRow[];
 }
 
 export interface BotRow {
@@ -544,7 +1412,7 @@ export interface LogsData {
   scope?: LogScope;
   /** 当前筛选来源：all | hub | worker-N */
   source?: string;
-  /** 分片 hub：已合并 data/pallas_shard/logs 下 hub/worker 落盘尾行 */
+  /** 分片部署：已合并主节点与各节点日志落盘尾行 */
   sharded_logs?: boolean;
   /** 分片时可选的日志来源列表 */
   log_sources?: string[];
@@ -584,6 +1452,8 @@ export interface DbBackupInfo {
   /** 官方下载页 */
   tool_download_url?: string;
   tool_install_hint?: string;
+  restore_tool_name?: string;
+  restore_tool_available?: boolean;
   connection: DbBackupConnectionInfo;
   mongo_scopes: string[];
   postgres_formats: string[];
@@ -601,10 +1471,14 @@ export interface DbBackupResult {
 
 export type DbBackupJobStatus = "queued" | "running" | "completed" | "failed";
 
+export type DbBackupJobKind = "backup" | "restore";
+
 export interface DbBackupJobData {
   job_id: string;
+  job_kind?: DbBackupJobKind;
   status: DbBackupJobStatus;
   output_dir: string;
+  restore_path?: string;
   size_bytes: number;
   elapsed_sec?: number | null;
   created_at?: number;
@@ -620,6 +1494,20 @@ export interface DbBackupRunRow {
   backend: "mongodb" | "postgres" | string;
   size_bytes: number;
   modified_at: string;
+}
+
+export interface DbBackupBrowseEntry {
+  name: string;
+  path: string;
+  kind: "dir";
+}
+
+export interface DbBackupBrowseData {
+  current: string;
+  parent: string | null;
+  entries: DbBackupBrowseEntry[];
+  default_path: string;
+  project_root: string;
 }
 
 export interface DbBackupRunsData {
@@ -643,6 +1531,57 @@ export interface BotConfigPublic {
   disabled_plugins: string[];
   /** 是否在社区主站名册展示本牛 QQ（默认开；需通用配置开启「公开牛牛 QQ」） */
   community_roster_show_qq: boolean;
+  /** 账号 persona JSON（含 seed / seed_override / cross_group） */
+  persona?: Record<string, unknown> | null;
+  group_style_enabled?: boolean;
+}
+
+export type PersonaSeedPref = "short" | "long" | "chaotic" | "restrained" | "warm";
+
+export const PERSONA_SEED_PREF_OPTIONS: { id: PersonaSeedPref; label: string }[] = [
+  { id: "short", label: "偏短" },
+  { id: "long", label: "偏长" },
+  { id: "chaotic", label: "偏跳" },
+  { id: "restrained", label: "偏克制" },
+  { id: "warm", label: "偏暖" },
+];
+
+export function readBotPersonaSeedPrefs(persona: Record<string, unknown> | null | undefined): {
+  prefs: PersonaSeedPref[];
+  source: "auto" | "manual";
+} {
+  const override = persona?.seed_override;
+  if (override && typeof override === "object" && Array.isArray((override as { prefs?: unknown }).prefs)) {
+    const prefs = ((override as { prefs: unknown[] }).prefs as unknown[])
+      .map((item) => String(item || "").trim())
+      .filter((item): item is PersonaSeedPref =>
+        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
+      )
+      .slice(0, 2);
+    if (prefs.length) return { prefs, source: "manual" };
+  }
+  const seed = persona?.seed;
+  if (seed && typeof seed === "object" && Array.isArray((seed as { prefs?: unknown }).prefs)) {
+    const prefs = ((seed as { prefs: unknown[] }).prefs as unknown[])
+      .map((item) => String(item || "").trim())
+      .filter((item): item is PersonaSeedPref =>
+        PERSONA_SEED_PREF_OPTIONS.some((opt) => opt.id === item),
+      )
+      .slice(0, 2);
+    if (prefs.length) return { prefs, source: "auto" };
+  }
+  return { prefs: [], source: "auto" };
+}
+
+export interface GroupStyleProfileSnapshot {
+  version?: number;
+  ready: boolean;
+  updated_at?: number | null;
+  sample?: Record<string, unknown> | null;
+  signals?: Record<string, unknown> | null;
+  hints?: string[];
+  /** 画像计算时跳过的污染 message/answer 样本总数 */
+  contamination_skipped_count?: number | null;
 }
 
 export interface GroupConfigPublic {
@@ -653,6 +1592,8 @@ export interface GroupConfigPublic {
   disabled_plugins: string[];
   /** 本群拉黑 QQ（牛牛黑名单·群聊维度） */
   blocked_user_ids: number[];
+  /** 群风格画像快照（只读，供 LLM / repeater 驱动） */
+  style_profile_snapshot?: GroupStyleProfileSnapshot | null;
 }
 
 export interface UserConfigPublic {
@@ -667,13 +1608,33 @@ export interface NapcatAccountRow {
   display_name?: string;
   webui_port?: number | string;
   webui_token?: string;
+  /** OneBot 正向 WS 地址（协议端写入） */
+  ws_url?: string;
+  snowluma_docker_host_onebot_ws?: number | string;
   /** 内嵌 Web 地址 */
   native_webui_url?: string;
   /** 兼容字段 */
   napcat_native_webui_url?: string;
+  /** SnowLuma Docker noVNC 元数据（协议插件 compose） */
+  snowluma_docker_novnc?: {
+    url?: string;
+    bind_host?: string;
+    host_port?: number;
+    uses_default_vnc_password?: boolean;
+  };
+  /** Bot 自动改密后写入 accounts.json 的 SnowLuma WebUI 管理口令 */
+  snowluma_managed_webui_password?: string;
+  /** 日志解析的一次性初始口令（改密前） */
+  snowluma_runtime_webui_password?: string;
+  snowluma_webui_default_user?: string;
+  snowluma_linux_docker?: boolean;
   running?: boolean;
   connected?: boolean;
   process_running?: boolean;
+  /** plugin=插件托管 external=自建协议端经消息框架接入 */
+  account_source?: "plugin" | "external";
+  external_adapter?: string;
+  connection_key?: string;
   [key: string]: unknown;
 }
 
@@ -685,11 +1646,20 @@ export interface NapcatManagerSnapshot {
   accounts: NapcatAccountRow[];
 }
 
+export interface ProtocolExtensionStatus {
+  installed: boolean;
+  package: string;
+  uv_extra?: string | null;
+  install_cli?: string | null;
+  repository_url?: string | null;
+}
+
 /** 实例数据 */
 export interface InstancesData {
   nonebot_bots: BotRow[];
   db_bot_configs: BotConfigPublic[];
   pallas_protocol: NapcatManagerSnapshot | null;
+  protocol_extension?: ProtocolExtensionStatus | null;
   bot_profiles?: Record<
     string,
     {
@@ -747,35 +1717,27 @@ export interface AiExtensionConfig {
   health_paths: string[];
   uvicorn_log_file: string;
   celery_log_file: string;
+  celery_media_log_file: string;
   timeout_sec: number;
 }
 
-export interface AiExtensionTestData {
-  ok: boolean;
-  status_code: number | null;
-  health_url: string;
-  tried_urls?: string[];
-  error: string | null;
-}
+export type AiExtensionTestData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/ai-extension/test"]["post"]>;
 
-export interface PluginConfigCheckResult {
-  lines: string[];
-  results: Array<{
-    category?: string;
-    site: string;
-    ok: boolean;
-    latency_ms: number | null;
-    status_code: number | null;
-    error: string | null;
-    label?: string;
-  }>;
-}
+type GeneratedPluginConfigCheckResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/service_gateways/connectivity-check"]["post"]>;
+
+export type PluginConfigCheckResult = Omit<GeneratedPluginConfigCheckResult, "lines" | "results"> & {
+  lines: NonNullable<GeneratedPluginConfigCheckResult["lines"]>;
+  results: NonNullable<GeneratedPluginConfigCheckResult["results"]>;
+};
 
 export interface AiExtensionLogsData {
-  kind: "uvicorn" | "celery";
+  kind: "uvicorn" | "celery" | "celery-media";
   path: string;
   lines: string[];
   error: string | null;
+  source?: "local" | "remote" | "none";
 }
 
 export interface AiProxyResult {
@@ -807,6 +1769,12 @@ export interface UpdateApplyData {
   message: string;
 }
 
+export interface UpdateCheckAllData {
+  webui: UpdateCheckData;
+  bot: BotUpdateCheckData;
+  checked_at: number;
+}
+
 /** Bot 本体更新检查 */
 export type BotDeploymentMode = "docker" | "release_tag" | "release_tag_dirty" | "dev_clone";
 
@@ -828,10 +1796,21 @@ export interface BotUpdateCheckData {
   dirty?: boolean;
   dirty_file_count?: number;
   current_branch?: string;
+  restart_available?: boolean;
+  activation_policy?: ExtensionActivationPolicy | null;
 }
 
 export interface BotUpdateApplyData {
   tag: string;
+  message: string;
+  restart_scheduled?: boolean;
+}
+
+export interface SystemRestartData {
+  scheduled: boolean;
+  mode: "full-restart" | "workers-restart";
+  workers_only: boolean;
+  bot_runtime_mode: string;
   message: string;
 }
 
@@ -981,6 +1960,29 @@ export interface ShardObservabilityData {
   workers?: ShardObservabilityWorker[];
   pg_pool?: ShardPgPoolEstimate;
 }
+
+/** 生成 OpenAPI 类型与手写类型的对齐入口 */
+export type OpenapiSystemData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/system"]["get"]>;
+export type OpenapiPluginsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins"]["get"]>;
+export type OpenapiCommonConfigSectionsData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/sections"]["get"]>;
+export type OpenapiCommonConfigSectionData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}"]["get"]>;
+export type OpenapiCommonConfigSectionRawData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/{section_id}/raw"]["get"]>;
+export type OpenapiPluginConfigRawData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config/raw"]["get"]>;
+export type OpenapiPluginConfigCheckResult =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config-check"]["post"]>;
+export type OpenapiShardObservabilityData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/shard-observability"]["get"]>;
+export type OpenapiIngressDispatchData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>;
+export type OpenapiLogsData = OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/logs"]["get"]>;
+export type OpenapiPluginGovernanceData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/governance"]["get"]>;
+export type OpenapiPluginConfigData =
+  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/plugins/{plugin_name}/config"]["get"]>;
 
 export interface FriendListData {
   self_id: string;

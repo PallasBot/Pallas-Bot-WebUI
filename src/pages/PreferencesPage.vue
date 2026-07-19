@@ -1,39 +1,47 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, reactive, ref, watch } from "vue";
+import { onActivated, onMounted, ref, watch, computed } from "vue";
+import { RouterLink } from "vue-router";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
-import { MAIN_NAV_ITEMS } from "@/config/mainNav";
-import { SIDEBAR_PIN_DEFINITIONS, sidebarPinToken } from "@/config/sidebarPins";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
-import { consolePrefs, resetSidebarNavToDefaults, setConsolePrefs } from "@/utils/consolePrefs";
+import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
+import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PrefsGlassPreview from "@/components/PrefsGlassPreview.vue";
+import PrefsSettingCard from "@/components/PrefsSettingCard.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
-import type { AccentPreset, DensityMode, RadiusMode, ThemeMode } from "@/utils/consolePrefs";
+import type { AccentPreset, DensityMode, RadiusMode, SurfaceStyle, ThemeMode, UiPreset } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
+import { consoleSetupStatus, loadConsoleSetupStatus } from "@/state/consoleSetup";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
-import { useSidebarNavLists } from "@/composables/useSidebarNavLists";
-import {
-  addNavTokenToSidebar,
-  moveNavTokenInOrder,
-  removeNavTokenFromSidebar,
-} from "@/utils/sidebarNavActions";
+import { consoleMetaHealth, patchWebuiDevMode } from "@/state/consoleMeta";
+import { boolSwitchLabel } from "@/utils/configFieldDisplay";
 
 const route = useRoute();
 const panelNavIcon = usePanelNavIcon();
 
-const { sidebarNavRows, sidebarPoolRows } = useSidebarNavLists();
+const webuiDevModeActive = computed(() =>
+  Boolean(consoleMetaHealth.value?.console?.pallas_webui_dev_mode),
+);
 
-function navOrderIndex(token: string): number {
-  return consolePrefs.sidebarNavOrder.indexOf(token);
-}
+const glassSurfaceOn = computed({
+  get: () => consolePrefs.surfaceStyle === "glass",
+  set(v: boolean) {
+    setSurfaceStyle(v ? "glass" : "solid");
+  },
+});
 
-function canMoveNavUp(token: string): boolean {
-  return navOrderIndex(token) > 0;
-}
+const compactDensityOn = computed({
+  get: () => consolePrefs.density === "compact",
+  set(v: boolean) {
+    setDensity(v ? "compact" : "comfortable");
+  },
+});
 
-function canMoveNavDown(token: string): boolean {
-  const i = navOrderIndex(token);
-  return i >= 0 && i < consolePrefs.sidebarNavOrder.length - 1;
+function onWebuiDevModeUpdated(active: boolean) {
+  patchWebuiDevMode(active);
 }
 
 function setTheme(v: ThemeMode) {
@@ -42,11 +50,55 @@ function setTheme(v: ThemeMode) {
 function setRadius(v: RadiusMode) {
   setConsolePrefs({ radius: v });
 }
+function setSurfaceStyle(v: SurfaceStyle) {
+  setConsolePrefs({ surfaceStyle: v });
+}
+function setGlassBlur(v: number) {
+  setConsolePrefs({ glassBlur: Math.min(40, Math.max(8, Math.round(v))) });
+}
+function setCardGlassOpacity(v: number) {
+  setConsolePrefs({ cardGlassOpacity: Math.min(0.72, Math.max(0.12, v)) });
+}
+
+const glassBlurDraft = ref(consolePrefs.glassBlur);
+const cardGlassOpacityDraft = ref(consolePrefs.cardGlassOpacity);
+
+watch(
+  () => consolePrefs.glassBlur,
+  (v) => {
+    glassBlurDraft.value = v;
+  },
+);
+watch(
+  () => consolePrefs.cardGlassOpacity,
+  (v) => {
+    cardGlassOpacityDraft.value = v;
+  },
+);
+
+function onGlassBlurInput(v: number) {
+  glassBlurDraft.value = Math.min(40, Math.max(8, Math.round(v)));
+}
+
+function onGlassBlurCommit() {
+  setGlassBlur(glassBlurDraft.value);
+}
+
+function onCardGlassOpacityInput(v: number) {
+  cardGlassOpacityDraft.value = Math.min(0.72, Math.max(0.12, v));
+}
+
+function onCardGlassOpacityCommit() {
+  setCardGlassOpacity(cardGlassOpacityDraft.value);
+}
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
 }
 function setAccentPreset(v: AccentPreset) {
   setConsolePrefs({ accentPreset: v });
+}
+function setUiPreset(v: UiPreset) {
+  setConsolePrefs({ uiPreset: v });
 }
 
 const pwdErr = ref("");
@@ -54,59 +106,6 @@ const pwdOk = ref("");
 const p1 = ref("");
 const p2 = ref("");
 const pwdBusy = ref(false);
-
-type SidebarSectionRow = {
-  token: string;
-  title: string;
-  pathHint: string;
-  defaultSection: string;
-};
-
-const sidebarSectionRows = computed((): SidebarSectionRow[] => {
-  const mains: SidebarSectionRow[] = MAIN_NAV_ITEMS.map((i) => ({
-    token: i.to,
-    title: i.label,
-    pathHint: i.to,
-    defaultSection: i.section,
-  }));
-  const pins: SidebarSectionRow[] = SIDEBAR_PIN_DEFINITIONS.map((p) => ({
-    token: sidebarPinToken(p.id),
-    title: p.label,
-    pathHint: `${p.path}${p.hash || ""}`,
-    defaultSection: p.section,
-  }));
-  return [...mains, ...pins].sort((a, b) => {
-    const c = a.defaultSection.localeCompare(b.defaultSection, "zh-CN");
-    if (c !== 0) return c;
-    return a.title.localeCompare(b.title, "zh-CN");
-  });
-});
-
-/** 草稿：token → 分组名；空串表示沿用内置 */
-const sidebarSectionInputs = reactive<Record<string, string>>({});
-
-function loadSidebarSectionInputs() {
-  for (const row of sidebarSectionRows.value) {
-    const cur = consolePrefs.sidebarNavSectionByToken[row.token];
-    sidebarSectionInputs[row.token] = typeof cur === "string" && cur.trim() ? cur.trim() : "";
-  }
-}
-
-function saveSidebarSectionInputs() {
-  const out: Record<string, string> = {};
-  for (const row of sidebarSectionRows.value) {
-    const v = (sidebarSectionInputs[row.token] ?? "").trim();
-    if (v && v !== row.defaultSection) out[row.token] = v;
-  }
-  setConsolePrefs({ sidebarNavSectionByToken: out });
-  loadSidebarSectionInputs();
-  toastSaveSuccess("侧栏分组已保存");
-}
-
-function clearSidebarSectionOverrides() {
-  setConsolePrefs({ sidebarNavSectionByToken: {} });
-  loadSidebarSectionInputs();
-}
 
 async function submitPassword() {
   pwdErr.value = "";
@@ -126,6 +125,7 @@ async function submitPassword() {
     toastSaveSuccess("控制台口令已更新");
     p1.value = "";
     p2.value = "";
+    await loadSetupStatus(true);
   } catch (e) {
     pwdErr.value = e instanceof Error ? e.message : String(e);
     toastApiError(e, "更新失败");
@@ -134,16 +134,16 @@ async function submitPassword() {
   }
 }
 
-useSaveHotkey(() => !pwdBusy.value, () => saveSidebarSectionInputs());
+useSaveHotkey(() => !pwdBusy.value, () => submitPassword());
 
 onMounted(() => {
   scrollToPasswordIfNeeded();
-  loadSidebarSectionInputs();
+  void loadSetupStatus();
 });
 
 onActivated(() => {
-  loadSidebarSectionInputs();
   scrollToPasswordIfNeeded();
+  void loadSetupStatus();
 });
 
 watch(
@@ -158,412 +158,300 @@ function scrollToPasswordIfNeeded() {
     requestAnimationFrame(() => {
       document.getElementById("console-password")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-    return;
-  }
-  if (route.hash === "#sidebar-order") {
-    requestAnimationFrame(() => {
-      document.getElementById("sidebar-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }
 }
 
-loadSidebarSectionInputs();
+async function loadSetupStatus(force = false) {
+  await loadConsoleSetupStatus({ force });
+}
 </script>
 
 <template>
-  <div>
+  <div class="console-hub-page prefs-page">
+    <ConsoleHubMasthead :icon="panelNavIcon">
+      <template #title>
+        偏好与口令
+      </template>
+      <template #lead>
+        自定义控制台外观与安全设置。
+      </template>
+      <template #actions>
+      </template>
+    </ConsoleHubMasthead>
+
     <div
-      id="sidebar-prefs"
-      class="panel"
+      v-if="consoleSetupStatus?.requires_setup"
+      class="alert alert--warn"
     >
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>侧栏
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
-        </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px; line-height: 1.55">
-          宽屏侧栏可点击 ⋮ 打开菜单（含从侧栏移除）或拖动 ⋮ 排序；未在侧栏的入口在侧栏底部折叠池内。移动端抽屉仅用于跳转，调整顺序、添加或移除请在下方「侧栏顺序与项目」中完成。各页标题栏「+」仍可把入口加回侧栏。若误删导致只剩一项仍可继续操作；侧栏过空时可点「恢复默认」。
-        </p>
-        <details
-          id="sidebar-order"
-          class="prefs-sidebar-order"
-          style="margin-bottom: 14px"
-        >
-          <summary
-            class="prefs-sidebar-order__summary muted"
-          >侧栏顺序与项目</summary>
-          <p
-            class="muted"
-            style="margin: 10px 0 12px; line-height: 1.55; font-size: 13px"
-          >
-            使用「上移 / 下移」调整顺序；「移除」至少保留一项。下方「未在侧栏」可添加条目。
-          </p>
-          <div class="prefs-sidebar-order__list">
-            <template
-              v-for="row in sidebarNavRows"
-              :key="'ord-' + row.token"
-            >
-              <div
-                v-if="row.showSection"
-                class="prefs-sidebar-order__sec"
-                role="presentation"
-              >
-                {{ row.section }}
-              </div>
-              <div class="prefs-sidebar-order__row">
-                <span
-                  class="prefs-sidebar-order__ico"
-                  aria-hidden="true"
-                >{{ row.kind === "main" ? row.item.icon : row.pin.icon }}</span>
-                <div class="prefs-sidebar-order__meta">
-                  <div class="prefs-sidebar-order__label">
-                    {{ row.kind === "main" ? row.item.label : row.pin.label }}
-                  </div>
-                  <div class="prefs-sidebar-order__desc muted">
-                    {{ row.kind === "main" ? row.item.description : row.pin.description }}
-                  </div>
-                </div>
-                <div class="prefs-sidebar-order__actions">
-                  <button
-                    type="button"
-                    class="btn prefs-sidebar-order__btn"
-                    :disabled="!canMoveNavUp(row.token)"
-                    @click="moveNavTokenInOrder(row.token, -1)"
-                  >
-                    上移
-                  </button>
-                  <button
-                    type="button"
-                    class="btn prefs-sidebar-order__btn"
-                    :disabled="!canMoveNavDown(row.token)"
-                    @click="moveNavTokenInOrder(row.token, 1)"
-                  >
-                    下移
-                  </button>
-                  <button
-                    v-if="sidebarNavRows.length > 1"
-                    type="button"
-                    class="btn prefs-sidebar-order__btn prefs-sidebar-order__btn--danger"
-                    @click="removeNavTokenFromSidebar(row.token)"
-                  >
-                    移除
-                  </button>
-                </div>
-              </div>
-            </template>
-          </div>
-          <div
-            v-if="sidebarPoolRows.length"
-            class="prefs-sidebar-order__pool"
-          >
-            <div class="prefs-sidebar-order__pool-title muted">
-              未在侧栏（{{ sidebarPoolRows.length }}）
-            </div>
-            <template
-              v-for="row in sidebarPoolRows"
-              :key="'pool-' + row.token"
-            >
-              <div
-                v-if="row.showSection"
-                class="prefs-sidebar-order__pool-sec"
-                role="presentation"
-              >
-                {{ row.section }}
-              </div>
-              <div class="prefs-sidebar-order__pool-row">
-                <span
-                  class="prefs-sidebar-order__ico"
-                  aria-hidden="true"
-                >{{ row.kind === "main" ? row.item.icon : row.pin.icon }}</span>
-                <span class="prefs-sidebar-order__pool-label">{{ row.kind === "main" ? row.item.label : row.pin.label }}</span>
-                <button
-                  type="button"
-                  class="btn btn--primary prefs-sidebar-order__btn"
-                  @click="addNavTokenToSidebar(row.token)"
-                >
-                  添加
-                </button>
-              </div>
-            </template>
-          </div>
-        </details>
-        <button
-          type="button"
-          class="btn btn--primary"
-          @click="resetSidebarNavToDefaults"
-        >
-          恢复侧栏默认顺序与项目
-        </button>
-        <details style="margin-top: 14px">
-          <summary
-            class="muted"
-            style="cursor: pointer; font-weight: 650; user-select: none"
-          >侧栏分组标题</summary>
-          <p
-            class="muted"
-            style="margin: 10px 0 8px; line-height: 1.55; font-size: 13px"
-          >
-            为每个入口填写在侧栏里显示的分组名称；<strong style="color: var(--text)">留空</strong>或与「内置」相同则沿用默认。相邻且分组名相同的项会合并为一段。
-          </p>
-          <div class="prefs-sidebar-sections">
-            <div
-              v-for="row in sidebarSectionRows"
-              :key="row.token"
-              class="prefs-sidebar-sections__row"
-            >
-              <div class="prefs-sidebar-sections__meta">
-                <div class="prefs-sidebar-sections__title">
-                  {{ row.title }}
-                </div>
-                <div class="prefs-sidebar-sections__hint muted">
-                  {{ row.pathHint }} · 内置 {{ row.defaultSection }}
-                </div>
-              </div>
-              <input
-                v-model="sidebarSectionInputs[row.token]"
-                class="inp prefs-sidebar-sections__inp"
-                type="text"
-                :placeholder="row.defaultSection"
-                :aria-label="`${row.title} 的侧栏分组名`"
-              >
-            </div>
-          </div>
-          <div
-            class="row-actions"
-            style="margin-top: 12px"
-          >
-            <button
-              type="button"
-              class="btn btn--primary"
-              @click="saveSidebarSectionInputs"
-            >
-              保存分组
-            </button>
-            <button
-              type="button"
-              class="btn"
-              @click="clearSidebarSectionOverrides"
-            >
-              清除自定义分组
-            </button>
-          </div>
-        </details>
-      </div>
+      当前仍处于首次引导阶段，请先完成控制台口令改密。
+      <span v-if="consoleSetupStatus.default_password_active">默认口令仍有效，生产环境请勿继续保留。</span>
+      <RouterLink to="/setup" class="prefs-page__setup-link">打开 Setup Wizard</RouterLink>
     </div>
 
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>颜色模式
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
-        </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">「跟随系统」会监听系统深色 / 浅色切换。</p>
-        <div class="row-actions">
+    <div class="prefs-page__grid">
+      <PrefsSettingCard
+        icon="sun"
+        title="颜色模式"
+        lead="切换深色、浅色或跟随系统。"
+      >
+        <div class="prefs-segment prefs-segment--fill">
           <button
             type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.theme === 'dark' }"
-            @click="setTheme('dark')"
-          >
-            深色
-          </button>
-          <button
-            type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.theme === 'light' }"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.theme === 'light' }"
             @click="setTheme('light')"
           >
             浅色
           </button>
           <button
             type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.theme === 'system' }"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.theme === 'dark' }"
+            @click="setTheme('dark')"
+          >
+            深色
+          </button>
+          <button
+            type="button"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.theme === 'system' }"
             @click="setTheme('system')"
           >
             跟随系统
           </button>
         </div>
-      </div>
-    </div>
+      </PrefsSettingCard>
 
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>主题色
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
+      <PrefsSettingCard
+        icon="sparkles"
+        title="配色风格"
+        lead="彩色模式可换主题色，毛玻璃会透出对应色调；黑白模式为纯灰阶，与主题色无关。"
+      >
+        <div class="prefs-segment prefs-segment--fill">
+          <button
+            type="button"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.uiPreset === 'gs' }"
+            @click="setUiPreset('gs')"
+          >
+            彩色
+          </button>
+          <button
+            type="button"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.uiPreset === 'shadcn' }"
+            @click="setUiPreset('shadcn')"
+          >
+            黑白
+          </button>
         </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">
-          影响链接、主按钮、选中高亮与顶栏标题渐变等；与「颜色模式」独立，深/浅色下会自动选用合适色阶。
-        </p>
-        <div class="prefs-accent-grid row-actions">
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        icon="layout"
+        title="界面风格"
+        lead="毛玻璃更有层次，纯色更省资源。"
+      >
+        <div class="prefs-switch-row">
+          <span class="prefs-switch-row__label">毛玻璃效果</span>
+          <ConsoleSwitch
+            v-model="glassSurfaceOn"
+            :label="boolSwitchLabel(glassSurfaceOn)"
+          />
+        </div>
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        icon="terminal"
+        title="开发模式"
+        lead="联调时可跳过控制台登录与 API token；生产环境务必关闭。"
+      >
+        <ConsoleDevModePanel
+          :active="webuiDevModeActive"
+          :show-banner="false"
+          toolbar
+          @updated="onWebuiDevModeUpdated"
+        />
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        v-if="consolePrefs.surfaceStyle === 'glass'"
+        icon="sliders"
+        title="模糊强度"
+        lead="调节背景模糊半径；数值越大越朦胧，饱和度会随强度略增。"
+      >
+        <PrefsGlassPreview
+          label="拖动滑块查看模糊变化"
+          :blur="glassBlurDraft"
+          :opacity="cardGlassOpacityDraft"
+        />
+        <div class="prefs-form-field prefs-form-field--range">
+          <label class="prefs-form-field__label">模糊半径 {{ glassBlurDraft }}px</label>
+          <input
+            class="inp"
+            type="range"
+            min="8"
+            max="40"
+            step="1"
+            :value="glassBlurDraft"
+            @input="onGlassBlurInput(Number(($event.target as HTMLInputElement).value))"
+            @change="onGlassBlurCommit"
+          >
+        </div>
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        v-if="consolePrefs.surfaceStyle === 'glass'"
+        icon="layers"
+        title="卡片不透明度"
+        lead="调节毛玻璃面板底色浓度；数值越低越透、模糊越明显。"
+      >
+        <PrefsGlassPreview
+          label="拖动滑块查看透明度变化"
+          :blur="glassBlurDraft"
+          :opacity="cardGlassOpacityDraft"
+        />
+        <div class="prefs-form-field prefs-form-field--range">
+          <label class="prefs-form-field__label">不透明度 {{ Math.round(cardGlassOpacityDraft * 100) }}%</label>
+          <input
+            class="inp"
+            type="range"
+            min="12"
+            max="72"
+            step="1"
+            :value="Math.round(cardGlassOpacityDraft * 100)"
+            @input="onCardGlassOpacityInput(Number(($event.target as HTMLInputElement).value) / 100)"
+            @change="onCardGlassOpacityCommit"
+          >
+        </div>
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        v-if="consolePrefs.uiPreset === 'gs'"
+        icon="palette"
+        title="主题色"
+        lead="影响按钮、链接与选中高亮。"
+      >
+        <div class="prefs-accent-row">
           <button
             v-for="opt in ACCENT_PRESET_OPTIONS"
             :key="opt.id"
             type="button"
-            class="prefs-accent-opt btn"
-            :class="{ 'prefs-accent-opt--on': consolePrefs.accentPreset === opt.id }"
+            class="prefs-accent-swatch"
+            :class="{ 'prefs-accent-swatch--on': consolePrefs.accentPreset === opt.id }"
+            :aria-label="opt.label"
+            :aria-pressed="consolePrefs.accentPreset === opt.id"
             @click="setAccentPreset(opt.id)"
           >
             <span
-              class="prefs-accent-opt__swatch"
+              class="prefs-accent-swatch__dot"
               :style="{ background: opt.swatch }"
-              aria-hidden="true"
-            />
-            <span>{{ opt.label }}</span>
+            >
+              <span
+                v-if="consolePrefs.accentPreset === opt.id"
+                class="prefs-accent-swatch__check"
+                aria-hidden="true"
+              >✓</span>
+            </span>
+            <span class="prefs-accent-swatch__label">{{ opt.label }}</span>
           </button>
         </div>
-      </div>
-    </div>
+      </PrefsSettingCard>
 
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>圆角风格
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
-        </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">
-          影响卡片、面板、按钮与下拉框等使用圆角变量的控件；切换后本页即可预览。
-        </p>
-        <div class="prefs-radius-preview row-actions" aria-hidden="true">
-          <span
-            class="prefs-radius-preview__chip"
-            title="当前圆角预览"
-          >预览</span>
-        </div>
-        <div class="row-actions">
+      <PrefsSettingCard
+        icon="square"
+        title="圆角风格"
+        lead="按钮、输入框与 Tab 为胶囊圆角；面板与表格使用中等圆角，避免裁切内容。"
+      >
+        <div class="prefs-segment prefs-segment--fill">
           <button
             type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.radius === 'tight' }"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.radius === 'tight' }"
             @click="setRadius('tight')"
           >
             紧凑
           </button>
           <button
             type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.radius === 'default' }"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.radius === 'default' }"
             @click="setRadius('default')"
           >
             默认
           </button>
           <button
             type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.radius === 'round' }"
+            class="prefs-segment__btn"
+            :class="{ 'prefs-segment__btn--active': consolePrefs.radius === 'round' }"
             @click="setRadius('round')"
           >
             更圆
           </button>
         </div>
-      </div>
-    </div>
+      </PrefsSettingCard>
 
-    <div class="panel">
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>内容密度
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
+      <PrefsSettingCard
+        icon="layers"
+        title="内容密度"
+        lead="紧凑模式缩小间距与控件高度。"
+      >
+        <div class="prefs-switch-row">
+          <span class="prefs-switch-row__label">紧凑布局</span>
+          <ConsoleSwitch
+            v-model="compactDensityOn"
+            :label="boolSwitchLabel(compactDensityOn)"
+          />
         </div>
-      </div>
-      <div class="panel__bd">
-        <p class="muted" style="margin: 0 0 12px">
-          紧凑模式会缩小面板内边距与部分控件高度；舒适为默认间距。
-        </p>
-        <div class="row-actions">
-          <button
-            type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.density === 'comfortable' }"
-            @click="setDensity('comfortable')"
-          >
-            舒适
-          </button>
-          <button
-            type="button"
-            class="btn"
-            :class="{ 'btn--primary': consolePrefs.density === 'compact' }"
-            @click="setDensity('compact')"
-          >
-            紧凑
-          </button>
-        </div>
-      </div>
-    </div>
+      </PrefsSettingCard>
 
-    <div
-      id="console-password"
-      class="panel"
-    >
-      <div class="panel__hd panel__hd--split">
-        <h2 class="panel__title">
-          <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>控制台口令
-        </h2>
-        <div class="row-actions">
-          <PanelSidebarAdd main-path="/preferences" />
-        </div>
-      </div>
-      <div class="panel__bd">
+      <PrefsSettingCard
+        card-id="console-password"
+        icon="lock"
+        title="控制台口令"
+        lead="用于登录 WebUI，至少 8 位。"
+        wide
+      >
         <div
           v-if="pwdErr"
           class="alert alert--err"
+          style="margin-bottom: 12px"
         >
           {{ pwdErr }}
         </div>
         <div
           v-if="pwdOk"
           class="alert alert--ok"
+          style="margin-bottom: 12px"
         >
           {{ pwdOk }}
         </div>
-        <div style="margin-bottom: 14px">
-          <label class="muted" style="display: block; margin-bottom: 6px">新口令</label>
+        <div class="prefs-form-field">
+          <label class="prefs-form-field__label">新口令</label>
           <input
             v-model="p1"
             class="inp"
             type="password"
             autocomplete="new-password"
-            style="max-width: 400px; width: 100%"
           >
         </div>
-        <div style="margin-bottom: 18px">
-          <label class="muted" style="display: block; margin-bottom: 6px">确认</label>
+        <div class="prefs-form-field">
+          <label class="prefs-form-field__label">确认口令</label>
           <input
             v-model="p2"
             class="inp"
             type="password"
             autocomplete="new-password"
-            style="max-width: 400px; width: 100%"
           >
         </div>
-        <button
-          type="button"
-          class="btn btn--primary"
+        <UiButton
+          variant="primary"
           :disabled="pwdBusy"
           @click="submitPassword"
         >
-          {{ pwdBusy ? "提交中…" : "保存" }}
-        </button>
-      </div>
+          {{ pwdBusy ? "提交中…" : "保存口令" }}
+        </UiButton>
+      </PrefsSettingCard>
     </div>
   </div>
 </template>

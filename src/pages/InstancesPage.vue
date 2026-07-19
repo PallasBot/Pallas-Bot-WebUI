@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import {
   deleteBotConfig,
@@ -8,14 +9,25 @@ import {
   peekPluginsCache,
   putBotConfig,
 } from "@/api/consoleApi";
-import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
+import type {
+  BotConfigPublic,
+  InstancesData,
+  PersonaSeedPref,
+  PluginRow,
+} from "@/api/pallasTypes";
+import {
+  PERSONA_SEED_PREF_OPTIONS,
+  readBotPersonaSeedPrefs,
+} from "@/api/pallasTypes";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar.vue";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
+import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -53,6 +65,7 @@ const tablePageSize = computed({
 });
 
 const editModalAccount = ref<number | null>(null);
+const editModalIsInit = ref(false);
 const draft = ref<{
   security: boolean;
   auto_accept_friend: boolean;
@@ -60,6 +73,8 @@ const draft = ref<{
   community_roster_show_qq: boolean;
   disabled_plugins: string[];
   admins: number[];
+  seedPrefs: PersonaSeedPref[];
+  seedManual: boolean;
 } | null>(null);
 
 const addAdminInput = ref<string>("");
@@ -107,6 +122,21 @@ const sortedNonebotBots = computed(() => {
   });
   return rows;
 });
+
+const dbAccountIds = computed(
+  () => new Set((data.value?.db_bot_configs ?? []).map((c) => c.account)),
+);
+
+function accountInDb(account: number): boolean {
+  return dbAccountIds.value.has(account);
+}
+
+const nonebotBotsNeedingInit = computed(() =>
+  sortedNonebotBots.value.filter((b) => {
+    const acc = parseSelfId(b.self_id);
+    return acc != null && !accountInDb(acc);
+  }),
+);
 
 function isBotConnected(account: number): boolean {
   return accountHasNonebotBot(data.value?.nonebot_bots, account);
@@ -177,7 +207,7 @@ const deleteModalWarnings = computed(() => {
   const connected = selectedConnectedAccounts.value;
   if (!connected.length) return [];
   return [
-    `其中以下账号当前仍与 NoneBot 连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
+    `其中以下账号当前仍与消息框架连接：${connected.join("、")}。删除后可能导致运行期行为异常，请确认。`,
   ];
 });
 
@@ -302,10 +332,34 @@ function removeAdminFromDraft(id: number) {
   draft.value.admins = draft.value.admins.filter((x) => x !== id);
 }
 
-function startEdit(c: BotConfigPublic) {
-  editModalAccount.value = c.account;
+function defaultBotConfigDraft() {
+  return {
+    security: false,
+    auto_accept_friend: false,
+    auto_accept_group: false,
+    community_roster_show_qq: true,
+    disabled_plugins: [] as string[],
+    admins: [] as number[],
+    seedPrefs: [] as PersonaSeedPref[],
+    seedManual: false,
+  };
+}
+
+function startInit(account: number) {
+  editModalAccount.value = account;
+  editModalIsInit.value = true;
   addAdminInput.value = "";
   adminAddHint.value = "";
+  draft.value = defaultBotConfigDraft();
+  saveErr.value = "";
+}
+
+function startEdit(c: BotConfigPublic) {
+  editModalAccount.value = c.account;
+  editModalIsInit.value = false;
+  addAdminInput.value = "";
+  adminAddHint.value = "";
+  const seed = readBotPersonaSeedPrefs(c.persona ?? null);
   draft.value = {
     security: c.security,
     auto_accept_friend: c.auto_accept_friend,
@@ -313,12 +367,15 @@ function startEdit(c: BotConfigPublic) {
     community_roster_show_qq: c.community_roster_show_qq !== false,
     disabled_plugins: [...(c.disabled_plugins ?? [])],
     admins: [...(c.admins ?? [])],
+    seedPrefs: [...seed.prefs],
+    seedManual: seed.source === "manual",
   };
   saveErr.value = "";
 }
 
 function cancelEdit() {
   editModalAccount.value = null;
+  editModalIsInit.value = false;
   draft.value = null;
   addAdminInput.value = "";
   adminAddHint.value = "";
@@ -333,16 +390,12 @@ function togglePluginDisabled(name: string, checked: boolean) {
   draft.value.disabled_plugins = [...set].sort((a, b) => a.localeCompare(b));
 }
 
-function boolSelectVal(v: boolean): string {
-  return v ? "1" : "0";
-}
-
-function onBoolSelect(
+function setDraftBool(
   field: "security" | "auto_accept_friend" | "auto_accept_group" | "community_roster_show_qq",
-  raw: string,
+  value: boolean,
 ) {
   if (!draft.value) return;
-  draft.value[field] = raw === "1";
+  draft.value[field] = value;
 }
 
 async function reload(opts?: { bypassCache?: boolean }) {
@@ -363,16 +416,49 @@ async function reloadFromUser() {
   }
 }
 
+function toggleSeedPref(pref: PersonaSeedPref, checked: boolean) {
+  if (!draft.value) return;
+  const set = new Set(draft.value.seedPrefs);
+  if (checked) {
+    if (set.size >= 2 && !set.has(pref)) return;
+    set.add(pref);
+  } else {
+    set.delete(pref);
+  }
+  draft.value.seedPrefs = PERSONA_SEED_PREF_OPTIONS.map((opt) => opt.id).filter((id) =>
+    set.has(id),
+  );
+  draft.value.seedManual = draft.value.seedPrefs.length > 0;
+}
+
+function clearSeedOverride() {
+  if (!draft.value) return;
+  draft.value.seedPrefs = [];
+  draft.value.seedManual = false;
+}
+
 async function saveBotConfig() {
   const account = editModalAccount.value;
   if (!draft.value || account == null) return;
+  if (editModalIsInit.value && !draft.value.admins.length) {
+    saveErr.value = "请至少添加一名号主 QQ。";
+    return;
+  }
   saveBusy.value = true;
   saveErr.value = "";
   try {
-    await putBotConfig(account, { ...draft.value });
+    const { seedPrefs, seedManual, ...rest } = draft.value;
+    const body: Parameters<typeof putBotConfig>[1] = { ...rest };
+    if (!editModalIsInit.value) {
+      body.persona = seedManual
+        ? { seed_override: { prefs: seedPrefs } }
+        : { seed_override: null };
+    }
+    await putBotConfig(account, body);
     await reload();
+    const wasInit = editModalIsInit.value;
     cancelEdit();
-    toastSaveSuccess("Bot 配置已保存");
+    toastSaveSuccess(wasInit ? "Bot 配置已初始化" : "Bot 配置已保存");
   } catch (e) {
     saveErr.value = e instanceof Error ? e.message : String(e);
     toastApiError(e, "保存失败");
@@ -420,7 +506,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="instances-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -433,24 +519,29 @@ onUnmounted(() => {
       :panels="4"
     />
     <template v-else-if="data">
-      <div class="panel">
+      <UiCard
+        tag="div"
+        glass
+        class="instances-page__panel"
+      >
         <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>数据库中的实例
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />数据库中的实例
             <RefreshIconButton
+                :show-label="false"
               :busy="reloadBusy"
               label="刷新实例数据"
               @click="reloadFromUser"
             />
           </h2>
           <div class="inst-db-panel__hd-side">
-            <button
-              type="button"
-              class="btn panel-hd-collapse-btn"
+            <UiButton
+              variant="outline"
+              class="panel-hd-collapse-btn"
               @click="expDbBots = !expDbBots"
             >
               {{ expDbBots ? "收起" : "展开" }}
-            </button>
+            </UiButton>
             <div
               class="console-view-toggle"
               role="group"
@@ -490,7 +581,6 @@ onUnmounted(() => {
                 title="按账号、昵称、管理员、禁用插件筛选"
               >
             </div>
-            <PanelSidebarAdd main-path="/instances" />
           </div>
         </div>
         <div
@@ -503,6 +593,21 @@ onUnmounted(() => {
             style="margin: 0 0 10px"
           >
             插件列表加载失败，禁用插件勾选不可用：{{ pluginLoadErr }}
+          </p>
+          <p
+            v-if="!filteredDbBotConfigs.length && nonebotBotsNeedingInit.length"
+            class="muted"
+            style="margin: 0 0 10px"
+          >
+            数据库中尚无 Bot 配置。下方「消息框架」中已连接但未入库的牛牛可点
+            <strong>初始化配置</strong> 写入号主与其它选项（不依赖协议端「创建牛牛」流程）。
+          </p>
+          <p
+            v-else-if="!filteredDbBotConfigs.length"
+            class="muted"
+            style="margin: 0 0 10px"
+          >
+            数据库中暂无 Bot 配置记录。
           </p>
 
           <div
@@ -614,7 +719,15 @@ onUnmounted(() => {
                 </label>
                 <div class="data-summary-card__head-main">
                   <div class="data-summary-card__title-line">
-                    <div class="data-summary-card__primary">{{ botNickname(c.account) || "BOT" }}</div>
+                    <div class="data-summary-card__primary">
+                      <a
+                        href="#"
+                        class="data-summary-card__title-link"
+                        @click.prevent="startEdit(c)"
+                      >
+                        {{ botNickname(c.account) || "BOT" }}
+                      </a>
+                    </div>
                     <button
                       type="button"
                       class="data-card-fav-star"
@@ -675,9 +788,6 @@ onUnmounted(() => {
                 }}
               </div>
               </div>
-              <div class="data-summary-card__tags data-summary-card__foot inst-card-actions">
-                <ConsoleTableEdit @click="startEdit(c)" />
-              </div>
             </div>
           </div>
           <ConsolePagerBar
@@ -697,28 +807,39 @@ onUnmounted(() => {
             @delete="openDeleteModal"
           />
         </div>
-      </div>
+      </UiCard>
 
-      <div class="panel">
+      <UiCard
+        tag="div"
+        glass
+        class="instances-page__panel"
+      >
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>NoneBot 框架
+            <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />消息框架
           </h2>
           <div class="row-actions">
-            <PanelSidebarAdd main-path="/instances" />
-            <button
-              type="button"
-              class="btn panel-hd-collapse-btn"
+            <UiButton
+              variant="outline"
+              class="panel-hd-collapse-btn"
               @click="expNonebot = !expNonebot"
             >
               {{ expNonebot ? "收起" : "展开" }}
-            </button>
+            </UiButton>
           </div>
         </div>
         <div
           v-show="expNonebot"
           class="panel__bd"
         >
+          <p
+            v-if="nonebotBotsNeedingInit.length"
+            class="muted"
+            style="margin: 0 0 10px"
+          >
+            {{ nonebotBotsNeedingInit.length }} 个已连接牛牛尚未写入数据库配置，可在下表点
+            <strong>初始化配置</strong> 添加号主。
+          </p>
           <div class="table-wrap">
             <table class="data console-data-table">
               <thead>
@@ -727,6 +848,8 @@ onUnmounted(() => {
                   <th>self_id</th>
                   <th>适配器</th>
                   <th>连接键</th>
+                  <th>库配置</th>
+                  <th style="min-width: 96px; width: 1%">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -738,6 +861,34 @@ onUnmounted(() => {
                   <td>{{ b.self_id }}</td>
                   <td class="muted">{{ b.adapter }}</td>
                   <td class="muted">{{ b.connection_key }}</td>
+                  <td>
+                    <span
+                      v-if="parseSelfId(b.self_id) != null && accountInDb(parseSelfId(b.self_id)!)"
+                      class="data-pill data-pill--on"
+                    >已入库</span>
+                    <span
+                      v-else-if="parseSelfId(b.self_id) != null"
+                      class="data-pill data-pill--off"
+                    >未入库</span>
+                    <span
+                      v-else
+                      class="muted"
+                    >—</span>
+                  </td>
+                  <td>
+                    <UiButton
+                      v-if="parseSelfId(b.self_id) != null && !accountInDb(parseSelfId(b.self_id)!)"
+                      variant="outline"
+                      class="inst-nonebot-init-btn"
+                      @click="startInit(parseSelfId(b.self_id)!)"
+                    >
+                      初始化配置
+                    </UiButton>
+                    <span
+                      v-else
+                      class="muted"
+                    >—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -749,26 +900,28 @@ onUnmounted(() => {
             :total="sortedNonebotBots.length"
           />
         </div>
-      </div>
+      </UiCard>
     </template>
-    <div
+    <UiCard
       v-else
-      class="panel"
+      tag="div"
+      glass
+      class="instances-page__panel"
     >
       <div class="panel__bd">
         <p class="muted">
           实例数据未加载，可尝试重新拉取。
         </p>
-        <button
-          type="button"
-          class="btn btn--primary"
+        <UiButton
+          variant="primary"
           :disabled="reloadBusy"
+          :busy="reloadBusy"
           @click="reloadFromUser"
         >
           重新加载
-        </button>
+        </UiButton>
       </div>
-    </div>
+    </UiCard>
 
     <Teleport to="body">
       <div
@@ -787,13 +940,13 @@ onUnmounted(() => {
           class="console-modal__dialog"
           @click.stop
         >
-          <div class="console-modal__hd console-modal__hd--with-actions">
+          <div class="console-modal__hd">
             <div class="console-modal__head-text">
               <h2
                 id="bot-config-modal-title"
                 class="console-modal__title"
               >
-                编辑 Bot 配置
+                {{ editModalIsInit ? "初始化 Bot 配置" : "编辑 Bot 配置" }}
               </h2>
               <p class="console-modal__subtitle">
                 <span class="console-modal__subtitle-strong">{{
@@ -801,36 +954,22 @@ onUnmounted(() => {
                 }}</span>
                 <span class="muted"> · 账号 {{ editModalAccount }}</span>
               </p>
-            </div>
-            <div class="console-modal__hd-actions">
-              <div class="row-actions console-modal__hd-btns">
-                <button
-                  type="button"
-                  class="btn btn--primary"
-                  :disabled="saveBusy"
-                  title="Ctrl+S"
-                  @click="saveBotConfig()"
-                >
-                  {{ saveBusy ? "保存中…" : "保存" }}
-                </button>
-                <button
-                  type="button"
-                  class="btn"
-                  :disabled="saveBusy"
-                  @click="cancelEdit"
-                >
-                  取消
-                </button>
-              </div>
-              <button
-                type="button"
-                class="console-modal__close"
-                aria-label="关闭"
-                @click="cancelEdit"
+              <p
+                v-if="editModalIsInit"
+                class="muted"
+                style="margin: 6px 0 0; font-size: 12px"
               >
-                ×
-              </button>
+                首次写入数据库配置；请至少添加一名号主 QQ。保存后该牛牛会出现在上方「数据库中的实例」列表。
+              </p>
             </div>
+            <button
+              type="button"
+              class="console-modal__close"
+              aria-label="关闭"
+              @click="cancelEdit"
+            >
+              ×
+            </button>
           </div>
           <div class="console-modal__bd">
             <div class="bot-config-edit bot-config-edit--modal">
@@ -841,67 +980,31 @@ onUnmounted(() => {
               >
                 {{ saveErr }}
               </p>
-              <div class="bot-config-edit__grid bot-config-edit__grid--pair">
-                <div class="bot-config-edit__field">
-                  <label>安全模式</label>
-                  <select
-                    class="sel"
-                    style="width: 100%"
-                    :value="boolSelectVal(draft.security)"
-                    @change="onBoolSelect('security', ($event.target as HTMLSelectElement).value)"
-                  >
-                    <option value="1">开启</option>
-                    <option value="0">关闭</option>
-                  </select>
-                </div>
-                <div class="bot-config-edit__field">
-                  <label>自动同意好友</label>
-                  <select
-                    class="sel"
-                    style="width: 100%"
-                    :value="boolSelectVal(draft.auto_accept_friend)"
-                    @change="
-                      onBoolSelect('auto_accept_friend', ($event.target as HTMLSelectElement).value)
-                    "
-                  >
-                    <option value="1">开启</option>
-                    <option value="0">关闭</option>
-                  </select>
-                </div>
-                <div class="bot-config-edit__field">
-                  <label>自动同意入群</label>
-                  <select
-                    class="sel"
-                    style="width: 100%"
-                    :value="boolSelectVal(draft.auto_accept_group)"
-                    @change="
-                      onBoolSelect('auto_accept_group', ($event.target as HTMLSelectElement).value)
-                    "
-                  >
-                    <option value="1">开启</option>
-                    <option value="0">关闭</option>
-                  </select>
-                </div>
-                <div class="bot-config-edit__field">
-                  <label>社区名册公开</label>
-                  <select
-                    class="sel"
-                    style="width: 100%"
-                    :value="boolSelectVal(draft.community_roster_show_qq)"
-                    @change="
-                      onBoolSelect(
-                        'community_roster_show_qq',
-                        ($event.target as HTMLSelectElement).value,
-                      )
-                    "
-                  >
-                    <option value="1">开启</option>
-                    <option value="0">关闭</option>
-                  </select>
-                  <p class="bot-config-edit__hint muted">
-                    关闭后该牛不上报社区名册（气泡墙不展示）。
-                  </p>
-                </div>
+              <div class="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches">
+                <FormBoolSwitchField
+                  label="安全模式"
+                  hint="开启后，牛牛回复发送失败时会直接 ban 掉这句话。"
+                  :model-value="draft.security"
+                  @update:model-value="setDraftBool('security', $event)"
+                />
+                <FormBoolSwitchField
+                  label="自动同意好友"
+                  hint="自动通过好友申请，无需在协议端手动确认。"
+                  :model-value="draft.auto_accept_friend"
+                  @update:model-value="setDraftBool('auto_accept_friend', $event)"
+                />
+                <FormBoolSwitchField
+                  label="自动同意入群"
+                  hint="自动通过入群邀请或加群申请。"
+                  :model-value="draft.auto_accept_group"
+                  @update:model-value="setDraftBool('auto_accept_group', $event)"
+                />
+                <FormBoolSwitchField
+                  label="社区名册公开"
+                  hint="关闭后该牛不上报社区名册（气泡墙不展示）。"
+                  :model-value="draft.community_roster_show_qq"
+                  @update:model-value="setDraftBool('community_roster_show_qq', $event)"
+                />
               </div>
               <div class="bot-config-edit__field">
                 <label>管理员 QQ</label>
@@ -925,13 +1028,12 @@ onUnmounted(() => {
                     style="max-width: 200px; min-width: 0; flex: 1 1 140px"
                     @keydown.enter.prevent="addAdminFromInput"
                   >
-                  <button
-                    type="button"
-                    class="btn"
+                  <UiButton
+                    variant="outline"
                     @click="addAdminFromInput"
                   >
                     添加
-                  </button>
+                  </UiButton>
                 </div>
                 <p
                   v-if="adminAddHint"
@@ -970,6 +1072,52 @@ onUnmounted(() => {
                 </p>
               </div>
               <div class="bot-config-edit__field">
+                <label>牛格种子（最多 2 项）</label>
+                <p class="muted" style="margin: 0 0 8px; font-size: 12px">
+                  自动按账号派生；勾选后为手改覆盖，主要影响复读选句风格。清空勾选可恢复自动。
+                </p>
+                <div class="plugin-check-grid">
+                  <label
+                    v-for="opt in PERSONA_SEED_PREF_OPTIONS"
+                    :key="`seed-${editModalAccount}-${opt.id}`"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="draft.seedPrefs.includes(opt.id)"
+                      :disabled="
+                        !draft.seedPrefs.includes(opt.id) && draft.seedPrefs.length >= 2
+                      "
+                      @change="
+                        toggleSeedPref(opt.id, ($event.target as HTMLInputElement).checked)
+                      "
+                    >
+                    <span>{{ opt.label }}</span>
+                  </label>
+                </div>
+                <p
+                  v-if="draft.seedManual"
+                  class="muted"
+                  style="margin: 8px 0 0; font-size: 12px"
+                >
+                  当前：手改覆盖
+                  <button
+                    type="button"
+                    class="btn btn--ghost"
+                    style="margin-left: 8px; padding: 2px 8px; font-size: 12px"
+                    @click="clearSeedOverride"
+                  >
+                    恢复自动
+                  </button>
+                </p>
+                <p
+                  v-else
+                  class="muted"
+                  style="margin: 8px 0 0; font-size: 12px"
+                >
+                  当前：自动种子（未手改）
+                </p>
+              </div>
+              <div class="bot-config-edit__field">
                 <label>禁用插件（勾选表示禁用）</label>
                 <p
                   v-if="!pluginPickList.length"
@@ -999,6 +1147,19 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+          <div class="ui-dialog__ft">
+            <div class="plugin-config-dialog__foot row-actions">
+              <UiButton
+                variant="primary"
+                :disabled="saveBusy"
+                :busy="saveBusy"
+                title="Ctrl+S"
+                @click="saveBotConfig()"
+              >
+                {{ saveBusy ? "保存中…" : editModalIsInit ? "初始化" : "保存" }}
+              </UiButton>
+            </div>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -1019,6 +1180,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.inst-nonebot-init-btn {
+  white-space: nowrap;
+}
+
 .inst-delete-account-list {
   margin: 0;
   padding-left: 1.2em;

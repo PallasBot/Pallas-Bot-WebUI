@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { fetchPluginRunStats, postLogErrorsCleanup } from "@/api/consoleApi";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
+import { fetchLogErrors, postLogErrorsCleanup, type LogErrorsData } from "@/api/consoleApi";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
+import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
+import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
-import PanelSidebarAdd from "@/components/PanelSidebarAdd.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -17,9 +21,11 @@ import {
   parseLogErrorPlugin,
 } from "@/utils/logErrorDisplay";
 
+let logErrorsCache: LogErrorsData | null = null;
+
 const panelNavIcon = usePanelNavIcon();
 const err = ref("");
-const pageReady = ref(false);
+const pageReady = ref(Boolean(logErrorsCache));
 const loading = ref(false);
 const clearing = ref(false);
 const entries = ref<MatcherErrorLogEntry[]>([]);
@@ -28,11 +34,15 @@ const shardedLogErrors = ref(false);
 const logSource = ref("all");
 const q = ref("");
 
-async function load() {
+async function load(opts?: { bypassCache?: boolean }) {
   loading.value = true;
   err.value = "";
   try {
-    const stats = await fetchPluginRunStats(undefined, logSource.value, { tbLimit: 0 });
+    const stats = await fetchLogErrors(logSource.value, {
+      tbLimit: 0,
+      bypassCache: opts?.bypassCache === true,
+    });
+    logErrorsCache = stats;
     entries.value = stats.log_error_log ?? [];
     shardedLogErrors.value = Boolean(stats.sharded_log_errors);
     if (stats.log_error_sources?.length) {
@@ -40,7 +50,7 @@ async function load() {
     }
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
-    entries.value = [];
+    if (!entries.value.length) entries.value = [];
   } finally {
     loading.value = false;
     pageReady.value = true;
@@ -138,11 +148,25 @@ async function clearLogErrors() {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+});
+
+onActivated(() => {
+  if (logErrorsCache && !loading.value) {
+    entries.value = logErrorsCache.log_error_log ?? [];
+    shardedLogErrors.value = Boolean(logErrorsCache.sharded_log_errors);
+    if (logErrorsCache.log_error_sources?.length) {
+      logSources.value = logErrorsCache.log_error_sources;
+    }
+    pageReady.value = true;
+  }
+  void load();
+});
 </script>
 
 <template>
-  <div class="log-errors-page">
+  <div class="log-errors-page console-hub-page console-hub-page--fill">
     <div
       v-if="err"
       class="alert alert--err"
@@ -154,59 +178,97 @@ onMounted(load);
       v-if="!pageReady"
       :panels="1"
     />
-    <div
-      v-else
-      class="log-errors-page__body"
-    >
-      <div class="panel">
-        <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">
-            <span class="panel__title-ico" aria-hidden="true">{{ panelNavIcon }}</span>日志报错
-            <RefreshIconButton
-              :busy="loading"
-              label="刷新"
-              @click="load"
-            />
-          </h2>
-          <div class="row-actions">
-            <PanelSidebarAdd main-path="/log-errors" />
-            <button
-              type="button"
-              class="btn btn--danger log-errors-page__clear-btn"
+    <template v-else>
+      <ConsoleHubMasthead :icon="panelNavIcon">
+        <template #title>
+          日志报错
+        </template>
+        <template #lead>
+          每条报错独立成卡；分片时可按来源筛选。「清理全部」与每日 4:00 自动清理中的日志报错部分一致。
+        </template>
+        <template #actions>
+          <div class="console-hub-toolbar-strip__masthead-actions">
+            <select
+              v-if="shardedLogErrors"
+              v-model="logSource"
+              class="sel log-errors-page__source-sel"
+              aria-label="报错来源"
+            >
+              <option
+                v-for="s in sourceOptions"
+                :key="`err-src-${s}`"
+                :value="s"
+              >
+                {{ s === "all" ? "全部来源" : s }}
+              </option>
+            </select>
+            <UiButton
+              variant="destructive"
+              class="log-errors-page__clear-btn"
               :disabled="clearing || loading || !entries.length"
               :title="entries.length ? '清空 log_errors 与分片 errors 归档' : '暂无记录可清理'"
               @click="clearLogErrors"
             >
               {{ clearing ? "清理中…" : "清理全部" }}
-            </button>
-            <div class="log-errors-page__filter-row">
-              <input
-                v-model="q"
-                class="inp"
-                type="search"
-                placeholder="搜索消息、类型、来源…"
-              >
-              <select
-                v-if="shardedLogErrors"
-                v-model="logSource"
-                class="sel"
-                aria-label="报错来源"
-              >
-                <option
-                  v-for="s in sourceOptions"
-                  :key="`err-src-${s}`"
-                  :value="s"
-                >
-                  {{ s === "all" ? "全部来源" : s }}
-                </option>
-              </select>
-            </div>
+            </UiButton>
+            <RefreshIconButton
+              :busy="loading"
+              label="刷新"
+              @click="load({ bypassCache: true })"
+            />
           </div>
-        </div>
+        </template>
+      </ConsoleHubMasthead>
+
+      <ConsoleHubSearch
+        v-model="q"
+        class="hub-search-wide-only"
+        placeholder="搜索消息、类型、来源…"
+      />
+
+      <ConsoleHubToolbarStrip>
+        <template #search>
+          <ConsoleHubSearch
+            v-model="q"
+            placeholder="搜索消息、类型、来源…"
+          />
+        </template>
+        <template #middle>
+          <select
+            v-if="shardedLogErrors"
+            v-model="logSource"
+            class="sel log-errors-page__source-sel log-errors-page__source-sel--strip"
+            aria-label="报错来源"
+          >
+            <option
+              v-for="s in sourceOptions"
+              :key="`err-src-strip-${s}`"
+              :value="s"
+            >
+              {{ s === "all" ? "全部来源" : s }}
+            </option>
+          </select>
+          <UiButton
+            variant="destructive"
+            class="log-errors-page__clear-btn log-errors-page__clear-btn--strip"
+            :disabled="clearing || loading || !entries.length"
+            :title="entries.length ? '清空 log_errors 与分片 errors 归档' : '暂无记录可清理'"
+            @click="clearLogErrors"
+          >
+            {{ clearing ? "清理中…" : "清理" }}
+          </UiButton>
+        </template>
+        <template #actions>
+          <RefreshIconButton
+            :busy="loading"
+            label="刷新"
+            @click="load({ bypassCache: true })"
+          />
+        </template>
+      </ConsoleHubToolbarStrip>
+
+      <UiCard tag="div" glass class="log-errors-page__panel">
         <div class="panel__bd">
-          <p class="muted log-errors-page__hint">
-            每条报错独立成卡：上方为时间与类型，正文为完整堆栈（无堆栈时显示摘要）。分片时按 hub / worker 筛选，数据来自 logs/errors/*.jsonl。「清理全部」与每日 4:00 自动清理中的日志报错部分一致（不含 Matcher 异常 jsonl）。
-          </p>
           <div class="log-errors-page__scroll">
             <p
               v-if="loading && !entries.length"
@@ -258,37 +320,40 @@ onMounted(load);
                   {{ it.message || "（无摘要）" }}
                 </p>
                 <div class="log-error-card__actions">
-                  <button
-                    type="button"
-                    class="btn log-error-card__copy-btn"
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    class="log-error-card__copy-btn"
                     title="复制时间与摘要"
                     @click="copySummary(it)"
                   >
                     复制摘要
-                  </button>
-                  <button
+                  </UiButton>
+                  <UiButton
                     v-if="it.traceback?.trim()"
-                    type="button"
-                    class="btn log-error-card__copy-btn"
+                    variant="outline"
+                    size="sm"
+                    class="log-error-card__copy-btn"
                     title="复制堆栈文本"
                     @click="copyTraceback(it)"
                   >
                     复制堆栈
-                  </button>
-                  <button
-                    type="button"
-                    class="btn log-error-card__copy-btn"
+                  </UiButton>
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    class="log-error-card__copy-btn"
                     title="复制时间与完整堆栈"
                     @click="copyFull(it)"
                   >
                     复制全部
-                  </button>
+                  </UiButton>
                 </div>
               </article>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </UiCard>
+    </template>
   </div>
 </template>

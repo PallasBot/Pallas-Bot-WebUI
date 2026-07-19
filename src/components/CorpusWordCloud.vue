@@ -17,8 +17,6 @@ const props = withDefaults(
 const communityTabs: Array<{ key: CommunityHotTab; label: string }> = [
   { key: "fleet", label: "机群" },
   { key: "pool", label: "高频池" },
-  { key: "day", label: "今日" },
-  { key: "week", label: "本周" },
   { key: "month", label: "本月" },
 ];
 

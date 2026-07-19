@@ -52,6 +52,18 @@ export default defineConfig(({ mode }) => {
         target: devProxyTarget,
         changeOrigin: true,
       },
+      "/pallas/store-assets": {
+        target: devProxyTarget,
+        changeOrigin: true,
+      },
+      "/pallas/plugin-assets": {
+        target: devProxyTarget,
+        changeOrigin: true,
+      },
+      "/pallas/assets": {
+        target: devProxyTarget,
+        changeOrigin: true,
+      },
       "/pallas/login": {
         target: devProxyTarget,
         changeOrigin: true,
