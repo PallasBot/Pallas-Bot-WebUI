@@ -6,10 +6,11 @@ import {
 } from "../src/config/aiConfigSections";
 
 describe("aiConfigSections", () => {
-  it("keeps simple mode focused on access, dialogue, knowledge, and more", () => {
+  it("keeps simple mode focused on access, dialogue, capabilities, knowledge, and more", () => {
     expect(SIMPLE_AI_CONFIG_NAV_SECTION_IDS.map((id) => aiConfigSectionMeta(id).label)).toEqual([
       "接入",
       "对话",
+      "能力包",
       "知识库",
     ]);
     expect(AI_CONFIG_MORE_NAV_ITEM).toMatchObject({
