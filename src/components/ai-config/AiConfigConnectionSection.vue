@@ -46,7 +46,24 @@ const installErr = ref("");
 const installOutputTail = ref("");
 const installOutputOpen = ref(false);
 const remoteOnly = ref(true);
+const withMedia = ref(false);
+const useGpu = ref(false);
 const noStart = ref(false);
+
+function onRemoteOnlyChange() {
+  if (remoteOnly.value) {
+    withMedia.value = false;
+    useGpu.value = false;
+  }
+}
+
+function onWithMediaChange() {
+  if (withMedia.value) {
+    remoteOnly.value = false;
+  } else {
+    useGpu.value = false;
+  }
+}
 
 async function loadInstallStatus() {
   try {
@@ -72,6 +89,8 @@ async function runInstall(action: "clone" | "bootstrap" | "clone_and_bootstrap")
       action,
       no_start: noStart.value,
       remote_only: remoteOnly.value,
+      with_media: withMedia.value,
+      use_gpu: useGpu.value,
     });
     const complete = await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (message) => {
       installProgress.value = message;
@@ -171,8 +190,25 @@ defineExpose({ save, canSave, saving });
             <input
               v-model="remoteOnly"
               type="checkbox"
+              @change="onRemoteOnlyChange"
             >
             remote-only（跳过本机 Ollama）
+          </label>
+          <label class="ai-config-connection__opt">
+            <input
+              v-model="withMedia"
+              type="checkbox"
+              @change="onWithMediaChange"
+            >
+            含唱歌/TTS（--with-media）
+          </label>
+          <label class="ai-config-connection__opt">
+            <input
+              v-model="useGpu"
+              type="checkbox"
+              :disabled="!withMedia"
+            >
+            NVIDIA GPU torch
           </label>
           <label class="ai-config-connection__opt">
             <input
@@ -182,6 +218,17 @@ defineExpose({ save, canSave, saving });
             仅安装不启动
           </label>
         </div>
+        <p
+          v-if="withMedia && remoteOnly"
+          class="muted"
+        >
+          已勾选媒体时会关闭 remote-only。
+        </p>
+        <p class="muted">
+          媒体权重请到
+          <RouterLink to="/ai/config/capabilities">能力包</RouterLink>
+          查看或下载。
+        </p>
         <div class="row-actions ai-config-connection__install-actions">
           <UiButton
             variant="primary"

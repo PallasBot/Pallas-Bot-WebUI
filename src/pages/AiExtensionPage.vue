@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import AiConfigCapabilitiesSection from "@/components/ai-config/AiConfigCapabilitiesSection.vue";
 import AiConfigConnectionSection from "@/components/ai-config/AiConfigConnectionSection.vue";
 import AiConfigDrawSection from "@/components/ai-config/AiConfigDrawSection.vue";
 import AiConfigKnowledgeSection from "@/components/ai-config/AiConfigKnowledgeSection.vue";
@@ -223,6 +224,7 @@ onMounted(() => {
             v-else-if="activeSection === 'connection'"
             ref="connectionSectionRef"
           />
+          <AiConfigCapabilitiesSection v-else-if="activeSection === 'capabilities'" />
           <AiConfigDrawSection v-else-if="activeSection === 'draw'" />
           <AiConfigKnowledgeSection
             v-else-if="activeSection === 'knowledge'"

@@ -65,6 +65,13 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
     groupId: "extension",
   },
   {
+    id: "capabilities",
+    label: "能力包",
+    lead: "对话模型与唱歌/TTS 媒体权重：源码可下载，Docker 引导换镜像。",
+    icon: "layers",
+    groupId: "extension",
+  },
+  {
     id: "draw",
     label: "画画",
     lead: "画画服务网关与连通性（与插件 draw 同一配置）。",
@@ -89,7 +96,12 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
 
 export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
 
-export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = ["provider", "strategy", "knowledge"];
+export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = [
+  "provider",
+  "strategy",
+  "capabilities",
+  "knowledge",
+];
 
 export const AI_CONFIG_MORE_NAV_ITEM: AiConfigMoreNavItemDef = {
   id: "more",

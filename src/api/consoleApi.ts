@@ -2378,6 +2378,48 @@ export async function postAiInstall(body: {
   };
 }
 
+export type MediaAssetsStatus = {
+  ok?: boolean;
+  error?: string;
+  deploy_mode: string;
+  media_packages_enabled: Record<string, boolean>;
+  assets: Record<string, { ready?: boolean; marker?: string; zip?: string }>;
+  all_media_assets_ready: boolean;
+  download_allowed: boolean;
+  hints: string[];
+};
+
+export type MediaAssetsDownloadJob = {
+  job_id: string;
+  state: string;
+  message?: string;
+  lines?: string[];
+  error?: string;
+};
+
+export async function fetchMediaAssetsStatus(): Promise<MediaAssetsStatus> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-assets/status")) as {
+    ok?: boolean;
+    data?: MediaAssetsStatus;
+  };
+  return (res?.data ?? res) as MediaAssetsStatus;
+}
+
+export async function postMediaAssetsDownload(): Promise<MediaAssetsDownloadJob> {
+  const res = (await consoleOpenapiPost("/common-config/llm/media-assets/download", {})) as {
+    ok?: boolean;
+    data?: MediaAssetsDownloadJob;
+  };
+  return (res?.data ?? res) as MediaAssetsDownloadJob;
+}
+
+export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaAssetsDownloadJob> {
+  const res = (await consoleOpenapiGet(
+    `/common-config/llm/media-assets/download/jobs/${encodeURIComponent(jobId)}`,
+  )) as { ok?: boolean; data?: MediaAssetsDownloadJob };
+  return (res?.data ?? res) as MediaAssetsDownloadJob;
+}
+
 export function openAiInstallJobEventSource(jobId: string): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
   const apiBase = `${root}/api`;
