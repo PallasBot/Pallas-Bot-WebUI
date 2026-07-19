@@ -13,13 +13,12 @@ import { collectSavedProviderModels } from "@/utils/llmModelOptionSources";
 import { providerAuthSummary } from "@/utils/llmProviderAuth";
 import ProviderEditDialog from "./ProviderEditDialog.vue";
 import ProviderRoutingEditor from "./ProviderRoutingEditor.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import { AI_TASK_CONFIG_HINTS } from "@/config/aiEntrySemantics";
 
 const props = withDefaults(
   defineProps<{
     simpleMode?: boolean;
-    /** 精简统计条与观测外链 */
+    /** 精简统计条 */
     compact?: boolean;
     /** upstream=仅 Provider；tasks=仅编排；all=两者 */
     panel?: "upstream" | "tasks" | "all";
@@ -236,9 +235,6 @@ onMounted(async () => {
         <p class="muted provider-manager__intro">
           {{ AI_TASK_CONFIG_HINTS.providerIntro }}
         </p>
-        <div class="provider-manager__links">
-          <AiObservationLinks />
-        </div>
 
         <div
           v-if="err"
@@ -441,13 +437,6 @@ onMounted(async () => {
 
 .provider-manager__alert {
   margin-bottom: 12px;
-}
-
-.provider-manager__links {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0 0 12px;
 }
 
 .provider-manager__list-head {

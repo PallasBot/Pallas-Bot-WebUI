@@ -10,7 +10,6 @@ import {
 import type { LlmModelAdminStatus } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import AiConfirmDialog from "@/components/ai-config/AiConfirmDialog.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
@@ -262,12 +261,6 @@ onMounted(() => {
       >
         当前启用了本地多模型路由：切换上方「当前模型」后，部分本地请求仍可能按任务场景、分档或 Provider 默认模型分流。
       </p>
-      <div
-        v-if="!embedded"
-        class="model-admin__links"
-      >
-        <AiObservationLinks />
-      </div>
 
       <div
         v-if="err"
@@ -441,13 +434,6 @@ onMounted(() => {
 
 .model-admin__alert {
   margin-bottom: 12px;
-}
-
-.model-admin__links {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0 0 12px;
 }
 
 .model-admin__status {

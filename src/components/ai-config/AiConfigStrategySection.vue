@@ -2,8 +2,6 @@
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import type { PluginConfigField, PluginConfigFieldGroup } from "@/api/pallasTypes";
-import AiConfigLayerLinks from "@/components/ai-config/AiConfigLayerLinks.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel.vue";
 import PluginConfigFieldDialog from "@/components/config/PluginConfigFieldDialog.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -176,11 +174,6 @@ defineExpose({ save, canSave, saving });
       />
 
       <div class="plugin-config-page__card-bd ai-config-strategy__body">
-        <div class="ai-config-strategy__links">
-          <AiConfigLayerLinks active="strategy" />
-          <AiObservationLinks />
-        </div>
-
         <p
           v-if="essentialDefs.some((g) => g.anchorId === 'learning-loop')"
           class="ai-config-strategy__learning-link"
@@ -256,12 +249,6 @@ defineExpose({ save, canSave, saving });
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.ai-config-strategy__links {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .ai-config-strategy__learning-link {

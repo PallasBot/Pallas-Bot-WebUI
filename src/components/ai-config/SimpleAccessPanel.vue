@@ -650,7 +650,7 @@ onMounted(async () => {
           </p>
         </div>
       </div>
-      <div class="panel__bd">
+      <div class="panel__bd simple-access-panel__local-body">
         <ModelAdminPanel
           simple-mode
           embedded
@@ -747,6 +747,11 @@ onMounted(async () => {
 .simple-access-panel__body {
   display: grid;
   gap: 14px;
+}
+
+.simple-access-panel__local-body {
+  display: grid;
+  gap: 16px;
 }
 
 .simple-access-panel__section-hd {
@@ -851,7 +856,7 @@ onMounted(async () => {
 }
 
 .simple-access-panel__actions {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .simple-access-panel__result {

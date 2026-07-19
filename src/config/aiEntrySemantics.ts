@@ -1,8 +1,4 @@
-import {
-  AI_CONFIG_LEGACY_RUNTIME_REDIRECT,
-  AI_PERSONA_OBSERVE_REDIRECT,
-  aiConfigSectionPath,
-} from "@/config/aiConfigSections";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
 
 /** 配置 / 检测 / 运行态三类入口的统一说明与跳转目标 */
 export const AI_ENTRY_RUNTIME = {
@@ -10,20 +6,6 @@ export const AI_ENTRY_RUNTIME = {
   shortLead: "查看各 AI 能力是否健康、有无降级，以及媒体任务队列。",
   path: "/ai/home",
 } as const;
-
-export const AI_OBSERVATION_LINKS = {
-  overview: { id: "overview", label: "运行总览", path: "/ai/home" },
-  statistics: { id: "statistics", label: "调用统计", path: "/ai/statistics" },
-  history: { id: "history", label: "会话历史", path: "/ai/history" },
-  personaObserve: { id: "personaObserve", label: "牛格观测", path: AI_PERSONA_OBSERVE_REDIRECT },
-  runtimeDiag: { id: "runtimeDiag", label: "运行诊断", path: AI_CONFIG_LEGACY_RUNTIME_REDIRECT },
-} as const;
-
-export const AI_OBSERVATION_LINKS_LIST = [
-  AI_OBSERVATION_LINKS.overview,
-  AI_OBSERVATION_LINKS.statistics,
-  AI_OBSERVATION_LINKS.history,
-] as const;
 
 export const AI_ENTRY_SITE_GATEWAY_CHECK = {
   label: "站点级网关检测",
@@ -41,13 +23,6 @@ export const AI_ENTRY_CONNECTION_DIAG = {
   shortLead: "按当前填写的地址与 Token 探测 Pallas-Bot-AI 连通性；完整健康状态见 AI 观测总览。",
   path: aiConfigSectionPath("connection"),
 } as const;
-
-export const AI_CONFIG_LAYER_LINKS = {
-  provider: { label: "模型与 Provider", path: aiConfigSectionPath("provider") },
-  strategy: { label: "Bot 对话策略", path: aiConfigSectionPath("strategy") },
-} as const;
-
-export type AiConfigLayerLinkId = keyof typeof AI_CONFIG_LAYER_LINKS;
 
 /** task 相关配置分层说明（Provider / 路由页共用，避免同名 task 被当成同一项） */
 export const AI_TASK_CONFIG_HINTS = {

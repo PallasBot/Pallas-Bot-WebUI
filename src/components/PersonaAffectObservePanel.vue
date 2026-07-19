@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { RouterLink } from "vue-router";
 import { fetchLlmPersonaObserve } from "@/api/consoleApi";
 import type { PersonaAxisSnapshot, PersonaObserveBotRow, PersonaObserveData } from "@/api/pallasTypes";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
-import AiObservationLinks from "@/components/ai-config/AiObservationLinks.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { AI_CONFIG_LAYER_LINKS } from "@/config/aiEntrySemantics";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import {
   buildPersonaObserveFallback,
@@ -267,18 +264,6 @@ defineExpose({ reload: load });
       >
         查看各 bot 的情感轴基线与群合并结果；数据只读，由 persona 运行时解析。
       </p>
-      <div
-        v-if="!embedded"
-        class="persona-observe-panel__links"
-      >
-        <AiObservationLinks />
-        <RouterLink
-          :to="AI_CONFIG_LAYER_LINKS.provider.path"
-          class="ai-obs-links__item"
-        >
-          {{ AI_CONFIG_LAYER_LINKS.provider.label }}
-        </RouterLink>
-      </div>
 
       <p
         v-if="err"

@@ -74,7 +74,7 @@ const defaults: ConsolePrefsState = {
   cardGlassOpacity: 0.25,
   density: "comfortable",
   accentPreset: "sky",
-  uiPreset: "gs",
+  uiPreset: "shadcn",
   sidebarCollapsed: false,
   instancesBotView: "table",
   protocolAccountsView: "table",
