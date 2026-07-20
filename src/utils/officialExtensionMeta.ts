@@ -15,7 +15,7 @@ export const OFFICIAL_EXTENSION_TITLES: Record<string, string> = {
 
 export const OFFICIAL_EXTENSION_DESCRIPTIONS: Record<string, string> = {
   "pallas-plugin-duel": "牛牛决斗。",
-  "pallas-plugin-draw": "牛牛画画（AI 生图网关）。",
+  "pallas-plugin-draw": "牛牛画画（直连生图网关）。",
   "pallas-plugin-dream": "牛牛做梦（群内旁路、分片漂移）。",
   "pallas-plugin-maa": "MAA 远控（含 worker 插件 pallas_plugin_maa 与分片 hub 入口 pallas_plugin_maa_hub）。",
   "pallas-plugin-protocol": "协议端管理（NapCat / SnowLuma）与 牛牛重新上号（含分片 worker 转发）。",

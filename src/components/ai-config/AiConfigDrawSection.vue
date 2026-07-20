@@ -13,15 +13,14 @@ const DRAW_PLUGIN = "draw";
       <div class="panel__bd">
         <p class="muted ai-config-section__intro">
           画画网关与连通性配置写入插件 <code>{{ DRAW_PLUGIN }}</code>（与插件页同一套键，无第二数据源）。
-          完整命令权限等仍可在
+          默认在 Bot 进程直连网关，不依赖 AI Runtime。完整命令权限等仍可在
           <RouterLink :to="`/plugins/${DRAW_PLUGIN}`">插件页</RouterLink>
           查看。
         </p>
         <p class="muted ai-config-section__intro ai-config-draw__hint">
-          扩展服务连接见
-          <RouterLink :to="aiConfigSectionPath('connection')">扩展连接</RouterLink>；
-          运行态见
-          <RouterLink to="/ai/home">AI 观测</RouterLink>。
+          服务网关批量探测见
+          <RouterLink :to="aiConfigSectionPath('connection')">扩展连接</RouterLink>
+          旁的连通性入口；仅当显式选用 AI 服务画图模式时才需要 AI Runtime。
         </p>
       </div>
     </UiCard>
