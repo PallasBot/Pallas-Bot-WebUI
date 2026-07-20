@@ -2367,8 +2367,9 @@ export type AiRuntimeServiceStatus = {
 export type AiRuntimeStatus = {
   can_manage: boolean;
   ai_root: string | null;
-  layout: "managed" | "sibling" | "env" | "missing" | string;
+  layout: "managed" | "sibling" | "env" | "missing" | "docker" | "remote" | string;
   running: boolean;
+  endpoint?: { host: string; port: number };
   services: Record<string, AiRuntimeServiceStatus>;
   health: {
     ok: boolean;
@@ -2386,12 +2387,15 @@ export type AiInstallStatus = {
   managed_root?: string;
   sibling_root?: string;
   layout?: string;
+  deployment?: string;
   is_managed?: boolean;
   bootstrap_script: string;
   bootstrap_ready: boolean;
   git_available: boolean;
   can_clone: boolean;
   can_bootstrap: boolean;
+  in_docker?: boolean;
+  endpoint?: { host: string; port: number };
   docker_hint: string;
   git_url: string;
   runtime?: AiRuntimeStatus;

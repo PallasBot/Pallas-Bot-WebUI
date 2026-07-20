@@ -65,6 +65,10 @@ function layoutLabel(layout: string | undefined): string {
       return "同级仓库";
     case "env":
       return "PALLAS_AI_ROOT";
+    case "docker":
+      return "Docker / 远程连接";
+    case "remote":
+      return "远程连接";
     case "missing":
       return "未安装";
     default:
@@ -221,10 +225,10 @@ defineExpose({ save, canSave, saving });
         {{ err }}
       </div>
       <div class="ai-config-connection__install">
-        <h3 class="ai-config-connection__install-title">安装 / 托管 AI Runtime</h3>
+        <h3 class="ai-config-connection__install-title">安装 / 连接 AI Runtime</h3>
         <p class="muted ai-config-section__intro">
-          默认安装到本机 <code>data/runtimes/pallas-bot-ai</code>（不必再手动 clone 同级仓）。也可继续用同级
-          <code>Pallas-Bot-AI</code> 或 <code>PALLAS_AI_ROOT</code>。Docker 不代跑，请按下方提示在宿主机执行。
+          本机可安装到 <code>data/runtimes/pallas-bot-ai</code>。Docker 全栈请用 compose 起
+          <code>pallasbot-ai</code>：控制台会探测 <code>AI_SERVER_*</code>，不在 Bot 容器内 clone。
         </p>
         <div
           v-if="installStatus"
@@ -232,10 +236,16 @@ defineExpose({ save, canSave, saving });
         >
           <span>{{ installStatus.detected ? "已检测到" : "未检测到" }} AI Runtime</span>
           <span>（{{ layoutLabel(installStatus.layout) }}）</span>
-          <code v-if="installStatus.ai_root || installStatus.clone_target">
-            {{ installStatus.ai_root || installStatus.clone_target }}
+          <code v-if="installStatus.ai_root || installStatus.endpoint">
+            {{
+              installStatus.ai_root
+                || (installStatus.endpoint
+                  ? `${installStatus.endpoint.host}:${installStatus.endpoint.port}`
+                  : installStatus.clone_target)
+            }}
           </code>
-          <span v-if="!installStatus.git_available">本机无 git，无法克隆</span>
+          <span v-if="installStatus.in_docker">· Bot 在容器内</span>
+          <span v-if="!installStatus.git_available && installStatus.can_clone">本机无 git，无法克隆</span>
         </div>
         <div
           v-if="runtime"
@@ -247,7 +257,10 @@ defineExpose({ save, canSave, saving });
           <span v-if="runtime.services?.media">· media {{ runtime.services.media.running ? "✓" : "—" }}</span>
           <span>· health {{ runtime.health?.ok ? "✓" : "—" }}</span>
         </div>
-        <div class="row-actions ai-config-connection__install-opts">
+        <div
+          v-if="installStatus?.can_clone || installStatus?.can_bootstrap"
+          class="row-actions ai-config-connection__install-opts"
+        >
           <label class="ai-config-connection__opt">
             <input
               v-model="remoteOnly"
@@ -281,18 +294,28 @@ defineExpose({ save, canSave, saving });
           </label>
         </div>
         <p
-          v-if="withMedia && remoteOnly"
+          v-if="withMedia && remoteOnly && (installStatus?.can_clone || installStatus?.can_bootstrap)"
           class="muted"
         >
           已勾选媒体时会关闭 remote-only。
         </p>
-        <p class="muted">
+        <p
+          v-if="installStatus && !installStatus.can_clone && !installStatus.can_bootstrap"
+          class="muted"
+        >
+          当前为连接已有 AI Runtime（Docker / 远程）；在宿主机用 compose 启停，无需在此 clone。
+        </p>
+        <p
+          v-else
+          class="muted"
+        >
           媒体权重请到
           <RouterLink to="/ai/config/capabilities">能力包</RouterLink>
           查看或下载。
         </p>
         <div class="row-actions ai-config-connection__install-actions">
           <UiButton
+            v-if="installStatus?.can_clone || installStatus?.can_bootstrap"
             variant="primary"
             :busy="installBusy"
             :disabled="installBusy || runtimeBusy || (installStatus != null && !installStatus.can_clone && !installStatus.can_bootstrap)"
@@ -347,8 +370,8 @@ defineExpose({ save, canSave, saving });
         >{{ installStatus.docker_hint }}</pre>
       </div>
       <p class="muted ai-config-section__intro">
-        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（唱歌 / 画画等媒体，或
-        <code>LLM_RUNTIME=ai_service</code> 旧闲聊路径）；默认闲聊走 Bot 内核 Provider，不必装 AI Runtime。保存后写入
+        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（唱歌等媒体，或
+        <code>LLM_RUNTIME=ai_service</code> 旧路径）；默认 LLM 聊天走 Bot 内核 Provider，不必装 AI Runtime。保存后写入
         <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
         <strong>{{ AI_ENTRY_CONNECTION_DIAG.label }}</strong>：{{ AI_ENTRY_CONNECTION_DIAG.shortLead }}
       </p>
