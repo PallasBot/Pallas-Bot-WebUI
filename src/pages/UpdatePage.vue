@@ -54,6 +54,27 @@ const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.rel
 const webCurrentDisplay = computed(() => updateCheckCurrentTagLabel(web.value?.current_tag));
 const botCurrentDisplay = computed(() => pallasBotVersionLabel(undefined, bot.value));
 
+function releaseNotesFoldSummary(
+  currentTag: string | null | undefined,
+  latestTag: string | null | undefined,
+  hasUpdate: boolean | null | undefined,
+): string {
+  const latest = (latestTag || "").trim();
+  const current = (currentTag || "").trim();
+  if (hasUpdate && current && latest) {
+    return `${current} → ${latest} 更新说明`;
+  }
+  if (latest) return `「${latest}」发行说明`;
+  return "发行说明";
+}
+
+const webReleaseNotesSummary = computed(() =>
+  releaseNotesFoldSummary(web.value?.current_tag, web.value?.latest_tag, web.value?.has_update),
+);
+const botReleaseNotesSummary = computed(() =>
+  releaseNotesFoldSummary(bot.value?.current_tag, bot.value?.latest_tag, bot.value?.has_update),
+);
+
 const webApplyDisabled = computed(
   () => busy.value || !web.value?.has_update || !web.value?.latest_tag,
 );
@@ -543,7 +564,7 @@ onMounted(() => {
 
           <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
-              {{ web?.latest_tag ? `「${web.latest_tag}」发行说明` : "发行说明" }}
+              {{ webReleaseNotesSummary }}
             </summary>
             <div
               v-if="(web?.release_notes || '').trim()"
@@ -714,7 +735,7 @@ onMounted(() => {
 
           <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
-              {{ bot?.latest_tag ? `「${bot.latest_tag}」发行说明` : "发行说明" }}
+              {{ botReleaseNotesSummary }}
             </summary>
             <div
               v-if="(bot?.release_notes || '').trim()"
