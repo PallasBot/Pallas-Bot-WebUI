@@ -6,6 +6,19 @@
 
 <!-- entries -->
 
+## [0.6.41] - 2026-07-20
+
+### 🚀 新功能
+
+* feat(ai-config): Docker 连接态与 LLM 聊天文案 ([1fdfe07](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1fdfe070ffb997b88b82e04eb651e02aa70e9586))
+
+### 📚 文档更新
+
+* docs(draw): 画画页强调直连网关，弱化 AI Runtime ([2b82dbb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b82dbb3c899178e180f63f0c9cd6ad9fc6fd59c))
+
+**完整变更**: [`v0.6.40...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.40...HEAD)
+
+
 ## [0.6.40] - 2026-07-20
 
 ### 🚀 新功能
