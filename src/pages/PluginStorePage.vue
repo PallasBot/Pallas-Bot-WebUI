@@ -33,6 +33,7 @@ import {
   extensionResultNeedsRestart,
 } from "@/config/extensionActivationSemantics";
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
+import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
@@ -216,6 +217,7 @@ const detailChangelogSource = ref<"changelog" | "git" | "">("");
 const detailChangelogLoaded = ref(false);
 
 const gitInstallOpen = ref(false);
+const gitMirrorOpen = ref(false);
 const gitPluginId = ref("");
 const gitRepositoryUrl = ref("");
 const gitRef = ref("main");
@@ -1287,6 +1289,12 @@ onDeactivated(() => {
         <template #actions>
           <div class="console-hub-toolbar-strip__masthead-actions">
             <UiButton
+              variant="outline"
+              @click="gitMirrorOpen = true"
+            >
+              镜像源
+            </UiButton>
+            <UiButton
               v-if="storeSection === 'community' && communityWebuiInstallEnabled"
               variant="outline"
               @click="openGitInstallDialog"
@@ -1325,6 +1333,13 @@ onDeactivated(() => {
           />
         </template>
         <template #middle>
+          <UiButton
+            variant="outline"
+            class="plugin-store-page__strip-btn"
+            @click="gitMirrorOpen = true"
+          >
+            镜像源
+          </UiButton>
           <UiButton
             v-if="storeSection === 'community' && communityWebuiInstallEnabled"
             variant="outline"
@@ -2009,6 +2024,11 @@ onDeactivated(() => {
         </div>
       </template>
     </UiDialog>
+
+    <GitMirrorDialog
+      :open="gitMirrorOpen"
+      @close="gitMirrorOpen = false"
+    />
   </div>
 </template>
 

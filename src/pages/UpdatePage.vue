@@ -13,6 +13,7 @@ import {
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
@@ -53,6 +54,27 @@ const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.rel
 
 const webCurrentDisplay = computed(() => updateCheckCurrentTagLabel(web.value?.current_tag));
 const botCurrentDisplay = computed(() => pallasBotVersionLabel(undefined, bot.value));
+
+function releaseNotesFoldSummary(
+  currentTag: string | null | undefined,
+  latestTag: string | null | undefined,
+  hasUpdate: boolean | null | undefined,
+): string {
+  const latest = (latestTag || "").trim();
+  const current = (currentTag || "").trim();
+  if (hasUpdate && current && latest) {
+    return `${current} → ${latest} 更新说明`;
+  }
+  if (latest) return `「${latest}」发行说明`;
+  return "发行说明";
+}
+
+const webReleaseNotesSummary = computed(() =>
+  releaseNotesFoldSummary(web.value?.current_tag, web.value?.latest_tag, web.value?.has_update),
+);
+const botReleaseNotesSummary = computed(() =>
+  releaseNotesFoldSummary(bot.value?.current_tag, bot.value?.latest_tag, bot.value?.has_update),
+);
 
 const webApplyDisabled = computed(
   () => busy.value || !web.value?.has_update || !web.value?.latest_tag,
@@ -214,6 +236,7 @@ const ghTokenHadValue = ref(false);
 const ghTokenBusy = ref(false);
 const ghTokenErr = ref("");
 const ghTokenOk = ref("");
+const gitMirrorOpen = ref(false);
 
 async function loadGithubTokenHint() {
   ghTokenErr.value = "";
@@ -543,7 +566,7 @@ onMounted(() => {
 
           <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
-              {{ web?.latest_tag ? `「${web.latest_tag}」发行说明` : "发行说明" }}
+              {{ webReleaseNotesSummary }}
             </summary>
             <div
               v-if="(web?.release_notes || '').trim()"
@@ -714,7 +737,7 @@ onMounted(() => {
 
           <details class="update-page__release-fold update-page__release-notes">
             <summary class="update-page__release-fold-summary">
-              {{ bot?.latest_tag ? `「${bot.latest_tag}」发行说明` : "发行说明" }}
+              {{ botReleaseNotesSummary }}
             </summary>
             <div
               v-if="(bot?.release_notes || '').trim()"
@@ -821,8 +844,18 @@ onMounted(() => {
         class="update-page__gh-fold"
       >
         <summary class="update-page__gh-fold-summary">
-          GitHub 令牌
-          <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
+          <span class="update-page__gh-fold-summary-main">
+            GitHub 令牌
+            <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
+          </span>
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="update-page__gh-mirror-btn"
+            @click.stop="gitMirrorOpen = true"
+          >
+            镜像源
+          </UiButton>
         </summary>
         <UiCard
           tag="div"
@@ -876,6 +909,11 @@ onMounted(() => {
           </div>
         </UiCard>
       </details>
+
+      <GitMirrorDialog
+        :open="gitMirrorOpen"
+        @close="gitMirrorOpen = false"
+      />
     </template>
   </div>
 </template>
@@ -945,6 +983,19 @@ onMounted(() => {
   font-weight: 600;
   padding: 8px 2px;
   list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.update-page__gh-fold-summary-main {
+  min-width: 0;
+}
+
+.update-page__gh-mirror-btn {
+  flex-shrink: 0;
 }
 
 .update-page__gh-fold-summary::-webkit-details-marker {
