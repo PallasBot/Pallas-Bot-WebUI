@@ -90,6 +90,7 @@ import type {
   PersonaObserveData,
   MessageStatsData,
   CommunityStatsData,
+  CommunityConnectivityCheckData,
   CommunityCorpusHotData,
   CommunityHotMode,
   CommunityHotPeriod,
@@ -1477,6 +1478,14 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
     });
   }
   return communityStatsInflight;
+}
+
+/** Bot 进程侧探测社区中心 HTTPS（主/备）并返回上报诊断包。 */
+export async function probeCommunityConnectivity(): Promise<CommunityConnectivityCheckData> {
+  return (await consoleOpenapiPost(
+    "/community-stats/connectivity-check",
+    {},
+  )) as CommunityConnectivityCheckData;
 }
 
 const CORPUS_HOT_FRESH_MS = 120_000;

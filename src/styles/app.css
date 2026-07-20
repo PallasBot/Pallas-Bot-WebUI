@@ -8222,7 +8222,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 8px;
   }
 
-  #community-deploy .community-page__deploy-settings-btn {
+  #community-deploy .community-page__deploy-settings-btn,
+  #community-deploy .community-page__deploy-probe-btn {
     flex: 0 0 auto;
     width: auto;
     max-width: none;
@@ -13825,6 +13826,53 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
   min-width: 0;
 }
 .community-page__alert {
+  margin: 0;
+}
+.community-page__alert-probe-btn {
+  margin-left: 0.5em;
+  vertical-align: baseline;
+}
+.community-page__probe-card {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--panel) 92%, var(--bg));
+}
+.community-page__probe-card.is-ok {
+  border-color: color-mix(in srgb, var(--ok, #16a34a) 35%, var(--border));
+}
+.community-page__probe-card.is-bad {
+  border-color: color-mix(in srgb, var(--danger, #dc2626) 35%, var(--border));
+}
+.community-page__probe-hint {
+  margin: 0 0 10px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.community-page__probe-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.community-page__probe-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+.community-page__probe-url {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.community-page__probe-meta {
+  font-size: 0.88rem;
+}
+.community-page__probe-reporting {
   margin: 0;
 }
 .community-page__empty {
