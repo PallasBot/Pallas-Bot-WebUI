@@ -1848,6 +1848,35 @@ export interface BotConfigMigrationApplyData {
   migration?: BotConfigMigrationCheckData;
 }
 
+/** GET /git-mirror/info */
+export type GitMirrorOption = {
+  id: string;
+  label: string;
+  type: "default" | "proxy" | "custom";
+};
+
+export type GitMirrorPluginRow = {
+  id: string;
+  path: string;
+  remote_url: string;
+  is_git_repo: boolean;
+  mirror: string;
+};
+
+export type GitMirrorInfo = {
+  preferred_id: string;
+  custom_proxy_prefix: string;
+  available_mirrors: GitMirrorOption[];
+  plugins: GitMirrorPluginRow[];
+};
+
+export type GitMirrorApplySummary = {
+  results: { id?: string; name?: string; success: boolean; message: string }[];
+  summary: { total: number; success_count: number; fail_count: number };
+};
+
+export type GitMirrorProbeResult = { ok: boolean; mirror_id?: string; error?: string };
+
 /** 群列表（按账号实时拉取） */
 export interface GroupListRow {
   group_id: number;

@@ -13,6 +13,7 @@ import {
 } from "@/api/consoleApi";
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
@@ -214,6 +215,7 @@ const ghTokenHadValue = ref(false);
 const ghTokenBusy = ref(false);
 const ghTokenErr = ref("");
 const ghTokenOk = ref("");
+const gitMirrorOpen = ref(false);
 
 async function loadGithubTokenHint() {
   ghTokenErr.value = "";
@@ -821,8 +823,18 @@ onMounted(() => {
         class="update-page__gh-fold"
       >
         <summary class="update-page__gh-fold-summary">
-          GitHub 令牌
-          <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
+          <span class="update-page__gh-fold-summary-main">
+            GitHub 令牌
+            <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
+          </span>
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="update-page__gh-mirror-btn"
+            @click.stop="gitMirrorOpen = true"
+          >
+            镜像源
+          </UiButton>
         </summary>
         <UiCard
           tag="div"
@@ -876,6 +888,11 @@ onMounted(() => {
           </div>
         </UiCard>
       </details>
+
+      <GitMirrorDialog
+        :open="gitMirrorOpen"
+        @close="gitMirrorOpen = false"
+      />
     </template>
   </div>
 </template>
@@ -945,6 +962,19 @@ onMounted(() => {
   font-weight: 600;
   padding: 8px 2px;
   list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.update-page__gh-fold-summary-main {
+  min-width: 0;
+}
+
+.update-page__gh-mirror-btn {
+  flex-shrink: 0;
 }
 
 .update-page__gh-fold-summary::-webkit-details-marker {

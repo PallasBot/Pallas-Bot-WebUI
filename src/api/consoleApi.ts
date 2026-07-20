@@ -104,6 +104,9 @@ import type {
   IngressDispatchData,
   ConsoleLoginChangeResult,
   ConsoleSetupStatus,
+  GitMirrorInfo,
+  GitMirrorApplySummary,
+  GitMirrorProbeResult,
 } from "./pallasTypes";
 
 /**
@@ -2542,4 +2545,36 @@ export async function postBotConfigMigrationApply(force = false): Promise<BotCon
   >("/update/bot/config-migration/apply", null, {
     params: { force: force ? "true" : "false" },
   });
+}
+
+export async function fetchGitMirrorInfo(): Promise<GitMirrorInfo> {
+  return (await consoleOpenapiGet("/git-mirror/info")) as GitMirrorInfo;
+}
+
+export async function putGitMirrorPreferred(body: {
+  preferred_id: string;
+  custom_proxy_prefix?: string;
+}): Promise<GitMirrorInfo> {
+  return (await consoleOpenapiPut("/git-mirror/preferred", {
+    preferred_id: body.preferred_id,
+    custom_proxy_prefix: body.custom_proxy_prefix ?? "",
+  })) as GitMirrorInfo;
+}
+
+export async function postGitMirrorApplyCommunity(): Promise<GitMirrorApplySummary> {
+  return (await consoleOpenapiPost("/git-mirror/apply-community", {})) as GitMirrorApplySummary;
+}
+
+export async function postGitMirrorApplyPlugin(
+  pluginId: string,
+  body?: { preferred_id?: string },
+): Promise<{ id?: string; success: boolean; message: string; remote_url?: string }> {
+  return (await consoleOpenapiPost(
+    `/git-mirror/apply-plugin/${encodeURIComponent(pluginId)}`,
+    body?.preferred_id ? { preferred_id: body.preferred_id } : {},
+  )) as { id?: string; success: boolean; message: string; remote_url?: string };
+}
+
+export async function postGitMirrorProbe(): Promise<GitMirrorProbeResult> {
+  return (await consoleOpenapiPost("/git-mirror/probe", {})) as GitMirrorProbeResult;
 }
