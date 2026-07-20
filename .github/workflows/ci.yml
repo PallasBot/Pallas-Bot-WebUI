@@ -26,8 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: PallasBot/Pallas-Bot
-          # Paired with Pallas-Bot#237 (connectivity-check). Switch to main after that PR merges.
-          ref: feat/community-connectivity-check
+          ref: main
           path: Pallas-Bot
           sparse-checkout: |
             openspec
