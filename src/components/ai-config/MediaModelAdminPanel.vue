@@ -43,7 +43,7 @@ const promptOpen = ref(false);
 const promptText = ref("");
 const promptLang = ref("ja");
 const textLang = ref("zh");
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
 const deployMode = computed(() => assets.value?.deploy_mode || "unknown");
 const downloadAllowed = computed(() => Boolean(assets.value?.download_allowed));
@@ -108,7 +108,7 @@ function formatSize(bytes: number): string {
 
 function stopPoll() {
   if (pollTimer) {
-    clearInterval(pollTimer);
+    clearTimeout(pollTimer);
     pollTimer = null;
   }
 }
@@ -162,7 +162,7 @@ async function refresh() {
 
 async function pollJob(jobId: string) {
   stopPoll();
-  pollTimer = setInterval(async () => {
+  const tick = async () => {
     try {
       const job = await fetchMediaAssetsDownloadJob(jobId);
       downloadProgress.value = job.message || job.state;
@@ -175,12 +175,19 @@ async function pollJob(jobId: string) {
           pushConsoleToast(job.error || job.message || "下载失败", "warn");
         }
         await refresh();
+        return;
       }
+      pollTimer = setTimeout(() => {
+        void tick();
+      }, 1500);
     } catch (e) {
       stopPoll();
       downloadBusy.value = false;
       toastApiError(e, "轮询下载任务失败");
     }
+  };
+  pollTimer = setTimeout(() => {
+    void tick();
   }, 1500);
 }
 

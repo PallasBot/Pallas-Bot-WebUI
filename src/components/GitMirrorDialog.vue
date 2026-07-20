@@ -5,7 +5,6 @@ import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import {
   fetchGitMirrorInfo,
-  postGitMirrorApplyAll,
   postGitMirrorApplyBot,
   postGitMirrorApplyCommunity,
   postGitMirrorApplyPlugin,
@@ -94,6 +93,11 @@ function scopeToSelect(value: string | undefined): string {
 
 function selectToScope(value: string): string {
   return value === INHERIT ? "" : value;
+}
+
+/** 分 scope 未单独设置时跟随全局首选 */
+function effectiveMirrorId(scopeSelect: string): string {
+  return scopeSelect === INHERIT ? preferredId.value : scopeSelect;
 }
 
 function syncFormFromInfo(data: GitMirrorInfo) {
@@ -210,10 +214,20 @@ async function applyAll() {
   if (!(await ensureSavedIfDirty())) return;
   applyAllBusy.value = true;
   try {
-    const summary = await postGitMirrorApplyAll({ preferred_id: preferredId.value });
+    // Bot / community 各自按 scope 应用（WebUI 仅靠 scope 偏好，无 remote）
+    const botResult = await postGitMirrorApplyBot({
+      preferred_id: effectiveMirrorId(scopeBot.value),
+    });
+    const summary = await postGitMirrorApplyCommunity({
+      preferred_id: effectiveMirrorId(scopeCommunity.value),
+    });
     const { total, success_count, fail_count } = summary.summary;
-    const level = fail_count === 0 ? "ok" : success_count === 0 ? "err" : "warn";
-    pushConsoleToast(`已应用到 Bot + 社区插件：${success_count}/${total} 成功`, level);
+    const botOk = botResult.success ? 1 : 0;
+    const allTotal = total + 1;
+    const allSuccess = success_count + botOk;
+    const allFail = fail_count + (botResult.success ? 0 : 1);
+    const level = allFail === 0 ? "ok" : allSuccess === 0 ? "err" : "warn";
+    pushConsoleToast(`已应用到 Bot + 社区插件：${allSuccess}/${allTotal} 成功`, level);
     await loadInfo();
   } catch (e) {
     toastApiError(e, "批量应用失败");
@@ -276,7 +290,9 @@ async function applyCommunityBatch() {
   if (!(await ensureSavedIfDirty())) return;
   applyBusyKey.value = "community-batch";
   try {
-    const summary = await postGitMirrorApplyCommunity({ preferred_id: preferredId.value });
+    const summary = await postGitMirrorApplyCommunity({
+      preferred_id: effectiveMirrorId(scopeCommunity.value),
+    });
     const { total, success_count, fail_count } = summary.summary;
     const level = fail_count === 0 ? "ok" : success_count === 0 ? "err" : "warn";
     pushConsoleToast(`已应用到社区插件：${success_count}/${total} 成功`, level);
@@ -300,7 +316,6 @@ function canSwitch(row: GitMirrorTargetRow): boolean {
 
 function rowActionLabel(row: GitMirrorTargetRow): string {
   if (row.kind === "official") return "随 Bot";
-  if (row.kind === "webui") return "仅 scope";
   if (!canSwitch(row)) return "—";
   return "切换";
 }
