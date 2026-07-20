@@ -2750,6 +2750,16 @@ export async function postGitMirrorApplyAll(
   )) as GitMirrorApplySummary;
 }
 
+export async function postGitMirrorApplyOfficial(
+  packageName: string,
+  body?: { preferred_id?: string },
+): Promise<{ id?: string; success: boolean; message: string; remote_url?: string; mirror_id?: string }> {
+  return (await consoleOpenapiPost(
+    `/git-mirror/apply-official/${encodeURIComponent(packageName)}`,
+    body?.preferred_id ? { preferred_id: body.preferred_id } : {},
+  )) as { id?: string; success: boolean; message: string; remote_url?: string; mirror_id?: string };
+}
+
 export async function postGitMirrorApplyPlugin(
   pluginId: string,
   body?: { preferred_id?: string },

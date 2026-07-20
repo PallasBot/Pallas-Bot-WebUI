@@ -7,6 +7,7 @@ import {
   fetchGitMirrorInfo,
   postGitMirrorApplyBot,
   postGitMirrorApplyCommunity,
+  postGitMirrorApplyOfficial,
   postGitMirrorApplyPlugin,
   postGitMirrorProbe,
   putGitMirrorPreferred,
@@ -59,8 +60,15 @@ const mirrorLabelMap = computed(() => {
   return map;
 });
 
-const targetRows = computed(() => info.value?.targets ?? []);
-const pluginRows = computed(() => info.value?.plugins ?? []);
+const targetRows = computed(() =>
+  (info.value?.targets ?? []).filter((row) => row.kind !== "official"),
+);
+const officialRows = computed(() =>
+  (info.value?.plugins ?? []).filter((row) => row.kind === "official"),
+);
+const pluginRows = computed(() =>
+  (info.value?.plugins ?? []).filter((row) => row.kind !== "official"),
+);
 
 const dialogBusy = computed(
   () =>
@@ -269,6 +277,12 @@ async function confirmSwitch() {
         }),
       );
       pushConsoleToast(`WebUI 下载源已设为 ${mirrorLabel(switchMirrorId.value)}`, "ok");
+    } else if (row.kind === "official") {
+      const result = await postGitMirrorApplyOfficial(row.id, { preferred_id: switchMirrorId.value });
+      pushConsoleToast(
+        result.success ? `${rowTitle(row)}：${result.message}` : `${rowTitle(row)} 失败：${result.message}`,
+        result.success ? "ok" : "err",
+      );
     } else {
       const result = await postGitMirrorApplyPlugin(row.id, { preferred_id: switchMirrorId.value });
       pushConsoleToast(
@@ -309,19 +323,19 @@ function rowTitle(row: GitMirrorTargetRow): string {
 }
 
 function canSwitch(row: GitMirrorTargetRow): boolean {
-  if (row.kind === "official") return false;
+  if (row.kind === "official") return true;
   if (row.kind === "webui") return true;
   return Boolean(row.can_apply_remote ?? row.is_git_repo);
 }
 
 function rowActionLabel(row: GitMirrorTargetRow): string {
-  if (row.kind === "official") return "随 Bot";
   if (!canSwitch(row)) return "—";
   return "切换";
 }
 
 function rowScopeHint(row: GitMirrorTargetRow): string {
-  if (row.kind === "bot" || row.kind === "official") return "Bot 更新 scope";
+  if (row.kind === "bot") return "Bot 更新 scope";
+  if (row.kind === "official") return "官方商店 · 独立仓库";
   if (row.kind === "webui") return "WebUI 下载 scope";
   if (row.kind === "plugin") return "社区插件 scope";
   return "";
@@ -347,7 +361,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
           Git 镜像源
         </h2>
         <p class="console-modal__subtitle muted">
-          Bot 本体与 packages/ 官方插件、WebUI、社区插件均可配置镜像；下方列表逐项说明。
+          Bot 本体、WebUI、官方商店插件（独立仓库）与社区插件均可配置镜像；下方列表逐项说明。
         </p>
       </div>
       <button
@@ -494,8 +508,9 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
         <div class="git-mirror-dialog__coverage muted">
           <p class="git-mirror-dialog__coverage-title">作用范围</p>
           <ul class="git-mirror-dialog__coverage-list">
-            <li><strong>Bot 更新</strong>：Bot git 拉取 / 更新页；<strong>含 packages/ 官方插件</strong>（无独立 remote，随 Bot 仓库或 Docker 镜像）</li>
+            <li><strong>Bot 更新</strong>：Bot git 拉取 / 更新页；<code>packages/</code> 内核插件随 Bot</li>
             <li><strong>WebUI 下载</strong>：控制台 dist / Release 包下载（无 git remote，仅 scope）</li>
+            <li><strong>官方商店</strong>：<code>pallas-plugin-*</code> 独立仓库；pip 装写入偏好，git 装可改写 origin</li>
             <li><strong>社区插件</strong>：<code>local/plugins/</code> 下从 Git 安装的插件（可改写 origin）</li>
           </ul>
         </div>
@@ -539,7 +554,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
           class="git-mirror-dialog__confirm"
         >
           <p class="git-mirror-dialog__confirm-msg">
-            将按当前全局首选改写 Bot 的 git origin；官方插件随 Bot 一并更新。社区插件 origin 需点「改写社区 remote」。WebUI 仅靠上方 scope。确认继续？
+            将按当前全局首选改写 Bot 的 git origin。官方商店与社区插件请用列表「切换」或「改写社区 remote」。WebUI 仅靠上方 scope。确认继续？
           </p>
           <div class="git-mirror-dialog__confirm-actions">
             <UiButton
@@ -565,7 +580,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
       <section class="git-mirror-dialog__section">
         <div class="git-mirror-dialog__section-head">
           <h3 class="git-mirror-dialog__section-title">
-            Bot / WebUI / 官方插件
+            Bot / WebUI
           </h3>
           <span class="muted git-mirror-dialog__section-meta">{{ targetRows.length }} 项</span>
         </div>
@@ -676,12 +691,121 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
       <section class="git-mirror-dialog__section">
         <div class="git-mirror-dialog__section-head">
           <h3 class="git-mirror-dialog__section-title">
+            官方商店插件
+          </h3>
+          <span class="muted git-mirror-dialog__section-meta">{{ officialRows.length }} 项</span>
+        </div>
+        <p class="git-mirror-dialog__section-desc muted">
+          插件商店中的 <code>pallas-plugin-*</code> 独立仓库；可逐项切换镜像源。
+        </p>
+
+        <div
+          v-if="!officialRows.length"
+          class="git-mirror-dialog__empty muted"
+        >
+          暂无官方扩展清单（需 Bot 后端支持）。
+        </div>
+
+        <div
+          v-else
+          class="git-mirror-dialog__table-wrap"
+        >
+          <table class="data console-data-table git-mirror-dialog__table">
+            <thead>
+              <tr>
+                <th>插件</th>
+                <th>Remote / 说明</th>
+                <th>当前源</th>
+                <th class="git-mirror-dialog__col-action">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in officialRows"
+                :key="`o-${row.id}`"
+              >
+                <td>
+                  <div class="git-mirror-dialog__plugin-id">{{ rowTitle(row) }}</div>
+                  <div class="muted git-mirror-dialog__plugin-path">{{ row.path }}</div>
+                  <div
+                    v-if="rowScopeHint(row)"
+                    class="muted git-mirror-dialog__scope-hint"
+                  >
+                    {{ rowScopeHint(row) }}
+                  </div>
+                </td>
+                <td
+                  class="git-mirror-dialog__remote"
+                  :title="row.remote_url || row.note || undefined"
+                >
+                  {{ row.remote_url ? shortRemote(row.remote_url) : (row.note || "—") }}
+                </td>
+                <td>
+                  <UiBadge :variant="mirrorBadgeVariant(row.mirror)">
+                    {{ mirrorLabel(row.mirror) }}
+                  </UiBadge>
+                </td>
+                <td class="git-mirror-dialog__col-action">
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    :busy="applyBusyKey === `${row.kind}:${row.id}`"
+                    @click="openSwitch(row)"
+                  >
+                    切换
+                  </UiButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul
+          v-if="officialRows.length"
+          class="git-mirror-dialog__cards git-mirror-dialog__cards--official"
+        >
+          <li
+            v-for="row in officialRows"
+            :key="`card-o-${row.id}`"
+            class="git-mirror-dialog__card"
+          >
+            <div class="git-mirror-dialog__card-head">
+              <div>
+                <div class="git-mirror-dialog__plugin-id">{{ rowTitle(row) }}</div>
+                <div class="muted git-mirror-dialog__plugin-path">{{ row.path }}</div>
+              </div>
+              <UiBadge :variant="mirrorBadgeVariant(row.mirror)">
+                {{ mirrorLabel(row.mirror) }}
+              </UiBadge>
+            </div>
+            <p
+              class="git-mirror-dialog__card-remote muted"
+              :title="row.remote_url || row.note || undefined"
+            >
+              {{ row.remote_url ? shortRemote(row.remote_url) : (row.note || "—") }}
+            </p>
+            <UiButton
+              variant="outline"
+              size="sm"
+              block
+              :busy="applyBusyKey === `${row.kind}:${row.id}`"
+              @click="openSwitch(row)"
+            >
+              切换镜像源
+            </UiButton>
+          </li>
+        </ul>
+      </section>
+
+      <section class="git-mirror-dialog__section">
+        <div class="git-mirror-dialog__section-head">
+          <h3 class="git-mirror-dialog__section-title">
             社区插件
           </h3>
           <span class="muted git-mirror-dialog__section-meta">{{ pluginRows.length }} 项</span>
         </div>
         <p class="git-mirror-dialog__section-desc muted">
-          仅列出 <code>local/plugins/</code> 下已安装的 Git 社区插件；官方插件在上方，随 Bot 更新。
+          仅列出 <code>local/plugins/</code> 下已安装的 Git 社区插件。
         </p>
 
         <div
@@ -965,6 +1089,15 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
   white-space: nowrap;
 }
 
+.git-mirror-dialog__empty {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--console-border, rgba(255, 255, 255, 0.12));
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .git-mirror-dialog__cards {
   display: none;
   list-style: none;
@@ -1092,6 +1225,8 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
   }
 
   .git-mirror-dialog__cards--targets,
+  .git-mirror-dialog__cards--targets,
+  .git-mirror-dialog__cards--official,
   .git-mirror-dialog__cards--plugins {
     display: flex;
     flex-direction: column;
