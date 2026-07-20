@@ -10,6 +10,8 @@ import {
   type AiInstallStatus,
 } from "@/api/consoleApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import AiExtensionStatusBar from "@/components/ai-config/AiExtensionStatusBar.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { AI_EXTENSION_DEFAULTS, AI_EXTENSION_DOCKER_LOG_MOUNT } from "@/config/aiConstants";
@@ -192,7 +194,7 @@ defineExpose({ save, canSave, saving });
         <ConsoleNavIcon
           class="panel__title-ico"
           :name="panelNavIcon"
-        />AI 服务连接
+        />媒体服务
       </h2>
       <div class="row-actions">
         <UiButton
@@ -218,6 +220,9 @@ defineExpose({ save, canSave, saving });
       </div>
     </div>
     <div class="panel__bd">
+      <AiExtensionStatusBar
+        :connection="conn"
+      />
       <div
         v-if="err"
         class="alert alert--err"
@@ -370,8 +375,8 @@ defineExpose({ save, canSave, saving });
         >{{ installStatus.docker_hint }}</pre>
       </div>
       <p class="muted ai-config-section__intro">
-        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（唱歌等媒体，或
-        <code>LLM_RUNTIME=ai_service</code> 旧路径）；默认 LLM 聊天走 Bot 内核 Provider，不必装 AI Runtime。保存后写入
+        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权：唱歌/TTS 等媒体任务依赖此项；仅当
+        <code>LLM_RUNTIME=ai_service</code> 时才影响聊天。默认 LLM 聊天走 Bot 内核 Provider，不必装 AI Runtime。保存后写入
         <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
         <strong>{{ AI_ENTRY_CONNECTION_DIAG.label }}</strong>：{{ AI_ENTRY_CONNECTION_DIAG.shortLead }}
       </p>
@@ -483,16 +488,13 @@ defineExpose({ save, canSave, saving });
         v-if="testOut"
         class="ai-config-connection__test-result"
       >
-        <p class="muted ai-config-connection__test-label">AI 扩展诊断结果</p>
+        <p class="muted ai-config-connection__test-label">AI Runtime 诊断结果</p>
         <div class="ai-config-connection__diag-card">
           <div class="ai-config-connection__diag-head">
-            <strong>{{ testOut.ok ? "AI 扩展在线" : "AI 扩展不可达" }}</strong>
-            <span
-              class="tag"
-              :class="testOut.ok ? 'tag--ok' : 'tag--warn'"
-            >
+            <strong>{{ testOut.ok ? "AI Runtime 在线" : "AI Runtime 不可达" }}</strong>
+            <UiBadge :variant="testOut.ok ? 'ok' : 'warn'">
               {{ testOut.ok ? "在线" : "不可达" }}
-            </span>
+            </UiBadge>
           </div>
           <div class="ai-config-connection__diag-grid">
             <div class="ai-config-connection__diag-row">
@@ -530,6 +532,12 @@ defineExpose({ save, canSave, saving });
 </template>
 
 <style scoped>
+.ai-config-connection :deep(.panel__bd) {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .ai-config-connection__log-hint {
   margin: 4px 0 0;
   font-size: 0.75rem;
@@ -715,10 +723,18 @@ defineExpose({ save, canSave, saving });
     grid-template-columns: 1fr;
   }
 
+  .ai-config-connection__install-actions.row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .ai-config-connection__install-actions.row-actions > :deep(.btn),
+  .ai-config-connection__install-actions.row-actions > :deep(.ui-btn),
   .ai-config-connection__install-actions.row-actions > :deep(button) {
-    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
+    justify-content: center;
   }
 }
 </style>

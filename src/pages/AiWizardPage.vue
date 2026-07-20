@@ -21,6 +21,7 @@ import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -127,6 +128,14 @@ function providerReachUi(row: LlmProviderConfigRow): { label: string; cls: strin
     };
   }
   return { label: "等待测试", cls: "tag--muted", detail: "暂未执行网络连通性测试。" };
+}
+
+
+function providerReachBadge(row: LlmProviderConfigRow): "ok" | "warn" | "muted" {
+  const cls = providerReachUi(row).cls;
+  if (cls === "tag--ok") return "ok";
+  if (cls === "tag--warn") return "warn";
+  return "muted";
 }
 
 async function refresh() {
@@ -427,19 +436,17 @@ onMounted(() => {
           class="ai-wizard-page__provider"
           :class="{ 'is-disabled': !row.enabled }"
         >
-          <div class="ai-wizard-page__provider-head">
-            <div class="ai-wizard-page__provider-meta-group">
-              <strong class="ai-wizard-page__provider-id">{{ row.id }}</strong>
-              <p class="muted ai-wizard-page__provider-meta">
-                {{ row.kind === "local" ? "本地直连" : "远程网络" }}
-                <span v-if="row.default_model"> · 常用模型: {{ row.default_model }}</span>
-                <span v-if="row.base_url"> · {{ row.base_url }}</span>
-              </p>
-            </div>
-            <span class="tag ai-wizard-page__provider-status" :class="providerReachUi(row).cls">
+          <div class="ai-wizard-page__provider-title">
+            <strong class="ai-wizard-page__provider-id">{{ row.id }}</strong>
+            <UiBadge :variant="providerReachBadge(row)">
               {{ providerReachUi(row).label }}
-            </span>
+            </UiBadge>
           </div>
+          <p class="muted ai-wizard-page__provider-meta">
+            {{ row.kind === "local" ? "本地直连" : "远程网络" }}
+            <span v-if="row.default_model"> · 常用模型: {{ row.default_model }}</span>
+            <span v-if="row.base_url"> · {{ row.base_url }}</span>
+          </p>
           <p class="muted ai-wizard-page__provider-detail">{{ providerReachUi(row).detail }}</p>
           <div class="ai-wizard-page__provider-actions">
             <UiButton
@@ -674,15 +681,15 @@ onMounted(() => {
 
 .ai-wizard-page__provider-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .ai-wizard-page__provider {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  border: none;
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--text) 2%, transparent);
 }
@@ -691,43 +698,34 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-.ai-wizard-page__provider-head {
+.ai-wizard-page__provider-title {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.ai-wizard-page__provider-meta-group {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
 
 .ai-wizard-page__provider-id {
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 650;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ai-wizard-page__provider-meta {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.ai-wizard-page__provider-status {
-  flex-shrink: 0;
-}
-
+.ai-wizard-page__provider-meta,
 .ai-wizard-page__provider-detail {
-  margin: 0 0 16px;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  flex-grow: 1;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .ai-wizard-page__provider-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  margin-top: 4px;
 }
 
 @media (max-width: 960px) {
@@ -740,6 +738,7 @@ onMounted(() => {
   .ai-wizard-page__ops-head,
   .ai-wizard-page__check-head {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .ai-wizard-page__row {
@@ -751,17 +750,15 @@ onMounted(() => {
   .ai-wizard-page__row-val {
     text-align: left;
   }
-  
-  .ai-wizard-page__actions .ui-btn {
-    width: 100%;
-  }
 
+  /* ghost 入口与探测按钮保持内容宽度，勿拉成全宽 */
   .ai-wizard-page__header-action {
-    align-self: stretch;
+    align-self: flex-start;
   }
 
-  .ai-wizard-page__header-action .ui-btn {
-    width: 100%;
+  .ai-wizard-page__header-action .ui-btn,
+  .ai-wizard-page__actions .ui-btn {
+    width: auto;
   }
 }
 </style>

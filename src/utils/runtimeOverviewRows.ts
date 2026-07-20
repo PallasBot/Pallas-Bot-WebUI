@@ -29,6 +29,19 @@ export function mediaCapabilityLabel(capability?: string | null): string {
   return id;
 }
 
+/** 画画是否走 AI 集中绘图运行时（否则为插件直通） */
+export function drawUsesAiImageRuntime(
+  overview: LlmRuntimeOverviewData | null | undefined,
+): boolean {
+  return String(overview?.health?.draw_runtime_mode ?? "").trim() === "ai_service_runtime";
+}
+
+export function drawUsesPluginDirect(
+  overview: LlmRuntimeOverviewData | null | undefined,
+): boolean {
+  return String(overview?.health?.draw_runtime_mode ?? "").trim() === "plugin_runtime";
+}
+
 function labelOrDash(value?: string | null): string {
   const text = String(value ?? "").trim();
   return text || "—";
@@ -67,7 +80,12 @@ export function buildRuntimeOverviewRows(
   if (!overview?.health) return [];
   const health = overview.health;
   const rows: RuntimeOverviewRow[] = [];
-  const hasImageHealth = Boolean(health.image_health);
+  const pluginDirect = drawUsesPluginDirect(overview);
+  const usesAiImage = drawUsesAiImageRuntime(overview);
+  // 未上报模式时保持旧行为：继续展示 AI image_health（兼容旧后端）
+  const showAiImageHealthRow =
+    Boolean(health.image_health)
+    && (usesAiImage || !pluginDirect);
 
   if (health.llm_health) {
     const llm = health.llm_health;
@@ -83,7 +101,14 @@ export function buildRuntimeOverviewRows(
     });
   }
 
-  if (health.image_health) {
+  if (pluginDirect) {
+    rows.push({
+      id: "draw.plugin_direct",
+      title: "画画",
+      ...overviewStateFields("healthy", null, null),
+      detail: "插件直通图像网关 · 不经 AI 绘图队列",
+    });
+  } else if (showAiImageHealthRow && health.image_health) {
     const image = health.image_health;
     const imageQueue = findMediaCapability(overview, "image.generate");
     let detail = `连续失败 ${image.consecutive_failures ?? 0}`
@@ -114,8 +139,8 @@ export function buildRuntimeOverviewRows(
     for (const cap of media.capabilities ?? []) {
       const capability = String(cap.capability ?? "").trim();
       if (!capability) continue;
-      // 已有 image_health「绘图运行时」时，不再并列能力 ID 行（队列信息已并入 detail）
-      if (capability === "image.generate" && hasImageHealth) continue;
+      // 插件直通时不展示无意义的 AI image.generate 队列；已有「绘图运行时」时也不并列
+      if (capability === "image.generate" && (pluginDirect || showAiImageHealthRow)) continue;
       rows.push({
         id: capability,
         title: mediaCapabilityLabel(capability),
@@ -167,9 +192,12 @@ export function runtimeOverviewHeadline(
       detail: health.llm_runtime_detail || "部分能力降级或熔断，请查看下表。",
     };
   }
+  const healthyDetail = drawUsesPluginDirect(overview)
+    ? "LLM / 媒体运行态已接通；画画为插件直通。"
+    : "LLM / 媒体 / 绘图运行态均已接通。";
   return {
     ok: true,
     title: "全局运行正常",
-    detail: health.llm_runtime_detail || "LLM / 媒体 / 绘图运行态均已接通。",
+    detail: health.llm_runtime_detail || healthyDetail,
   };
 }

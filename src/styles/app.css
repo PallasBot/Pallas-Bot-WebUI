@@ -21,6 +21,8 @@
   --radius-sm: 14px;
   --radius-control: 999px;
   --radius-shell: 14px;
+  /* 多行输入：勿用胶囊圆角，避免矮 textarea 被裁成半圆 */
+  --radius-textarea: var(--radius-sm);
   --surface-blur: 12px;
   --card-glass-opacity: 0.25;
   --glass-saturate: 1.12;
@@ -142,6 +144,7 @@ html[data-radius="tight"] {
   --radius-sm: 8px;
   --radius-control: 10px;
   --radius-shell: 8px;
+  --radius-textarea: var(--radius-sm);
 }
 
 html[data-radius="default"] {
@@ -150,6 +153,7 @@ html[data-radius="default"] {
   --radius-sm: 14px;
   --radius-control: 999px;
   --radius-shell: 14px;
+  --radius-textarea: var(--radius-sm);
 }
 
 html[data-radius="round"] {
@@ -158,6 +162,7 @@ html[data-radius="round"] {
   --radius-sm: 16px;
   --radius-control: 999px;
   --radius-shell: 18px;
+  --radius-textarea: var(--radius-sm);
 }
 
 /* 毛玻璃：仅 data-surface=glass 时启用 backdrop-filter，避免纯色模式额外开销 */
@@ -2735,6 +2740,41 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   background: #fff;
 }
 
+/* 面板标题旁收起/展开：倒三角（与首页账号 caret 同形） */
+.panel-hd-collapse-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.panel-hd-collapse-caret:hover {
+  opacity: 0.9;
+}
+
+.panel-hd-collapse-caret-ico {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform 0.16s ease;
+}
+
+.panel-hd-collapse-caret[aria-expanded="true"] .panel-hd-collapse-caret-ico {
+  transform: rotate(180deg);
+}
+
 .friends-groups-list-hd-actions {
   margin-left: auto;
   flex-shrink: 0;
@@ -2804,21 +2844,44 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   min-height: 28px;
 }
 
-/* 好友申请 / 入群请求：宽屏与列表区一致横排 */
-.friends-groups-req-hd-actions {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+/*
+ * 好友申请 / 入群请求：宽屏/中等内容宽度保持「标题左 · 操作右」单行。
+ * 侧栏下内容区可 <560px 但视口仍 >560，@media 窄屏 grid 不生效；
+ * 若 panel__hd 仍 flex-wrap，有徽章时操作整块会被顶到次行（入群请求常见）。
+ */
+#friends-groups-friend-requests .panel__hd.panel__hd--split,
+#friends-groups-group-requests .panel__hd.panel__hd--split {
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 10px;
+}
+
+#friends-groups-friend-requests .panel__hd.panel__hd--split > .panel__title,
+#friends-groups-group-requests .panel__hd.panel__hd--split > .panel__title {
+  flex: 0 1 auto;
   min-width: 0;
 }
 
-.friends-groups-req-hd-meta {
+/* 双 class：压过后文 .row-actions { flex-wrap: wrap } */
+#friends-groups-friend-requests .row-actions.friends-groups-req-hd-actions,
+#friends-groups-group-requests .row-actions.friends-groups-req-hd-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+  margin-left: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#friends-groups-friend-requests .friends-groups-req-hd-meta,
+#friends-groups-group-requests .friends-groups-req-hd-meta {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   min-width: 0;
 }
 
@@ -2854,13 +2917,25 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
 }
 
 /* 好友申请 / 入群请求标题栏：三主按钮成组（宽屏与 .row-actions 横排一致） */
-.friends-groups-req-hd-bulk-btns {
+#friends-groups-friend-requests .friends-groups-req-hd-bulk-btns,
+#friends-groups-group-requests .friends-groups-req-hd-bulk-btns {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex: 0 1 auto;
   min-width: 0;
+}
+
+#friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .btn,
+#friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .ui-btn,
+#friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .btn,
+#friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .ui-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 @media (max-width: 560px) {
@@ -8248,6 +8323,34 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     justify-content: center;
   }
 
+  /* 标题栏仅收起按钮时勿拉满全宽 */
+  .panel__hd .row-actions:has(> .panel-hd-collapse-btn:only-child) {
+    width: auto;
+    margin-left: auto;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .panel__hd .row-actions:has(> .panel-hd-collapse-btn:only-child) > .panel-hd-collapse-btn {
+    width: auto;
+  }
+
+  /* 标题栏恰好两个操作按钮：窄屏横排均分 */
+  .panel__hd .row-actions:has(> .btn:first-child):has(> .btn:nth-child(2):last-child),
+  .panel__hd .row-actions:has(> .ui-btn:first-child):has(> .ui-btn:nth-child(2):last-child) {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .panel__hd .row-actions:has(> .btn:first-child):has(> .btn:nth-child(2):last-child) > .btn,
+  .panel__hd .row-actions:has(> .ui-btn:first-child):has(> .ui-btn:nth-child(2):last-child) > .ui-btn {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+
   /* 首页「账户信息」：标题栏右侧勿纵向全宽拉伸（实例与连接胶囊） */
   .home-account-panel__hd.panel__hd .row-actions {
     width: auto;
@@ -8550,6 +8653,22 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     justify-content: center;
   }
 
+  /* 恰好两个操作按钮：窄屏横排均分，避免全宽竖排 */
+  .panel__bd .row-actions:has(> .btn:first-child):has(> .btn:nth-child(2):last-child),
+  .panel__bd .row-actions:has(> .ui-btn:first-child):has(> .ui-btn:nth-child(2):last-child) {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .panel__bd .row-actions:has(> .btn:first-child):has(> .btn:nth-child(2):last-child) > .btn,
+  .panel__bd .row-actions:has(> .ui-btn:first-child):has(> .ui-btn:nth-child(2):last-child) > .ui-btn {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+
   /* 数据库 · 好友配置：窄屏添加行保持横排，避免输入框被 panel__bd 规则拉满全宽 */
   #db-user-configs .database-user-config-add__row {
     flex-direction: row;
@@ -8801,7 +8920,10 @@ html[data-theme="light"] .sel {
   border-color: rgba(56, 189, 248, 0.45);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.textarea {
+.textarea,
+textarea.inp,
+textarea.textarea {
+  border-radius: var(--radius-textarea);
   font-family: var(--font-mono);
   font-size: var(--ui-ctrl-font);
   line-height: 1.5;
@@ -13504,13 +13626,13 @@ textarea.plugin-config-page__raw-toml,
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.55;
-  border-radius: 8px;
+  border-radius: var(--radius-textarea);
 }
 
 html[data-layout="hub"] textarea.plugin-config-page__raw-toml,
 html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
   min-height: min(40vh, 360px);
-  border-radius: 8px;
+  border-radius: var(--radius-textarea);
 }
 
 .plugin-config-workspace--dialog textarea.plugin-config-page__raw-toml,

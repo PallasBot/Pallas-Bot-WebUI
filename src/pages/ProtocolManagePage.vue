@@ -742,6 +742,15 @@ onUnmounted(() => {
             class="panel__title-ico"
             :name="panelNavIcon"
           />已连接账号
+          <button
+            type="button"
+            class="panel-hd-collapse-caret"
+            :aria-expanded="expProtocolAccounts"
+            :aria-label="expProtocolAccounts ? '收起已连接账号' : '展开已连接账号'"
+            @click="expProtocolAccounts = !expProtocolAccounts"
+          >
+            <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
+          </button>
           <RefreshIconButton
             :show-label="false"
             :busy="loadBusy"
@@ -750,13 +759,6 @@ onUnmounted(() => {
           />
         </h2>
         <div class="inst-db-panel__hd-side">
-          <UiButton
-            variant="outline"
-            class="panel-hd-collapse-btn"
-            @click="expProtocolAccounts = !expProtocolAccounts"
-          >
-            {{ expProtocolAccounts ? "收起" : "展开" }}
-          </UiButton>
           <div
             class="console-view-toggle"
             role="group"

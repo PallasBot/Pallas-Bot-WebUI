@@ -450,12 +450,20 @@ onMounted(() => {
           > · 检查于 {{ updateCheckedAtDisplay }}</span>
         </template>
         <template #actions>
-          <RefreshIconButton
-            class="hub-refresh-wide-only"
-            :busy="updateRefreshBusy"
-            label="重新检查"
-            @click="refreshAllUpdates"
-          />
+          <div class="console-hub-toolbar-strip__masthead-actions">
+            <UiButton
+              variant="outline"
+              @click="gitMirrorOpen = true"
+            >
+              镜像源
+            </UiButton>
+            <RefreshIconButton
+              class="hub-refresh-wide-only"
+              :busy="updateRefreshBusy"
+              label="重新检查"
+              @click="refreshAllUpdates"
+            />
+          </div>
         </template>
       </ConsoleHubMasthead>
 
@@ -844,18 +852,8 @@ onMounted(() => {
         class="update-page__gh-fold"
       >
         <summary class="update-page__gh-fold-summary">
-          <span class="update-page__gh-fold-summary-main">
-            GitHub 令牌
-            <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
-          </span>
-          <UiButton
-            variant="outline"
-            size="sm"
-            class="update-page__gh-mirror-btn"
-            @click.stop="gitMirrorOpen = true"
-          >
-            镜像源
-          </UiButton>
+          GitHub 令牌
+          <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
         </summary>
         <UiCard
           tag="div"
@@ -983,19 +981,6 @@ onMounted(() => {
   font-weight: 600;
   padding: 8px 2px;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.update-page__gh-fold-summary-main {
-  min-width: 0;
-}
-
-.update-page__gh-mirror-btn {
-  flex-shrink: 0;
 }
 
 .update-page__gh-fold-summary::-webkit-details-marker {
@@ -1004,12 +989,6 @@ onMounted(() => {
 
 .update-page__panel--gh {
   margin-top: 8px;
-}
-
-@media (max-width: 560px) {
-  .update-page__overview {
-    grid-template-columns: 1fr;
-  }
 }
 
 .update-page__panel + .update-page__panel {
@@ -1385,12 +1364,16 @@ onMounted(() => {
   }
 
   .update-page__ops-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: stretch;
   }
 
-  .update-page__ops-actions > .ui-btn {
-    width: 100%;
+  .update-page__ops-actions > :deep(.ui-btn) {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
   }
 }
 </style>

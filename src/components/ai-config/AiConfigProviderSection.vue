@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { RouterLink } from "vue-router";
-import AiExtensionStatusBar from "@/components/ai-config/AiExtensionStatusBar.vue";
 import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
 import LocalModelRoutingPanel from "@/components/ai-config/LocalModelRoutingPanel.vue";
 import SimpleAccessPanel from "@/components/ai-config/SimpleAccessPanel.vue";
@@ -43,10 +42,10 @@ defineExpose({
       ref="simpleRef"
     />
     <template v-else>
-      <AiExtensionStatusBar />
       <p class="muted ai-config-section__layer-hint">
-        上游、任务与本地运行收在同一面板；完整地址配置见
-        <RouterLink :to="aiConfigSectionPath('connection')">AI 服务</RouterLink>。
+        上游、任务与本地运行收在同一面板。唱歌/TTS 等媒体与遗留
+        <code>LLM_RUNTIME=ai_service</code> 路径见
+        <RouterLink :to="aiConfigSectionPath('connection')">媒体服务</RouterLink>。
       </p>
 
       <UiCard

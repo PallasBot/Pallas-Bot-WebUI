@@ -2,11 +2,25 @@
 import { computed, onMounted, ref } from "vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import { useAiExtensionConnection } from "@/composables/useAiExtensionConnection";
+import {
+  useAiExtensionConnection,
+  type AiExtensionConnectionApi,
+} from "@/composables/useAiExtensionConnection";
 
 type StatusTone = "online" | "unreachable" | "unknown";
 
-const connection = useAiExtensionConnection();
+const props = withDefaults(
+  defineProps<{
+    /** 与「媒体服务」页共享同一连接状态，避免同页双实例。 */
+    connection?: AiExtensionConnectionApi;
+    /** 挂载时是否自动测通；同页已有「连接诊断」时可关。 */
+    autoTest?: boolean;
+  }>(),
+  { autoTest: true },
+);
+
+const ownConnection = useAiExtensionConnection();
+const connection = props.connection ?? ownConnection;
 const {
   err,
   saving,
@@ -33,15 +47,15 @@ const tone = computed<StatusTone>(() => {
   return "unknown";
 });
 const statusLabel = computed(() => {
-  if (tone.value === "online") return "AI 扩展在线";
-  if (tone.value === "unreachable") return "AI 扩展不可达";
-  return "AI 扩展状态未知";
+  if (tone.value === "online") return "AI Runtime 在线";
+  if (tone.value === "unreachable") return "AI Runtime 不可达";
+  return "AI Runtime 状态未知";
 });
 const statusDetail = computed(() => {
-  if (tone.value === "online") return "简单模式可以继续配置模型提供方。";
+  if (tone.value === "online") return "媒体任务（唱歌/TTS 等）可走此扩展；默认 LLM 聊天不依赖此项。";
   if (err.value) return `检测失败：${err.value}`;
   if (testOut.value?.error) return `检测失败：${testOut.value.error}`;
-  if (tone.value === "unreachable") return "请检查地址、端口或访问令牌。";
+  if (tone.value === "unreachable") return "请检查地址、端口或访问令牌；仅影响媒体与遗留 ai_service 聊天。";
   return "正在读取连接配置。";
 });
 
@@ -76,9 +90,16 @@ defineExpose({
 });
 
 onMounted(async () => {
-  await load();
-  markClean();
-  await testConnection({ quiet: true });
+  // 共享 connection 时由父页负责 load，避免重复请求。
+  if (!props.connection) {
+    await load();
+    markClean();
+  } else {
+    markClean();
+  }
+  if (props.autoTest) {
+    await testConnection({ quiet: true });
+  }
 });
 </script>
 
@@ -120,7 +141,7 @@ onMounted(async () => {
           :disabled="testing || saving"
           @click="testConnection()"
         >
-          测通 AI 扩展
+          测通 AI Runtime
         </UiButton>
       </div>
     </div>
@@ -167,6 +188,12 @@ onMounted(async () => {
 <style scoped>
 .ai-extension-status {
   border-color: color-mix(in srgb, var(--text) 8%, transparent);
+  /* UiCard 默认 overflow:hidden，大圆角会裁掉右侧按钮 */
+  overflow: visible;
+}
+
+.ai-extension-status :deep(.ui-card__content) {
+  padding: 16px 18px;
 }
 
 .ai-extension-status__summary {
@@ -174,6 +201,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  min-width: 0;
 }
 
 .ai-extension-status__main {
@@ -181,6 +209,7 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .ai-extension-status__dot {
@@ -215,6 +244,8 @@ onMounted(async () => {
 
 .ai-extension-status__actions {
   flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .ai-extension-status__form {
@@ -234,10 +265,15 @@ onMounted(async () => {
 
   .ai-extension-status__actions {
     width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
   }
 
   .ai-extension-status__actions :deep(.ui-btn) {
-    flex: 1 1 calc(50% - 4px);
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
   }
 

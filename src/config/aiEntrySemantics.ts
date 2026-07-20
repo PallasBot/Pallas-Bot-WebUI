@@ -20,7 +20,7 @@ export const AI_ENTRY_PLUGIN_CONFIG_CHECK = {
 
 export const AI_ENTRY_CONNECTION_DIAG = {
   label: "连接诊断",
-  shortLead: "按当前填写的地址与 Token 探测 Pallas-Bot-AI 连通性；完整健康状态见 AI 观测总览。",
+  shortLead: "按当前填写的地址与 Token 探测 Pallas-Bot-AI（媒体 / 遗留 ai_service）；完整健康状态见 AI 观测总览。",
   path: aiConfigSectionPath("connection"),
 } as const;
 

@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import {
   fetchLlmModelAdminStatus,
   fetchLlmProviderModels,
-  fetchMediaAssetsDownloadJob,
   fetchMediaAssetsStatus,
   openAiInstallJobEventSource,
   postAiInstall,
-  postMediaAssetsDownload,
-  type MediaAssetsStatus,
 } from "@/api/consoleApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import MediaModelAdminPanel from "@/components/ai-config/MediaModelAdminPanel.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
@@ -21,26 +19,18 @@ import { toastApiError } from "@/utils/consoleToastFeedback";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 
 const panelNavIcon = usePanelNavIcon();
+const mediaRef = ref<InstanceType<typeof MediaModelAdminPanel> | null>(null);
 const err = ref("");
 const loading = ref(false);
 const modelName = ref("");
 const modelCount = ref(0);
 const aiReachable = ref(false);
-const assets = ref<MediaAssetsStatus | null>(null);
-const downloadBusy = ref(false);
-const downloadProgress = ref("");
 const installBusy = ref(false);
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+const installProgress = ref("");
+const anyMediaPackage = ref(false);
 
-const mediaReady = computed(() => Boolean(assets.value?.all_media_assets_ready));
-const packages = computed(() => assets.value?.media_packages_enabled ?? {});
-const anyMediaPackage = computed(
-  () => Boolean(packages.value.sing || packages.value.tts || packages.value.chat),
-);
-const deployMode = computed(() => assets.value?.deploy_mode || "unknown");
-const downloadAllowed = computed(() => Boolean(assets.value?.download_allowed));
-const dockerGuide = computed(
-  () => deployMode.value === "docker" || (assets.value?.hints ?? []).includes("docker_use_latest_image"),
+const packagesHint = computed(() =>
+  anyMediaPackage.value ? "媒体任务包已启用" : "媒体任务包未开，可重新安装含媒体",
 );
 
 async function refresh() {
@@ -55,65 +45,13 @@ async function refresh() {
     aiReachable.value = Boolean(admin?.ai_reachable);
     modelName.value = String(admin?.model || "").trim();
     modelCount.value = Array.isArray(localModels?.models) ? localModels.models.length : 0;
-    assets.value = media;
-    if (media && media.ok === false && media.error) {
-      err.value = media.error;
-    }
+    const pkgs = media?.media_packages_enabled ?? {};
+    anyMediaPackage.value = Boolean(pkgs.sing || pkgs.tts || pkgs.chat);
+    await mediaRef.value?.refresh?.();
   } catch (e) {
     err.value = e instanceof Error ? e.message : String(e);
   } finally {
     loading.value = false;
-  }
-}
-
-function stopPoll() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
-
-async function pollJob(jobId: string) {
-  stopPoll();
-  pollTimer = setInterval(async () => {
-    try {
-      const job = await fetchMediaAssetsDownloadJob(jobId);
-      downloadProgress.value = job.message || job.state;
-      if (job.state === "done" || job.state === "failed") {
-        stopPoll();
-        downloadBusy.value = false;
-        if (job.state === "done") {
-          pushConsoleToast("媒体权重已就绪", "ok");
-        } else {
-          pushConsoleToast(job.error || "媒体权重下载失败", "err");
-        }
-        await refresh();
-      }
-    } catch (e) {
-      stopPoll();
-      downloadBusy.value = false;
-      toastApiError(e, "轮询下载任务失败");
-    }
-  }, 2000);
-}
-
-async function startDownload() {
-  downloadBusy.value = true;
-  downloadProgress.value = "启动下载…";
-  err.value = "";
-  try {
-    const job = await postMediaAssetsDownload();
-    downloadProgress.value = job.message || "下载中…";
-    if (job.state === "done") {
-      downloadBusy.value = false;
-      pushConsoleToast(job.message || "已就绪", "ok");
-      await refresh();
-      return;
-    }
-    await pollJob(job.job_id);
-  } catch (e) {
-    downloadBusy.value = false;
-    toastApiError(e, "无法启动媒体权重下载");
   }
 }
 
@@ -128,7 +66,7 @@ async function reinstallWithMedia() {
       no_start: false,
     });
     await waitForInstallJob(job.job_id, openAiInstallJobEventSource, (message) => {
-      downloadProgress.value = message;
+      installProgress.value = message;
     });
     pushConsoleToast("已重新安装（含媒体）", "ok");
     await refresh();
@@ -144,10 +82,6 @@ async function reinstallWithMedia() {
 
 onMounted(() => {
   void refresh();
-});
-
-onUnmounted(() => {
-  stopPoll();
 });
 </script>
 
@@ -167,7 +101,7 @@ onUnmounted(() => {
         </h2>
         <div class="row-actions ai-capabilities__hd-actions">
           <UiButton
-            :disabled="loading || downloadBusy || installBusy"
+            :disabled="loading || installBusy"
             @click="refresh"
           >
             {{ loading ? "刷新中…" : "刷新" }}
@@ -185,12 +119,12 @@ onUnmounted(() => {
         <section class="ai-capabilities__card">
           <h3 class="ai-capabilities__card-title">对话模型（LLM）</h3>
           <p class="muted ai-capabilities__card-lead">
-            v4 默认用 LLM 闲聊（Ollama 本地或云端 Provider），请打开
-            <code>LLM_CHAT_ENABLED</code>。与下方媒体权重里的遗留 RWKV
-            <code>chat</code> 不是同一条路径。
+            默认用 Bot 内核直连 Provider（Ollama / 云端）。请打开
+            <code>LLM_CHAT_ENABLED</code>。与下方遗留 RWKV
+            <code>chat</code> 资源包不是同一条路径。
           </p>
           <ul class="ai-capabilities__status-list">
-            <li>AI 服务：{{ aiReachable ? "可达" : "不可达" }}</li>
+            <li>AI Runtime：{{ aiReachable ? "可达" : "不可达（聊天可不依赖）" }}</li>
             <li>当前模型：{{ modelName || "未配置" }}</li>
             <li>本地模型数：{{ modelCount }}</li>
           </ul>
@@ -205,82 +139,30 @@ onUnmounted(() => {
         </section>
 
         <section class="ai-capabilities__card">
-          <h3 class="ai-capabilities__card-title">唱歌 · TTS · 媒体权重</h3>
+          <h3 class="ai-capabilities__card-title">唱歌 · TTS · 媒体模型</h3>
           <p class="muted ai-capabilities__card-lead">
-            唱歌 / TTS 依赖本地媒体栈与 zip 权重（与 Ollama / 云端 LLM 无关）。
-            其中 <code>chat</code> 是遗留醉聊 RWKV 权重，仅为老用户兼容；新用户一般不必下载。
+            {{ packagesHint }}。可分项下载/删除资源包，并切换默认唱歌音色与 TTS 参考音色。
           </p>
-          <ul class="ai-capabilities__status-list">
-            <li>部署模式：{{ deployMode }}</li>
-            <li>
-              任务包：sing={{ packages.sing ? "开" : "关" }}
-              · tts={{ packages.tts ? "开" : "关" }}
-              · chat={{ packages.chat ? "开" : "关" }}
-            </li>
-            <li
-              v-for="(row, id) in assets?.assets || {}"
-              :key="id"
-            >
-              {{ id }}：{{ row.ready ? "就绪" : "缺失" }}
-            </li>
-          </ul>
-
-          <div
-            v-if="mediaReady && anyMediaPackage"
-            class="alert alert--ok"
-          >
-            媒体权重与任务包已就绪。群内唱歌还需安装插件
-            <RouterLink to="/plugins/store">pallas-plugin-ai-media</RouterLink>。
-          </div>
-
-          <div
-            v-else-if="dockerGuide"
-            class="ai-capabilities__docker"
-          >
-            <p class="muted">
-              Docker / slim 镜像不代跑下载。请在宿主机改 compose 后重启 AI：
-            </p>
-            <pre class="ai-capabilities__pre"># compose.env
-PALLAS_AI_IMAGE=pallasbot/pallas-bot-ai:latest
-# 可选 GPU：叠加 docker-compose.full.gpu.yml
-docker compose -f docker-compose.full.yml --env-file ./pallas-bot/config/compose.env up -d
-# 启动日志应出现模型下载/解压</pre>
-            <p class="muted">
-              对话模型仍用 WebUI「接入」拉取，或 compose 加 <code>--profile pull-models</code>。
-            </p>
-          </div>
-
-          <div
-            v-else
-            class="row-actions ai-capabilities__card-actions"
-          >
+          <MediaModelAdminPanel ref="mediaRef" />
+          <div class="row-actions ai-capabilities__card-actions ai-capabilities__install">
             <UiButton
               v-if="!anyMediaPackage"
               variant="primary"
               :busy="installBusy"
-              :disabled="installBusy || downloadBusy"
+              :disabled="installBusy"
               @click="reinstallWithMedia"
             >
               重新安装（含媒体）
             </UiButton>
-            <UiButton
-              v-if="downloadAllowed && !mediaReady"
-              variant="primary"
-              :busy="downloadBusy"
-              :disabled="downloadBusy || installBusy"
-              @click="startDownload"
-            >
-              下载默认媒体权重
-            </UiButton>
             <RouterLink :to="aiConfigSectionPath('connection')">
-              <UiButton variant="outline">AI 服务安装选项</UiButton>
+              <UiButton variant="outline">媒体服务安装选项</UiButton>
             </RouterLink>
           </div>
           <p
-            v-if="downloadProgress"
+            v-if="installProgress"
             class="muted"
           >
-            {{ downloadProgress }}
+            {{ installProgress }}
           </p>
         </section>
       </div>
@@ -324,14 +206,8 @@ docker compose -f docker-compose.full.yml --env-file ./pallas-bot/config/compose
   gap: 8px;
 }
 
-.ai-capabilities__pre {
-  margin: 8px 0;
-  padding: 10px 12px;
-  overflow-x: auto;
-  font-size: 12px;
-  line-height: 1.45;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--bg) 88%, var(--border));
+.ai-capabilities__install {
+  margin-top: 12px;
 }
 
 @media (max-width: 560px) {

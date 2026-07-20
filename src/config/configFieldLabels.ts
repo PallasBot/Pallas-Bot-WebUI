@@ -79,7 +79,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_tools_enabled",
       "llm_governance_enabled",
     ],
-    hint: "先开「智能对话」与接话模式；记忆 / 工具可稍后再动。AI 地址请到「AI 服务」连接页修改（会同步 Bot）。",
+    hint: "先开「智能对话」与接话模式；记忆 / 工具可稍后再动。媒体地址请到「媒体服务」连接页修改（会同步 AI_SERVER_*）。",
   },
   {
     title: "学习闭环",

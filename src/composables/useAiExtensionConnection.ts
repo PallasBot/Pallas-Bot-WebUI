@@ -99,7 +99,7 @@ export function useAiExtensionConnection() {
     try {
       const c = await putAiExtensionConfig(buildConfigPayload());
       hydrateFromConfig(c);
-      if (!options.quiet) toastSaveSuccess("连接配置已保存，并已同步 Bot 对话地址");
+      if (!options.quiet) toastSaveSuccess("连接配置已保存，并已同步 Bot 的 AI_SERVER_*");
     } catch (e) {
       err.value = e instanceof Error ? e.message : String(e);
       toastApiError(e, "保存失败");
@@ -148,3 +148,5 @@ export function useAiExtensionConnection() {
     canSave,
   };
 }
+
+export type AiExtensionConnectionApi = ReturnType<typeof useAiExtensionConnection>;
