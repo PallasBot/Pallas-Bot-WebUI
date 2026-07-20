@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import {
   fetchAiInstallStatus,
   openAiInstallJobEventSource,
   postAiInstall,
+  postAiRuntimeStart,
+  postAiRuntimeStop,
   type AiInstallStatus,
 } from "@/api/consoleApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
@@ -41,6 +43,7 @@ const {
 
 const installStatus = ref<AiInstallStatus | null>(null);
 const installBusy = ref(false);
+const runtimeBusy = ref(false);
 const installProgress = ref("");
 const installErr = ref("");
 const installOutputTail = ref("");
@@ -49,6 +52,25 @@ const remoteOnly = ref(true);
 const withMedia = ref(false);
 const useGpu = ref(false);
 const noStart = ref(false);
+
+const runtime = computed(() => installStatus.value?.runtime ?? null);
+const runtimeRunning = computed(() => Boolean(runtime.value?.running));
+const canManageRuntime = computed(() => Boolean(runtime.value?.can_manage));
+
+function layoutLabel(layout: string | undefined): string {
+  switch (layout) {
+    case "managed":
+      return "托管目录";
+    case "sibling":
+      return "同级仓库";
+    case "env":
+      return "PALLAS_AI_ROOT";
+    case "missing":
+      return "未安装";
+    default:
+      return layout || "未知";
+  }
+}
 
 function onRemoteOnlyChange() {
   if (remoteOnly.value) {
@@ -119,6 +141,34 @@ async function runInstall(action: "clone" | "bootstrap" | "clone_and_bootstrap")
   }
 }
 
+async function runRuntimeStart() {
+  runtimeBusy.value = true;
+  installErr.value = "";
+  try {
+    await postAiRuntimeStart({ with_media: withMedia.value });
+    pushConsoleToast("AI Runtime 已启动", "ok");
+    await Promise.all([loadInstallStatus(), load()]);
+  } catch (e) {
+    toastApiError(e, "启动 AI Runtime 失败");
+  } finally {
+    runtimeBusy.value = false;
+  }
+}
+
+async function runRuntimeStop() {
+  runtimeBusy.value = true;
+  installErr.value = "";
+  try {
+    await postAiRuntimeStop();
+    pushConsoleToast("AI Runtime 已停止", "ok");
+    await loadInstallStatus();
+  } catch (e) {
+    toastApiError(e, "停止 AI Runtime 失败");
+  } finally {
+    runtimeBusy.value = false;
+  }
+}
+
 onMounted(() => {
   void load();
   void loadInstallStatus();
@@ -171,19 +221,31 @@ defineExpose({ save, canSave, saving });
         {{ err }}
       </div>
       <div class="ai-config-connection__install">
-        <h3 class="ai-config-connection__install-title">安装 AI Runtime（源码）</h3>
+        <h3 class="ai-config-connection__install-title">安装 / 托管 AI Runtime</h3>
         <p class="muted ai-config-section__intro">
-          可一键克隆同级 <code>Pallas-Bot-AI</code> 并运行 <code>ai_bootstrap.sh</code>。Docker 不代跑，请按下方提示在宿主机执行。
+          默认安装到本机 <code>data/runtimes/pallas-bot-ai</code>（不必再手动 clone 同级仓）。也可继续用同级
+          <code>Pallas-Bot-AI</code> 或 <code>PALLAS_AI_ROOT</code>。Docker 不代跑，请按下方提示在宿主机执行。
         </p>
         <div
           v-if="installStatus"
           class="ai-config-connection__install-meta muted"
         >
-          <span>{{ installStatus.detected ? "已检测到" : "未检测到" }} AI 仓</span>
+          <span>{{ installStatus.detected ? "已检测到" : "未检测到" }} AI Runtime</span>
+          <span>（{{ layoutLabel(installStatus.layout) }}）</span>
           <code v-if="installStatus.ai_root || installStatus.clone_target">
             {{ installStatus.ai_root || installStatus.clone_target }}
           </code>
           <span v-if="!installStatus.git_available">本机无 git，无法克隆</span>
+        </div>
+        <div
+          v-if="runtime"
+          class="ai-config-connection__runtime muted"
+        >
+          <span>进程：{{ runtimeRunning ? "运行中" : "未运行" }}</span>
+          <span v-if="runtime.services?.api">· api {{ runtime.services.api.running ? "✓" : "—" }}</span>
+          <span v-if="runtime.services?.llm">· llm {{ runtime.services.llm.running ? "✓" : "—" }}</span>
+          <span v-if="runtime.services?.media">· media {{ runtime.services.media.running ? "✓" : "—" }}</span>
+          <span>· health {{ runtime.health?.ok ? "✓" : "—" }}</span>
         </div>
         <div class="row-actions ai-config-connection__install-opts">
           <label class="ai-config-connection__opt">
@@ -233,13 +295,27 @@ defineExpose({ save, canSave, saving });
           <UiButton
             variant="primary"
             :busy="installBusy"
-            :disabled="installBusy || (installStatus != null && !installStatus.can_clone && !installStatus.can_bootstrap)"
+            :disabled="installBusy || runtimeBusy || (installStatus != null && !installStatus.can_clone && !installStatus.can_bootstrap)"
             @click="runInstall(installStatus?.can_clone ? 'clone_and_bootstrap' : 'bootstrap')"
           >
-            {{ installStatus?.can_clone ? "克隆并安装" : "运行 bootstrap" }}
+            {{ installStatus?.can_clone ? "安装并启用" : "运行 bootstrap" }}
           </UiButton>
           <UiButton
-            :disabled="installBusy"
+            :busy="runtimeBusy"
+            :disabled="installBusy || runtimeBusy || !canManageRuntime || runtimeRunning"
+            @click="runRuntimeStart"
+          >
+            启动
+          </UiButton>
+          <UiButton
+            :busy="runtimeBusy"
+            :disabled="installBusy || runtimeBusy || !canManageRuntime || !runtimeRunning"
+            @click="runRuntimeStop"
+          >
+            停止
+          </UiButton>
+          <UiButton
+            :disabled="installBusy || runtimeBusy"
             @click="loadInstallStatus"
           >
             刷新状态
@@ -468,6 +544,14 @@ defineExpose({ save, canSave, saving });
 
 .ai-config-connection__install-meta code {
   word-break: break-all;
+}
+
+.ai-config-connection__runtime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.75rem;
+  margin-bottom: 10px;
 }
 
 .ai-config-connection__install-opts {

@@ -2359,10 +2359,34 @@ export function openAiExtensionLogsEventSource(
   });
 }
 
+export type AiRuntimeServiceStatus = {
+  running: boolean;
+  pid: number | null;
+};
+
+export type AiRuntimeStatus = {
+  can_manage: boolean;
+  ai_root: string | null;
+  layout: "managed" | "sibling" | "env" | "missing" | string;
+  running: boolean;
+  services: Record<string, AiRuntimeServiceStatus>;
+  health: {
+    ok: boolean;
+    url: string | null;
+    status_code: number | null;
+    body_preview: string | null;
+    error: string | null;
+  };
+};
+
 export type AiInstallStatus = {
   detected: boolean;
   ai_root: string | null;
   clone_target: string;
+  managed_root?: string;
+  sibling_root?: string;
+  layout?: string;
+  is_managed?: boolean;
   bootstrap_script: string;
   bootstrap_ready: boolean;
   git_available: boolean;
@@ -2370,10 +2394,25 @@ export type AiInstallStatus = {
   can_bootstrap: boolean;
   docker_hint: string;
   git_url: string;
+  runtime?: AiRuntimeStatus;
 };
 
 export async function fetchAiInstallStatus(): Promise<AiInstallStatus> {
   return (await consoleOpenapiGet("/ai-extension/install/status")) as AiInstallStatus;
+}
+
+export async function fetchAiRuntimeStatus(): Promise<AiRuntimeStatus> {
+  return (await consoleOpenapiGet("/ai-extension/runtime/status")) as AiRuntimeStatus;
+}
+
+export async function postAiRuntimeStart(body?: {
+  with_media?: boolean;
+}): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiPost("/ai-extension/runtime/start", body ?? {})) as Record<string, unknown>;
+}
+
+export async function postAiRuntimeStop(): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiPost("/ai-extension/runtime/stop", {})) as Record<string, unknown>;
 }
 
 export async function postAiInstall(body: {
