@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
         class="muted ai-config-section__intro"
       >
         跟读 Pallas-Bot-AI 落盘日志（由 Bot 本机路径提供 SSE）。
-        路径在 <RouterLink to="/ai/config/connection">AI 配置 · AI 服务</RouterLink> 配置或留空自动探测。
+        路径在 <RouterLink to="/ai/config/connection">AI 配置 · 媒体服务</RouterLink> 配置或留空自动探测。
       </p>
       <p
         v-else-if="!lines.length && !logErr && liveMode"
@@ -334,7 +334,7 @@ onBeforeUnmount(() => {
       >
         实时跟读扩展服务本地日志。也可在
         <RouterLink to="/ai/home#ai-service-logs">AI 观测</RouterLink>
-        查看；路径在「AI 服务」配置。
+        查看；路径在「媒体服务」配置。
       </p>
       <p
         v-else-if="!logData && !logErr && !liveMode"
@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
         class="muted ai-logs__docker-hint"
       >
         Docker 部署请确认 compose 已将 AI 日志目录挂到 Bot 的
-        <code>{{ AI_EXTENSION_DOCKER_LOG_MOUNT }}</code>，或在「AI 服务」填写 Bot 可读路径。
+        <code>{{ AI_EXTENSION_DOCKER_LOG_MOUNT }}</code>，或在「媒体服务」填写 Bot 可读路径。
         远端 AI 需将日志共享到 Bot 本机；未本地启动 AI 时不会有落盘日志。
         容器内也可执行：<code>docker exec -it pallasbot-ai tail -f /server/logs/{{ logKind === 'uvicorn' ? 'uvicorn.log' : logKind === 'celery-media' ? 'celery-media.log' : 'celery.log' }}</code>
       </p>

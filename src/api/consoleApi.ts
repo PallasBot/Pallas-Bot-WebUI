@@ -2437,9 +2437,13 @@ export type MediaAssetsStatus = {
   error?: string;
   deploy_mode: string;
   media_packages_enabled: Record<string, boolean>;
-  assets: Record<string, { ready?: boolean; marker?: string; zip?: string }>;
+  assets: Record<
+    string,
+    { ready?: boolean; marker?: string; zip?: string; path?: string; size_bytes?: number }
+  >;
   all_media_assets_ready: boolean;
   download_allowed: boolean;
+  delete_allowed?: boolean;
   hints: string[];
 };
 
@@ -2447,8 +2451,61 @@ export type MediaAssetsDownloadJob = {
   job_id: string;
   state: string;
   message?: string;
+  assets?: string[];
   lines?: string[];
   error?: string;
+};
+
+export type SingSpeakerRow = {
+  id: string;
+  path?: string;
+  backends?: string[];
+  model_files?: string[];
+  ready?: boolean;
+};
+
+export type SingSpeakersPayload = {
+  speakers: SingSpeakerRow[];
+  default_speaker: string;
+  preferred_backend?: string;
+  sing_speakers_map?: Record<string, string>;
+  writable?: boolean;
+  deploy_mode?: string;
+};
+
+export type SvcBackendRow = {
+  id: string;
+  arg_style?: string;
+  model_glob?: string;
+  enabled?: boolean;
+  output_suffix?: string;
+};
+
+export type SingBackendsPayload = {
+  backends: SvcBackendRow[];
+  fallback_order?: string[];
+  preferred_backend?: string;
+  writable?: boolean;
+  deploy_mode?: string;
+};
+
+export type TtsVoiceRow = {
+  id: string;
+  path: string;
+  name?: string;
+  size_bytes?: number;
+};
+
+export type TtsVoicesPayload = {
+  voices: TtsVoiceRow[];
+  defaults: {
+    ref_audio_path?: string;
+    prompt_text?: string;
+    prompt_lang?: string;
+    text_lang?: string;
+  };
+  writable?: boolean;
+  deploy_mode?: string;
 };
 
 export async function fetchMediaAssetsStatus(): Promise<MediaAssetsStatus> {
@@ -2459,12 +2516,24 @@ export async function fetchMediaAssetsStatus(): Promise<MediaAssetsStatus> {
   return (res?.data ?? res) as MediaAssetsStatus;
 }
 
-export async function postMediaAssetsDownload(): Promise<MediaAssetsDownloadJob> {
-  const res = (await consoleOpenapiPost("/common-config/llm/media-assets/download", {})) as {
+export async function postMediaAssetsDownload(assets?: string[]): Promise<MediaAssetsDownloadJob> {
+  const body = assets?.length ? { assets } : {};
+  const res = (await consoleOpenapiPost("/common-config/llm/media-assets/download", body)) as {
     ok?: boolean;
     data?: MediaAssetsDownloadJob;
   };
   return (res?.data ?? res) as MediaAssetsDownloadJob;
+}
+
+export async function postMediaAssetsDelete(assets: string[]): Promise<{
+  deleted?: string[];
+  status?: MediaAssetsStatus;
+}> {
+  const res = (await consoleOpenapiPost("/common-config/llm/media-assets/delete", { assets })) as {
+    ok?: boolean;
+    data?: { deleted?: string[]; status?: MediaAssetsStatus };
+  };
+  return (res?.data ?? res) as { deleted?: string[]; status?: MediaAssetsStatus };
 }
 
 export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaAssetsDownloadJob> {
@@ -2472,6 +2541,54 @@ export async function fetchMediaAssetsDownloadJob(jobId: string): Promise<MediaA
     `/common-config/llm/media-assets/download/jobs/${encodeURIComponent(jobId)}`,
   )) as { ok?: boolean; data?: MediaAssetsDownloadJob };
   return (res?.data ?? res) as MediaAssetsDownloadJob;
+}
+
+export async function fetchSingSpeakers(): Promise<SingSpeakersPayload> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-models/sing/speakers")) as {
+    ok?: boolean;
+    data?: SingSpeakersPayload;
+  };
+  return (res?.data ?? res) as SingSpeakersPayload;
+}
+
+export async function fetchSingBackends(): Promise<SingBackendsPayload> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-models/sing/backends")) as {
+    ok?: boolean;
+    data?: SingBackendsPayload;
+  };
+  return (res?.data ?? res) as SingBackendsPayload;
+}
+
+export async function putSingDefaults(body: {
+  default_speaker?: string;
+  preferred_backend?: string;
+}): Promise<{ default_speaker?: string; preferred_backend?: string; writable?: boolean }> {
+  const res = (await consoleOpenapiPut("/common-config/llm/media-models/sing/defaults", body)) as {
+    ok?: boolean;
+    data?: { default_speaker?: string; preferred_backend?: string; writable?: boolean };
+  };
+  return (res?.data ?? res) as { default_speaker?: string; preferred_backend?: string; writable?: boolean };
+}
+
+export async function fetchTtsVoices(): Promise<TtsVoicesPayload> {
+  const res = (await consoleOpenapiGet("/common-config/llm/media-models/tts/voices")) as {
+    ok?: boolean;
+    data?: TtsVoicesPayload;
+  };
+  return (res?.data ?? res) as TtsVoicesPayload;
+}
+
+export async function putTtsDefaults(body: {
+  ref_audio_path?: string;
+  prompt_text?: string;
+  prompt_lang?: string;
+  text_lang?: string;
+}): Promise<Record<string, unknown>> {
+  const res = (await consoleOpenapiPut("/common-config/llm/media-models/tts/defaults", body)) as {
+    ok?: boolean;
+    data?: Record<string, unknown>;
+  };
+  return (res?.data ?? res) as Record<string, unknown>;
 }
 
 export function openAiInstallJobEventSource(jobId: string): EventSource {
@@ -2597,15 +2714,40 @@ export async function fetchGitMirrorInfo(): Promise<GitMirrorInfo> {
 export async function putGitMirrorPreferred(body: {
   preferred_id: string;
   custom_proxy_prefix?: string;
+  scopes?: Partial<Record<"bot" | "webui" | "community", string>>;
 }): Promise<GitMirrorInfo> {
   return (await consoleOpenapiPut("/git-mirror/preferred", {
     preferred_id: body.preferred_id,
     custom_proxy_prefix: body.custom_proxy_prefix ?? "",
+    ...(body.scopes ? { scopes: body.scopes } : {}),
   })) as GitMirrorInfo;
 }
 
-export async function postGitMirrorApplyCommunity(): Promise<GitMirrorApplySummary> {
-  return (await consoleOpenapiPost("/git-mirror/apply-community", {})) as GitMirrorApplySummary;
+export async function postGitMirrorApplyCommunity(
+  body?: { preferred_id?: string },
+): Promise<GitMirrorApplySummary> {
+  return (await consoleOpenapiPost(
+    "/git-mirror/apply-community",
+    body?.preferred_id ? { preferred_id: body.preferred_id } : {},
+  )) as GitMirrorApplySummary;
+}
+
+export async function postGitMirrorApplyBot(
+  body?: { preferred_id?: string },
+): Promise<{ id?: string; success: boolean; message: string; remote_url?: string }> {
+  return (await consoleOpenapiPost(
+    "/git-mirror/apply-bot",
+    body?.preferred_id ? { preferred_id: body.preferred_id } : {},
+  )) as { id?: string; success: boolean; message: string; remote_url?: string };
+}
+
+export async function postGitMirrorApplyAll(
+  body?: { preferred_id?: string },
+): Promise<GitMirrorApplySummary> {
+  return (await consoleOpenapiPost(
+    "/git-mirror/apply-all",
+    body?.preferred_id ? { preferred_id: body.preferred_id } : {},
+  )) as GitMirrorApplySummary;
 }
 
 export async function postGitMirrorApplyPlugin(
@@ -2618,6 +2760,11 @@ export async function postGitMirrorApplyPlugin(
   )) as { id?: string; success: boolean; message: string; remote_url?: string };
 }
 
-export async function postGitMirrorProbe(): Promise<GitMirrorProbeResult> {
-  return (await consoleOpenapiPost("/git-mirror/probe", {})) as GitMirrorProbeResult;
+export async function postGitMirrorProbe(
+  body?: { mirror_id?: string },
+): Promise<GitMirrorProbeResult> {
+  return (await consoleOpenapiPost(
+    "/git-mirror/probe",
+    body?.mirror_id ? { mirror_id: body.mirror_id } : {},
+  )) as GitMirrorProbeResult;
 }

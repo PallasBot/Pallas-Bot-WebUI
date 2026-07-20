@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from "vue";
 import { fetchLlmModelAdminStatus } from "@/api/consoleApi";
 import { axiosErrorDetail } from "@/api/http";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
-import AiExtensionStatusBar from "@/components/ai-config/AiExtensionStatusBar.vue";
 import LlmModelSelect from "@/components/ai-config/LlmModelSelect.vue";
 import ModelAdminPanel from "@/components/ai-config/ModelAdminPanel.vue";
 import ProviderPresetPicker from "@/components/ai-config/providers/ProviderPresetPicker.vue";
@@ -30,7 +29,6 @@ import {
 type AccessMode = "cloud" | "local";
 type ResultTone = "ok" | "err" | "muted";
 
-const extensionRef = ref<InstanceType<typeof AiExtensionStatusBar> | null>(null);
 const providerStore = useLlmProviders();
 const {
   doc,
@@ -382,14 +380,6 @@ async function saveAndTestCloud() {
   providerErr.value = "";
   resultTone.value = "muted";
   resultText.value = "正在保存并测通云端 Provider…";
-  await extensionRef.value?.save({ quiet: true });
-  await extensionRef.value?.runTest({ quiet: true });
-  if (extensionRef.value && !extensionRef.value.isReachable) {
-    resultTone.value = "err";
-    resultText.value = "AI 扩展不可达，请先检查上方连接。";
-    pushConsoleToast(resultText.value, "warn");
-    return;
-  }
 
   const row = buildProviderRow();
   upsertProvider(row);
@@ -423,15 +413,6 @@ async function saveAndTestLocal() {
   resultTone.value = "muted";
   resultText.value = "正在保存并测通本地 Ollama 接入…";
   try {
-    await extensionRef.value?.save({ quiet: true });
-    await extensionRef.value?.runTest({ quiet: true });
-    if (extensionRef.value && !extensionRef.value.isReachable) {
-      resultTone.value = "err";
-      resultText.value = "AI 扩展不可达，请先检查上方连接。";
-      pushConsoleToast(resultText.value, "warn");
-      return;
-    }
-
     const status = await fetchLlmModelAdminStatus();
     const row = buildLocalProviderRow(status.model || "");
     upsertProvider(row);
@@ -536,8 +517,6 @@ onMounted(async () => {
 
 <template>
   <div class="simple-access-panel">
-    <AiExtensionStatusBar ref="extensionRef" />
-
     <div
       class="simple-access-panel__active"
       role="status"
@@ -627,7 +606,7 @@ onMounted(async () => {
             {{
               configuredCloudProviders.length
                 ? "先点选已配置上游，直接换模型；需要新服务商再展开添加。"
-                : "选择服务商，填写密钥并选择模型；保存前会先测通 AI 扩展。"
+                : "选择服务商，填写密钥并选择模型；保存前会测通 Provider。"
             }}
           </p>
         </div>

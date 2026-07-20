@@ -150,7 +150,7 @@ defineExpose({ save, canSave, saving });
               总开关、接话模式与限流；LLM 聊天默认 Bot 内核 Provider（通用配置 LLM_BASE_URL / MODEL）。AI Runtime 仅媒体或旧路径需要。
             </p>
             <p class="muted plugin-config-page__hero-meta">
-              <RouterLink to="/ai/config/connection">AI 服务连接</RouterLink>
+              <RouterLink to="/ai/config/connection">媒体服务</RouterLink>
               （可选 · 媒体） ·
               <RouterLink to="/ai/config/provider">接入与模型</RouterLink>
             </p>

@@ -213,7 +213,7 @@ onUnmounted(() => {
   max-width: 100%;
   resize: vertical;
   min-height: 120px;
-  border-radius: 10px;
+  border-radius: var(--radius-textarea);
 }
 
 .json-textarea-field__peek[readonly] {
@@ -317,7 +317,7 @@ onUnmounted(() => {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
-  border-radius: 10px;
+  border-radius: var(--radius-textarea);
   padding: 12px 13px;
 }
 

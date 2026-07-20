@@ -208,10 +208,19 @@ html[data-layout="hub"] .btn--danger {
 
 /* 输入框 / 下拉 */
 html[data-layout="hub"] .inp,
-html[data-layout="hub"] .sel,
-html[data-layout="hub"] .textarea {
+html[data-layout="hub"] .sel {
   min-height: var(--ui-ctrl-height);
   border-radius: var(--hub-radius-control);
+  font-size: 14px;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+html[data-layout="hub"] .textarea,
+html[data-layout="hub"] textarea.inp,
+html[data-layout="hub"] textarea.textarea {
+  min-height: var(--ui-ctrl-height);
+  border-radius: var(--radius-textarea);
   font-size: 14px;
   font-weight: 400;
   box-shadow: none;

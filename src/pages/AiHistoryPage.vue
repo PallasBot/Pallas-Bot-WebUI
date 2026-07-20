@@ -5125,7 +5125,7 @@ onMounted(() => {
   color: var(--text);
   background: color-mix(in srgb, var(--bg-card, var(--surface)) 92%, var(--text) 4%);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-textarea);
 }
 
 .ai-history-page__correction-textarea::placeholder {

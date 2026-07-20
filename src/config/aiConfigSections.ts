@@ -32,7 +32,7 @@ export interface AiTopLevelNavDef {
 export const AI_CONFIG_NAV_GROUPS: AiConfigNavGroupDef[] = [
   { id: "dialogue", label: "对话链路" },
   { id: "observe", label: "观测与内容" },
-  { id: "extension", label: "扩展服务" },
+  { id: "extension", label: "媒体与扩展" },
 ];
 
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
@@ -59,8 +59,8 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   },
   {
     id: "connection",
-    label: "AI 服务",
-    lead: "Bot 访问 Pallas-Bot-AI 的地址与 Token（智能对话依赖此项）。",
+    label: "媒体服务",
+    lead: "唱歌/TTS 等媒体任务；仅当 LLM 运行时选 AI 服务时才影响聊天。",
     icon: "radio",
     groupId: "extension",
   },
@@ -106,7 +106,7 @@ export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = [
 export const AI_CONFIG_MORE_NAV_ITEM: AiConfigMoreNavItemDef = {
   id: "more",
   label: "更多",
-  lead: "AI 服务、画画、网易云与扩展日志",
+  lead: "媒体服务、画画、网易云与扩展日志",
   icon: "blocks",
   targetSectionId: "connection",
 };

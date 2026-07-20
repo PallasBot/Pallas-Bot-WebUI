@@ -1855,18 +1855,33 @@ export type GitMirrorOption = {
   type: "default" | "proxy" | "custom";
 };
 
-export type GitMirrorPluginRow = {
+export type GitMirrorScopes = {
+  bot: string;
+  webui: string;
+  community: string;
+};
+
+export type GitMirrorTargetRow = {
   id: string;
+  kind: "bot" | "webui" | "official" | "plugin";
+  label?: string;
   path: string;
   remote_url: string;
   is_git_repo: boolean;
   mirror: string;
+  can_apply_remote?: boolean;
+  scope_id?: string;
+  note?: string;
 };
+
+export type GitMirrorPluginRow = GitMirrorTargetRow;
 
 export type GitMirrorInfo = {
   preferred_id: string;
   custom_proxy_prefix: string;
+  scopes: GitMirrorScopes;
   available_mirrors: GitMirrorOption[];
+  targets: GitMirrorTargetRow[];
   plugins: GitMirrorPluginRow[];
 };
 
