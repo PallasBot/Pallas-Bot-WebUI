@@ -3615,7 +3615,7 @@ onMounted(() => {
       @close="closePatternEditor"
     >
       <div class="ai-history-page__pattern-form">
-        <label class="ai-history-page__filter">
+        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
           <span>规则 ID</span>
           <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
         </label>
@@ -5090,18 +5090,40 @@ onMounted(() => {
 
 .ai-history-page__pattern-form {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+}
+
+.ai-history-page__pattern-form > .ai-history-page__filter {
+  min-width: 0;
+}
+
+/* 勿继承筛选栏 .ai-history-page__filter .inp { width: 96px } */
+.ai-history-page__pattern-form .ai-history-page__filter .inp,
+.ai-history-page__pattern-form .ai-history-page__filter select.inp,
+.ai-history-page__pattern-form .ai-history-page__filter textarea.inp {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .ai-history-page__pattern-form-span {
   grid-column: 1 / -1;
 }
 
+.ai-history-page__pattern-form > .ai-history-page__behavior-check {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
 .ai-history-page__pattern-textarea {
-  min-height: 96px;
+  min-height: 110px;
   width: 100%;
   resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
 }
 
 .ai-history-page__correction-editor {
@@ -5426,8 +5448,15 @@ onMounted(() => {
   }
 
   .ai-history-page__pattern-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ai-history-page__pattern-actions > :deep(.ui-btn) {
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .ai-history-page__date-filters {

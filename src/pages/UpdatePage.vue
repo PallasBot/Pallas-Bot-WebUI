@@ -991,12 +991,6 @@ onMounted(() => {
   margin-top: 8px;
 }
 
-@media (max-width: 560px) {
-  .update-page__overview {
-    grid-template-columns: 1fr;
-  }
-}
-
 .update-page__panel + .update-page__panel {
   margin-top: 14px;
 }
@@ -1370,12 +1364,16 @@ onMounted(() => {
   }
 
   .update-page__ops-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: stretch;
   }
 
-  .update-page__ops-actions > .ui-btn {
-    width: 100%;
+  .update-page__ops-actions > :deep(.ui-btn) {
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
   }
 }
 </style>

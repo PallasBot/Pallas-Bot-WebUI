@@ -3,6 +3,7 @@ import type { LlmRuntimeOverviewData } from "../src/api/pallasTypes";
 import {
   buildRuntimeOverviewRows,
   mediaCapabilityLabel,
+  runtimeOverviewHeadline,
 } from "../src/utils/runtimeOverviewRows";
 
 function overviewWith(
@@ -24,6 +25,7 @@ describe("buildRuntimeOverviewRows", () => {
     const rows = buildRuntimeOverviewRows(
       overviewWith({
         ok: true,
+        draw_runtime_mode: "ai_service_runtime",
         image_health: {
           health_state: "unknown",
           circuit_state: "closed",
@@ -68,6 +70,7 @@ describe("buildRuntimeOverviewRows", () => {
     const rows = buildRuntimeOverviewRows(
       overviewWith({
         ok: true,
+        draw_runtime_mode: "ai_service_runtime",
         media_tasks: {
           queue_depth: 0,
           active_tasks: 0,
@@ -87,5 +90,73 @@ describe("buildRuntimeOverviewRows", () => {
 
     expect(rows.map((row) => row.title)).toEqual(["媒体任务平台", "绘图任务队列"]);
     expect(rows.find((row) => row.id === "image.generate")?.healthState).toBe("正常");
+  });
+
+  it("shows 插件直通 row and hides AI image.generate metrics when plugin_runtime", () => {
+    const rows = buildRuntimeOverviewRows(
+      overviewWith({
+        ok: true,
+        draw_runtime_mode: "plugin_runtime",
+        image_health: {
+          health_state: "healthy",
+          circuit_state: "closed",
+          consecutive_failures: 0,
+        },
+        media_tasks: {
+          queue_depth: 0,
+          active_tasks: 0,
+          total_tasks: 0,
+          health_state: "healthy",
+          capabilities: [
+            {
+              capability: "image.generate",
+              queue_depth: 0,
+              active_tasks: 0,
+              health_state: "healthy",
+            },
+            {
+              capability: "media.sing",
+              queue_depth: 0,
+              active_tasks: 0,
+              health_state: "healthy",
+            },
+          ],
+        },
+      }),
+    );
+
+    const titles = rows.map((row) => row.title);
+    expect(titles).toEqual(["画画", "媒体任务平台", "点歌运行时"]);
+    expect(titles).not.toContain("绘图运行时");
+    expect(rows.find((row) => row.id === "draw.plugin_direct")?.detail).toContain("插件直通");
+    expect(rows.find((row) => row.id === "image.generate")).toBeUndefined();
+  });
+
+  it("keeps legacy AI image row when draw_runtime_mode is absent", () => {
+    const rows = buildRuntimeOverviewRows(
+      overviewWith({
+        ok: true,
+        image_health: {
+          health_state: "healthy",
+          circuit_state: "closed",
+          consecutive_failures: 0,
+        },
+      }),
+    );
+    expect(rows.map((row) => row.title)).toEqual(["绘图运行时"]);
+  });
+});
+
+describe("runtimeOverviewHeadline", () => {
+  it("mentions plugin direct when draw is plugin_runtime", () => {
+    const headline = runtimeOverviewHeadline(
+      overviewWith({
+        ok: true,
+        draw_runtime_mode: "plugin_runtime",
+        llm_health: { health_state: "healthy", circuit_state: "closed" },
+      }),
+    );
+    expect(headline.title).toBe("全局运行正常");
+    expect(headline.detail).toContain("插件直通");
   });
 });

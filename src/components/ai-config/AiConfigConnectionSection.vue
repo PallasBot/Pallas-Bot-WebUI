@@ -11,6 +11,7 @@ import {
 } from "@/api/consoleApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import AiExtensionStatusBar from "@/components/ai-config/AiExtensionStatusBar.vue";
+import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { AI_EXTENSION_DEFAULTS, AI_EXTENSION_DOCKER_LOG_MOUNT } from "@/config/aiConstants";
@@ -491,12 +492,9 @@ defineExpose({ save, canSave, saving });
         <div class="ai-config-connection__diag-card">
           <div class="ai-config-connection__diag-head">
             <strong>{{ testOut.ok ? "AI Runtime 在线" : "AI Runtime 不可达" }}</strong>
-            <span
-              class="tag"
-              :class="testOut.ok ? 'tag--ok' : 'tag--warn'"
-            >
+            <UiBadge :variant="testOut.ok ? 'ok' : 'warn'">
               {{ testOut.ok ? "在线" : "不可达" }}
-            </span>
+            </UiBadge>
           </div>
           <div class="ai-config-connection__diag-grid">
             <div class="ai-config-connection__diag-row">
@@ -725,10 +723,18 @@ defineExpose({ save, canSave, saving });
     grid-template-columns: 1fr;
   }
 
+  .ai-config-connection__install-actions.row-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .ai-config-connection__install-actions.row-actions > :deep(.btn),
+  .ai-config-connection__install-actions.row-actions > :deep(.ui-btn),
   .ai-config-connection__install-actions.row-actions > :deep(button) {
-    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
+    justify-content: center;
   }
 }
 </style>

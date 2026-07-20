@@ -527,6 +527,15 @@ onUnmounted(() => {
         <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />数据库中的实例
+            <button
+              type="button"
+              class="panel-hd-collapse-caret"
+              :aria-expanded="expDbBots"
+              :aria-label="expDbBots ? '收起数据库中的实例' : '展开数据库中的实例'"
+              @click="expDbBots = !expDbBots"
+            >
+              <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
+            </button>
             <RefreshIconButton
                 :show-label="false"
               :busy="reloadBusy"
@@ -535,13 +544,6 @@ onUnmounted(() => {
             />
           </h2>
           <div class="inst-db-panel__hd-side">
-            <UiButton
-              variant="outline"
-              class="panel-hd-collapse-btn"
-              @click="expDbBots = !expDbBots"
-            >
-              {{ expDbBots ? "收起" : "展开" }}
-            </UiButton>
             <div
               class="console-view-toggle"
               role="group"
@@ -817,16 +819,16 @@ onUnmounted(() => {
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />消息框架
-          </h2>
-          <div class="row-actions">
-            <UiButton
-              variant="outline"
-              class="panel-hd-collapse-btn"
+            <button
+              type="button"
+              class="panel-hd-collapse-caret"
+              :aria-expanded="expNonebot"
+              :aria-label="expNonebot ? '收起消息框架' : '展开消息框架'"
               @click="expNonebot = !expNonebot"
             >
-              {{ expNonebot ? "收起" : "展开" }}
-            </UiButton>
-          </div>
+              <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
+            </button>
+          </h2>
         </div>
         <div
           v-show="expNonebot"

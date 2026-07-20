@@ -265,10 +265,15 @@ onMounted(async () => {
 
   .ai-extension-status__actions {
     width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
   }
 
   .ai-extension-status__actions :deep(.ui-btn) {
-    flex: 1 1 calc(50% - 4px);
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
   }
 

@@ -1016,6 +1016,8 @@ type GeneratedLlmRuntimeOverviewData =
 export type LlmRuntimeOverviewHealthData = GeneratedLlmRuntimeOverviewData["health"] & {
   llm_health?: AiExtensionTestData["llm_health"];
   image_health?: AiExtensionTestData["image_circuit"];
+  /** plugin_runtime | ai_service_runtime；未装画画插件时为 null */
+  draw_runtime_mode?: string | null;
   tts_health?: AiExtensionTestData["tts_health"];
   media_tasks?: AiExtensionTestData["media_tasks"];
 };

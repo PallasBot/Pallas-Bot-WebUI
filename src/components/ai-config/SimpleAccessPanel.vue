@@ -1021,14 +1021,21 @@ onMounted(async () => {
 
 @media (max-width: 560px) {
   .simple-access-panel__segments,
-  .simple-access-panel__segments button,
-  .simple-access-panel__traffic-segments,
-  .simple-access-panel__traffic-segments button {
+  .simple-access-panel__traffic-segments {
+    display: flex;
     width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
   }
 
-  .simple-access-panel__traffic-segments {
-    flex-direction: column;
+  .simple-access-panel__segments button,
+  .simple-access-panel__traffic-segments button {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 12px;
   }
 
   .simple-access-panel__configured-grid,
