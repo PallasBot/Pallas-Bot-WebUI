@@ -11,7 +11,8 @@ export const AI_EXTENSION_DEFAULTS = {
   baseUrl: "http://127.0.0.1:9099",
   hostPort: "127.0.0.1:9099",
   apiPrefix: "/api",
-  healthPaths: ["/health", "/api/health"] as string[],
+  /** AI 规范探活路径为 /health；旧配置可能仍含 /api/health（AI 侧已做别名兼容）。 */
+  healthPaths: ["/health"] as string[],
   timeoutSec: 8,
   timeoutMin: 2,
   timeoutMax: 30,
