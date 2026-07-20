@@ -3,6 +3,7 @@ import type { PluginConfigField } from "@/api/pallasTypes";
 import {
   configValuesFingerprint,
   isStringListField,
+  parsePluginConfigField,
   resolveConfigFieldLayout,
   savedConfigFingerprint,
   tagsFromJsonText,
@@ -89,6 +90,31 @@ describe("config dirty fingerprint", () => {
     ];
     const baseline = savedConfigFingerprint(fields);
     expect(configValuesFingerprint(fields, { enabled: "true", limit: "3" })).toBe(baseline);
+  });
+});
+
+describe("parsePluginConfigField enum", () => {
+  it("coerces numeric Literal choices to number", () => {
+    const field = makeField({
+      name: "interval_sec",
+      kind: "enum",
+      choices: ["60", "120", "300", "600", "900", "1800", "3600"],
+      current: 300,
+      default: 300,
+    });
+    expect(parsePluginConfigField(field, "1800")).toBe(1800);
+    expect(typeof parsePluginConfigField(field, "1800")).toBe("number");
+  });
+
+  it("keeps string enum values as strings", () => {
+    const field = makeField({
+      name: "mode",
+      kind: "enum",
+      choices: ["auto", "session"],
+      current: "auto",
+      default: "auto",
+    });
+    expect(parsePluginConfigField(field, "session")).toBe("session");
   });
 });
 

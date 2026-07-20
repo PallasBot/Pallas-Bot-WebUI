@@ -37,6 +37,11 @@ export function fieldModel(f: PluginConfigField): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+function isNumericEnumChoices(choices: string[] | undefined): boolean {
+  if (!choices?.length) return false;
+  return choices.every((c) => /^-?\d+$/.test(String(c).trim()));
+}
+
 export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unknown {
   const text = String(raw ?? "");
   if (f.kind === "bool") return text === "true" || text === "1";
@@ -53,6 +58,17 @@ export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unkn
     const n = parseFloat(t);
     if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入数字`);
     return n;
+  }
+  if (f.kind === "enum") {
+    const t = text.trim();
+    if (!t) return f.default ?? "";
+    // Literal[int, ...] 下拉：choices 为数字字符串，须提交 number，否则 Pydantic 校验失败
+    if (isNumericEnumChoices(f.choices)) {
+      const n = parseInt(t, 10);
+      if (!Number.isFinite(n)) throw new Error(`${f.name}: 请选择有效选项`);
+      return n;
+    }
+    return t;
   }
   if (f.kind === "json") {
     const t = text.trim();
