@@ -3985,6 +3985,8 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             image_health?: components["schemas"]["_LlmImageHealthData"] | null;
+            /** Draw Runtime Mode */
+            draw_runtime_mode?: string | null;
             tts_health?: components["schemas"]["_LlmTtsHealthData"] | null;
             media_tasks?: components["schemas"]["_LlmMediaTasksHealthData"] | null;
             /** Submit Gate */
