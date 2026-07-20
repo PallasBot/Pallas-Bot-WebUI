@@ -147,11 +147,11 @@ defineExpose({ save, canSave, saving });
               Bot 对话策略
             </h2>
             <p class="plugin-config-page__hero-desc">
-              总开关、接话模式与限流；AI 服务地址请到「AI 服务」连接页（保存时同步 Bot），模型请到「接入」拉取/切换。
+              总开关、接话模式与限流；闲聊默认 Bot 内核 Provider（通用配置 LLM_BASE_URL / MODEL）。AI Runtime 仅媒体或旧路径需要。
             </p>
             <p class="muted plugin-config-page__hero-meta">
               <RouterLink to="/ai/config/connection">AI 服务连接</RouterLink>
-              ·
+              （可选 · 媒体） ·
               <RouterLink to="/ai/config/provider">接入与模型</RouterLink>
             </p>
           </div>

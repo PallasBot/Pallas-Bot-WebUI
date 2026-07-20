@@ -347,7 +347,9 @@ defineExpose({ save, canSave, saving });
         >{{ installStatus.docker_hint }}</pre>
       </div>
       <p class="muted ai-config-section__intro">
-        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（智能对话依赖此项）；保存后写入 <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
+        Bot 访问 <strong>Pallas-Bot-AI</strong> 的地址与鉴权（唱歌 / 画画等媒体，或
+        <code>LLM_RUNTIME=ai_service</code> 旧闲聊路径）；默认闲聊走 Bot 内核 Provider，不必装 AI Runtime。保存后写入
+        <code>ai_extension.json</code>。日志路径供「扩展日志」页拉取片段。
         <strong>{{ AI_ENTRY_CONNECTION_DIAG.label }}</strong>：{{ AI_ENTRY_CONNECTION_DIAG.shortLead }}
       </p>
       <div class="ai-config-connection__links">

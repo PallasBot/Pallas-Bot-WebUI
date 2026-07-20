@@ -235,8 +235,8 @@ onActivated(() => {
           <span class="setup-wizard-page__pill setup-wizard-page__pill--optional">仅当需要 AI 回复时</span>
         </summary>
         <p class="muted setup-wizard-page__lead setup-wizard-page__optional-lead">
-          默认站点可不启 LLM。若要在群里使用智能对话，需单独部署 AI 服务、配置 Provider，并开启
-          <code>LLM_CHAT_ENABLED</code> 总闸后再做连通性体检。
+          默认站点可不启 LLM。若要在群里使用智能对话：配置 Bot 侧 Provider（基址 / Key /
+          模型），开启 <code>LLM_CHAT_ENABLED</code> 即可；AI Runtime 仅唱歌 / 画画等媒体需要。
         </p>
         <div class="setup-wizard-page__action-stack">
           <RouterLink v-if="canEnterAiFlow" to="/ai/wizard">
