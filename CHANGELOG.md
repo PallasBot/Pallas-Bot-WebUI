@@ -5,3 +5,21 @@
 更早版本见 [GitHub Releases](https://github.com/PallasBot/Pallas-Bot-WebUI/releases)。
 
 <!-- entries -->
+
+## [0.6.39] - 2026-07-20
+
+### 🚀 新功能
+
+* feat(webui): 更新页与插件商店接入 Git 镜像源 ([ccb4f3e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ccb4f3ecfcf5df7c81d8a230e71c294b25ad7cb1))
+
+### 🐛 错误修复
+
+* fix(ai): 默认 healthPaths 与 AI /health 对齐 ([d8d9781](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d8d9781c866318c3da1a9ae4f7f7c5a453eef4f9))
+
+### 🔨 其他更改
+
+* chore(openapi): 同步 Bot main 控制台类型 ([ce1abfe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ce1abfef2c3da7a0e672a9d5de9c776d0a9a9622))
+* chore(ci): Keep a Changelog 并去掉发版类型脚注 ([a950bbb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a950bbb7a8587aa3899368a3236c34a84b4cb744))
+
+**完整变更**: [`v0.6.38...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.38...HEAD)
+
