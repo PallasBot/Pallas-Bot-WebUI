@@ -6,6 +6,19 @@
 
 <!-- entries -->
 
+## [0.6.40] - 2026-07-20
+
+### 🚀 新功能
+
+* feat(ai-config): AI Runtime 托管状态与启停控件 ([5b380f2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5b380f2b928db5ab83a4b1e8b27cbe6e5c231e48))
+
+### 📚 文档更新
+
+* docs(ai-config): 闲聊改为内核 Provider，弱化必须装 AI Runtime ([598e523](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/598e5239177fff83beb3bdbe69112c665661f854))
+
+**完整变更**: [`v0.6.39...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.39...HEAD)
+
+
 ## [0.6.39] - 2026-07-20
 
 ### 🚀 新功能
