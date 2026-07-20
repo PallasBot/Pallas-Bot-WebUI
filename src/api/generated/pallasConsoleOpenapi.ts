@@ -285,6 +285,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/community-stats/connectivity-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Community Stats Connectivity Check */
+        post: operations["_community_stats_connectivity_check_pallas_api_community_stats_connectivity_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/community-corpus-hot": {
         parameters: {
             query?: never;
@@ -2990,6 +3007,16 @@ export interface components {
             ok: true;
             data: components["schemas"]["_AiExtensionTestData"];
         };
+        /** _ApiOkResponse[_CommunityConnectivityCheckData] */
+        _ApiOkResponse__CommunityConnectivityCheckData_: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            data: components["schemas"]["_CommunityConnectivityCheckData"];
+        };
         /** _ApiOkResponse[_ConsoleLoginChangeData] */
         _ApiOkResponse__ConsoleLoginChangeData_: {
             /**
@@ -3085,6 +3112,60 @@ export interface components {
         _ChangeConsoleLoginBody: {
             /** New Password */
             new_password: string;
+        };
+        /** _CommunityConnectivityCheckData */
+        _CommunityConnectivityCheckData: {
+            /** Probes */
+            probes: components["schemas"]["_CommunityConnectivityProbeRow"][];
+            reporting: components["schemas"]["_CommunityConnectivityReporting"];
+            summary: components["schemas"]["_CommunityConnectivitySummary"];
+        };
+        /** _CommunityConnectivityProbeRow */
+        _CommunityConnectivityProbeRow: {
+            /** Url */
+            url: string;
+            /** Ok */
+            ok: boolean;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Http Status */
+            http_status?: number | null;
+            /** Error */
+            error?: string | null;
+        };
+        /** _CommunityConnectivityReporting */
+        _CommunityConnectivityReporting: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Endpoint
+             * @default
+             */
+            endpoint: string;
+            /** Active Heartbeat Endpoint */
+            active_heartbeat_endpoint?: string | null;
+            /** Deployment Id */
+            deployment_id?: string | null;
+            /** Last Heartbeat Ok Unix */
+            last_heartbeat_ok_unix?: number | null;
+            /** Last Primary Probe Unix */
+            last_primary_probe_unix?: number | null;
+        };
+        /** _CommunityConnectivitySummary */
+        _CommunityConnectivitySummary: {
+            /**
+             * Any Ok
+             * @default false
+             */
+            any_ok: boolean;
+            /**
+             * Hint
+             * @default
+             */
+            hint: string;
         };
         /** _CommunityPluginActionBody */
         _CommunityPluginActionBody: {
@@ -4468,6 +4549,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _community_stats_connectivity_check_pallas_api_community_stats_connectivity_check_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["_ApiOkResponse__CommunityConnectivityCheckData_"];
                 };
             };
             /** @description Validation Error */

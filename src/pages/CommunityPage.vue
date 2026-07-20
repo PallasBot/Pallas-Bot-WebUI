@@ -2,8 +2,15 @@
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { fetchCommunityStats, fetchCorpusStatus, fetchFederationOnboarding, peekCommunityStatsCache } from "@/api/consoleApi";
+import {
+  fetchCommunityStats,
+  fetchCorpusStatus,
+  fetchFederationOnboarding,
+  peekCommunityStatsCache,
+  probeCommunityConnectivity,
+} from "@/api/consoleApi";
 import type {
+  CommunityConnectivityCheckData,
   CommunityStatsData,
   CommunityVersionCountData,
   CorpusSourceStatusData,
@@ -11,6 +18,7 @@ import type {
   FederationOnboardingData,
 } from "@/api/pallasTypes";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { toastApiError } from "@/utils/consoleToastFeedback";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
@@ -33,6 +41,41 @@ const communityStats = ref<CommunityStatsData | null>(warmCommunity);
 const corpusStatus = ref<CorpusStatusData | null>(null);
 const federationOnboarding = ref<FederationOnboardingData | null>(null);
 const federationOnboardingUnavailable = ref(false);
+const connectivityBusy = ref(false);
+const connectivityResult = ref<CommunityConnectivityCheckData | null>(null);
+
+function formatUnixRelative(unix: number | null | undefined): string {
+  if (unix == null || !Number.isFinite(unix) || unix <= 0) return "尚无成功上报记录";
+  const sec = Math.max(0, Math.floor(Date.now() / 1000) - Math.floor(unix));
+  if (sec < 60) return `${sec} 秒前`;
+  if (sec < 3600) return `${Math.floor(sec / 60)} 分钟前`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} 小时前`;
+  return `${Math.floor(sec / 86400)} 天前`;
+}
+
+function shortProbeHost(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname}`;
+  } catch {
+    return url;
+  }
+}
+
+async function runConnectivityCheck() {
+  if (connectivityBusy.value) return;
+  connectivityBusy.value = true;
+  try {
+    connectivityResult.value = await probeCommunityConnectivity();
+    const hint = connectivityResult.value.summary?.hint || "检测完成";
+    pushConsoleToast(hint, connectivityResult.value.summary?.any_ok ? "ok" : "err");
+  } catch (e) {
+    connectivityResult.value = null;
+    toastApiError(e, "连通检测失败");
+  } finally {
+    connectivityBusy.value = false;
+  }
+}
 
 function formatCommunityStatNum(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -437,6 +480,13 @@ onMounted(() => {
         class="alert alert--warn community-page__alert"
       >
         暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="community-page__alert-probe-btn"
+          :busy="connectivityBusy"
+          @click="runConnectivityCheck"
+        >检测连通</UiButton>
         <RouterLink
           class="community-page__inline-link"
           to="/community-stats-config"
@@ -463,6 +513,13 @@ onMounted(() => {
               />
             </h2>
             <div class="row-actions community-page__hd-actions community-page__deploy-hd-actions">
+              <UiButton
+                variant="ghost"
+                size="sm"
+                class="community-page__deploy-probe-btn"
+                :busy="connectivityBusy"
+                @click="runConnectivityCheck"
+              >检测连通</UiButton>
               <RouterLink
                 custom
                 v-slot="{ navigate }"
@@ -478,6 +535,37 @@ onMounted(() => {
             </div>
           </div>
           <div class="panel__bd">
+            <div
+              v-if="connectivityResult"
+              class="community-page__probe-card"
+              :class="connectivityResult.summary.any_ok ? 'is-ok' : 'is-bad'"
+            >
+              <p class="community-page__probe-hint">{{ connectivityResult.summary.hint }}</p>
+              <ul class="community-page__probe-list">
+                <li
+                  v-for="row in connectivityResult.probes"
+                  :key="row.url"
+                  class="community-page__probe-row"
+                >
+                  <UiBadge :variant="row.ok ? 'ok' : 'destructive'">{{ row.ok ? "可达" : "失败" }}</UiBadge>
+                  <code class="community-page__mono community-page__probe-url">{{ shortProbeHost(row.url) }}</code>
+                  <span class="muted community-page__probe-meta">
+                    <template v-if="row.ok">{{ row.latency_ms != null ? `${row.latency_ms} ms` : "—" }}</template>
+                    <template v-else>{{ row.error || (row.http_status != null ? `HTTP ${row.http_status}` : "失败") }}</template>
+                  </span>
+                </li>
+              </ul>
+              <dl class="home-dl community-page__detail-dl community-page__probe-reporting">
+                <dt>上报开关</dt>
+                <dd>{{ connectivityResult.reporting.enabled ? "已开启" : "已关闭" }}</dd>
+                <dt>配置 endpoint</dt>
+                <dd class="community-page__mono">{{ connectivityResult.reporting.endpoint || "—" }}</dd>
+                <dt>最近成功入口</dt>
+                <dd class="community-page__mono">{{ connectivityResult.reporting.active_heartbeat_endpoint || "—" }}</dd>
+                <dt>上次成功上报</dt>
+                <dd>{{ formatUnixRelative(connectivityResult.reporting.last_heartbeat_ok_unix) }}</dd>
+              </dl>
+            </div>
             <div class="grid-stats community-page__deploy-grid">
               <StatCard
                 dense

@@ -73,6 +73,16 @@ export interface SystemData {
   };
 }
 
+/** POST /community-stats/connectivity-check：Bot → 社区中心 HTTPS 诊断 */
+export type CommunityConnectivityCheckData = OpenapiOkData<
+  ConsoleOpenapiPaths["/pallas/api/community-stats/connectivity-check"]["post"]
+>;
+export type CommunityConnectivityProbeRow = NonNullable<
+  CommunityConnectivityCheckData["probes"]
+>[number];
+export type CommunityConnectivityReporting = NonNullable<CommunityConnectivityCheckData["reporting"]>;
+export type CommunityConnectivitySummary = NonNullable<CommunityConnectivityCheckData["summary"]>;
+
 /** GET /community-stats：代理社区统计中心 /v1/monitor/overview（回退 /v1/stats） */
 export interface FederationPoolStatsData {
   members_total: number;
