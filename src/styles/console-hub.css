@@ -1819,7 +1819,7 @@ html[data-layout="hub"] .shell__brand-badge--bot {
 
 html[data-layout="hub"] .shell__brand-title {
   font-size: var(--shell-brand-title-size);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   background: none;
   -webkit-background-clip: unset;
@@ -1847,7 +1847,7 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link {
   border: 1px solid transparent;
   gap: 10px;
   font-size: var(--shell-nav-label-size);
-  font-weight: 560;
+  font-weight: 500;
   color: color-mix(in srgb, var(--foreground) 84%, var(--text-muted));
 }
 
@@ -1879,20 +1879,20 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
   border-color: color-mix(in srgb, var(--primary) 28%, transparent);
   color: color-mix(in srgb, var(--primary) 92%, var(--foreground));
   box-shadow: var(--shadow-sm);
-  font-weight: 620;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-label {
-  font-weight: 640;
+  font-weight: 500;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.shell__nav-link--heavy .shell__nav-label,
 html[data-layout="hub"] .shell-mobile-nav__link.shell__nav-link--heavy .shell__nav-label {
-  font-weight: 720;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell__nav-label {
-  font-weight: 740;
+  font-weight: 600;
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {

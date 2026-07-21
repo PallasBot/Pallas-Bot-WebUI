@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { totalPages } from "@/utils/paginate";
 
 const props = withDefaults(
@@ -99,15 +100,15 @@ function onSizeChange(ev: Event) {
         </button>
         <span class="muted console-pager__jump">
           第
-          <input
+          <UiInput
             v-model="jumpStr"
-            class="inp"
+            class="console-pager__jump-inp"
             type="number"
             min="1"
             :max="maxPage"
             @change="goJump"
             @keyup.enter="goJump"
-          >
+          />
           / {{ maxPage }} 页
         </span>
         <button
@@ -179,7 +180,8 @@ function onSizeChange(ev: Event) {
   font-size: 13px;
 }
 
-.console-pager__jump .inp {
+.console-pager__jump .inp,
+.console-pager__jump .console-pager__jump-inp {
   width: 4rem;
   min-height: var(--ui-ctrl-height);
 }

@@ -27,6 +27,7 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
@@ -906,14 +907,15 @@ onMounted(() => {
               填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
             </p>
             <div class="update-page__gh-row">
-              <input
+              <UiInput
                 v-model="ghTokenInput"
-                class="inp update-page__gh-inp"
+                class="update-page__gh-inp"
                 type="password"
+                revealable
                 autocomplete="off"
                 placeholder="粘贴 fine-grained 或 classic PAT"
                 :disabled="ghTokenBusy"
-              >
+              />
               <UiButton
                 variant="primary"
                 :disabled="ghTokenBusy"

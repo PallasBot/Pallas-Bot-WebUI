@@ -6,7 +6,7 @@ defineOptions({ inheritAttrs: false });
 const props = withDefaults(
   defineProps<{
     modelValue?: string;
-    type?: "text" | "password" | "email" | "url" | "search" | "number";
+    type?: "text" | "password" | "email" | "url" | "search" | "number" | "date";
     placeholder?: string;
     disabled?: boolean;
     invalid?: boolean;

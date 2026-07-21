@@ -22,6 +22,7 @@ import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import type { UiBadgeVariant } from "@/components/ui/UiBadge.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { formatBackupBytes, formatBackupElapsed, useDbBackup } from "@/composables/useDbBackup";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -582,12 +583,11 @@ onUnmounted(() => {
             <div class="prefs-form-field">
               <label class="prefs-form-field__label">备份父目录</label>
               <div class="database-backups-page__dir-row">
-                <input
+                <UiInput
                   v-model="outputParent"
-                  class="inp"
                   placeholder="留空使用默认"
                   :disabled="listBusy || deleting || backupBusy"
-                >
+                />
                 <UiButton
                   variant="outline"
                   :disabled="listBusy || deleting || backupBusy"
@@ -610,12 +610,11 @@ onUnmounted(() => {
             </div>
             <div class="prefs-form-field">
               <label class="prefs-form-field__label">目录后缀（可选）</label>
-              <input
+              <UiInput
                 v-model="label"
-                class="inp"
                 placeholder="例如 before_upgrade"
                 :disabled="backupBusy"
-              >
+              />
             </div>
             <div class="prefs-form-field">
               <label class="prefs-form-field__label">备份范围</label>

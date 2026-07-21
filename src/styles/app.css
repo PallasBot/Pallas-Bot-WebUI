@@ -789,7 +789,7 @@ html[data-theme="light"] .shell__brand-badge {
   min-width: 0;
   flex-shrink: 0;
   font-size: 1rem;
-  font-weight: 750;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
   white-space: nowrap;
@@ -15811,7 +15811,7 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 .database-backups-page__list-count {
   margin-left: 8px;
   font-size: 0.8125rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .database-backups-page__form {
@@ -15827,7 +15827,8 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   gap: 8px;
 }
 
-.database-backups-page__dir-row .inp {
+.database-backups-page__dir-row .inp,
+.database-backups-page__dir-row .ui-input-wrap {
   flex: 1 1 12rem;
   min-width: 0;
 }

@@ -10,7 +10,9 @@
 | `UiField` | 标签行 + `?`/`meta` 槽 + 控件（配置 `PluginConfigFieldShell`） |
 | `UiButton` / `UiCard` / `UiDialog` / `UiBadge` | 已有，继续用 |
 
-**已接入（点状）**：配置表单链路；Instances / Protocol 账号搜索；FriendsGroups / Database 列表搜索；Logs 筛选；Preferences 开关与口令。
+**已接入（点状）**：配置表单链路；Instances / Protocol 账号搜索；FriendsGroups / Database 列表搜索；Logs / LogErrors 筛选；Preferences / Setup / Update 口令；Charts 日期；备份目录；分页跳转；ConsoleHubSearch。
+
+Hub 侧栏字重：普通 **500**，分组 / 选中 **600**（不再用 560–740 中间档）。
 
 **仍可用裸 class**：高度定制布局、尚未迁移的旧页面、range 滑块等。新代码优先 `Ui*`。
 

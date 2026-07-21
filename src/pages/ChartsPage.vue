@@ -20,6 +20,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatTrendCard from "@/components/StatTrendCard.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 
 const IngressDispatchPanel = defineAsyncComponent(() => import("@/components/IngressDispatchPanel.vue"));
 const HomePluginRunCharts = defineAsyncComponent(() => import("@/components/HomePluginRunCharts.vue"));
@@ -392,21 +393,21 @@ onActivated(() => {
         <div class="charts-page__filter-group">
           <label class="charts-page__date-label">
             <span class="charts-page__date-label-text">起始</span>
-            <input
+            <UiInput
               v-model="rangeStart"
-              class="inp charts-page__date-inp"
+              class="charts-page__date-inp"
               type="date"
               aria-label="起始日期"
-            >
+            />
           </label>
           <label class="charts-page__date-label">
             <span class="charts-page__date-label-text">结束</span>
-            <input
+            <UiInput
               v-model="rangeEnd"
-              class="inp charts-page__date-inp"
+              class="charts-page__date-inp"
               type="date"
               aria-label="结束日期"
-            >
+            />
           </label>
         </div>
       </div>
