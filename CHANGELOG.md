@@ -6,6 +6,32 @@
 
 <!-- entries -->
 
+## [0.6.44] - 2026-07-21
+
+### 🚀 新功能
+
+* feat(ui): 协议与商店等残留控件接入 Ui* ([c8d4e5b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c8d4e5b591db8080e34a99f130ac7a96f51e0007))
+* feat(ui): 圆角滑块并联动控件半径 ([4c47b87](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4c47b871eb41e872d4b4cb8077e34ea24bfc87a7))
+* feat(ui): 全局按钮去胶囊化 ([ad5d698](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ad5d6983186706ffa43cf17473f9d59b2a99f353))
+* feat(ui): 按钮去胶囊化并清爽 Git 镜像源弹窗 ([85dcdbe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/85dcdbe6a8191f3835014e8b132a496a42e5bbb5))
+* feat(ui): AI History/Statistics 筛选接入 Ui* ([18de9f9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/18de9f9106b3eb7845a2f513b7474cea014c82cd))
+* feat(ui): 侧栏字重收口并扩展 Ui* 接入 ([a0611d6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a0611d66f83f498e207b6cdc9782bb20be55b4d0))
+* feat(ui): 列表筛选与 Hub 搜索接入 Ui* ([39321c3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/39321c3d870d3b1fe37d04159346f1eb02a10ff5))
+* feat(ui): 扩展 Ui* 原语并接入配置表单 ([a419149](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a419149f84ce69c431f804f7db139826ec29628e))
+* feat(ui): 配置表单与表面系统清爽化 ([8af57ca](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8af57cae565898bdacbade80b2d24db52de8884b))
+
+### 🐛 错误修复
+
+* fix(charts): 移除总看板 AI 专项跳转块 ([9853639](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9853639877f7c133546232be81382d1a2501205d))
+* fix(ui): 协议账号操作栏搜索与按钮对齐 ([6a5e229](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6a5e229a7a632e0d369f06329b2d4a3c6ba01f0e))
+* fix(ui): 合并配置字段帮助按钮样式规则 ([2051fe0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2051fe0c62a0374608fe6a3ccb8de5fdacedbf0e))
+* fix(ui): 配置网格长标签截断防叠字 ([bc7fffa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bc7fffa585ce1d959e65e31efba49c6dc02764c1))
+* fix(ai-config): 刷新模型不经 AI，并解除须先选模型的死锁 ([5358ec5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5358ec5c6b4f398744278e95d392284f1851d262))
+* fix(webui): 首页与日志体验收口，更新说明支持表格与复制 ([bb08940](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bb08940d97622c1e81511ce78f15c96aa80a780e))
+
+**完整变更**: [`v0.6.43...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.43...HEAD)
+
+
 ## [0.6.43] - 2026-07-21
 
 ### 🐛 错误修复
