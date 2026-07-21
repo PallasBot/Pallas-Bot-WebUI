@@ -147,7 +147,8 @@ function step(direction: 1 | -1) {
   font-size: 8px;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.18s ease, color 0.18s ease;
+  opacity: 0.6;
+  transition: background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 }
 
 .num-stepper__step:first-child {
@@ -155,6 +156,7 @@ function step(direction: 1 | -1) {
 }
 
 .num-stepper__step:hover:not(:disabled) {
+  opacity: 1;
   background: color-mix(in srgb, var(--accent, #ec4899) 12%, transparent);
   color: var(--text, #fff);
 }

@@ -276,7 +276,7 @@ defineExpose({ save, canSave, saving });
 .ai-config-strategy__advanced-summary {
   cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
   margin-bottom: 0;
 }

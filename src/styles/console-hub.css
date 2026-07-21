@@ -7,8 +7,9 @@ html[data-layout="hub"] {
   --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
   --hub-radius: var(--radius-md);
   --hub-radius-lg: var(--radius-lg);
-  --hub-radius-control: 999px;
-  --radius-control: 999px;
+  /* 胶囊留给 chip / 分段；输入与按钮用 --radius-control */
+  --hub-radius-control: var(--radius-pill, 999px);
+  --radius-control: 8px;
   --shell-sidebar-w: 252px;
   --shell-brand-mark-wrap-size: 56px;
   --shell-brand-mark-size: 44px;
@@ -22,29 +23,30 @@ html[data-layout="hub"] {
   --ui-ctrl-pad-y: 8px;
   --ui-ctrl-pad-x: 16px;
   --ui-sel-arrow-pad: 38px;
+  --ui-field-label-weight: 500;
   --console-page-title-size: clamp(1.375rem, 2.4vw, 1.925rem);
   --console-page-title-weight: 700;
   --console-panel-title-size: 1.0625rem;
-  --console-panel-title-weight: 650;
+  --console-panel-title-weight: 600;
   --console-card-title-size: 0.875rem;
   --console-card-title-weight: 600;
 }
 
 html[data-layout="hub"][data-theme="light"] {
-  --bg-deep: #f2f2f4;
-  --bg-elev: #f7f7f8;
-  --bg-card: #fafafa;
-  --bg-card-hover: #fafafa;
-  --border: rgba(15, 23, 42, 0.1);
-  --border-strong: rgba(15, 23, 42, 0.14);
+  --bg-deep: #e8e8ec;
+  --bg-elev: #f0f0f3;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --border: rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.1);
   --control-bg: #ffffff;
   --control-border: rgba(15, 23, 42, 0.12);
   --shadow-card: var(--hub-shadow);
-  --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 14px rgba(15, 23, 42, 0.045);
 }
 
 html[data-layout="hub"][data-theme="dark"] {
-  --hub-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --hub-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.16);
   --shadow-card: var(--hub-shadow);
 }
 
@@ -206,11 +208,11 @@ html[data-layout="hub"] .btn--danger {
   box-shadow: none;
 }
 
-/* 输入框 / 下拉 */
+/* 输入框 / 下拉：与按钮同系圆角，非胶囊 */
 html[data-layout="hub"] .inp,
 html[data-layout="hub"] .sel {
   min-height: var(--ui-ctrl-height);
-  border-radius: var(--hub-radius-control);
+  border-radius: var(--radius-control);
   font-size: 14px;
   font-weight: 400;
   box-shadow: none;
@@ -1504,7 +1506,7 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
   letter-spacing: 0.02em;
 }
@@ -1566,12 +1568,12 @@ input.inp[type="range"]:focus-visible {
   min-height: 40px;
   padding: 8px 14px;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.2;
   color: var(--text-muted);
   background: color-mix(in srgb, var(--control-bg) 92%, transparent);
   border: 1px solid var(--border);
-  border-radius: var(--hub-radius-control, 10px);
+  border-radius: var(--hub-radius-control, 999px);
   cursor: pointer;
   transition:
     background-color 0.15s var(--ease),
@@ -1708,7 +1710,7 @@ input.inp[type="range"]:focus-visible {
 }
 
 .prefs-backup-stat__value {
-  font-weight: 650;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -1827,11 +1829,11 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link {
 }
 
 html[data-layout="hub"] .shell__nav-group-toggle {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] .shell__nav-group-toggle .shell__nav-label {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-desc {
@@ -1887,7 +1889,7 @@ html[data-layout="hub"] .shell-mobile-nav__section {
 html[data-layout="hub"] .shell__nav-section {
   padding: 10px 12px 4px;
   font-size: var(--shell-nav-section-size);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -2022,7 +2024,7 @@ html[data-layout="hub"] .shell__nav-group-toggle {
   background: transparent;
   color: var(--text-muted);
   font-size: var(--shell-nav-label-size);
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
 }
@@ -2373,7 +2375,7 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
 .ai-head__title {
   margin: 0;
   font-size: var(--console-panel-title-size, 1.0625rem);
-  font-weight: var(--console-panel-title-weight, 650);
+  font-weight: var(--console-panel-title-weight, 600);
   letter-spacing: -0.01em;
   line-height: 1.3;
 }

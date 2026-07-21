@@ -438,7 +438,7 @@ function submit() {
 }
 
 .form-field__label {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .form-field__hint {

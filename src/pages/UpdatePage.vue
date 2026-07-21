@@ -988,7 +988,7 @@ onMounted(() => {
 
 .update-page__overview-k {
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1036,7 +1036,7 @@ onMounted(() => {
 
 .update-page__status-pill {
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 600;
   padding: 2px 7px;
   line-height: 1.3;
   letter-spacing: 0.02em;
@@ -1184,7 +1184,7 @@ onMounted(() => {
 .update-page__release-fold-summary {
   cursor: pointer;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
   user-select: none;
 }
@@ -1218,7 +1218,7 @@ onMounted(() => {
 
 .update-page__strong {
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .update-page__changelog-row {
@@ -1352,7 +1352,7 @@ onMounted(() => {
 .update-page__release-notes-body--md :deep(:not(pre) > code) {
   font-family: var(--font-mono);
   font-size: 0.92em;
-  font-weight: 650;
+  font-weight: 600;
   padding: 0.1em 0.35em;
   border-radius: 4px;
   background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
@@ -1377,7 +1377,7 @@ onMounted(() => {
 
 .update-page__release-notes-body--md :deep(th) {
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
   background: color-mix(in srgb, var(--bg-muted) 55%, transparent);
 }
 

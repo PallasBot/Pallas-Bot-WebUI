@@ -118,6 +118,8 @@ function onTagsChange(tags: string[]) {
       <ConsoleSwitch
         :model-value="boolSwitchValue"
         :label="boolSwitchLabelText"
+        :show-label="false"
+        :aria-label="boolSwitchLabelText"
         @update:model-value="onBoolChange"
       />
     </div>
@@ -128,6 +130,8 @@ function onTagsChange(tags: string[]) {
       <ConsoleSwitch
         :model-value="boolSwitchValue"
         :label="boolSwitchLabelText"
+        :show-label="false"
+        :aria-label="boolSwitchLabelText"
         @update:model-value="onBoolChange"
       />
     </div>
@@ -172,6 +176,7 @@ function onTagsChange(tags: string[]) {
     </select>
     <TagsInput
       v-else-if="usesTagsInput"
+      variant="embedded"
       :model-value="tagsValue"
       @update:model-value="onTagsChange"
     />

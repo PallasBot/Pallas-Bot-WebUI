@@ -88,7 +88,7 @@ const emit = defineEmits<{
 .ai-history-panel-shell__title {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
 }
 

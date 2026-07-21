@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const layout = computed(() => resolveConfigFieldLayout(props.field));
+const typeMeta = computed(() => fieldCompactMeta(props.field));
 </script>
 
 <template>
@@ -29,7 +30,7 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
     :class="`plugin-config-form-item--${layout}`"
   >
     <div class="plugin-config-form-item__label-row">
-      <label class="plugin-config-form-item__label">
+      <div class="plugin-config-form-item__label">
         <span class="plugin-config-form-item__label-text">
           {{ fieldDisplayName(field) }}
         </span>
@@ -37,31 +38,12 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
           v-if="field.required"
           class="plugin-config-form-item__required"
         >*</span>
-      </label>
-      <div class="plugin-config-form-item__label-side">
-        <div class="plugin-config-form-item__meta-list">
-          <span
-            v-if="field.secret"
-            class="plugin-config-form-item__meta-pill plugin-config-form-item__meta-pill--secret"
-          >
-            密钥
-          </span>
-          <span
-            v-for="meta in fieldCompactMeta(field)"
-            :key="`${field.name}-${meta}`"
-            class="plugin-config-form-item__meta-pill"
-          >
-            {{ meta }}
-          </span>
-        </div>
-        <button
-          type="button"
-          class="plugin-config-form-item__edit-btn"
-          :aria-label="`编辑 ${fieldDisplayName(field)}`"
-          @click.stop="emit('edit-click')"
+        <span
+          v-if="field.secret"
+          class="plugin-config-form-item__meta-pill plugin-config-form-item__meta-pill--secret"
         >
-          编辑
-        </button>
+          密钥
+        </span>
         <button
           type="button"
           class="plugin-config-form-item__help-btn"
@@ -74,6 +56,30 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
         >
           ?
         </button>
+      </div>
+      <div class="plugin-config-form-item__label-side">
+        <div class="plugin-config-form-item__secondary">
+          <div
+            v-if="typeMeta.length"
+            class="plugin-config-form-item__meta-list"
+          >
+            <span
+              v-for="meta in typeMeta"
+              :key="`${field.name}-${meta}`"
+              class="plugin-config-form-item__meta-pill"
+            >
+              {{ meta }}
+            </span>
+          </div>
+          <button
+            type="button"
+            class="plugin-config-form-item__edit-btn"
+            :aria-label="`编辑 ${fieldDisplayName(field)}`"
+            @click.stop="emit('edit-click')"
+          >
+            编辑
+          </button>
+        </div>
       </div>
     </div>
     <div class="plugin-config-form-item__control">
@@ -100,7 +106,7 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   box-shadow: none;
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 8px;
   align-content: start;
 }
 
@@ -121,21 +127,30 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: var(--text, #0f172a);
-  font-size: 12.5px;
+  flex: 1 1 auto;
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
   line-height: 1.35;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .plugin-config-form-item__label-text {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-config-form-item__label > .plugin-config-form-item__meta-pill--secret,
+.plugin-config-form-item__label > .plugin-config-form-item__help-btn {
+  flex-shrink: 0;
 }
 
 .plugin-config-form-item__meta-pill--secret {
   color: color-mix(in srgb, #f59e0b 84%, var(--text, #fff) 8%);
   border-color: color-mix(in srgb, #f59e0b 42%, transparent);
   background: color-mix(in srgb, #f59e0b 8%, transparent);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .plugin-config-form-item__required {
@@ -147,8 +162,15 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
 .plugin-config-form-item__label-side {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
+}
+
+.plugin-config-form-item__secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.15s ease;
 }
 
 .plugin-config-form-item__meta-list {
@@ -175,48 +197,49 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   padding: 0;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
-  color: inherit;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
   font-size: 11px;
   font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  line-height: 1;
+  cursor: help;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
 }
 
 .plugin-config-form-item__edit-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+  min-height: 20px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-muted, rgba(255, 255, 255, 0.76));
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .plugin-config-form-item__edit-btn:hover {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 8%);
+  color: color-mix(in srgb, var(--accent, #0284c7) 82%, var(--text, #fff) 8%);
+  background: color-mix(in srgb, var(--accent, #0284c7) 8%, transparent);
 }
 
 .plugin-config-form-item__help-btn:hover,
 .plugin-config-form-item__help-btn[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 16%, transparent);
-  background: color-mix(in srgb, var(--accent, #ec4899) 6%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 82%, var(--text, #fff) 8%);
+  opacity: 1;
+  color: color-mix(in srgb, var(--accent, #0284c7) 78%, var(--text, #fff) 12%);
+  background: color-mix(in srgb, var(--accent, #0284c7) 10%, transparent);
 }
 
 .plugin-config-form-item__control {
@@ -231,9 +254,15 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
 .plugin-config-form-item__control :deep(.inp),
 .plugin-config-form-item__control :deep(.sel),
 .plugin-config-form-item__control :deep(.textarea),
-.plugin-config-form-item__control :deep(.json-textarea-field__peek) {
+.plugin-config-form-item__control :deep(.json-textarea-field__peek),
+.plugin-config-form-item__control :deep(.tags-input--embedded) {
   border-radius: 8px;
-  min-height: 38px;
+  min-height: 40px;
+  box-shadow: none;
+}
+
+.plugin-config-form-item__control :deep(.sel) {
+  border-radius: 8px;
 }
 
 .plugin-config-form-item__control :deep(.json-textarea-field__peek) {
@@ -245,20 +274,32 @@ const layout = computed(() => resolveConfigFieldLayout(props.field));
 }
 
 .plugin-config-form-item__help-btn--has-desc {
-  border-color: color-mix(in srgb, var(--accent, #ec4899) 22%, transparent);
-  color: color-mix(in srgb, var(--accent, #ec4899) 78%, var(--text, #fff) 12%);
+  opacity: 0.62;
+  color: color-mix(in srgb, var(--accent, #0284c7) 68%, var(--text-muted, #64748b) 32%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .plugin-config-form-item__secondary {
+    opacity: 0;
+  }
+
+  .plugin-config-form-item:hover .plugin-config-form-item__secondary,
+  .plugin-config-form-item:focus-within .plugin-config-form-item__secondary {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 560px) {
   .plugin-config-form-item__label-row {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .plugin-config-form-item__label-side,
-  .plugin-config-form-item__meta-list {
-    width: 100%;
+  .plugin-config-form-item__meta-list,
+  .plugin-config-form-item__secondary {
     justify-content: flex-start;
+    opacity: 1;
   }
 }
 </style>

@@ -4219,7 +4219,7 @@ onMounted(() => {
 .ai-history-page__list-title {
   margin: 0;
   font-size: 0.98rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ai-history-page__list-count {
@@ -4832,7 +4832,7 @@ onMounted(() => {
   background: color-mix(in srgb, #f59e0b 12%, transparent);
   color: color-mix(in srgb, #b45309 78%, var(--text));
   font-size: 0.68rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -4940,7 +4940,7 @@ onMounted(() => {
   padding: 3px 9px;
   border-radius: 999px;
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 600;
   border: 1px solid transparent;
 }
 
@@ -5165,7 +5165,7 @@ onMounted(() => {
 
 .ai-history-page__correction-label {
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 600;
   color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
 }
 

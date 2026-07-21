@@ -310,7 +310,7 @@ function circuitTone(state: string): string {
 
 .ai-runtime-diagnostic__metric-label {
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted);
 }
 

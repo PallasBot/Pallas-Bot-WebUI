@@ -3329,7 +3329,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong));
 }
 .home-plugin-charts__draw-toggle-txt {
-  font-weight: 650;
+  font-weight: 600;
 }
 .home-plugin-charts__draw-toggle:hover {
   border-color: var(--border-strong);
@@ -3724,7 +3724,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   grid-column: 2 / -1;
 }
 .home-matcher-dur-log__time-axis-label {
-  font-weight: 650;
+  font-weight: 600;
 }
 .home-matcher-dur-log__time-axis-range {
   grid-column: 2 / -1;
@@ -4236,7 +4236,7 @@ function pickTickIndices(n: number, maxTicks: number): number[] {
   gap: 14px 22px;
   margin-bottom: 8px;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .home-plugin-daily__leg-item {
@@ -4444,7 +4444,7 @@ html[data-layout="hub"][data-surface="glass"] .home-plugin-charts-dashboard__cel
 .home-plugin-charts-dashboard__title {
   margin: 0;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--text);
   line-height: 1.25;

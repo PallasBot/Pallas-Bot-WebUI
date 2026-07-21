@@ -459,7 +459,7 @@ onMounted(() => {
 
 .model-admin__summary-label {
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted, #64748b);
 }
 

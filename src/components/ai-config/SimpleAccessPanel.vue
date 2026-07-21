@@ -806,7 +806,7 @@ onMounted(async () => {
 
 .simple-access-panel__active-kicker {
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted, #64748b);
@@ -901,7 +901,7 @@ onMounted(async () => {
 .simple-access-panel__section-title {
   margin: 0 0 8px;
   font-size: 0.8rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted, #64748b);
 }
 

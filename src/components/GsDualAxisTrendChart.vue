@@ -319,7 +319,7 @@ function rowValue(row: ConsoleDailyStatRow, key: "sent" | "received" | "matcher"
   gap: 8px 20px;
   margin: 0 0 10px;
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 600;
   width: 100%;
 }
 
@@ -464,7 +464,7 @@ function rowValue(row: ConsoleDailyStatRow, key: "sent" | "received" | "matcher"
   gap: 10px 18px;
   margin-top: 10px;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .gs-trend-chart__leg-item {
