@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import UiButton from "@/components/ui/UiButton.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -53,24 +55,22 @@ function removeId(id: number) {
 <template>
   <div class="plugin-acl-blocked-users">
     <div class="plugin-acl-blocked-users__add row-actions">
-      <input
+      <UiInput
         v-model="addInput"
-        class="inp plugin-acl-blocked-users__input"
+        class="plugin-acl-blocked-users__input"
         type="text"
         inputmode="numeric"
         autocomplete="off"
         placeholder="QQ 号"
         :disabled="disabled"
         @keydown.enter.prevent="addFromInput"
-      >
-      <button
-        type="button"
-        class="btn"
+      />
+      <UiButton
         :disabled="disabled"
         @click="addFromInput"
       >
         添加
-      </button>
+      </UiButton>
     </div>
     <p
       v-if="addHint"
@@ -145,7 +145,8 @@ function removeId(id: number) {
     flex: 1 1 100%;
   }
 
-  .plugin-acl-blocked-users__add > .btn {
+  .plugin-acl-blocked-users__add > .btn,
+  .plugin-acl-blocked-users__add > .ui-btn {
     flex: 1 1 auto;
   }
 }

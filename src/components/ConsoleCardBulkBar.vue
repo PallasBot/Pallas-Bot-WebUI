@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiButton from "@/components/ui/UiButton.vue";
+
 defineProps<{
   pageAllSelected: boolean;
   selectedCount: number;
@@ -15,28 +17,27 @@ const emit = defineEmits<{
 
 <template>
   <div class="inst-db-bulk-bar">
-    <button
-      type="button"
-      class="btn"
+    <UiButton
+      size="sm"
       @click="emit('toggleSelectAll')"
     >
       {{ pageAllSelected ? "取消全选" : "全选本页" }}
-    </button>
-    <button
-      type="button"
-      class="btn"
+    </UiButton>
+    <UiButton
+      size="sm"
       :disabled="selectedCount === 0"
       @click="emit('clearSelection')"
     >
       清除选择
-    </button>
-    <button
-      type="button"
-      class="btn btn--danger"
+    </UiButton>
+    <UiButton
+      size="sm"
+      variant="destructive"
       :disabled="selectedCount === 0 || deleteBusy || deleteDisabled"
+      :busy="deleteBusy"
       @click="emit('delete')"
     >
       删除选中<span v-if="selectedCount > 0">（{{ selectedCount }}）</span>
-    </button>
+    </UiButton>
   </div>
 </template>

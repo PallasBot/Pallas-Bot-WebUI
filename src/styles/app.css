@@ -8008,7 +8008,8 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .protocol-runtime-row__actions {
     width: 100%;
   }
-  .protocol-runtime-row__actions > .btn {
+  .protocol-runtime-row__actions > .btn,
+  .protocol-runtime-row__actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
   }
   .inst-db-panel__actions .btn,
@@ -9312,7 +9313,8 @@ table.data.console-data-table.database-page__storage-table tbody td {
   gap: 6px;
   margin-top: 10px;
 }
-.inst-db-bulk-bar .btn {
+.inst-db-bulk-bar .btn,
+.inst-db-bulk-bar .ui-btn {
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -11466,7 +11468,8 @@ html[data-theme="light"] .plugin-config-workspace--dialog .help-image-preview__f
   border-top: 1px solid var(--border);
 }
 @media (max-width: 560px) {
-  .plugin-store-page__git-foot > .btn {
+  .plugin-store-page__git-foot > .btn,
+  .plugin-store-page__git-foot > .ui-btn {
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
   }
@@ -12412,8 +12415,11 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     justify-content: stretch;
   }
   .plugins-page__hero-actions > .btn,
+  .plugins-page__hero-actions > .ui-btn,
   .plugin-store-page__hero-actions > .btn,
-  .plugin-store-page__masthead-actions > .btn {
+  .plugin-store-page__hero-actions > .ui-btn,
+  .plugin-store-page__masthead-actions > .btn,
+  .plugin-store-page__masthead-actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
   }
@@ -15212,11 +15218,13 @@ html[data-theme="light"] .corpus-hot__pill-score {
   }
 }
 @media (max-width: 560px) {
-  .community-page__federation-secret-hd .btn {
+  .community-page__federation-secret-hd .btn,
+  .community-page__federation-secret-hd .ui-btn {
     width: 100%;
     justify-content: center;
   }
-  .community-page__federation-coord-row .btn {
+  .community-page__federation-coord-row .btn,
+  .community-page__federation-coord-row .ui-btn {
     width: 100%;
     justify-content: center;
   }

@@ -192,9 +192,10 @@ watch(
       ref="menuRoot"
       class="plugin-store-card__menu-corner"
     >
-      <button
-        type="button"
-        class="btn plugin-store-card__menu-trigger"
+      <UiButton
+        class="plugin-store-card__menu-trigger"
+        variant="ghost"
+        size="sm"
         :aria-expanded="menuOpen"
         aria-haspopup="menu"
         aria-label="更多操作"
@@ -202,7 +203,7 @@ watch(
         @click.stop="toggleMenu"
       >
         ⋯
-      </button>
+      </UiButton>
       <div
         v-if="menuOpen"
         class="plugin-store-card__menu"
