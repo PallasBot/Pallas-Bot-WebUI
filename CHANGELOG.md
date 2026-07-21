@@ -6,6 +6,40 @@
 
 <!-- entries -->
 
+## [0.6.45] - 2026-07-21
+
+### 🚀 新功能
+
+* feat(ui): 首页窄屏页头与 AI/插件配置轻量抛光 ([9e9f985](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9e9f98541f5555390d8f67e47f33bd29036b68b2))
+* feat(ui): 运行日志页接入 PageChrome 与钉顶工具条 ([f67f306](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f67f306d7af67f6292e76bfc8a8fe4dd62af9a91))
+* feat(ui): 残留 .btn 接入 UiButton 并补齐窄屏选择器 ([8e3f4d5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8e3f4d5c5fb4e8820ef36b5de8a4b0ffb5d4d7d8))
+* feat(ui): 数据看板日期筛选改为扁平工具条 ([d762659](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d762659c7b3222cdd01675bb5a553b779b0f5cff))
+* feat(ui): 分页器与配置弹窗接入 UiButton ([0f96511](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0f96511564ef592e7a2065864c5fc7fd940dbb00))
+* feat(ui): Setup/AI 向导与协议子页 PageChrome ([2b9f643](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b9f6432d3b88efa34030fe5e7b154afdeef1a4b))
+* feat(ui): 社区页 KPI 改为扁平 MetricTile ([0d18a7c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0d18a7c03a3488a98644e52b6581e6c92fcf5357))
+* feat(ui): 数据看板与社区页 PageChrome 对齐 ([cfa0e7e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cfa0e7ecda39fb4e02510bc4aa79d084560f7885))
+* feat(ui): AI 观测/历史外层 chrome 扁平化 ([0879662](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/08796627d2d9a64502bb79682a9dc5d061b3f8ca))
+* feat(ui): 收藏星与协议返回链对齐 UiButton ([e2f0a8e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e2f0a8e9fdfc9900dfaa9b180b596d9c67d1a815))
+* feat(ui): 数据库/备份页 PageChrome 与扁平 KPI ([033a42c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/033a42c8d3d604e25a14fa49735996ab8582c9c0))
+* feat(ui): 实例/协议/好友群 PageChrome 对齐 ([6c946f1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6c946f18ad917c2e3e74e27bae21c9d3a69eaae1))
+* feat(ui): 首页 KPI MetricTile 去嵌套噪音 ([4b0bdea](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4b0bdea0e04f126c575fe6b1f8cc342abc3f4111))
+* feat(ui): 插件商店搜索与空态去嵌套 ([b0380ca](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b0380cac88439934063b4b8e696ffa4bfbf272cd))
+* feat(ui): 布局 gutter token 与 PageFill/PagePinned ([dce3eda](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dce3edaf87b901aff1c0eb44b9e112cfd9d56e8d))
+* feat(ui): PageChrome 与表面契约，Prefs/Update/Plugins 去嵌套 ([273ce11](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/273ce11a5f3657b0e9c8b900e89dbcd8ea1a94a0))
+* feat(ui): 更新页与 AI 统计/历史布局清爽化 ([411cdbc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/411cdbce140d0198b523ad89cf650874e2d50da0))
+
+### 🐛 错误修复
+
+* fix(ui): 配置项帮助按钮贴齐字段标题 ([487fdce](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/487fdce1748f158376215b1fdb6ae3461566258a))
+* fix(ui): 修复数据库页 KPI 条被异常撑高 ([070c8a8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/070c8a85c9e31e225be30de8cbbbf64412135239))
+
+### 🔨 其他更改
+
+* chore(openapi): 同步 Bot LLM Provider 模型发现接口类型 ([9808a0a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9808a0a06d9916d41d085e3761edb94b6344f9f4))
+
+**完整变更**: [`v0.6.44...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.44...HEAD)
+
+
 ## [0.6.44] - 2026-07-21
 
 ### 🚀 新功能
