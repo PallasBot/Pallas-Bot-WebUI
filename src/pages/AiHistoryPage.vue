@@ -49,8 +49,6 @@ import type {
   InstancesData,
 } from "@/api/pallasTypes";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
-import AiHistoryAdvancedDebugBlock from "@/components/ai-history/AiHistoryAdvancedDebugBlock.vue";
-import AiHistoryBehaviorAnnotateControls from "@/components/ai-history/AiHistoryBehaviorAnnotateControls.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
 import AiHistoryMaintainBehaviorPanel from "@/components/ai-history/AiHistoryMaintainBehaviorPanel.vue";
@@ -60,11 +58,13 @@ import AiHistoryMaintainPersonaPanel from "@/components/ai-history/AiHistoryMain
 import AiHistoryMaintainPromotionPanel from "@/components/ai-history/AiHistoryMaintainPromotionPanel.vue";
 import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
 import AiHistoryMemoryWorkspace from "@/components/ai-history/AiHistoryMemoryWorkspace.vue";
+import AiHistoryOrphanBehaviorSection from "@/components/ai-history/AiHistoryOrphanBehaviorSection.vue";
 import AiHistoryPatternEditorDialog from "@/components/ai-history/AiHistoryPatternEditorDialog.vue";
 import AiHistoryReplayResultDialog from "@/components/ai-history/AiHistoryReplayResultDialog.vue";
 import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
+import AiHistorySessionTurnDecisionBlock from "@/components/ai-history/AiHistorySessionTurnDecisionBlock.vue";
 import AiHistorySessionTurnMaintainBlock from "@/components/ai-history/AiHistorySessionTurnMaintainBlock.vue";
 import AiHistorySessionTurnThread from "@/components/ai-history/AiHistorySessionTurnThread.vue";
 import AiHistoryWorkspaceTabs from "@/components/ai-history/AiHistoryWorkspaceTabs.vue";
@@ -76,7 +76,6 @@ import {
   BEHAVIOR_OUTCOME_OPTIONS,
   BEHAVIOR_SCENE_OPTIONS,
   labelAction,
-  labelActions,
   labelFeatureLevel,
   labelOutcome,
   labelRepeaterMode,
@@ -861,10 +860,6 @@ function behaviorAgentTraceHighlights(
     items.push({ label: "轮次", value: String(rounds) });
   }
   return items;
-}
-
-function formatOutcomeLabel(outcome?: string | null): string {
-  return labelOutcome(outcome);
 }
 
 function outcomeClass(outcome?: string | null): string {
@@ -1997,29 +1992,14 @@ onMounted(() => {
             @toggle-expand="toggleTurnExpanded"
           >
             <template #default="{ row }">
-              <div v-if="row.decisionTrace && showDecisionTraces" class="ai-history-page__turn-decision">
-                <div class="ai-history-page__turn-behavior-bar">
-                  <span class="ai-history-page__turn-behavior-tag">判定</span>
-                  <strong>{{ kernelTraceSummary(row.decisionTrace) }}</strong>
-                  <span
-                    class="ai-history-page__outcome-badge"
-                    :class="kernelTraceOpportunityClass(row.decisionTrace)"
-                  >
-                    {{ kernelTraceOpportunityLabel(row.decisionTrace) }}
-                  </span>
-                  <span v-if="traceTimestamp(row.decisionTrace)" class="muted">
-                    {{ formatCompactDateTime(traceTimestamp(row.decisionTrace)) }}
-                  </span>
-                </div>
-                <div v-if="kernelTraceHighlights(row.decisionTrace).length" class="ai-history-page__trace-highlights">
-                  <span
-                    v-for="item in kernelTraceHighlights(row.decisionTrace)"
-                    :key="`${turnKey(row.turn.created_at, row.index)}-${item.label}`"
-                  >
-                    {{ item.label }}：{{ item.value }}
-                  </span>
-                </div>
-              </div>
+              <AiHistorySessionTurnDecisionBlock
+                v-if="row.decisionTrace && showDecisionTraces"
+                :summary="kernelTraceSummary(row.decisionTrace)"
+                :opportunity-class="kernelTraceOpportunityClass(row.decisionTrace)"
+                :opportunity-label="kernelTraceOpportunityLabel(row.decisionTrace)"
+                :timestamp-label="traceTimestamp(row.decisionTrace) ? formatCompactDateTime(traceTimestamp(row.decisionTrace)) : ''"
+                :highlights="kernelTraceHighlights(row.decisionTrace)"
+              />
               <AiHistorySessionTurnMaintainBlock
                 v-if="row.turn.role === 'assistant'"
                 :feedback-entry="row.feedbackEntry"
@@ -2056,78 +2036,29 @@ onMounted(() => {
               />
             </template>
           </AiHistorySessionTurnThread>
-          <section v-if="sessionTurnRows.orphanRuns.length" class="ai-history-page__orphan-behavior">
-            <div class="ai-head ai-history-page__orphan-behavior-head">
-              <h4 class="ai-head__title">未挂上会话的行为记录</h4>
-            </div>
-            <article
-              v-for="run in sessionTurnRows.orphanRuns"
-              :key="run.request_id"
-              class="ai-history-page__behavior-card"
-            >
-              <div class="ai-history-page__behavior-top">
-                <strong>{{ labelScene(run.scene) }}</strong>
-                <span
-                  class="ai-history-page__outcome-badge"
-                  :class="outcomeClass(run.final_outcome)"
-                >
-                  {{ formatOutcomeLabel(run.final_outcome) }}
-                </span>
-              </div>
-              <div class="ai-history-page__behavior-meta">
-                <span>动作：{{ labelActions(run.selected_actions) }}</span>
-                <span class="ai-history-page__pattern-links">
-                  规则：
-                  <template v-if="run.selected_pattern_ids.length">
-                    <button
-                      v-for="patternId in run.selected_pattern_ids"
-                      :key="`${run.request_id}-${patternId}`"
-                      type="button"
-                      class="ai-history-page__pattern-link"
-                      @click="focusPattern(patternId, run.scene, run.group_id)"
-                    >
-                      {{ patternId }}
-                    </button>
-                  </template>
-                  <template v-else>无</template>
-                </span>
-                <span>结果：{{ run.final_outcome || "未判定" }}</span>
-              </div>
-              <p v-if="run.reply_text" class="ai-history-page__behavior-hint">回复：{{ run.reply_text }}</p>
-              <div v-if="run.auto_feedback_payload" class="ai-history-page__behavior-evidence">
-                <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
-                <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
-                <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
-                <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
-              </div>
-              <AiHistoryAdvancedDebugBlock
-                v-if="behaviorAgentTrace(run.auto_feedback_payload)"
-                :expanded="isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
-                :trace-expanded="!!expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)]"
-                :highlights="behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
-                :trace="behaviorAgentTrace(run.auto_feedback_payload)"
-                :replay-busy="!!replayRunBusy[run.request_id]"
-                :copy-busy="!!replayCopyBusy[run.request_id]"
-                @toggle="toggleAdvancedDebug(behaviorAgentTraceKey('orphan', run.request_id))"
-                @toggle-trace="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
-                @run-replay="runReplay(run.request_id)"
-                @copy-replay="copyReplayPayload(run.request_id)"
-              />
-              <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
-              <AiHistoryBehaviorAnnotateControls
-                :labels="BEHAVIOR_LABEL_OPTIONS"
-                :selected-labels="run.manual_labels"
-                :outcome="run.final_outcome"
-                :busy="isBehaviorBusy(run.request_id)"
-                :disabled-sample="!!run.disabled"
-                outcome-label="结果"
-                action-btn-class="ai-history-page__behavior-action-btn"
-                @toggle-label="toggleBehaviorLabel(run, $event)"
-                @update:outcome="changeBehaviorOutcome(run, $event)"
-                @toggle-disabled="toggleBehaviorDisabled(run)"
-              />
-            </article>
-          </section>
+          <AiHistoryOrphanBehaviorSection
+            :runs="sessionTurnRows.orphanRuns"
+            :label-options="BEHAVIOR_LABEL_OPTIONS"
+            :format-source="formatBehaviorSource"
+            :format-signal="formatBehaviorSignal"
+            :format-tokens="formatBehaviorTokens"
+            :outcome-class="outcomeClass"
+            :agent-trace="behaviorAgentTrace"
+            :agent-highlights="behaviorAgentTraceHighlights"
+            :is-advanced-expanded="(requestId) => isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', requestId))"
+            :is-trace-expanded="(requestId) => !!expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', requestId)]"
+            :is-busy="isBehaviorBusy"
+            :is-replay-busy="(requestId) => !!replayRunBusy[requestId]"
+            :is-copy-busy="(requestId) => !!replayCopyBusy[requestId]"
+            @focus-pattern="focusPattern"
+            @toggle-advanced="(requestId) => toggleAdvancedDebug(behaviorAgentTraceKey('orphan', requestId))"
+            @toggle-trace="(requestId) => toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', requestId))"
+            @run-replay="runReplay"
+            @copy-replay="copyReplayPayload"
+            @toggle-label="toggleBehaviorLabel"
+            @update:outcome="changeBehaviorOutcome"
+            @toggle-disabled="toggleBehaviorDisabled"
+          />
       </AiHistorySessionDetailPane>
     </section>
     </PageFill>
