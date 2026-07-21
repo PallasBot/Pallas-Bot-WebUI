@@ -53,12 +53,14 @@ import UiInput from "@/components/ui/UiInput.vue";
 import UiSelect from "@/components/ui/UiSelect.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
+import AiHistoryAdvancedDebugBlock from "@/components/ai-history/AiHistoryAdvancedDebugBlock.vue";
 import AiHistoryBehaviorAnnotateControls from "@/components/ai-history/AiHistoryBehaviorAnnotateControls.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
 import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
 import AiHistoryMemoryWorkspace from "@/components/ai-history/AiHistoryMemoryWorkspace.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
+import AiHistoryPersonaShapingBlock from "@/components/ai-history/AiHistoryPersonaShapingBlock.vue";
 import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
@@ -480,14 +482,6 @@ function sessionTurnRequestId(row: SessionTurnRow): string {
 function personaShapingForRequestId(requestId: string): LlmPersonaShapingSummary | null {
   const key = requestId.trim();
   return key ? personaShapingCache.value[key] ?? null : null;
-}
-
-function personaShapingTaskLabel(summary: LlmPersonaShapingSummary | null): string {
-  const task = String(summary?.source_task || "").trim();
-  if (!task) return "未知任务";
-  if (task === "llm_chat") return "@ 闲聊";
-  if (task.startsWith("repeater")) return "复读 / 语料";
-  return task;
 }
 
 async function loadPersonaShapingForTurn(row: SessionTurnRow) {
@@ -2110,72 +2104,12 @@ onMounted(() => {
                   v-if="isSessionMaintainExpanded(turnMaintKey(row))"
                   class="ai-history-page__turn-maintain-body"
                 >
-                  <section
+                  <AiHistoryPersonaShapingBlock
                     v-if="sessionTurnRequestId(row)"
-                    class="ai-history-page__maintain-section ai-history-page__persona-shaping-section"
-                  >
-                    <h5 class="ai-history-page__maintain-section-title">牛格塑形</h5>
-                    <p class="muted ai-history-page__maintain-hint">
-                      展示本轮请求注入的塑形摘要；@ 闲聊含完整塑形块，复读链路通常较轻。
-                    </p>
-                    <div v-if="personaShapingBusy[sessionTurnRequestId(row)]" class="muted ai-history-page__maintain-hint">
-                      加载塑形摘要…
-                    </div>
-                    <p
-                      v-else-if="personaShapingError[sessionTurnRequestId(row)]"
-                      class="ai-history-page__maintain-empty"
-                    >
-                      未找到 runtime 快照：{{ personaShapingError[sessionTurnRequestId(row)] }}
-                    </p>
-                    <template v-else-if="personaShapingForRequestId(sessionTurnRequestId(row))">
-                      <div class="ai-history-page__maintain-meta">
-                        <span>任务：{{ personaShapingTaskLabel(personaShapingForRequestId(sessionTurnRequestId(row))) }}</span>
-                        <span>
-                          塑形块：
-                          {{
-                            personaShapingForRequestId(sessionTurnRequestId(row))?.persona_shaping_active
-                              ? "已注入"
-                              : "未注入"
-                          }}
-                        </span>
-                      </div>
-                      <p
-                        v-if="!personaShapingForRequestId(sessionTurnRequestId(row))?.persona_shaping_active"
-                        class="muted ai-history-page__maintain-hint"
-                      >
-                        未注入表示本轮请求未写入【本轮牛格塑形】；常见于复读/语料链路、功能上线前的旧记录，或当时未解析到 persona。
-                      </p>
-                      <ul
-                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.lines?.length"
-                        class="ai-history-page__persona-shaping-lines"
-                      >
-                        <li
-                          v-for="(line, lineIndex) in personaShapingForRequestId(sessionTurnRequestId(row))?.lines"
-                          :key="`${sessionTurnRequestId(row)}-line-${lineIndex}`"
-                        >
-                          {{ line }}
-                        </li>
-                      </ul>
-                      <p
-                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.dynamic_expression"
-                        class="ai-history-page__persona-shaping-extra"
-                      >
-                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.dynamic_expression }}
-                      </p>
-                      <p
-                        v-if="personaShapingForRequestId(sessionTurnRequestId(row))?.variation_hint"
-                        class="ai-history-page__persona-shaping-extra muted"
-                      >
-                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.variation_hint }}
-                      </p>
-                      <p class="muted ai-history-page__maintain-hint ai-history-page__persona-shaping-note">
-                        {{ personaShapingForRequestId(sessionTurnRequestId(row))?.compare_note }}
-                      </p>
-                    </template>
-                    <p v-else class="ai-history-page__maintain-empty">
-                      暂无塑形摘要（可能为旧请求或未落盘 runtime 快照）。
-                    </p>
-                  </section>
+                    :busy="!!personaShapingBusy[sessionTurnRequestId(row)]"
+                    :error="personaShapingError[sessionTurnRequestId(row)] || ''"
+                    :summary="personaShapingForRequestId(sessionTurnRequestId(row))"
+                  />
                   <section class="ai-history-page__maintain-section">
                     <h5 class="ai-history-page__maintain-section-title">反哺学习</h5>
                     <p class="muted ai-history-page__maintain-hint">
@@ -2288,57 +2222,19 @@ onMounted(() => {
                       <span>命中词：{{ formatBehaviorTokens(row.behaviorRun.auto_feedback_payload) }}</span>
                       <span>观察消息：{{ row.behaviorRun.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
                     </div>
-                    <template v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)">
-                      <button
-                        type="button"
-                        class="ai-history-page__turn-toggle"
-                        @click="toggleAdvancedDebug(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
-                      >
-                        {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
-                      </button>
-                      <div
-                        v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
-                        class="ai-history-page__advanced-debug"
-                      >
-                      <div class="ai-history-page__trace-highlights">
-                        <span
-                          v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
-                          :key="`${row.behaviorRun.request_id}-${item.label}`"
-                        >
-                          {{ item.label }}：{{ item.value }}
-                        </span>
-                      </div>
-                      <pre
-                        v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)]"
-                        class="ai-history-page__kernel-trace-json"
-                      >{{ JSON.stringify(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload), null, 2) }}</pre>
-                      <div class="row-actions ai-history-page__trace-actions">
-                        <button
-                          type="button"
-                          class="ai-history-page__turn-toggle"
-                          @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
-                        >
-                          {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
-                        </button>
-                        <button
-                          type="button"
-                          class="ai-history-page__turn-toggle"
-                          :disabled="replayRunBusy[row.behaviorRun.request_id]"
-                          @click="runReplay(row.behaviorRun.request_id)"
-                        >
-                          {{ replayRunBusy[row.behaviorRun.request_id] ? "重放中…" : "执行重放" }}
-                        </button>
-                        <button
-                          type="button"
-                          class="ai-history-page__turn-toggle"
-                          :disabled="replayCopyBusy[row.behaviorRun.request_id]"
-                          @click="copyReplayPayload(row.behaviorRun.request_id)"
-                        >
-                          复制重放数据
-                        </button>
-                      </div>
-                      </div>
-                    </template>
+                    <AiHistoryAdvancedDebugBlock
+                      v-if="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)"
+                      :expanded="isAdvancedDebugExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                      :trace-expanded="!!expandedBehaviorTraceKeys[behaviorAgentTraceKey('session', row.behaviorRun.request_id)]"
+                      :highlights="behaviorAgentTraceHighlights(behaviorAgentTrace(row.behaviorRun.auto_feedback_payload))"
+                      :trace="behaviorAgentTrace(row.behaviorRun.auto_feedback_payload)"
+                      :replay-busy="!!replayRunBusy[row.behaviorRun.request_id]"
+                      :copy-busy="!!replayCopyBusy[row.behaviorRun.request_id]"
+                      @toggle="toggleAdvancedDebug(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                      @toggle-trace="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('session', row.behaviorRun.request_id))"
+                      @run-replay="runReplay(row.behaviorRun.request_id)"
+                      @copy-replay="copyReplayPayload(row.behaviorRun.request_id)"
+                    />
                     <p v-if="row.behaviorRun.behavior_hint_text" class="ai-history-page__behavior-hint">
                       {{ row.behaviorRun.behavior_hint_text }}
                     </p>
@@ -2404,57 +2300,19 @@ onMounted(() => {
                 <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
                 <span>观察消息：{{ run.auto_feedback_payload.observed_turn_count ?? 0 }} 条</span>
               </div>
-              <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
-                <button
-                  type="button"
-                  class="ai-history-page__turn-toggle"
-                  @click="toggleAdvancedDebug(behaviorAgentTraceKey('orphan', run.request_id))"
-                >
-                  {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
-                </button>
-                <div
-                  v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
-                  class="ai-history-page__advanced-debug"
-                >
-                <div class="ai-history-page__trace-highlights">
-                  <span
-                    v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
-                    :key="`${run.request_id}-orphan-${item.label}`"
-                  >
-                    {{ item.label }}：{{ item.value }}
-                  </span>
-                </div>
-                <pre
-                  v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)]"
-                  class="ai-history-page__kernel-trace-json"
-                >{{ JSON.stringify(behaviorAgentTrace(run.auto_feedback_payload), null, 2) }}</pre>
-                <div class="row-actions ai-history-page__trace-actions">
-                  <button
-                    type="button"
-                    class="ai-history-page__turn-toggle"
-                    @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
-                  >
-                    {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
-                  </button>
-                  <button
-                    type="button"
-                    class="ai-history-page__turn-toggle"
-                    :disabled="replayRunBusy[run.request_id]"
-                    @click="runReplay(run.request_id)"
-                  >
-                    {{ replayRunBusy[run.request_id] ? "重放中…" : "执行重放" }}
-                  </button>
-                  <button
-                    type="button"
-                    class="ai-history-page__turn-toggle"
-                    :disabled="replayCopyBusy[run.request_id]"
-                    @click="copyReplayPayload(run.request_id)"
-                  >
-                    复制重放数据
-                  </button>
-                </div>
-                </div>
-              </template>
+              <AiHistoryAdvancedDebugBlock
+                v-if="behaviorAgentTrace(run.auto_feedback_payload)"
+                :expanded="isAdvancedDebugExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
+                :trace-expanded="!!expandedBehaviorTraceKeys[behaviorAgentTraceKey('orphan', run.request_id)]"
+                :highlights="behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
+                :trace="behaviorAgentTrace(run.auto_feedback_payload)"
+                :replay-busy="!!replayRunBusy[run.request_id]"
+                :copy-busy="!!replayCopyBusy[run.request_id]"
+                @toggle="toggleAdvancedDebug(behaviorAgentTraceKey('orphan', run.request_id))"
+                @toggle-trace="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('orphan', run.request_id))"
+                @run-replay="runReplay(run.request_id)"
+                @copy-replay="copyReplayPayload(run.request_id)"
+              />
               <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
               <AiHistoryBehaviorAnnotateControls
                 :labels="BEHAVIOR_LABEL_OPTIONS"
@@ -2890,57 +2748,19 @@ onMounted(() => {
               <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
               <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
             </div>
-            <template v-if="behaviorAgentTrace(run.auto_feedback_payload)">
-              <button
-                type="button"
-                class="ai-history-page__turn-toggle"
-                @click="toggleAdvancedDebug(behaviorAgentTraceKey('observe', run.request_id))"
-              >
-                {{ isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id)) ? "收起高级" : "高级：决策轨迹与重放" }}
-              </button>
-              <div
-                v-if="isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id))"
-                class="ai-history-page__advanced-debug"
-              >
-              <div class="ai-history-page__trace-highlights">
-                <span
-                  v-for="item in behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
-                  :key="`${run.request_id}-observe-${item.label}`"
-                >
-                  {{ item.label }}：{{ item.value }}
-                </span>
-              </div>
-              <pre
-                v-if="expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)]"
-                class="ai-history-page__kernel-trace-json"
-              >{{ JSON.stringify(behaviorAgentTrace(run.auto_feedback_payload), null, 2) }}</pre>
-              <div class="row-actions ai-history-page__trace-actions">
-                <button
-                  type="button"
-                  class="ai-history-page__turn-toggle"
-                  @click="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('observe', run.request_id))"
-                >
-                  {{ expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)] ? "收起决策轨迹" : "查看决策轨迹" }}
-                </button>
-                <button
-                  type="button"
-                  class="ai-history-page__turn-toggle"
-                  :disabled="replayRunBusy[run.request_id]"
-                  @click="runReplay(run.request_id)"
-                >
-                  {{ replayRunBusy[run.request_id] ? "重放中…" : "执行重放" }}
-                </button>
-                <button
-                  type="button"
-                  class="ai-history-page__turn-toggle"
-                  :disabled="replayCopyBusy[run.request_id]"
-                  @click="copyReplayPayload(run.request_id)"
-                >
-                  复制重放数据
-                </button>
-              </div>
-              </div>
-            </template>
+            <AiHistoryAdvancedDebugBlock
+              v-if="behaviorAgentTrace(run.auto_feedback_payload)"
+              :expanded="isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id))"
+              :trace-expanded="!!expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)]"
+              :highlights="behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
+              :trace="behaviorAgentTrace(run.auto_feedback_payload)"
+              :replay-busy="!!replayRunBusy[run.request_id]"
+              :copy-busy="!!replayCopyBusy[run.request_id]"
+              @toggle="toggleAdvancedDebug(behaviorAgentTraceKey('observe', run.request_id))"
+              @toggle-trace="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('observe', run.request_id))"
+              @run-replay="runReplay(run.request_id)"
+              @copy-replay="copyReplayPayload(run.request_id)"
+            />
             <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
             <button
               type="button"
