@@ -6,6 +6,29 @@
 
 <!-- entries -->
 
+## [0.6.46] - 2026-07-21
+
+### 🚀 新功能
+
+* feat(ui): AiHistory 会话区 PageFill 与列表密度收口 ([ba719fa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ba719fac53d01a9f299f1492f83d0842a905b741))
+
+### 🐛 错误修复
+
+* fix(ui): AiHistory 抽离组件后恢复共享样式 ([2c420f8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2c420f857b5a70116cb4d77429556c0ce7da8593))
+
+### ♻️ 重构
+
+* refactor(ui): 拆分 AiHistory 回合维护体与牛格观测面板 ([2a78eb3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a78eb3a84a5244fdc6f229a6ba412a07bfe90a2))
+* refactor(ui): 拆分 AiHistory 规则编辑与重放弹窗 ([80e8686](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/80e86868b25ed18576b484b85f8241f7d59313ef))
+* refactor(ui): 拆分 AiHistory 维护区业务面板 ([8c8f265](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8c8f2654d5840b71b4ee9fa75a623670434c74ad))
+* refactor(ui): 拆分 AiHistory 塑形与高级调试块 ([1369de4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1369de4caef964559f53624e7766208cf7797a46))
+* refactor(ui): 拆分 AiHistory 回合线程与行为标注控件 ([4ae6c93](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4ae6c93645bed3cc3b5c26a224ac3a8ebb40cde8))
+* refactor(ui): 拆分 AiHistory 维护/规则/记忆工作区壳 ([1c91ced](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1c91cedd729769f2355e269a219ab8367d3e4681))
+* refactor(ui): 拆分 AiHistory 工作区 chrome 与会话双栏壳 ([476f36e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/476f36e03c451dae5d1d22d0cf51e282ddbec03c))
+
+**完整变更**: [`v0.6.45...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.45...HEAD)
+
+
 ## [0.6.45] - 2026-07-21
 
 ### 🚀 新功能
