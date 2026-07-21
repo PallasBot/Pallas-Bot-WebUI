@@ -223,7 +223,7 @@ const mainInnerClass = computed(() => ({
   "shell__main-inner--logs":
     route.name === "logs" || route.name === "log-errors",
   "shell__main-inner--fill":
-    route.name === "logs" || route.name === "log-errors",
+    route.name === "logs" || route.name === "log-errors" || route.name === "ai-history",
   "shell__main-inner--home": route.name === "home",
   "shell__main-inner--plugin-store": route.name === "plugin-store" || route.name === "plugins",
   "shell__main-inner--hub": true,

@@ -145,22 +145,24 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 
 .ai-history-split {
   display: grid;
-  grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.08fr);
+  grid-template-columns: minmax(260px, 0.88fr) minmax(0, 1.12fr);
   align-items: stretch;
   overflow: hidden;
   padding: 0;
+  min-height: min(62vh, 680px);
 }
 
 .ai-history-split__list,
 .ai-history-split__detail {
   min-width: 0;
-  display: grid;
-  align-content: start;
-  padding: 14px 16px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
 }
 
 .ai-history-split__detail {
-  min-height: min(68vh, 720px);
+  min-height: 0;
 }
 
 .ai-history-split__list {
@@ -171,8 +173,9 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 12px;
-  margin-bottom: 10px;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+  flex: 0 0 auto;
 }
 
 .ai-history-split__list-title {
@@ -184,12 +187,12 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 
 .ai-history-split__list-title h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .ai-history-split__list-title .muted {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
 }
 
 .ai-history-split__detail-top {
@@ -197,25 +200,26 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  flex: 0 0 auto;
 }
 
 .ai-history-split__detail-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .ai-history-split__detail-lede {
   margin: 4px 0 0;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   line-height: 1.45;
   color: var(--text-muted);
 }
 
 .ai-history-detail__intro {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -227,13 +231,13 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 
 .ai-history-session {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   text-align: left;
-  padding: 11px 12px;
+  padding: 9px 10px;
   margin: 0;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 8px);
   background: transparent;
   cursor: pointer;
   transition:
@@ -265,19 +269,19 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 .ai-history-session__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 
 .ai-history-session__tag {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 1px 7px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   background: color-mix(in srgb, var(--text) 4%, transparent);
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.01em;
@@ -313,7 +317,7 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 
 .ai-history-session__time {
   flex: 0 0 auto;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
 }
@@ -323,7 +327,7 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px 8px;
-  font-size: 0.875rem;
+  font-size: 0.84rem;
   line-height: 1.35;
 }
 
@@ -332,16 +336,16 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 }
 
 .ai-history-session__title-sub {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .ai-history-session__preview {
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--text) 3.5%, transparent);
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.4;
   color: var(--text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -353,6 +357,29 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 .ai-history-session.is-on .ai-history-session__preview {
   background: color-mix(in srgb, var(--accent) 6%, var(--bg-card, transparent));
   color: color-mix(in srgb, var(--text) 78%, var(--text-muted));
+}
+
+.ai-history-page__session-list--scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.ai-history-page__detail-anchor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.ai-history-page__detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 @media (max-width: 860px) {
