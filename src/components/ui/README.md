@@ -11,6 +11,7 @@
 | `UiButton` / `UiCard` / `UiDialog` / `UiBadge` | 已有，继续用 |
 | `PageChrome`（`src/components/PageChrome.vue`） | Hub 页头：标题 / lead / actions；包装 `ConsoleHubMasthead` |
 | `PageFill` / `PagePinned` | 满高页根 / 钉顶 chrome（日志类）；样式见 `--layout-gutter` / `--layout-page-top` |
+| `MetricTile` | 首页等 KPI 扁平常量块（单卡内 Flat，勿再套嵌套卡） |
 
 ## 表面契约（Canvas / Card / Flat）
 
