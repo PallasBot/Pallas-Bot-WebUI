@@ -10,6 +10,7 @@
 | `UiField` | 标签行 + `?`/`meta` 槽 + 控件（配置 `PluginConfigFieldShell`） |
 | `UiButton` / `UiCard` / `UiDialog` / `UiBadge` | 已有，继续用 |
 | `PageChrome`（`src/components/PageChrome.vue`） | Hub 页头：标题 / lead / actions；包装 `ConsoleHubMasthead` |
+| `PageFill` / `PagePinned` | 满高页根 / 钉顶 chrome（日志类）；样式见 `--layout-gutter` / `--layout-page-top` |
 
 ## 表面契约（Canvas / Card / Flat）
 
@@ -18,6 +19,8 @@
 | **Canvas** | 页面底（`shell__main-inner` / `.console-hub-page`） | 放 `PageChrome`、筛选条、内容块；不加卡片壳 |
 | **Card** | 一块可感知表面（`.panel` / `UiCard` / 设置卡） | 画布上最多一层；并列卡片 OK，勿 card 套 card |
 | **Flat** | 卡片内部结构 | 用间距、分割线、`<details>`；勿再嵌套 `.panel` |
+
+布局 token：`--layout-gutter`（左右）、`--layout-page-top` / `--layout-page-bottom`（hub 在 `console-hub.css` 定义，窄屏覆盖）。
 
 原则：画布上最多一层 Card；Card 内用 Flat，不用嵌套 `.panel`。
 

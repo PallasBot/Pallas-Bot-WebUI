@@ -6,6 +6,7 @@ export default { name: "LogsPage" };
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import LogVirtualFeed from "@/components/LogVirtualFeed.vue";
+import PageFill from "@/components/PageFill.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -578,7 +579,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="logs-page console-hub-page console-hub-page--fill">
+  <PageFill class="logs-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -793,5 +794,5 @@ onUnmounted(() => {
         </div>
       </UiCard>
     </template>
-  </div>
+  </PageFill>
 </template>

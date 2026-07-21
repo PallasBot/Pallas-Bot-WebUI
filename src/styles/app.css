@@ -28,6 +28,10 @@
   --radius-textarea: var(--radius-sm);
   --surface-blur: 12px;
   --card-glass-opacity: 0.25;
+  /* 主内容边距；hub 布局在 console-hub.css 覆盖 */
+  --layout-gutter: 40px;
+  --layout-page-top: 12px;
+  --layout-page-bottom: 48px;
   --glass-saturate: 1.12;
   --glass-elev-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
@@ -1899,7 +1903,8 @@ html[data-theme="light"] .shell-page-loading {
   width: 100%;
   max-width: var(--shell-content-max);
   margin: 0 auto;
-  padding: 12px 40px 48px;
+  /* 非 hub 回退；hub 由 console-hub.css 的 --layout-* 覆盖 */
+  padding: var(--layout-page-top, 12px) var(--layout-gutter, 40px) var(--layout-page-bottom, 48px);
 }
 
 .shell__main-inner--logs {
@@ -3804,7 +3809,9 @@ html[data-theme="light"] .shell-toolbar__seg button.is-on {
   }
 
   .shell__main-inner {
-    padding: calc(var(--shell-chrome-h, 52px) + 12px) 14px 32px;
+    padding: var(--layout-page-top, calc(var(--shell-chrome-h, 52px) + 12px))
+      var(--layout-gutter, 14px)
+      var(--layout-page-bottom, 32px);
   }
 }
 
