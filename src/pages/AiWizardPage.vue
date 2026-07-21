@@ -725,7 +725,7 @@ onMounted(() => {
 
 .ai-wizard-page__provider-id {
   font-size: 0.95rem;
-  font-weight: 650;
+  font-weight: 600;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -25,8 +25,13 @@ export function useLlmModelPickerOptions() {
     const enabled = providerList.filter((row) => row.enabled);
     const results = await Promise.allSettled(
       enabled.map(async (provider) => {
-        const result = await fetchLlmProviderModels(provider.id);
-        return { id: provider.id, models: result.models ?? [] };
+        const result = await fetchLlmProviderModels(provider.id, {
+          base_url: provider.base_url || "",
+          api_key: provider.api_key || "",
+          api_key_env: provider.api_key_env || "",
+          kind: provider.kind === "local" ? "local" : "openai-compatible",
+        });
+        return { id: provider.id, models: result.ok ? (result.models ?? []) : [] };
       }),
     );
     const next: Record<string, string[]> = {};

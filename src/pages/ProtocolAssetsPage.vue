@@ -16,6 +16,8 @@ import {
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
@@ -272,9 +274,9 @@ void onMountedLoad();
           <div class="protocol-form-grid">
             <label class="field">
               <span class="field__label">NapCat 运行模式</span>
-              <select
-                v-model="profileForm.napcat_runtime_mode"
-                class="inp"
+              <UiSelect
+                :model-value="profileForm.napcat_runtime_mode ?? ''"
+                @update:model-value="profileForm.napcat_runtime_mode = $event"
               >
                 <option
                   v-for="opt in runtimeModes"
@@ -283,13 +285,13 @@ void onMountedLoad();
                 >
                   {{ opt.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <label class="field">
               <span class="field__label">SnowLuma 运行模式</span>
-              <select
-                v-model="profileForm.snowluma_runtime_mode"
-                class="inp"
+              <UiSelect
+                :model-value="profileForm.snowluma_runtime_mode ?? ''"
+                @update:model-value="profileForm.snowluma_runtime_mode = $event"
               >
                 <option
                   v-for="opt in runtimeModes"
@@ -298,13 +300,13 @@ void onMountedLoad();
                 >
                   {{ opt.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <label class="field">
               <span class="field__label">下载目标平台（NapCat）</span>
-              <select
-                v-model="profileForm.target_platform"
-                class="inp"
+              <UiSelect
+                :model-value="profileForm.target_platform ?? ''"
+                @update:model-value="profileForm.target_platform = $event"
               >
                 <option
                   v-for="opt in targetPlatforms"
@@ -313,7 +315,7 @@ void onMountedLoad();
                 >
                   {{ opt.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <label class="field field--check">
               <input
@@ -329,21 +331,19 @@ void onMountedLoad();
           >
             <label class="field">
               <span class="field__label">NapCat Docker 镜像</span>
-              <input
+              <UiInput
                 v-model="profileForm.docker_image"
-                class="inp"
                 placeholder="mlikiowa/napcat-docker:latest"
                 autocomplete="off"
-              >
+              />
             </label>
             <label class="field">
               <span class="field__label">SnowLuma Docker 镜像</span>
-              <input
+              <UiInput
                 v-model="profileForm.snowluma_docker_image"
-                class="inp"
                 placeholder="motricseven7/snowluma:latest"
                 autocomplete="off"
-              >
+              />
             </label>
           </div>
           <div class="row-actions protocol-assets-actions">
@@ -385,11 +385,11 @@ void onMountedLoad();
               <span class="muted protocol-assets-job">{{ jobStatusLabel(napcatJob) }}</span>
             </div>
             <div class="row-actions protocol-assets-download">
-              <input
+              <UiInput
                 v-model="napcatTag"
-                class="inp grow"
+                class="protocol-assets-download__tag"
                 placeholder="版本 tag（可选，默认 latest）"
-              >
+              />
               <UiButton
                 variant="primary"
                 :disabled="!mountUrl"
@@ -406,11 +406,11 @@ void onMountedLoad();
               <span class="muted protocol-assets-job">{{ jobStatusLabel(snowlumaJob) }}</span>
             </div>
             <div class="row-actions protocol-assets-download">
-              <input
+              <UiInput
                 v-model="snowlumaTag"
-                class="inp grow"
+                class="protocol-assets-download__tag"
                 placeholder="版本 tag（可选，默认 latest）"
-              >
+              />
               <UiButton
                 variant="primary"
                 :disabled="!mountUrl"
@@ -528,6 +528,10 @@ void onMountedLoad();
 .protocol-assets-download {
   margin-top: 8px;
   flex-wrap: wrap;
+}
+.protocol-assets-download__tag {
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 .protocol-assets-actions {
   margin-top: 14px;

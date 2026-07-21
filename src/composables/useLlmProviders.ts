@@ -204,13 +204,21 @@ export function useLlmProviders() {
     }
   }
 
-  async function discoverModels(providerId: string) {
+  async function discoverModels(
+    providerId: string,
+    opts?: {
+      base_url?: string;
+      api_key?: string;
+      api_key_env?: string;
+      kind?: string;
+    },
+  ) {
     modelsStates.value = {
       ...modelsStates.value,
       [providerId]: { loading: true, models: [], error: "", loaded: false },
     };
     try {
-      const r = await fetchLlmProviderModels(providerId);
+      const r = await fetchLlmProviderModels(providerId, opts);
       modelsStates.value = {
         ...modelsStates.value,
         [providerId]: {

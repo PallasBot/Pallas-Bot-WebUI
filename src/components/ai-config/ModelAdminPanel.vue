@@ -87,7 +87,7 @@ async function refresh() {
     status.value = null;
   }
   try {
-    const result = await fetchLlmProviderModels("local");
+    const result = await fetchLlmProviderModels("local", { kind: "local" });
     localModels.value = Array.isArray(result?.models)
       ? result.models.map((m) => String(m || "").trim()).filter(Boolean)
       : [];
@@ -459,7 +459,7 @@ onMounted(() => {
 
 .model-admin__summary-label {
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted, #64748b);
 }
 

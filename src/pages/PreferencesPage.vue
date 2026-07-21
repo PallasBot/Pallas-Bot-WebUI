@@ -4,12 +4,13 @@ import { RouterLink } from "vue-router";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
 import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
-import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import PrefsGlassPreview from "@/components/PrefsGlassPreview.vue";
 import PrefsSettingCard from "@/components/PrefsSettingCard.vue";
 import UiButton from "@/components/ui/UiButton.vue";
-import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSwitch from "@/components/ui/UiSwitch.vue";
+import { consolePrefs, setConsolePrefs, CONTROL_RADIUS_MIN, CONTROL_RADIUS_MAX } from "@/utils/consolePrefs";
 import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
 import type { AccentPreset, DensityMode, RadiusMode, SurfaceStyle, ThemeMode, UiPreset } from "@/utils/consolePrefs";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -50,6 +51,9 @@ function setTheme(v: ThemeMode) {
 function setRadius(v: RadiusMode) {
   setConsolePrefs({ radius: v });
 }
+function setControlRadius(v: number) {
+  setConsolePrefs({ controlRadius: v });
+}
 function setSurfaceStyle(v: SurfaceStyle) {
   setConsolePrefs({ surfaceStyle: v });
 }
@@ -62,6 +66,7 @@ function setCardGlassOpacity(v: number) {
 
 const glassBlurDraft = ref(consolePrefs.glassBlur);
 const cardGlassOpacityDraft = ref(consolePrefs.cardGlassOpacity);
+const controlRadiusDraft = ref(consolePrefs.controlRadius);
 
 watch(
   () => consolePrefs.glassBlur,
@@ -73,6 +78,12 @@ watch(
   () => consolePrefs.cardGlassOpacity,
   (v) => {
     cardGlassOpacityDraft.value = v;
+  },
+);
+watch(
+  () => consolePrefs.controlRadius,
+  (v) => {
+    controlRadiusDraft.value = v;
   },
 );
 
@@ -90,6 +101,13 @@ function onCardGlassOpacityInput(v: number) {
 
 function onCardGlassOpacityCommit() {
   setCardGlassOpacity(cardGlassOpacityDraft.value);
+}
+
+/** 拖动即写入 prefs 并热更新 CSS 变量 */
+function onControlRadiusInput(v: number) {
+  const next = Math.min(CONTROL_RADIUS_MAX, Math.max(CONTROL_RADIUS_MIN, Math.round(v)));
+  controlRadiusDraft.value = next;
+  setControlRadius(next);
 }
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
@@ -254,9 +272,10 @@ async function loadSetupStatus(force = false) {
       >
         <div class="prefs-switch-row">
           <span class="prefs-switch-row__label">毛玻璃效果</span>
-          <ConsoleSwitch
+          <UiSwitch
             v-model="glassSurfaceOn"
             :label="boolSwitchLabel(glassSurfaceOn)"
+            show-label
           />
         </div>
       </PrefsSettingCard>
@@ -361,7 +380,7 @@ async function loadSetupStatus(force = false) {
       <PrefsSettingCard
         icon="square"
         title="圆角风格"
-        lead="按钮、输入框与 Tab 为胶囊圆角；面板与表格使用中等圆角，避免裁切内容。"
+        lead="滑块调节按钮与输入框圆角；分段为快捷预设。开关与 Chip 保持胶囊，不受滑块影响。"
       >
         <div class="prefs-segment prefs-segment--fill">
           <button
@@ -389,6 +408,18 @@ async function loadSetupStatus(force = false) {
             更圆
           </button>
         </div>
+        <div class="prefs-form-field prefs-form-field--range">
+          <label class="prefs-form-field__label">控件圆角 {{ controlRadiusDraft }}px</label>
+          <input
+            class="inp"
+            type="range"
+            :min="CONTROL_RADIUS_MIN"
+            :max="CONTROL_RADIUS_MAX"
+            step="1"
+            :value="controlRadiusDraft"
+            @input="onControlRadiusInput(Number(($event.target as HTMLInputElement).value))"
+          >
+        </div>
       </PrefsSettingCard>
 
       <PrefsSettingCard
@@ -398,9 +429,10 @@ async function loadSetupStatus(force = false) {
       >
         <div class="prefs-switch-row">
           <span class="prefs-switch-row__label">紧凑布局</span>
-          <ConsoleSwitch
+          <UiSwitch
             v-model="compactDensityOn"
             :label="boolSwitchLabel(compactDensityOn)"
+            show-label
           />
         </div>
       </PrefsSettingCard>
@@ -428,21 +460,21 @@ async function loadSetupStatus(force = false) {
         </div>
         <div class="prefs-form-field">
           <label class="prefs-form-field__label">新口令</label>
-          <input
+          <UiInput
             v-model="p1"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <div class="prefs-form-field">
           <label class="prefs-form-field__label">确认口令</label>
-          <input
+          <UiInput
             v-model="p2"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <UiButton
           variant="primary"

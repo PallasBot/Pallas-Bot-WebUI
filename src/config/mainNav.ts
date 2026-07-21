@@ -150,6 +150,25 @@ export function migrateSidebarOrderChartsPage(saved: string[] | undefined | null
   return ["/", "/charts", ...base.filter((t) => t !== "/")];
 }
 
+/** WebUI 新增「日志报错」页：插入到「运行日志」之后（已有则不动） */
+export function migrateSidebarOrderLogErrors(saved: string[] | undefined | null): string[] {
+  const base = normalizeMainNavOrder(saved);
+  if (base.includes("/log-errors")) return base;
+  const logsIdx = base.indexOf("/logs");
+  if (logsIdx >= 0) {
+    const out = [...base];
+    out.splice(logsIdx + 1, 0, "/log-errors");
+    return out;
+  }
+  const chartsIdx = base.indexOf("/charts");
+  if (chartsIdx >= 0) {
+    const out = [...base];
+    out.splice(chartsIdx + 1, 0, "/log-errors");
+    return out;
+  }
+  return [...base, "/log-errors"];
+}
+
 /** WebUI 新增「统计与语料」页：插入到「数据库」与「AI 扩展」之间（已有则不动） */
 export function migrateSidebarOrderCommunityPage(saved: string[] | undefined | null): string[] {
   const base = normalizeMainNavOrder(saved);

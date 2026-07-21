@@ -20,6 +20,7 @@ import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import StatCard from "@/components/StatCard.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import {
   accountSnowlumaNovncHref,
   snowlumaManagedWebuiPassword,
@@ -789,54 +790,50 @@ defineExpose({
             <label class="field">
               <span class="field__label">实例名</span>
               <span class="field__hint muted">控制台与列表中的展示称呼。</span>
-              <input
+              <UiInput
                 v-model="displayName"
-                class="inp"
                 type="text"
                 autocomplete="off"
-              >
+              />
             </label>
             <label class="field">
               <span class="field__label">内置 WebUI 端口</span>
               <span class="field__hint muted">协议端自带 Web 控制台监听端口。</span>
-              <input
+              <UiInput
                 v-model="webuiPort"
-                class="inp"
                 type="number"
                 min="1"
                 max="65535"
-              >
+              />
             </label>
             <label class="field field--full">
               <span class="field__label">WS 连接地址</span>
               <span class="field__hint muted">Bot 连接 OneBot WebSocket 的完整地址。</span>
-              <input
+              <UiInput
                 v-model="wsUrl"
-                class="inp"
                 type="text"
                 autocomplete="off"
                 placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
-              >
+              />
             </label>
             <label class="field">
               <span class="field__label">连接名</span>
               <span class="field__hint muted">实例列表里显示的连接标识。</span>
-              <input
+              <UiInput
                 v-model="wsName"
-                class="inp"
                 type="text"
                 autocomplete="off"
-              >
+              />
             </label>
             <label class="field">
               <span class="field__label">WS Token</span>
               <span class="field__hint muted">须与协议端鉴权配置一致。</span>
-              <input
+              <UiInput
                 v-model="wsToken"
-                class="inp"
                 type="password"
+                revealable
                 autocomplete="off"
-              >
+              />
             </label>
             <div
               v-if="!isDialog"

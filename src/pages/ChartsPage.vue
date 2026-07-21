@@ -20,6 +20,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatTrendCard from "@/components/StatTrendCard.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 
 const IngressDispatchPanel = defineAsyncComponent(() => import("@/components/IngressDispatchPanel.vue"));
 const HomePluginRunCharts = defineAsyncComponent(() => import("@/components/HomePluginRunCharts.vue"));
@@ -392,21 +393,21 @@ onActivated(() => {
         <div class="charts-page__filter-group">
           <label class="charts-page__date-label">
             <span class="charts-page__date-label-text">起始</span>
-            <input
+            <UiInput
               v-model="rangeStart"
-              class="inp charts-page__date-inp"
+              class="charts-page__date-inp"
               type="date"
               aria-label="起始日期"
-            >
+            />
           </label>
           <label class="charts-page__date-label">
             <span class="charts-page__date-label-text">结束</span>
-            <input
+            <UiInput
               v-model="rangeEnd"
-              class="inp charts-page__date-inp"
+              class="charts-page__date-inp"
               type="date"
               aria-label="结束日期"
-            >
+            />
           </label>
         </div>
       </div>
@@ -530,54 +531,6 @@ onActivated(() => {
           </section>
 
           <section
-            id="charts-llm"
-            class="charts-page__section"
-          >
-            <UiCard
-              tag="div"
-              glass
-              class="charts-page__panel charts-page__ai-redirect"
-            >
-              <div class="panel__hd panel__hd--split">
-                <h2 class="panel__title">
-                  <ConsoleNavIcon
-                    class="panel__title-ico"
-                    name="sparkles"
-                  />AI 专项看板
-                </h2>
-              </div>
-              <div class="panel__bd">
-                <p class="muted charts-page__section-lead">
-                  AI 详细统计已拆分到独立页面，避免与 Bot/协议/插件总看板重复堆叠。
-                </p>
-                <div class="charts-page__ai-links">
-                  <RouterLink
-                    class="charts-page__ai-link"
-                    to="/ai/home"
-                  >
-                    <strong>AI 观测</strong>
-                    <span class="muted">运行态、异常与运行诊断</span>
-                  </RouterLink>
-                  <RouterLink
-                    class="charts-page__ai-link"
-                    to="/ai/statistics"
-                  >
-                    <strong>AI 统计</strong>
-                    <span class="muted">失败、路由、provider/model、token</span>
-                  </RouterLink>
-                  <RouterLink
-                    class="charts-page__ai-link"
-                    to="/ai/history"
-                  >
-                    <strong>AI 历史</strong>
-                    <span class="muted">按日快照与时间窗路由历史</span>
-                  </RouterLink>
-                </div>
-              </div>
-            </UiCard>
-          </section>
-
-          <section
             id="charts-detail"
             class="charts-page__section charts-page__section--detail"
           >
@@ -641,32 +594,3 @@ onActivated(() => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.charts-page__ai-links {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.charts-page__ai-link {
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface-2);
-  color: inherit;
-  text-decoration: none;
-}
-
-.charts-page__ai-link:hover {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-}
-
-@media (max-width: 960px) {
-  .charts-page__ai-links {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-</style>

@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  type Ref,
+} from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import {
   fetchBotUpdateCheck,
@@ -19,11 +27,13 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
 import { axiosErrorDetail } from "@/api/http";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
+import { setupReadmeCodeCopyButtons } from "@/utils/readmeCodeCopy";
 import {
   PALLAS_BOT_DOC,
   PALLAS_BOT_RELEASES,
@@ -51,6 +61,31 @@ const bot = ref<BotUpdateCheckData | null>(null);
 
 const webReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(web.value?.release_notes));
 const botReleaseNotesHtml = computed(() => releaseNotesToSafeHtml(bot.value?.release_notes));
+const webReleaseNotesEl = ref<HTMLElement | null>(null);
+const botReleaseNotesEl = ref<HTMLElement | null>(null);
+
+/** v-html 注入后挂载复制按钮（与 ReadmeMarkdown 同路，不向 HTML 塞 onclick） */
+function bindReleaseNotesCodeCopy(el: Ref<HTMLElement | null>, html: Ref<string>) {
+  let teardown: (() => void) | null = null;
+  watch(
+    html,
+    async (value) => {
+      teardown?.();
+      teardown = null;
+      if (!value.trim()) return;
+      await nextTick();
+      if (!el.value) return;
+      teardown = setupReadmeCodeCopyButtons(el.value);
+    },
+    { immediate: true },
+  );
+  onBeforeUnmount(() => {
+    teardown?.();
+  });
+}
+
+bindReleaseNotesCodeCopy(webReleaseNotesEl, webReleaseNotesHtml);
+bindReleaseNotesCodeCopy(botReleaseNotesEl, botReleaseNotesHtml);
 
 const webCurrentDisplay = computed(() => updateCheckCurrentTagLabel(web.value?.current_tag));
 const botCurrentDisplay = computed(() => pallasBotVersionLabel(undefined, bot.value));
@@ -580,6 +615,7 @@ onMounted(() => {
             </summary>
             <div
               v-if="(web?.release_notes || '').trim()"
+              ref="webReleaseNotesEl"
               class="update-page__release-notes-body update-page__release-notes-body--md"
               v-html="webReleaseNotesHtml"
             />
@@ -752,6 +788,7 @@ onMounted(() => {
             </summary>
             <div
               v-if="(bot?.release_notes || '').trim()"
+              ref="botReleaseNotesEl"
               class="update-page__release-notes-body update-page__release-notes-body--md"
               v-html="botReleaseNotesHtml"
             />
@@ -870,14 +907,15 @@ onMounted(() => {
               填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
             </p>
             <div class="update-page__gh-row">
-              <input
+              <UiInput
                 v-model="ghTokenInput"
-                class="inp update-page__gh-inp"
+                class="update-page__gh-inp"
                 type="password"
+                revealable
                 autocomplete="off"
                 placeholder="粘贴 fine-grained 或 classic PAT"
                 :disabled="ghTokenBusy"
-              >
+              />
               <UiButton
                 variant="primary"
                 :disabled="ghTokenBusy"
@@ -952,7 +990,7 @@ onMounted(() => {
 
 .update-page__overview-k {
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -1000,7 +1038,7 @@ onMounted(() => {
 
 .update-page__status-pill {
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 600;
   padding: 2px 7px;
   line-height: 1.3;
   letter-spacing: 0.02em;
@@ -1148,7 +1186,7 @@ onMounted(() => {
 .update-page__release-fold-summary {
   cursor: pointer;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
   user-select: none;
 }
@@ -1182,7 +1220,7 @@ onMounted(() => {
 
 .update-page__strong {
   color: var(--text);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .update-page__changelog-row {
@@ -1282,6 +1320,67 @@ onMounted(() => {
 .update-page__release-notes-body--md :deep(a.update-page__commit-link:hover) {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.update-page__release-notes-body--md :deep(pre) {
+  overflow-x: auto;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-muted) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.update-page__release-notes-body--md :deep(.readme-code-block) {
+  margin: 8px 0;
+}
+
+.update-page__release-notes-body--md :deep(.readme-code-block pre) {
+  margin: 0;
+  /* 为右上角「复制」留空；覆盖上方 padding 简写 */
+  padding-right: 4.25rem;
+}
+
+.update-page__release-notes-body--md :deep(pre code) {
+  font-family: var(--font-mono);
+  font-size: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.update-page__release-notes-body--md :deep(:not(pre) > code) {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-weight: 600;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.update-page__release-notes-body--md :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.update-page__release-notes-body--md :deep(th),
+.update-page__release-notes-body--md :deep(td) {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.update-page__release-notes-body--md :deep(th) {
+  color: var(--text);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--bg-muted) 55%, transparent);
 }
 
 .update-page__docker-hint {

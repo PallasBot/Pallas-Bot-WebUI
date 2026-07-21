@@ -43,6 +43,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import PluginStoreCard from "@/components/PluginStoreCard.vue";
 import type { PluginStoreMenuItem } from "@/components/PluginStoreCard.vue";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton.vue";
@@ -1960,40 +1961,40 @@ onDeactivated(() => {
       <div class="plugin-store-page__git-form">
         <label class="plugin-store-page__git-field">
           <span class="plugin-store-page__git-label">插件 ID</span>
-          <input
+          <UiInput
             v-model="gitPluginId"
-            class="inp plugin-store-page__git-input"
+            class="plugin-store-page__git-input"
             type="text"
             autocomplete="off"
             spellcheck="false"
             placeholder="小写字母开头，如 my_plugin"
             :disabled="gitInstallBusy"
-          >
+          />
           <span class="muted plugin-store-page__git-hint">须与目录名一致，安装路径为 local/plugins/&lt;ID&gt;/</span>
         </label>
         <label class="plugin-store-page__git-field">
           <span class="plugin-store-page__git-label">Git 仓库</span>
-          <input
+          <UiInput
             v-model="gitRepositoryUrl"
-            class="inp plugin-store-page__git-input"
+            class="plugin-store-page__git-input"
             type="url"
             autocomplete="off"
             spellcheck="false"
             placeholder="https://github.com/org/repo.git"
             :disabled="gitInstallBusy"
-          >
+          />
         </label>
         <label class="plugin-store-page__git-field">
           <span class="plugin-store-page__git-label">分支 / Tag</span>
-          <input
+          <UiInput
             v-model="gitRef"
-            class="inp plugin-store-page__git-input"
+            class="plugin-store-page__git-input"
             type="text"
             autocomplete="off"
             spellcheck="false"
             placeholder="main"
             :disabled="gitInstallBusy"
-          >
+          />
         </label>
       </div>
       <template #footer>

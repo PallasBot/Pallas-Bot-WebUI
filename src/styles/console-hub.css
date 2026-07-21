@@ -7,8 +7,8 @@ html[data-layout="hub"] {
   --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
   --hub-radius: var(--radius-md);
   --hub-radius-lg: var(--radius-lg);
-  --hub-radius-control: 999px;
-  --radius-control: 999px;
+  /* chip / 分段用 --radius-pill；按钮与输入用 --radius-control（由 prefs 热更新） */
+  --hub-radius-control: var(--radius-pill, 999px);
   --shell-sidebar-w: 252px;
   --shell-brand-mark-wrap-size: 56px;
   --shell-brand-mark-size: 44px;
@@ -22,29 +22,30 @@ html[data-layout="hub"] {
   --ui-ctrl-pad-y: 8px;
   --ui-ctrl-pad-x: 16px;
   --ui-sel-arrow-pad: 38px;
+  --ui-field-label-weight: 500;
   --console-page-title-size: clamp(1.375rem, 2.4vw, 1.925rem);
   --console-page-title-weight: 700;
   --console-panel-title-size: 1.0625rem;
-  --console-panel-title-weight: 650;
+  --console-panel-title-weight: 600;
   --console-card-title-size: 0.875rem;
   --console-card-title-weight: 600;
 }
 
 html[data-layout="hub"][data-theme="light"] {
-  --bg-deep: #f2f2f4;
-  --bg-elev: #f7f7f8;
-  --bg-card: #fafafa;
-  --bg-card-hover: #fafafa;
-  --border: rgba(15, 23, 42, 0.1);
-  --border-strong: rgba(15, 23, 42, 0.14);
+  --bg-deep: #e8e8ec;
+  --bg-elev: #f0f0f3;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --border: rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.1);
   --control-bg: #ffffff;
   --control-border: rgba(15, 23, 42, 0.12);
   --shadow-card: var(--hub-shadow);
-  --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 14px rgba(15, 23, 42, 0.045);
 }
 
 html[data-layout="hub"][data-theme="dark"] {
-  --hub-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --hub-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.16);
   --shadow-card: var(--hub-shadow);
 }
 
@@ -206,11 +207,11 @@ html[data-layout="hub"] .btn--danger {
   box-shadow: none;
 }
 
-/* 输入框 / 下拉 */
+/* 输入框 / 下拉：与按钮同系圆角，非胶囊 */
 html[data-layout="hub"] .inp,
 html[data-layout="hub"] .sel {
   min-height: var(--ui-ctrl-height);
-  border-radius: var(--hub-radius-control);
+  border-radius: var(--radius-control);
   font-size: 14px;
   font-weight: 400;
   box-shadow: none;
@@ -242,7 +243,9 @@ html[data-layout="hub"] .textarea:focus {
 
 html[data-layout="hub"] input[type="search"].inp,
 html[data-layout="hub"] .inst-db-search.inp,
-html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp {
+html[data-layout="hub"] .inst-db-search.ui-input-wrap .inp,
+html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp,
+html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap .inp {
   min-height: 40px;
   border-radius: 999px;
 }
@@ -369,7 +372,9 @@ html[data-layout="hub"] .plugins-page__plugin-tab-btn {
 }
 
 html[data-layout="hub"] .console-hub-page__search-input,
-html[data-layout="hub"] .plugin-store-page__search-input {
+html[data-layout="hub"] .console-hub-page__search-input .inp,
+html[data-layout="hub"] .plugin-store-page__search-input,
+html[data-layout="hub"] .plugin-store-page__search-input .inp {
   border-radius: 999px;
 }
 
@@ -424,9 +429,13 @@ html[data-layout="hub"] .plugins-page__plugin-tab-group .plugin-icon__fallback {
 }
 
 html[data-radius="round"] html[data-layout="hub"] .console-hub-page__search-input,
+html[data-radius="round"] html[data-layout="hub"] .console-hub-page__search-input .inp,
 html[data-radius="round"] html[data-layout="hub"] .plugin-store-page__search-input,
+html[data-radius="round"] html[data-layout="hub"] .plugin-store-page__search-input .inp,
 html[data-layout="hub"][data-radius="round"] .console-hub-page__search-input,
-html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input {
+html[data-layout="hub"][data-radius="round"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input,
+html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input .inp {
   border-radius: 999px;
 }
 
@@ -676,6 +685,15 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
 html[data-layout="hub"] .plugins-page__search-input {
   grid-area: 1 / 1;
   width: 100%;
+}
+
+.console-hub-page__search-input.inp,
+.console-hub-page__search-input .inp,
+.plugin-store-page__search-input.inp,
+.plugin-store-page__search-input .inp,
+html[data-layout="hub"] .plugins-page__search-input.inp,
+html[data-layout="hub"] .plugins-page__search-input .inp {
+  width: 100%;
   min-height: 44px;
   padding-left: 2.5rem;
   border-radius: 999px;
@@ -683,14 +701,19 @@ html[data-layout="hub"] .plugins-page__search-input {
   box-shadow: var(--hub-shadow);
 }
 
-html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input,
-html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input,
-html[data-layout="hub"][data-theme="light"] .plugins-page__search-input {
+html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input .inp,
+html[data-layout="hub"][data-theme="light"] .plugins-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
   background: var(--surface-control);
 }
 
 .console-hub-page__search-input:focus,
-.plugin-store-page__search-input:focus {
+.console-hub-page__search-input .inp:focus,
+.plugin-store-page__search-input:focus,
+.plugin-store-page__search-input .inp:focus {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--control-border));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
@@ -1092,7 +1115,8 @@ html[data-layout="hub"] .bot-config-edit__grid {
   gap: 12px 14px;
 }
 
-html[data-layout="hub"] .logs-page__search {
+html[data-layout="hub"] .logs-page__search.inp,
+html[data-layout="hub"] .logs-page__search .inp {
   border-radius: 999px;
   min-height: 40px;
 }
@@ -1504,7 +1528,7 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
   letter-spacing: 0.02em;
 }
@@ -1566,12 +1590,12 @@ input.inp[type="range"]:focus-visible {
   min-height: 40px;
   padding: 8px 14px;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.2;
   color: var(--text-muted);
   background: color-mix(in srgb, var(--control-bg) 92%, transparent);
   border: 1px solid var(--border);
-  border-radius: var(--hub-radius-control, 10px);
+  border-radius: var(--hub-radius-control, 999px);
   cursor: pointer;
   transition:
     background-color 0.15s var(--ease),
@@ -1708,7 +1732,7 @@ input.inp[type="range"]:focus-visible {
 }
 
 .prefs-backup-stat__value {
-  font-weight: 650;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -1794,7 +1818,7 @@ html[data-layout="hub"] .shell__brand-badge--bot {
 
 html[data-layout="hub"] .shell__brand-title {
   font-size: var(--shell-brand-title-size);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   background: none;
   -webkit-background-clip: unset;
@@ -1822,16 +1846,16 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link {
   border: 1px solid transparent;
   gap: 10px;
   font-size: var(--shell-nav-label-size);
-  font-weight: 560;
+  font-weight: 500;
   color: color-mix(in srgb, var(--foreground) 84%, var(--text-muted));
 }
 
 html[data-layout="hub"] .shell__nav-group-toggle {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] .shell__nav-group-toggle .shell__nav-label {
-  font-weight: 650;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-desc {
@@ -1854,20 +1878,20 @@ html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
   border-color: color-mix(in srgb, var(--primary) 28%, transparent);
   color: color-mix(in srgb, var(--primary) 92%, var(--foreground));
   box-shadow: var(--shadow-sm);
-  font-weight: 620;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link .shell__nav-label {
-  font-weight: 640;
+  font-weight: 500;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.shell__nav-link--heavy .shell__nav-label,
 html[data-layout="hub"] .shell-mobile-nav__link.shell__nav-link--heavy .shell__nav-label {
-  font-weight: 720;
+  font-weight: 600;
 }
 
 html[data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active .shell__nav-label {
-  font-weight: 740;
+  font-weight: 600;
 }
 
 html[data-theme="light"][data-layout="hub"] nav.shell__nav .shell__nav-link.is-router-active {
@@ -1887,7 +1911,7 @@ html[data-layout="hub"] .shell-mobile-nav__section {
 html[data-layout="hub"] .shell__nav-section {
   padding: 10px 12px 4px;
   font-size: var(--shell-nav-section-size);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -2022,7 +2046,7 @@ html[data-layout="hub"] .shell__nav-group-toggle {
   background: transparent;
   color: var(--text-muted);
   font-size: var(--shell-nav-label-size);
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
 }
@@ -2148,8 +2172,10 @@ html[data-layout="hub"] .shell__topbar-exit {
   padding-inline: 14px;
 }
 
-html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input,
-html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input {
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input.inp,
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input.inp,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input .inp {
   background: color-mix(in srgb, var(--surface-control) calc(var(--card-glass-opacity) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
@@ -2373,7 +2399,7 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
 .ai-head__title {
   margin: 0;
   font-size: var(--console-panel-title-size, 1.0625rem);
-  font-weight: var(--console-panel-title-weight, 650);
+  font-weight: var(--console-panel-title-weight, 600);
   letter-spacing: -0.01em;
   line-height: 1.3;
 }

@@ -9,6 +9,7 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -188,10 +189,10 @@ onActivated(() => {
         </template>
         <template #actions>
           <div class="console-hub-toolbar-strip__masthead-actions">
-            <select
+            <UiSelect
               v-if="shardedLogErrors"
               v-model="logSource"
-              class="sel log-errors-page__source-sel"
+              class="log-errors-page__source-sel"
               aria-label="报错来源"
             >
               <option
@@ -201,7 +202,7 @@ onActivated(() => {
               >
                 {{ s === "all" ? "全部来源" : s }}
               </option>
-            </select>
+            </UiSelect>
             <UiButton
               variant="destructive"
               class="log-errors-page__clear-btn"
@@ -235,10 +236,10 @@ onActivated(() => {
           />
         </template>
         <template #middle>
-          <select
+          <UiSelect
             v-if="shardedLogErrors"
             v-model="logSource"
-            class="sel log-errors-page__source-sel log-errors-page__source-sel--strip"
+            class="log-errors-page__source-sel log-errors-page__source-sel--strip"
             aria-label="报错来源"
           >
             <option
@@ -248,7 +249,7 @@ onActivated(() => {
             >
               {{ s === "all" ? "全部来源" : s }}
             </option>
-          </select>
+          </UiSelect>
           <UiButton
             variant="destructive"
             class="log-errors-page__clear-btn log-errors-page__clear-btn--strip"

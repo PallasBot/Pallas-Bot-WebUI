@@ -24,6 +24,8 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -397,14 +399,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="groupListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索群号 / 轮盘 / 封禁 / 插件 / 拉黑"
             title="按群号、轮盘模式、封禁状态、禁用插件、拉黑 QQ 筛选"
             :disabled="socialConfigsBusy"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="socialConfigsBusy"
@@ -510,14 +512,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="userListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索 QQ / 封禁状态"
             title="按 QQ、封禁状态筛选"
             :disabled="socialConfigsBusy"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="socialConfigsBusy"
@@ -542,16 +544,16 @@ onUnmounted(() => {
             输入 QQ 号后点击添加并设置封禁。此为全局拉黑，与私聊「牛牛拉黑」写入同一字段；本群维度拉黑请在上方群配置中维护。
           </p>
           <div class="row-actions database-user-config-add__row">
-            <input
+            <UiInput
               v-model="addUserInput"
-              class="inp database-user-config-add__inp"
+              class="database-user-config-add__inp"
               type="text"
               inputmode="numeric"
               autocomplete="off"
               placeholder="QQ 号"
               :disabled="socialConfigsBusy"
               @keydown.enter.prevent="openAddUserConfig"
-            >
+            />
             <UiButton
               variant="primary"
               class="database-user-config-add__btn"
@@ -751,10 +753,9 @@ onUnmounted(() => {
       <div class="panel__bd">
         <div style="margin-bottom: 12px">
           <label class="muted" style="display: block; margin-bottom: 6px">集合名</label>
-          <select
+          <UiSelect
             v-if="mongoCollections.length"
             v-model="collection"
-            class="sel"
             style="max-width: 420px; width: 100%"
           >
             <option value="">请选择集合</option>
@@ -765,14 +766,13 @@ onUnmounted(() => {
             >
               {{ c.name }}（{{ nf.format(c.count) }}）
             </option>
-          </select>
-          <input
+          </UiSelect>
+          <UiInput
             v-else
             v-model="collection"
-            class="inp"
             style="max-width: 360px; width: 100%"
             placeholder="collection"
-          >
+          />
         </div>
         <label class="muted" style="display: block; margin-bottom: 6px">Pipeline（JSON 数组）</label>
         <JsonTextareaField

@@ -76,19 +76,37 @@ export function normalizeLogEntryLevel(raw: string): LogEntryLevel {
   return "info";
 }
 
-/** 从原始日志行解析级别（无法识别时视为 info，与后端 parse_nonebot_log_line 默认一致） */
-export function parseLogLineLevel(line: string): LogEntryLevel {
-  let body = String(line ?? "").trim();
+function peelShardPrefixes(raw: string): { sourceTag: string; body: string } {
+  let body = String(raw ?? "").replace(/\n$/, "");
+  const tags: string[] = [];
   for (let i = 0; i < 3; i += 1) {
     const m = _embeddedShardPrefixRe.exec(body);
     if (!m?.groups?.rest) break;
-    body = String(m.groups.rest).trim();
+    tags.push(String(m.groups.tag));
+    body = String(m.groups.rest);
   }
-  const nb = _nonebotBracketBodyRe.exec(body);
+  return { sourceTag: tags.join("/"), body };
+}
+
+function isTracebackBody(body: string): boolean {
+  const s = body.trimStart();
+  if (s.startsWith("Traceback")) return true;
+  if (body.startsWith("  File ") || s.startsWith('File "')) return true;
+  if (s.startsWith("During handling of the above exception")) return true;
+  if (/^raise\s+[\w.]*(?:Error|Exception)\b/.test(s)) return true;
+  if (/^[\w.]+(?:Error|Exception)(?:\s*:|$)/.test(s)) return true;
+  return false;
+}
+
+/** 从原始日志行解析级别（无法识别时视为 info，与后端 parse_nonebot_log_line 默认一致） */
+export function parseLogLineLevel(line: string): LogEntryLevel {
+  const { body } = peelShardPrefixes(String(line ?? ""));
+  const head = body.includes("\n") ? body.slice(0, body.indexOf("\n")) : body;
+  const nb = _nonebotBracketBodyRe.exec(head);
   if (nb?.groups?.lev) return normalizeLogEntryLevel(String(nb.groups.lev));
-  const lg = _loguruBodyRe.exec(body);
+  const lg = _loguruBodyRe.exec(head);
   if (lg?.groups?.lev) return normalizeLogEntryLevel(String(lg.groups.lev));
-  if (body.startsWith("Traceback") || body.startsWith("  File ")) return "error";
+  if (isTracebackBody(head)) return "error";
   return "info";
 }
 
@@ -125,41 +143,61 @@ export function persistLogsEnabledLevels(levels: ReadonlySet<LogEntryLevel>): vo
 export function normalizeLogEntryDisplay(row: LogEntry): LogEntry {
   const scope = String(row.scope ?? "").trim();
   const message = String(row.message ?? "");
-  if (scope !== "raw" && row.time) {
-    return row;
+  let normalized: LogEntry = row;
+  if (scope === "raw" || !row.time) {
+    const peeled = peelShardPrefixes(message);
+    const sourceTag = peeled.sourceTag;
+    const body = peeled.body;
+    const head = body.includes("\n") ? body.slice(0, body.indexOf("\n")) : body;
+    const remainder = body.includes("\n") ? body.slice(body.indexOf("\n") + 1) : "";
+    const nb = _nonebotBracketBodyRe.exec(head);
+    if (nb?.groups) {
+      const mod = String(nb.groups.scope ?? "").trim();
+      const msg = remainder ? `${nb.groups.msg ?? ""}\n${remainder}` : String(nb.groups.msg ?? "");
+      normalized = {
+        ...row,
+        time: row.time || String(nb.groups.dt),
+        level: normalizeLogEntryLevel(String(nb.groups.lev)),
+        scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+        message: msg,
+      };
+    } else {
+      const lg = _loguruBodyRe.exec(head);
+      if (lg?.groups) {
+        const mod = String(lg.groups.scope ?? "").trim();
+        const msg = remainder ? `${lg.groups.msg ?? ""}\n${remainder}` : String(lg.groups.msg ?? "");
+        normalized = {
+          ...row,
+          time: row.time || String(lg.groups.dt),
+          level: normalizeLogEntryLevel(String(lg.groups.lev)),
+          scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
+          message: msg,
+        };
+      } else if (isTracebackBody(head)) {
+        normalized = {
+          ...row,
+          level: "error",
+          scope: sourceTag || scope || "raw",
+          message: body,
+        };
+      } else if (sourceTag) {
+        normalized = { ...row, scope: sourceTag, message: body };
+      }
+    }
   }
-  let body = message.trim();
-  let sourceTag = "";
-  for (let i = 0; i < 3; i += 1) {
-    const m = _embeddedShardPrefixRe.exec(body);
-    if (!m?.groups?.rest) break;
-    sourceTag = sourceTag ? `${sourceTag}/${m.groups.tag}` : String(m.groups.tag);
-    body = String(m.groups.rest).trim();
-  }
-  const nb = _nonebotBracketBodyRe.exec(body);
-  if (nb?.groups) {
-    const mod = String(nb.groups.scope ?? "").trim();
-    return {
-      ...row,
-      time: row.time || String(nb.groups.dt),
-      level: normalizeLogEntryLevel(String(nb.groups.lev)),
-      scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
-      message: String(nb.groups.msg ?? ""),
-    };
-  }
-  const lg = _loguruBodyRe.exec(body);
-  if (lg?.groups) {
-    const mod = String(lg.groups.scope ?? "").trim();
-    return {
-      ...row,
-      time: row.time || String(lg.groups.dt),
-      level: normalizeLogEntryLevel(String(lg.groups.lev)),
-      scope: sourceTag ? (mod ? `${sourceTag}/${mod}` : sourceTag) : mod || scope,
-      message: String(lg.groups.msg ?? ""),
-    };
-  }
-  if (sourceTag) {
-    return { ...row, scope: sourceTag, message: body };
+  return promoteErrorLevel(normalized);
+}
+
+/** 正文已含 traceback / 异常行时抬升为 error（兼容历史错误解析） */
+function promoteErrorLevel(row: LogEntry): LogEntry {
+  if (row.level === "error") return row;
+  const msg = String(row.message ?? "");
+  if (
+    msg.includes("Traceback (most recent call last):") ||
+    /(?:^|\n)\s*[\w.]+(?:Error|Exception):/.test(msg) ||
+    /(?:^|\n)\s*raise\s+[\w.]*(?:Error|Exception)\b/.test(msg)
+  ) {
+    return { ...row, level: "error" };
   }
   return row;
 }
@@ -174,19 +212,40 @@ function logEntryLevelRank(lv: LogEntryLevel): number {
 }
 
 function stripShardPrefixBody(message: string): string {
-  let body = String(message ?? "").trim();
-  for (let i = 0; i < 3; i += 1) {
-    const m = _embeddedShardPrefixRe.exec(body);
-    if (!m?.groups?.rest) break;
-    body = String(m.groups.rest).trim();
+  return peelShardPrefixes(message).body;
+}
+
+/** 分片来源键：worker-N / hub；无标签为空串 */
+export function logEntrySourceKey(row: Pick<LogEntry, "scope" | "message">): string {
+  const primary = String(row.scope ?? "")
+    .trim()
+    .split("/")[0] ?? "";
+  if (primary.startsWith("worker-")) return primary;
+  if (primary === "hub" || primary === "hub-file") return "hub";
+  const tag = peelShardPrefixes(String(row.message ?? "")).sourceTag.split("/")[0] ?? "";
+  if (tag.startsWith("worker-")) return tag;
+  if (tag === "hub" || tag === "hub-file") return "hub";
+  return "";
+}
+
+function entryAcceptsTracebackContinuation(row: LogEntry): boolean {
+  if (row.level === "error") return true;
+  const msg = String(row.message ?? "");
+  return msg.includes("Traceback") || isTracebackBody(stripShardPrefixBody(msg));
+}
+
+function absorbContinuation(prev: LogEntry, cur: LogEntry): void {
+  prev.message = prev.message ? `${prev.message}\n${cur.message}` : cur.message;
+  if (logEntryLevelRank(cur.level) > logEntryLevelRank(prev.level)) {
+    prev.level = cur.level;
   }
-  return body;
 }
 
 function isLogHeaderBody(body: string): boolean {
-  const s = body.trim();
-  if (_loguruBodyRe.test(s) || _nonebotBracketBodyRe.test(s)) return true;
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s)) return true;
+  const s = body.includes("\n") ? body.slice(0, body.indexOf("\n")) : body;
+  const head = s.trimStart();
+  if (_loguruBodyRe.test(head) || _nonebotBracketBodyRe.test(head)) return true;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(head)) return true;
   return false;
 }
 
@@ -195,31 +254,49 @@ export function isLogMessageContinuation(message: string): boolean {
   const body = stripShardPrefixBody(message);
   if (!body) return true;
   if (isLogHeaderBody(body)) return false;
-  if (body.startsWith("Traceback")) return true;
+  if (isTracebackBody(body)) return true;
   if (body.startsWith("  File ") || body.startsWith("    ") || body.startsWith("\t")) return true;
-  if (/^[A-Z][a-zA-Z0-9_]*(?:Error|Exception):/.test(body)) return true;
-  if (body.startsWith("During handling of the above exception")) return true;
-  if (/^[\|└├╭╰─]/.test(body)) return true;
+  if (/^[\|└├╭╰─]/.test(body.trimStart())) return true;
   if (/^\|\s/.test(body) || body.includes(" L ") || body.startsWith("L ")) return true;
   if (body.startsWith("...")) return true;
   if (/^\s+\S/.test(body)) return true;
   return false;
 }
 
-/** 合并结构化视图中的续行，与后端 merge_log_line_continuations 对齐 */
+/** 合并结构化视图中的续行，与后端 merge_log_line_continuations 对齐（按 worker 隔离） */
 export function mergeLogEntryContinuations(rows: LogEntry[]): LogEntry[] {
   const out: LogEntry[] = [];
+  const lastIdxBySource = new Map<string, number>();
   for (const row of rows) {
     const cur = { ...row };
-    const prev = out[out.length - 1];
-    if (prev && isLogMessageContinuation(cur.message)) {
-      prev.message = prev.message ? `${prev.message}\n${cur.message}` : cur.message;
-      if (logEntryLevelRank(cur.level) > logEntryLevelRank(prev.level)) {
-        prev.level = cur.level;
-      }
+    const key = logEntrySourceKey(cur);
+    if (!isLogMessageContinuation(cur.message)) {
+      out.push(cur);
+      if (key) lastIdxBySource.set(key, out.length - 1);
       continue;
     }
-    out.push(cur);
+    let merged = false;
+    if (out.length) {
+      const prev = out[out.length - 1];
+      const prevKey = logEntrySourceKey(prev);
+      if (key && prevKey === key) {
+        absorbContinuation(prev, cur);
+        merged = true;
+      } else if (!key && !prevKey) {
+        absorbContinuation(prev, cur);
+        merged = true;
+      } else if (key && isTracebackBody(stripShardPrefixBody(cur.message))) {
+        const idx = lastIdxBySource.get(key);
+        if (idx != null && entryAcceptsTracebackContinuation(out[idx])) {
+          absorbContinuation(out[idx], cur);
+          merged = true;
+        }
+      }
+    }
+    if (!merged) {
+      out.push(cur);
+      if (key) lastIdxBySource.set(key, out.length - 1);
+    }
   }
   return out;
 }

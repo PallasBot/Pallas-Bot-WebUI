@@ -92,6 +92,13 @@ const PURIFY_CONFIG = {
     "a",
     "br",
     "hr",
+    // GFM tables（Bot Release 模板含 WebUI 部署方式表）
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
   ],
   ALLOWED_ATTR: ["href", "target", "rel", "class"],
   ALLOW_DATA_ATTR: false,

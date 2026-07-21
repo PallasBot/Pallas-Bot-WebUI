@@ -157,7 +157,7 @@ function addFallback(id: string) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .chain-fallback-chips__actions {

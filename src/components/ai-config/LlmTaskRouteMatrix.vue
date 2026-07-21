@@ -164,7 +164,7 @@ function onModelChange(task: string, routedProvider: string, effectiveProvider: 
 
 .task-route-matrix__row--head {
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted, #94a3b8);
 }
 

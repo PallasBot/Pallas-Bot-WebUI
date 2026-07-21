@@ -5,6 +5,7 @@ import { changeConsoleLogin } from "@/api/consoleApi";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import {
   consoleSetupSatisfied,
@@ -155,21 +156,21 @@ onActivated(() => {
 
         <div class="setup-wizard-page__field">
           <label class="setup-wizard-page__label">新口令</label>
-          <input
+          <UiInput
             v-model="p1"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <div class="setup-wizard-page__field">
           <label class="setup-wizard-page__label">确认口令</label>
-          <input
+          <UiInput
             v-model="p2"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <div class="setup-wizard-page__actions">
           <UiButton variant="primary" :busy="pwdBusy" @click="submitPassword">

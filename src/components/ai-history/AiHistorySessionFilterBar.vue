@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 
 const filterBot = defineModel<string>("filterBot", { default: "" });
 const filterGroup = defineModel<string>("filterGroup", { default: "" });
@@ -40,33 +41,33 @@ function resetFilters() {
 
 <template>
   <div class="ai-history-filter-inline">
-    <input
+    <UiInput
       v-model="filterBot"
-      class="inp ai-history-filter-inline__inp"
+      class="ai-history-filter-inline__inp"
       inputmode="numeric"
       aria-label="Bot"
       placeholder="Bot"
-      @input="scheduleApply()"
+      @update:model-value="scheduleApply()"
       @keyup.enter="applyNow"
-    >
-    <input
+    />
+    <UiInput
       v-model="filterGroup"
-      class="inp ai-history-filter-inline__inp"
+      class="ai-history-filter-inline__inp"
       inputmode="numeric"
       aria-label="群号"
       placeholder="群号"
-      @input="scheduleApply()"
+      @update:model-value="scheduleApply()"
       @keyup.enter="applyNow"
-    >
-    <input
+    />
+    <UiInput
       v-model="filterUser"
-      class="inp ai-history-filter-inline__inp"
+      class="ai-history-filter-inline__inp"
       inputmode="numeric"
       aria-label="用户"
       placeholder="用户"
-      @input="scheduleApply()"
+      @update:model-value="scheduleApply()"
       @keyup.enter="applyNow"
-    >
+    />
     <button
       type="button"
       class="ai-history-filter-inline__clear"

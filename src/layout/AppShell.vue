@@ -14,6 +14,7 @@ import { initialShellLoading } from "@/utils/routeLoading";
 import { consoleResourceVersionLabel } from "@/utils/versionDisplay";
 import {
   CONSOLE_META_POLL_MS,
+  consoleMetaBotUpdate,
   consoleMetaErr,
   consoleMetaHealth,
   consoleMetaLoading,
@@ -22,6 +23,7 @@ import {
 } from "@/state/consoleMeta";
 import { botRestartInProgress, botRestartBusy, botRestartDialogOpen, botRestartPhase, resetBotRestartSession } from "@/state/botRestartSession";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog.vue";
+import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import ConsoleToastHost from "@/components/ConsoleToastHost.vue";
@@ -29,6 +31,29 @@ import { useSidebarNavLists, type SidebarNavMainRowView } from "@/composables/us
 
 const route = useRoute();
 const { sidebarNavEntries, sidebarNavEntriesDisplay } = useSidebarNavLists();
+
+const {
+  restartBusy,
+  restartInProgress,
+  restartAvailable,
+  shardedRuntime,
+  ensureRestartContext,
+  restartBot,
+} = useBotSystemRestart({ botUpdateCheck: consoleMetaBotUpdate });
+
+const restartActionBusy = computed(
+  () => restartBusy.value || restartInProgress.value || botRestartBusy.value || botRestartInProgress.value,
+);
+
+const fullRestartLabel = computed(() => {
+  if (restartActionBusy.value) return "重启中…";
+  return shardedRuntime.value ? "重启全部进程" : "重启 Bot";
+});
+
+async function triggerShellRestart(workersOnly = false) {
+  closeMobileNav();
+  await restartBot(workersOnly);
+}
 
 /** keep-alive 缓存键：同一路由名只保留一个实例（如 /plugins/a → /plugins/b 不 remount） */
 function keepAliveRouteKey(r: RouteLocationNormalizedLoaded): string {
@@ -169,15 +194,17 @@ function scrollMainToTop(instant: boolean) {
     !instant && typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const behavior: ScrollBehavior = smooth ? "smooth" : "auto";
   mainInnerRef.value?.scrollTo({ top: 0, behavior });
+}
+
+/** 用户点「回顶」：主区域 + 日志列表都回顶 */
+function scrollPageToTop() {
+  scrollMainToTop(false);
   if (logsScrollEl) {
-    logsScrollEl.scrollTo({ top: 0, behavior });
+    logsScrollEl.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
-function scrollPageToTop() {
-  scrollMainToTop(false);
-}
-
+/** 侧栏切页：只重置主区域滚动，不要动日志列表（KeepAlive 会保留位置；进页由 LogsPage 自己滚底） */
 function scrollPageToTopOnNav() {
   scrollMainToTop(true);
 }
@@ -315,7 +342,9 @@ onMounted(() => {
   clearShellInteractionBlockers();
   updateNarrow();
   window.addEventListener("resize", updateNarrow);
-  void refreshConsoleMeta();
+  void refreshConsoleMeta().then(() => {
+    void ensureRestartContext();
+  });
   void Promise.all([fetchInstances(), fetchPlugins(), fetchBots()]).catch(() => {});
   if (typeof window !== "undefined") {
     const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 120));
@@ -694,6 +723,58 @@ onUnmounted(() => {
         </template>
       </nav>
       <div class="shell__sidebar-tools">
+        <div
+          v-if="restartAvailable"
+          class="shell__sidebar-restart-group"
+        >
+          <button
+            v-if="shardedRuntime"
+            type="button"
+            class="shell__sidebar-restart"
+            title="重启 Worker"
+            aria-label="重启 Worker"
+            :disabled="restartActionBusy"
+            @click="triggerShellRestart(true)"
+          >
+            <svg
+              class="shell__ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12a9 9 0 1 1-3.2-6.9" />
+              <polyline points="21 3 21 9 15 9" />
+            </svg>
+            <span class="shell__sidebar-restart-label">重启 Worker</span>
+          </button>
+          <button
+            type="button"
+            class="shell__sidebar-restart"
+            :title="fullRestartLabel"
+            :aria-label="fullRestartLabel"
+            :disabled="restartActionBusy"
+            @click="triggerShellRestart(false)"
+          >
+            <svg
+              class="shell__ico"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 12a9 9 0 1 0 9-9" />
+              <polyline points="3 3 3 9 9 9" />
+            </svg>
+            <span class="shell__sidebar-restart-label">{{ fullRestartLabel }}</span>
+          </button>
+        </div>
         <button
           type="button"
           class="shell__sidebar-exit"
@@ -917,6 +998,25 @@ onUnmounted(() => {
               </RouterLink>
             </template>
             <div class="shell-mobile-nav__tools">
+              <template v-if="restartAvailable">
+                <button
+                  v-if="shardedRuntime"
+                  type="button"
+                  class="shell__sidebar-restart shell__sidebar-restart--mobile"
+                  :disabled="restartActionBusy"
+                  @click="triggerShellRestart(true)"
+                >
+                  重启 Worker
+                </button>
+                <button
+                  type="button"
+                  class="shell__sidebar-restart shell__sidebar-restart--mobile"
+                  :disabled="restartActionBusy"
+                  @click="triggerShellRestart(false)"
+                >
+                  {{ fullRestartLabel }}
+                </button>
+              </template>
               <button
                 type="button"
                 class="shell__sidebar-exit shell__sidebar-exit--mobile"

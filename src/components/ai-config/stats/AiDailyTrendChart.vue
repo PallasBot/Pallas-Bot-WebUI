@@ -338,7 +338,7 @@ function onPlotLeave() {
   gap: 8px 16px;
   margin: 0 0 10px;
   font-size: 0.8125rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ai-daily-trend__empty {

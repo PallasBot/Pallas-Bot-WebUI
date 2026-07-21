@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiInput from "@/components/ui/UiInput.vue";
+
 const model = defineModel<string>({ default: "" });
 
 withDefaults(
@@ -42,14 +44,14 @@ withDefaults(
           />
         </svg>
       </span>
-      <input
+      <UiInput
         v-model="model"
-        class="inp console-hub-page__search-input"
+        class="console-hub-page__search-input"
         type="search"
         :placeholder="placeholder"
         :aria-label="ariaLabel || placeholder"
         autocomplete="off"
-      >
+      />
     </label>
   </div>
 </template>

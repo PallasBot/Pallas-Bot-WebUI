@@ -29,6 +29,7 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -564,22 +565,22 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="inst-db-panel__actions">
-            <div class="inst-db-panel__stat-search">
-              <span
-                v-if="data"
-                class="inst-db-stat muted"
-              >
-                当前已连接
-                <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
-                / {{ dbBotsTotalCount }} 账号
-              </span>
-              <input
+            <span
+              v-if="data"
+              class="inst-db-stat muted"
+            >
+              当前已连接
+              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+              / {{ dbBotsTotalCount }} 账号
+            </span>
+            <div class="inst-db-panel__action-controls">
+              <UiInput
                 v-model="dbBotSearchQ"
-                class="inp inst-db-search"
+                class="inst-db-search"
                 type="search"
                 placeholder="搜索账号 / 昵称 / 管理员 / 插件"
-                title="按账号、昵称、管理员、禁用插件筛选"
-              >
+                aria-label="搜索账号 / 昵称 / 管理员 / 插件"
+              />
             </div>
           </div>
         </div>

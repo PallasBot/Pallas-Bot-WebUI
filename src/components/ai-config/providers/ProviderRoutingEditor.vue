@@ -73,7 +73,7 @@ const emit = defineEmits<{
   cursor: pointer;
   color: var(--text-muted, #94a3b8);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .routing-editor__matrix-details > :deep(.task-route-matrix) {

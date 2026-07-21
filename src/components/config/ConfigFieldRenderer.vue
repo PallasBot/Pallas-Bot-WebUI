@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import type { PluginConfigField } from "@/api/pallasTypes";
-import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import NumberStepperInput from "@/components/config/NumberStepperInput.vue";
 import TagsInput from "@/components/config/TagsInput.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
+import UiSwitch from "@/components/ui/UiSwitch.vue";
 import { isStringListField, tagsFromJsonText, tagsToJsonText } from "@/utils/pluginConfigFieldModel";
 import {
   binaryEnumIsOn,
@@ -80,8 +82,6 @@ const tagsValue = computed(() => tagsFromJsonText(props.modelValue));
 
 const numberKind = computed<"int" | "float">(() => (props.field.kind === "float" ? "float" : "int"));
 
-const showSecret = ref(false);
-
 function setValue(next: string) {
   emit("update:modelValue", next);
 }
@@ -115,9 +115,10 @@ function onTagsChange(tags: string[]) {
           class="muted config-field-renderer__kind"
         >（{{ field.kind }}）</span>
       </div>
-      <ConsoleSwitch
+      <UiSwitch
         :model-value="boolSwitchValue"
         :label="boolSwitchLabelText"
+        :aria-label="boolSwitchLabelText"
         @update:model-value="onBoolChange"
       />
     </div>
@@ -125,9 +126,10 @@ function onTagsChange(tags: string[]) {
       v-else-if="usesBoolSwitch"
       class="config-field-renderer__bool-only"
     >
-      <ConsoleSwitch
+      <UiSwitch
         :model-value="boolSwitchValue"
         :label="boolSwitchLabelText"
+        :aria-label="boolSwitchLabelText"
         @update:model-value="onBoolChange"
       />
     </div>
@@ -156,11 +158,11 @@ function onTagsChange(tags: string[]) {
       配置键: <code>{{ field.env_key }}</code>
       · 默认：{{ JSON.stringify(field.default) }}
     </div>
-    <select
+    <UiSelect
       v-if="usesEnumSelect"
-      :value="modelValue"
-      class="sel form-field__control"
-      @change="setValue(($event.target as HTMLSelectElement).value)"
+      class="form-field__control"
+      :model-value="modelValue"
+      @update:model-value="setValue"
     >
       <option
         v-for="opt in field.choices"
@@ -169,9 +171,10 @@ function onTagsChange(tags: string[]) {
       >
         {{ enumChoiceLabel(opt, field) }}
       </option>
-    </select>
+    </UiSelect>
     <TagsInput
       v-else-if="usesTagsInput"
+      variant="embedded"
       :model-value="tagsValue"
       @update:model-value="onTagsChange"
     />
@@ -183,49 +186,15 @@ function onTagsChange(tags: string[]) {
       :show-expand-button="showJsonExpandButton"
       @update:model-value="setValue"
     />
-    <div
+    <UiInput
       v-else-if="usesSecretInput"
-      class="config-field-renderer__secret"
-    >
-      <input
-        :value="modelValue"
-        class="inp form-field__control config-field-renderer__secret-input"
-        :type="showSecret ? 'text' : 'password'"
-        autocomplete="off"
-        spellcheck="false"
-        @input="setValue(($event.target as HTMLInputElement).value)"
-      >
-      <button
-        type="button"
-        class="config-field-renderer__eye"
-        :aria-label="showSecret ? '隐藏密钥' : '显示密钥'"
-        :aria-pressed="showSecret"
-        @click="showSecret = !showSecret"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <template v-if="showSecret">
-            <path d="M3 3l18 18" />
-            <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
-            <path d="M9.4 5.2A9.4 9.4 0 0 1 12 4.9c5 0 9 4.1 9 7.1a11 11 0 0 1-2.4 3.3" />
-            <path d="M6.2 6.7A11 11 0 0 0 3 12c0 3 4 7.1 9 7.1a9.6 9.6 0 0 0 3.3-.6" />
-          </template>
-          <template v-else>
-            <path d="M3 12c0-3 4-7.1 9-7.1s9 4.1 9 7.1-4 7.1-9 7.1S3 15 3 12Z" />
-            <circle cx="12" cy="12" r="2.4" />
-          </template>
-        </svg>
-      </button>
-    </div>
+      class="form-field__control"
+      type="password"
+      revealable
+      autocomplete="off"
+      :model-value="modelValue"
+      @update:model-value="setValue"
+    />
     <NumberStepperInput
       v-else-if="usesNumberStepper"
       :model-value="modelValue"
@@ -242,13 +211,13 @@ function onTagsChange(tags: string[]) {
       rows="4"
       @input="setValue(($event.target as HTMLTextAreaElement).value)"
     />
-    <input
+    <UiInput
       v-else-if="!usesBoolSwitch"
-      :value="modelValue"
-      class="inp form-field__control"
+      class="form-field__control"
       type="text"
-      @input="setValue(($event.target as HTMLInputElement).value)"
-    >
+      :model-value="modelValue"
+      @update:model-value="setValue"
+    />
   </div>
 </template>
 
@@ -271,51 +240,16 @@ function onTagsChange(tags: string[]) {
 .config-field-renderer :deep(.form-field__control),
 .config-field-renderer :deep(.json-textarea-field),
 .config-field-renderer :deep(.sel),
-.config-field-renderer :deep(.inp) {
+.config-field-renderer :deep(.inp),
+.config-field-renderer :deep(.ui-input-wrap),
+.config-field-renderer :deep(.ui-select) {
   width: 100%;
 }
 
 .config-field-renderer :deep(.form-field__control),
-.config-field-renderer :deep(.json-textarea-field) {
+.config-field-renderer :deep(.json-textarea-field),
+.config-field-renderer :deep(.ui-input-wrap) {
   max-width: v-bind(inputMaxWidth);
-}
-
-.config-field-renderer__secret {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  width: 100%;
-  max-width: v-bind(inputMaxWidth);
-}
-
-.config-field-renderer__secret-input {
-  width: 100%;
-  padding-right: 40px;
-}
-
-.config-field-renderer__eye {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm, 6px);
-  background: transparent;
-  color: var(--text-muted, rgba(255, 255, 255, 0.7));
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color 0.18s ease;
-}
-
-.config-field-renderer__eye:hover {
-  background: color-mix(in srgb, var(--accent, #ec4899) 10%, transparent);
 }
 
 .config-field-renderer__textarea {
