@@ -363,7 +363,7 @@ html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.2) * 100%), transparent);
 }
 
-html[data-layout="hub"] .ui-btn {
+html[data-layout="hub"] .ui-btn:not(.btn-refresh-action--embedded) {
   min-height: 40px;
   font-size: 14px;
   font-weight: 500;
@@ -380,25 +380,13 @@ html[data-layout="hub"] .ui-btn--block {
   font-weight: 600;
 }
 
-.panel__title .btn-refresh-action--icon-only.ui-btn,
-html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only.ui-btn,
-html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.ui-btn {
+.panel__title .btn-refresh-action--icon-only.ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only.ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.ui-btn:not(.btn-refresh-action--embedded) {
   min-height: 1.75rem;
   height: 1.75rem;
   width: 1.75rem;
   min-width: 1.75rem;
-  padding: 0;
-}
-
-.btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
-html[data-layout="hub"] .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
-.panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
-html[data-layout="hub"] .panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
-.home-acct__hd-actions .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn {
-  min-height: 1.35rem;
-  height: 1.35rem;
-  width: 1.35rem;
-  min-width: 1.35rem;
   padding: 0;
 }
 

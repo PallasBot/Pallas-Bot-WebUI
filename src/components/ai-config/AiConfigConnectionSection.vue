@@ -723,38 +723,6 @@ defineExpose({ save, canSave, saving });
     grid-template-columns: 1fr;
   }
 
-  /* 重新加载 / 保存 / 连接诊断：三钮一行，勿全宽竖排（标题栏曾 ~194px 高） */
-  .ai-config-connection__hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px 10px;
-  }
-
-  .ai-config-connection__hd .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 1 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    align-self: center;
-    gap: 6px 8px;
-  }
-
-  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions > :deep(.btn),
-  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions > :deep(.ui-btn) {
-    width: auto;
-    flex: 0 0 auto;
-  }
-
   .ai-config-connection__install-actions.row-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

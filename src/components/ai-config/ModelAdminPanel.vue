@@ -590,19 +590,6 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
-  .model-admin__hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .model-admin__hd .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-  }
-
   .form-field .inp,
   .model-admin__gpu .inp {
     max-width: none;

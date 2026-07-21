@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-/* 压过全局窄屏 .panel__hd .row-actions 全宽竖排，避免标题栏堆到 ~176px */
+/* 压过全局窄屏 .panel__hd .row-actions；含 select 需允许换行，不用 home-page__panel-hd-nowrap */
 @media (max-width: 560px) {
   .ai-logs__hd.panel__hd--split {
     flex-direction: row;

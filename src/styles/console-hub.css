@@ -154,8 +154,8 @@ html[data-layout="hub"] .panel__title .console-nav-icon__svg {
   height: 100%;
 }
 
-html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only,
-html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only {
+html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only:not(.btn-refresh-action--embedded) {
   min-height: 0;
   width: 1.75rem;
   height: 1.75rem;
@@ -164,18 +164,6 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only 
   margin: 0;
   flex-shrink: 0;
   align-self: center;
-}
-
-html[data-layout="hub"] .btn-refresh-action--embedded.btn-refresh-action--icon-only,
-html[data-layout="hub"] .panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only {
-  width: 1.35rem;
-  height: 1.35rem;
-  min-width: 1.35rem;
-  min-height: 1.35rem;
-}
-
-html[data-layout="hub"] .panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only {
-  margin-left: 1px;
 }
 
 /* 按钮：GsCore 胶囊形 */
@@ -2167,20 +2155,10 @@ html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input {
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
 }
 
-html[data-layout="hub"] .console-hub-page__masthead-actions .ui-btn,
-html[data-layout="hub"] .plugin-store-page__masthead-actions .ui-btn,
-html[data-layout="hub"] .plugins-page__body .console-hub-page__masthead-actions .ui-btn {
+html[data-layout="hub"] .console-hub-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .plugin-store-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .plugins-page__body .console-hub-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded) {
   min-height: 40px;
-}
-
-html[data-layout="hub"] .console-hub-page__masthead-actions .btn-refresh-action--embedded.ui-btn,
-html[data-layout="hub"] .plugin-store-page__masthead-actions .btn-refresh-action--embedded.ui-btn,
-html[data-layout="hub"] .plugins-page__body .console-hub-page__masthead-actions .btn-refresh-action--embedded.ui-btn {
-  min-height: 1.35rem;
-  height: 1.35rem;
-  width: 1.35rem;
-  min-width: 1.35rem;
-  padding: 0;
 }
 
 html[data-layout="hub"] .shell--sidebar-collapsed nav.shell__nav .shell__nav-link {

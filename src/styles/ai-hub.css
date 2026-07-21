@@ -401,38 +401,4 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
     flex-wrap: nowrap !important;
     padding-bottom: 4px;
   }
-
-  /* 抵消全局 .panel__hd .row-actions 全宽竖排：保存等操作保持标题同行右侧 */
-  .ai-config-page .panel__hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px 10px;
-  }
-
-  .ai-config-page .panel__hd.panel__hd--split > .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .ai-config-page .panel__hd.panel__hd--split > .row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 1 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    align-self: center;
-    justify-content: flex-end;
-    gap: 6px 8px;
-  }
-
-  .ai-config-page .panel__hd.panel__hd--split > .row-actions > .btn,
-  .ai-config-page .panel__hd.panel__hd--split > .row-actions > .ui-btn {
-    width: auto;
-    flex: 0 0 auto;
-    justify-content: center;
-  }
 }

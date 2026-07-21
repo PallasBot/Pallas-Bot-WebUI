@@ -337,34 +337,8 @@ onMounted(() => {
   gap: 8px;
 }
 
-/* 窄屏：抵消全局 .panel__hd .row-actions 全宽竖排，保持标题 | 状态 一行 */
+/* 窄屏：状态胶囊靠右；标题栏同行见 app.css .home-page__panel-hd-nowrap */
 @media (max-width: 560px) {
-  .ai-ncm-panel-hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px 10px;
-  }
-
-  .ai-ncm-panel-hd .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-  }
-
-  .ai-ncm-panel-hd .ai-ncm-hd__actions.row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    align-self: center;
-    gap: 6px 8px;
-  }
-
   .ai-ncm-panel-hd .ai-ncm-hd-status {
     justify-content: flex-end;
   }

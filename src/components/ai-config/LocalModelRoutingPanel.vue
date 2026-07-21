@@ -475,36 +475,6 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
-  .local-routing-panel__hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px 10px;
-  }
-
-  .local-routing-panel__hd .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-  }
-
-  .local-routing-panel__hd .local-routing-panel__hd-actions.row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    align-self: center;
-    gap: 6px 8px;
-  }
-
-  .local-routing-panel__hd .local-routing-panel__hd-actions.row-actions > :deep(.ui-btn) {
-    width: auto;
-  }
-
   .local-routing-panel__grid,
   .local-routing-panel__field-grid {
     grid-template-columns: 1fr;

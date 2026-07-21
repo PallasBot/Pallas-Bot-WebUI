@@ -396,38 +396,6 @@ onMounted(async () => {
   padding-bottom: 0;
 }
 
-@media (max-width: 560px) {
-  .provider-manager__hd.panel__hd--split {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px 10px;
-  }
-
-  .provider-manager__hd .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-  }
-
-  .provider-manager__hd .provider-manager__hd-actions.row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    align-self: center;
-    gap: 6px 8px;
-  }
-
-  .provider-manager__hd .provider-manager__hd-actions.row-actions > :deep(.ui-btn) {
-    width: auto;
-  }
-}
-
 .provider-manager__intro {
   margin: 0;
   font-size: 13px;

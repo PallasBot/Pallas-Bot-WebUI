@@ -8104,12 +8104,14 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   min-height: 1.75rem;
 }
 
-/* 嵌入式刷新：紧凑尺寸（不依赖父级；标题旁 / masthead / home 账户头均适用） */
+/* 嵌入式刷新：尺寸单一来源（hub / ui-btn / plugin-store 用 :not 排除大尺寸，勿再复制） */
 .btn-refresh-action--embedded.btn-refresh-action--icon-only {
-  width: 1.35rem;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  min-height: 1.35rem;
+  --btn-refresh-embedded-size: 1.35rem;
+  width: var(--btn-refresh-embedded-size);
+  min-width: var(--btn-refresh-embedded-size);
+  height: var(--btn-refresh-embedded-size);
+  min-height: var(--btn-refresh-embedded-size);
+  padding: 0;
   color: var(--text-muted);
 }
 
@@ -8203,6 +8205,30 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+
+  /* 窄屏：nowrap 标题栏操作保持同行（抵消上方 .panel__hd .row-actions 全宽竖排） */
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap > .row-actions,
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap > .row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 1 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-self: center;
+    justify-content: flex-end;
+    gap: 6px 8px;
+  }
+
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap > .row-actions > .btn,
+  .panel__hd.panel__hd--split.home-page__panel-hd-nowrap > .row-actions > .ui-btn,
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap > .row-actions > .btn,
+  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap > .row-actions > .ui-btn {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: center;
   }
 
   /* 好友与群页：窄屏「添加到侧栏」与「当前账号」一致——标题与 + 同行右上 */
@@ -8480,22 +8506,6 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     font-weight: 600;
   }
 
-  /* 首页：系统性能 / 版本 / 分片可观测 标题栏（胶囊）勿被 row-actions 全宽拉伸 */
-  .home-dashboard__perf .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .row-actions,
-  .home-dashboard__shard-obs .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .row-actions,
-  .home-page__version-panel .panel__hd.panel__hd--split.home-page__panel-hd-nowrap .row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-end;
-    align-self: center;
-    gap: 6px 8px;
-  }
-
   .home-dashboard__perf .panel__hd .row-actions > .home-page__hd-capsule,
   .home-dashboard__shard-obs .panel__hd .row-actions > .home-page__hd-capsule,
   .home-page__version-panel .panel__hd .row-actions > .home-page__hd-capsule {
@@ -8517,20 +8527,6 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   .home-dashboard__perf .home-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-  }
-
-  /* 更新页：标题栏右侧（侧栏 + 徽标）勿全宽竖排拉伸 */
-  .panel__hd.panel__hd--split.update-page__panel-hd-nowrap .row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-end;
-    align-self: center;
-    gap: 6px 8px;
   }
 
   .panel__hd.panel__hd--split.update-page__panel-hd-nowrap .update-page__hd-tail {
@@ -10132,16 +10128,12 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__tab-group {
 
 .plugin-store-page--hub .plugin-store-page__masthead-actions > .btn,
 .plugin-store-page--hub .plugin-store-page__hero-actions > .btn,
-.plugin-store-page--hub .btn-refresh-action {
+.plugin-store-page--hub .btn-refresh-action:not(.btn-refresh-action--embedded) {
   min-height: var(--ui-ctrl-height);
   border-radius: 999px;
 }
 
 .plugin-store-page--hub .btn-refresh-action--embedded.btn-refresh-action--icon-only {
-  min-height: 1.35rem;
-  height: 1.35rem;
-  width: 1.35rem;
-  min-width: 1.35rem;
   border-radius: var(--radius-ui, 8px);
 }
 
