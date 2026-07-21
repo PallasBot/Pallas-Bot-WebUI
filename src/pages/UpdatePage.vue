@@ -22,7 +22,7 @@ import {
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -473,10 +473,10 @@ onMounted(() => {
       :panels="2"
     />
     <template v-else>
-      <ConsoleHubMasthead :icon="panelNavIcon">
-        <template #title>
-          更新
-        </template>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="更新"
+      >
         <template #lead>
           {{ updateMastheadLead }}
           <span
@@ -501,7 +501,7 @@ onMounted(() => {
             />
           </div>
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <div class="update-page__overview">
         <a
@@ -891,58 +891,52 @@ onMounted(() => {
           GitHub 令牌
           <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
         </summary>
-        <UiCard
-          tag="div"
-          glass
-          class="update-page__panel update-page__panel--gh"
-        >
-          <div class="panel__bd muted update-page__bd">
-            <p>
-              可选。用于 Release 检查与下载、协议端在线拉包等。也可在
-              <RouterLink :to="{ name: 'plugins', params: { name: PB_PROTOCOL_PLUGIN } }">插件配置 → 协议端</RouterLink>
-              填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
-            </p>
-            <div class="update-page__gh-row">
-              <UiInput
-                v-model="ghTokenInput"
-                class="update-page__gh-inp"
-                type="password"
-                revealable
-                autocomplete="off"
-                placeholder="粘贴 fine-grained 或 classic PAT"
-                :disabled="ghTokenBusy"
-              />
-              <UiButton
-                variant="primary"
-                :disabled="ghTokenBusy"
-                :busy="ghTokenBusy"
-                @click="saveGithubToken"
-              >
-                {{ ghTokenBusy ? "保存中…" : "保存" }}
-              </UiButton>
-              <UiButton
-                v-if="ghTokenHadValue"
-                variant="outline"
-                :disabled="ghTokenBusy"
-                @click="clearGithubToken"
-              >
-                清除
-              </UiButton>
-            </div>
-            <div
-              v-if="ghTokenErr"
-              class="alert alert--err update-page__gh-alert"
+        <div class="update-page__gh-fold-body muted update-page__bd">
+          <p>
+            可选。用于 Release 检查与下载、协议端在线拉包等。也可在
+            <RouterLink :to="{ name: 'plugins', params: { name: PB_PROTOCOL_PLUGIN } }">插件配置 → 协议端</RouterLink>
+            填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+          </p>
+          <div class="update-page__gh-row">
+            <UiInput
+              v-model="ghTokenInput"
+              class="update-page__gh-inp"
+              type="password"
+              revealable
+              autocomplete="off"
+              placeholder="粘贴 fine-grained 或 classic PAT"
+              :disabled="ghTokenBusy"
+            />
+            <UiButton
+              variant="primary"
+              :disabled="ghTokenBusy"
+              :busy="ghTokenBusy"
+              @click="saveGithubToken"
             >
-              {{ ghTokenErr }}
-            </div>
-            <div
-              v-if="ghTokenOk"
-              class="alert alert--ok update-page__gh-alert"
+              {{ ghTokenBusy ? "保存中…" : "保存" }}
+            </UiButton>
+            <UiButton
+              v-if="ghTokenHadValue"
+              variant="outline"
+              :disabled="ghTokenBusy"
+              @click="clearGithubToken"
             >
-              {{ ghTokenOk }}
-            </div>
+              清除
+            </UiButton>
           </div>
-        </UiCard>
+          <div
+            v-if="ghTokenErr"
+            class="alert alert--err update-page__gh-alert"
+          >
+            {{ ghTokenErr }}
+          </div>
+          <div
+            v-if="ghTokenOk"
+            class="alert alert--ok update-page__gh-alert"
+          >
+            {{ ghTokenOk }}
+          </div>
+        </div>
       </details>
 
       <GitMirrorDialog
@@ -1025,8 +1019,12 @@ onMounted(() => {
   display: none;
 }
 
-.update-page__panel--gh {
+.update-page__gh-fold-body {
   margin-top: 8px;
+  padding: 4px 2px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .update-page__panel + .update-page__panel {

@@ -4,7 +4,7 @@ import { RouterLink } from "vue-router";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
 import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import PrefsGlassPreview from "@/components/PrefsGlassPreview.vue";
 import PrefsSettingCard from "@/components/PrefsSettingCard.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -186,16 +186,11 @@ async function loadSetupStatus(force = false) {
 
 <template>
   <div class="console-hub-page prefs-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        偏好与口令
-      </template>
-      <template #lead>
-        自定义控制台外观与安全设置。
-      </template>
-      <template #actions>
-      </template>
-    </ConsoleHubMasthead>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="偏好与口令"
+      lead="自定义控制台外观与安全设置。"
+    />
 
     <div
       v-if="consoleSetupStatus?.requires_setup"

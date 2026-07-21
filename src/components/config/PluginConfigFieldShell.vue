@@ -89,11 +89,29 @@ const title = computed(() => fieldDisplayName(props.field));
   min-height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border: 1px solid transparent;
   background: transparent;
   font-size: 10px;
   line-height: 1;
   color: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.plugin-config-form-item:hover .plugin-config-form-item__meta-pill,
+.plugin-config-form-item:focus-within .plugin-config-form-item__meta-pill {
+  opacity: 0.72;
+  border-color: color-mix(in srgb, var(--border) 86%, transparent);
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .plugin-config-form-item__meta-pill {
+    opacity: 0.45;
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+    pointer-events: auto;
+  }
 }
 
 .plugin-config-form-item__help-btn {

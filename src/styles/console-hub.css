@@ -1,4 +1,11 @@
-/* Gsuid-aligned console layout — enabled via html[data-layout="hub"] */
+/*
+ * Gsuid-aligned console layout — enabled via html[data-layout="hub"]
+ *
+ * Surface contract (Canvas / Card / Flat):
+ * - Canvas: page shell (.console-hub-page) — PageChrome + filters + content blocks, no card chrome
+ * - Card: one elevated surface (.panel / UiCard / prefs-setting-card) on the canvas; siblings OK
+ * - Flat: inside a card use spacing / dividers / details — do not nest another .panel
+ */
 
 html[data-layout="hub"] {
   --hub-page-gap: 18px;

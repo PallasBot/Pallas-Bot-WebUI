@@ -12570,6 +12570,31 @@ html[data-theme="light"] .plugin-preview {
 }
 .plugins-page__capabilities-overview {
   margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plugins-page__capabilities-hd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.plugins-page__capabilities-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.plugins-page__capabilities-bd {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 .plugins-page__capabilities-hd-actions {
   flex-wrap: wrap;
