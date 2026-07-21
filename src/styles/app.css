@@ -2673,7 +2673,7 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px 14px;
   flex: 1;
   min-width: 0;
@@ -2690,26 +2690,38 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   margin-left: auto;
 }
 
-.inst-db-panel__stat-search {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px 12px;
-  flex: 1 1 auto;
+/* 统计文案与「搜索 + 操作按钮」分组：后者作为一整块换行，避免搜索与按钮错位 */
+.inst-db-panel__actions > .inst-db-stat {
+  flex: 0 1 auto;
   min-width: 0;
 }
 
-.inst-db-panel__stat-search > .inst-db-stat {
-  flex-shrink: 0;
+.inst-db-panel__action-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .inst-db-search.inp,
 .inst-db-search.ui-input-wrap {
-  width: min(220px, 42vw);
+  box-sizing: border-box;
+  display: block;
+  width: auto;
+  max-width: min(220px, 42vw);
   min-width: 120px;
-  flex: 0 1 auto;
-  margin-left: auto;
+  flex: 1 1 140px;
+  margin-left: 0;
+  align-self: center;
+}
+
+.inst-db-panel__action-controls > .btn,
+.inst-db-panel__action-controls > .ui-btn {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .inst-db-panel__hd.panel__hd--split {
@@ -7976,7 +7988,10 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .protocol-runtime-row__actions > .btn {
     flex: 1 1 calc(50% - 4px);
   }
-  .inst-db-panel__actions .btn {
+  .inst-db-panel__actions .btn,
+  .inst-db-panel__actions .ui-btn,
+  .inst-db-panel__action-controls > .btn,
+  .inst-db-panel__action-controls > .ui-btn {
     flex: 1 1 auto;
   }
 }
@@ -8921,7 +8936,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     margin-left: 0;
   }
 
-  .panel__hd.inst-db-panel__hd .inst-db-panel__stat-search {
+  .panel__hd.inst-db-panel__hd .inst-db-panel__action-controls {
     flex: 1 1 auto;
     min-width: 0;
     justify-content: flex-start;
@@ -8929,11 +8944,11 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
 
   .panel__hd.inst-db-panel__hd .inst-db-search.inp,
   .panel__hd.inst-db-panel__hd .inst-db-search.ui-input-wrap {
-    width: min(200px, 100%);
+    width: auto;
     min-width: 100px;
     flex: 1 1 120px;
     max-width: 240px;
-    margin-left: auto;
+    margin-left: 0;
   }
 }
 

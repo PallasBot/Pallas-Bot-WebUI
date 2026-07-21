@@ -565,15 +565,15 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="inst-db-panel__actions">
-            <div class="inst-db-panel__stat-search">
-              <span
-                v-if="data"
-                class="inst-db-stat muted"
-              >
-                当前已连接
-                <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
-                / {{ dbBotsTotalCount }} 账号
-              </span>
+            <span
+              v-if="data"
+              class="inst-db-stat muted"
+            >
+              当前已连接
+              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+              / {{ dbBotsTotalCount }} 账号
+            </span>
+            <div class="inst-db-panel__action-controls">
               <UiInput
                 v-model="dbBotSearchQ"
                 class="inst-db-search"

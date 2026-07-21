@@ -780,12 +780,12 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="inst-db-panel__actions">
-          <div class="inst-db-panel__stat-search">
-            <span class="inst-db-stat muted">
-              当前已连接
-              <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
-              / {{ protocolAccountsTotalCount }} 账号
-            </span>
+          <span class="inst-db-stat muted">
+            当前已连接
+            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
+            / {{ protocolAccountsTotalCount }} 账号
+          </span>
+          <div class="inst-db-panel__action-controls">
             <UiInput
               v-model="protoSearchQ"
               class="inst-db-search"
@@ -793,35 +793,35 @@ onUnmounted(() => {
               placeholder="搜索账号 / 昵称 / 协议 / ID"
               title="按账号、昵称、协议、ID 筛选"
             />
+            <UiButton
+              v-if="protoActionsEnabled"
+              variant="outline"
+              :disabled="
+                restartAllBusy ||
+                batch.batchBusy.value ||
+                protocolAccountsTotalCount === 0 ||
+                actionBusy.size > 0
+              "
+              :busy="restartAllBusy"
+              @click="restartAllAccounts"
+            >
+              {{ restartAllBusy ? "重启全部中…" : "重启全部" }}
+            </UiButton>
+            <UiButton
+              v-if="protoActionsEnabled"
+              variant="outline"
+              :disabled="
+                restartSelectedBusy ||
+                batch.batchBusy.value ||
+                unref(bulk.selectedCount) === 0 ||
+                actionBusy.size > 0
+              "
+              :busy="restartSelectedBusy"
+              @click="restartSelectedAccounts"
+            >
+              {{ restartSelectedBusy ? "重启中…" : "重启所选" }}
+            </UiButton>
           </div>
-          <UiButton
-            v-if="protoActionsEnabled"
-            variant="outline"
-            :disabled="
-              restartAllBusy ||
-              batch.batchBusy.value ||
-              protocolAccountsTotalCount === 0 ||
-              actionBusy.size > 0
-            "
-            :busy="restartAllBusy"
-            @click="restartAllAccounts"
-          >
-            {{ restartAllBusy ? "重启全部中…" : "重启全部" }}
-          </UiButton>
-          <UiButton
-            v-if="protoActionsEnabled"
-            variant="outline"
-            :disabled="
-              restartSelectedBusy ||
-              batch.batchBusy.value ||
-              unref(bulk.selectedCount) === 0 ||
-              actionBusy.size > 0
-            "
-            :busy="restartSelectedBusy"
-            @click="restartSelectedAccounts"
-          >
-            {{ restartSelectedBusy ? "重启中…" : "重启所选" }}
-          </UiButton>
         </div>
       </div>
       <div
