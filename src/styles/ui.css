@@ -41,7 +41,7 @@ html[data-theme="light"] {
   font-size: var(--ui-btn-font);
   font-weight: var(--ui-btn-weight);
   line-height: 1.2;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 8px);
   border: 1px solid transparent;
   background: transparent;
   color: var(--foreground);
@@ -71,7 +71,7 @@ html[data-theme="light"] {
 }
 
 .ui-btn:active:not(:disabled) {
-  transform: scale(0.94);
+  transform: scale(0.98);
 }
 
 .ui-btn--block {
@@ -95,7 +95,7 @@ html[data-theme="light"] {
   background: var(--secondary);
   border-color: var(--border-ui);
   color: var(--foreground);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 html[data-theme="light"] .ui-btn--default {
@@ -112,7 +112,7 @@ html[data-theme="light"] .ui-btn--default {
   background: var(--primary);
   border-color: color-mix(in srgb, var(--primary) 72%, transparent);
   color: var(--primary-foreground);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .ui-btn--primary:hover:not(:disabled) {
@@ -123,7 +123,7 @@ html[data-theme="light"] .ui-btn--default {
   background: var(--destructive);
   border-color: color-mix(in srgb, var(--destructive) 72%, transparent);
   color: var(--destructive-foreground);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .ui-btn--destructive:hover:not(:disabled) {
@@ -134,7 +134,7 @@ html[data-theme="light"] .ui-btn--default {
   background: transparent;
   border-color: var(--border-ui);
   color: var(--foreground);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 html[data-theme="light"] .ui-btn--outline {
