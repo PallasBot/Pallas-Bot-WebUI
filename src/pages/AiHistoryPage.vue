@@ -57,6 +57,10 @@ import AiHistoryAdvancedDebugBlock from "@/components/ai-history/AiHistoryAdvanc
 import AiHistoryBehaviorAnnotateControls from "@/components/ai-history/AiHistoryBehaviorAnnotateControls.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
+import AiHistoryMaintainBehaviorPanel from "@/components/ai-history/AiHistoryMaintainBehaviorPanel.vue";
+import AiHistoryMaintainFeedbackPanel from "@/components/ai-history/AiHistoryMaintainFeedbackPanel.vue";
+import AiHistoryMaintainKernelPanel from "@/components/ai-history/AiHistoryMaintainKernelPanel.vue";
+import AiHistoryMaintainPromotionPanel from "@/components/ai-history/AiHistoryMaintainPromotionPanel.vue";
 import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
 import AiHistoryMemoryWorkspace from "@/components/ai-history/AiHistoryMemoryWorkspace.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
@@ -518,10 +522,6 @@ async function runReplay(requestId: string) {
   }
 }
 
-function isObserveAnnotateExpanded(requestId: string): boolean {
-  return !!expandedObserveAnnotateIds.value[requestId];
-}
-
 function toggleObserveAnnotateExpanded(requestId: string): void {
   expandedObserveAnnotateIds.value = {
     ...expandedObserveAnnotateIds.value,
@@ -766,18 +766,6 @@ const visibleSessions = computed(() =>
 
 function turnKey(createdAt: string | number, index: number): string {
   return `${createdAt}-${index}`;
-}
-
-function isLongObserveText(content: string): boolean {
-  return content.length > 120 || content.split("\n").length > 3;
-}
-
-function observeTextKey(kind: string, id: string): string {
-  return `${kind}-${id}`;
-}
-
-function isObserveTextExpanded(key: string): boolean {
-  return !!expandedObserveKeys.value[key];
 }
 
 function toggleObserveText(key: string): void {
@@ -1164,6 +1152,16 @@ function toggleSessionMaintainExpanded(key: string, row?: SessionTurnRow): void 
   if (next && row) {
     void loadPersonaShapingForTurn(row);
   }
+}
+
+function sessionKeyForBehaviorRun(run: LlmHistoryBehaviorRun): string {
+  return buildSessionKey(run.bot_id, run.group_id, run.user_id);
+}
+
+function onBehaviorRunsGroupTouched(value: string): void {
+  behaviorRunsGroupTouched.value = true;
+  observeGroup.value = value;
+  observeGroupTouched.value = true;
 }
 
 function buildSessionKey(botId?: number | null, groupId?: number | null, userId?: number | null): string {
@@ -2363,509 +2361,99 @@ onMounted(() => {
         />
       </div>
     </AiHistoryPanelShell>
-    <section class="ai-history-page__feedback">
-      <AiHistoryPanelShell
-        title="反哺样本"
-        purpose="挑出适合继续学的接话，排除不合适样本"
-        :summary="feedbackPanelSummary"
-        :expanded="isMaintainPanelExpanded('feedback')"
-        @toggle="toggleMaintainPanel('feedback')"
-      >
-        <div v-if="feedbackErr" class="alert alert--err">{{ feedbackErr }}</div>
-        <div v-if="visibleFeedbackItems.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in visibleFeedbackItems"
-            :key="item.entry_id || item.request_id"
-            class="ai-history-page__feedback-card"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong
-                class="ai-history-page__feedback-reply"
-                :class="{ 'is-clamped': isLongObserveText(item.reply_text || '') && !isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) }"
-              >
-                {{ item.reply_text || "（空回复）" }}
-              </strong>
-              <button
-                v-if="item.behavior_scene"
-                type="button"
-                class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
-                @click="applyObserveScene(item.behavior_scene || '')"
-              >
-                {{ labelScene(item.behavior_scene) }}
-              </button>
-              <span v-else class="ai-history-page__scene-pill">未标注</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>{{ formatCompactDateTime(item.created_at) }}</span>
-              <span>路由：{{ item.llm_route || "未知" }}</span>
-              <span>{{ item.eligible_for_bias ? "参与学习" : "已排除" }}</span>
-              <span v-if="item.corrected_reply_text">已校正</span>
-            </div>
-            <div v-if="item.corrected_reply_text" class="ai-history-page__correction-preview">
-              期望：{{ item.corrected_reply_text }}
-            </div>
-            <div class="ai-history-page__correction-editor ai-history-page__correction-editor--card">
-              <label class="ai-history-page__correction-label">期望回复</label>
-              <textarea
-                class="inp ai-history-page__pattern-textarea ai-history-page__correction-textarea"
-                :value="getFeedbackCardCorrectionDraft(item)"
-                placeholder="填写更好的接话示例"
-                rows="2"
-                @input="setFeedbackCardCorrectionDraft(item, ($event.target as HTMLTextAreaElement).value)"
-              ></textarea>
-            </div>
-            <div class="row-actions ai-history-page__feedback-card-actions">
-              <UiButton
-                size="sm"
-                variant="primary"
-                :busy="isFeedbackManageBusy(item)"
-                @click="saveFeedbackCardCorrection(item)"
-              >
-                保存校正
-              </UiButton>
-              <UiButton
-                v-if="item.corrected_reply_text"
-                size="sm"
-                variant="ghost"
-                :busy="isFeedbackManageBusy(item)"
-                @click="clearFeedbackCardCorrection(item)"
-              >
-                清除
-              </UiButton>
-              <UiButton
-                v-if="item.eligible_for_bias"
-                size="sm"
-                variant="outline"
-                :busy="isFeedbackManageBusy(item)"
-                @click="manageFeedbackEntry(item, 'invalidate')"
-              >
-                不适合
-              </UiButton>
-              <UiButton
-                v-else
-                size="sm"
-                variant="outline"
-                :busy="isFeedbackManageBusy(item)"
-                @click="manageFeedbackEntry(item, 'restore')"
-              >
-                恢复
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                class="ai-history-page__danger-btn"
-                :busy="isFeedbackManageBusy(item)"
-                @click="manageFeedbackEntry(item, 'delete')"
-              >
-                删除
-              </UiButton>
-            </div>
-            <p
-              class="ai-history-page__feedback-user"
-              :class="{ 'is-clamped': isLongObserveText(item.user_text || '') && !isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) }"
-            >
-              用户：{{ item.user_text || "（空）" }}
-            </p>
-            <button
-              v-if="isLongObserveText(item.reply_text || '') || isLongObserveText(item.user_text || '')"
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleObserveText(observeTextKey('card', item.entry_id || item.request_id))"
-            >
-              {{ isObserveTextExpanded(observeTextKey('card', item.entry_id || item.request_id)) ? "收起" : "展开全文" }}
-            </button>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ feedbackGroupId ? (observeScene ? "当前群当前场景下暂无反馈样本" : "当前群暂无反馈样本") : "输入群号查看反馈" }}</span>
-          <span class="ai-empty__hint">可在此排除不适合学习的样本，或彻底删除反哺记录。</span>
-        </div>
-      </AiHistoryPanelShell>
-    </section>
-
-    <section class="ai-history-page__feedback">
-      <AiHistoryPanelShell
-        title="晋升候选"
-        purpose="批准后写入本群接话语料"
-        :summary="promotionPanelSummary"
-        :expanded="isMaintainPanelExpanded('promotion')"
-        @toggle="toggleMaintainPanel('promotion')"
-      >
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>候选筛选</strong>
-            <span class="muted">与上方反馈共用群号；需在对话策略中开启「写回语料」后才会生成候选</span>
-          </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
-              <label class="ai-history-page__behavior-check">
-                <input
-                  v-model="promotionIncludeResolved"
-                  type="checkbox"
-                  @change="refreshPromotionCandidates"
-                >
-                显示已处理
-              </label>
-            </div>
-            <div class="ai-history-page__filter-action">
-              <UiButton
-                size="sm"
-                variant="outline"
-                :busy="promotionCandidatesBusy"
-                :disabled="!feedbackGroupId"
-                @click="refreshPromotionCandidates"
-              >
-                刷新候选
-              </UiButton>
-            </div>
-          </div>
-        </div>
-        <div v-if="promotionCandidatesErr" class="alert alert--err">{{ promotionCandidatesErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div class="ai-stat ai-history-page__summary-stat">
-            <span class="ai-stat__label">待审批</span>
-            <strong class="ai-stat__value ai-stat__value--accent">{{ pendingPromotionCandidates.length }}</strong>
-          </div>
-          <div class="ai-stat ai-history-page__summary-stat">
-            <span class="ai-stat__label">列表条目</span>
-            <strong class="ai-stat__value">{{ promotionCandidates.length }}</strong>
-          </div>
-        </div>
-        <div v-if="promotionCandidates.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in promotionCandidates"
-            :key="item.candidate_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong
-                class="ai-history-page__feedback-reply"
-                :class="{ 'is-clamped': isLongObserveText(item.reply_text || '') && !isObserveTextExpanded(observeTextKey('promo', item.candidate_id)) }"
-              >
-                {{ item.reply_text }}
-              </strong>
-              <span
-                class="ai-history-page__outcome-badge"
-                :class="{
-                  'is-engaged': item.promoted,
-                  'is-bad': Boolean(item.rejected_reason),
-                  'is-pending': !item.promoted && !item.rejected_reason,
-                }"
-              >
-                {{ promotionCandidateStatusLabel(item) }}
-              </span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>支持 {{ item.support_count }} 次</span>
-              <span v-if="item.behavior_scene">{{ item.behavior_scene }}</span>
-              <span>{{ formatCompactDateTime(item.last_seen_at) }}</span>
-              <span v-if="promotionWritebackHint(item)">{{ promotionWritebackHint(item) }}</span>
-            </div>
-            <p
-              class="ai-history-page__feedback-user"
-              :class="{ 'is-clamped': isLongObserveText(item.trigger_text || '') && !isObserveTextExpanded(observeTextKey('promo', item.candidate_id)) }"
-            >
-              触发：{{ item.trigger_text || "—" }}
-            </p>
-            <button
-              v-if="isLongObserveText(item.reply_text || '') || isLongObserveText(item.trigger_text || '')"
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleObserveText(observeTextKey('promo', item.candidate_id))"
-            >
-              {{ isObserveTextExpanded(observeTextKey('promo', item.candidate_id)) ? "收起" : "展开全文" }}
-            </button>
-            <div
-              v-if="!item.promoted && !item.rejected_reason"
-              class="row-actions ai-history-page__promotion-actions"
-            >
-              <UiButton
-                size="sm"
-                variant="primary"
-                :busy="promotionResolveBusyId === item.candidate_id"
-                :disabled="Boolean(promotionResolveBusyId)"
-                @click="resolvePromotionCandidate(item, 'promote')"
-              >
-                批准晋升
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="outline"
-                :busy="promotionResolveBusyId === item.candidate_id"
-                :disabled="Boolean(promotionResolveBusyId)"
-                @click="resolvePromotionCandidate(item, 'reject')"
-              >
-                拒绝
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">
-          <span>{{ promotionCandidatesBusy ? "正在读取候选…" : (feedbackGroupId ? "当前群暂无晋升候选" : "请先输入群号并读取反馈") }}</span>
-        </p>
-      </AiHistoryPanelShell>
-    </section>
-
-    <section class="ai-history-page__feedback">
-      <AiHistoryPanelShell
-        title="行为记录"
-        purpose="看自动判定是否稳，快速扫最近结果"
-        :summary="behaviorPanelSummary"
-        :expanded="isMaintainPanelExpanded('behavior')"
-        @toggle="toggleMaintainPanel('behavior')"
-      >
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>记录筛选</strong>
-            <span class="muted">默认跟随当前选中会话的群号</span>
-          </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <UiInput
-                v-model="behaviorRunsGroup"
-                inputmode="numeric"
-                placeholder="全部"
-                aria-label="群号"
-                @update:model-value="behaviorRunsGroupTouched = true; observeGroup = $event; observeGroupTouched = true"
-                @keyup.enter="refreshBehaviorRuns"
-              />
-            </label>
-            <label class="ai-history-page__filter">
-              <span>场景</span>
-              <UiSelect
-                v-model="behaviorRunsScene"
-                aria-label="场景"
-              >
-                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </UiSelect>
-            </label>
-            <label class="ai-history-page__filter">
-              <span>结果</span>
-              <UiSelect
-                v-model="behaviorRunsOutcome"
-                aria-label="结果"
-              >
-                <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </UiSelect>
-            </label>
-            <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
-              <label class="ai-history-page__behavior-check">
-                <input v-model="behaviorRunsIncludeDisabled" type="checkbox">
-                <span>包含已禁用</span>
-              </label>
-            </div>
-            <div class="ai-history-page__filter-action">
-              <UiButton size="sm" variant="outline" :busy="behaviorRunsBusy" @click="refreshBehaviorRuns">
-                读取记录
-              </UiButton>
-            </div>
-          </div>
-        </div>
-        <div v-if="behaviorRunsErr" class="alert alert--err">{{ behaviorRunsErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in behaviorRunsOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-        <div v-if="behaviorRunsItems.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="run in behaviorRunsItems"
-            :key="run.request_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior ai-history-page__observe-run"
-          >
-            <div class="ai-history-page__feedback-top">
-              <button
-                type="button"
-                class="ai-history-page__scene-pill ai-history-page__scene-pill--btn"
-                @click="applyObserveScene(run.scene)"
-              >
-                {{ labelScene(run.scene) }}
-              </button>
-              <span
-                class="ai-history-page__outcome-badge"
-                :class="outcomeClass(run.final_outcome)"
-              >
-                {{ formatOutcomeLabel(run.final_outcome) }}
-              </span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span v-if="run.created_at">{{ formatCompactDateTime(run.created_at) }}</span>
-              <span>群：{{ run.group_id || "私聊" }}</span>
-              <span>用户：{{ run.user_id || "—" }}</span>
-              <span>分值变化：{{ run.score_delta ?? 0 }}</span>
-              <span>已禁用：{{ run.disabled ? "是" : "否" }}</span>
-            </div>
-            <p
-              v-if="run.user_text"
-              class="ai-history-page__feedback-user"
-              :class="{ 'is-clamped': isLongObserveText(run.user_text) && !isObserveTextExpanded(observeTextKey('card', run.request_id)) }"
-            >
-              用户：{{ run.user_text }}
-            </p>
-            <p
-              v-if="run.reply_text"
-              class="ai-history-page__feedback-user"
-              :class="{ 'is-clamped': isLongObserveText(run.reply_text) && !isObserveTextExpanded(observeTextKey('card', run.request_id)) }"
-            >
-              回复：{{ run.reply_text }}
-            </p>
-            <button
-              v-if="isLongObserveText(run.user_text || '') || isLongObserveText(run.reply_text || '')"
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleObserveText(observeTextKey('card', run.request_id))"
-            >
-              {{ isObserveTextExpanded(observeTextKey('card', run.request_id)) ? "收起" : "展开全文" }}
-            </button>
-            <div
-              v-if="run.selected_pattern_ids?.length"
-              class="ai-history-page__pattern-links ai-history-page__pattern-links--inline"
-            >
-              <span>命中规则</span>
-              <button
-                v-for="patternId in run.selected_pattern_ids"
-                :key="`${run.request_id}-observe-${patternId}`"
-                type="button"
-                class="ai-history-page__pattern-link"
-                @click="focusPattern(patternId, run.scene, run.group_id)"
-              >
-                {{ patternId }}
-              </button>
-            </div>
-            <div class="ai-history-page__behavior-evidence">
-              <span>依据来源：{{ formatBehaviorSource(run.auto_feedback_payload) }}</span>
-              <span>命中信号：{{ formatBehaviorSignal(run.auto_feedback_payload) }}</span>
-              <span>命中词：{{ formatBehaviorTokens(run.auto_feedback_payload) }}</span>
-              <span>观察消息：{{ run.auto_feedback_payload?.observed_turn_count ?? 0 }} 条</span>
-            </div>
-            <AiHistoryAdvancedDebugBlock
-              v-if="behaviorAgentTrace(run.auto_feedback_payload)"
-              :expanded="isAdvancedDebugExpanded(behaviorAgentTraceKey('observe', run.request_id))"
-              :trace-expanded="!!expandedBehaviorTraceKeys[behaviorAgentTraceKey('observe', run.request_id)]"
-              :highlights="behaviorAgentTraceHighlights(behaviorAgentTrace(run.auto_feedback_payload))"
-              :trace="behaviorAgentTrace(run.auto_feedback_payload)"
-              :replay-busy="!!replayRunBusy[run.request_id]"
-              :copy-busy="!!replayCopyBusy[run.request_id]"
-              @toggle="toggleAdvancedDebug(behaviorAgentTraceKey('observe', run.request_id))"
-              @toggle-trace="toggleBehaviorTraceExpanded(behaviorAgentTraceKey('observe', run.request_id))"
-              @run-replay="runReplay(run.request_id)"
-              @copy-replay="copyReplayPayload(run.request_id)"
-            />
-            <p v-if="run.behavior_hint_text" class="ai-history-page__feedback-user">提示：{{ run.behavior_hint_text }}</p>
-            <button
-              type="button"
-              class="ai-history-page__turn-toggle"
-              @click="toggleObserveAnnotateExpanded(run.request_id)"
-            >
-              {{ isObserveAnnotateExpanded(run.request_id) ? "收起校正" : "校正这条记录" }}
-            </button>
-            <div
-              v-if="isObserveAnnotateExpanded(run.request_id)"
-              class="ai-history-page__observe-annotate"
-            >
-              <AiHistoryBehaviorAnnotateControls
-                :labels="BEHAVIOR_LABEL_OPTIONS"
-                :selected-labels="run.manual_labels"
-                :outcome="run.final_outcome"
-                :busy="isBehaviorBusy(run.request_id)"
-                :disabled-sample="!!run.disabled"
-                outcome-label="人工结果"
-                disable-variant="ghost"
-                disable-size="sm"
-                @toggle-label="toggleBehaviorLabel(run, $event)"
-                @update:outcome="changeBehaviorOutcome(run, $event)"
-                @toggle-disabled="toggleBehaviorDisabled(run)"
-              />
-            </div>
-            <div class="row-actions ai-history-page__pattern-actions">
-              <UiButton
-                v-if="buildSessionKey(run.bot_id, run.group_id, run.user_id)"
-                size="sm"
-                variant="outline"
-                @click="openRunInSession(run)"
-              >
-                查看会话
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ behaviorRunsBusy ? "正在读取记录" : "当前筛选下暂无行为记录" }}</span>
-          <span class="ai-empty__hint">适合快速观察最近哪些规则在生效、哪些结果被自动判成被无视或带偏。</span>
-        </div>
-      </AiHistoryPanelShell>
-    </section>
-    <section class="ai-history-page__feedback ai-history-page__kernel-panel">
-      <AiHistoryPanelShell
-        title="对话内核"
-        purpose="查看学习链路是否打开；排障时再展开"
-        summary="学习开关与决策轨迹"
-        :expanded="isMaintainPanelExpanded('kernel')"
-        panel-class="ai-history-page__panel--compact"
-        @toggle="toggleMaintainPanel('kernel')"
-      >
-          <div v-if="kernelStatusErr" class="alert alert--err">{{ kernelStatusErr }}</div>
-          <div v-if="kernelTracesErr" class="alert alert--err">{{ kernelTracesErr }}</div>
-          <div class="ai-history-page__kernel-chip-row">
-            <span
-              v-for="item in kernelStatusOverview"
-              :key="item.label"
-              class="ai-history-page__kernel-chip"
-              :class="{ 'is-on': item.accent }"
-            >
-              {{ item.label }}：{{ item.value }}
-            </span>
-          </div>
-          <p v-if="kernelStatus && !kernelStatusBusy" class="muted ai-history-page__kernel-policy">
-            {{ kernelMemoryPolicyLine(kernelStatus) }}
-          </p>
-          <div v-if="kernelTraces.length" class="ai-history-page__feedback-list ai-history-page__kernel-trace-list">
-            <article
-              v-for="(row, index) in kernelTraces"
-              :key="kernelTraceKey(row, index)"
-              class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-            >
-              <div class="ai-history-page__feedback-top">
-                <strong class="ai-history-page__feedback-reply">{{ kernelTraceSummary(row) }}</strong>
-                <span
-                  class="ai-history-page__outcome-badge"
-                  :class="kernelTraceOpportunityClass(row)"
-                >
-                  {{ kernelTraceOpportunityLabel(row) }}
-                </span>
-              </div>
-              <div class="ai-history-page__feedback-meta">
-                <span v-if="row.group_id">群 {{ row.group_id }}</span>
-                <span v-if="row.created_at">{{ formatCompactDateTime(row.created_at) }}</span>
-              </div>
-              <button
-                type="button"
-                class="ai-history-page__turn-toggle"
-                @click="toggleKernelTraceExpanded(kernelTraceKey(row, index))"
-              >
-                {{ expandedKernelTraceKeys[kernelTraceKey(row, index)] ? "收起原始数据" : "查看原始数据" }}
-              </button>
-              <pre
-                v-if="expandedKernelTraceKeys[kernelTraceKey(row, index)]"
-                class="ai-history-page__kernel-trace-json"
-              >{{ JSON.stringify(row, null, 2) }}</pre>
-            </article>
-          </div>
-          <p v-else class="muted ai-history-page__empty-hint">
-            {{ kernelTracesBusy ? "正在读取决策轨迹…" : "当前筛选下暂无决策轨迹" }}
-          </p>
-      </AiHistoryPanelShell>
-    </section>
+    <AiHistoryMaintainFeedbackPanel
+      :expanded="isMaintainPanelExpanded('feedback')"
+      :summary="feedbackPanelSummary"
+      :err="feedbackErr"
+      :items="visibleFeedbackItems"
+      :feedback-group-id="feedbackGroupId"
+      :observe-scene="observeScene"
+      :correction-drafts="feedbackCorrectionDraft"
+      :manage-busy="feedbackManageBusy"
+      :expanded-text-keys="expandedObserveKeys"
+      @toggle="toggleMaintainPanel('feedback')"
+      @apply-scene="applyObserveScene"
+      @update-correction="setFeedbackCardCorrectionDraft"
+      @save-correction="saveFeedbackCardCorrection"
+      @clear-correction="clearFeedbackCardCorrection"
+      @manage="manageFeedbackEntry"
+      @toggle-text="toggleObserveText"
+    />
+    <AiHistoryMaintainPromotionPanel
+      v-model:include-resolved="promotionIncludeResolved"
+      :expanded="isMaintainPanelExpanded('promotion')"
+      :summary="promotionPanelSummary"
+      :err="promotionCandidatesErr"
+      :busy="promotionCandidatesBusy"
+      :feedback-group-id="feedbackGroupId"
+      :candidates="promotionCandidates"
+      :pending-count="pendingPromotionCandidates.length"
+      :resolve-busy-id="promotionResolveBusyId"
+      :expanded-text-keys="expandedObserveKeys"
+      :status-label="promotionCandidateStatusLabel"
+      :writeback-hint="promotionWritebackHint"
+      @toggle="toggleMaintainPanel('promotion')"
+      @refresh="refreshPromotionCandidates"
+      @include-resolved-change="refreshPromotionCandidates"
+      @resolve="resolvePromotionCandidate"
+      @toggle-text="toggleObserveText"
+    />
+    <AiHistoryMaintainBehaviorPanel
+      v-model:runs-group="behaviorRunsGroup"
+      v-model:runs-scene="behaviorRunsScene"
+      v-model:runs-outcome="behaviorRunsOutcome"
+      v-model:include-disabled="behaviorRunsIncludeDisabled"
+      :expanded="isMaintainPanelExpanded('behavior')"
+      :summary="behaviorPanelSummary"
+      :err="behaviorRunsErr"
+      :busy="behaviorRunsBusy"
+      :overview="behaviorRunsOverview"
+      :items="behaviorRunsItems"
+      :label-options="BEHAVIOR_LABEL_OPTIONS"
+      :expanded-text-keys="expandedObserveKeys"
+      :advanced-debug-keys="advancedDebugKeys"
+      :expanded-trace-keys="expandedBehaviorTraceKeys"
+      :annotate-expanded-ids="expandedObserveAnnotateIds"
+      :behavior-busy="behaviorBusy"
+      :replay-busy="replayRunBusy"
+      :replay-copy-busy="replayCopyBusy"
+      :agent-trace="behaviorAgentTrace"
+      :agent-trace-highlights="behaviorAgentTraceHighlights"
+      :session-key-for-run="sessionKeyForBehaviorRun"
+      @toggle="toggleMaintainPanel('behavior')"
+      @refresh="refreshBehaviorRuns"
+      @group-touched="onBehaviorRunsGroupTouched"
+      @apply-scene="applyObserveScene"
+      @toggle-text="toggleObserveText"
+      @focus-pattern="focusPattern"
+      @toggle-advanced="toggleAdvancedDebug"
+      @toggle-trace="toggleBehaviorTraceExpanded"
+      @run-replay="runReplay"
+      @copy-replay="copyReplayPayload"
+      @toggle-annotate="toggleObserveAnnotateExpanded"
+      @toggle-label="toggleBehaviorLabel"
+      @update-outcome="changeBehaviorOutcome"
+      @toggle-disabled="toggleBehaviorDisabled"
+      @open-session="openRunInSession"
+    />
+    <AiHistoryMaintainKernelPanel
+      :expanded="isMaintainPanelExpanded('kernel')"
+      :status-err="kernelStatusErr"
+      :traces-err="kernelTracesErr"
+      :status-overview="kernelStatusOverview"
+      :status="kernelStatus"
+      :status-busy="kernelStatusBusy"
+      :memory-policy-line="kernelMemoryPolicyLine(kernelStatus)"
+      :traces="kernelTraces"
+      :traces-busy="kernelTracesBusy"
+      :expanded-trace-keys="expandedKernelTraceKeys"
+      :trace-key="kernelTraceKey"
+      :trace-summary="kernelTraceSummary"
+      :opportunity-class="kernelTraceOpportunityClass"
+      :opportunity-label="kernelTraceOpportunityLabel"
+      @toggle="toggleMaintainPanel('kernel')"
+      @toggle-trace="toggleKernelTraceExpanded"
+    />
     </AiHistoryMaintainWorkspace>
 
     <AiHistoryMemoryWorkspace
