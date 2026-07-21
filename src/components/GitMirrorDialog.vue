@@ -3,6 +3,8 @@ import { computed, ref, watch } from "vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import {
   fetchGitMirrorInfo,
   postGitMirrorApplyBot,
@@ -400,47 +402,52 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
     </div>
     <template v-else-if="info">
       <section class="git-mirror-dialog__section">
-        <label
-          class="git-mirror-dialog__label"
-          for="git-mirror-preferred"
-        >
-          全局首选
-        </label>
-        <select
-          id="git-mirror-preferred"
-          v-model="preferredId"
-          class="git-mirror-dialog__select"
-        >
-          <option
-            v-for="opt in info.available_mirrors"
-            :key="opt.id"
-            :value="opt.id"
+        <div class="git-mirror-dialog__field">
+          <label
+            class="git-mirror-dialog__label"
+            for="git-mirror-preferred"
           >
-            {{ opt.label }}
-          </option>
-          <option
-            v-if="!info.available_mirrors.some((row: GitMirrorOption) => row.id === 'custom')"
-            value="custom"
+            全局首选
+          </label>
+          <UiSelect
+            id="git-mirror-preferred"
+            v-model="preferredId"
+            class="git-mirror-dialog__select"
           >
-            自定义代理前缀
-          </option>
-        </select>
-        <label
+            <option
+              v-for="opt in info.available_mirrors"
+              :key="opt.id"
+              :value="opt.id"
+            >
+              {{ opt.label }}
+            </option>
+            <option
+              v-if="!info.available_mirrors.some((row: GitMirrorOption) => row.id === 'custom')"
+              value="custom"
+            >
+              自定义代理前缀
+            </option>
+          </UiSelect>
+        </div>
+        <div
           v-if="showCustomPrefix"
-          class="git-mirror-dialog__label"
-          for="git-mirror-custom-prefix"
+          class="git-mirror-dialog__field"
         >
-          自定义 https 前缀
-        </label>
-        <input
-          v-if="showCustomPrefix"
-          id="git-mirror-custom-prefix"
-          v-model="customPrefix"
-          type="url"
-          class="git-mirror-dialog__input"
-          placeholder="https://ghproxy.example"
-          autocomplete="off"
-        >
+          <label
+            class="git-mirror-dialog__label"
+            for="git-mirror-custom-prefix"
+          >
+            自定义 https 前缀
+          </label>
+          <UiInput
+            id="git-mirror-custom-prefix"
+            v-model="customPrefix"
+            type="url"
+            class="git-mirror-dialog__input"
+            placeholder="https://ghproxy.example"
+            autocomplete="off"
+          />
+        </div>
 
         <div class="git-mirror-dialog__scopes">
           <div class="git-mirror-dialog__scope">
@@ -448,7 +455,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
               class="git-mirror-dialog__label"
               for="git-mirror-scope-bot"
             >Bot 更新</label>
-            <select
+            <UiSelect
               id="git-mirror-scope-bot"
               v-model="scopeBot"
               class="git-mirror-dialog__select"
@@ -461,14 +468,14 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
               >
                 {{ opt.label }}
               </option>
-            </select>
+            </UiSelect>
           </div>
           <div class="git-mirror-dialog__scope">
             <label
               class="git-mirror-dialog__label"
               for="git-mirror-scope-webui"
             >WebUI 下载</label>
-            <select
+            <UiSelect
               id="git-mirror-scope-webui"
               v-model="scopeWebui"
               class="git-mirror-dialog__select"
@@ -481,14 +488,14 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
               >
                 {{ opt.label }}
               </option>
-            </select>
+            </UiSelect>
           </div>
           <div class="git-mirror-dialog__scope">
             <label
               class="git-mirror-dialog__label"
               for="git-mirror-scope-community"
             >社区插件</label>
-            <select
+            <UiSelect
               id="git-mirror-scope-community"
               v-model="scopeCommunity"
               class="git-mirror-dialog__select"
@@ -501,19 +508,19 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
               >
                 {{ opt.label }}
               </option>
-            </select>
+            </UiSelect>
           </div>
         </div>
 
-        <div class="git-mirror-dialog__coverage muted">
-          <p class="git-mirror-dialog__coverage-title">作用范围</p>
+        <details class="git-mirror-dialog__coverage muted">
+          <summary class="git-mirror-dialog__coverage-title">作用范围说明</summary>
           <ul class="git-mirror-dialog__coverage-list">
             <li><strong>Bot 更新</strong>：Bot git 拉取 / 更新页；<code>packages/</code> 内核插件随 Bot</li>
             <li><strong>WebUI 下载</strong>：控制台 dist / Release 包下载（无 git remote，仅 scope）</li>
             <li><strong>官方商店</strong>：<code>pallas-plugin-*</code> 独立仓库；pip 装写入偏好，git 装可改写 origin</li>
             <li><strong>社区插件</strong>：<code>local/plugins/</code> 下从 Git 安装的插件（可改写 origin）</li>
           </ul>
-        </div>
+        </details>
 
         <div class="git-mirror-dialog__actions">
           <UiButton
@@ -532,16 +539,17 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
           >
             测试连通
           </UiButton>
+          <div class="git-mirror-dialog__actions-spacer" />
           <UiButton
             v-if="!confirmApplyAllOpen"
-            variant="outline"
+            variant="ghost"
             size="sm"
             @click="confirmApplyAllOpen = true"
           >
             应用到全部
           </UiButton>
           <UiButton
-            variant="outline"
+            variant="ghost"
             size="sm"
             :busy="applyBusyKey === 'community-batch'"
             @click="applyCommunityBatch"
@@ -942,7 +950,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
         class="git-mirror-dialog__label"
         for="git-mirror-switch-select"
       >选择镜像源</label>
-      <select
+      <UiSelect
         id="git-mirror-switch-select"
         v-model="switchMirrorId"
         class="git-mirror-dialog__select"
@@ -954,7 +962,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
         >
           {{ opt.label }}
         </option>
-      </select>
+      </UiSelect>
       <div class="git-mirror-dialog__confirm-actions">
         <UiButton
           variant="ghost"
@@ -981,7 +989,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 .git-mirror-dialog__bd {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
 .git-mirror-dialog__state {
@@ -1000,7 +1008,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 .git-mirror-dialog__section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .git-mirror-dialog__section-head {
@@ -1012,17 +1020,28 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 
 .git-mirror-dialog__section-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 .git-mirror-dialog__section-meta {
   font-size: 12px;
 }
 
+.git-mirror-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
 .git-mirror-dialog__label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
 .git-mirror-dialog__select,
@@ -1030,18 +1049,25 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--console-border, rgba(255, 255, 255, 0.12));
-  background: var(--console-surface-2, rgba(255, 255, 255, 0.04));
-  color: inherit;
-  font: inherit;
+}
+
+.git-mirror-dialog__select :deep(.ui-select),
+.git-mirror-dialog__select.ui-select,
+.git-mirror-dialog__input :deep(.ui-input),
+.git-mirror-dialog__input.ui-input {
+  border-radius: var(--radius-control, 8px);
+  min-height: 40px;
+  box-shadow: none;
 }
 
 .git-mirror-dialog__scopes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-control, var(--control-bg)) 55%, transparent);
 }
 
 .git-mirror-dialog__scope {
@@ -1054,12 +1080,24 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 .git-mirror-dialog__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: 2px;
+}
+
+.git-mirror-dialog__actions-spacer {
+  flex: 1 1 8px;
+  min-width: 8px;
 }
 
 .git-mirror-dialog__table-wrap {
   overflow-x: auto;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.git-mirror-dialog__table {
+  margin: 0;
 }
 
 .git-mirror-dialog__table th,
@@ -1068,7 +1106,7 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 }
 
 .git-mirror-dialog__plugin-id {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
 }
 
@@ -1091,9 +1129,9 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 
 .git-mirror-dialog__empty {
   margin: 0;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px dashed var(--console-border, rgba(255, 255, 255, 0.12));
+  padding: 12px 14px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px dashed color-mix(in srgb, var(--border) 90%, transparent);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -1107,34 +1145,53 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 }
 
 .git-mirror-dialog__card {
-  border: 1px solid var(--console-border, rgba(255, 255, 255, 0.12));
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-control, 8px);
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  background: color-mix(in srgb, var(--surface-control, var(--control-bg)) 40%, transparent);
 }
 
 .git-mirror-dialog__coverage {
-  margin-top: 4px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--console-border, rgba(255, 255, 255, 0.12));
-  background: var(--console-surface-2, rgba(255, 255, 255, 0.04));
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: transparent;
   font-size: 12px;
   line-height: 1.55;
 }
 
 .git-mirror-dialog__coverage-title {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: inherit;
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.git-mirror-dialog__coverage-title::-webkit-details-marker {
+  display: none;
+}
+
+.git-mirror-dialog__coverage-title::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s var(--ease, ease);
+}
+
+.git-mirror-dialog__coverage[open] .git-mirror-dialog__coverage-title::before {
+  transform: rotate(90deg);
 }
 
 .git-mirror-dialog__coverage-list {
   margin: 0;
-  padding-left: 1.1em;
+  padding: 0 12px 12px 1.6em;
 }
 
 .git-mirror-dialog__coverage-list code {
@@ -1174,11 +1231,11 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 }
 
 .git-mirror-dialog__confirm {
-  margin-top: 4px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--console-border, rgba(255, 255, 255, 0.12));
-  background: var(--console-surface-2, rgba(255, 255, 255, 0.04));
+  margin-top: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1200,11 +1257,16 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
 @media (max-width: 560px) {
   .git-mirror-dialog__scopes {
     grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
   }
 
   .git-mirror-dialog__actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .git-mirror-dialog__actions-spacer {
+    display: none;
   }
 
   .git-mirror-dialog__actions :deep(.ui-btn) {
@@ -1224,7 +1286,6 @@ function rowScopeHint(row: GitMirrorTargetRow): string {
     display: none;
   }
 
-  .git-mirror-dialog__cards--targets,
   .git-mirror-dialog__cards--targets,
   .git-mirror-dialog__cards--official,
   .git-mirror-dialog__cards--plugins {
