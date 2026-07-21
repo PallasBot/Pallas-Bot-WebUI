@@ -3,13 +3,16 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { protocolApiErrorMessage, protocolImportAccounts } from "@/api/protocolApi";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const router = useRouter();
+const panelNavIcon = usePanelNavIcon();
 const { err, pageReady, mountUrl } = useProtocolMount();
 
 const sourceDir = ref("");
@@ -80,22 +83,31 @@ async function submitImport() {
       >
         {{ err }}
       </div>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="导入协议账号"
+        lead="从本地账号目录批量导入；可先 dry run 预检。"
+      >
+        <template #actions>
+          <RouterLink
+            custom
+            v-slot="{ navigate }"
+            to="/protocol"
+          >
+            <UiButton
+              variant="outline"
+              @click="navigate"
+            >
+              返回实例列表
+            </UiButton>
+          </RouterLink>
+        </template>
+      </PageChrome>
       <UiCard
         tag="div"
         glass
         class="protocol-sub-page__panel"
       >
-        <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">
-            导入协议账号
-          </h2>
-          <RouterLink
-            class="ui-btn ui-btn--outline"
-            to="/protocol"
-          >
-            返回实例列表
-          </RouterLink>
-        </div>
         <div class="panel__bd protocol-form-grid">
           <label class="field field--full">
             <span class="field__label">账号文件夹根目录</span>
