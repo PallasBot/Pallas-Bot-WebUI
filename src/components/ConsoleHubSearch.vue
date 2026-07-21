@@ -15,7 +15,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="console-hub-page__search-card">
+  <div class="console-hub-page__search-wrap">
     <label class="console-hub-page__search">
       <span
         class="console-hub-page__search-ico"

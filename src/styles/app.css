@@ -10157,7 +10157,8 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__chip {
   vertical-align: middle;
 }
 
-.plugin-store-page--hub .plugin-store-page__search-card {
+.plugin-store-page--hub .plugin-store-page__search-card,
+.plugin-store-page--hub .console-hub-page__search-wrap {
   margin: 0;
   padding: 0;
   border: none;
@@ -10165,11 +10166,12 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__chip {
   box-shadow: none;
 }
 
-.plugin-store-page--hub .plugin-store-page__search-input {
+.plugin-store-page--hub .plugin-store-page__search-input,
+.plugin-store-page--hub .console-hub-page__search-input {
   min-height: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 16px);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow: var(--plugin-store-hub-shadow);
+  box-shadow: none;
 }
 
 html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__search-input {
@@ -10545,8 +10547,9 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 }
 
 .plugin-store-page--hub .plugin-store-page__empty-panel {
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: var(--plugin-store-hub-radius);
+  background: var(--plugin-store-hub-surface);
   box-shadow: var(--plugin-store-hub-shadow);
 }
 

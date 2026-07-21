@@ -34,13 +34,14 @@ import {
 } from "@/config/extensionActivationSemantics";
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
 import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import UiInput from "@/components/ui/UiInput.vue";
@@ -1257,10 +1258,7 @@ onDeactivated(() => {
       :panels="2"
     />
     <template v-else>
-      <ConsoleHubMasthead :icon="panelNavIcon">
-        <template #title>
-          插件商店
-        </template>
+      <PageChrome :icon="panelNavIcon" title="插件商店">
         <template #lead>
           <template v-if="storeSection === 'official'">
             浏览并安装 Pallas 官方插件（<span class="console-hub-chip">uv run pallas ext install</span>）。
@@ -1319,7 +1317,7 @@ onDeactivated(() => {
             />
           </div>
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <ConsoleHubSearch
         v-model="searchQuery"
@@ -1507,7 +1505,7 @@ onDeactivated(() => {
         </div>
         <div
           v-else-if="!filteredRows.length"
-          class="panel plugin-store-page__empty-panel"
+          class="plugin-store-page__empty-panel"
         >
           <div class="panel__bd plugin-store-page__empty">
             <div
@@ -1581,7 +1579,7 @@ onDeactivated(() => {
         </div>
         <div
           v-else-if="!filteredCommunityRows.length"
-          class="panel plugin-store-page__empty-panel"
+          class="plugin-store-page__empty-panel"
         >
           <div class="panel__bd plugin-store-page__empty">
             <div
@@ -1667,7 +1665,7 @@ onDeactivated(() => {
         </div>
         <div
           v-else-if="!filteredLocalRows.length"
-          class="panel plugin-store-page__empty-panel"
+          class="plugin-store-page__empty-panel"
         >
           <div class="panel__bd plugin-store-page__empty">
             <div

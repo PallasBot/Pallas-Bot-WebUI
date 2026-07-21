@@ -676,6 +676,7 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
   }
 }
 
+.console-hub-page__search-wrap,
 .console-hub-page__search-card,
 .plugin-store-page__search-card {
   margin: 0;
@@ -724,9 +725,9 @@ html[data-layout="hub"] .plugins-page__search-input .inp {
   width: 100%;
   min-height: 44px;
   padding-left: 2.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 16px);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow: var(--hub-shadow);
+  box-shadow: none;
 }
 
 html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input.inp,
