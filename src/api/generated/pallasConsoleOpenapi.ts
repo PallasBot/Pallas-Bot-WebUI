@@ -1265,7 +1265,8 @@ export interface paths {
         /** Llm Provider Models Get */
         get: operations["_llm_provider_models_get_pallas_api_common_config_llm_providers__provider_id__models_get"];
         put?: never;
-        post?: never;
+        /** Llm Provider Models Post */
+        post: operations["_llm_provider_models_post_pallas_api_common_config_llm_providers__provider_id__models_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3850,6 +3851,32 @@ export interface components {
             task_models?: {
                 [key: string]: string;
             };
+        };
+        /**
+         * _LlmProviderModelsDiscoverBody
+         * @description Bot 直连发现模型：由控制台传入草稿凭证，不经 AI Runtime。
+         */
+        _LlmProviderModelsDiscoverBody: {
+            /**
+             * Base Url
+             * @default
+             */
+            base_url: string;
+            /**
+             * Api Key
+             * @default
+             */
+            api_key: string;
+            /**
+             * Api Key Env
+             * @default
+             */
+            api_key_env: string;
+            /**
+             * Kind
+             * @default
+             */
+            kind: string;
         };
         /** _LlmProviderRowBody */
         _LlmProviderRowBody: {
@@ -7346,6 +7373,45 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_provider_models_post_pallas_api_common_config_llm_providers__provider_id__models_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderModelsDiscoverBody"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
