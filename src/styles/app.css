@@ -8067,6 +8067,7 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
 .friends-groups-page__panel.ui-card .ui-card__content,
 .database-page__panel.ui-card .ui-card__content,
+.database-backups-page__panel.ui-card .ui-card__content,
 .update-page__panel.ui-card .ui-card__content,
 .community-page__panel.ui-card .ui-card__content,
 .ai-config-section__panel.ui-card .ui-card__content,
@@ -8455,7 +8456,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     font-weight: 600;
   }
 
-  /* 备份管理：窄屏「添加到侧栏」与标题同行右上，删除按钮次行全宽 */
+  /* 备份管理：窄屏「添加到侧栏」与标题同行右上，主操作按钮次行全宽 */
   .database-backups-page .panel__hd.panel__hd--split,
   .database-backups-page .database-backups-page__list-hd.panel__hd--split {
     display: grid;
@@ -8486,7 +8487,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     align-self: center;
   }
 
-  .database-backups-page .database-backups-page__hd-actions > .database-backups-page__delete-btn {
+  .database-backups-page .database-backups-page__hd-actions > .database-backups-page__delete-btn,
+  .database-backups-page .database-backups-page__hd-actions > .ui-btn {
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
@@ -15857,9 +15859,22 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   }
 }
 
-/* ── 备份管理（GS 控制台） ── */
+/* ── 数据库总览 / 备份管理 KPI（扁平 MetricTile） ── */
+.database-page__kpi,
 .database-backups-page__kpi {
   margin-bottom: 16px;
+  flex: none;
+  width: 100%;
+}
+
+.database-page__kpi-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .database-backups-page__panel + .database-backups-page__panel {
@@ -15897,6 +15912,10 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 
 .database-backups-page__result {
   margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--hub-radius-md, var(--radius-md));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated, var(--bg-card)) 88%, transparent);
 }
 
 .database-backups-page__empty {
@@ -16023,11 +16042,6 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 }
 
 @media (max-width: 560px) {
-  .database-backups-page__kpi {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
   .database-backups-page__dir-row > .ui-btn {
     width: 100%;
   }
