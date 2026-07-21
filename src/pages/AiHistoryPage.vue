@@ -49,10 +49,7 @@ import type {
   InstancesData,
 } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
-import UiInput from "@/components/ui/UiInput.vue";
-import UiSelect from "@/components/ui/UiSelect.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
-import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryAdvancedDebugBlock from "@/components/ai-history/AiHistoryAdvancedDebugBlock.vue";
 import AiHistoryBehaviorAnnotateControls from "@/components/ai-history/AiHistoryBehaviorAnnotateControls.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
@@ -64,7 +61,9 @@ import AiHistoryMaintainPromotionPanel from "@/components/ai-history/AiHistoryMa
 import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
 import AiHistoryMemoryWorkspace from "@/components/ai-history/AiHistoryMemoryWorkspace.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
+import AiHistoryPatternEditorDialog from "@/components/ai-history/AiHistoryPatternEditorDialog.vue";
 import AiHistoryPersonaShapingBlock from "@/components/ai-history/AiHistoryPersonaShapingBlock.vue";
+import AiHistoryReplayResultDialog from "@/components/ai-history/AiHistoryReplayResultDialog.vue";
 import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
@@ -76,7 +75,6 @@ import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import {
-  BEHAVIOR_ACTION_OPTIONS,
   BEHAVIOR_OUTCOME_OPTIONS,
   BEHAVIOR_SCENE_OPTIONS,
   labelAction,
@@ -1167,21 +1165,6 @@ function onBehaviorRunsGroupTouched(value: string): void {
 function buildSessionKey(botId?: number | null, groupId?: number | null, userId?: number | null): string {
   if (!botId || userId == null) return "";
   return `${botId}:${groupId ?? 0}:${userId}`;
-}
-
-function parseLineList(raw: string): string[] {
-  return raw
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function patternEditorTriggerText(): string {
-  return (patternEditor.value.trigger_features ?? []).join("\n");
-}
-
-function patternEditorExampleText(): string {
-  return (patternEditor.value.reference_examples ?? []).join("\n");
 }
 
 function resetPatternEditor(): void {
@@ -2498,180 +2481,30 @@ onMounted(() => {
       @delete="deletePattern"
     />
 
-    <UiDialog
-      :open="patternEditorOpen"
-      :title="patternEditorMode === 'edit' ? '编辑规则' : '新建规则'"
-      :subtitle="'触发特征与参考示例按行输入'"
+    <AiHistoryPatternEditorDialog
+      v-model:open="patternEditorOpen"
+      v-model:pattern="patternEditor"
+      :mode="patternEditorMode"
       :busy="patternSaveBusy"
-      panel-class="ai-history-page__pattern-dialog"
       @close="closePatternEditor"
-    >
-      <div class="ai-history-page__pattern-form">
-        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>规则 ID</span>
-          <UiInput v-model="patternEditor.pattern_id" placeholder="例如 group-threading-001" />
-        </label>
-        <label class="ai-history-page__filter">
-          <span>场景</span>
-          <UiSelect v-model="patternEditor.scene">
-            <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
-              {{ item.label }}
-            </option>
-          </UiSelect>
-        </label>
-        <label class="ai-history-page__filter">
-          <span>动作</span>
-          <UiSelect v-model="patternEditor.action">
-            <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </option>
-          </UiSelect>
-        </label>
-        <label class="ai-history-page__filter">
-          <span>限定群号</span>
-          <UiInput
-            :model-value="patternEditor.scope_group_id == null ? '' : String(patternEditor.scope_group_id)"
-            inputmode="numeric"
-            placeholder="留空表示全局"
-            @update:model-value="patternEditor.scope_group_id = parseFilter($event)"
-          />
-        </label>
-        <label class="ai-history-page__filter">
-          <span>自动分</span>
-          <UiInput
-            :model-value="String(patternEditor.success_score ?? 0)"
-            inputmode="numeric"
-            @update:model-value="patternEditor.success_score = Number($event || 0)"
-          />
-        </label>
-        <label class="ai-history-page__filter">
-          <span>人工分</span>
-          <UiInput
-            :model-value="String(patternEditor.manual_score ?? 0)"
-            inputmode="numeric"
-            @update:model-value="patternEditor.manual_score = Number($event || 0)"
-          />
-        </label>
-        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>人设倾向</span>
-          <UiInput v-model="patternEditor.persona_affinity" placeholder="可留空" />
-        </label>
-        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>触发特征</span>
-          <textarea
-            class="inp ai-history-page__pattern-textarea"
-            :value="patternEditorTriggerText()"
-            placeholder="每行一个特征"
-            @input="patternEditor.trigger_features = parseLineList(($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
-        </label>
-        <label class="ai-history-page__filter ai-history-page__pattern-form-span">
-          <span>参考示例</span>
-          <textarea
-            class="inp ai-history-page__pattern-textarea"
-            :value="patternEditorExampleText()"
-            placeholder="每行一个示例"
-            @input="patternEditor.reference_examples = parseLineList(($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
-        </label>
-        <label class="ai-history-page__behavior-check">
-          <input v-model="patternEditor.disabled" type="checkbox">
-          <span>保存为已禁用</span>
-        </label>
-      </div>
-      <template #footer>
-        <div class="row-actions ai-history-page__pattern-actions">
-          <UiButton size="sm" :busy="patternSaveBusy" @click="savePattern">
-            {{ patternEditorMode === "edit" ? "保存修改" : "创建规则" }}
-          </UiButton>
-          <UiButton size="sm" variant="ghost" :disabled="patternSaveBusy" @click="closePatternEditor">
-            取消
-          </UiButton>
-        </div>
-      </template>
-    </UiDialog>
-    <UiDialog
-      :open="replayRunDialogOpen"
+      @save="savePattern"
+    />
+    <AiHistoryReplayResultDialog
+      v-model:open="replayRunDialogOpen"
+      v-model:raw-expanded="replayRunRawExpanded"
       :title="replayRunDialogTitle"
       :subtitle="replayRunDialogSubtitle"
-      panel-class="ai-history-page__pattern-dialog"
+      :error="replayRunError"
+      :result="replayRunResult"
+      :summary="replayRunSummary"
+      :persona-shaping="replayPersonaShaping"
+      :reply-text="replayRunReply"
+      :assistant-preview="replayRunAssistantPreview"
+      :trace="replayRunTrace"
+      :trace-highlights="behaviorAgentTraceHighlights(replayRunTrace)"
       @close="closeReplayRunDialog"
-    >
-      <div class="ai-history-page__replay-dialog">
-        <p v-if="replayRunError" class="ai-history-page__replay-error">{{ replayRunError }}</p>
-        <template v-else-if="replayRunResult">
-          <p class="muted ai-history-page__replay-hint">用于快速核对重放回复与 Agent trace，不会改写现有历史样本。</p>
-          <div v-if="replayRunSummary.length" class="ai-stat-grid ai-history-page__feedback-summary">
-            <div
-              v-for="item in replayRunSummary"
-              :key="item.label"
-              class="ai-stat ai-history-page__summary-stat"
-            >
-              <span class="ai-stat__label">{{ item.label }}</span>
-              <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-            </div>
-          </div>
-          <div v-if="replayPersonaShaping?.lines?.length" class="ai-history-page__replay-block">
-            <div class="ai-head ai-history-page__replay-block-head">
-              <h4 class="ai-head__title">牛格塑形摘要</h4>
-            </div>
-            <ul class="ai-history-page__persona-shaping-lines">
-              <li v-for="(line, lineIndex) in replayPersonaShaping.lines" :key="`replay-shaping-${lineIndex}`">
-                {{ line }}
-              </li>
-            </ul>
-            <p v-if="replayPersonaShaping.dynamic_expression" class="ai-history-page__persona-shaping-extra">
-              {{ replayPersonaShaping.dynamic_expression }}
-            </p>
-            <p class="muted ai-history-page__maintain-hint ai-history-page__persona-shaping-note">
-              {{ replayPersonaShaping.compare_note }}
-            </p>
-          </div>
-          <div v-if="replayRunReply || replayRunAssistantPreview" class="ai-history-page__replay-block">
-            <div class="ai-head ai-history-page__replay-block-head">
-              <h4 class="ai-head__title">重放回复</h4>
-            </div>
-            <pre class="ai-history-page__kernel-trace-json ai-history-page__kernel-trace-json--compact">{{ replayRunReply || replayRunAssistantPreview }}</pre>
-          </div>
-          <div v-if="replayRunTrace" class="ai-history-page__replay-block">
-            <div class="ai-head ai-history-page__replay-block-head">
-              <h4 class="ai-head__title">决策轨迹摘要</h4>
-            </div>
-            <div v-if="behaviorAgentTraceHighlights(replayRunTrace).length" class="ai-history-page__trace-highlights">
-              <span
-                v-for="item in behaviorAgentTraceHighlights(replayRunTrace)"
-                :key="`replay-${item.label}`"
-              >
-                {{ item.label }}：{{ item.value }}
-              </span>
-            </div>
-            <p v-else class="muted">本次重放未返回可展示的轨迹摘要。</p>
-          </div>
-          <button
-            type="button"
-            class="ai-history-page__turn-toggle"
-            @click="replayRunRawExpanded = !replayRunRawExpanded"
-          >
-            {{ replayRunRawExpanded ? "收起完整结果" : "查看完整结果（高级）" }}
-          </button>
-          <pre
-            v-if="replayRunRawExpanded"
-            class="ai-history-page__kernel-trace-json"
-          >{{ JSON.stringify(replayRunResult, null, 2) }}</pre>
-        </template>
-        <p v-else class="muted">暂无重放结果。</p>
-      </div>
-      <template #footer>
-        <div class="row-actions ai-history-page__pattern-actions">
-          <UiButton size="sm" variant="outline" :disabled="!replayRunResult" @click="copyReplayRunResult">
-            复制完整结果
-          </UiButton>
-          <UiButton size="sm" variant="ghost" @click="closeReplayRunDialog">
-            关闭
-          </UiButton>
-        </div>
-      </template>
-    </UiDialog>
+      @copy="copyReplayRunResult"
+    />
   </div>
 </template>
 
