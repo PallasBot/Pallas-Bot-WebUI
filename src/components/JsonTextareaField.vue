@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useId, watch } from "vue";
+import UiButton from "@/components/ui/UiButton.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -107,14 +108,15 @@ onUnmounted(() => {
       v-if="showExpandButton"
       class="json-textarea-field__toolbar"
     >
-      <button
-        type="button"
-        class="btn json-textarea-field__expand"
+      <UiButton
+        variant="outline"
+        size="sm"
+        class="json-textarea-field__expand"
         :aria-label="`${expandLabel}：${title}`"
         @click="openModal"
       >
         {{ expandLabel }}
-      </button>
+      </UiButton>
     </div>
     <Teleport to="body">
       <div
@@ -165,20 +167,18 @@ onUnmounted(() => {
                 @keydown.escape.prevent="cancel"
               />
               <div class="json-textarea-field__actions">
-                <button
-                  type="button"
-                  class="btn btn--primary"
+                <UiButton
+                  variant="primary"
                   @click="apply"
                 >
                   保存
-                </button>
-                <button
-                  type="button"
-                  class="btn"
+                </UiButton>
+                <UiButton
+                  variant="outline"
                   @click="cancel"
                 >
                   取消
-                </button>
+                </UiButton>
               </div>
             </div>
           </div>
@@ -201,11 +201,6 @@ onUnmounted(() => {
 
 .json-textarea-field__expand {
   min-height: 28px;
-  padding: 0 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  border-color: color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.12)) 84%, transparent);
-  background: color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.02)) 98%, transparent);
 }
 
 .json-textarea-field__peek {

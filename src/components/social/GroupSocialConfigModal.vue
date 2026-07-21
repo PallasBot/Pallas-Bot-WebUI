@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/consoleApi";
+import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
@@ -356,13 +357,13 @@ watch(
                   style="max-width: 200px; min-width: 0; flex: 1 1 140px"
                   @keydown.enter.prevent="addBlockedUserFromInput"
                 >
-                <button
-                  type="button"
-                  class="btn"
+                <UiButton
+                  variant="outline"
+                  size="sm"
                   @click="addBlockedUserFromInput"
                 >
                   添加
-                </button>
+                </UiButton>
               </div>
               <p
                 v-if="blockedUserAddHint"
@@ -541,22 +542,20 @@ watch(
               >{{ JSON.stringify(groupCfg.sing_progress, null, 2) }}</pre>
             </div>
             <div class="row-actions">
-              <button
-                type="button"
-                class="btn btn--primary"
-                :disabled="saveBusy"
+              <UiButton
+                variant="primary"
+                :busy="saveBusy"
                 @click="save"
               >
-                {{ saveBusy ? "保存中…" : "保存" }}
-              </button>
-              <button
-                type="button"
-                class="btn"
+                保存
+              </UiButton>
+              <UiButton
+                variant="outline"
                 :disabled="saveBusy"
                 @click="close"
               >
                 取消
-              </button>
+              </UiButton>
             </div>
           </div>
   </UiDialog>
