@@ -30,9 +30,45 @@ export type { AccentPreset };
 
 export type DataViewMode = "table" | "cards";
 
+/** 控件圆角滑块范围（px）；胶囊仍用 --radius-pill */
+export const CONTROL_RADIUS_MIN = 4;
+export const CONTROL_RADIUS_MAX = 20;
+export const RADIUS_PRESET_PX: Record<RadiusMode, number> = {
+  tight: 6,
+  default: 10,
+  round: 16,
+};
+
+export function clampControlRadius(px: number): number {
+  if (!Number.isFinite(px)) return RADIUS_PRESET_PX.default;
+  return Math.min(CONTROL_RADIUS_MAX, Math.max(CONTROL_RADIUS_MIN, Math.round(px)));
+}
+
+export function controlRadiusFromMode(mode: RadiusMode): number {
+  return RADIUS_PRESET_PX[mode] ?? RADIUS_PRESET_PX.default;
+}
+
+/** 滑块值映射到最近预设（供 data-radius / 分段高亮） */
+export function radiusModeFromControlPx(px: number): RadiusMode {
+  const r = clampControlRadius(px);
+  let best: RadiusMode = "default";
+  let bestDist = Infinity;
+  for (const mode of ["tight", "default", "round"] as const) {
+    const d = Math.abs(RADIUS_PRESET_PX[mode] - r);
+    if (d < bestDist) {
+      bestDist = d;
+      best = mode;
+    }
+  }
+  return best;
+}
+
 export interface ConsolePrefsState {
   theme: ThemeMode;
+  /** 圆角预设档（与 controlRadius 联动；分段快捷） */
   radius: RadiusMode;
+  /** 控件圆角像素（4–20），驱动 --radius-control 等 */
+  controlRadius: number;
   /** 面板/卡片视觉：纯色或毛玻璃 */
   surfaceStyle: SurfaceStyle;
   /** 毛玻璃 blur 像素（8–40） */
@@ -70,6 +106,7 @@ export interface ConsolePrefsState {
 const defaults: ConsolePrefsState = {
   theme: "system",
   radius: "round",
+  controlRadius: RADIUS_PRESET_PX.round,
   surfaceStyle: "glass",
   glassBlur: 12,
   cardGlassOpacity: 0.25,
@@ -199,6 +236,13 @@ function load(): ConsolePrefsState {
     if (merged.radius !== "tight" && merged.radius !== "default" && merged.radius !== "round") {
       merged.radius = defaults.radius;
     }
+    const radiusPxRaw = (parsed as { controlRadius?: unknown }).controlRadius;
+    if (radiusPxRaw === undefined || radiusPxRaw === null) {
+      merged.controlRadius = controlRadiusFromMode(merged.radius);
+    } else {
+      merged.controlRadius = clampControlRadius(Number(radiusPxRaw));
+      merged.radius = radiusModeFromControlPx(merged.controlRadius);
+    }
     if (merged.surfaceStyle !== "solid" && merged.surfaceStyle !== "glass") {
       merged.surfaceStyle = defaults.surfaceStyle;
     }
@@ -238,10 +282,25 @@ function systemPrefersDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
+  const r = clampControlRadius(controlPx);
+  const sm = Math.max(2, r - 2);
+  const md = r + 2;
+  const lg = r + 4;
+  const shell = r + 2;
+  el.style.setProperty("--radius-control", `${r}px`);
+  el.style.setProperty("--radius-sm", `${sm}px`);
+  el.style.setProperty("--radius-md", `${md}px`);
+  el.style.setProperty("--radius-lg", `${lg}px`);
+  el.style.setProperty("--radius-shell", `${shell}px`);
+  el.style.setProperty("--radius-textarea", `${sm}px`);
+}
+
 export function applyConsolePrefsToDocument(): void {
   if (typeof document === "undefined") return;
   const el = document.documentElement;
   applyConsoleDocumentDataset(el, buildConsoleDocumentDataset(consolePrefs, systemPrefersDark()));
+  applyRadiusCssVars(el, consolePrefs.controlRadius);
   const blur = consolePrefs.glassBlur;
   const saturate = 1.08 + ((blur - 8) / 32) * 0.18;
   const glassPct = Math.round(consolePrefs.cardGlassOpacity * 100);
@@ -276,6 +335,14 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
       }
     }
     next.sidebarNavSectionByToken = cleaned;
+  }
+  if (next.controlRadius !== undefined && next.radius === undefined) {
+    next.controlRadius = clampControlRadius(next.controlRadius);
+    next.radius = radiusModeFromControlPx(next.controlRadius);
+  } else if (next.radius !== undefined && next.controlRadius === undefined) {
+    next.controlRadius = controlRadiusFromMode(next.radius);
+  } else if (next.controlRadius !== undefined) {
+    next.controlRadius = clampControlRadius(next.controlRadius);
   }
   Object.assign(consolePrefs, next);
   persistConsolePrefs();
