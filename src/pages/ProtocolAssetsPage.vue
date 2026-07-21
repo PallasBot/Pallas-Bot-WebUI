@@ -239,7 +239,7 @@ void onMountedLoad();
           </h2>
           <div class="inst-db-panel__hd-side">
             <RouterLink
-              class="btn secondary"
+              class="ui-btn ui-btn--outline"
               to="/protocol"
             >
               返回实例列表

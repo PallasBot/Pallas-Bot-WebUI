@@ -4163,6 +4163,20 @@ html[data-theme="light"] .console-view-toggle button.is-on {
   transition: opacity 0.12s ease, color 0.12s ease;
 }
 
+/* 表格行收藏星：与 UiButton ghost 共用，实例 / 协议页一致 */
+.inst-fav-star.ui-btn {
+  padding: 6px 10px;
+  font-size: 16px;
+  line-height: 1;
+  min-width: 0;
+  opacity: 0.38;
+}
+
+.inst-fav-star.ui-btn[aria-pressed="true"] {
+  opacity: 1;
+  color: #fbbf24;
+}
+
 .data-card-fav-star:hover,
 .data-card-fav-star:focus-visible {
   opacity: 0.55;

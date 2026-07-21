@@ -90,7 +90,7 @@ async function submitImport() {
             导入协议账号
           </h2>
           <RouterLink
-            class="btn secondary"
+            class="ui-btn ui-btn--outline"
             to="/protocol"
           >
             返回实例列表

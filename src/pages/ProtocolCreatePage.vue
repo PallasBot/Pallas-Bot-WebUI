@@ -83,7 +83,7 @@ async function submitCreate() {
           </h2>
           <div class="row-actions">
             <RouterLink
-              class="btn secondary"
+              class="ui-btn ui-btn--outline"
               to="/protocol"
             >
               返回实例列表

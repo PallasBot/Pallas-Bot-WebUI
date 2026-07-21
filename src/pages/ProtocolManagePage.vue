@@ -930,7 +930,7 @@ onUnmounted(() => {
                     <button
                       v-if="protocolAccountNumber(a) != null"
                       type="button"
-                      class="btn inst-fav-star"
+                      class="ui-btn ui-btn--ghost ui-btn--sm inst-fav-star"
                       :aria-pressed="botFavoriteAccounts.has(protocolAccountNumber(a)!)"
                       :title="
                         botFavoriteAccounts.has(protocolAccountNumber(a)!)

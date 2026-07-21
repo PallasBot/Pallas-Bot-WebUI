@@ -684,7 +684,7 @@ onUnmounted(() => {
                       <ConsoleTableEdit @click="startEdit(c)" />
                       <button
                         type="button"
-                        class="btn inst-fav-star"
+                        class="ui-btn ui-btn--ghost ui-btn--sm inst-fav-star"
                         :aria-pressed="botFavoriteAccounts.has(c.account)"
                         :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
                         @click="toggleFavoriteBot(c.account)"
@@ -1105,14 +1105,14 @@ onUnmounted(() => {
                   style="margin: 8px 0 0; font-size: 12px"
                 >
                   当前：手改覆盖
-                  <button
-                    type="button"
-                    class="btn btn--ghost"
-                    style="margin-left: 8px; padding: 2px 8px; font-size: 12px"
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    style="margin-left: 8px"
                     @click="clearSeedOverride"
                   >
                     恢复自动
-                  </button>
+                  </UiButton>
                 </p>
                 <p
                   v-else
@@ -1204,16 +1204,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-.inst-fav-star {
-  padding: 6px 10px;
-  font-size: 16px;
-  line-height: 1;
-  opacity: 0.38;
-}
-.inst-fav-star[aria-pressed="true"] {
-  opacity: 1;
-  color: #fbbf24;
 }
 
 .inst-db-admins-cell {

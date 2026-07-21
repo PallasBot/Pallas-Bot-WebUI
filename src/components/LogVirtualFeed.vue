@@ -251,7 +251,7 @@ defineExpose({ scrollToBottom });
         >[{{ expandedRow.scope }}]</span>
         <button
           type="button"
-          class="btn btn--ghost log-virtual-feed__detail-close"
+          class="ui-btn ui-btn--ghost ui-btn--sm log-virtual-feed__detail-close"
           @click="expandedKey = null; expandedSnapshot = null"
         >
           收起
