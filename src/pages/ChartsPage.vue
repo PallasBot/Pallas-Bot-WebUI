@@ -15,8 +15,8 @@ import type {
 } from "@/api/pallasTypes";
 import ChartsDailyBarChart from "@/components/ChartsDailyBarChart.vue";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatTrendCard from "@/components/StatTrendCard.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -343,16 +343,12 @@ onActivated(() => {
     />
 
     <template v-else>
-      <ConsoleHubMasthead
+      <PageChrome
         :icon="panelNavIcon"
-        class="charts-page__masthead"
+        chrome-class="charts-page__masthead"
+        title="数据看板"
+        lead="流量编排、月度命令、API、LLM 与详细图表；悬停各图可查看明细。"
       >
-        <template #title>
-          数据看板
-        </template>
-        <template #lead>
-          流量编排、月度命令、API、LLM 与详细图表；悬停各图可查看明细。
-        </template>
         <template #actions>
           <div class="charts-page__masthead-tools">
             <label
@@ -382,7 +378,7 @@ onActivated(() => {
             />
           </div>
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <IngressDispatchPanel class="charts-page__ingress" />
 

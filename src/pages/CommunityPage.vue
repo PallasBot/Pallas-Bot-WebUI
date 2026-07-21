@@ -20,9 +20,9 @@ import type {
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import CorpusWordCloud from "@/components/CorpusWordCloud.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import StatCard from "@/components/StatCard.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
@@ -432,16 +432,12 @@ onMounted(() => {
       :panels="3"
     />
     <template v-else>
-      <ConsoleHubMasthead
+      <PageChrome
         :icon="panelNavIcon"
-        class="community-page__masthead"
+        chrome-class="community-page__masthead"
+        title="统计与语料"
+        lead="社区中心公开统计与本部署语料、多机协同状态；数据只读。"
       >
-        <template #title>
-          统计与语料
-        </template>
-        <template #lead>
-          社区中心公开统计与本部署语料、多机协同状态；数据只读。
-        </template>
         <template #extra>
           <p class="community-page__masthead-links muted">
             <a
@@ -467,7 +463,7 @@ onMounted(() => {
             @click="refresh"
           />
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <p
         v-if="err"
