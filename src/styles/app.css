@@ -15288,10 +15288,10 @@ html[data-theme="light"] .corpus-hot__pill-score {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 10px 14px;
-  padding: 14px 18px;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-card) 92%, var(--bg-elev));
+  padding: 4px 0 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .charts-page__filter-group {
