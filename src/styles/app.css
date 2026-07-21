@@ -2702,7 +2702,8 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   flex-shrink: 0;
 }
 
-.inst-db-search.inp {
+.inst-db-search.inp,
+.inst-db-search.ui-input-wrap {
   width: min(220px, 42vw);
   min-width: 120px;
   flex: 0 1 auto;
@@ -8878,7 +8879,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     justify-content: flex-start;
   }
 
-  .panel__hd.inst-db-panel__hd .inst-db-search.inp {
+  .panel__hd.inst-db-panel__hd .inst-db-search.inp,
+  .panel__hd.inst-db-panel__hd .inst-db-search.ui-input-wrap {
     width: min(200px, 100%);
     min-width: 100px;
     flex: 1 1 120px;

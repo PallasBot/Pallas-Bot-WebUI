@@ -244,6 +244,7 @@ html[data-layout="hub"] .textarea:focus {
 
 html[data-layout="hub"] input[type="search"].inp,
 html[data-layout="hub"] .inst-db-search.inp,
+html[data-layout="hub"] .inst-db-search.ui-input-wrap .inp,
 html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp {
   min-height: 40px;
   border-radius: 999px;
