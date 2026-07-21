@@ -7,6 +7,7 @@ import {
   migrateSidebarOrderDatabaseBackups,
   migrateSidebarOrderAiConfig,
   migrateSidebarOrderAiHubSingle,
+  migrateSidebarOrderLogErrors,
   migrateSidebarOrderPluginStore,
   migrateSidebarOrderRemoveCommonConfig,
   migrateSidebarOrderUpdateToEnd,
@@ -81,7 +82,7 @@ const defaults: ConsolePrefsState = {
   tablePageSize: 12,
   sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
   sidebarNavSectionByToken: {},
-  sidebarNavLayoutVersion: 13,
+  sidebarNavLayoutVersion: 15,
   friendsPageFriendsListOpen: true,
   friendsPageGroupsListOpen: true,
   databasePageGroupConfigsOpen: true,
@@ -160,6 +161,10 @@ function load(): ConsolePrefsState {
     if (layoutVerOut < 14) {
       nextOrder = migrateSidebarOrderRemoveCommonConfig(nextOrder);
       layoutVerOut = 14;
+    }
+    if (layoutVerOut < 15) {
+      nextOrder = migrateSidebarOrderLogErrors(nextOrder);
+      layoutVerOut = 15;
     }
     const layoutMigrated = layoutVerOut !== layoutVer;
     merged.sidebarNavLayoutVersion = layoutVerOut;
@@ -281,7 +286,7 @@ export function setConsolePrefs(patch: Partial<ConsolePrefsState>): void {
 export function resetSidebarNavToDefaults(): void {
   setConsolePrefs({
     sidebarNavOrder: [...DEFAULT_SIDEBAR_NAV_ORDER],
-    sidebarNavLayoutVersion: 9,
+    sidebarNavLayoutVersion: 15,
   });
 }
 export function initConsolePrefs(): void {

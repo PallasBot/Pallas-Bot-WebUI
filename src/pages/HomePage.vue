@@ -43,10 +43,12 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomeLazyReveal from "@/components/HomeLazyReveal.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
-import UiButton from "@/components/ui/UiButton.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { qqAvatarUrl } from "@/utils/botDisplay";
+import { mergeProtocolDisplayAccounts } from "@/utils/protocolDisplayAccounts";
+import { protocolBackendDisplayName } from "@/utils/protocolUi";
+import { pluginCountsAsLoadedInCatalog } from "@/utils/pluginLoadRoleLabel";
 import {
   cachePutFriendGroupLists,
   cachePutRequestOverview,
@@ -59,7 +61,6 @@ import {
   pallasBotVersionLabel,
 } from "@/utils/versionDisplay";
 import { patchConsoleMeta, consoleMetaBotUpdate, consoleMetaHealth, consoleMetaWebUpdate } from "@/state/consoleMeta";
-import { useBotSystemRestart } from "@/composables/useBotSystemRestart";
 import {
   isHomeActionDismissed,
   loadHomeActionDismissals,
@@ -103,17 +104,6 @@ function writeSavedHomeAccount(acc: number | null) {
 const err = ref("");
 const health = ref<HealthResponse | null>(null);
 const botUpdateCheck = ref<BotUpdateCheckData | null>(null);
-const {
-  restartBusy,
-  restartErr,
-  restartMsg,
-  restartProgressLabel,
-  restartInProgress,
-  restartAvailable,
-  shardedRuntime,
-  ensureRestartContext,
-  restartBot,
-} = useBotSystemRestart({ botUpdateCheck });
 const webUpdateCheck = ref<UpdateCheckData | null>(null);
 const initialHomeSnapshot = readHomeOverviewSnapshotStale();
 const system = ref<SystemData | null>(initialHomeSnapshot?.system ?? null);
@@ -224,22 +214,68 @@ function fmtBytes(n: number | null | undefined): string {
   return `${v.toFixed(decimals)} ${units[u]}`;
 }
 
-function uptimeDisplayParts(boot: number | null | undefined): { value: string; unit: string; sub?: string } | null {
+/** 系统启动以来的时长展示；boot_time 为宿主机启动时刻（unix 秒）。 */
+function uptimeDisplayParts(
+  boot: number | null | undefined,
+  nowSec: number,
+): {
+  value: string;
+  unit: string;
+  /** 相对主数字的余量，如「15 小时」 */
+  remainder?: string;
+  /** 当日余量压成 7 段的填充 0–100（每段约 3.4h） */
+  dayHourFills: number[];
+  barPct: number;
+} | null {
   if (boot == null) return null;
-  const nowSec = Date.now() / 1000;
   let s = Math.max(0, nowSec - boot);
   const d = Math.floor(s / 86400);
   s %= 86400;
   const h = Math.floor(s / 3600);
   s %= 3600;
   const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  const dayRemSec = h * 3600 + m * 60 + sec;
+  // 当日进度：24h → 7 格，每格约 86400/7 秒
+  const UPTIME_DAY_SLOTS = 7;
+  const slotSec = 86400 / UPTIME_DAY_SLOTS;
+  const dayHourFills = Array.from({ length: UPTIME_DAY_SLOTS }, (_, i) => {
+    const slotStart = i * slotSec;
+    const slotEnd = slotStart + slotSec;
+    if (dayRemSec >= slotEnd) return 100;
+    if (dayRemSec <= slotStart) return 0;
+    return Math.min(100, ((dayRemSec - slotStart) / slotSec) * 100);
+  });
   if (d > 0) {
-    return { value: String(d), unit: "天", sub: h > 0 ? `${h} 小时` : undefined };
+    return {
+      value: String(d),
+      unit: "天",
+      remainder: h > 0 ? `${h} 小时` : m > 0 ? `${m} 分` : undefined,
+      dayHourFills,
+      barPct: (dayRemSec / 86400) * 100,
+    };
   }
   if (h > 0) {
-    return { value: String(h), unit: "小时", sub: m > 0 ? `${m} 分` : undefined };
+    return {
+      value: String(h),
+      unit: "小时",
+      remainder: m > 0 ? `${m} 分` : undefined,
+      dayHourFills,
+      barPct: ((m * 60 + sec) / 3600) * 100,
+    };
   }
-  return { value: String(m), unit: "分" };
+  return {
+    value: String(m),
+    unit: "分",
+    dayHourFills,
+    barPct: Math.min(100, ((m * 60 + sec) / 3600) * 100),
+  };
+}
+
+function formatBootAt(boot: number): string {
+  const d = new Date(boot * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function osFamilyLabel(platform: string | null | undefined): string {
@@ -325,7 +361,23 @@ const diskHint = computed(() => {
   if (!d) return undefined;
   return `${fmtBytes(d.used)} / ${fmtBytes(d.total)} · 可用 ${fmtBytes(d.free)}`;
 });
-const uptimeParts = computed(() => uptimeDisplayParts(runtime.value?.boot_time ?? null));
+const uptimeNowSec = computed(() => {
+  const t = system.value?.server_time;
+  return typeof t === "number" && Number.isFinite(t) ? t : Date.now() / 1000;
+});
+const uptimeParts = computed(() =>
+  uptimeDisplayParts(runtime.value?.boot_time ?? null, uptimeNowSec.value),
+);
+const uptimeDayFills = computed(() => uptimeParts.value?.dayHourFills ?? []);
+const uptimeHint = computed(() => {
+  const boot = runtime.value?.boot_time;
+  if (boot == null) return undefined;
+  const parts: string[] = [];
+  const rem = uptimeParts.value?.remainder;
+  if (rem) parts.push(rem);
+  parts.push(`启动于 ${formatBootAt(boot)}`);
+  return parts.join(" · ");
+});
 const osFamilyDisplay = computed(() => osFamilyLabel(runtime.value?.platform));
 const hostnameDisplay = computed(() => runtime.value?.hostname?.trim() || "—");
 const pythonVersionDisplay = computed(() => runtime.value?.python?.trim() || "—");
@@ -384,12 +436,29 @@ const versionServerTimeStr = computed(() => {
   return new Date(t * 1000).toLocaleString();
 });
 
+/** 与协议管理页一致：插件托管显示 NapCat/SnowLuma，外接显示适配器名；无协议账号且未连接则为 — */
 const accountAdapterDisplay = computed(() => {
   const acc = selectedAccount.value;
   if (acc == null) return "—";
-  const raw = instances.value?.bot_profiles?.[String(acc)]?.adapter;
-  const ad = raw != null ? String(raw).trim() : "";
-  return ad || "—";
+  const sid = String(acc);
+  const pluginAccounts =
+    instances.value?.pallas_protocol?.accounts ?? instances.value?.napcat?.accounts ?? [];
+  const row = mergeProtocolDisplayAccounts(instances.value, pluginAccounts).find((a) => {
+    const qq = String(a.qq ?? "").trim();
+    const id = String(a.id ?? "").trim();
+    return qq === sid || id === sid;
+  });
+  if (row) {
+    const name = protocolBackendDisplayName(row as Record<string, unknown>).trim();
+    if (name) return name;
+  }
+  const fromProfile = String(instances.value?.bot_profiles?.[sid]?.adapter ?? "").trim();
+  if (fromProfile) return fromProfile;
+  const fromBot = String(
+    instances.value?.nonebot_bots?.find((b) => String(b.self_id ?? "").trim() === sid)?.adapter ?? "",
+  ).trim();
+  if (fromBot && fromBot !== "未连接") return fromBot;
+  return "—";
 });
 
 function barPct(
@@ -493,11 +562,26 @@ const selectedBotConfig = computed(() => {
   return sortedDbBots.value.find((r) => r.account === acc) ?? null;
 });
 
-const selectedAdminsDisplay = computed(() => {
+const selectedAdmins = computed(() => {
   const admins = selectedBotConfig.value?.admins;
-  if (!admins?.length) return "未配置管理员";
-  return admins.map((id) => String(id)).join(" ");
+  if (!admins?.length) return [] as string[];
+  return admins.map((id) => String(id));
 });
+
+/** 与协议 tag 同族：「管理员 · id」；多 ID 用间隔号，过长则「管理员 · N」 */
+const selectedAdminsLabel = computed(() => {
+  const ids = selectedAdmins.value;
+  if (!ids.length) return "未配置管理员";
+  const joined = ids.join(" · ");
+  if (ids.length > 2 || joined.length > 28) return `管理员 · ${ids.length}`;
+  return `管理员 · ${joined}`;
+});
+
+const selectedAdminsTitle = computed(() =>
+  selectedAdmins.value.length
+    ? `管理员 · ${selectedAdmins.value.join(" · ")}`
+    : "未配置管理员",
+);
 
 const friendCountDisplay = computed(() => {
   if (friendSnap.value == null) return "—";
@@ -692,6 +776,30 @@ const kpiMsgTxDisplay = computed(() => {
   const s = clusterMessageStats.value;
   if (!s) return "—";
   return String(s.total_sent);
+});
+
+/** 已连接 Bot / 已配置账号（db_bot_configs） */
+const kpiBotOnlineDisplay = computed(() => String(botCount.value));
+const kpiBotTotalDisplay = computed(() => {
+  const configured = sortedDbBots.value.length;
+  if (configured > 0) return String(configured);
+  return String(botCount.value);
+});
+
+/** 目录内已加载（含分片下不在本进程加载的角色）/ 插件目录总数 */
+const kpiPluginLoadedDisplay = computed(() => {
+  const rows = pluginsList.value;
+  if (rows.length) {
+    return String(rows.filter(pluginCountsAsLoadedInCatalog).length);
+  }
+  const n = system.value?.plugin_count;
+  return n == null ? "—" : String(n);
+});
+const kpiPluginTotalDisplay = computed(() => {
+  const rows = pluginsList.value;
+  if (rows.length) return String(rows.length);
+  const n = system.value?.plugin_count;
+  return n == null ? "—" : String(n);
 });
 
 const scopedBotStatsRow = computed(() => {
@@ -924,12 +1032,6 @@ const selectedConnDateDisplay = computed(() => {
   }
 });
 
-async function triggerHomeRestart(workersOnly = false) {
-  restartErr.value = "";
-  restartMsg.value = "";
-  await restartBot(workersOnly);
-}
-
 function startHomeConnDurationTick() {
   if (typeof window === "undefined") return;
   if (homeConnDurationPollId != null) return;
@@ -1031,7 +1133,6 @@ async function loadHomeDeferred(refreshMeta: boolean) {
     const h = consoleMetaHealth.value ?? health.value;
     if (h) health.value = h;
     patchConsoleMeta(health.value, botUpdateCheck.value, webUpdateCheck.value);
-    if (botUpdateCheck.value) void ensureRestartContext();
   } finally {
     homeDeferredBusy.value = false;
   }
@@ -1261,7 +1362,9 @@ onUnmounted(() => {
                 <span class="home-kpi-cell__label">在线 Bot</span>
               </div>
               <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value">{{ botCount }}</span>
+                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
+                  {{ kpiBotOnlineDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiBotTotalDisplay }}
+                </span>
               </div>
             </div>
             <div class="home-kpi-cell">
@@ -1292,7 +1395,9 @@ onUnmounted(() => {
                 <span class="home-kpi-cell__label">已加载插件</span>
               </div>
               <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value">{{ system?.plugin_count ?? '—' }}</span>
+                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
+                  {{ kpiPluginLoadedDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiPluginTotalDisplay }}
+                </span>
               </div>
             </div>
           </div>
@@ -1305,7 +1410,7 @@ onUnmounted(() => {
               <span class="home-kpi-community__val">{{ communityBotsOnlineSum }}</span>
               <span class="home-kpi-community__hint muted">牛牛</span>
             </RouterLink>
-            <RouterLink class="home-kpi-quick" to="/charts" title="数据看板">
+            <RouterLink class="home-kpi-community home-kpi-quick" to="/charts" title="数据看板">
               <ConsoleNavIcon name="charts" :size="16" />
               <span>数据看板</span>
             </RouterLink>
@@ -1370,7 +1475,10 @@ onUnmounted(() => {
             <div class="home-card__bd home-acct__bd" v-if="selectedAccount != null">
               <div class="home-acct-meta">
                 <RouterLink class="home-acct-meta__tag" :to="{ name: 'protocol' }">协议 · {{ accountAdapterDisplay }}</RouterLink>
-                <span class="home-acct-meta__tag home-acct-meta__tag--muted" :title="selectedAdminsDisplay">管理员 {{ selectedAdminsDisplay }}</span>
+                <span
+                  class="home-acct-meta__tag home-acct-meta__tag--muted"
+                  :title="selectedAdminsTitle"
+                >{{ selectedAdminsLabel }}</span>
               </div>
               <HomeLazyReveal :loading="accountSocialPending" variant="account-social">
                 <div class="home-acct-grid">
@@ -1480,8 +1588,24 @@ onUnmounted(() => {
                       </span>
                       <span v-else class="home-sys-card__value">—</span>
                     </div>
-                    <div class="home-sys-card__viz home-sys-card__viz--empty" aria-hidden="true" />
-                    <p v-if="uptimeParts?.sub" class="home-sys-card__hint">{{ uptimeParts.sub }}</p>
+                    <div class="home-sys-card__viz">
+                      <div
+                        v-if="uptimeDayFills.length"
+                        class="home-uptime-hours"
+                        role="img"
+                        :aria-label="uptimeParts ? `已运行 ${uptimeParts.value} ${uptimeParts.unit}` : '运行时长'"
+                      >
+                        <div
+                          v-for="(fill, i) in uptimeDayFills"
+                          :key="i"
+                          class="home-uptime-hours__slot"
+                          :title="`第 ${i}–${i + 1} 小时`"
+                        >
+                          <span class="home-uptime-hours__fill" :style="{ height: `${fill}%` }" />
+                        </div>
+                      </div>
+                    </div>
+                    <p v-if="uptimeHint" class="home-sys-card__hint">{{ uptimeHint }}</p>
                   </div>
                   <div v-for="dev in gpuDevices" :key="dev.index" class="home-sys-card home-sys-card--gpu">
                     <div class="home-sys-card__head">
@@ -1491,7 +1615,11 @@ onUnmounted(() => {
                     <p class="home-sys-card__hint">{{ gpuNameShort(dev.name || '', 36) }}</p>
                     <div class="home-sys-card__gpu-metrics">
                       <div class="home-sys-card__gpu-metric">
-                        <span class="home-sys-card__label">利用率</span>
+                        <div class="home-sys-card__row home-sys-card__row--sub">
+                          <span class="home-sys-card__label">利用率</span>
+                          <!-- 与显存列同高占位；利用率已在卡头 -->
+                          <span class="home-sys-card__value home-sys-card__value--sm" aria-hidden="true">00.0%</span>
+                        </div>
                         <div v-if="gpuUtilBarPct(dev.utilization_gpu) != null" class="home-sys-card__bar"><span :style="{ width: `${gpuUtilBarPct(dev.utilization_gpu)}%` }" /></div>
                       </div>
                       <div class="home-sys-card__gpu-metric">
@@ -1548,46 +1676,6 @@ onUnmounted(() => {
                   <div class="home-ver-dl__row"><dt>系统</dt><dd><span class="home-ver-dl__val">{{ osFamilyDisplay }}</span></dd></div>
                   <div class="home-ver-dl__row"><dt>主机</dt><dd><span class="home-ver-dl__val">{{ hostnameDisplay }}</span></dd></div>
                 </dl>
-                <div
-                  v-if="restartAvailable"
-                  class="home-ops-restart"
-                >
-                  <p
-                    v-if="restartInProgress || restartMsg"
-                    class="home-ops-restart__msg muted"
-                    role="status"
-                  >
-                    {{ restartProgressLabel || restartMsg }}
-                  </p>
-                  <p
-                    v-if="restartErr"
-                    class="home-ops-restart__msg alert alert--err"
-                    role="alert"
-                  >
-                    {{ restartErr }}
-                  </p>
-                  <div class="row-actions home-ops-restart__actions">
-                    <UiButton
-                      v-if="shardedRuntime"
-                      variant="outline"
-                      size="sm"
-                      :disabled="restartBusy || restartInProgress"
-                      :busy="restartBusy || restartInProgress"
-                      @click="triggerHomeRestart(true)"
-                    >
-                      重启 Worker
-                    </UiButton>
-                    <UiButton
-                      variant="outline"
-                      size="sm"
-                      :disabled="restartBusy || restartInProgress"
-                      :busy="restartBusy || restartInProgress"
-                      @click="triggerHomeRestart(false)"
-                    >
-                      {{ shardedRuntime ? "重启全部进程" : "重启 Bot" }}
-                    </UiButton>
-                  </div>
-                </div>
               </HomeLazyReveal>
             </div>
           </div>
@@ -1607,27 +1695,6 @@ onUnmounted(() => {
   flex-shrink: 0;
   border: 1px solid var(--border);
   background: var(--bg-muted);
-}
-
-/* Favorite star */
-.home-ops-restart {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.home-ops-restart__msg {
-  margin: 0 0 8px;
-  font-size: 13px;
-}
-.home-ops-restart__actions {
-  flex-wrap: wrap;
-  gap: 8px;
-}
-@media (max-width: 560px) {
-  .home-ops-restart__actions > .btn {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 0;
-  }
 }
 
 /* Favorite star */

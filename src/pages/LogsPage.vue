@@ -20,6 +20,7 @@ import {
   normalizeLogEntryDisplay,
   mergeLogEntryContinuations,
   isLogMessageContinuation,
+  logEntrySourceKey,
   parseLogLineLevel,
   persistLogsEnabledLevels,
   stripYearFromLogLine,
@@ -49,6 +50,9 @@ const LOG_POLL_MS = 8000;
 let logPollTimer: number | null = null;
 let logBootRaf = 0;
 let logScrollBottomRaf = 0;
+/** 合并多次 schedule 时保留 force，避免 post-watch 的非强制滚底把进页强制滚底冲掉 */
+let logScrollBottomForce = false;
+let logScrollBottomRetryTimers: number[] = [];
 const scope = ref<LogScope>("all");
 const logSource = ref("all");
 const logSources = ref<string[]>([]);
@@ -101,12 +105,15 @@ async function scrollActiveLogToBottom(force = false) {
   await nextTick();
   if (view.value === "feed") {
     if (force || followLogTail.value) {
-      await logFeedRef.value?.scrollToBottom(force || followLogTail.value);
+      // 强制进页滚底时先锁跟尾，避免 scrollTop=0 的残留 scroll 事件把 follow 打回 false
+      if (force) followLogTail.value = true;
+      await logFeedRef.value?.scrollToBottom(true);
     }
     return;
   }
   const el = rawScrollEl.value;
   if (!el || (!force && !followLogTail.value)) return;
+  if (force) followLogTail.value = true;
   suppressRawFollowUpdate += 1;
   const apply = () => {
     el.scrollTop = el.scrollHeight;
@@ -126,13 +133,38 @@ async function scrollActiveLogToBottom(force = false) {
   }
 }
 
+function cancelScrollActiveLogRetries() {
+  if (typeof window === "undefined") return;
+  for (const id of logScrollBottomRetryTimers) window.clearTimeout(id);
+  logScrollBottomRetryTimers = [];
+}
+
 function scheduleScrollActiveLogToBottom(force = false) {
   if (typeof window === "undefined") return;
+  if (force) logScrollBottomForce = true;
   if (logScrollBottomRaf) window.cancelAnimationFrame(logScrollBottomRaf);
   logScrollBottomRaf = window.requestAnimationFrame(() => {
     logScrollBottomRaf = 0;
-    void scrollActiveLogToBottom(force);
+    const useForce = logScrollBottomForce;
+    logScrollBottomForce = false;
+    void scrollActiveLogToBottom(useForce);
   });
+}
+
+/** 进页/激活：布局与 route-enter 动画未完成时多拍几次强制滚底 */
+function scheduleEnterLogScroll() {
+  followLogTail.value = true;
+  scheduleScrollActiveLogToBottom(true);
+  if (typeof window === "undefined") return;
+  cancelScrollActiveLogRetries();
+  for (const ms of [50, 120, 320]) {
+    logScrollBottomRetryTimers.push(
+      window.setTimeout(() => {
+        followLogTail.value = true;
+        scheduleScrollActiveLogToBottom(true);
+      }, ms),
+    );
+  }
 }
 
 function cancelLogBoot() {
@@ -145,6 +177,9 @@ function cancelLogBoot() {
 async function bootLogsPage() {
   if (document.visibilityState === "hidden") return;
   await load({ silent: pageReady.value });
+  // silent 刷新不会在 load.finally 里滚底；数据落地后再强制一次
+  followLogTail.value = true;
+  scheduleScrollActiveLogToBottom(true);
   startLogPolling();
   startLogStream();
 }
@@ -197,11 +232,39 @@ function pushLiveEntry(raw: LogEntry) {
     id: raw.id ?? Date.now() + Math.floor(Math.random() * 1000),
   });
   const buf = liveEntries.value;
-  const prev = buf[buf.length - 1];
-  if (prev && isLogMessageContinuation(row.message)) {
-    prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
-    liveTick.bump();
-    return;
+  if (isLogMessageContinuation(row.message)) {
+    const key = logEntrySourceKey(row);
+    const prev = buf[buf.length - 1];
+    const prevKey = prev ? logEntrySourceKey(prev) : "";
+    if (prev && key && prevKey === key) {
+      prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+      liveTick.bump();
+      return;
+    }
+    if (prev && !key && !prevKey) {
+      prev.message = prev.message ? `${prev.message}\n${row.message}` : row.message;
+      liveTick.bump();
+      return;
+    }
+    if (key) {
+      for (let i = buf.length - 1; i >= 0; i -= 1) {
+        if (logEntrySourceKey(buf[i]) !== key) continue;
+        const target = buf[i];
+        const body = row.message;
+        const isTb =
+          body.includes("Traceback") ||
+          /^\s*File "/.test(body) ||
+          body.startsWith("  File ") ||
+          /(?:Error|Exception)\s*:/.test(body);
+        if (isTb && (target.level === "error" || String(target.message).includes("Traceback"))) {
+          target.message = target.message ? `${target.message}\n${row.message}` : row.message;
+          if (row.level === "error") target.level = "error";
+          liveTick.bump();
+          return;
+        }
+        break;
+      }
+    }
   }
   buf.push(row);
   if (buf.length > MAX_LIVE_ENTRIES) {
@@ -467,22 +530,29 @@ watch(
   },
 );
 
-onMounted(() => {
+function enterLogsPage() {
   applyLogsSnapshotCache();
+  // KeepAlive 再进入：恢复跟尾并滚底（silent 刷新不会重置 follow）
+  scheduleEnterLogScroll();
   scheduleBootLogsPage();
+}
+
+onMounted(() => {
+  enterLogsPage();
 });
 
 onActivated(() => {
-  applyLogsSnapshotCache();
-  scheduleBootLogsPage();
+  enterLogsPage();
 });
 
 function teardownLogsPage() {
   cancelLogBoot();
+  cancelScrollActiveLogRetries();
   if (logScrollBottomRaf && typeof window !== "undefined") {
     window.cancelAnimationFrame(logScrollBottomRaf);
     logScrollBottomRaf = 0;
   }
+  logScrollBottomForce = false;
   stopLogPolling();
   closeLogStream();
 }

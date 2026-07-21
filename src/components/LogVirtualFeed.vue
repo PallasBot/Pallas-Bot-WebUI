@@ -24,9 +24,12 @@ const emit = defineEmits<{
 const scrollEl = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const viewportHeight = ref(480);
+/** 展开详情按稳定 key 绑定；快照避免列表滚动/追加后内容漂移 */
 const expandedKey = ref<string | null>(null);
+const expandedSnapshot = ref<LogEntry | null>(null);
 let ro: ResizeObserver | null = null;
 let suppressScrollState = 0;
+let scrollBottomToken = 0;
 
 const totalHeight = computed(() => Math.max(0, props.rows.length * props.rowHeight));
 
@@ -41,22 +44,33 @@ const endIndex = computed(() => {
 });
 
 const visibleRows = computed(() =>
-  props.rows.slice(startIndex.value, endIndex.value).map((row, i) => ({
-    row,
-    index: startIndex.value + i,
-    key: rowKey(row, startIndex.value + i),
-  })),
+  props.rows.slice(startIndex.value, endIndex.value).map((row, i) => {
+    const index = startIndex.value + i;
+    const stableKey = stableRowKey(row);
+    return {
+      row,
+      index,
+      stableKey,
+      /** DOM key 含下标保证唯一；展开态只用 stableKey */
+      domKey: `${stableKey}#${index}`,
+    };
+  }),
 );
 
 const offsetY = computed(() => startIndex.value * props.rowHeight);
 
 const expandedRow = computed(() => {
   if (!expandedKey.value) return null;
-  return props.rows.find((row, index) => rowKey(row, index) === expandedKey.value) ?? null;
+  const live = props.rows.find((row) => stableRowKey(row) === expandedKey.value);
+  return live ?? expandedSnapshot.value;
 });
 
-function rowKey(row: LogEntry, index: number): string {
-  return String(row.id ?? `${row.time}|${index}|${row.message.slice(0, 32)}`);
+/** 正数 stream id 优先；否则用内容指纹（不含列表下标，避免 stick-to-bottom 时漂移） */
+function stableRowKey(row: LogEntry): string {
+  const id = row.id;
+  if (typeof id === "number" && Number.isFinite(id) && id > 0) return `id:${id}`;
+  const msg = String(row.message ?? "");
+  return `c:${row.time}|${row.scope}|${row.level}|${msg.length}:${msg.slice(0, 64)}:${msg.slice(-32)}`;
 }
 
 function previewMessage(message: string): string {
@@ -69,6 +83,8 @@ function scrollThreshold(el: HTMLElement): number {
 }
 
 function isNearBottom(el: HTMLElement): boolean {
+  // 尚未量到高度时不要当成「已在底部」，否则多帧重试会提前结束
+  if (el.clientHeight < 8) return false;
   const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
   const slack = Math.max(scrollThreshold(el), props.rowHeight * 3);
   return gap <= slack;
@@ -82,8 +98,14 @@ function onScroll() {
   emit("scrollState", isNearBottom(el));
 }
 
-function toggleRow(key: string) {
-  expandedKey.value = expandedKey.value === key ? null : key;
+function toggleRow(key: string, row: LogEntry) {
+  if (expandedKey.value === key) {
+    expandedKey.value = null;
+    expandedSnapshot.value = null;
+    return;
+  }
+  expandedKey.value = key;
+  expandedSnapshot.value = { ...row };
 }
 
 async function scrollToBottom(force = false) {
@@ -91,25 +113,41 @@ async function scrollToBottom(force = false) {
   await nextTick();
   const el = scrollEl.value;
   if (!el) return;
+  const token = ++scrollBottomToken;
   suppressScrollState += 1;
   const apply = () => {
-    el.scrollTop = el.scrollHeight;
+    if (token !== scrollBottomToken) return;
+    // 优先用虚拟列表估算高度，避免 spacer 未提交前 scrollHeight 偏小
+    const estimated = Math.max(el.scrollHeight, props.rows.length * props.rowHeight);
+    el.scrollTop = Math.max(0, estimated - el.clientHeight);
     scrollTop.value = el.scrollTop;
   };
   apply();
-  if (typeof window !== "undefined") {
-    window.requestAnimationFrame(() => {
-      apply();
-      window.requestAnimationFrame(() => {
-        apply();
-        suppressScrollState = Math.max(0, suppressScrollState - 1);
-        emit("scrollState", isNearBottom(el));
-      });
-    });
-  } else {
+  if (typeof window === "undefined") {
     suppressScrollState = Math.max(0, suppressScrollState - 1);
-    emit("scrollState", isNearBottom(el));
+    emit("scrollState", true);
+    return;
   }
+  let frames = 0;
+  const tick = () => {
+    if (token !== scrollBottomToken) {
+      suppressScrollState = Math.max(0, suppressScrollState - 1);
+      return;
+    }
+    apply();
+    frames += 1;
+    const laidOut = el.clientHeight >= 8;
+    const needRetry = !laidOut || !isNearBottom(el);
+    // 布局未完成时多等几帧；已布局仍未贴底也再试
+    if (frames < (laidOut ? 8 : 16) && needRetry) {
+      window.requestAnimationFrame(tick);
+      return;
+    }
+    suppressScrollState = Math.max(0, suppressScrollState - 1);
+    // 程序化滚底后锁定跟随，避免布局未完成时误判「已离开底部」
+    if (laidOut) emit("scrollState", true);
+  };
+  window.requestAnimationFrame(tick);
 }
 
 function bindViewport() {
@@ -118,13 +156,14 @@ function bindViewport() {
   ro?.disconnect();
   ro = new ResizeObserver(() => {
     viewportHeight.value = el.clientHeight || 480;
+    if (props.followTail) void scrollToBottom(true);
   });
   ro.observe(el);
   viewportHeight.value = el.clientHeight || 480;
 }
 
 watch(
-  () => props.rows,
+  () => props.rows.length,
   () => {
     if (props.followTail) void scrollToBottom(true);
   },
@@ -134,7 +173,7 @@ watch(
 watch(
   () => {
     const last = props.rows[props.rows.length - 1];
-    return last ? `${rowKey(last, props.rows.length - 1)}|${last.message.length}` : "";
+    return last ? `${stableRowKey(last)}|${last.message.length}` : "";
   },
   () => {
     if (props.followTail) void scrollToBottom(true);
@@ -157,6 +196,7 @@ onMounted(() => {
 onUnmounted(() => {
   ro?.disconnect();
   ro = null;
+  scrollBottomToken += 1;
 });
 
 defineExpose({ scrollToBottom });
@@ -178,14 +218,14 @@ defineExpose({ scrollToBottom });
           :style="{ transform: `translateY(${offsetY}px)` }"
         >
           <button
-            v-for="{ row, key } in visibleRows"
-            :key="key"
+            v-for="{ row, stableKey, domKey } in visibleRows"
+            :key="domKey"
             type="button"
             class="log-line log-line--virtual"
-            :class="{ 'log-line--virtual-active': expandedKey === key }"
+            :class="{ 'log-line--virtual-active': expandedKey === stableKey }"
             :style="{ minHeight: `${rowHeight}px`, height: `${rowHeight}px` }"
             :title="previewMessage(row.message)"
-            @click="toggleRow(key)"
+            @click="toggleRow(stableKey, row)"
           >
             <span class="log-line__time">{{ formatLogDisplayTime(row.time) }}</span>
             <span :class="['log-line__lv-tag', `log-line__lv-tag--${row.level}`]">{{ row.level }}</span>
@@ -212,7 +252,7 @@ defineExpose({ scrollToBottom });
         <button
           type="button"
           class="btn btn--ghost log-virtual-feed__detail-close"
-          @click="expandedKey = null"
+          @click="expandedKey = null; expandedSnapshot = null"
         >
           收起
         </button>
@@ -236,6 +276,8 @@ defineExpose({ scrollToBottom });
   flex: 1;
   min-height: 0;
   max-height: none;
+  /* 覆盖全局 .log-feed 的 padding，避免估高贴底后视觉上仍「差一截」 */
+  padding: 0;
 }
 .log-virtual-feed__spacer {
   position: relative;

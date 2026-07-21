@@ -17,12 +17,13 @@ export function pallasDocsUrl(path = ""): string {
 
 export const PALLAS_BOT_DOC = {
   home: pallasDocsUrl(),
-  siteCustomization: pallasDocsUrl("/architecture/site-customization-and-updates"),
+  /** 升级与站点定制（含 deployment_mode、local/plugins） */
+  siteCustomization: pallasDocsUrl("/maintainer/deploy/upgrade"),
   localReadme: `${PALLAS_BOT_REPO}/blob/main/local/README.md`,
   deployment: pallasDocsUrl("/deploy/deployment"),
   dockerDeployment: pallasDocsUrl("/deploy/docker"),
   faqUpdates: `${pallasDocsUrl("/deploy/faq")}#更新与版本`,
-  settingsStorage: pallasDocsUrl("/architecture/settings-storage"),
+  settingsStorage: pallasDocsUrl("/developer/architecture/config-storage"),
 } as const;
 
 export const PALLAS_SHELL_EXTERNAL_LINKS = [
