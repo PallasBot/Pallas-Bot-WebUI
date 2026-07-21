@@ -2004,35 +2004,11 @@ html[data-theme="light"] .shell-back-top {
   overflow: hidden;
 }
 
-.logs-page .panel__hd.logs-page__hd {
+.logs-page__chrome-tools {
   display: flex;
   flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: stretch;
   gap: 8px;
-  flex-shrink: 0;
-}
-
-.logs-page__hd-split.panel__hd.panel__hd--split {
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-bottom: none;
-  background: none;
-}
-
-.logs-page__hd-split .panel__title {
-  flex: 1 1 auto;
   min-width: 0;
-  margin: 0;
-  white-space: nowrap;
-}
-
-.logs-page__hd-actions {
-  flex-shrink: 0;
 }
 
 .logs-page__toolbar-row {
@@ -8704,39 +8680,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     box-sizing: border-box;
   }
 
-  /* 运行日志：窄屏标题栏 + 工具栏 */
-  .logs-page .panel__hd.logs-page__hd {
-    gap: 6px;
-    padding: 8px 10px;
-  }
-
-  .logs-page .panel__hd.panel__hd--split.logs-page__hd-split.home-page__panel-hd-nowrap {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px;
-    padding: 0;
-    border-bottom: none;
-    background: none;
-  }
-
-  .logs-page .panel__hd.panel__hd--split.logs-page__hd-split .panel__title {
-    width: auto;
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: nowrap;
-  }
-
-  .logs-page .panel__hd.panel__hd--split.logs-page__hd-split .row-actions {
-    width: auto;
-    max-width: 100%;
-    margin-left: auto;
-    flex: 0 0 auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-end;
-    align-self: center;
+  /* 运行日志：窄屏工具栏 */
+  .logs-page__chrome-tools {
     gap: 6px;
   }
 
@@ -8749,7 +8694,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 6px;
   }
 
-  .logs-page__search.inp,
+  .logs-page__search .console-hub-page__search-input .inp,
   .logs-page__search .inp {
     min-height: 34px;
   }
