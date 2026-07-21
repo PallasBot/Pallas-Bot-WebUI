@@ -1964,7 +1964,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ai-history-page">
+  <div class="ai-history-page ai-history-page--chrome">
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
@@ -3827,6 +3827,10 @@ onMounted(() => {
   gap: var(--hub-page-gap, 18px);
 }
 
+.ai-history-page--chrome {
+  gap: var(--hub-page-gap, 16px);
+}
+
 .ai-history-page__toolbar {
   flex-wrap: wrap;
   gap: 8px;
@@ -4685,10 +4689,11 @@ onMounted(() => {
 
 .ai-history-page__filters-card {
   margin-bottom: 12px;
-  padding: 12px 14px;
+  padding: 0 0 12px;
   border: none;
-  border-radius: var(--radius-control, 8px);
-  background: color-mix(in srgb, var(--bg-muted) 48%, transparent);
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .ai-history-page__filters-head {

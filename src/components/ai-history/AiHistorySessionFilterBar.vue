@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import UiButton from "@/components/ui/UiButton.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 
 const filterBot = defineModel<string>("filterBot", { default: "" });
@@ -68,13 +69,14 @@ function resetFilters() {
       @update:model-value="scheduleApply()"
       @keyup.enter="applyNow"
     />
-    <button
-      type="button"
+    <UiButton
+      size="sm"
+      variant="ghost"
       class="ai-history-filter-inline__clear"
       @click="resetFilters"
     >
       清空
-    </button>
+    </UiButton>
     <RefreshIconButton
       :embedded="false"
       :busy="busy"

@@ -133,16 +133,14 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 }
 
 .ai-history-filter-inline__clear {
-  border: 0;
-  background: transparent;
-  padding: 4px 6px;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  cursor: pointer;
+  flex: 0 0 auto;
 }
 
-.ai-history-filter-inline__clear:hover {
-  color: var(--text);
+.ai-history-filter-inline__clear:deep(.ui-btn),
+.ai-history-filter-inline__clear.ui-btn {
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: 0.78rem;
 }
 
 .ai-history-split {
