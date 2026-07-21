@@ -3267,7 +3267,8 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style>
+/* Unscoped on purpose: extracted ai-history/* components reuse these class names. */
 .ai-history-page {
   display: flex;
   flex-direction: column;
@@ -3603,7 +3604,7 @@ onMounted(() => {
   margin-bottom: 0;
 }
 
-.ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+.ai-history-page__observe-panel-toggle .ui-btn {
   flex-shrink: 0;
 }
 
@@ -4145,12 +4146,12 @@ onMounted(() => {
 
 .ai-history-page__behavior-select .inp,
 .ai-history-page__behavior-select .ui-select,
-.ai-history-page__behavior-action-btn:deep(.ui-btn) {
+.ai-history-page__behavior-action-btn .ui-btn {
   min-height: var(--ui-ctrl-height);
   height: var(--ui-ctrl-height);
 }
 
-.ai-history-page__behavior-action-btn:deep(.ui-btn) {
+.ai-history-page__behavior-action-btn .ui-btn {
   padding-inline: 14px;
 }
 
@@ -4848,12 +4849,12 @@ onMounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ai-history-page__observe-panel-hd--persona .ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+  .ai-history-page__observe-panel-hd--persona .ai-history-page__observe-panel-toggle .ui-btn {
     grid-column: 1 / -1;
     width: 100%;
   }
 
-  .ai-history-page__observe-panel-toggle:deep(.ui-btn) {
+  .ai-history-page__observe-panel-toggle .ui-btn {
     width: 100%;
   }
 
@@ -4982,7 +4983,7 @@ onMounted(() => {
     gap: 8px;
   }
 
-  .ai-history-page__pattern-actions > :deep(.ui-btn) {
+  .ai-history-page__pattern-actions >  .ui-btn {
     width: auto;
     flex: 0 0 auto;
   }
