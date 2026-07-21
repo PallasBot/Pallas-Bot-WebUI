@@ -23,6 +23,7 @@ import UiButton from "@/components/ui/UiButton.vue";
 import type { UiBadgeVariant } from "@/components/ui/UiBadge.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { formatBackupBytes, formatBackupElapsed, useDbBackup } from "@/composables/useDbBackup";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 
@@ -618,9 +619,8 @@ onUnmounted(() => {
             </div>
             <div class="prefs-form-field">
               <label class="prefs-form-field__label">备份范围</label>
-              <select
+              <UiSelect
                 v-model="targetMode"
-                class="sel"
                 :disabled="backupBusy"
               >
                 <option value="all">
@@ -629,16 +629,15 @@ onUnmounted(() => {
                 <option value="selected">
                   指定{{ backupInfo?.backend === "postgres" ? "表" : "集合" }}
                 </option>
-              </select>
+              </UiSelect>
             </div>
             <div
               v-if="backupInfo?.backend === 'mongodb' && targetMode === 'all'"
               class="prefs-form-field"
             >
               <label class="prefs-form-field__label">MongoDB 预设</label>
-              <select
+              <UiSelect
                 v-model="scope"
-                class="sel"
                 :disabled="backupBusy"
               >
                 <option
@@ -648,22 +647,21 @@ onUnmounted(() => {
                 >
                   {{ opt.label }}
                 </option>
-              </select>
+              </UiSelect>
             </div>
             <div
               v-if="backupInfo?.backend === 'postgres'"
               class="prefs-form-field"
             >
               <label class="prefs-form-field__label">PostgreSQL 格式</label>
-              <select
+              <UiSelect
                 v-model="pgFormat"
-                class="sel"
                 :disabled="backupBusy"
               >
                 <option value="custom">custom（.dump，推荐）</option>
                 <option value="plain">plain SQL（.sql）</option>
                 <option value="directory">directory（目录格式）</option>
-              </select>
+              </UiSelect>
             </div>
             <div
               v-if="targetMode === 'selected' && targetOptions.length"

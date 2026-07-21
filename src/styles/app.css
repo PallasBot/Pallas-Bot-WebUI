@@ -8034,7 +8034,9 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     grid-template-columns: 1fr;
   }
   .protocol-sub-page .protocol-assets-download > .btn,
-  .protocol-sub-page .protocol-assets-download > .inp {
+  .protocol-sub-page .protocol-assets-download > .ui-btn,
+  .protocol-sub-page .protocol-assets-download > .inp,
+  .protocol-sub-page .protocol-assets-download > .ui-input-wrap {
     width: 100%;
   }
 }
@@ -8210,7 +8212,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   gap: 8px;
 }
 
-#db-user-configs .database-user-config-add__inp {
+#db-user-configs .database-user-config-add__inp,
+#db-user-configs .database-user-config-add__inp.ui-input-wrap {
   flex: 1 1 140px;
   min-width: 0;
   max-width: 220px;
@@ -8842,7 +8845,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 8px;
   }
 
-  #db-user-configs .database-user-config-add__row > .database-user-config-add__inp {
+  #db-user-configs .database-user-config-add__row > .database-user-config-add__inp,
+  #db-user-configs .database-user-config-add__row > .database-user-config-add__inp.ui-input-wrap {
     width: auto !important;
     flex: 1 1 0;
     min-width: 0 !important;

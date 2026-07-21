@@ -5,6 +5,8 @@ import { protocolApiErrorMessage, protocolCreateAccount } from "@/api/protocolAp
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
@@ -13,7 +15,7 @@ const { err, pageReady, mountUrl, reload } = useProtocolMount();
 
 const qq = ref("");
 const displayName = ref("");
-const protocolBackend = ref<"napcat" | "snowluma">("napcat");
+const protocolBackend = ref("napcat");
 const webuiPort = ref("");
 const webuiToken = ref("");
 const wsUrl = ref("");
@@ -98,84 +100,76 @@ async function submitCreate() {
         <div class="panel__bd protocol-form-grid">
           <label class="field">
             <span class="field__label">QQ 号</span>
-            <input
+            <UiInput
               v-model="qq"
-              class="inp"
               inputmode="numeric"
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field">
             <span class="field__label">显示昵称</span>
-            <input
+            <UiInput
               v-model="displayName"
-              class="inp"
               autocomplete="off"
               placeholder="可选"
-            >
+            />
           </label>
           <label class="field">
             <span class="field__label">协议端类型</span>
-            <select
-              v-model="protocolBackend"
-              class="inp"
-            >
+            <UiSelect v-model="protocolBackend">
               <option value="napcat">
                 NapCat
               </option>
               <option value="snowluma">
                 SnowLuma
               </option>
-            </select>
+            </UiSelect>
           </label>
           <label class="field">
             <span class="field__label">内置 WebUI 端口</span>
-            <input
+            <UiInput
               v-model="webuiPort"
-              class="inp"
               type="number"
               placeholder="留空自动分配"
-            >
+            />
           </label>
           <label
             v-if="protocolBackend !== 'snowluma'"
             class="field"
           >
             <span class="field__label">WebUI token</span>
-            <input
+            <UiInput
               v-model="webuiToken"
-              class="inp"
               type="password"
+              revealable
               autocomplete="off"
               placeholder="留空随机生成"
-            >
+            />
           </label>
           <label class="field field--full">
             <span class="field__label">WS 连接地址</span>
-            <input
+            <UiInput
               v-model="wsUrl"
-              class="inp"
               placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field">
             <span class="field__label">连接名</span>
-            <input
+            <UiInput
               v-model="wsName"
-              class="inp"
               placeholder="pallas"
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field">
             <span class="field__label">WS Token</span>
-            <input
+            <UiInput
               v-model="wsToken"
-              class="inp"
               type="password"
+              revealable
               autocomplete="off"
-            >
+            />
           </label>
           <div class="field field--full row-actions">
             <UiButton

@@ -1477,8 +1477,7 @@ async function toggleBehaviorLabel(run: LlmHistoryBehaviorRun, label: string) {
   await saveBehaviorRun(run, { labels: nextLabels });
 }
 
-async function changeBehaviorOutcome(run: LlmHistoryBehaviorRun, event: Event) {
-  const value = (event.target as HTMLSelectElement | null)?.value ?? "";
+async function changeBehaviorOutcome(run: LlmHistoryBehaviorRun, value: string) {
   await saveBehaviorRun(run, { finalOutcome: value || null });
 }
 
@@ -2534,16 +2533,15 @@ onMounted(() => {
                     <div class="ai-history-page__behavior-actions">
                       <label class="ai-history-page__behavior-select">
                         <span>对话结果</span>
-                        <select
-                          class="inp"
-                          :value="row.behaviorRun.final_outcome || ''"
+                        <UiSelect
+                          :model-value="row.behaviorRun.final_outcome || ''"
                           :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
-                          @change="changeBehaviorOutcome(row.behaviorRun, $event)"
+                          @update:model-value="changeBehaviorOutcome(row.behaviorRun, $event)"
                         >
                           <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
                             {{ item.label }}
                           </option>
-                        </select>
+                        </UiSelect>
                       </label>
                       <UiButton
                         variant="outline"
@@ -2671,16 +2669,15 @@ onMounted(() => {
               <div class="ai-history-page__behavior-actions">
                 <label class="ai-history-page__behavior-select">
                   <span>结果</span>
-                  <select
-                    class="inp"
-                    :value="run.final_outcome || ''"
+                  <UiSelect
+                    :model-value="run.final_outcome || ''"
                     :disabled="isBehaviorBusy(run.request_id)"
-                    @change="changeBehaviorOutcome(run, $event)"
+                    @update:model-value="changeBehaviorOutcome(run, $event)"
                   >
                     <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
                       {{ item.label }}
                     </option>
-                  </select>
+                  </UiSelect>
                 </label>
                 <UiButton
                   variant="outline"
@@ -3203,16 +3200,15 @@ onMounted(() => {
               <div class="ai-history-page__behavior-actions">
                 <label class="ai-history-page__behavior-select">
                   <span>人工结果</span>
-                  <select
-                    class="inp"
-                    :value="run.final_outcome || ''"
+                  <UiSelect
+                    :model-value="run.final_outcome || ''"
                     :disabled="isBehaviorBusy(run.request_id)"
-                    @change="changeBehaviorOutcome(run, $event)"
+                    @update:model-value="changeBehaviorOutcome(run, $event)"
                   >
                     <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="`observe-outcome-${item.value || 'empty'}`" :value="item.value">
                       {{ item.label }}
                     </option>
-                  </select>
+                  </UiSelect>
                 </label>
                 <UiButton
                   size="sm"
@@ -3658,55 +3654,52 @@ onMounted(() => {
       <div class="ai-history-page__pattern-form">
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
           <span>规则 ID</span>
-          <input v-model="patternEditor.pattern_id" class="inp" placeholder="例如 group-threading-001">
+          <UiInput v-model="patternEditor.pattern_id" placeholder="例如 group-threading-001" />
         </label>
         <label class="ai-history-page__filter">
           <span>场景</span>
-          <select v-model="patternEditor.scene" class="inp">
+          <UiSelect v-model="patternEditor.scene">
             <option v-for="item in BEHAVIOR_SCENE_OPTIONS.filter((row) => row.value)" :key="`editor-scene-${item.value}`" :value="item.value">
               {{ item.label }}
             </option>
-          </select>
+          </UiSelect>
         </label>
         <label class="ai-history-page__filter">
           <span>动作</span>
-          <select v-model="patternEditor.action" class="inp">
+          <UiSelect v-model="patternEditor.action">
             <option v-for="item in BEHAVIOR_ACTION_OPTIONS" :key="item.value" :value="item.value">
               {{ item.label }}
             </option>
-          </select>
+          </UiSelect>
         </label>
         <label class="ai-history-page__filter">
           <span>限定群号</span>
-          <input
-            :value="patternEditor.scope_group_id ?? ''"
-            class="inp"
+          <UiInput
+            :model-value="patternEditor.scope_group_id == null ? '' : String(patternEditor.scope_group_id)"
             inputmode="numeric"
             placeholder="留空表示全局"
-            @input="patternEditor.scope_group_id = parseFilter(($event.target as HTMLInputElement).value)"
-          >
+            @update:model-value="patternEditor.scope_group_id = parseFilter($event)"
+          />
         </label>
         <label class="ai-history-page__filter">
           <span>自动分</span>
-          <input
-            :value="patternEditor.success_score ?? 0"
-            class="inp"
+          <UiInput
+            :model-value="String(patternEditor.success_score ?? 0)"
             inputmode="numeric"
-            @input="patternEditor.success_score = Number(($event.target as HTMLInputElement).value || 0)"
-          >
+            @update:model-value="patternEditor.success_score = Number($event || 0)"
+          />
         </label>
         <label class="ai-history-page__filter">
           <span>人工分</span>
-          <input
-            :value="patternEditor.manual_score ?? 0"
-            class="inp"
+          <UiInput
+            :model-value="String(patternEditor.manual_score ?? 0)"
             inputmode="numeric"
-            @input="patternEditor.manual_score = Number(($event.target as HTMLInputElement).value || 0)"
-          >
+            @update:model-value="patternEditor.manual_score = Number($event || 0)"
+          />
         </label>
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
           <span>人设倾向</span>
-          <input v-model="patternEditor.persona_affinity" class="inp" placeholder="可留空">
+          <UiInput v-model="patternEditor.persona_affinity" placeholder="可留空" />
         </label>
         <label class="ai-history-page__filter ai-history-page__pattern-form-span">
           <span>触发特征</span>
@@ -5151,6 +5144,8 @@ onMounted(() => {
 
 /* 勿继承筛选栏 .ai-history-page__filter .inp { width: 96px } */
 .ai-history-page__pattern-form .ai-history-page__filter .inp,
+.ai-history-page__pattern-form .ai-history-page__filter .ui-input-wrap,
+.ai-history-page__pattern-form .ai-history-page__filter .ui-select,
 .ai-history-page__pattern-form .ai-history-page__filter select.inp,
 .ai-history-page__pattern-form .ai-history-page__filter textarea.inp {
   width: 100%;

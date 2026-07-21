@@ -5,6 +5,7 @@ import { protocolApiErrorMessage, protocolImportAccounts } from "@/api/protocolA
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
@@ -98,29 +99,27 @@ async function submitImport() {
         <div class="panel__bd protocol-form-grid">
           <label class="field field--full">
             <span class="field__label">账号文件夹根目录</span>
-            <input
+            <UiInput
               v-model="sourceDir"
-              class="inp"
               placeholder="/path/to/instances"
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field field--full">
             <span class="field__label">默认 WS 地址</span>
-            <input
+            <UiInput
               v-model="wsUrl"
-              class="inp"
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field field--full">
             <span class="field__label">WS Token</span>
-            <input
+            <UiInput
               v-model="wsToken"
-              class="inp"
               type="password"
+              revealable
               autocomplete="off"
-            >
+            />
           </label>
           <label class="field field--check">
             <input
