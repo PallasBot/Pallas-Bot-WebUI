@@ -21,7 +21,7 @@ import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PluginCatalogCard from "@/components/PluginCatalogCard.vue";
 import PluginConfigDialog from "@/components/PluginConfigDialog.vue";
-import UiButton from "@/components/ui/UiButton.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { pluginFavoriteNames } from "@/utils/pluginFavorites";
 import { buildPluginIconMap, resolvePluginIconForRow, shouldShowPluginAvatar } from "@/utils/pluginIconUrl";
@@ -288,19 +288,16 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
               class="panel__title-ico"
               name="plugin"
             />插件能力总览
+            <PanelHdCollapseCaret
+              :expanded="capabilitiesOverviewOpen"
+              label="插件能力总览"
+              @toggle="capabilitiesOverviewOpen = !capabilitiesOverviewOpen"
+            />
           </h2>
           <div class="row-actions plugins-page__capabilities-hd-actions">
             <span class="muted plugins-page__catalog-count">
               {{ capabilitiesSorted.length }} 个插件
             </span>
-            <UiButton
-              variant="outline"
-              size="sm"
-              class="panel-hd-collapse-btn"
-              @click="capabilitiesOverviewOpen = !capabilitiesOverviewOpen"
-            >
-              {{ capabilitiesOverviewOpen ? "收起" : "展开" }}
-            </UiButton>
           </div>
         </div>
         <div

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import UiButton from "@/components/ui/UiButton.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 
 withDefaults(
@@ -36,7 +36,15 @@ const emit = defineEmits<{
   >
     <div class="ai-history-panel-shell__hd panel__hd panel__hd--split">
       <div class="ai-history-panel-shell__text">
-        <h3 class="ai-history-panel-shell__title panel__title">{{ title }}</h3>
+        <h3 class="ai-history-panel-shell__title panel__title">
+          {{ title }}
+          <PanelHdCollapseCaret
+            v-if="collapsible"
+            :expanded="expanded"
+            :label="title"
+            @toggle="emit('toggle')"
+          />
+        </h3>
         <p
           v-if="expanded ? purpose : summary || purpose"
           class="ai-history-panel-shell__sub muted"
@@ -44,17 +52,11 @@ const emit = defineEmits<{
           {{ expanded ? purpose : (summary || purpose) }}
         </p>
       </div>
-      <div class="row-actions ai-history-panel-shell__actions">
+      <div
+        v-if="$slots.actions"
+        class="row-actions ai-history-panel-shell__actions"
+      >
         <slot name="actions" />
-        <UiButton
-          v-if="collapsible"
-          size="sm"
-          variant="outline"
-          class="panel-hd-collapse-btn"
-          @click="emit('toggle')"
-        >
-          {{ expanded ? "收起" : "展开" }}
-        </UiButton>
       </div>
     </div>
     <div

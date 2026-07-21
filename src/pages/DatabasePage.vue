@@ -20,6 +20,7 @@ import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -319,6 +320,7 @@ onUnmounted(() => {
       </template>
       <template #actions>
         <RefreshIconButton
+          embedded
           class="hub-refresh-wide-only"
           :busy="dbRefreshBusy"
           label="刷新数据库总览"
@@ -379,8 +381,14 @@ onUnmounted(() => {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />群配置
+          <PanelHdCollapseCaret
+            :expanded="consolePrefs.databasePageGroupConfigsOpen"
+            label="群配置"
+            @toggle="toggleGroupConfigsPanel"
+          />
           <RefreshIconButton
-                :show-label="false"
+            embedded
+            :show-label="false"
             :busy="socialConfigsBusy"
             label="刷新群配置列表"
             @click="loadSocialConfigs"
@@ -403,13 +411,6 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <UiButton
-              variant="outline"
-              size="sm"
-              @click="toggleGroupConfigsPanel"
-            >
-              {{ consolePrefs.databasePageGroupConfigsOpen ? "收起" : "展开" }}
-            </UiButton>
           </div>
         </div>
       </div>
@@ -493,8 +494,14 @@ onUnmounted(() => {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友配置
+          <PanelHdCollapseCaret
+            :expanded="consolePrefs.databasePageUserConfigsOpen"
+            label="好友配置"
+            @toggle="toggleUserConfigsPanel"
+          />
           <RefreshIconButton
-                :show-label="false"
+            embedded
+            :show-label="false"
             :busy="socialConfigsBusy"
             label="刷新好友配置列表"
             @click="loadSocialConfigs"
@@ -517,13 +524,6 @@ onUnmounted(() => {
               class="muted"
               style="font-size: 12px"
             >加载中…</span>
-            <UiButton
-              variant="outline"
-              size="sm"
-              @click="toggleUserConfigsPanel"
-            >
-              {{ consolePrefs.databasePageUserConfigsOpen ? "收起" : "展开" }}
-            </UiButton>
           </div>
         </div>
       </div>

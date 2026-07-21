@@ -51,6 +51,7 @@ import {
 } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -742,16 +743,13 @@ onUnmounted(() => {
             class="panel__title-ico"
             :name="panelNavIcon"
           />已连接账号
-          <button
-            type="button"
-            class="panel-hd-collapse-caret"
-            :aria-expanded="expProtocolAccounts"
-            :aria-label="expProtocolAccounts ? '收起已连接账号' : '展开已连接账号'"
-            @click="expProtocolAccounts = !expProtocolAccounts"
-          >
-            <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
-          </button>
+          <PanelHdCollapseCaret
+            :expanded="expProtocolAccounts"
+            label="已连接账号"
+            @toggle="expProtocolAccounts = !expProtocolAccounts"
+          />
           <RefreshIconButton
+            embedded
             :show-label="false"
             :busy="loadBusy"
             label="刷新实例数据"
@@ -1129,6 +1127,7 @@ onUnmounted(() => {
             :name="panelNavIcon"
           />协议端入口
           <RefreshIconButton
+            embedded
             :show-label="false"
             :busy="loadBusy"
             label="刷新协议端数据"

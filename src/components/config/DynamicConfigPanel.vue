@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import type { PluginConfigField, PluginConfigFieldGroup, PluginConfigUnexpectedKey } from "@/api/pallasTypes";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import { buildDynamicConfigGroups } from "@/utils/dynamicConfigPanelModel";
 import { buildGroupSummary } from "@/utils/pluginConfigWorkspaceModel";
 
@@ -105,6 +106,13 @@ function updateField(name: string, value: string) {
           <div class="plugin-config-group-card__hero-text">
             <div class="plugin-config-group-card__title-row">
               <h4 class="plugin-config-group-card__title">{{ group.title }}</h4>
+              <PanelHdCollapseCaret
+                v-if="!isSectionGroups || groupViewModels.length > 1"
+                class="plugin-config-group-card__collapse"
+                :expanded="groupOpen[group.id] ?? true"
+                :label="group.title"
+                @toggle="toggleGroup(group.id)"
+              />
               <span
                 v-if="!isSectionGroups || !group.summary.filled || group.summary.required"
                 class="plugin-config-group-card__chip"
@@ -126,16 +134,6 @@ function updateField(name: string, value: string) {
             </p>
           </div>
         </div>
-        <button
-          v-if="!isSectionGroups || groupViewModels.length > 1"
-          type="button"
-          class="btn panel-hd-collapse-btn plugin-config-group-card__collapse"
-          :aria-expanded="groupOpen[group.id] ?? true"
-          :aria-label="`${(groupOpen[group.id] ?? true) ? '收起' : '展开'}${group.title}`"
-          @click="toggleGroup(group.id)"
-        >
-          {{ (groupOpen[group.id] ?? true) ? "收起" : "展开" }}
-        </button>
       </header>
 
       <div

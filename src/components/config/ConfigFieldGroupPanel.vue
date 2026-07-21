@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
+
 defineProps<{
   title: string;
   open: boolean;
@@ -20,15 +22,12 @@ const emit = defineEmits<{
           v-if="fieldCount != null"
           class="config-field-group__count muted"
         >{{ fieldCount }} 项</span>
+        <PanelHdCollapseCaret
+          :expanded="open"
+          :label="title"
+          @toggle="emit('toggle')"
+        />
       </h3>
-      <button
-        type="button"
-        class="btn panel-hd-collapse-btn"
-        :aria-expanded="open"
-        @click="emit('toggle')"
-      >
-        {{ open ? "收起" : "展开" }}
-      </button>
     </div>
     <div
       v-show="open"
