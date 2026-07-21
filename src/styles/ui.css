@@ -390,6 +390,18 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only.
   padding: 0;
 }
 
+.btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
+html[data-layout="hub"] .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
+.panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
+html[data-layout="hub"] .panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn,
+.home-acct__hd-actions .btn-refresh-action--embedded.btn-refresh-action--icon-only.ui-btn {
+  min-height: 1.35rem;
+  height: 1.35rem;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  padding: 0;
+}
+
 /* ── UiDialog ── */
 .ui-dialog-enter-active,
 .ui-dialog-leave-active {

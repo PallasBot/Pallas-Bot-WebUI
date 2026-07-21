@@ -524,14 +524,13 @@ onUnmounted(() => {
                 :size="20"
               />
               运行日志
-            </h2>
-            <div class="row-actions logs-page__hd-actions">
               <RefreshIconButton
+                :embedded="true"
                 :busy="loading"
                 label="刷新"
                 @click="load"
               />
-            </div>
+            </h2>
           </div>
           <input
             v-model="q"

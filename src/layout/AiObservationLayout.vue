@@ -31,6 +31,7 @@ const activeTab = computed(() =>
       </template>
       <template #actions>
         <RefreshIconButton
+          embedded
           :show-label="false"
           :busy="mastheadBusy"
           label="刷新"

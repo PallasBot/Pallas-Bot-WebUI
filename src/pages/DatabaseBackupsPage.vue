@@ -464,6 +464,7 @@ onUnmounted(() => {
       </template>
       <template #actions>
         <RefreshIconButton
+          embedded
           :busy="listBusy"
           label="刷新列表"
           @click="loadRuns"

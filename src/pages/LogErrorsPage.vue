@@ -212,6 +212,7 @@ onActivated(() => {
               {{ clearing ? "清理中…" : "清理全部" }}
             </UiButton>
             <RefreshIconButton
+              embedded
               :busy="loading"
               label="刷新"
               @click="load({ bypassCache: true })"
@@ -260,6 +261,7 @@ onActivated(() => {
         </template>
         <template #actions>
           <RefreshIconButton
+            embedded
             :busy="loading"
             label="刷新"
             @click="load({ bypassCache: true })"

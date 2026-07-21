@@ -458,6 +458,7 @@ onMounted(() => {
               镜像源
             </UiButton>
             <RefreshIconButton
+              embedded
               class="hub-refresh-wide-only"
               :busy="updateRefreshBusy"
               label="重新检查"
@@ -502,7 +503,8 @@ onMounted(() => {
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />WebUI
             <RefreshIconButton
-                :show-label="false"
+              embedded
+              :show-label="false"
               :busy="refreshWebBusy"
               :disabled="busy"
               label="刷新 WebUI 更新检查"
@@ -628,7 +630,8 @@ onMounted(() => {
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />Bot 本体
             <RefreshIconButton
-                :show-label="false"
+              embedded
+              :show-label="false"
               :busy="refreshBotBusy"
               :disabled="busy"
               label="刷新 Bot 更新检查"

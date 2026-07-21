@@ -75,6 +75,7 @@ function resetFilters() {
       清空
     </button>
     <RefreshIconButton
+      :embedded="false"
       :busy="busy"
       label="刷新列表"
       @click="applyNow"

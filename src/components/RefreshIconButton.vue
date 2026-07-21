@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import UiButton from "@/components/ui/UiButton.vue";
 
 const props = withDefaults(
@@ -8,6 +9,11 @@ const props = withDefaults(
     label?: string;
     busyLabel?: string;
     showLabel?: boolean;
+    /**
+     * 标题 / masthead 旁默认嵌入（ghost）。
+     * 工具条等需实心描边时显式 `:embedded="false"`。
+     */
+    embedded?: boolean;
   }>(),
   {
     busy: false,
@@ -15,9 +21,16 @@ const props = withDefaults(
     label: "刷新",
     busyLabel: "刷新中…",
     showLabel: false,
+    embedded: true,
   },
 );
 const emit = defineEmits<{ click: [] }>();
+
+/** Boolean 属性可能编译为 ""；仅显式 false / "false" 时走 outline */
+const isEmbedded = computed(() => {
+  const v = props.embedded as unknown;
+  return !(v === false || v === "false");
+});
 
 function onClick() {
   if (props.busy || props.disabled) return;
@@ -27,11 +40,12 @@ function onClick() {
 
 <template>
   <UiButton
-    variant="outline"
+    :variant="isEmbedded ? 'ghost' : 'outline'"
     class="btn-refresh-action"
     :class="{
       'btn-refresh-action--busy': busy,
       'btn-refresh-action--icon-only': !showLabel,
+      'btn-refresh-action--embedded': isEmbedded,
     }"
     :disabled="disabled"
     :busy="busy"
@@ -62,3 +76,18 @@ function onClick() {
     >{{ busy ? busyLabel : label }}</span>
   </UiButton>
 </template>
+
+<style scoped>
+/* 不依赖父级 .panel__title：嵌入态始终弱边框，避免仍呈 outline */
+.btn-refresh-action--embedded.ui-btn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.btn-refresh-action--embedded.ui-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--text);
+}
+</style>
