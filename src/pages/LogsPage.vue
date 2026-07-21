@@ -9,6 +9,8 @@ import LogVirtualFeed from "@/components/LogVirtualFeed.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchLogs, openLogsEventSource } from "@/api/consoleApi";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
@@ -78,6 +80,15 @@ const advancedOpen = ref(false);
 const streamLive = ref(false);
 const LOG_ROW_HEIGHT = 34;
 let suppressRawFollowUpdate = 0;
+
+function onNInput(raw: string) {
+  const next = Number(raw);
+  if (!Number.isFinite(next)) {
+    n.value = 20;
+    return;
+  }
+  n.value = Math.min(2000, Math.max(20, Math.trunc(next)));
+}
 
 function logScrollThreshold(el: HTMLElement): number {
   const h = el.clientHeight;
@@ -602,13 +613,13 @@ onUnmounted(() => {
               />
             </h2>
           </div>
-          <input
+          <UiInput
             v-model="q"
-            class="inp logs-page__search"
+            class="logs-page__search"
             type="search"
             placeholder="搜索消息、scope、级别…"
             title="按消息、scope、级别等过滤"
-          >
+          />
           <div class="logs-page__toolbar-row">
             <div class="logs-page__view-btns">
               <UiButton
@@ -643,24 +654,23 @@ onUnmounted(() => {
             <div class="logs-page__filter-row form-toolbar">
               <label class="logs-page__field">
                 <span class="logs-page__field-label">范围</span>
-                <select
-                  v-model="scope"
-                  class="sel"
+                <UiSelect
+                  :model-value="scope"
                   aria-label="日志范围"
+                  @update:model-value="scope = $event as LogScope"
                 >
                   <option value="all">全部</option>
                   <option value="webui">WebUI</option>
                   <option value="protocol">协议</option>
-                </select>
+                </UiSelect>
               </label>
               <label
                 v-if="payload?.sharded_logs"
                 class="logs-page__field"
               >
                 <span class="logs-page__field-label">来源</span>
-                <select
+                <UiSelect
                   v-model="logSource"
-                  class="sel"
                   aria-label="日志来源"
                 >
                   <option
@@ -670,18 +680,19 @@ onUnmounted(() => {
                   >
                     {{ s === "all" ? "全部来源" : s }}
                   </option>
-                </select>
+                </UiSelect>
               </label>
               <label class="logs-page__field">
                 <span class="logs-page__field-label">条数</span>
-                <input
-                  v-model.number="n"
-                  class="inp logs-page__n-inp"
+                <UiInput
+                  :model-value="String(n)"
+                  class="logs-page__n-inp"
                   type="number"
                   min="20"
                   max="2000"
                   aria-label="拉取条数"
-                >
+                  @update:model-value="onNInput"
+                />
               </label>
             </div>
           </div>

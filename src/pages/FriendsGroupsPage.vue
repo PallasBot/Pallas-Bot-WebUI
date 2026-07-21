@@ -29,6 +29,7 @@ import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
@@ -828,14 +829,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="friendListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索 QQ / 昵称 / 备注"
             title="按 QQ、昵称、备注筛选当前列表"
             :disabled="!selfIdStr.trim() || fgListsSkeleton"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="selfIdStr && listsBusy"
@@ -968,14 +969,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="groupListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索群号 / 群名"
             title="按群号、群名、成员数筛选当前列表"
             :disabled="!selfIdStr.trim() || fgListsSkeleton"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="selfIdStr && listsBusy"

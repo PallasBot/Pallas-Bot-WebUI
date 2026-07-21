@@ -55,6 +55,7 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
@@ -785,13 +786,13 @@ onUnmounted(() => {
               <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
               / {{ protocolAccountsTotalCount }} 账号
             </span>
-            <input
+            <UiInput
               v-model="protoSearchQ"
-              class="inp inst-db-search"
+              class="inst-db-search"
               type="search"
               placeholder="搜索账号 / 昵称 / 协议 / ID"
               title="按账号、昵称、协议、ID 筛选"
-            >
+            />
           </div>
           <UiButton
             v-if="protoActionsEnabled"

@@ -245,7 +245,8 @@ html[data-layout="hub"] .textarea:focus {
 html[data-layout="hub"] input[type="search"].inp,
 html[data-layout="hub"] .inst-db-search.inp,
 html[data-layout="hub"] .inst-db-search.ui-input-wrap .inp,
-html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp {
+html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp,
+html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap .inp {
   min-height: 40px;
   border-radius: 999px;
 }
@@ -372,7 +373,9 @@ html[data-layout="hub"] .plugins-page__plugin-tab-btn {
 }
 
 html[data-layout="hub"] .console-hub-page__search-input,
-html[data-layout="hub"] .plugin-store-page__search-input {
+html[data-layout="hub"] .console-hub-page__search-input .inp,
+html[data-layout="hub"] .plugin-store-page__search-input,
+html[data-layout="hub"] .plugin-store-page__search-input .inp {
   border-radius: 999px;
 }
 
@@ -427,9 +430,13 @@ html[data-layout="hub"] .plugins-page__plugin-tab-group .plugin-icon__fallback {
 }
 
 html[data-radius="round"] html[data-layout="hub"] .console-hub-page__search-input,
+html[data-radius="round"] html[data-layout="hub"] .console-hub-page__search-input .inp,
 html[data-radius="round"] html[data-layout="hub"] .plugin-store-page__search-input,
+html[data-radius="round"] html[data-layout="hub"] .plugin-store-page__search-input .inp,
 html[data-layout="hub"][data-radius="round"] .console-hub-page__search-input,
-html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input {
+html[data-layout="hub"][data-radius="round"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input,
+html[data-layout="hub"][data-radius="round"] .plugin-store-page__search-input .inp {
   border-radius: 999px;
 }
 
@@ -679,6 +686,15 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
 html[data-layout="hub"] .plugins-page__search-input {
   grid-area: 1 / 1;
   width: 100%;
+}
+
+.console-hub-page__search-input.inp,
+.console-hub-page__search-input .inp,
+.plugin-store-page__search-input.inp,
+.plugin-store-page__search-input .inp,
+html[data-layout="hub"] .plugins-page__search-input.inp,
+html[data-layout="hub"] .plugins-page__search-input .inp {
+  width: 100%;
   min-height: 44px;
   padding-left: 2.5rem;
   border-radius: 999px;
@@ -686,14 +702,19 @@ html[data-layout="hub"] .plugins-page__search-input {
   box-shadow: var(--hub-shadow);
 }
 
-html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input,
-html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input,
-html[data-layout="hub"][data-theme="light"] .plugins-page__search-input {
+html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .plugin-store-page__search-input .inp,
+html[data-layout="hub"][data-theme="light"] .plugins-page__search-input.inp,
+html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
   background: var(--surface-control);
 }
 
 .console-hub-page__search-input:focus,
-.plugin-store-page__search-input:focus {
+.console-hub-page__search-input .inp:focus,
+.plugin-store-page__search-input:focus,
+.plugin-store-page__search-input .inp:focus {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--control-border));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
@@ -1095,7 +1116,8 @@ html[data-layout="hub"] .bot-config-edit__grid {
   gap: 12px 14px;
 }
 
-html[data-layout="hub"] .logs-page__search {
+html[data-layout="hub"] .logs-page__search.inp,
+html[data-layout="hub"] .logs-page__search .inp {
   border-radius: 999px;
   min-height: 40px;
 }
@@ -2151,8 +2173,10 @@ html[data-layout="hub"] .shell__topbar-exit {
   padding-inline: 14px;
 }
 
-html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input,
-html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input {
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input.inp,
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input .inp,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input.inp,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input .inp {
   background: color-mix(in srgb, var(--surface-control) calc(var(--card-glass-opacity) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));

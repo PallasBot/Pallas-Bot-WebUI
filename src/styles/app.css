@@ -2166,7 +2166,9 @@ html[data-theme="light"] .shell-back-top {
 }
 
 .logs-page__hd-advanced .logs-page__filter-row > .logs-page__field > .sel,
-.logs-page__hd-advanced .logs-page__filter-row > .logs-page__field > .inp {
+.logs-page__hd-advanced .logs-page__filter-row > .logs-page__field > .inp,
+.logs-page__hd-advanced .logs-page__filter-row > .logs-page__field > .ui-select,
+.logs-page__hd-advanced .logs-page__filter-row > .logs-page__field > .ui-input-wrap {
   min-width: 9rem;
   width: 100%;
 }
@@ -2805,7 +2807,8 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   gap: 8px;
 }
 
-.friends-groups-list-hd-actions > input[type="search"].inp {
+.friends-groups-list-hd-actions > input[type="search"].inp,
+.friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap {
   flex: 1 1 140px;
   min-width: 140px;
   max-width: 220px;
@@ -8306,7 +8309,11 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   #fg-friends .friends-groups-list-hd-actions > input[type="search"].inp,
   #fg-groups .friends-groups-list-hd-actions > input[type="search"].inp,
   #db-group-configs .friends-groups-list-hd-actions > input[type="search"].inp,
-  #db-user-configs .friends-groups-list-hd-actions > input[type="search"].inp {
+  #db-user-configs .friends-groups-list-hd-actions > input[type="search"].inp,
+  #fg-friends .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap,
+  #fg-groups .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap,
+  #db-group-configs .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap,
+  #db-user-configs .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap {
     grid-column: 1;
     grid-row: 2;
     width: 100% !important;
@@ -8662,7 +8669,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 6px;
   }
 
-  .logs-page__search {
+  .logs-page__search.inp,
+  .logs-page__search .inp {
     min-height: 34px;
   }
 

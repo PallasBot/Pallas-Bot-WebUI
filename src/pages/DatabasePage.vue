@@ -24,6 +24,7 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
@@ -397,14 +398,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="groupListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索群号 / 轮盘 / 封禁 / 插件 / 拉黑"
             title="按群号、轮盘模式、封禁状态、禁用插件、拉黑 QQ 筛选"
             :disabled="socialConfigsBusy"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="socialConfigsBusy"
@@ -510,14 +511,14 @@ onUnmounted(() => {
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
           </span>
-          <input
+          <UiInput
             v-model="userListQ"
-            class="inp"
+            class="friends-groups-list-search"
             type="search"
             placeholder="搜索 QQ / 封禁状态"
             title="按 QQ、封禁状态筛选"
             :disabled="socialConfigsBusy"
-          >
+          />
           <div class="friends-groups-list-hd-actions__tail">
             <span
               v-if="socialConfigsBusy"

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, useAttrs } from "vue";
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
@@ -27,7 +29,16 @@ const emit = defineEmits<{
   "update:modelValue": [value: string];
 }>();
 
+const attrs = useAttrs();
 const revealed = ref(false);
+
+const wrapClass = computed(() => attrs.class);
+
+const inputAttrs = computed(() => {
+  const rest: Record<string, unknown> = { ...attrs };
+  delete rest.class;
+  return rest;
+});
 
 const inputType = computed(() => {
   if (props.type === "password" && props.revealable) {
@@ -46,9 +57,10 @@ function onInput(ev: Event) {
 <template>
   <div
     class="ui-input-wrap"
-    :class="{ 'ui-input-wrap--revealable': showEye }"
+    :class="[wrapClass, { 'ui-input-wrap--revealable': showEye }]"
   >
     <input
+      v-bind="inputAttrs"
       class="inp ui-input"
       :class="{ 'ui-input--invalid': invalid }"
       :type="inputType"

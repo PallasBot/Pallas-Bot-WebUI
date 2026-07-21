@@ -4,11 +4,12 @@ import { RouterLink } from "vue-router";
 import { useRoute } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
 import ConsoleDevModePanel from "@/components/ConsoleDevModePanel.vue";
-import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import PrefsGlassPreview from "@/components/PrefsGlassPreview.vue";
 import PrefsSettingCard from "@/components/PrefsSettingCard.vue";
 import UiButton from "@/components/ui/UiButton.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSwitch from "@/components/ui/UiSwitch.vue";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
 import type { AccentPreset, DensityMode, RadiusMode, SurfaceStyle, ThemeMode, UiPreset } from "@/utils/consolePrefs";
@@ -254,9 +255,10 @@ async function loadSetupStatus(force = false) {
       >
         <div class="prefs-switch-row">
           <span class="prefs-switch-row__label">毛玻璃效果</span>
-          <ConsoleSwitch
+          <UiSwitch
             v-model="glassSurfaceOn"
             :label="boolSwitchLabel(glassSurfaceOn)"
+            show-label
           />
         </div>
       </PrefsSettingCard>
@@ -398,9 +400,10 @@ async function loadSetupStatus(force = false) {
       >
         <div class="prefs-switch-row">
           <span class="prefs-switch-row__label">紧凑布局</span>
-          <ConsoleSwitch
+          <UiSwitch
             v-model="compactDensityOn"
             :label="boolSwitchLabel(compactDensityOn)"
+            show-label
           />
         </div>
       </PrefsSettingCard>
@@ -428,21 +431,21 @@ async function loadSetupStatus(force = false) {
         </div>
         <div class="prefs-form-field">
           <label class="prefs-form-field__label">新口令</label>
-          <input
+          <UiInput
             v-model="p1"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <div class="prefs-form-field">
           <label class="prefs-form-field__label">确认口令</label>
-          <input
+          <UiInput
             v-model="p2"
-            class="inp"
             type="password"
+            revealable
             autocomplete="new-password"
-          >
+          />
         </div>
         <UiButton
           variant="primary"
