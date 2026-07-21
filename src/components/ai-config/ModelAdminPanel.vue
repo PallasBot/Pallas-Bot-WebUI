@@ -11,6 +11,7 @@ import {
 import type { LlmModelAdminStatus } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
 import AiConfirmDialog from "@/components/ai-config/AiConfirmDialog.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { toastApiError, toastSaveSuccess } from "@/utils/consoleToastFeedback";
@@ -185,22 +186,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <UiCard
-    tag="section"
-    :glass="!embedded"
+  <component
+    :is="embedded ? 'section' : UiCard"
+    v-bind="embedded ? { 'aria-label': 'Ollama 与推理' } : { tag: 'section', glass: true }"
     class="model-admin"
     :class="{ 'model-admin--embedded': embedded }"
   >
-    <div class="panel__hd panel__hd--split">
-      <h2 class="panel__title">Ollama 与推理</h2>
-      <UiButton
-        variant="outline"
-        size="sm"
-        :disabled="busy || loading"
-        @click="refresh"
-      >
-        刷新
-      </UiButton>
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap model-admin__hd">
+      <h2 class="panel__title">
+        Ollama 与推理
+        <RefreshIconButton
+          :embedded="true"
+          :show-label="false"
+          :busy="loading"
+          :disabled="busy"
+          label="刷新"
+          @click="refresh"
+        />
+      </h2>
     </div>
 
     <div class="panel__bd">
@@ -402,15 +405,20 @@ onMounted(() => {
       @close="confirm.open = false"
       @confirm="runConfirm"
     />
-  </UiCard>
+  </component>
 </template>
 
 <style scoped>
-.model-admin--embedded {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
+.model-admin--embedded > .panel__hd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+}
+
+.model-admin--embedded > .panel__bd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
 }
 
 .model-admin__intro {
@@ -560,9 +568,19 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.model-admin__actions {
-  flex-wrap: wrap;
+/* 两列均分；压过窄屏 .panel__bd .row-actions 竖排全宽 */
+.model-admin__actions.row-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  align-items: stretch;
+}
+
+.model-admin__actions.row-actions > :deep(.ui-btn),
+.model-admin__actions.row-actions > :deep(.btn) {
+  width: auto;
+  min-width: 0;
+  justify-content: center;
 }
 
 .model-admin__hint {

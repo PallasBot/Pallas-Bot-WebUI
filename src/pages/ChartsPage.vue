@@ -54,7 +54,6 @@ function currentMonthIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-const selectedMonth = ref(currentMonthIso());
 const rangeStart = ref("");
 const rangeEnd = ref(todayIso());
 
@@ -128,11 +127,11 @@ function monthBounds(month: string): { start: string; end: string } {
   };
 }
 
-function daysInMonth(month: string): string[] {
-  const { start, end } = monthBounds(month);
+function daysInRange(start: string, end: string): string[] {
   const out: string[] = [];
   const cur = new Date(`${start}T00:00:00`);
   const endD = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(cur.getTime()) || Number.isNaN(endD.getTime())) return out;
   while (cur <= endD) {
     const y = cur.getFullYear();
     const m = String(cur.getMonth() + 1).padStart(2, "0");
@@ -144,14 +143,10 @@ function daysInMonth(month: string): string[] {
 }
 
 const queryRange = computed((): { start: string; end: string } => {
-  const month = monthBounds(selectedMonth.value);
-  const start = rangeStart.value || month.start;
+  const bounds = monthBounds(currentMonthIso());
+  const start = rangeStart.value || bounds.start;
   const end = rangeEnd.value || todayIso();
-  const lo = start <= end ? start : end;
-  const hi = start <= end ? end : start;
-  const mergedStart = lo < month.start ? lo : month.start;
-  const mergedEnd = hi > month.end ? hi : month.end;
-  return { start: mergedStart, end: mergedEnd };
+  return start <= end ? { start, end } : { start: end, end: start };
 });
 
 const dailyRowsScoped = computed((): ConsoleDailyStatRow[] => {
@@ -168,7 +163,8 @@ const dailyByDate = computed(() => {
 });
 
 const monthlyDailyRows = computed((): ConsoleDailyStatRow[] => {
-  const days = daysInMonth(selectedMonth.value);
+  const { start, end } = queryRange.value;
+  const days = daysInRange(start, end);
   const selfId = selectedAccount.value != null ? String(selectedAccount.value) : "";
   return days.map((date) => {
     const row = dailyByDate.value.get(date);
@@ -310,13 +306,13 @@ async function refreshAll() {
   ]);
 }
 
-watch([selectedAccount, selectedMonth, rangeStart, rangeEnd], () => {
+watch([selectedAccount, rangeStart, rangeEnd], () => {
   if (!pageReady.value) return;
   void loadRangeData();
 });
 
 onMounted(() => {
-  const bounds = monthBounds(selectedMonth.value);
+  const bounds = monthBounds(currentMonthIso());
   rangeStart.value = bounds.start;
   rangeEnd.value = bounds.end;
   if (warmInstances) ensureSelectedBot();
@@ -378,6 +374,7 @@ onActivated(() => {
               </select>
             </label>
             <RefreshIconButton
+              embedded
               :busy="chartsBusy || rangeBusy"
               label="刷新"
               @click="refreshAll"
@@ -393,15 +390,6 @@ onActivated(() => {
         class="charts-page__filter-toolbar"
       >
         <div class="charts-page__filter-group">
-          <label class="charts-page__date-label">
-            <span class="charts-page__date-label-text">月份</span>
-            <input
-              v-model="selectedMonth"
-              class="inp charts-page__month-inp"
-              type="month"
-              aria-label="选择月份"
-            >
-          </label>
           <label class="charts-page__date-label">
             <span class="charts-page__date-label-text">起始</span>
             <input
@@ -462,7 +450,7 @@ onActivated(() => {
                 <ChartsMonthlyCommandChart
                   :rows="monthlyDailyRows"
                   :busy="rangeBusy || chartsBusy"
-                  :empty-text="`「${selectedMonth}」暂无持久化数据，请保持 Bot 运行并跨日写入。`"
+                  empty-text="所选区间暂无持久化数据，请保持 Bot 运行并跨日写入。"
                 />
               </div>
             </UiCard>

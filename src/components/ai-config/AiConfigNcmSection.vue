@@ -170,7 +170,7 @@ onMounted(() => {
     glass
     class="ai-config-section__panel"
   >
-    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap ai-ncm-panel-hd">
       <h2 class="panel__title ai-ncm-hd-title">
         <ConsoleNavIcon
           class="panel__title-ico"
@@ -184,12 +184,10 @@ onMounted(() => {
         />
       </h2>
       <div
+        v-if="ncmStatus"
         class="row-actions ai-ncm-hd__actions"
       >
-        <div
-          v-if="ncmStatus"
-          class="ai-ncm-hd-status"
-        >
+        <div class="ai-ncm-hd-status">
           <span
             class="home-page__hd-capsule"
             :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
@@ -328,6 +326,28 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-ncm-panel-hd {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.ai-ncm-hd__actions {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 窄屏：状态胶囊靠右；标题栏同行见 app.css .home-page__panel-hd-nowrap */
+@media (max-width: 560px) {
+  .ai-ncm-panel-hd .ai-ncm-hd-status {
+    justify-content: flex-end;
+  }
+
+  .ai-ncm-panel-hd .ai-ncm-hd-extra {
+    display: none;
+  }
+}
+
 .ai-ncm-links {
   display: flex;
   flex-wrap: wrap;

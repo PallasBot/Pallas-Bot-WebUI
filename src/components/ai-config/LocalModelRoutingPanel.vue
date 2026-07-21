@@ -12,6 +12,7 @@ import type {
 } from "@/api/pallasTypes";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
 import LlmModelSelect from "@/components/ai-config/LlmModelSelect.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
@@ -45,7 +46,6 @@ const baseline = ref("");
 const draft = ref<LlmLocalRoutingConfig>(emptyRouting());
 const providers = ref<LlmProviderConfigRow[]>([]);
 const picker = useLlmModelPickerOptions();
-const { discoveringModels } = picker;
 
 const dirty = computed(() => JSON.stringify(draft.value) !== baseline.value);
 const modelSelectGroups = computed(() =>
@@ -124,32 +124,25 @@ onMounted(() => {
 </script>
 
 <template>
-  <UiCard
-    tag="section"
-    :glass="!compact"
+  <component
+    :is="compact ? 'section' : UiCard"
+    v-bind="compact ? { 'aria-label': '本地分流' } : { tag: 'section', glass: true }"
     class="local-routing-panel"
     :class="{ 'local-routing-panel--compact': compact }"
   >
-    <div class="panel__hd panel__hd--split">
-      <h2 class="panel__title">本地分流</h2>
-      <div class="row-actions">
-        <UiButton
-          variant="outline"
-          size="sm"
-          :disabled="loading || discoveringModels || !providers.length"
-          :busy="discoveringModels"
-          @click="picker.discoverProviderModels(providers)"
-        >
-          {{ discoveringModels ? "发现中…" : "刷新模型列表" }}
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="sm"
-          :disabled="loading || saving"
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap local-routing-panel__hd">
+      <h2 class="panel__title">
+        本地分流
+        <RefreshIconButton
+          embedded
+          :show-label="false"
+          :busy="loading"
+          :disabled="saving"
+          label="刷新"
           @click="load"
-        >
-          刷新
-        </UiButton>
+        />
+      </h2>
+      <div class="row-actions local-routing-panel__hd-actions">
         <UiButton
           variant="primary"
           size="sm"
@@ -320,15 +313,20 @@ onMounted(() => {
         </section>
       </div>
     </div>
-  </UiCard>
+  </component>
 </template>
 
 <style scoped>
-.local-routing-panel--compact {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
+.local-routing-panel--compact > .panel__hd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+}
+
+.local-routing-panel--compact > .panel__bd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
 }
 
 .local-routing-panel--compact .local-routing-panel__body {
@@ -344,13 +342,8 @@ onMounted(() => {
   line-height: 1.45;
 }
 
-.local-routing-panel--compact :deep(.panel__hd--split) {
-  flex-wrap: wrap;
+.local-routing-panel--compact .local-routing-panel__hd.panel__hd--split {
   gap: 8px;
-}
-
-.local-routing-panel--compact :deep(.row-actions) {
-  flex-wrap: wrap;
 }
 
 .local-routing-panel__body {

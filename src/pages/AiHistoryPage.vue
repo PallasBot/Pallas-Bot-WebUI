@@ -156,6 +156,7 @@ const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailAnchor = ref<HTMLElement | null>(null);
+const sessionsWorkspaceAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
 type MaintainPanelKey = "persona" | "feedback" | "promotion" | "behavior" | "kernel";
 const maintainPanelExpanded = ref<Record<MaintainPanelKey, boolean>>({
@@ -578,8 +579,33 @@ function openLlmCommonConfig(focusLearningLoop = false): void {
   );
 }
 
+function applyWorkspaceFromQuery(raw: unknown = route.query.workspace): void {
+  const workspaceRaw = String(raw ?? "").trim();
+  if (
+    workspaceRaw === "sessions"
+    || workspaceRaw === "maintain"
+    || workspaceRaw === "rules"
+    || workspaceRaw === "memory"
+  ) {
+    activeWorkspace.value = workspaceRaw;
+  }
+}
+
+/** 学习闭环已开时：切到「会话」做排除/期望回复验证（同页 query 不会驱动 tab，需写 ref） */
 function openHistoryVerify(): void {
-  void router.push({ path: "/ai/history", query: { workspace: "sessions" } });
+  activeWorkspace.value = "sessions";
+  if (String(route.query.workspace ?? "") !== "sessions") {
+    void router.replace({
+      path: route.path,
+      query: { ...route.query, workspace: "sessions" },
+    });
+  }
+  void nextTick(() => {
+    if (selectedSessionKey.value) {
+      scrollSessionDetailIntoView();
+    }
+    sessionsWorkspaceAnchor.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 const workspaceContextLabel = computed(() => {
   const session = selectedSession.value;
@@ -1914,16 +1940,13 @@ watch(behaviorRunsScene, (next) => {
   }
 });
 
+watch(
+  () => route.query.workspace,
+  (raw) => applyWorkspaceFromQuery(raw),
+);
+
 onMounted(() => {
-  const workspaceRaw = String(route.query.workspace ?? "").trim();
-  if (
-    workspaceRaw === "sessions"
-    || workspaceRaw === "maintain"
-    || workspaceRaw === "rules"
-    || workspaceRaw === "memory"
-  ) {
-    activeWorkspace.value = workspaceRaw;
-  }
+  applyWorkspaceFromQuery();
   void refreshAll();
   void loadMemoryBots();
   feedbackGroup.value = filterGroup.value;
@@ -2034,7 +2057,11 @@ onMounted(() => {
       @update:scene-value="onContextSceneChange"
     />
 
-    <div v-show="activeWorkspace === 'sessions'" class="ai-history-page__workspace ai-history-page__workspace--sessions">
+    <div
+      v-show="activeWorkspace === 'sessions'"
+      ref="sessionsWorkspaceAnchor"
+      class="ai-history-page__workspace ai-history-page__workspace--sessions"
+    >
     <section class="ai-history-split ai-hub-panel">
       <aside class="ai-history-split__list">
         <div class="ai-history-split__list-top">

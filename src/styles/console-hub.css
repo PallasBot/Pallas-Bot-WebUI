@@ -154,8 +154,8 @@ html[data-layout="hub"] .panel__title .console-nav-icon__svg {
   height: 100%;
 }
 
-html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only,
-html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only {
+html[data-layout="hub"] .panel__title .btn-refresh-action--icon-only:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only:not(.btn-refresh-action--embedded) {
   min-height: 0;
   width: 1.75rem;
   height: 1.75rem;
@@ -1545,15 +1545,14 @@ input.inp[type="range"]:focus-visible {
   border-radius: 4px;
 }
 
-.prefs-segment {
-  display: flex;
-  flex-wrap: wrap;
+/* 选项组默认横排等分（颜色模式 / 配色 / 圆角等） */
+.prefs-segment,
+.prefs-segment--fill {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 8px;
-}
-
-.prefs-segment--fill .prefs-segment__btn {
-  flex: 1 1 0;
-  min-width: 5.5rem;
+  width: 100%;
 }
 
 .prefs-segment__btn {
@@ -1561,6 +1560,9 @@ input.inp[type="range"]:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   min-height: 40px;
   padding: 8px 14px;
   font-size: 13px;
@@ -1719,15 +1721,13 @@ input.inp[type="range"]:focus-visible {
   .prefs-setting-card--wide {
     grid-column: auto;
   }
-
-  .prefs-segment--fill .prefs-segment__btn {
-    flex: 1 1 calc(50% - 4px);
-  }
 }
 
 @media (max-width: 560px) {
-  .prefs-segment--fill .prefs-segment__btn {
-    flex: 1 1 100%;
+  .prefs-segment > .prefs-segment__btn,
+  .prefs-segment--fill > .prefs-segment__btn {
+    padding: 8px 8px;
+    font-size: 12px;
   }
 
   .prefs-setting-card__hd {
@@ -2155,9 +2155,9 @@ html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input {
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
 }
 
-html[data-layout="hub"] .console-hub-page__masthead-actions .ui-btn,
-html[data-layout="hub"] .plugin-store-page__masthead-actions .ui-btn,
-html[data-layout="hub"] .plugins-page__body .console-hub-page__masthead-actions .ui-btn {
+html[data-layout="hub"] .console-hub-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .plugin-store-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded),
+html[data-layout="hub"] .plugins-page__body .console-hub-page__masthead-actions .ui-btn:not(.btn-refresh-action--embedded) {
   min-height: 40px;
 }
 

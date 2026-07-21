@@ -460,6 +460,7 @@ onMounted(() => {
         </template>
         <template #actions>
           <RefreshIconButton
+            embedded
             class="hub-refresh-wide-only"
             :busy="refreshBusy"
             label="刷新"
@@ -505,6 +506,7 @@ onMounted(() => {
                 :name="panelNavIcon"
               />全网部署
               <RefreshIconButton
+                embedded
                 class="hub-refresh-narrow-only"
                 :show-label="false"
                 :busy="refreshBusy"

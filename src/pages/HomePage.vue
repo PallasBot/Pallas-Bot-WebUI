@@ -1364,7 +1364,7 @@ onUnmounted(() => {
               <div class="home-acct__hd-actions">
                 <span v-if="selectedAccount != null && selectedConnected" class="home-acct__conn home-acct__conn--on"><span class="home-acct__conn-dot" aria-hidden="true" />已连接</span>
                 <span v-else-if="selectedAccount != null" class="home-acct__conn home-acct__conn--off">未连接</span>
-                <RefreshIconButton :show-label="false" :busy="overviewRefreshing" label="刷新概况" @click="() => load({ refreshMeta: true })" />
+                <RefreshIconButton :embedded="true" :show-label="false" :busy="overviewRefreshing" label="刷新概况" @click="() => load({ refreshMeta: true })" />
               </div>
             </div>
             <div class="home-card__bd home-acct__bd" v-if="selectedAccount != null">

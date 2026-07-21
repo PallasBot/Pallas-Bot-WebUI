@@ -24,6 +24,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -762,6 +763,7 @@ onUnmounted(() => {
       </template>
       <template #actions>
         <RefreshIconButton
+          embedded
           class="hub-refresh-wide-only"
           :busy="pageRefreshBusy"
           label="刷新本页数据"
@@ -780,6 +782,7 @@ onUnmounted(() => {
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />当前账号
           <RefreshIconButton
+            embedded
             class="hub-refresh-narrow-only"
             :show-label="false"
             :busy="pageRefreshBusy"
@@ -816,6 +819,11 @@ onUnmounted(() => {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友列表
+          <PanelHdCollapseCaret
+            :expanded="consolePrefs.friendsPageFriendsListOpen"
+            label="好友列表"
+            @toggle="toggleFriendsListPanel"
+          />
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
@@ -840,13 +848,6 @@ onUnmounted(() => {
             >
               已截断
             </UiBadge>
-            <UiButton
-              variant="outline"
-              size="sm"
-              @click="toggleFriendsListPanel"
-            >
-              {{ consolePrefs.friendsPageFriendsListOpen ? "收起" : "展开" }}
-            </UiButton>
           </div>
         </div>
       </div>
@@ -958,6 +959,11 @@ onUnmounted(() => {
       <div class="panel__hd panel__hd--split">
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />群聊列表
+          <PanelHdCollapseCaret
+            :expanded="consolePrefs.friendsPageGroupsListOpen"
+            label="群聊列表"
+            @toggle="toggleGroupsListPanel"
+          />
         </h2>
         <div class="row-actions friends-groups-list-hd-actions">
           <span class="friends-groups-hd-pin-wrap">
@@ -982,13 +988,6 @@ onUnmounted(() => {
             >
               已截断 · limit {{ groups?.limit }}
             </UiBadge>
-            <UiButton
-              variant="outline"
-              size="sm"
-              @click="toggleGroupsListPanel"
-            >
-              {{ consolePrefs.friendsPageGroupsListOpen ? "收起" : "展开" }}
-            </UiButton>
           </div>
         </div>
       </div>
@@ -1101,7 +1100,8 @@ onUnmounted(() => {
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />好友申请
           <RefreshIconButton
-                :show-label="false"
+            embedded
+            :show-label="false"
             :busy="reqsBusy"
             :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"
@@ -1250,7 +1250,8 @@ onUnmounted(() => {
         <h2 class="panel__title">
           <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />入群请求
           <RefreshIconButton
-                :show-label="false"
+            embedded
+            :show-label="false"
             :busy="reqsBusy"
             :disabled="busy || !selfIdStr.trim()"
             label="刷新审批数据"

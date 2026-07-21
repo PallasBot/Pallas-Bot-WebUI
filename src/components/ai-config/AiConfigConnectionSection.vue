@@ -189,14 +189,14 @@ defineExpose({ save, canSave, saving });
     glass
     class="ai-config-section__panel ai-config-connection"
   >
-    <div class="panel__hd panel__hd--split">
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap ai-config-connection__hd">
       <h2 class="panel__title">
         <ConsoleNavIcon
           class="panel__title-ico"
           :name="panelNavIcon"
         />媒体服务
       </h2>
-      <div class="row-actions">
+      <div class="row-actions ai-config-connection__hd-actions">
         <UiButton
           :disabled="saving"
           @click="load"

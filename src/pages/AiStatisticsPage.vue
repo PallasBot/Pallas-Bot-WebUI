@@ -11,7 +11,6 @@ import { installChartThemeWatcher, readChartPalette } from "@/utils/chartTheme";
 const {
   loading,
   err,
-  month,
   start,
   end,
   stats,
@@ -143,11 +142,6 @@ function routeBarColor(index: number): string {
   return palette.value[index % palette.value.length] ?? botAccent.value;
 }
 
-watch(month, () => {
-  resetMonthRange();
-  void refresh();
-});
-
 watch([start, end], () => {
   void refresh();
 });
@@ -173,10 +167,6 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   <div class="ai-stats-page">
     <div class="ai-hub-toolbar ai-stats-page__toolbar">
       <div class="ai-stats-page__date-filters">
-        <label class="ai-date-field">
-          <span class="ai-date-field__label">月份</span>
-          <input v-model="month" class="inp" type="month" aria-label="选择月份">
-        </label>
         <label class="ai-date-field">
           <span class="ai-date-field__label">起始</span>
           <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
@@ -479,9 +469,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 .ai-stats-page__date-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .ai-date-field {
@@ -789,16 +780,26 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 }
 
 @media (max-width: 560px) {
-  .ai-stats-page__date-filters {
-    flex-direction: column;
+  .ai-stats-page__toolbar {
     align-items: stretch;
   }
-  
-  .ai-date-field {
+
+  .ai-stats-page__toolbar .ai-stats-page__date-filters {
+    margin-left: 0;
     width: 100%;
+  }
+
+  .ai-date-field {
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: space-between;
   }
-  
+
+  .ai-date-field .inp {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .ai-stats-page__top-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

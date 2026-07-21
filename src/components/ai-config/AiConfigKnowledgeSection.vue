@@ -24,7 +24,7 @@ defineExpose({ save, canSave, saving });
       glass
       class="ai-config-section__panel"
     >
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
         <h2 class="panel__title">
           <ConsoleNavIcon
             class="panel__title-ico"

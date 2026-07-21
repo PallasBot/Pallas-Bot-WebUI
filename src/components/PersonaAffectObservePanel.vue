@@ -243,6 +243,7 @@ defineExpose({ reload: load });
           >
         </label>
         <RefreshIconButton
+          :embedded="true"
           :busy="loading"
           label="刷新"
           @click="load"
@@ -250,6 +251,7 @@ defineExpose({ reload: load });
       </div>
       <RefreshIconButton
         v-else
+        :embedded="true"
         :busy="loading"
         label="刷新"
         class="persona-observe-panel__embedded-refresh"

@@ -1311,6 +1311,7 @@ onDeactivated(() => {
               {{ checkingUpdate ? "检查中…" : "检查更新" }}
             </UiButton>
             <RefreshIconButton
+              embedded
               :busy="loading"
               label="刷新列表"
               @click="refreshStore(true)"
@@ -1361,6 +1362,7 @@ onDeactivated(() => {
         </template>
         <template #actions>
           <RefreshIconButton
+            embedded
             :busy="loading"
             label="刷新列表"
             @click="refreshStore(true)"

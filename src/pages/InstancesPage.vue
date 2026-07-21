@@ -25,6 +25,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -527,17 +528,14 @@ onUnmounted(() => {
         <div class="panel__hd panel__hd--split inst-db-panel__hd">
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />数据库中的实例
-            <button
-              type="button"
-              class="panel-hd-collapse-caret"
-              :aria-expanded="expDbBots"
-              :aria-label="expDbBots ? '收起数据库中的实例' : '展开数据库中的实例'"
-              @click="expDbBots = !expDbBots"
-            >
-              <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
-            </button>
+            <PanelHdCollapseCaret
+              :expanded="expDbBots"
+              label="数据库中的实例"
+              @toggle="expDbBots = !expDbBots"
+            />
             <RefreshIconButton
-                :show-label="false"
+              embedded
+              :show-label="false"
               :busy="reloadBusy"
               label="刷新实例数据"
               @click="reloadFromUser"
@@ -819,15 +817,11 @@ onUnmounted(() => {
         <div class="panel__hd panel__hd--split">
           <h2 class="panel__title">
             <ConsoleNavIcon class="panel__title-ico" :name="panelNavIcon" />消息框架
-            <button
-              type="button"
-              class="panel-hd-collapse-caret"
-              :aria-expanded="expNonebot"
-              :aria-label="expNonebot ? '收起消息框架' : '展开消息框架'"
-              @click="expNonebot = !expNonebot"
-            >
-              <span class="panel-hd-collapse-caret-ico" aria-hidden="true" />
-            </button>
+            <PanelHdCollapseCaret
+              :expanded="expNonebot"
+              label="消息框架"
+              @toggle="expNonebot = !expNonebot"
+            />
           </h2>
         </div>
         <div
