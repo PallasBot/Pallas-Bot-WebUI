@@ -104,6 +104,10 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   min-height: var(--ui-ctrl-height, 34px);
 }
 
+.ai-history-context-bar__inp.ui-input-wrap {
+  width: auto;
+}
+
 .ai-history-context-bar__action:deep(.ui-btn) {
   margin-left: auto;
 }
@@ -121,6 +125,10 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   flex: 1 1 72px;
   min-width: 0;
   max-width: 108px;
+  width: auto;
+}
+
+.ai-history-filter-inline__inp .inp {
   min-height: 32px;
   padding-inline: 10px;
   font-size: 0.8125rem;
@@ -375,6 +383,10 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
   .ai-history-filter-inline__inp {
     max-width: none;
     flex: 1 1 calc(33.33% - 6px);
+  }
+
+  .ai-history-filter-inline__inp.ui-input-wrap {
+    width: auto;
   }
 
   .ai-history-session__tags {

@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AiDailyTrendChart from "@/components/ai-config/stats/AiDailyTrendChart.vue";
 import StatTable, { type StatColumn } from "@/components/ai-config/stats/StatTable.vue";
 import UiCard from "@/components/ui/UiCard.vue";
+import UiInput from "@/components/ui/UiInput.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { useAiTaskStatsPage } from "@/composables/useAiTaskStatsPage";
@@ -169,11 +170,19 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
       <div class="ai-stats-page__date-filters">
         <label class="ai-date-field">
           <span class="ai-date-field__label">起始</span>
-          <input v-model="start" class="inp" type="date" aria-label="选择起始日期">
+          <UiInput
+            v-model="start"
+            type="date"
+            aria-label="选择起始日期"
+          />
         </label>
         <label class="ai-date-field">
           <span class="ai-date-field__label">结束</span>
-          <input v-model="end" class="inp" type="date" aria-label="选择结束日期">
+          <UiInput
+            v-model="end"
+            type="date"
+            aria-label="选择结束日期"
+          />
         </label>
       </div>
       <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
@@ -491,6 +500,11 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   color: var(--text-muted);
 }
 
+.ai-date-field .ui-input-wrap {
+  width: auto;
+  min-width: 0;
+}
+
 .ai-date-field .inp {
   border: none;
   background: transparent;
@@ -795,6 +809,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     justify-content: space-between;
   }
 
+  .ai-date-field .ui-input-wrap,
   .ai-date-field .inp {
     min-width: 0;
     max-width: 100%;

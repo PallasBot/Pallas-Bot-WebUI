@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import UiButton from "@/components/ui/UiButton.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 
 export type AiHistoryContextWorkspace = "sessions" | "maintain" | "rules" | "memory";
 
@@ -22,14 +24,6 @@ const emit = defineEmits<{
   "update:groupValue": [value: string];
   "update:sceneValue": [value: string];
 }>();
-
-function onGroupInput(ev: Event) {
-  emit("update:groupValue", (ev.target as HTMLInputElement).value);
-}
-
-function onSceneChange(ev: Event) {
-  emit("update:sceneValue", (ev.target as HTMLSelectElement).value);
-}
 </script>
 
 <template>
@@ -51,21 +45,21 @@ function onSceneChange(ev: Event) {
       v-if="showGroupField"
       class="ai-history-context-bar__filters"
     >
-      <input
-        class="inp ai-history-context-bar__inp"
+      <UiInput
+        class="ai-history-context-bar__inp"
         inputmode="numeric"
         placeholder="群号"
         aria-label="群号"
-        :value="groupValue"
-        @input="onGroupInput"
+        :model-value="groupValue"
+        @update:model-value="emit('update:groupValue', $event)"
         @keyup.enter="emit('refreshGroup')"
-      >
-      <select
+      />
+      <UiSelect
         v-if="sceneOptions?.length"
-        class="inp ai-history-context-bar__inp"
+        class="ai-history-context-bar__inp"
         aria-label="场景"
-        :value="sceneValue"
-        @change="onSceneChange"
+        :model-value="sceneValue"
+        @update:model-value="emit('update:sceneValue', $event)"
       >
         <option
           v-for="item in sceneOptions"
@@ -74,7 +68,7 @@ function onSceneChange(ev: Event) {
         >
           {{ item.label }}
         </option>
-      </select>
+      </UiSelect>
       <UiButton
         size="sm"
         variant="ghost"

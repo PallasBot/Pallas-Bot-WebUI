@@ -49,6 +49,8 @@ import type {
   InstancesData,
 } from "@/api/pallasTypes";
 import UiButton from "@/components/ui/UiButton.vue";
+import UiInput from "@/components/ui/UiInput.vue";
+import UiSelect from "@/components/ui/UiSelect.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
@@ -2996,30 +2998,36 @@ onMounted(() => {
           <div class="ai-history-page__filters ai-history-page__filters--aligned">
             <label class="ai-history-page__filter">
               <span>群号</span>
-              <input
+              <UiInput
                 v-model="behaviorRunsGroup"
-                class="inp"
                 inputmode="numeric"
                 placeholder="全部"
-                @input="behaviorRunsGroupTouched = true; observeGroup = behaviorRunsGroup; observeGroupTouched = true"
+                aria-label="群号"
+                @update:model-value="behaviorRunsGroupTouched = true; observeGroup = $event; observeGroupTouched = true"
                 @keyup.enter="refreshBehaviorRuns"
-              >
+              />
             </label>
             <label class="ai-history-page__filter">
               <span>场景</span>
-              <select v-model="behaviorRunsScene" class="inp">
+              <UiSelect
+                v-model="behaviorRunsScene"
+                aria-label="场景"
+              >
                 <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="item.value || 'empty'" :value="item.value">
                   {{ item.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <label class="ai-history-page__filter">
               <span>结果</span>
-              <select v-model="behaviorRunsOutcome" class="inp">
+              <UiSelect
+                v-model="behaviorRunsOutcome"
+                aria-label="结果"
+              >
                 <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
                   {{ item.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
               <label class="ai-history-page__behavior-check">
@@ -3312,11 +3320,10 @@ onMounted(() => {
           <div class="ai-history-page__filters ai-history-page__filters--aligned">
             <label class="ai-history-page__filter ai-history-page__filter--memory-bot">
               <span>Bot QQ</span>
-              <select
+              <UiSelect
                 v-model="memoryBot"
-                class="inp"
                 aria-label="选择 Bot QQ"
-                @change="memoryBotTouched = true"
+                @update:model-value="memoryBotTouched = true"
               >
                 <option value="">请选择 Bot</option>
                 <option
@@ -3326,27 +3333,28 @@ onMounted(() => {
                 >
                   {{ memoryBotOptionLabel(bot) }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <label class="ai-history-page__filter">
               <span>群号</span>
-              <input
+              <UiInput
                 v-model="memoryGroup"
-                class="inp"
                 inputmode="numeric"
                 placeholder="留空查看全部范围"
-                @input="memoryGroupTouched = true"
+                aria-label="群号"
+                @update:model-value="memoryGroupTouched = true"
                 @keyup.enter="refreshMemoryWorkspace"
-              >
+              />
             </label>
             <label class="ai-history-page__filter">
               <span>搜索</span>
-              <input
+              <UiInput
                 v-model="memoryQuery"
-                class="inp"
+                type="search"
                 placeholder="搜内容、关键词或来源"
+                aria-label="搜索"
                 @keyup.enter="refreshMemoryWorkspace"
-              >
+              />
             </label>
             <div class="ai-history-page__filter-action">
               <UiButton size="sm" variant="outline" :busy="memoryBusy" @click="refreshMemoryWorkspace">
@@ -3484,22 +3492,25 @@ onMounted(() => {
           <div class="ai-history-page__filters ai-history-page__filters--aligned">
             <label class="ai-history-page__filter">
               <span>群号</span>
-              <input
+              <UiInput
                 v-model="patternsGroup"
-                class="inp"
                 inputmode="numeric"
                 placeholder="全部"
-                @input="patternsGroupTouched = true"
+                aria-label="群号"
+                @update:model-value="patternsGroupTouched = true"
                 @keyup.enter="refreshPatterns"
-              >
+              />
             </label>
             <label class="ai-history-page__filter">
               <span>场景</span>
-              <select v-model="patternsScene" class="inp">
+              <UiSelect
+                v-model="patternsScene"
+                aria-label="场景"
+              >
                 <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`pattern-${item.value || 'empty'}`" :value="item.value">
                   {{ item.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
               <label class="ai-history-page__behavior-check">
@@ -3509,7 +3520,10 @@ onMounted(() => {
             </div>
             <label class="ai-history-page__filter">
               <span>排序</span>
-              <select v-model="patternSortKey" class="inp">
+              <UiSelect
+                v-model="patternSortKey"
+                aria-label="排序"
+              >
                 <option
                   v-for="item in PATTERN_SORT_OPTIONS"
                   :key="item.value"
@@ -3517,7 +3531,7 @@ onMounted(() => {
                 >
                   {{ item.label }}
                 </option>
-              </select>
+              </UiSelect>
             </label>
             <div class="ai-history-page__filter-action ai-history-page__filter-action--row">
               <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
@@ -3847,6 +3861,11 @@ onMounted(() => {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-muted);
+}
+
+.ai-date-field .ui-input-wrap {
+  width: auto;
+  min-width: 0;
 }
 
 .ai-date-field .inp {
@@ -4657,6 +4676,7 @@ onMounted(() => {
 }
 
 .ai-history-page__behavior-select .inp,
+.ai-history-page__behavior-select .ui-select,
 .ai-history-page__behavior-action-btn:deep(.ui-btn) {
   min-height: var(--ui-ctrl-height);
   height: var(--ui-ctrl-height);
@@ -4717,11 +4737,14 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.ai-history-page__filter .inp {
+.ai-history-page__filter .inp,
+.ai-history-page__filter .ui-input-wrap,
+.ai-history-page__filter .ui-select {
   width: 96px;
 }
 
-.ai-history-page__filter--memory-bot .inp {
+.ai-history-page__filter--memory-bot .inp,
+.ai-history-page__filter--memory-bot .ui-select {
   width: 172px;
 }
 
@@ -5363,7 +5386,9 @@ onMounted(() => {
     gap: 4px;
   }
 
-  .ai-history-page__filter .inp {
+  .ai-history-page__filter .inp,
+  .ai-history-page__filter .ui-input-wrap,
+  .ai-history-page__filter .ui-select {
     width: 100%;
   }
 
