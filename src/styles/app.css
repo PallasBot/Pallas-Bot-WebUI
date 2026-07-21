@@ -7982,11 +7982,13 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 
 @media (max-width: 560px) {
-  .protocol-page__entry-actions > .btn {
+  .protocol-page__entry-actions > .btn,
+  .protocol-page__entry-actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
     min-width: 0;
   }
-  .protocol-page__entry-actions > .btn.btn--primary {
+  .protocol-page__entry-actions > .btn.btn--primary,
+  .protocol-page__entry-actions > .ui-btn--primary {
     flex-basis: 100%;
   }
   .protocol-runtime-row__actions {

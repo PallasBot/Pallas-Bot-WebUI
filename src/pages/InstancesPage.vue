@@ -25,6 +25,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -520,7 +521,13 @@ onUnmounted(() => {
       v-if="!pageReady"
       :panels="4"
     />
-    <template v-else-if="data">
+    <template v-else>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="数据库实例"
+        lead="管理已写入数据库的 Bot 账号配置，以及消息框架连接状态。"
+      />
+      <template v-if="data">
       <UiCard
         tag="div"
         glass
@@ -898,13 +905,13 @@ onUnmounted(() => {
           />
         </div>
       </UiCard>
-    </template>
-    <UiCard
-      v-else
-      tag="div"
-      glass
-      class="instances-page__panel"
-    >
+      </template>
+      <UiCard
+        v-else
+        tag="div"
+        glass
+        class="instances-page__panel"
+      >
       <div class="panel__bd">
         <p class="muted">
           实例数据未加载，可尝试重新拉取。
@@ -919,6 +926,7 @@ onUnmounted(() => {
         </UiButton>
       </div>
     </UiCard>
+    </template>
 
     <Teleport to="body">
       <div

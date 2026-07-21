@@ -24,6 +24,8 @@ import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialo
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal.vue";
 import type { ProtocolAccountTab } from "@/components/ProtocolAccountWorkspace.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -50,7 +52,6 @@ import {
   type ProtocolDisp,
 } from "@/utils/protocolUi";
 import { slicePage } from "@/utils/paginate";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -717,6 +718,11 @@ onUnmounted(() => {
       :panels="skeletonPanels"
     />
     <template v-else>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="协议连接"
+      lead="查看协议端已连接账号，启停与批量操作；协议资产与创建入口见下方卡片。"
+    />
     <div
       v-if="batch.batchOpen.value"
       class="protocol-page__batch panel"
@@ -1178,19 +1184,19 @@ onUnmounted(() => {
         </p>
         <div class="row-actions protocol-page__actions protocol-page__entry-actions">
           <RouterLink
-            class="btn secondary"
+            class="ui-btn ui-btn--outline"
             to="/protocol/create"
           >
             创建账号
           </RouterLink>
           <RouterLink
-            class="btn secondary"
+            class="ui-btn ui-btn--outline"
             to="/protocol/import"
           >
             导入账号
           </RouterLink>
           <RouterLink
-            class="btn secondary"
+            class="ui-btn ui-btn--outline"
             to="/protocol/assets"
           >
             协议资产

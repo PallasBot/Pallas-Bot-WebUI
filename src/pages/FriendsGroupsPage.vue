@@ -19,11 +19,11 @@ import type {
   InstancesData,
   RequestOverviewData,
 } from "@/api/pallasTypes";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal.vue";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
@@ -755,13 +755,11 @@ onUnmounted(() => {
       {{ ok }}
     </div>
 
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        好友与群聊
-      </template>
-      <template #lead>
-        选择账号查看好友、群聊与入群/好友申请。
-      </template>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="好友与群聊"
+      lead="选择账号查看好友、群聊与入群/好友申请。"
+    >
       <template #actions>
         <RefreshIconButton
           embedded
@@ -771,7 +769,7 @@ onUnmounted(() => {
           @click="refreshPage"
         />
       </template>
-    </ConsoleHubMasthead>
+    </PageChrome>
 
     <UiCard
       id="fg-account"
