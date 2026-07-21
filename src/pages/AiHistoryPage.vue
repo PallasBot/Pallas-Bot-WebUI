@@ -55,10 +55,12 @@ import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
+import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
+import AiHistoryMemoryWorkspace from "@/components/ai-history/AiHistoryMemoryWorkspace.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
+import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
-import AiHistoryWorkspaceHero from "@/components/ai-history/AiHistoryWorkspaceHero.vue";
 import AiHistoryWorkspaceTabs from "@/components/ai-history/AiHistoryWorkspaceTabs.vue";
 import PageFill from "@/components/PageFill.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
@@ -69,7 +71,6 @@ import {
   BEHAVIOR_ACTION_OPTIONS,
   BEHAVIOR_OUTCOME_OPTIONS,
   BEHAVIOR_SCENE_OPTIONS,
-  PATTERN_SORT_OPTIONS,
   labelAction,
   labelActions,
   labelFeatureLevel,
@@ -285,6 +286,13 @@ function memoryBotOptionLabel(bot: BotRow): string {
   const nickname = memoryInstances.value?.bot_profiles?.[bot.self_id]?.nickname?.trim();
   return nickname ? `${nickname}（${bot.self_id}）` : bot.self_id;
 }
+
+const memoryBotOptions = computed(() =>
+  memoryBots.value.map((bot) => ({
+    value: bot.self_id,
+    label: memoryBotOptionLabel(bot),
+  })),
+);
 
 async function loadMemoryBots() {
   try {
@@ -2550,11 +2558,7 @@ onMounted(() => {
     </PageFill>
     </div>
 
-    <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain plugin-config-page">
-    <AiHistoryWorkspaceHero
-      title="群维护"
-      description="按群整理接话学习：样本、晋升写回、行为判定与对话内核状态。"
-    />
+    <AiHistoryMaintainWorkspace v-show="activeWorkspace === 'maintain'">
     <AiHistoryPanelShell
       title="牛格观测"
       purpose="按群查看情感轴、群画像与情感细化"
@@ -3147,349 +3151,49 @@ onMounted(() => {
           </p>
       </AiHistoryPanelShell>
     </section>
-    </div>
+    </AiHistoryMaintainWorkspace>
 
-    <div v-show="activeWorkspace === 'memory'" class="ai-history-page__workspace plugin-config-page">
-    <section class="ai-history-page__feedback">
-      <AiHistoryPanelShell
-        title="记忆与知识"
-        purpose="按 Bot / 群号查看群内旧事、关系备注与知识源"
-        :collapsible="false"
-      >
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>范围筛选</strong>
-            <span class="muted">优先跟随当前会话的 Bot / 群号，也可手动指定</span>
-          </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter ai-history-page__filter--memory-bot">
-              <span>Bot QQ</span>
-              <UiSelect
-                v-model="memoryBot"
-                aria-label="选择 Bot QQ"
-                @update:model-value="memoryBotTouched = true"
-              >
-                <option value="">请选择 Bot</option>
-                <option
-                  v-for="bot in memoryBots"
-                  :key="bot.self_id"
-                  :value="bot.self_id"
-                >
-                  {{ memoryBotOptionLabel(bot) }}
-                </option>
-              </UiSelect>
-            </label>
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <UiInput
-                v-model="memoryGroup"
-                inputmode="numeric"
-                placeholder="留空查看全部范围"
-                aria-label="群号"
-                @update:model-value="memoryGroupTouched = true"
-                @keyup.enter="refreshMemoryWorkspace"
-              />
-            </label>
-            <label class="ai-history-page__filter">
-              <span>搜索</span>
-              <UiInput
-                v-model="memoryQuery"
-                type="search"
-                placeholder="搜内容、关键词或来源"
-                aria-label="搜索"
-                @keyup.enter="refreshMemoryWorkspace"
-              />
-            </label>
-            <div class="ai-history-page__filter-action">
-              <UiButton size="sm" variant="outline" :busy="memoryBusy" @click="refreshMemoryWorkspace">
-                读取记忆
-              </UiButton>
-            </div>
-          </div>
-          <div v-if="memoryScope" class="ai-history-page__memory-scope-card">
-            <strong>{{ memoryScope.title }}</strong>
-            <span class="muted">{{ memoryScope.detail }}</span>
-          </div>
-        </div>
-        <div v-if="memoryErr" class="alert alert--err">{{ memoryErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in memoryOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
+    <AiHistoryMemoryWorkspace
+      v-show="activeWorkspace === 'memory'"
+      v-model:memory-bot="memoryBot"
+      v-model:memory-group="memoryGroup"
+      v-model:memory-query="memoryQuery"
+      :bot-options="memoryBotOptions"
+      :memory-scope="memoryScope"
+      :memory-err="memoryErr"
+      :memory-busy="memoryBusy"
+      :memory-overview="memoryOverview"
+      :memory-entries="memoryEntries"
+      :relationship-notes="relationshipNotes"
+      :knowledge-sources="knowledgeSources"
+      :memory-delete-busy="memoryDeleteBusy"
+      @bot-touched="memoryBotTouched = true"
+      @group-touched="memoryGroupTouched = true"
+      @refresh="refreshMemoryWorkspace"
+      @delete-memory="deleteMemoryEntry"
+      @delete-relationship="deleteRelationshipNote"
+    />
 
-        <div class="ai-head ai-history-page__kernel-trace-head">
-          <h4 class="ai-head__title">群内旧事</h4>
-        </div>
-        <div v-if="memoryEntries.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in memoryEntries"
-            :key="`memory-${item.id}`"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong class="ai-history-page__feedback-reply">{{ item.content }}</strong>
-              <span class="ai-history-page__scene-pill">{{ item.source || "memory" }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>群：{{ item.group_id || "全局" }}</span>
-              <span>关键词：{{ item.keywords || "—" }}</span>
-              <span v-if="item.updated_at">{{ formatCompactDateTime(item.updated_at) }}</span>
-            </div>
-            <div class="row-actions ai-history-page__pattern-actions">
-              <UiButton
-                size="sm"
-                variant="destructive"
-                :busy="memoryDeleteBusy === `memory:${item.id}`"
-                @click="deleteMemoryEntry(item)"
-              >
-                删除
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">
-          {{ memoryBusy ? "正在读取群内旧事…" : "当前筛选下暂无群内旧事" }}
-        </p>
-
-        <div class="ai-head ai-history-page__kernel-trace-head">
-          <h4 class="ai-head__title">关系备注</h4>
-        </div>
-        <div v-if="relationshipNotes.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in relationshipNotes"
-            :key="`relationship-${item.id}`"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong class="ai-history-page__feedback-reply">{{ item.content }}</strong>
-              <span class="ai-history-page__scene-pill">用户 {{ item.user_id }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>群：{{ item.group_id || "全局" }}</span>
-              <span>来源：{{ item.source === "teach" || !item.source ? "教导" : item.source }}</span>
-              <span>权重：{{ typeof item.weight === "number" ? item.weight.toFixed(2) : "—" }}</span>
-              <span v-if="item.updated_at">{{ formatCompactDateTime(item.updated_at) }}</span>
-            </div>
-            <div class="row-actions ai-history-page__pattern-actions">
-              <UiButton
-                size="sm"
-                variant="destructive"
-                :busy="memoryDeleteBusy === `relationship:${item.id}`"
-                @click="deleteRelationshipNote(item)"
-              >
-                删除
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">
-          {{ memoryBusy ? "正在读取关系备注…" : "当前筛选下暂无关系备注" }}
-        </p>
-
-        <div class="ai-head ai-history-page__kernel-trace-head">
-          <h4 class="ai-head__title">知识源</h4>
-        </div>
-        <div v-if="knowledgeSources.length" class="ai-history-page__feedback-list">
-          <article
-            v-for="item in knowledgeSources"
-            :key="item.source_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong class="ai-history-page__feedback-reply">{{ item.title }}</strong>
-              <span class="ai-history-page__scene-pill">{{ item.scope === "global" || !item.scope ? "全局" : item.scope }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>{{ item.source_id }}</span>
-              <span>来源：{{ item.plugin_title || item.plugin_name || item.origin || "未知" }}</span>
-              <span>模式：{{ item.retrieval_mode === "prompt_inject" || !item.retrieval_mode ? "提示注入" : item.retrieval_mode }}</span>
-              <span>片段数：{{ item.chunk_count ?? 0 }}</span>
-            </div>
-            <p v-if="item.description" class="ai-history-page__feedback-user">说明：{{ item.description }}</p>
-          </article>
-        </div>
-        <p v-else class="muted ai-history-page__empty-hint">
-          {{ memoryBusy ? "正在读取知识源…" : "当前暂无知识源" }}
-        </p>
-      </AiHistoryPanelShell>
-    </section>
-    </div>
-
-    <div v-show="activeWorkspace === 'rules'" class="ai-history-page__workspace plugin-config-page">
-    <section class="ai-history-page__feedback">
-      <AiHistoryPanelShell
-        title="行为规则"
-        purpose="维护自动判定用的场景规则与动作偏好"
-        :collapsible="false"
-      >
-        <div class="ai-history-page__filters-card">
-          <div class="ai-history-page__filters-head">
-            <strong>规则筛选</strong>
-            <span class="muted">默认跟随当前选中会话的群号</span>
-          </div>
-          <div class="ai-history-page__filters ai-history-page__filters--aligned">
-            <label class="ai-history-page__filter">
-              <span>群号</span>
-              <UiInput
-                v-model="patternsGroup"
-                inputmode="numeric"
-                placeholder="全部"
-                aria-label="群号"
-                @update:model-value="patternsGroupTouched = true"
-                @keyup.enter="refreshPatterns"
-              />
-            </label>
-            <label class="ai-history-page__filter">
-              <span>场景</span>
-              <UiSelect
-                v-model="patternsScene"
-                aria-label="场景"
-              >
-                <option v-for="item in BEHAVIOR_SCENE_OPTIONS" :key="`pattern-${item.value || 'empty'}`" :value="item.value">
-                  {{ item.label }}
-                </option>
-              </UiSelect>
-            </label>
-            <div class="ai-history-page__filter-action ai-history-page__filter-action--check">
-              <label class="ai-history-page__behavior-check">
-                <input v-model="patternsIncludeDisabled" type="checkbox">
-                <span>包含已禁用</span>
-              </label>
-            </div>
-            <label class="ai-history-page__filter">
-              <span>排序</span>
-              <UiSelect
-                v-model="patternSortKey"
-                aria-label="排序"
-              >
-                <option
-                  v-for="item in PATTERN_SORT_OPTIONS"
-                  :key="item.value"
-                  :value="item.value"
-                >
-                  {{ item.label }}
-                </option>
-              </UiSelect>
-            </label>
-            <div class="ai-history-page__filter-action ai-history-page__filter-action--row">
-              <UiButton size="sm" variant="outline" :busy="patternBusy" @click="refreshPatterns">
-                读取规则
-              </UiButton>
-              <UiButton size="sm" variant="ghost" @click="openPatternEditorCreate">
-                新建规则
-              </UiButton>
-            </div>
-          </div>
-        </div>
-        <div v-if="patternErr" class="alert alert--err">{{ patternErr }}</div>
-        <div class="ai-stat-grid ai-history-page__feedback-summary">
-          <div
-            v-for="item in patternsOverview"
-            :key="item.label"
-            class="ai-stat ai-history-page__summary-stat"
-          >
-            <span class="ai-stat__label">{{ item.label }}</span>
-            <strong class="ai-stat__value" :class="{ 'ai-stat__value--accent': item.accent }">{{ item.value }}</strong>
-          </div>
-        </div>
-
-        <div v-if="sortedPatternsItems.length" class="table-wrap ai-history-page__pattern-table-wrap">
-          <table class="ai-history-page__pattern-table">
-            <thead>
-              <tr>
-                <th>规则 ID</th>
-                <th>场景 / 动作</th>
-                <th>群</th>
-                <th>自动分 / 人工分</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in sortedPatternsItems"
-                :key="`table-${item.pattern_id}`"
-                :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
-              >
-                <td class="ai-history-page__pattern-id">{{ item.pattern_id }}</td>
-                <td>{{ labelScene(item.scene) }} / {{ labelAction(item.action) }}</td>
-                <td>{{ item.scope_group_id || "全局" }}</td>
-                <td>{{ item.success_score ?? 0 }} / {{ item.manual_score ?? 0 }}</td>
-                <td>{{ item.disabled ? "已禁用" : "生效中" }}</td>
-                <td>
-                  <div class="row-actions ai-history-page__pattern-actions ai-history-page__pattern-actions--table">
-                    <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
-                      编辑
-                    </UiButton>
-                    <UiButton
-                      size="sm"
-                      variant="ghost"
-                      :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
-                      @click="togglePatternDisabled(item)"
-                    >
-                      {{ item.disabled ? "启用" : "禁用" }}
-                    </UiButton>
-                    <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
-                      删除
-                    </UiButton>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="sortedPatternsItems.length" class="ai-history-page__pattern-cards ai-history-page__feedback-list">
-          <article
-            v-for="item in sortedPatternsItems"
-            :key="item.pattern_id"
-            class="ai-history-page__feedback-card ai-history-page__feedback-card--behavior"
-            :class="{ 'is-editing': patternEditorOpen && patternEditor.pattern_id === item.pattern_id }"
-          >
-            <div class="ai-history-page__feedback-top">
-              <strong>{{ labelScene(item.scene) }} · {{ labelAction(item.action) }}</strong>
-              <span class="muted ai-history-page__pattern-id" :title="item.pattern_id">{{ item.pattern_id }}</span>
-            </div>
-            <div class="ai-history-page__feedback-meta">
-              <span>群：{{ item.scope_group_id || "全局" }}</span>
-              <span>自动分：{{ item.success_score ?? 0 }}</span>
-              <span>人工分：{{ item.manual_score ?? 0 }}</span>
-              <span>已禁用：{{ item.disabled ? "是" : "否" }}</span>
-            </div>
-            <p v-if="item.persona_affinity" class="ai-history-page__feedback-user">人设倾向：{{ item.persona_affinity }}</p>
-            <p class="ai-history-page__feedback-user">触发特征：{{ item.trigger_features?.join(" / ") || "无" }}</p>
-            <p class="ai-history-page__feedback-user">参考示例：{{ item.reference_examples?.join(" / ") || "无" }}</p>
-            <div class="row-actions ai-history-page__pattern-actions">
-              <UiButton size="sm" variant="outline" @click="openPatternEditorEdit(item)">
-                编辑
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                :busy="patternSaveBusy && patternEditor.pattern_id === item.pattern_id"
-                @click="togglePatternDisabled(item)"
-              >
-                {{ item.disabled ? "启用" : "禁用" }}
-              </UiButton>
-              <UiButton size="sm" variant="destructive" @click="deletePattern(item)">
-                删除
-              </UiButton>
-            </div>
-          </article>
-        </div>
-        <div v-else class="ai-empty">
-          <span>{{ patternBusy ? "正在读取规则" : "当前筛选下暂无规则" }}</span>
-          <span class="ai-empty__hint">在此维护基础行为规则；可与会话里的行为记录互相跳转。</span>
-        </div>
-      </AiHistoryPanelShell>
-    </section>
-    </div>
+    <AiHistoryRulesWorkspace
+      v-show="activeWorkspace === 'rules'"
+      v-model:patterns-group="patternsGroup"
+      v-model:patterns-scene="patternsScene"
+      v-model:patterns-include-disabled="patternsIncludeDisabled"
+      v-model:pattern-sort-key="patternSortKey"
+      :pattern-busy="patternBusy"
+      :pattern-err="patternErr"
+      :patterns-overview="patternsOverview"
+      :sorted-patterns-items="sortedPatternsItems"
+      :pattern-editor-open="patternEditorOpen"
+      :editing-pattern-id="patternEditor.pattern_id"
+      :pattern-save-busy="patternSaveBusy"
+      @group-touched="patternsGroupTouched = true"
+      @refresh="refreshPatterns"
+      @create="openPatternEditorCreate"
+      @edit="openPatternEditorEdit"
+      @toggle-disabled="togglePatternDisabled"
+      @delete="deletePattern"
+    />
 
     <UiDialog
       :open="patternEditorOpen"
