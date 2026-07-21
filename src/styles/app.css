@@ -15877,18 +15877,31 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 .database-page__kpi,
 .database-backups-page__kpi {
   margin-bottom: 16px;
-  flex: none;
+  flex: 0 0 auto;
   width: 100%;
+  height: auto;
+  align-self: stretch;
+}
+
+/* 提示叠在数值下；勿继承 Home 横向 flex-end 把数值顶到底 */
+.database-page__kpi .metric-tile__value-slot,
+.database-backups-page__kpi .metric-tile__value-slot {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
 }
 
 .database-page__kpi-hint {
   display: block;
-  margin-top: 2px;
+  margin-top: 0;
   font-size: 11px;
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .database-backups-page__panel + .database-backups-page__panel {
@@ -16449,13 +16462,19 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
-  flex: 1 1 480px;
+  /* 默认按内容高度；横向弹性仅用于首页 .home-kpi-head 内 */
+  flex: 0 0 auto;
   min-width: 0;
+  height: auto;
   padding: 10px 4px;
   border-radius: var(--hub-radius-lg, var(--radius-lg));
   background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.home-kpi-head > .home-kpi-bar {
+  flex: 1 1 480px;
 }
 
 @media (min-width: 900px) {
@@ -16695,9 +16714,9 @@ a.home-action-strip__item:hover {
     min-width: 0;
     justify-content: center;
   }
-  .home-kpi-bar {
+  .home-kpi-head > .home-kpi-bar {
     width: 100%;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 }
 
