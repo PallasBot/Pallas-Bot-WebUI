@@ -8288,6 +8288,11 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     gap: 8px;
   }
 
+  /* 空操作槽勿占满标题栏第二行 */
+  .panel__hd .row-actions:empty {
+    display: none;
+  }
+
   /* 窄屏：nowrap 标题栏操作保持同行（抵消上方 .panel__hd .row-actions 全宽竖排） */
   .panel__hd.panel__hd--split.home-page__panel-hd-nowrap > .row-actions,
   .panel__hd.panel__hd--split.update-page__panel-hd-nowrap > .row-actions {
@@ -8522,6 +8527,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   .panel__hd .row-actions > .sel,
   .panel__hd .row-actions > .inp,
   .panel__hd .row-actions > .textarea,
+  .panel__hd .row-actions > .ui-input-wrap,
+  .panel__hd .row-actions > .ui-select,
   .panel__hd .row-actions > input.inp,
   .panel__hd .row-actions > input[type="search"],
   .panel__hd .row-actions > input[type="number"] {
@@ -12415,7 +12422,8 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     flex-direction: column;
     align-items: stretch;
   }
-  .plugins-page__filter-label .sel {
+  .plugins-page__filter-label .sel,
+  .plugins-page__filter-label .ui-select {
     width: 100%;
     min-width: 0;
   }
