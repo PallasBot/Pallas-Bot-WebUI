@@ -12127,7 +12127,7 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
 .plugin-config-page__hero {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 20px 22px 18px;
@@ -12208,6 +12208,7 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
   .plugin-config-page__hero-main {
     gap: 12px;
     flex-basis: 100%;
+    align-items: flex-start;
   }
 
   .plugin-config-page__hero-actions {
@@ -18003,6 +18004,18 @@ html[data-layout="hub"][data-theme="light"] .home-acct-tile--sub {
 }
 
 @media (max-width: 560px) {
+  .home-acct__hd {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .home-acct__hd-actions {
+    margin-left: auto;
+    align-self: flex-start;
+    padding-top: 2px;
+  }
+
   .home-acct-grid {
     gap: 8px;
   }
