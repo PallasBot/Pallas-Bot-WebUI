@@ -17,7 +17,7 @@ withDefaults(
     summary: "",
     expanded: true,
     collapsible: true,
-    glass: true,
+    glass: false,
     panelClass: "",
   },
 );
@@ -71,6 +71,13 @@ const emit = defineEmits<{
 <style scoped>
 .ai-history-panel-shell {
   margin: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.ai-history-panel-shell :deep(.ui-card__content) {
+  padding: 0;
 }
 
 .ai-history-panel-shell__hd {

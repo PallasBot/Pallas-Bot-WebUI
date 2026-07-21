@@ -51,12 +51,16 @@ import type {
 import UiButton from "@/components/ui/UiButton.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import UiSelect from "@/components/ui/UiSelect.vue";
-import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
+import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
 import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue";
-import AiHistorySessionFilterBar from "@/components/ai-history/AiHistorySessionFilterBar.vue";
+import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
+import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
+import AiHistoryWorkspaceHero from "@/components/ai-history/AiHistoryWorkspaceHero.vue";
+import AiHistoryWorkspaceTabs from "@/components/ai-history/AiHistoryWorkspaceTabs.vue";
+import PageFill from "@/components/PageFill.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
 import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
@@ -157,7 +161,7 @@ const memoryInstances = ref<InstancesData | null>(null);
 const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
-const sessionDetailAnchor = ref<HTMLElement | null>(null);
+const sessionDetailPane = ref<{ detailAnchor: HTMLElement | null } | null>(null);
 const sessionsWorkspaceAnchor = ref<HTMLElement | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
 type MaintainPanelKey = "persona" | "feedback" | "promotion" | "behavior" | "kernel";
@@ -523,7 +527,7 @@ function toggleObserveAnnotateExpanded(requestId: string): void {
 
 function scrollSessionDetailIntoView(): void {
   if (!window.matchMedia("(max-width: 860px)").matches) return;
-  sessionDetailAnchor.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  sessionDetailPane.value?.detailAnchor?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 const workspaceTabBadges = computed(() => ({
@@ -706,10 +710,6 @@ const personaPanelSummary = computed(() => {
 
 function pickGroupFromSessions(): void {
   activeWorkspace.value = "sessions";
-}
-
-function sessionIsPrivate(item: LlmHistorySessionSummary): boolean {
-  return item.group_id === 0;
 }
 
 function relativeDayLabel(tsSeconds: number): string {
@@ -1968,77 +1968,23 @@ onMounted(() => {
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
-    <section
+    <AiHistoryLearningStrip
       v-if="(showLearningLoopBanner || learningLoopHint) && (activeWorkspace === 'sessions' || activeWorkspace === 'maintain')"
-      class="ai-history-page__learning-strip"
-      :class="{ 'is-warn': showLearningLoopBanner }"
-    >
-      <div class="ai-history-page__learning-strip-main">
-        <strong>{{ showLearningLoopBanner ? "学习闭环未接通" : "学习状态" }}</strong>
-        <p class="muted ai-history-page__learning-strip-text">{{ learningLoopHint }}</p>
-        <ol v-if="showLearningLoopBanner" class="ai-history-page__learning-steps">
-          <li>在「会话」里对坏回复点「排除」，或填写「期望回复」做校正写回</li>
-          <li>到 <RouterLink :to="aiConfigSectionPath('strategy')">AI 配置 → Bot 对话策略</RouterLink> 开启「让闲聊软反馈参与接话弱打分」</li>
-          <li>（可选）开启写回语料，把好样本审进接话库</li>
-        </ol>
-      </div>
-      <div class="row-actions ai-history-page__learning-strip-actions">
-        <UiButton v-if="showLearningLoopBanner" size="sm" variant="primary" @click="openLlmCommonConfig(true)">
-          去开启加权
-        </UiButton>
-        <UiButton
-          v-if="showLearningLoopBanner"
-          size="sm"
-          variant="ghost"
-          @click="dismissLearningLoopBanner"
-        >
-          知道了
-        </UiButton>
-        <UiButton
-          v-else-if="learningLoopState?.kind === 'bias_on' || learningLoopState?.kind === 'full'"
-          size="sm"
-          variant="outline"
-          @click="openHistoryVerify"
-        >
-          已在维护？去验证
-        </UiButton>
-        <UiButton
-          v-else-if="learningLoopState?.kind === 'idle'"
-          size="sm"
-          variant="outline"
-          @click="openLlmCommonConfig(true)"
-        >
-          开启学习闭环
-        </UiButton>
-      </div>
-    </section>
+      :show-banner="showLearningLoopBanner"
+      :hint="learningLoopHint"
+      :strategy-path="aiConfigSectionPath('strategy')"
+      :show-verify="learningLoopState?.kind === 'bias_on' || learningLoopState?.kind === 'full'"
+      :show-open-config="learningLoopState?.kind === 'idle'"
+      @open-config="openLlmCommonConfig(true)"
+      @dismiss="dismissLearningLoopBanner"
+      @verify="openHistoryVerify"
+    />
 
-    <nav class="ai-history-page__workspace-tabs" aria-label="AI 历史工作区">
-      <div class="console-view-toggle console-view-toggle--full" role="tablist">
-        <button
-          v-for="tab in WORKSPACE_TABS"
-          :key="tab.value"
-          type="button"
-          role="tab"
-          class="ai-history-page__workspace-tab"
-          :class="{ 'is-on': activeWorkspace === tab.value }"
-          :aria-selected="activeWorkspace === tab.value"
-          @click="activeWorkspace = tab.value"
-        >
-          <ConsoleNavIcon
-            :name="tab.icon"
-            :size="16"
-          />
-          <span>{{ tab.label }}</span>
-          <span
-            v-if="workspaceTabBadges[tab.value] > 0"
-            class="ai-history-page__workspace-badge"
-          >
-            {{ workspaceTabBadges[tab.value] }}
-          </span>
-        </button>
-      </div>
-    </nav>
+    <AiHistoryWorkspaceTabs
+      v-model="activeWorkspace"
+      :tabs="WORKSPACE_TABS"
+      :badges="workspaceTabBadges"
+    />
 
     <AiHistoryContextBar
       v-show="activeWorkspace !== 'sessions' || selectedSession"
@@ -2061,121 +2007,30 @@ onMounted(() => {
     <div
       v-show="activeWorkspace === 'sessions'"
       ref="sessionsWorkspaceAnchor"
-      class="ai-history-page__workspace ai-history-page__workspace--sessions"
+      class="ai-history-page__workspace ai-history-page__workspace--sessions ai-history-page__workspace--fill"
     >
+    <PageFill class="ai-history-page__sessions-fill">
     <section class="ai-history-split ai-hub-panel">
-      <aside class="ai-history-split__list">
-        <div class="ai-history-split__list-top">
-          <div class="ai-history-split__list-title">
-            <h3>会话列表</h3>
-            <span class="muted">{{ visibleSessions.length }}/{{ sessions.length }}</span>
-          </div>
-          <AiHistorySessionFilterBar
-            v-model:filter-bot="filterBot"
-            v-model:filter-group="filterGroup"
-            v-model:filter-user="filterUser"
-            :busy="historyBusy"
-            @apply="refreshSessions"
-            @reset="refreshSessions"
-          />
-        </div>
-        <div v-if="sessions.length" class="ai-history-page__session-list ai-history-page__session-list--scroll">
-          <button
-            v-for="item in visibleSessions"
-            :key="item.session_key"
-            type="button"
-            class="ai-history-session"
-            :class="{ 'is-on': selectedSessionKey === item.session_key }"
-            @click="selectedSessionKey = item.session_key"
-          >
-            <div class="ai-history-session__head">
-              <div class="ai-history-session__tags">
-                <span
-                  class="ai-history-session__tag"
-                  :class="sessionIsPrivate(item) ? 'is-dm' : 'is-group'"
-                >
-                  {{ sessionIsPrivate(item) ? "私聊" : "群聊" }}
-                </span>
-                <span
-                  v-if="relativeDayLabel(item.last_created_at)"
-                  class="ai-history-session__tag is-day"
-                >
-                  {{ relativeDayLabel(item.last_created_at) }}
-                </span>
-                <span class="ai-history-session__tag is-count">{{ item.turn_count }} 条</span>
-                <span class="ai-history-session__tag is-bot">Bot {{ item.bot_id }}</span>
-              </div>
-              <time class="ai-history-session__time muted">{{ formatCompactDateTime(item.last_created_at) }}</time>
-            </div>
-            <div class="ai-history-session__title">
-              <strong v-if="sessionIsPrivate(item)">用户 {{ item.user_id }}</strong>
-              <template v-else>
-                <strong>群 {{ item.group_id }}</strong>
-                <span class="ai-history-session__title-sub muted">用户 {{ item.user_id }}</span>
-              </template>
-            </div>
-            <p class="ai-history-session__preview">{{ item.last_content || "（空消息）" }}</p>
-          </button>
-          <button
-            v-if="sessions.length > visibleSessions.length"
-            type="button"
-            class="ai-history-page__more"
-            @click="showAllSessions = true"
-          >
-            展开其余 {{ sessions.length - visibleSessions.length }} 个会话
-          </button>
-          <button
-            v-else-if="sessions.length > 8"
-            type="button"
-            class="ai-history-page__more"
-            @click="showAllSessions = false"
-          >
-            收起到前 8 个会话
-          </button>
-        </div>
-        <div v-else class="ai-empty">
-          <span>暂无会话记录</span>
-          <span class="ai-empty__hint">AI 产生对话后会显示在这里。</span>
-        </div>
-      </aside>
+      <AiHistorySessionListPane
+        v-model:filter-bot="filterBot"
+        v-model:filter-group="filterGroup"
+        v-model:filter-user="filterUser"
+        v-model:selected-session-key="selectedSessionKey"
+        v-model:show-all-sessions="showAllSessions"
+        :sessions="sessions"
+        :visible-sessions="visibleSessions"
+        :busy="historyBusy"
+        @apply="refreshSessions"
+        @reset="refreshSessions"
+      />
 
-      <main class="ai-history-split__detail">
-      <div ref="sessionDetailAnchor" class="ai-history-page__detail-anchor">
-        <div class="ai-history-split__detail-top">
-          <div class="ai-history-detail__intro">
-            <h3 class="ai-history-split__detail-title">会话明细</h3>
-            <div
-              v-if="selectedSession"
-              class="ai-history-detail__tags"
-            >
-              <span
-                class="ai-history-session__tag"
-                :class="sessionIsPrivate(selectedSession) ? 'is-dm' : 'is-group'"
-              >
-                {{ sessionIsPrivate(selectedSession) ? "私聊" : "群聊" }}
-              </span>
-              <span
-                v-if="relativeDayLabel(selectedSession.last_created_at)"
-                class="ai-history-session__tag is-day"
-              >
-                {{ relativeDayLabel(selectedSession.last_created_at) }}
-              </span>
-              <span class="ai-history-session__tag is-count">{{ selectedSession.turn_count }} 条</span>
-              <span class="ai-history-session__tag is-bot">Bot {{ selectedSession.bot_id }}</span>
-            </div>
-            <p class="ai-history-split__detail-lede">
-              {{ sessionDetail ? workspaceContextLabel || "当前选中会话" : "选择左侧会话查看完整对话" }}
-            </p>
-          </div>
-          <label
-            v-if="sessionDetail"
-            class="ai-history-page__detail-trace-toggle"
-          >
-            <input v-model="showDecisionTraces" type="checkbox">
-            判定详情
-          </label>
-        </div>
-        <div v-if="sessionDetail" class="ai-history-page__detail">
+      <AiHistorySessionDetailPane
+        ref="sessionDetailPane"
+        v-model:show-decision-traces="showDecisionTraces"
+        :selected-session="selectedSession"
+        :context-label="workspaceContextLabel"
+        :has-detail="Boolean(sessionDetail)"
+      >
           <div class="ai-history-page__thread">
             <article
               v-for="row in sessionTurnRows.rows"
@@ -2690,23 +2545,16 @@ onMounted(() => {
               </div>
             </article>
           </section>
-        </div>
-        <div v-else class="ai-empty">
-          <span>未选择会话</span>
-          <span class="ai-empty__hint">点左侧任意会话查看完整对话。</span>
-        </div>
-      </div>
-      </main>
+      </AiHistorySessionDetailPane>
     </section>
+    </PageFill>
     </div>
 
     <div v-show="activeWorkspace === 'maintain'" class="ai-history-page__workspace ai-history-page__workspace--maintain plugin-config-page">
-    <div class="plugin-config-page__hero ai-history-page__workspace-hero">
-      <div class="plugin-config-page__hero-text">
-        <h2 class="plugin-config-page__hero-title">群维护</h2>
-        <p class="plugin-config-page__hero-desc">按群整理接话学习：样本、晋升写回、行为判定与对话内核状态。</p>
-      </div>
-    </div>
+    <AiHistoryWorkspaceHero
+      title="群维护"
+      description="按群整理接话学习：样本、晋升写回、行为判定与对话内核状态。"
+    />
     <AiHistoryPanelShell
       title="牛格观测"
       purpose="按群查看情感轴、群画像与情感细化"
@@ -3829,6 +3677,26 @@ onMounted(() => {
 
 .ai-history-page--chrome {
   gap: var(--hub-page-gap, 16px);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ai-history-page__sessions-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ai-history-page__workspace--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-history-page__workspace--fill .ai-history-page__sessions-fill,
+.ai-history-page__workspace--fill .ai-history-split {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .ai-history-page__toolbar {
@@ -3913,11 +3781,11 @@ onMounted(() => {
 }
 
 .ai-history-page__panel {
-  padding: 16px;
-  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  padding: 14px 16px;
+  background: transparent;
   border: none;
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .ai-history-page__panel--compact {
