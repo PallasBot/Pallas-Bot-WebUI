@@ -394,9 +394,28 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 }
 
 @media (max-width: 560px) {
+  .ai-history-split {
+    min-height: 0;
+  }
+
+  .ai-history-split__list {
+    max-height: min(40vh, 280px);
+  }
+
   .ai-history-split__list-top {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-history-split__detail-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  .ai-history-page__detail-trace-toggle {
+    justify-self: start;
   }
 
   .ai-history-filter-inline {

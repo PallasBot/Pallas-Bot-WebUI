@@ -14,6 +14,7 @@ import "@fontsource/jetbrains-mono/700.css";
 import "./styles/app.css";
 import "./styles/console-hub.css";
 import "./styles/ai-hub.css";
+import "./styles/ai-history.css";
 import "./styles/ui.css";
 import App from "./App.vue";
 import router from "./router";
