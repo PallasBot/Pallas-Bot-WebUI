@@ -598,6 +598,7 @@ onMounted(async () => {
       tag="section"
       glass
       class="simple-access-panel__card"
+      aria-label="云端模型接入"
     >
       <div class="panel__hd panel__hd--split">
         <div>
@@ -750,6 +751,7 @@ onMounted(async () => {
       tag="section"
       glass
       class="simple-access-panel__card"
+      aria-label="本地 Ollama 接入"
     >
       <div class="panel__hd panel__hd--split">
         <div>

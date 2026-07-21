@@ -4,8 +4,8 @@ import { fetchLlmLocalRoutingConfig } from "@/api/consoleApi";
 import type { LlmProviderConfigRow } from "@/api/pallasTypes";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal.vue";
 import ConsoleSwitch from "@/components/ConsoleSwitch.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
-import UiCard from "@/components/ui/UiCard.vue";
 import { useLlmProviders } from "@/composables/useLlmProviders";
 import { useLlmModelPickerOptions } from "@/composables/useLlmModelPickerOptions";
 import { findPresetByBaseUrl } from "@/config/llmProviderPresets";
@@ -176,21 +176,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UiCard
-    tag="div"
-    glass
+  <div
     class="provider-manager"
+    :class="{ 'provider-manager--embedded': props.compact }"
   >
-    <div class="panel__hd panel__hd--split">
-      <h2 class="panel__title">{{ props.panel === "tasks" ? "任务编排" : "上游 Provider" }}</h2>
-      <div class="row-actions">
-        <UiButton
-          variant="outline"
-          :disabled="loading || saving"
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap provider-manager__hd">
+      <h2 class="panel__title">
+        {{ props.panel === "tasks" ? "任务编排" : "上游 Provider" }}
+        <RefreshIconButton
+          embedded
+          :show-label="false"
+          :busy="loading"
+          :disabled="saving"
+          label="刷新"
           @click="store.load()"
-        >
-          刷新
-        </UiButton>
+        />
+      </h2>
+      <div class="row-actions provider-manager__hd-actions">
         <UiButton
           variant="primary"
           :disabled="!dirty || saving"
@@ -354,7 +356,7 @@ onMounted(async () => {
         配置文件：{{ doc.providers_file }}
       </p>
     </div>
-  </UiCard>
+  </div>
 
   <ProviderEditDialog
     :open="dialogOpen"
@@ -382,6 +384,50 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.provider-manager--embedded > .panel__hd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+}
+
+.provider-manager--embedded > .panel__bd {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .provider-manager__hd.panel__hd--split {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
+  .provider-manager__hd .panel__title {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .provider-manager__hd .provider-manager__hd-actions.row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .provider-manager__hd .provider-manager__hd-actions.row-actions > :deep(.ui-btn) {
+    width: auto;
+  }
+}
+
 .provider-manager__intro {
   margin: 0;
   font-size: 13px;

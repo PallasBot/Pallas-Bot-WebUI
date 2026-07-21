@@ -170,7 +170,7 @@ onMounted(() => {
     glass
     class="ai-config-section__panel"
   >
-    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap ai-ncm-panel-hd">
       <h2 class="panel__title ai-ncm-hd-title">
         <ConsoleNavIcon
           class="panel__title-ico"
@@ -184,12 +184,10 @@ onMounted(() => {
         />
       </h2>
       <div
+        v-if="ncmStatus"
         class="row-actions ai-ncm-hd__actions"
       >
-        <div
-          v-if="ncmStatus"
-          class="ai-ncm-hd-status"
-        >
+        <div class="ai-ncm-hd-status">
           <span
             class="home-page__hd-capsule"
             :class="ncmLoggedIn ? 'home-page__hd-capsule--ok' : 'home-page__hd-capsule--warn'"
@@ -328,6 +326,54 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ai-ncm-panel-hd {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.ai-ncm-hd__actions {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 窄屏：抵消全局 .panel__hd .row-actions 全宽竖排，保持标题 | 状态 一行 */
+@media (max-width: 560px) {
+  .ai-ncm-panel-hd.panel__hd--split {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
+  .ai-ncm-panel-hd .panel__title {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .ai-ncm-panel-hd .ai-ncm-hd__actions.row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .ai-ncm-panel-hd .ai-ncm-hd-status {
+    justify-content: flex-end;
+  }
+
+  .ai-ncm-panel-hd .ai-ncm-hd-extra {
+    display: none;
+  }
+}
+
 .ai-ncm-links {
   display: flex;
   flex-wrap: wrap;

@@ -189,14 +189,14 @@ defineExpose({ save, canSave, saving });
     glass
     class="ai-config-section__panel ai-config-connection"
   >
-    <div class="panel__hd panel__hd--split">
+    <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap ai-config-connection__hd">
       <h2 class="panel__title">
         <ConsoleNavIcon
           class="panel__title-ico"
           :name="panelNavIcon"
         />媒体服务
       </h2>
-      <div class="row-actions">
+      <div class="row-actions ai-config-connection__hd-actions">
         <UiButton
           :disabled="saving"
           @click="load"
@@ -721,6 +721,38 @@ defineExpose({ save, canSave, saving });
 @media (max-width: 560px) {
   .ai-config-connection__url-row {
     grid-template-columns: 1fr;
+  }
+
+  /* 重新加载 / 保存 / 连接诊断：三钮一行，勿全宽竖排（标题栏曾 ~194px 高） */
+  .ai-config-connection__hd.panel__hd--split {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
+  .ai-config-connection__hd .panel__title {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 0 1 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    align-self: center;
+    gap: 6px 8px;
+  }
+
+  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions > :deep(.btn),
+  .ai-config-connection__hd .ai-config-connection__hd-actions.row-actions > :deep(.ui-btn) {
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .ai-config-connection__install-actions.row-actions {

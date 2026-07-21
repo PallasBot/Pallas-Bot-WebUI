@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
     class="ai-config-section__panel"
     :class="{ 'ai-logs--embedded': embedded }"
   >
-    <div class="panel__hd panel__hd--split">
+    <div class="panel__hd panel__hd--split ai-logs__hd">
       <h2 class="panel__title">
         <ConsoleNavIcon
           class="panel__title-ico"
@@ -407,15 +407,39 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.ai-logs__actions {
+.ai-logs__hd.panel__hd--split {
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.ai-logs__hd > .panel__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ai-logs__actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+  margin-left: auto;
+  max-width: 100%;
+}
+
+.ai-logs__actions > .sel {
+  flex: 1 1 10rem;
+  min-width: 0;
+  max-width: min(100%, 16rem);
 }
 
 .ai-logs__live-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-size: 0.8125rem;
   user-select: none;
 }
@@ -497,14 +521,49 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+/* 压过全局窄屏 .panel__hd .row-actions 全宽竖排，避免标题栏堆到 ~176px */
 @media (max-width: 560px) {
-  .ai-logs__actions {
-    width: 100%;
+  .ai-logs__hd.panel__hd--split {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
-  .ai-logs__actions .sel,
-  .ai-logs__actions :deep(.btn) {
+  .ai-logs__hd > .panel__title {
+    width: auto;
     flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ai-logs__hd > .ai-logs__actions.row-actions {
+    width: auto;
+    max-width: 100%;
+    margin-left: auto;
+    flex: 1 1 12rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px 8px;
+  }
+
+  .ai-logs__hd > .ai-logs__actions > .sel {
+    width: auto;
+    min-width: 0 !important;
+    max-width: 100%;
+    flex: 1 1 9rem;
+  }
+
+  .ai-logs__hd > .ai-logs__actions :deep(.btn),
+  .ai-logs__hd > .ai-logs__actions :deep(.ui-btn) {
+    width: auto;
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+
+  .ai-logs__live-toggle {
+    flex: 0 0 auto;
   }
 }
 </style>

@@ -9,6 +9,7 @@ import {
   postAiInstall,
 } from "@/api/consoleApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import MediaModelAdminPanel from "@/components/ai-config/MediaModelAdminPanel.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -92,21 +93,20 @@ onMounted(() => {
       glass
       class="ai-config-section__panel"
     >
-      <div class="panel__hd panel__hd--split">
+      <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap">
         <h2 class="panel__title">
           <ConsoleNavIcon
             class="panel__title-ico"
             :name="panelNavIcon"
           />能力包
-        </h2>
-        <div class="row-actions ai-capabilities__hd-actions">
-          <UiButton
-            :disabled="loading || installBusy"
+          <RefreshIconButton
+            :show-label="false"
+            :busy="loading"
+            :disabled="installBusy"
+            label="刷新"
             @click="refresh"
-          >
-            {{ loading ? "刷新中…" : "刷新" }}
-          </UiButton>
-        </div>
+          />
+        </h2>
       </div>
       <div class="panel__bd">
         <div
@@ -211,14 +211,6 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
-  .ai-capabilities__hd-actions {
-    width: 100%;
-  }
-
-  .ai-capabilities__hd-actions :deep(.btn) {
-    flex: 1;
-  }
-
   .ai-capabilities__card-actions :deep(.btn),
   .ai-capabilities__card-actions a {
     width: 100%;
