@@ -1,0 +1,14 @@
+# 避免 pre-commit 触碰本地敏感配置。
+exclude: ^\.env$
+
+repos:
+  - repo: local
+    hooks:
+      - id: sync-console-openapi-types
+        name: 从同级 Bot openspec 生成控制台类型
+        description: "对照 ../Pallas-Bot/openspec（或 PALLAS_BOT_ROOT）重新 gen；有改动则 exit 1"
+        entry: node ./scripts/sync-console-openapi-from-bot.mjs --pre-commit
+        language: system
+        files: ^(src/api/|scripts/(generate|check|sync)-console-openapi)
+        pass_filenames: false
+        verbose: true

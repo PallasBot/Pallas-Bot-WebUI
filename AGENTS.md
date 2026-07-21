@@ -19,6 +19,15 @@ npm run build  # vue-tsc + vite build
 
 后端端口非 8088 时：`VITE_PROXY_TARGET=http://127.0.0.1:<port> npm run dev`
 
+控制台 OpenAPI 类型（同级需有 [Pallas-Bot](https://github.com/PallasBot/Pallas-Bot)）：
+
+```bash
+npm run sync:console-openapi-types   # 从 ../Pallas-Bot/openspec 生成
+# 或安装 pre-commit 后：pre-commit install
+```
+
+路径可用 `PALLAS_BOT_ROOT`。Bot 侧改 API 后优先在主仓跑 `uv run python tools/sync_console_openapi.py`。
+
 ## Agent 工作约定
 
 ### 修改范围

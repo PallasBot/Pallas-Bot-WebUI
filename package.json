@@ -10,6 +10,7 @@
     "build:ci": "vue-tsc -b && vite build && node ./scripts/write-console-version.mjs",
     "gen:console-openapi-types": "node ./scripts/generate-console-openapi-types.mjs",
     "check:console-openapi-types": "node ./scripts/check-console-openapi-types.mjs",
+    "sync:console-openapi-types": "node ./scripts/sync-console-openapi-from-bot.mjs",
     "test:smoke": "vitest run",
     "optimize:standee": "node ./scripts/compress-standee.mjs",
     "preview": "vite preview"
