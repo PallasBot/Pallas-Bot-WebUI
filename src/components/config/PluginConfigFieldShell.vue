@@ -83,6 +83,10 @@ const title = computed(() => fieldDisplayName(props.field));
   grid-column: 1 / -1;
 }
 
+.plugin-config-form-item__help-btn {
+  flex-shrink: 0;
+}
+
 .plugin-config-form-item__meta-pill {
   display: inline-flex;
   align-items: center;

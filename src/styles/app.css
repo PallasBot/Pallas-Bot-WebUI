@@ -13885,6 +13885,12 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
   align-items: start;
 }
 
+.plugin-config-form-grid > .plugin-config-form-item,
+.plugin-config-form-grid > .ui-field {
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (min-width: 1100px) {
   .plugin-config-workspace:not(.plugin-config-workspace--dialog) .plugin-config-form-grid,
   .plugin-config-page .plugin-config-form-grid {

@@ -25,6 +25,7 @@ withDefaults(
         <span
           v-if="label"
           class="ui-field__label-text"
+          :title="label"
         >{{ label }}</span>
         <span
           v-if="required"
@@ -55,23 +56,29 @@ withDefaults(
   display: grid;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
   align-content: start;
+  overflow: hidden;
 }
 
 .ui-field__label-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
   min-height: 20px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .ui-field__label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.35;
@@ -79,6 +86,7 @@ withDefaults(
 }
 
 .ui-field__label-text {
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -112,11 +120,15 @@ withDefaults(
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
+  max-width: 42%;
+  min-width: 0;
+  overflow: hidden;
   transition: opacity 0.15s ease;
 }
 
 .ui-field__control {
   min-width: 0;
+  max-width: 100%;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -132,11 +144,12 @@ withDefaults(
 
 @media (max-width: 560px) {
   .ui-field__label-row {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .ui-field__meta {
     opacity: 1;
+    max-width: 48%;
   }
 }
 </style>
