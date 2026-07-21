@@ -53,6 +53,7 @@ import UiInput from "@/components/ui/UiInput.vue";
 import UiSelect from "@/components/ui/UiSelect.vue";
 import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
 import UiDialog from "@/components/ui/UiDialog.vue";
+import AiHistoryBehaviorAnnotateControls from "@/components/ai-history/AiHistoryBehaviorAnnotateControls.vue";
 import AiHistoryContextBar from "@/components/ai-history/AiHistoryContextBar.vue";
 import AiHistoryLearningStrip from "@/components/ai-history/AiHistoryLearningStrip.vue";
 import AiHistoryMaintainWorkspace from "@/components/ai-history/AiHistoryMaintainWorkspace.vue";
@@ -61,11 +62,12 @@ import AiHistoryPanelShell from "@/components/ai-history/AiHistoryPanelShell.vue
 import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
+import AiHistorySessionTurnThread from "@/components/ai-history/AiHistorySessionTurnThread.vue";
 import AiHistoryWorkspaceTabs from "@/components/ai-history/AiHistoryWorkspaceTabs.vue";
 import PageFill from "@/components/PageFill.vue";
 import PersonaAffectObservePanel from "@/components/PersonaAffectObservePanel.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
-import { AI_ASSISTANT_NAME, AI_STATS_LIMITS } from "@/config/aiConstants";
+import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import {
   BEHAVIOR_ACTION_OPTIONS,
@@ -80,7 +82,7 @@ import {
 } from "@/utils/aiHistoryLabels";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { formatCompactDateTime, formatRelativeDayLabel } from "@/utils/formatDateTime";
+import { formatCompactDateTime } from "@/utils/formatDateTime";
 import { deriveFeedbackGroupFromSession } from "@/utils/llmRepeaterFeedbackLink";
 import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { memoryScopeSummary } from "@/utils/memoryScope";
@@ -720,10 +722,6 @@ function pickGroupFromSessions(): void {
   activeWorkspace.value = "sessions";
 }
 
-function relativeDayLabel(tsSeconds: number): string {
-  return formatRelativeDayLabel(tsSeconds) ?? "";
-}
-
 function isMaintainPanelExpanded(key: MaintainPanelKey): boolean {
   return maintainPanelExpanded.value[key];
 }
@@ -776,10 +774,6 @@ function turnKey(createdAt: string | number, index: number): string {
   return `${createdAt}-${index}`;
 }
 
-function isLongTurn(content: string): boolean {
-  return content.length > 220 || content.split("\n").length > 6;
-}
-
 function isLongObserveText(content: string): boolean {
   return content.length > 120 || content.split("\n").length > 3;
 }
@@ -803,10 +797,6 @@ function applyObserveScene(scene: string) {
   observeScene.value = scene;
   behaviorRunsScene.value = scene;
   void refreshBehaviorRuns();
-}
-
-function isTurnExpanded(key: string): boolean {
-  return !!expandedTurnKeys.value[key];
 }
 
 function toggleTurnExpanded(key: string): void {
@@ -2039,39 +2029,12 @@ onMounted(() => {
         :context-label="workspaceContextLabel"
         :has-detail="Boolean(sessionDetail)"
       >
-          <div class="ai-history-page__thread">
-            <article
-              v-for="row in sessionTurnRows.rows"
-              :key="turnKey(row.turn.created_at, row.index)"
-              class="ai-history-page__turn"
-              :class="row.turn.role === 'assistant' ? 'is-assistant' : 'is-user'"
-            >
-              <div class="ai-history-page__turn-head">
-                <strong>{{ row.turn.role === "assistant" ? AI_ASSISTANT_NAME : `用户 ${row.turn.user_id}` }}</strong>
-                <div class="ai-history-page__turn-meta">
-                  <span
-                    v-if="relativeDayLabel(row.turn.created_at)"
-                    class="ai-history-page__turn-day-tag"
-                  >
-                    {{ relativeDayLabel(row.turn.created_at) }}
-                  </span>
-                  <time class="ai-history-page__turn-time">{{ formatCompactDateTime(row.turn.created_at) }}</time>
-                </div>
-              </div>
-              <div
-                class="ai-history-page__turn-body"
-                :class="{ 'is-expanded': isTurnExpanded(turnKey(row.turn.created_at, row.index)) }"
-              >
-                <p>{{ row.turn.content }}</p>
-              </div>
-              <button
-                v-if="isLongTurn(row.turn.content)"
-                type="button"
-                class="ai-history-page__turn-toggle"
-                @click="toggleTurnExpanded(turnKey(row.turn.created_at, row.index))"
-              >
-                {{ isTurnExpanded(turnKey(row.turn.created_at, row.index)) ? "收起" : "展开全文" }}
-              </button>
+          <AiHistorySessionTurnThread
+            :rows="sessionTurnRows.rows"
+            :expanded-keys="expandedTurnKeys"
+            @toggle-expand="toggleTurnExpanded"
+          >
+            <template #default="{ row }">
               <div v-if="row.decisionTrace && showDecisionTraces" class="ai-history-page__turn-decision">
                 <div class="ai-history-page__turn-behavior-bar">
                   <span class="ai-history-page__turn-behavior-tag">判定</span>
@@ -2380,46 +2343,23 @@ onMounted(() => {
                       {{ row.behaviorRun.behavior_hint_text }}
                     </p>
                     <p class="muted ai-history-page__maintain-hint">点选标签描述这条回复的问题；可配合下方结果一起标注。</p>
-                    <div class="ai-history-page__behavior-labels">
-                      <button
-                        v-for="label in BEHAVIOR_LABEL_OPTIONS"
-                        :key="label"
-                        type="button"
-                        class="ai-history-page__behavior-chip"
-                        :class="{ 'is-on': hasBehaviorLabel(row.behaviorRun, label) }"
-                        :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
-                        @click="toggleBehaviorLabel(row.behaviorRun, label)"
-                      >
-                        {{ label }}
-                      </button>
-                    </div>
-                    <div class="ai-history-page__behavior-actions">
-                      <label class="ai-history-page__behavior-select">
-                        <span>对话结果</span>
-                        <UiSelect
-                          :model-value="row.behaviorRun.final_outcome || ''"
-                          :disabled="isBehaviorBusy(row.behaviorRun.request_id)"
-                          @update:model-value="changeBehaviorOutcome(row.behaviorRun, $event)"
-                        >
-                          <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                            {{ item.label }}
-                          </option>
-                        </UiSelect>
-                      </label>
-                      <UiButton
-                        variant="outline"
-                        class="ai-history-page__behavior-action-btn"
-                        :busy="isBehaviorBusy(row.behaviorRun.request_id)"
-                        @click="toggleBehaviorDisabled(row.behaviorRun)"
-                      >
-                        {{ row.behaviorRun.disabled ? "恢复样本" : "禁用样本" }}
-                      </UiButton>
-                    </div>
+                    <AiHistoryBehaviorAnnotateControls
+                      :labels="BEHAVIOR_LABEL_OPTIONS"
+                      :selected-labels="row.behaviorRun.manual_labels"
+                      :outcome="row.behaviorRun.final_outcome"
+                      :busy="isBehaviorBusy(row.behaviorRun.request_id)"
+                      :disabled-sample="!!row.behaviorRun.disabled"
+                      outcome-label="对话结果"
+                      action-btn-class="ai-history-page__behavior-action-btn"
+                      @toggle-label="toggleBehaviorLabel(row.behaviorRun, $event)"
+                      @update:outcome="changeBehaviorOutcome(row.behaviorRun, $event)"
+                      @toggle-disabled="toggleBehaviorDisabled(row.behaviorRun)"
+                    />
                   </section>
                 </div>
               </div>
-            </article>
-          </div>
+            </template>
+          </AiHistorySessionTurnThread>
           <section v-if="sessionTurnRows.orphanRuns.length" class="ai-history-page__orphan-behavior">
             <div class="ai-head ai-history-page__orphan-behavior-head">
               <h4 class="ai-head__title">未挂上会话的行为记录</h4>
@@ -2516,41 +2456,18 @@ onMounted(() => {
                 </div>
               </template>
               <p v-if="run.behavior_hint_text" class="ai-history-page__behavior-hint">{{ run.behavior_hint_text }}</p>
-              <div class="ai-history-page__behavior-labels">
-                <button
-                  v-for="label in BEHAVIOR_LABEL_OPTIONS"
-                  :key="label"
-                  type="button"
-                  class="ai-history-page__behavior-chip"
-                  :class="{ 'is-on': hasBehaviorLabel(run, label) }"
-                  :disabled="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorLabel(run, label)"
-                >
-                  {{ label }}
-                </button>
-              </div>
-              <div class="ai-history-page__behavior-actions">
-                <label class="ai-history-page__behavior-select">
-                  <span>结果</span>
-                  <UiSelect
-                    :model-value="run.final_outcome || ''"
-                    :disabled="isBehaviorBusy(run.request_id)"
-                    @update:model-value="changeBehaviorOutcome(run, $event)"
-                  >
-                    <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="item.value || 'empty'" :value="item.value">
-                      {{ item.label }}
-                    </option>
-                  </UiSelect>
-                </label>
-                <UiButton
-                  variant="outline"
-                  class="ai-history-page__behavior-action-btn"
-                  :busy="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorDisabled(run)"
-                >
-                  {{ run.disabled ? "恢复样本" : "禁用样本" }}
-                </UiButton>
-              </div>
+              <AiHistoryBehaviorAnnotateControls
+                :labels="BEHAVIOR_LABEL_OPTIONS"
+                :selected-labels="run.manual_labels"
+                :outcome="run.final_outcome"
+                :busy="isBehaviorBusy(run.request_id)"
+                :disabled-sample="!!run.disabled"
+                outcome-label="结果"
+                action-btn-class="ai-history-page__behavior-action-btn"
+                @toggle-label="toggleBehaviorLabel(run, $event)"
+                @update:outcome="changeBehaviorOutcome(run, $event)"
+                @toggle-disabled="toggleBehaviorDisabled(run)"
+              />
             </article>
           </section>
       </AiHistorySessionDetailPane>
@@ -3036,41 +2953,19 @@ onMounted(() => {
               v-if="isObserveAnnotateExpanded(run.request_id)"
               class="ai-history-page__observe-annotate"
             >
-              <div class="ai-history-page__behavior-labels">
-                <button
-                  v-for="label in BEHAVIOR_LABEL_OPTIONS"
-                  :key="`observe-${run.request_id}-${label}`"
-                  type="button"
-                  class="ai-history-page__behavior-chip"
-                  :class="{ 'is-on': hasBehaviorLabel(run, label) }"
-                  :disabled="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorLabel(run, label)"
-                >
-                  {{ label }}
-                </button>
-              </div>
-              <div class="ai-history-page__behavior-actions">
-                <label class="ai-history-page__behavior-select">
-                  <span>人工结果</span>
-                  <UiSelect
-                    :model-value="run.final_outcome || ''"
-                    :disabled="isBehaviorBusy(run.request_id)"
-                    @update:model-value="changeBehaviorOutcome(run, $event)"
-                  >
-                    <option v-for="item in BEHAVIOR_OUTCOME_OPTIONS" :key="`observe-outcome-${item.value || 'empty'}`" :value="item.value">
-                      {{ item.label }}
-                    </option>
-                  </UiSelect>
-                </label>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :busy="isBehaviorBusy(run.request_id)"
-                  @click="toggleBehaviorDisabled(run)"
-                >
-                  {{ run.disabled ? "恢复样本" : "禁用样本" }}
-                </UiButton>
-              </div>
+              <AiHistoryBehaviorAnnotateControls
+                :labels="BEHAVIOR_LABEL_OPTIONS"
+                :selected-labels="run.manual_labels"
+                :outcome="run.final_outcome"
+                :busy="isBehaviorBusy(run.request_id)"
+                :disabled-sample="!!run.disabled"
+                outcome-label="人工结果"
+                disable-variant="ghost"
+                disable-size="sm"
+                @toggle-label="toggleBehaviorLabel(run, $event)"
+                @update:outcome="changeBehaviorOutcome(run, $event)"
+                @toggle-disabled="toggleBehaviorDisabled(run)"
+              />
             </div>
             <div class="row-actions ai-history-page__pattern-actions">
               <UiButton
