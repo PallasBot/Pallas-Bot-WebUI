@@ -124,7 +124,12 @@ async function onRefreshDialogModels(row: LlmProviderConfigRow) {
   if (!providerId) return;
   await persistDraftRow(row);
   await picker.refreshPickerContext(providers.value);
-  await store.discoverModels(providerId);
+  await store.discoverModels(providerId, {
+    base_url: row.base_url || "",
+    api_key: row.api_key || "",
+    api_key_env: row.api_key_env || "",
+    kind: row.kind === "local" ? "local" : "openai-compatible",
+  });
 }
 
 async function onSubmit(row: LlmProviderConfigRow) {

@@ -40,7 +40,7 @@ async function refresh() {
   try {
     const [admin, localModels, media] = await Promise.all([
       fetchLlmModelAdminStatus().catch(() => null),
-      fetchLlmProviderModels("local").catch(() => null),
+      fetchLlmProviderModels("local", { kind: "local" }).catch(() => null),
       fetchMediaAssetsStatus().catch(() => null),
     ]);
     aiReachable.value = Boolean(admin?.ai_reachable);

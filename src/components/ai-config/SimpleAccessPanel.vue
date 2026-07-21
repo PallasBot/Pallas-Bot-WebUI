@@ -223,6 +223,25 @@ function buildLocalProviderRow(model: string): LlmProviderConfigRow {
   };
 }
 
+function validateCloudDiscoverDraft(): boolean {
+  if (!baseUrlForDraft()) {
+    resultTone.value = "err";
+    resultText.value = "请填写 OpenAI 兼容 Base URL。";
+    return false;
+  }
+  if (!cloudApiKey.value.trim()) {
+    const envName = (existingProvider.value?.api_key_env || "").trim();
+    if (!envName) {
+      resultTone.value = "err";
+      resultText.value = providerHasStoredKey.value
+        ? "请重新输入 API Key 后刷新（列表由 Bot 直连上游，不读取 AI 侧已存密钥）"
+        : "请填写 API Key。";
+      return false;
+    }
+  }
+  return true;
+}
+
 function validateCloudDraft(): boolean {
   if (!baseUrlForDraft()) {
     resultTone.value = "err";
@@ -297,24 +316,15 @@ async function selectTrafficPreset(preset: TrafficRoutePresetId) {
 async function maybeDiscoverModels(providerId: string) {
   const row = providers.value.find((item) => item.id === providerId);
   if (!row) return;
-  if (!(row.api_key_set || row.api_key_env)) return;
-  await providerStore.discoverModels(providerId);
-}
-
-async function selectConfiguredProvider(id: string) {
-  const row = providers.value.find((item) => item.id === id);
-  if (!row) return;
-  showAddVendor.value = false;
-  selectedCloudId.value = row.id;
-  selectedPresetId.value = resolvePresetId(row);
-  customBaseUrl.value = resolvePresetId(row) === "custom" ? (row.base_url || "") : "";
-  defaultModel.value = (row.default_model || "").trim();
-  cloudApiKey.value = "";
-  resultTone.value = "muted";
-  resultText.value = row.default_model
-    ? `已载入 ${cloudProviderLabel(row)}，可直接改模型或测通并保存。`
-    : `已载入 ${cloudProviderLabel(row)}，请选择模型。`;
-  await maybeDiscoverModels(row.id);
+  const key = cloudApiKey.value.trim();
+  const envName = (row.api_key_env || "").trim();
+  if (!key && !envName) return;
+  await providerStore.discoverModels(providerId, {
+    base_url: row.base_url || baseUrlForDraft(),
+    api_key: key,
+    api_key_env: envName,
+    kind: row.kind === "local" ? "local" : "openai-compatible",
+  });
 }
 
 function selectPreset(id: LlmProviderPresetId) {
@@ -333,43 +343,45 @@ function selectPreset(id: LlmProviderPresetId) {
 }
 
 async function refreshModels() {
-  const existing = existingProvider.value;
-  if (existing && providerHasStoredKey.value && !cloudApiKey.value.trim()) {
-    providerErr.value = "";
-    await providerStore.discoverModels(existing.id);
-    const state = modelsStates.value[existing.id];
-    if (state?.error) {
-      resultTone.value = "err";
-      resultText.value = `模型刷新失败：${state.error}`;
-      return;
-    }
-    resultTone.value = "ok";
-    resultText.value = state?.models?.length
-      ? `已刷新 ${state.models.length} 个模型。`
-      : "已请求刷新，未发现可选模型。";
+  if (!validateCloudDiscoverDraft()) {
+    pushConsoleToast(resultText.value, "warn");
     return;
   }
-
-  if (!validateCloudDraft()) return;
   providerErr.value = "";
-  const row = buildProviderRow();
-  upsertProvider(row);
-  await providerStore.save();
-  if (providerErr.value) {
-    resultTone.value = "err";
-    resultText.value = `保存 Provider 失败：${providerErr.value}`;
-    return;
-  }
-  selectedCloudId.value = row.id;
-  await providerStore.discoverModels(row.id);
-  const state = modelsStates.value[row.id];
+  const providerId = selectedCloudId.value || selectedPresetId.value;
+  const kind = selectedPreset.value.kind === "local" ? "local" : "openai-compatible";
+  await providerStore.discoverModels(providerId, {
+    base_url: baseUrlForDraft(),
+    api_key: cloudApiKey.value.trim(),
+    api_key_env: existingProvider.value?.api_key_env || "",
+    kind,
+  });
+  const state = modelsStates.value[providerId];
   if (state?.error) {
     resultTone.value = "err";
     resultText.value = `模型刷新失败：${state.error}`;
     return;
   }
   resultTone.value = "ok";
-  resultText.value = state?.models?.length ? `已刷新 ${state.models.length} 个模型。` : "已请求刷新，未发现可选模型。";
+  resultText.value = state?.models?.length
+    ? `已刷新 ${state.models.length} 个模型。`
+    : "已请求刷新，未发现可选模型。";
+}
+
+async function selectConfiguredProvider(id: string) {
+  const row = providers.value.find((item) => item.id === id);
+  if (!row) return;
+  showAddVendor.value = false;
+  selectedCloudId.value = row.id;
+  selectedPresetId.value = resolvePresetId(row);
+  customBaseUrl.value = resolvePresetId(row) === "custom" ? (row.base_url || "") : "";
+  defaultModel.value = (row.default_model || "").trim();
+  cloudApiKey.value = "";
+  resultTone.value = "muted";
+  resultText.value = row.default_model
+    ? `已载入 ${cloudProviderLabel(row)}，可直接改模型或测通并保存。`
+    : `已载入 ${cloudProviderLabel(row)}，请选择模型。`;
+  await maybeDiscoverModels(row.id);
 }
 
 async function saveAndTestCloud() {

@@ -836,7 +836,7 @@ export interface LlmProvidersSaveResult {
   task_routing?: Record<string, string>;
 }
 
-/** Provider 在线模型发现结果（经 BFF 代理 AI 仓拉取）。 */
+/** Provider 在线模型发现结果（Bot 直连上游 /v1/models）。 */
 export interface LlmProviderModelsResult {
   provider_id: string;
   ok: boolean;
