@@ -109,9 +109,9 @@ function keyOf(row: T, index: number): string {
 .table-wrap {
   min-width: 0;
   overflow: auto;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--text) 2%, transparent);
+  border: none;
+  border-radius: var(--radius-control, 8px);
+  background: transparent;
 }
 
 .tbl {
@@ -153,10 +153,10 @@ function keyOf(row: T, index: number): string {
   top: 0;
   z-index: 1;
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--text-muted);
-  background: color-mix(in srgb, var(--bg-card) 94%, var(--text) 6%);
+  background: color-mix(in srgb, var(--bg-muted) 70%, var(--bg-card));
 }
 
 .tbl tbody tr:last-child td {

@@ -2,7 +2,7 @@
 import { computed, onActivated, onMounted, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { changeConsoleLogin } from "@/api/consoleApi";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
@@ -111,22 +111,25 @@ onActivated(() => {
 
 <template>
   <div class="console-hub-page setup-wizard-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        首次 Setup Wizard
-      </template>
-      <template #lead>
-        改密为必做项；协议端与插件扩展为推荐项。智能对话体检仅在需要开启 LLM 时再配置。
-      </template>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="首次 Setup Wizard"
+      lead="改密为必做项；协议端与插件扩展为推荐项。智能对话体检仅在需要开启 LLM 时再配置。"
+    >
       <template #actions>
         <UiButton variant="ghost" :busy="statusBusy" @click="refreshStatus(true)">
           重新检查
         </UiButton>
-        <RouterLink v-if="canEnterAiFlow" to="/plugin-store">
-          <UiButton variant="outline">插件商店</UiButton>
+        <RouterLink
+          v-if="canEnterAiFlow"
+          custom
+          v-slot="{ navigate }"
+          to="/plugin-store"
+        >
+          <UiButton variant="outline" @click="navigate">插件商店</UiButton>
         </RouterLink>
       </template>
-    </ConsoleHubMasthead>
+    </PageChrome>
 
     <div v-if="!setupStatusKnown && setupStatusErrorText" class="alert alert--warn">
       当前无法确认首次引导状态：{{ setupStatusErrorText }}。为避免绕过改密流程，需先重试检查或完成状态恢复。

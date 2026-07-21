@@ -8,6 +8,7 @@ import {
   listHelpPreviewPluginOptions,
   pickDefaultHelpPreviewFunction,
 } from "@/utils/helpPreviewOptions";
+import UiButton from "@/components/ui/UiButton.vue";
 
 const { embedded = false, defaultPlugin = "help" } = defineProps<{
   embedded?: boolean;
@@ -227,14 +228,15 @@ onBeforeUnmount(revokePreviewUrl);
           </option>
         </select>
       </label>
-      <button
-        type="button"
-        class="btn btn--sm help-image-preview__refresh"
+      <UiButton
+        class="help-image-preview__refresh"
+        size="sm"
         :disabled="previewLoading"
+        :busy="previewLoading"
         @click="refreshPreview"
       >
         {{ previewLoading ? "加载中…" : "刷新预览" }}
-      </button>
+      </UiButton>
     </div>
     <p
       v-if="pluginsErr"

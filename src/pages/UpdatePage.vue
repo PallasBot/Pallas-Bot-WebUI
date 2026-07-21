@@ -22,7 +22,7 @@ import {
 import type { BotUpdateCheckData, UpdateCheckData } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import GitMirrorDialog from "@/components/GitMirrorDialog.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -473,10 +473,10 @@ onMounted(() => {
       :panels="2"
     />
     <template v-else>
-      <ConsoleHubMasthead :icon="panelNavIcon">
-        <template #title>
-          更新
-        </template>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="更新"
+      >
         <template #lead>
           {{ updateMastheadLead }}
           <span
@@ -501,7 +501,7 @@ onMounted(() => {
             />
           </div>
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <div class="update-page__overview">
         <a
@@ -560,8 +560,6 @@ onMounted(() => {
               已是最新
             </UiBadge>
           </h2>
-          <div class="row-actions">
-          </div>
         </div>
         <div class="panel__bd update-page__bd update-page__bd--release">
           <div class="update-page__release-summary">
@@ -696,8 +694,6 @@ onMounted(() => {
               已是最新
             </UiBadge>
           </h2>
-          <div class="row-actions">
-          </div>
         </div>
         <div class="panel__bd update-page__bd update-page__bd--release">
           <div class="update-page__release-summary">
@@ -895,58 +891,52 @@ onMounted(() => {
           GitHub 令牌
           <span class="muted"> · {{ ghTokenHadValue ? "已配置" : "未配置" }}</span>
         </summary>
-        <UiCard
-          tag="div"
-          glass
-          class="update-page__panel update-page__panel--gh"
-        >
-          <div class="panel__bd muted update-page__bd">
-            <p>
-              可选。用于 Release 检查与下载、协议端在线拉包等。也可在
-              <RouterLink :to="{ name: 'plugins', params: { name: PB_PROTOCOL_PLUGIN } }">插件配置 → 协议端</RouterLink>
-              填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
-            </p>
-            <div class="update-page__gh-row">
-              <UiInput
-                v-model="ghTokenInput"
-                class="update-page__gh-inp"
-                type="password"
-                revealable
-                autocomplete="off"
-                placeholder="粘贴 fine-grained 或 classic PAT"
-                :disabled="ghTokenBusy"
-              />
-              <UiButton
-                variant="primary"
-                :disabled="ghTokenBusy"
-                :busy="ghTokenBusy"
-                @click="saveGithubToken"
-              >
-                {{ ghTokenBusy ? "保存中…" : "保存" }}
-              </UiButton>
-              <UiButton
-                v-if="ghTokenHadValue"
-                variant="outline"
-                :disabled="ghTokenBusy"
-                @click="clearGithubToken"
-              >
-                清除
-              </UiButton>
-            </div>
-            <div
-              v-if="ghTokenErr"
-              class="alert alert--err update-page__gh-alert"
+        <div class="update-page__gh-fold-body muted update-page__bd">
+          <p>
+            可选。用于 Release 检查与下载、协议端在线拉包等。也可在
+            <RouterLink :to="{ name: 'plugins', params: { name: PB_PROTOCOL_PLUGIN } }">插件配置 → 协议端</RouterLink>
+            填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+          </p>
+          <div class="update-page__gh-row">
+            <UiInput
+              v-model="ghTokenInput"
+              class="update-page__gh-inp"
+              type="password"
+              revealable
+              autocomplete="off"
+              placeholder="粘贴 fine-grained 或 classic PAT"
+              :disabled="ghTokenBusy"
+            />
+            <UiButton
+              variant="primary"
+              :disabled="ghTokenBusy"
+              :busy="ghTokenBusy"
+              @click="saveGithubToken"
             >
-              {{ ghTokenErr }}
-            </div>
-            <div
-              v-if="ghTokenOk"
-              class="alert alert--ok update-page__gh-alert"
+              {{ ghTokenBusy ? "保存中…" : "保存" }}
+            </UiButton>
+            <UiButton
+              v-if="ghTokenHadValue"
+              variant="outline"
+              :disabled="ghTokenBusy"
+              @click="clearGithubToken"
             >
-              {{ ghTokenOk }}
-            </div>
+              清除
+            </UiButton>
           </div>
-        </UiCard>
+          <div
+            v-if="ghTokenErr"
+            class="alert alert--err update-page__gh-alert"
+          >
+            {{ ghTokenErr }}
+          </div>
+          <div
+            v-if="ghTokenOk"
+            class="alert alert--ok update-page__gh-alert"
+          >
+            {{ ghTokenOk }}
+          </div>
+        </div>
       </details>
 
       <GitMirrorDialog
@@ -961,7 +951,7 @@ onMounted(() => {
 .update-page__overview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--hub-page-gap, 14px);
 }
 
 .update-page__overview-card {
@@ -969,9 +959,9 @@ onMounted(() => {
   flex-direction: column;
   gap: 4px;
   padding: 14px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-muted) 40%, transparent);
   text-decoration: none;
   color: inherit;
   transition:
@@ -980,25 +970,26 @@ onMounted(() => {
 }
 
 .update-page__overview-card:hover {
-  border-color: color-mix(in srgb, var(--foreground) 16%, var(--border));
+  border-color: color-mix(in srgb, var(--foreground) 14%, var(--border));
+  background: color-mix(in srgb, var(--bg-muted) 55%, transparent);
 }
 
 .update-page__overview-card--warn {
-  border-color: color-mix(in srgb, var(--warn) 35%, var(--border));
-  background: color-mix(in srgb, var(--warn) 8%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--warn) 32%, var(--border));
+  background: color-mix(in srgb, var(--warn) 7%, var(--bg-card));
 }
 
 .update-page__overview-k {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
 
 .update-page__overview-v {
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   word-break: break-word;
 }
@@ -1028,12 +1019,20 @@ onMounted(() => {
   display: none;
 }
 
-.update-page__panel--gh {
+.update-page__gh-fold-body {
   margin-top: 8px;
+  padding: 4px 2px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .update-page__panel + .update-page__panel {
-  margin-top: 14px;
+  margin-top: var(--hub-page-gap, 14px);
+}
+
+.update-page__panel-hd-nowrap.panel__hd--split {
+  justify-content: flex-start;
 }
 
 .update-page__status-pill {
@@ -1054,7 +1053,7 @@ onMounted(() => {
 }
 
 .update-page__bd--release {
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -1063,11 +1062,11 @@ onMounted(() => {
   display: flex;
   align-items: stretch;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
+  border-radius: var(--radius-control, 8px);
+  border: none;
+  background: color-mix(in srgb, var(--bg-muted) 55%, transparent);
 }
 
 .update-page__release-stat {
@@ -1080,14 +1079,15 @@ onMounted(() => {
 
 .update-page__release-stat-label {
   font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  opacity: 0.72;
+  color: var(--text-muted);
 }
 
 .update-page__release-stat-value {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.25;
   word-break: break-word;
@@ -1131,24 +1131,24 @@ onMounted(() => {
 
 .update-page__release-callout--info {
   padding: 8px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 35%, transparent);
+  border-radius: var(--radius-control, 8px);
+  border: none;
+  background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
   color: var(--text-muted);
 }
 
 .update-page__release-section {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 30%, transparent);
+  border-radius: var(--radius-control, 8px);
+  border: none;
+  background: color-mix(in srgb, var(--bg-muted) 40%, transparent);
 }
 
 .update-page__release-section-title {
   margin: 0 0 8px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -1174,33 +1174,67 @@ onMounted(() => {
   margin-bottom: 0 !important;
 }
 
-.update-page__release-fold,
-.update-page__release-notes {
+.update-page__release-fold {
   margin: 0 0 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--bg-muted) 25%, transparent);
+  padding: 6px 10px;
+  border-radius: var(--radius-control, 8px);
+  border: none;
+  background: transparent;
+}
+
+.update-page__release-fold[open] {
+  background: color-mix(in srgb, var(--bg-muted) 35%, transparent);
 }
 
 .update-page__release-fold-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--text-muted);
   user-select: none;
+}
+
+.update-page__release-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.update-page__release-fold-summary::marker {
+  content: "";
+}
+
+.update-page__release-fold-summary::before {
+  content: "";
+  flex: 0 0 0.7rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  box-sizing: border-box;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  opacity: 0.72;
+  transition: transform 0.16s ease;
+}
+
+.update-page__release-fold[open] > .update-page__release-fold-summary {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.update-page__release-fold[open] > .update-page__release-fold-summary::before {
+  transform: rotate(45deg);
+  opacity: 0.9;
 }
 
 .update-page__release-foot {
   margin: 4px 0 0 !important;
   font-size: 12px;
-}
-
-.update-page__doc-links {
-  margin: 0;
-  padding: 8px 10px;
-  border: none;
-  background: transparent;
 }
 
 .update-page__doc-links-list {

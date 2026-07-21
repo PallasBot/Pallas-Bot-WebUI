@@ -1964,7 +1964,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ai-history-page">
+  <div class="ai-history-page ai-history-page--chrome">
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
@@ -3824,7 +3824,11 @@ onMounted(() => {
 .ai-history-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--hub-page-gap, 18px);
+}
+
+.ai-history-page--chrome {
+  gap: var(--hub-page-gap, 16px);
 }
 
 .ai-history-page__toolbar {
@@ -3905,7 +3909,7 @@ onMounted(() => {
 .ai-history-page__workspace {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .ai-history-page__panel {
@@ -3926,15 +3930,16 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px 16px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  border-radius: var(--radius-control, 8px);
+  border: none;
+  background: color-mix(in srgb, var(--bg-muted) 50%, transparent);
 }
 
 .ai-history-page__learning-strip.is-warn {
-  border-color: color-mix(in srgb, #f59e0b 35%, var(--border));
+  border: none;
+  border-left: 3px solid color-mix(in srgb, #f59e0b 70%, transparent);
   background: color-mix(in srgb, #f59e0b 8%, var(--bg-card));
 }
 
@@ -4471,7 +4476,10 @@ onMounted(() => {
 
 .ai-history-page__summary-stat {
   min-width: 0;
-  padding: 16px 16px 14px;
+  padding: 10px 12px;
+  border: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
 }
 
 .ai-history-page__overview {
@@ -4681,19 +4689,25 @@ onMounted(() => {
 
 .ai-history-page__filters-card {
   margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+  padding: 0 0 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .ai-history-page__filters-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-bottom: 10px;
   font-size: 0.8125rem;
+}
+
+.ai-history-page__filters-head strong {
+  font-weight: 600;
+  color: var(--text);
 }
 
 .ai-history-page__filters {
@@ -5522,13 +5536,14 @@ onMounted(() => {
 }
 
 .ai-history-page__workspace-hero {
-  margin-bottom: 4px;
-  padding: 4px 2px 8px;
+  margin-bottom: 0;
+  padding: 2px 2px 4px;
 }
 
 .ai-history-page__workspace-hero .plugin-config-page__hero-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .ai-history-page__workspace-hero .plugin-config-page__hero-desc {

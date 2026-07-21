@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import UiButton from "@/components/ui/UiButton.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import { totalPages } from "@/utils/paginate";
 
@@ -90,14 +91,15 @@ function onSizeChange(ev: Event) {
         </label>
       </div>
       <div class="console-pager__nav">
-        <button
-          type="button"
-          class="btn console-pager__btn-prev"
+        <UiButton
+          variant="outline"
+          size="sm"
+          class="console-pager__btn-prev"
           :disabled="page <= 1"
           @click="onPrev"
         >
           上一页
-        </button>
+        </UiButton>
         <span class="muted console-pager__jump">
           第
           <UiInput
@@ -111,14 +113,15 @@ function onSizeChange(ev: Event) {
           />
           / {{ maxPage }} 页
         </span>
-        <button
-          type="button"
-          class="btn console-pager__btn-next"
+        <UiButton
+          variant="outline"
+          size="sm"
+          class="console-pager__btn-next"
           :disabled="page >= maxPage"
           @click="onNext"
         >
           下一页
-        </button>
+        </UiButton>
       </div>
     </div>
   </div>

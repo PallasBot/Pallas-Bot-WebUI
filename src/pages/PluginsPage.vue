@@ -16,7 +16,7 @@ import type {
   PluginRow,
 } from "@/api/pallasTypes";
 import ConsoleHubFilterBar from "@/components/ConsoleHubFilterBar.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PluginCatalogCard from "@/components/PluginCatalogCard.vue";
@@ -192,22 +192,20 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
       v-else
       class="plugins-page__body"
     >
-      <ConsoleHubMasthead :icon="panelNavIcon">
-        <template #title>
-          插件管理
-        </template>
-        <template #lead>
-          点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。
-        </template>
-        <template #extra>
-          <p
-            v-if="catalogProcessHint(catalogProcessRole)"
-            class="muted console-hub-page__lead plugins-page__hero-note--shard"
-          >
+      <PageChrome
+        :icon="panelNavIcon"
+        title="插件管理"
+        lead="点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。"
+      >
+        <template
+          v-if="catalogProcessHint(catalogProcessRole)"
+          #extra
+        >
+          <p class="muted console-hub-page__lead plugins-page__hero-note--shard">
             {{ catalogProcessHint(catalogProcessRole) }}
           </p>
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <ConsoleHubSearch
         v-model="searchQuery"
@@ -280,10 +278,10 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
 
       <div
         v-if="capabilitiesSorted.length"
-        class="panel plugins-page__capabilities-overview"
+        class="plugins-page__capabilities-overview"
       >
-        <div class="panel__hd panel__hd--split plugins-page__capabilities-hd">
-          <h2 class="panel__title">
+        <div class="plugins-page__capabilities-hd">
+          <h2 class="plugins-page__capabilities-title">
             <ConsoleNavIcon
               class="panel__title-ico"
               name="plugin"
@@ -302,7 +300,7 @@ watch([pageReady, sortedPlugins, filteredPlugins, selectedPluginName], syncPlugi
         </div>
         <div
           v-show="capabilitiesOverviewOpen"
-          class="panel__bd"
+          class="plugins-page__capabilities-bd"
         >
           <p class="muted plugins-page__capabilities-note">
             聚合命令权限、冷却、LLM 工具与存储键声明；热重载策略分为仅配置、配置与说明、含代码变更三档。

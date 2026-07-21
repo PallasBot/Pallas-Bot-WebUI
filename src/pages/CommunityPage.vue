@@ -20,11 +20,11 @@ import type {
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { toastApiError } from "@/utils/consoleToastFeedback";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import CorpusWordCloud from "@/components/CorpusWordCloud.vue";
+import MetricTile from "@/components/MetricTile.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
-import StatCard from "@/components/StatCard.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -432,16 +432,12 @@ onMounted(() => {
       :panels="3"
     />
     <template v-else>
-      <ConsoleHubMasthead
+      <PageChrome
         :icon="panelNavIcon"
-        class="community-page__masthead"
+        chrome-class="community-page__masthead"
+        title="统计与语料"
+        lead="社区中心公开统计与本部署语料、多机协同状态；数据只读。"
       >
-        <template #title>
-          统计与语料
-        </template>
-        <template #lead>
-          社区中心公开统计与本部署语料、多机协同状态；数据只读。
-        </template>
         <template #extra>
           <p class="community-page__masthead-links muted">
             <a
@@ -467,7 +463,7 @@ onMounted(() => {
             @click="refresh"
           />
         </template>
-      </ConsoleHubMasthead>
+      </PageChrome>
 
       <p
         v-if="err"
@@ -568,31 +564,35 @@ onMounted(() => {
                 <dd>{{ formatUnixRelative(connectivityResult.reporting.last_heartbeat_ok_unix) }}</dd>
               </dl>
             </div>
-            <div class="grid-stats community-page__deploy-grid">
-              <StatCard
-                dense
+            <div class="community-page__kpi-bar home-kpi-bar community-page__deploy-grid">
+              <MetricTile
+                icon="globe"
                 label="活跃安装"
-                :value="formatCommunityStatNum(communityStats?.deployments_online)"
-                :hint="deploymentsOnlineHint"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.deployments_online) }}</span>
+                <span class="community-page__kpi-hint muted" :title="deploymentsOnlineHint">{{ deploymentsOnlineHint }}</span>
+              </MetricTile>
+              <MetricTile
+                icon="account"
                 label="在线牛牛"
-                :value="formatCommunityStatNum(communityStats?.bots_online_sum)"
-                :hint="botsOnlineHint"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.bots_online_sum) }}</span>
+                <span class="community-page__kpi-hint muted" :title="botsOnlineHint">{{ botsOnlineHint }}</span>
+              </MetricTile>
+              <MetricTile
+                icon="layers"
                 label="分片安装"
-                :value="`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`"
-                hint="采用分片架构的安装数 / 在线工作进程数"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.deployments_online_sharded) }}<span class="metric-tile__sep"> / </span>{{ formatCommunityStatNum(communityStats?.shard_workers_online_sum) }}</span>
+                <span class="community-page__kpi-hint muted" title="采用分片架构的安装数 / 在线工作进程数">采用分片架构的安装数 / 在线工作进程数</span>
+              </MetricTile>
+              <MetricTile
+                icon="activity"
                 label="近 24 小时"
-                :value="formatCommunityStatNum(communityStats?.active_recent_24h)"
-                :hint="activeRecentHint"
-              />
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.active_recent_24h) }}</span>
+                <span class="community-page__kpi-hint muted" :title="activeRecentHint">{{ activeRecentHint }}</span>
+              </MetricTile>
             </div>
             <dl class="home-dl community-page__detail-dl community-page__meta-dl">
               <dt>历史安装</dt>
@@ -696,25 +696,28 @@ onMounted(() => {
             <p class="muted community-page__federation-pool-note">
               左两列为已登记协同配置且近期上报在线统计的安装；右列为去重服务上仍有活跃标记的安装。
             </p>
-            <div class="grid-stats community-page__federation-pool-grid">
-              <StatCard
-                dense
+            <div class="community-page__kpi-bar home-kpi-bar community-page__federation-pool-grid">
+              <MetricTile
+                icon="users"
                 label="累计入池"
-                :value="formatCommunityStatNum(federationPoolStats?.members_total)"
-                hint="曾成功从社区中心领取协同配置的安装套数"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(federationPoolStats?.members_total) }}</span>
+                <span class="community-page__kpi-hint muted" title="曾成功从社区中心领取协同配置的安装套数">曾成功从社区中心领取协同配置的安装套数</span>
+              </MetricTile>
+              <MetricTile
+                icon="network"
                 label="在线入池"
-                :value="formatCommunityStatNum(federationPoolStats?.members_online)"
-                hint="已入池且近期有在线统计上报的安装套数"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(federationPoolStats?.members_online) }}</span>
+                <span class="community-page__kpi-hint muted" title="已入池且近期有在线统计上报的安装套数">已入池且近期有在线统计上报的安装套数</span>
+              </MetricTile>
+              <MetricTile
+                icon="activity"
                 label="去重活跃"
-                :value="federationCoordActiveLabel"
-                hint="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息"
-              />
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ federationCoordActiveLabel }}</span>
+                <span class="community-page__kpi-hint muted" title="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息">去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息</span>
+              </MetricTile>
             </div>
 
             <div
@@ -867,43 +870,49 @@ onMounted(() => {
             </div>
           </div>
           <div class="panel__bd">
-            <div class="grid-stats community-page__corpus-grid">
-              <StatCard
-                dense
+            <div class="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
+              <MetricTile
+                icon="list"
                 label="词条规模"
-                :value="corpusPoolValue"
-                :hint="corpusPoolHint"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ corpusPoolValue }}</span>
+                <span class="community-page__kpi-hint muted" :title="corpusPoolHint">{{ corpusPoolHint }}</span>
+              </MetricTile>
+              <MetricTile
+                icon="globe"
                 label="在线接入"
-                :value="formatCommunityStatNum(communityStats?.corpus?.enrollments_online)"
-                :hint="corpusOnlineEnrollHint"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.corpus?.enrollments_online) }}</span>
+                <span class="community-page__kpi-hint muted" :title="corpusOnlineEnrollHint">{{ corpusOnlineEnrollHint }}</span>
+              </MetricTile>
+              <MetricTile
+                icon="users"
                 label="累计接入"
-                :value="formatCommunityStatNum(communityStats?.corpus?.enrollments_total)"
-                :hint="corpusTotalEnrollHint"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.corpus?.enrollments_total) }}</span>
+                <span class="community-page__kpi-hint muted" :title="corpusTotalEnrollHint">{{ corpusTotalEnrollHint }}</span>
+              </MetricTile>
+              <MetricTile
+                icon="activity"
                 label="允许上传"
-                :value="formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)"
-                hint="已接入且允许把本机新回复同步到共享池的安装数"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total) }}</span>
+                <span class="community-page__kpi-hint muted" title="已接入且允许把本机新回复同步到共享池的安装数">已接入且允许把本机新回复同步到共享池的安装数</span>
+              </MetricTile>
+              <MetricTile
+                icon="sparkles"
                 label="回复被引用"
-                :value="formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)"
-                hint="共享池中各回复条目被接话引用的累计次数"
-              />
-              <StatCard
-                dense
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum) }}</span>
+                <span class="community-page__kpi-hint muted" title="共享池中各回复条目被接话引用的累计次数">共享池中各回复条目被接话引用的累计次数</span>
+              </MetricTile>
+              <MetricTile
+                icon="database"
                 label="允许读取"
-                :value="formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)"
-                hint="已接入且允许从共享池读取语料的安装数"
-              />
+              >
+                <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityStats?.corpus?.read_enabled_total) }}</span>
+                <span class="community-page__kpi-hint muted" title="已接入且允许从共享池读取语料的安装数">已接入且允许从共享池读取语料的安装数</span>
+              </MetricTile>
             </div>
           </div>
         </UiCard>
@@ -1010,25 +1019,31 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="grid-stats community-page__usage-grid">
-                <StatCard
-                  dense
+              <div class="community-page__kpi-bar home-kpi-bar community-page__usage-grid">
+                <MetricTile
+                  icon="globe"
                   label="查询共享池"
-                  :value="formatCommunityStatNum(communityUsage?.read_lookups)"
-                  hint="向社区共享池发起读取的次数（含未命中）"
-                />
-                <StatCard
-                  dense
+                >
+                  <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityUsage?.read_lookups) }}</span>
+                  <span class="community-page__kpi-hint muted" title="向社区共享池发起读取的次数（含未命中）">向社区共享池发起读取的次数（含未命中）</span>
+                </MetricTile>
+                <MetricTile
+                  icon="sparkles"
                   label="命中共享池"
-                  :value="formatCommunityStatNum(communityUsage?.read_hits)"
-                  hint="共享池实际返回可用语料的次数"
-                />
-                <StatCard
-                  dense
+                >
+                  <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityUsage?.read_hits) }}</span>
+                  <span class="community-page__kpi-hint muted" title="共享池实际返回可用语料的次数">共享池实际返回可用语料的次数</span>
+                </MetricTile>
+                <MetricTile
+                  icon="activity"
                   label="上传到共享池"
-                  :value="formatCommunityStatNum(communityUsage?.contribute_ok)"
-                  :hint="communityUsage ? `成功上传的新回复条数；统计更新于 ${communityUsageUpdatedText}` : '社区中心暂未返回本部署用量'"
-                />
+                >
+                  <span class="metric-tile__value metric-tile__value--inline">{{ formatCommunityStatNum(communityUsage?.contribute_ok) }}</span>
+                  <span
+                    class="community-page__kpi-hint muted"
+                    :title="communityUsage ? `成功上传的新回复条数；统计更新于 ${communityUsageUpdatedText}` : '社区中心暂未返回本部署用量'"
+                  >{{ communityUsage ? `成功上传的新回复条数；统计更新于 ${communityUsageUpdatedText}` : "社区中心暂未返回本部署用量" }}</span>
+                </MetricTile>
               </div>
 
               <div class="table-wrap community-page__matrix-wrap">

@@ -14,13 +14,16 @@ import {
   type ProtocolRuntimeProfile,
 } from "@/api/protocolApi";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import UiSelect from "@/components/ui/UiSelect.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
+const panelNavIcon = usePanelNavIcon();
 const { err, pageReady, mountUrl, reload } = useProtocolMount();
 
 const overview = ref<Record<string, unknown> | null>(null);
@@ -228,37 +231,33 @@ void onMountedLoad();
         {{ err }}
       </div>
 
-      <UiCard
-        tag="div"
-        glass
-        class="protocol-sub-page__panel"
+      <PageChrome
+        :icon="panelNavIcon"
+        title="协议资产"
+        lead="管理 NapCat / SnowLuma 发行包、全局运行模式与 Docker 镜像；保存后可能影响已有协议容器。"
       >
-        <div class="panel__hd panel__hd--split inst-db-panel__hd">
-          <h2 class="panel__title">
-            协议资产
-          </h2>
-          <div class="inst-db-panel__hd-side">
-            <RouterLink
-              class="btn secondary"
-              to="/protocol"
-            >
-              返回实例列表
-            </RouterLink>
+        <template #actions>
+          <RouterLink
+            custom
+            v-slot="{ navigate }"
+            to="/protocol"
+          >
             <UiButton
               variant="outline"
-              :busy="loadBusy"
-              @click="loadAssets"
+              @click="navigate"
             >
-              刷新
+              返回实例列表
             </UiButton>
-          </div>
-        </div>
-        <div class="panel__bd">
-          <p class="muted">
-            在此管理 NapCat / SnowLuma 发行包、全局运行模式与 Docker 镜像；保存后可能影响已有协议容器。
-          </p>
-        </div>
-      </UiCard>
+          </RouterLink>
+          <UiButton
+            variant="outline"
+            :busy="loadBusy"
+            @click="loadAssets"
+          >
+            刷新
+          </UiButton>
+        </template>
+      </PageChrome>
 
       <UiCard
         tag="div"

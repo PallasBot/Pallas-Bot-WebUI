@@ -22,11 +22,14 @@ withDefaults(
       class="ui-field__label-row"
     >
       <div class="ui-field__label">
-        <span
-          v-if="label"
-          class="ui-field__label-text"
-          :title="label"
-        >{{ label }}</span>
+        <div class="ui-field__title">
+          <span
+            v-if="label"
+            class="ui-field__label-text"
+            :title="label"
+          >{{ label }}</span>
+          <slot name="label-end" />
+        </div>
         <span
           v-if="required"
           class="ui-field__required"
@@ -36,7 +39,6 @@ withDefaults(
           v-if="secret"
           class="ui-field__secret"
         >密钥</span>
-        <slot name="label-end" />
       </div>
       <div
         v-if="$slots.meta"
@@ -85,8 +87,18 @@ withDefaults(
   font-weight: 500;
 }
 
+/* 标题 + ? 成组贴齐；勿让文字 flex 撑开把帮助钮推到行尾 */
+.ui-field__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
 .ui-field__label-text {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -144,12 +156,19 @@ withDefaults(
 
 @media (max-width: 560px) {
   .ui-field__label-row {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .ui-field__label {
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 
   .ui-field__meta {
     opacity: 1;
-    max-width: 48%;
+    max-width: 100%;
+    flex: 1 1 auto;
   }
 }
 </style>

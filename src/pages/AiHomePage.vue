@@ -147,13 +147,14 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
             {{ runtimeHealthSummary }}
           </p>
         </div>
-        <button
-          type="button"
+        <UiButton
+          variant="outline"
+          size="sm"
           class="ai-home-page__hero-btn"
           @click="scrollToRuntimeDiagnostic"
         >
           运行诊断
-        </button>
+        </UiButton>
       </div>
       <div
         class="ai-stat-grid ai-home-page__kpi"
@@ -356,24 +357,8 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 }
 
 .ai-home-page__hero-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  padding: 0 14px;
-  border: none;
-  cursor: pointer;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--foreground);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  font-family: inherit;
+  flex-shrink: 0;
   white-space: nowrap;
-}
-
-.ai-home-page__hero-btn:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .ai-home-page__grid {
@@ -475,9 +460,19 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 @media (max-width: 560px) {
   .ai-home-page__hero-head {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .ai-home-page__hero-btn {
+    width: 100%;
+  }
+
+  .ai-home-page__wizard-alert {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ai-home-page__wizard-alert .ui-btn {
     width: 100%;
   }
 }

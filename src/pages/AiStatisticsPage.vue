@@ -490,13 +490,13 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   gap: 8px;
   background: color-mix(in srgb, var(--text) 3%, transparent);
   padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
 
 .ai-date-field__label {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
 }
 
@@ -530,13 +530,11 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
-  border-radius: var(--hub-radius-lg, 14px);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 6px 16px rgba(15, 23, 42, 0.03);
+  padding: 12px 14px;
+  border: none;
+  background: color-mix(in srgb, var(--bg-muted) 48%, transparent);
+  border-radius: var(--radius-control, 8px);
+  box-shadow: none;
   container-type: inline-size;
 }
 
@@ -546,14 +544,14 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
   align-items: baseline;
   gap: 6px;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   line-height: 1.35;
 }
 
 .ai-stats-page__metric-sublabel {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--text-muted) 78%, transparent);
@@ -564,7 +562,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 .ai-stats-page__metric-value {
   font-size: clamp(1rem, 7cqi, 1.75rem);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.15;
@@ -591,28 +589,26 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 .ai-stats-page__panel {
   height: 100%;
-  border-radius: var(--hub-radius-lg, 14px);
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 6px 16px rgba(15, 23, 42, 0.03);
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: none;
 }
 
 .ai-stats-page__panel :deep(.ui-card__content) {
-  padding: 16px 18px 18px;
+  padding: 14px 16px 16px;
 }
 
 .ai-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .ai-head__title {
   margin: 0;
-  font-size: 0.98rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .ai-head__hint {
@@ -686,11 +682,11 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 .ai-token-card {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 16px;
-  background: color-mix(in srgb, var(--text) 2%, transparent);
-  border-radius: 12px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
   border: none;
 }
 
@@ -710,8 +706,8 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 .ai-token-card__total {
   flex-shrink: 0;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--text);
   font-family: var(--font-mono);
 }

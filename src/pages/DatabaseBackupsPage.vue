@@ -14,10 +14,10 @@ import {
 } from "@/api/consoleApi";
 import { axiosErrorDetail } from "@/api/http";
 import type { DbBackupJobData, DbBackupRunRow, DbOverviewData } from "@/api/pallasTypes";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import MetricTile from "@/components/MetricTile.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
-import StatCard from "@/components/StatCard.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import type { UiBadgeVariant } from "@/components/ui/UiBadge.vue";
@@ -457,23 +457,6 @@ onUnmounted(() => {
 
 <template>
   <div class="database-backups-page console-hub-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        备份管理
-      </template>
-      <template #lead>
-        创建逻辑备份、浏览历史目录并下载或批量清理；进行中的任务不可删。
-      </template>
-      <template #actions>
-        <RefreshIconButton
-          embedded
-          :busy="listBusy"
-          label="刷新列表"
-          @click="loadRuns"
-        />
-      </template>
-    </ConsoleHubMasthead>
-
     <div
       v-if="err"
       class="alert alert--err"
@@ -487,37 +470,63 @@ onUnmounted(() => {
       {{ ok }}
     </div>
 
+    <PageChrome
+      :icon="panelNavIcon"
+      title="备份管理"
+      lead="创建逻辑备份、浏览历史目录并下载或批量清理；进行中的任务不可删。"
+    >
+      <template #actions>
+        <RefreshIconButton
+          embedded
+          :busy="listBusy"
+          label="刷新列表"
+          @click="loadRuns"
+        />
+      </template>
+    </PageChrome>
+
     <ConsolePageSkeleton
       v-if="!pageReady && !runs.length"
       :panels="2"
     />
 
     <template v-if="pageReady || runs.length">
-      <section class="database-backups-page__kpi grid-stats">
-        <StatCard
-          dense
+      <section class="database-backups-page__kpi home-kpi-bar">
+        <MetricTile
+          icon="database"
           label="数据库后端"
-          :value="backendLabel"
-          :hint="backupInfo?.tool_name ? `工具 ${backupInfo.tool_name}` : '加载中…'"
-        />
-        <StatCard
-          dense
+        >
+          <span class="metric-tile__value metric-tile__value--inline">{{ backendLabel }}</span>
+          <span class="database-page__kpi-hint muted">
+            {{ backupInfo?.tool_name ? `工具 ${backupInfo.tool_name}` : "加载中…" }}
+          </span>
+        </MetricTile>
+        <MetricTile
+          icon="activity"
           label="连接"
-          :value="backupInfo ? `${backupInfo.connection.host}:${backupInfo.connection.port}` : '—'"
-          :hint="backupInfo?.connection.database ?? '—'"
-        />
-        <StatCard
-          dense
+        >
+          <span class="metric-tile__value metric-tile__value--inline">
+            {{ backupInfo ? `${backupInfo.connection.host}:${backupInfo.connection.port}` : "—" }}
+          </span>
+          <span class="database-page__kpi-hint muted">{{ backupInfo?.connection.database ?? "—" }}</span>
+        </MetricTile>
+        <MetricTile
+          icon="list"
           label="备份数量"
-          :value="runs.length"
-          hint="当前父目录下可清理的历史备份"
-        />
-        <StatCard
-          dense
+        >
+          <span class="metric-tile__value metric-tile__value--inline">{{ runs.length }}</span>
+          <span class="database-page__kpi-hint muted">当前父目录下可清理的历史备份</span>
+        </MetricTile>
+        <MetricTile
+          icon="backup"
           label="合计体积"
-          :value="formatBackupBytes(totalBytes)"
-          :hint="connectionHint"
-        />
+        >
+          <span class="metric-tile__value metric-tile__value--inline">{{ formatBackupBytes(totalBytes) }}</span>
+          <span
+            class="database-page__kpi-hint muted"
+            :title="connectionHint"
+          >{{ connectionHint }}</span>
+        </MetricTile>
       </section>
 
       <UiCard
@@ -533,7 +542,8 @@ onUnmounted(() => {
               :size="20"
             />创建备份
           </h2>
-          <div class="row-actions">
+          <div class="row-actions database-backups-page__hd-actions">
+            <span class="friends-groups-hd-pin-wrap" />
             <UiButton
               variant="primary"
               :disabled="anyJobBusy || !backupToolReady"
@@ -748,32 +758,28 @@ onUnmounted(() => {
             </p>
           </div>
 
-          <UiCard
+          <div
             v-if="backupResult"
-            tag="div"
-            glass
             class="database-backups-page__result"
           >
-            <div class="panel__bd">
-              <p style="margin: 0 0 8px">
-                <strong>输出目录</strong> {{ backupResult.output_dir }}
-              </p>
-              <p
-                v-for="(art, i) in backupResult.artifacts"
-                :key="i"
-                class="muted"
-                style="margin: 0 0 4px; word-break: break-all"
-              >
-                产物：{{ art }}
-              </p>
-              <p
-                class="muted"
-                style="margin: 8px 0 0"
-              >
-                大小：{{ formatBackupBytes(backupResult.size_bytes) }}
-              </p>
-            </div>
-          </UiCard>
+            <p style="margin: 0 0 8px">
+              <strong>输出目录</strong> {{ backupResult.output_dir }}
+            </p>
+            <p
+              v-for="(art, i) in backupResult.artifacts"
+              :key="i"
+              class="muted"
+              style="margin: 0 0 4px; word-break: break-all"
+            >
+              产物：{{ art }}
+            </p>
+            <p
+              class="muted"
+              style="margin: 8px 0 0"
+            >
+              大小：{{ formatBackupBytes(backupResult.size_bytes) }}
+            </p>
+          </div>
         </div>
       </UiCard>
 
@@ -795,6 +801,7 @@ onUnmounted(() => {
             >{{ runs.length }} 项</span>
           </h2>
           <div class="row-actions database-backups-page__hd-actions">
+            <span class="friends-groups-hd-pin-wrap" />
             <UiButton
               variant="destructive"
               class="database-backups-page__delete-btn"

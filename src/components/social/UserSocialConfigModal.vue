@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { fetchUserConfigById, putUserConfig } from "@/api/consoleApi";
 import type { UserConfigPublic } from "@/api/pallasTypes";
+import UiButton from "@/components/ui/UiButton.vue";
 import UiDialog from "@/components/ui/UiDialog.vue";
 import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import { useSaveHotkey } from "@/composables/useSaveHotkey";
@@ -173,22 +174,20 @@ watch(
               @update:model-value="userDraft.banned = $event"
             />
             <div class="row-actions">
-              <button
-                type="button"
-                class="btn btn--primary"
-                :disabled="saveBusy"
+              <UiButton
+                variant="primary"
+                :busy="saveBusy"
                 @click="save"
               >
-                {{ saveBusy ? "保存中…" : "保存" }}
-              </button>
-              <button
-                type="button"
-                class="btn"
+                保存
+              </UiButton>
+              <UiButton
+                variant="outline"
                 :disabled="saveBusy"
                 @click="close"
               >
                 取消
-              </button>
+              </UiButton>
             </div>
           </div>
   </UiDialog>

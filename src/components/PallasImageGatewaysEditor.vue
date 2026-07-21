@@ -13,6 +13,7 @@ import {
   type PallasImageGatewayRow,
 } from "@/utils/pallasImageGateways";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import UiButton from "@/components/ui/UiButton.vue";
 
 const props = defineProps<{
   fieldValues: Record<string, string>;
@@ -220,13 +221,12 @@ const editingKeyHint = computed(() => {
           主网关与备选按顺序回退；备线可用 ↑↓ 调整顺序，或点「设为主」与主网关对调。密钥脱敏显示；改完后请 Ctrl+S 或点「保存」写入运行配置。
         </p>
       </div>
-      <button
-        type="button"
-        class="btn btn--primary"
+      <UiButton
+        variant="primary"
         @click="openAddFallback"
       >
         添加备选网关
-      </button>
+      </UiButton>
     </div>
 
     <ul
@@ -258,51 +258,53 @@ const editingKeyHint = computed(() => {
             v-if="item.row.role === 'fallback'"
             class="pallas-gw-editor__sort"
           >
-            <button
-              type="button"
-              class="btn pallas-gw-editor__sort-btn"
+            <UiButton
+              variant="ghost"
+              size="sm"
+              class="pallas-gw-editor__sort-btn"
               :disabled="!item.canMoveUp"
               aria-label="上移"
               title="上移"
               @click="moveFallback(item.row.id, -1)"
             >
               ↑
-            </button>
-            <button
-              type="button"
-              class="btn pallas-gw-editor__sort-btn"
+            </UiButton>
+            <UiButton
+              variant="ghost"
+              size="sm"
+              class="pallas-gw-editor__sort-btn"
               :disabled="!item.canMoveDown"
               aria-label="下移"
               title="下移"
               @click="moveFallback(item.row.id, 1)"
             >
               ↓
-            </button>
+            </UiButton>
           </div>
-          <button
+          <UiButton
             v-if="item.row.role === 'fallback'"
-            type="button"
-            class="btn"
+            variant="outline"
+            size="sm"
             title="与主网关对调"
             @click="setAsPrimary(item.row.id)"
           >
             设为主
-          </button>
-          <button
-            type="button"
-            class="btn"
+          </UiButton>
+          <UiButton
+            variant="outline"
+            size="sm"
             @click="openEdit(item.row)"
           >
             编辑
-          </button>
-          <button
+          </UiButton>
+          <UiButton
             v-if="item.canDelete"
-            type="button"
-            class="btn btn--danger"
+            variant="destructive"
+            size="sm"
             @click="removeRow(item.row.id)"
           >
             删除
-          </button>
+          </UiButton>
         </div>
       </li>
     </ul>
@@ -432,20 +434,18 @@ const editingKeyHint = computed(() => {
             </div>
           </div>
           <div class="pallas-gw-modal__ft row-actions">
-            <button
-              type="button"
-              class="btn"
+            <UiButton
+              variant="outline"
               @click="closeModal"
             >
               取消
-            </button>
-            <button
-              type="button"
-              class="btn btn--primary"
+            </UiButton>
+            <UiButton
+              variant="primary"
               @click="saveModal"
             >
               确定
-            </button>
+            </UiButton>
           </div>
         </div>
       </div>
@@ -539,7 +539,8 @@ const editingKeyHint = computed(() => {
     width: 100%;
   }
 
-  .pallas-gw-editor__item-actions > .btn {
+  .pallas-gw-editor__item-actions > .btn,
+  .pallas-gw-editor__item-actions > .ui-btn {
     flex: 1 1 auto;
     min-width: 0;
   }

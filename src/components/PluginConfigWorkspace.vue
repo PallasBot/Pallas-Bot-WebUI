@@ -1246,7 +1246,8 @@ defineExpose({
     max-width: min(11rem, calc(100% - 5.5rem)) !important;
   }
 
-  .plugin-fleet-whitelist__add-row > .btn {
+  .plugin-fleet-whitelist__add-row > .btn,
+  .plugin-fleet-whitelist__add-row > .ui-btn {
     width: auto !important;
     flex: 0 0 auto;
     padding: 6px 12px;

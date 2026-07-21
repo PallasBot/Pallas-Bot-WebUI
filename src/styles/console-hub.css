@@ -1,7 +1,18 @@
-/* Gsuid-aligned console layout — enabled via html[data-layout="hub"] */
+/*
+ * Gsuid-aligned console layout — enabled via html[data-layout="hub"]
+ *
+ * Surface contract (Canvas / Card / Flat):
+ * - Canvas: page shell (.console-hub-page) — PageChrome + filters + content blocks, no card chrome
+ * - Card: one elevated surface (.panel / UiCard / prefs-setting-card) on the canvas; siblings OK
+ * - Flat: inside a card use spacing / dividers / details — do not nest another .panel
+ */
 
 html[data-layout="hub"] {
   --hub-page-gap: 18px;
+  /* 主内容边距（对齐 gsuid 式宽屏 gutter；窄屏在 media 内覆盖） */
+  --layout-gutter: 40px;
+  --layout-page-top: 12px;
+  --layout-page-bottom: 20px;
   --hub-surface: var(--bg-card);
   --hub-muted: color-mix(in srgb, var(--text-muted) 10%, var(--bg-card));
   --hub-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -52,8 +63,7 @@ html[data-layout="hub"][data-theme="dark"] {
 /* 主内容：浅灰底 + 统一间距（与插件商店一致）；滚动仍由 .shell__main-inner 负责 */
 html[data-layout="hub"] .shell__main-inner {
   background: var(--bg-elev);
-  padding-top: 12px;
-  padding-bottom: 20px;
+  padding: var(--layout-page-top) var(--layout-gutter) var(--layout-page-bottom);
 }
 
 html[data-layout="hub"] .shell__main-inner--fill {
@@ -63,6 +73,24 @@ html[data-layout="hub"] .shell__main-inner--fill {
   flex: 1 1 auto;
   min-height: 0;
   gap: var(--hub-page-gap);
+}
+
+/* PageFill / PagePinned：满高页与钉顶 chrome */
+.page-fill,
+html[data-layout="hub"] .console-hub-page--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-page-gap, 18px);
+}
+
+.page-pinned {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-page-gap, 18px);
+  min-width: 0;
 }
 
 html[data-layout="hub"][data-surface="glass"] .panel:not(.plugin-catalog-card):not(.plugin-store-card):not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
@@ -648,6 +676,7 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
   }
 }
 
+.console-hub-page__search-wrap,
 .console-hub-page__search-card,
 .plugin-store-page__search-card {
   margin: 0;
@@ -696,9 +725,9 @@ html[data-layout="hub"] .plugins-page__search-input .inp {
   width: 100%;
   min-height: 44px;
   padding-left: 2.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 16px);
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
-  box-shadow: var(--hub-shadow);
+  box-shadow: none;
 }
 
 html[data-layout="hub"][data-theme="light"] .console-hub-page__search-input.inp,
@@ -1122,8 +1151,9 @@ html[data-layout="hub"] .logs-page__search .inp {
 }
 
 @media (max-width: 860px) {
-  html[data-layout="hub"] .shell__main-inner {
-    padding-top: calc(var(--shell-chrome-h, 52px) + 12px);
+  html[data-layout="hub"] {
+    --layout-gutter: 14px;
+    --layout-page-top: calc(var(--shell-chrome-h, 52px) + 12px);
   }
 }
 
@@ -1131,12 +1161,13 @@ html[data-layout="hub"] .logs-page__search .inp {
   html[data-layout="hub"] {
     --shell-chrome-h: 44px;
     --hub-page-gap: 14px;
+    --layout-gutter: 12px;
+    --layout-page-top: calc(var(--shell-chrome-h, 44px) + 8px);
+    --layout-page-bottom: 12px;
   }
 
   html[data-layout="hub"] .shell__main-inner {
     gap: 10px;
-    padding-top: calc(var(--shell-chrome-h, 44px) + 8px);
-    padding-bottom: 12px;
   }
 
   html[data-layout="hub"] .console-hub-page__masthead-main {
@@ -1163,7 +1194,8 @@ html[data-layout="hub"] .logs-page__search .inp {
     width: 100%;
   }
 
-  html[data-layout="hub"] .console-hub-page__masthead-actions.row-actions > .btn {
+  html[data-layout="hub"] .console-hub-page__masthead-actions.row-actions > .btn,
+  html[data-layout="hub"] .console-hub-page__masthead-actions.row-actions > .ui-btn {
     width: auto;
   }
 
@@ -1256,7 +1288,8 @@ html[data-layout="hub"] .logs-page__search .inp {
     gap: 8px;
   }
 
-  html[data-layout="hub"] .plugin-store-page__masthead-actions.row-actions > .btn {
+  html[data-layout="hub"] .plugin-store-page__masthead-actions.row-actions > .btn,
+  html[data-layout="hub"] .plugin-store-page__masthead-actions.row-actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
     width: auto;
     min-width: 0;
@@ -1285,8 +1318,11 @@ html[data-layout="hub"] .logs-page__search .inp {
   }
 
   html[data-layout="hub"] .console-hub-page__masthead-actions > .btn,
+  html[data-layout="hub"] .console-hub-page__masthead-actions > .ui-btn,
   html[data-layout="hub"] .plugins-page__hero-actions > .btn,
-  html[data-layout="hub"] .plugin-store-page__masthead-actions > .btn {
+  html[data-layout="hub"] .plugins-page__hero-actions > .ui-btn,
+  html[data-layout="hub"] .plugin-store-page__masthead-actions > .btn,
+  html[data-layout="hub"] .plugin-store-page__masthead-actions > .ui-btn {
     flex: 1 1 auto;
   }
 
@@ -1330,11 +1366,7 @@ html[data-layout="hub"] .logs-page__search .inp {
   }
 }
 
-/* gshub 式满屏：日志/报错页在 panel 内滚动 */
-html[data-layout="hub"] .console-hub-page--fill {
-  flex: 1 1 auto;
-  min-height: 0;
-}
+/* gshub 式满屏：日志/报错页在 panel 内滚动（.page-fill / .console-hub-page--fill 见上） */
 
 html[data-layout="hub"] .log-errors-page__panel,
 html[data-layout="hub"] .log-errors-page > .ui-card.log-errors-page__panel,
@@ -1375,9 +1407,12 @@ html[data-layout="hub"] .logs-page > .ui-card.logs-page__panel {
   margin-bottom: 0;
 }
 
-html[data-layout="hub"] .logs-page__panel > .panel__hd,
-html[data-layout="hub"] .logs-page__panel.ui-card > .ui-card__content > .panel__hd {
-  flex-shrink: 0;
+html[data-layout="hub"] .logs-page__panel.ui-card > .ui-card__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 html[data-layout="hub"] .logs-page__panel > .panel__bd,

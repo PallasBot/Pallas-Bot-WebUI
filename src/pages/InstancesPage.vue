@@ -25,6 +25,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import FormBoolSwitchField from "@/components/config/FormBoolSwitchField.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -520,7 +521,13 @@ onUnmounted(() => {
       v-if="!pageReady"
       :panels="4"
     />
-    <template v-else-if="data">
+    <template v-else>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="数据库实例"
+        lead="管理已写入数据库的 Bot 账号配置，以及消息框架连接状态。"
+      />
+      <template v-if="data">
       <UiCard
         tag="div"
         glass
@@ -677,7 +684,7 @@ onUnmounted(() => {
                       <ConsoleTableEdit @click="startEdit(c)" />
                       <button
                         type="button"
-                        class="btn inst-fav-star"
+                        class="ui-btn ui-btn--ghost ui-btn--sm inst-fav-star"
                         :aria-pressed="botFavoriteAccounts.has(c.account)"
                         :title="botFavoriteAccounts.has(c.account) ? '取消收藏' : '收藏'"
                         @click="toggleFavoriteBot(c.account)"
@@ -898,13 +905,13 @@ onUnmounted(() => {
           />
         </div>
       </UiCard>
-    </template>
-    <UiCard
-      v-else
-      tag="div"
-      glass
-      class="instances-page__panel"
-    >
+      </template>
+      <UiCard
+        v-else
+        tag="div"
+        glass
+        class="instances-page__panel"
+      >
       <div class="panel__bd">
         <p class="muted">
           实例数据未加载，可尝试重新拉取。
@@ -919,6 +926,7 @@ onUnmounted(() => {
         </UiButton>
       </div>
     </UiCard>
+    </template>
 
     <Teleport to="body">
       <div
@@ -1097,14 +1105,14 @@ onUnmounted(() => {
                   style="margin: 8px 0 0; font-size: 12px"
                 >
                   当前：手改覆盖
-                  <button
-                    type="button"
-                    class="btn btn--ghost"
-                    style="margin-left: 8px; padding: 2px 8px; font-size: 12px"
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    style="margin-left: 8px"
                     @click="clearSeedOverride"
                   >
                     恢复自动
-                  </button>
+                  </UiButton>
                 </p>
                 <p
                   v-else
@@ -1196,16 +1204,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-.inst-fav-star {
-  padding: 6px 10px;
-  font-size: 16px;
-  line-height: 1;
-  opacity: 0.38;
-}
-.inst-fav-star[aria-pressed="true"] {
-  opacity: 1;
-  color: #fbbf24;
 }
 
 .inst-db-admins-cell {

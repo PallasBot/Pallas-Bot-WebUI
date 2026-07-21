@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import { provideAiObservationRefresh } from "@/composables/useAiObservationRefresh";
@@ -22,13 +22,11 @@ const activeTab = computed(() =>
 
 <template>
   <div class="console-hub-page ai-surface ai-observation-layout">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        AI 观测
-      </template>
-      <template #lead>
-        {{ activeTab.lead }}
-      </template>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="AI 观测"
+      :lead="activeTab.lead"
+    >
       <template #actions>
         <RefreshIconButton
           embedded
@@ -44,7 +42,7 @@ const activeTab = computed(() =>
           <UiButton variant="ghost">体检向导</UiButton>
         </RouterLink>
       </template>
-    </ConsoleHubMasthead>
+    </PageChrome>
 
     <nav
       class="ai-observation-layout__tabs"
@@ -95,6 +93,12 @@ const activeTab = computed(() =>
 .ai-observation-layout__tabs {
   display: block;
   width: 100%;
+  flex: 0 0 auto;
+}
+
+.ai-observation-layout__body {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .ai-observation-layout__tab {

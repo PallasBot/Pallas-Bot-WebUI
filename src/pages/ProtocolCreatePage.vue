@@ -3,14 +3,17 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { protocolApiErrorMessage, protocolCreateAccount } from "@/api/protocolApi";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
 import UiSelect from "@/components/ui/UiSelect.vue";
+import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { useProtocolMount } from "@/composables/useProtocolMount";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const router = useRouter();
+const panelNavIcon = usePanelNavIcon();
 const { err, pageReady, mountUrl, reload } = useProtocolMount();
 
 const qq = ref("");
@@ -72,31 +75,38 @@ async function submitCreate() {
       >
         {{ err }}
       </div>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="创建协议账号"
+        lead="填写 QQ 与连接参数后创建协议端实例；完成后可返回列表启停。"
+      >
+        <template #actions>
+          <RouterLink
+            custom
+            v-slot="{ navigate }"
+            to="/protocol"
+          >
+            <UiButton
+              variant="outline"
+              @click="navigate"
+            >
+              返回实例列表
+            </UiButton>
+          </RouterLink>
+          <UiButton
+            variant="outline"
+            :busy="busy"
+            @click="reload"
+          >
+            刷新
+          </UiButton>
+        </template>
+      </PageChrome>
       <UiCard
         tag="div"
         glass
         class="protocol-sub-page__panel"
       >
-        <div class="panel__hd panel__hd--split">
-          <h2 class="panel__title">
-            创建协议账号
-          </h2>
-          <div class="row-actions">
-            <RouterLink
-              class="btn secondary"
-              to="/protocol"
-            >
-              返回实例列表
-            </RouterLink>
-            <UiButton
-              variant="outline"
-              :busy="busy"
-              @click="reload"
-            >
-              刷新
-            </UiButton>
-          </div>
-        </div>
         <div class="panel__bd protocol-form-grid">
           <label class="field">
             <span class="field__label">QQ 号</span>

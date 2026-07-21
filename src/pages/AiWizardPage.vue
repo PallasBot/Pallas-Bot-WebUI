@@ -19,7 +19,8 @@ import type {
 } from "@/api/pallasTypes";
 import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
+import MetricTile from "@/components/MetricTile.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -228,22 +229,24 @@ onMounted(() => {
 
 <template>
   <div class="console-hub-page ai-wizard-page">
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        AI 诊断向导
-      </template>
-      <template #lead>
-        一键检测系统各项 AI 服务配置与网络连通性。不仅为您提供具体的配置修复建议，更能直接发起真实的网络探针探测。
-      </template>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="AI 诊断向导"
+      lead="一键检测系统各项 AI 服务配置与网络连通性。不仅为您提供具体的配置修复建议，更能直接发起真实的网络探针探测。"
+    >
       <template #actions>
-        <RouterLink to="/ai/home">
-          <UiButton variant="outline">返回首页</UiButton>
+        <RouterLink
+          custom
+          v-slot="{ navigate }"
+          to="/ai/home"
+        >
+          <UiButton variant="outline" @click="navigate">返回首页</UiButton>
         </RouterLink>
         <UiButton variant="primary" :busy="loading" @click="refresh">
           刷新诊断报告
         </UiButton>
       </template>
-    </ConsoleHubMasthead>
+    </PageChrome>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
     <div v-else-if="allChecksPassed" class="alert alert--ok">
@@ -253,33 +256,34 @@ onMounted(() => {
       <strong>当前急需处理：</strong>{{ wizardStatus.next_step }}
     </div>
 
-    <section class="ai-wizard-page__summary">
-      <UiCard class="ai-wizard-page__summary-card">
-        <span class="ai-wizard-page__summary-label">扩展服务连接</span>
-        <strong class="ai-wizard-page__summary-value" :class="wizardStatus?.ai_reachable ? 'text-ok' : 'text-danger'">
-          {{ wizardStatus?.ai_reachable ? "连接正常" : "无法连接" }}
-        </strong>
-        <p class="muted ai-wizard-page__summary-text">
-          {{ runtimeSummary || wizardStatus?.health_url || "尚未获取运行环境摘要" }}
-        </p>
-      </UiCard>
-      <UiCard class="ai-wizard-page__summary-card">
-        <span class="ai-wizard-page__summary-label">模型提供商 (Provider) 覆盖</span>
-        <strong class="ai-wizard-page__summary-value">
+    <section class="ai-wizard-page__summary home-kpi-bar">
+      <MetricTile
+        icon="network"
+        label="扩展服务连接"
+      >
+        <span
+          class="metric-tile__value metric-tile__value--inline"
+          :class="wizardStatus?.ai_reachable ? 'text-ok' : 'text-danger'"
+        >{{ wizardStatus?.ai_reachable ? "连接正常" : "无法连接" }}</span>
+        <span class="ai-wizard-page__kpi-hint muted">{{ runtimeSummary || wizardStatus?.health_url || "尚未获取运行环境摘要" }}</span>
+      </MetricTile>
+      <MetricTile
+        icon="layers"
+        label="模型提供商覆盖"
+      >
+        <span class="metric-tile__value metric-tile__value--inline">
           <span :class="wizardStatus?.providers_reachable ? 'text-ok' : 'text-muted'">{{ wizardStatus?.providers_reachable ?? 0 }}</span>
-          / {{ wizardStatus?.providers_configured ?? 0 }}
-        </strong>
-        <p class="muted ai-wizard-page__summary-text">
-          表示：连通状态良好 / 系统中已配置总数。
-        </p>
-      </UiCard>
-      <UiCard class="ai-wizard-page__summary-card">
-        <span class="ai-wizard-page__summary-label">活跃模型及工作模式</span>
-        <strong class="ai-wizard-page__summary-value">{{ wizardStatus?.model || "未返回" }}</strong>
-        <p class="muted ai-wizard-page__summary-text">
-          工作模式：{{ wizardStatus?.provider_mode || "未返回" }}
-        </p>
-      </UiCard>
+          <span class="metric-tile__sep"> / </span>{{ wizardStatus?.providers_configured ?? 0 }}
+        </span>
+        <span class="ai-wizard-page__kpi-hint muted">连通良好 / 已配置总数</span>
+      </MetricTile>
+      <MetricTile
+        icon="sparkles"
+        label="活跃模型及工作模式"
+      >
+        <span class="metric-tile__value metric-tile__value--inline">{{ wizardStatus?.model || "未返回" }}</span>
+        <span class="ai-wizard-page__kpi-hint muted">工作模式：{{ wizardStatus?.provider_mode || "未返回" }}</span>
+      </MetricTile>
     </section>
 
     <section class="ai-wizard-page__checks">
@@ -477,35 +481,53 @@ onMounted(() => {
   gap: 16px;
 }
 
-.ai-wizard-page__summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+.ai-wizard-page__summary.home-kpi-bar {
+  flex: 0 0 auto;
+  height: auto;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.ai-wizard-page__summary-card {
-  display: flex;
+.ai-wizard-page__summary .metric-tile__value-slot {
+  flex: 0 0 auto;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  min-height: 0;
 }
 
-.ai-wizard-page__summary-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-muted);
+.ai-wizard-page__kpi-hint {
+  display: block;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-.ai-wizard-page__summary-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
+@media (max-width: 899px) {
+  .ai-wizard-page__summary.home-kpi-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ai-wizard-page__summary .metric-tile:nth-child(3) {
+    border-left: none;
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    grid-column: 1 / -1;
+  }
 }
 
-.ai-wizard-page__summary-text {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
+@media (max-width: 560px) {
+  .ai-wizard-page__summary.home-kpi-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ai-wizard-page__summary .metric-tile {
+    border-left: none !important;
+  }
+  .ai-wizard-page__summary .metric-tile + .metric-tile {
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
 }
 
 .ai-wizard-page__checks {

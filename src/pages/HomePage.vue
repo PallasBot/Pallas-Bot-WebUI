@@ -41,6 +41,7 @@ import type {
 } from "@/api/pallasTypes";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import HomeLazyReveal from "@/components/HomeLazyReveal.vue";
+import MetricTile from "@/components/MetricTile.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -1353,53 +1354,41 @@ onUnmounted(() => {
       <div v-if="pageReady" class="home-body">
         <p v-if="overviewBusy" class="home-sync" role="status">正在加载概况…</p>
 
-        <!-- KPI 指标条 -->
+        <!-- KPI 指标条（单卡 + Flat MetricTile） -->
         <div class="home-kpi-head">
           <div class="home-kpi-bar">
-            <div class="home-kpi-cell">
-              <div class="home-kpi-cell__head">
-                <ConsoleNavIcon class="home-kpi-cell__ico" name="account" :size="16" />
-                <span class="home-kpi-cell__label">在线 Bot</span>
-              </div>
-              <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
-                  {{ kpiBotOnlineDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiBotTotalDisplay }}
-                </span>
-              </div>
-            </div>
-            <div class="home-kpi-cell">
-              <div class="home-kpi-cell__head">
-                <ConsoleNavIcon class="home-kpi-cell__ico" name="layers" :size="16" />
-                <span class="home-kpi-cell__label">消息 收 / 发</span>
-              </div>
-              <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
-                  {{ kpiMsgRxDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiMsgTxDisplay }}
-                </span>
-              </div>
-            </div>
-            <div class="home-kpi-cell">
-              <div class="home-kpi-cell__head">
-                <ConsoleNavIcon class="home-kpi-cell__ico" name="activity" :size="16" />
-                <span class="home-kpi-cell__label">API / 插件</span>
-              </div>
-              <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
-                  {{ kpiTodayApiDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiTodayPluginDisplay }}
-                </span>
-              </div>
-            </div>
-            <div class="home-kpi-cell">
-              <div class="home-kpi-cell__head">
-                <ConsoleNavIcon class="home-kpi-cell__ico" name="plugin" :size="16" />
-                <span class="home-kpi-cell__label">已加载插件</span>
-              </div>
-              <div class="home-kpi-cell__value-slot">
-                <span class="home-kpi-cell__value home-kpi-cell__value--inline">
-                  {{ kpiPluginLoadedDisplay }}<span class="home-kpi-cell__sep"> / </span>{{ kpiPluginTotalDisplay }}
-                </span>
-              </div>
-            </div>
+            <MetricTile
+              icon="account"
+              label="在线 Bot"
+            >
+              <span class="metric-tile__value metric-tile__value--inline">
+                {{ kpiBotOnlineDisplay }}<span class="metric-tile__sep"> / </span>{{ kpiBotTotalDisplay }}
+              </span>
+            </MetricTile>
+            <MetricTile
+              icon="layers"
+              label="消息 收 / 发"
+            >
+              <span class="metric-tile__value metric-tile__value--inline">
+                {{ kpiMsgRxDisplay }}<span class="metric-tile__sep"> / </span>{{ kpiMsgTxDisplay }}
+              </span>
+            </MetricTile>
+            <MetricTile
+              icon="activity"
+              label="API / 插件"
+            >
+              <span class="metric-tile__value metric-tile__value--inline">
+                {{ kpiTodayApiDisplay }}<span class="metric-tile__sep"> / </span>{{ kpiTodayPluginDisplay }}
+              </span>
+            </MetricTile>
+            <MetricTile
+              icon="plugin"
+              label="已加载插件"
+            >
+              <span class="metric-tile__value metric-tile__value--inline">
+                {{ kpiPluginLoadedDisplay }}<span class="metric-tile__sep"> / </span>{{ kpiPluginTotalDisplay }}
+              </span>
+            </MetricTile>
           </div>
           <div class="home-kpi-head__side">
             <RouterLink class="home-kpi-community" to="/community" title="社区统计与语料">

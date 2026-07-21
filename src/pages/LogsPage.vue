@@ -3,9 +3,12 @@ export default { name: "LogsPage" };
 </script>
 
 <script setup lang="ts">
-import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import LogVirtualFeed from "@/components/LogVirtualFeed.vue";
+import PageChrome from "@/components/PageChrome.vue";
+import PageFill from "@/components/PageFill.vue";
+import PagePinned from "@/components/PagePinned.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
@@ -578,7 +581,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="logs-page console-hub-page console-hub-page--fill">
+  <PageFill class="logs-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -591,34 +594,28 @@ onUnmounted(() => {
       :panels="1"
     />
     <template v-else>
-      <UiCard
-        tag="div"
-        glass
-        class="logs-page__panel"
-      >
-        <div class="panel__hd logs-page__hd">
-          <div class="panel__hd panel__hd--split logs-page__hd-split home-page__panel-hd-nowrap">
-            <h2 class="panel__title">
-              <ConsoleNavIcon
-                class="panel__title-ico"
-                :name="panelNavIcon"
-                :size="20"
-              />
-              运行日志
-              <RefreshIconButton
-                :embedded="true"
-                :busy="loading"
-                label="刷新"
-                @click="load"
-              />
-            </h2>
-          </div>
-          <UiInput
+      <PagePinned>
+        <PageChrome
+          :icon="panelNavIcon"
+          title="运行日志"
+          lead="支持结构化与原始行视图；可按范围、来源与条数筛选，并实时跟随推送。"
+        >
+          <template #actions>
+            <RefreshIconButton
+              embedded
+              :busy="loading"
+              label="刷新"
+              @click="load"
+            />
+          </template>
+        </PageChrome>
+
+        <div class="logs-page__chrome-tools">
+          <ConsoleHubSearch
             v-model="q"
             class="logs-page__search"
-            type="search"
             placeholder="搜索消息、scope、级别…"
-            title="按消息、scope、级别等过滤"
+            aria-label="按消息、scope、级别等过滤"
           />
           <div class="logs-page__toolbar-row">
             <div class="logs-page__view-btns">
@@ -697,6 +694,13 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+      </PagePinned>
+
+      <UiCard
+        tag="div"
+        glass
+        class="logs-page__panel"
+      >
         <div class="panel__bd">
           <div
             v-if="payload?.max != null"
@@ -793,5 +797,5 @@ onUnmounted(() => {
         </div>
       </UiCard>
     </template>
-  </div>
+  </PageFill>
 </template>

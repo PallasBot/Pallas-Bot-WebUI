@@ -18,8 +18,9 @@ import type {
 import ConsolePagerBar from "@/components/ConsolePagerBar.vue";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit.vue";
 import JsonTextareaField from "@/components/JsonTextareaField.vue";
-import ConsoleHubMasthead from "@/components/ConsoleHubMasthead.vue";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
+import MetricTile from "@/components/MetricTile.vue";
+import PageChrome from "@/components/PageChrome.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -302,7 +303,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="console-hub-page">
+  <div class="database-page console-hub-page">
     <div
       v-if="err"
       class="alert alert--err"
@@ -316,10 +317,11 @@ onUnmounted(() => {
       {{ ok }}
     </div>
 
-    <ConsoleHubMasthead :icon="panelNavIcon">
-      <template #title>
-        数据库总览
-      </template>
+    <PageChrome
+      :icon="panelNavIcon"
+      title="数据库总览"
+      lead="查看后端概览，并维护群 / 好友配置与存储明细。"
+    >
       <template #actions>
         <RefreshIconButton
           embedded
@@ -329,7 +331,7 @@ onUnmounted(() => {
           @click="loadAll"
         />
       </template>
-    </ConsoleHubMasthead>
+    </PageChrome>
 
     <ConsolePageSkeleton
       v-if="(blockingLoad && !overview) || dbRefreshBusy"
@@ -338,40 +340,35 @@ onUnmounted(() => {
 
     <div
       v-if="overview && !dbRefreshBusy"
-      class="grid-stats"
+      class="database-page__kpi home-kpi-bar"
     >
-      <div class="card stat-card">
-        <div class="card__body">
-          <div class="stat-card__label">后端类型</div>
-          <div class="stat-card__value">{{ backendLabel }}</div>
-          <div
-            v-if="overview && 'note' in overview && overview.note"
-            class="stat-card__hint"
-          >
-            {{ overview.note }}
-          </div>
-        </div>
-      </div>
-      <div
+      <MetricTile
+        icon="database"
+        label="后端类型"
+      >
+        <span class="metric-tile__value metric-tile__value--inline">{{ backendLabel }}</span>
+        <span
+          v-if="overview && 'note' in overview && overview.note"
+          class="database-page__kpi-hint muted"
+          :title="overview.note"
+        >{{ overview.note }}</span>
+      </MetricTile>
+      <MetricTile
         v-if="totalDocuments != null"
-        class="card stat-card"
+        icon="layers"
+        label="集合文档（合计）"
       >
-        <div class="card__body">
-          <div class="stat-card__label">集合文档（合计）</div>
-          <div class="stat-card__value">{{ nf.format(totalDocuments) }}</div>
-          <div class="stat-card__hint">{{ mongoCollections.length }} 个集合</div>
-        </div>
-      </div>
-      <div
+        <span class="metric-tile__value metric-tile__value--inline">{{ nf.format(totalDocuments) }}</span>
+        <span class="database-page__kpi-hint muted">{{ mongoCollections.length }} 个集合</span>
+      </MetricTile>
+      <MetricTile
         v-if="totalRows != null"
-        class="card stat-card"
+        icon="list"
+        label="表行数（合计）"
       >
-        <div class="card__body">
-          <div class="stat-card__label">表行数（合计）</div>
-          <div class="stat-card__value">{{ nf.format(totalRows) }}</div>
-          <div class="stat-card__hint">{{ pgTables.length }} 张表</div>
-        </div>
-      </div>
+        <span class="metric-tile__value metric-tile__value--inline">{{ nf.format(totalRows) }}</span>
+        <span class="database-page__kpi-hint muted">{{ pgTables.length }} 张表</span>
+      </MetricTile>
     </div>
 
     <UiCard
