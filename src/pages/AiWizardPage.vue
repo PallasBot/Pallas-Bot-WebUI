@@ -510,16 +510,33 @@ onMounted(() => {
 
 .ai-wizard-page__checks {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
-.ai-wizard-page__check {
-  padding: 18px 20px;
+.ai-wizard-page__check :deep(.ui-card__content) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
 }
 
 .ai-wizard-page__check.is-fail {
   border-color: color-mix(in srgb, var(--warn, #f59e0b) 45%, var(--border));
   background: color-mix(in srgb, var(--warn, #f59e0b) 6%, transparent);
+}
+
+.ai-wizard-page__check .ai-wizard-page__check-head {
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.ai-wizard-page__check .ai-wizard-page__check-title {
+  margin: 0 0 2px;
+  font-size: 0.9375rem;
+}
+
+.ai-wizard-page__check .ai-wizard-page__check-detail {
+  line-height: 1.4;
 }
 
 .ai-wizard-page__check-head {
@@ -739,6 +756,11 @@ onMounted(() => {
   .ai-wizard-page__check-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .ai-wizard-page__check :deep(.ui-card__content) {
+    padding: 10px 12px;
+    gap: 6px;
   }
 
   .ai-wizard-page__row {

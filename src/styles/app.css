@@ -2845,10 +2845,15 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
 }
 
 /*
- * 好友申请 / 入群请求：宽屏/中等内容宽度保持「标题左 · 操作右」单行。
- * 侧栏下内容区可 <560px 但视口仍 >560，@media 窄屏 grid 不生效；
- * 若 panel__hd 仍 flex-wrap，有徽章时操作整块会被顶到次行（入群请求常见）。
+ * 好友申请 / 入群请求：宽屏保持「标题左 · 操作右」单行。
+ * 侧栏下内容区可 <560px 但视口仍 >560，仅靠 @media 不够；用容器查询按面板宽度叠行。
  */
+#friends-groups-friend-requests.friends-groups-page__panel,
+#friends-groups-group-requests.friends-groups-page__panel {
+  container-type: inline-size;
+  container-name: friends-groups-req;
+}
+
 #friends-groups-friend-requests .panel__hd.panel__hd--split,
 #friends-groups-group-requests .panel__hd.panel__hd--split {
   flex-wrap: nowrap;
@@ -2938,14 +2943,59 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   padding-right: 10px;
 }
 
-@media (max-width: 560px) {
-  .friends-req-actions {
-    justify-content: flex-start;
-    max-width: 100%;
+/* 面板宽度 ≤560：标题/+ 同行，徽章次行，批量按钮第三行均分（不依赖视口） */
+/* 选择器须压过宽屏 #id .row-actions.friends-groups-req-hd-actions { display:flex } */
+@container friends-groups-req (max-width: 560px) {
+  #friends-groups-friend-requests .panel__hd.panel__hd--split,
+  #friends-groups-group-requests .panel__hd.panel__hd--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 8px;
   }
 
-  /* 好友申请 / 入群请求：标题栏批量操作三按钮窄屏单行均分（避免命中 .panel__hd .row-actions > .btn 全宽竖排） */
-  .friends-groups-req-hd-bulk-btns {
+  #friends-groups-friend-requests .panel__hd.panel__hd--split > .panel__title,
+  #friends-groups-group-requests .panel__hd.panel__hd--split > .panel__title {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    align-self: center;
+  }
+
+  #friends-groups-friend-requests .row-actions.friends-groups-req-hd-actions,
+  #friends-groups-group-requests .row-actions.friends-groups-req-hd-actions {
+    display: contents;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap,
+  #friends-groups-group-requests .friends-groups-req-hd-actions > .friends-groups-hd-pin-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-meta,
+  #friends-groups-group-requests .friends-groups-req-hd-meta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns {
+    grid-column: 1 / -1;
+    grid-row: 3;
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2955,8 +3005,10 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
     min-width: 0;
   }
 
-  .friends-groups-req-hd-bulk-btns > .btn,
-  .friends-groups-req-hd-bulk-btns > .ui-btn {
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .btn,
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .ui-btn,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .btn,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .ui-btn {
     flex: 1 1 0;
     min-width: 0;
     width: auto;
@@ -2964,6 +3016,13 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
     padding: 7px 5px;
     font-size: 12px;
     font-weight: 650;
+  }
+}
+
+@media (max-width: 560px) {
+  .friends-req-actions {
+    justify-content: flex-start;
+    max-width: 100%;
   }
 }
 
@@ -8045,6 +8104,31 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   min-height: 1.75rem;
 }
 
+/* 嵌入式刷新：紧凑尺寸（不依赖父级；标题旁 / masthead / home 账户头均适用） */
+.btn-refresh-action--embedded.btn-refresh-action--icon-only {
+  width: 1.35rem;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  min-height: 1.35rem;
+  color: var(--text-muted);
+}
+
+.panel__title .btn-refresh-action--embedded.btn-refresh-action--icon-only,
+.home-acct__hd-actions .btn-refresh-action--embedded.btn-refresh-action--icon-only {
+  margin-left: 1px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.btn-refresh-action--embedded.btn-refresh-action--icon-only:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.btn-refresh-action--embedded .btn-refresh-action__ico {
+  width: 14px;
+  height: 14px;
+}
+
 .panel__bd {
   padding: 14px 16px;
 }
@@ -8153,8 +8237,8 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   #fg-groups .friends-groups-list-hd-actions,
   #db-group-configs .friends-groups-list-hd-actions,
   #db-user-configs .friends-groups-list-hd-actions,
-  #friends-groups-friend-requests .friends-groups-req-hd-actions,
-  #friends-groups-group-requests .friends-groups-req-hd-actions {
+  #friends-groups-friend-requests .row-actions.friends-groups-req-hd-actions,
+  #friends-groups-group-requests .row-actions.friends-groups-req-hd-actions {
     display: contents;
   }
 
@@ -8230,8 +8314,26 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   #friends-groups-group-requests .friends-groups-req-hd-bulk-btns {
     grid-column: 1 / -1;
     grid-row: 3;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
     width: 100%;
     min-width: 0;
+  }
+
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .btn,
+  #friends-groups-friend-requests .friends-groups-req-hd-bulk-btns > .ui-btn,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .btn,
+  #friends-groups-group-requests .friends-groups-req-hd-bulk-btns > .ui-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    justify-content: center;
+    padding: 7px 5px;
+    font-size: 12px;
+    font-weight: 650;
   }
 
   /* 备份管理：窄屏「添加到侧栏」与标题同行右上，删除按钮次行全宽 */
@@ -10033,6 +10135,14 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-page__tab-group {
 .plugin-store-page--hub .btn-refresh-action {
   min-height: var(--ui-ctrl-height);
   border-radius: 999px;
+}
+
+.plugin-store-page--hub .btn-refresh-action--embedded.btn-refresh-action--icon-only {
+  min-height: 1.35rem;
+  height: 1.35rem;
+  width: 1.35rem;
+  min-width: 1.35rem;
+  border-radius: var(--radius-ui, 8px);
 }
 
 .plugin-store-page--hub .plugin-store-page__tab-btn {
@@ -13537,7 +13647,7 @@ html[data-theme="light"] .home-cpu-core {
   font-weight: var(--console-panel-title-weight, 650);
   letter-spacing: 0.01em;
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 .config-field-group__count {
@@ -14972,9 +15082,10 @@ html[data-theme="light"] .corpus-hot__pill-score {
 
 .charts-page__filter-group {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 10px 12px;
+  min-width: 0;
 }
 
 .home-plugin-bucket-chart--interactive,
@@ -15143,8 +15254,7 @@ html[data-theme="light"] .corpus-hot__pill-score {
   color: var(--text-muted);
 }
 
-.charts-page__date-inp,
-.charts-page__month-inp {
+.charts-page__date-inp {
   min-width: 9.5rem;
 }
 
@@ -15613,15 +15723,26 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
     align-items: stretch;
   }
 
+  .charts-page__filter-group {
+    width: 100%;
+  }
+
+  .charts-page__date-label {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: space-between;
+  }
+
   .charts-page__nav-btn {
     flex: 1 1 100%;
     justify-content: flex-start;
   }
 
   .charts-page__account-sel,
-  .charts-page__date-inp,
-  .charts-page__month-inp {
+  .charts-page__date-inp {
+    min-width: 0;
     width: 100%;
+    max-width: 100%;
   }
 }
 
