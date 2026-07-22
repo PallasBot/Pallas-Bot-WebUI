@@ -26,4 +26,36 @@ describe("ProtocolAccountWorkspace 登录加载", () => {
     expect(source).toContain('ref="logPreEl"');
     expect(source).toContain('@scroll="onLogPreScroll"');
   });
+
+  it("加载并保存账号运行时切换配置", () => {
+    expect(source).toContain("const targetBackend = ref");
+    expect(source).toContain("const napcatDockerImage = ref");
+    expect(source).toContain("const bypassEnabled = ref");
+    expect(source).toContain("const runtimeMode = ref");
+    expect(source).toContain("const runtimeId = ref");
+    expect(source).toContain("const snowlumaRuntimes = ref");
+    expect(source).toContain("protocolSwitchAccountRuntime");
+    expect(source).toContain("await loadAccount(false);");
+  });
+
+  it("仅允许保存现存的 SnowLuma Runtime", () => {
+    expect(source).toContain("function validateRuntimeSettings()");
+    expect(source).toContain("请选择已有 SnowLuma Runtime");
+    expect(source).toContain("snowlumaRuntimes.value.some");
+    expect(source).toContain("await protocolSwitchAccountRuntime(mount, id");
+    expect(source.indexOf("await protocolSwitchAccountRuntime(mount, id")).toBeLessThan(
+      source.indexOf("await protocolUpdateAccount(mount, id, body, true)"),
+    );
+  });
+
+  it("在设置页渲染协议与运行时字段", () => {
+    expect(source).toContain("协议与运行时");
+    expect(source).toContain('v-model="targetBackend"');
+    expect(source).toContain("NapCat Docker 镜像");
+    expect(source).toContain('v-model="bypassEnabled"');
+    expect(source).toContain("SnowLuma Runtime 模式");
+    expect(source).toContain('v-model="runtimeMode"');
+    expect(source).toContain('v-model="runtimeId"');
+    expect(source).toContain("保留原 NapCat 数据目录");
+  });
 });
