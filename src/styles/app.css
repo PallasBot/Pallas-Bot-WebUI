@@ -16676,6 +16676,20 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   flex: 1 1 480px;
 }
 
+@media (min-width: 861px) {
+  .home-kpi-head {
+    flex-wrap: nowrap;
+  }
+
+  .home-kpi-head > .home-kpi-bar {
+    flex: 1 1 0;
+  }
+
+  .home-kpi-head__side {
+    flex: 0 1 19rem;
+  }
+}
+
 @media (min-width: 900px) {
   .home-kpi-bar {
     grid-template-columns: repeat(4, minmax(0, 1fr));
