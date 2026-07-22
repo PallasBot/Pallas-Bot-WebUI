@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchBotUpdateCheck,
   fetchShardObservability,
@@ -64,75 +64,101 @@ export async function trackRestartFromPluginResult(
   return online;
 }
 
-export function useBotSystemRestart() {
+export function useBotSystemRestart(options?: {
+  botUpdateCheck?: BotUpdateCheckData | null;
+}) {
   const [restartBusy, setRestartBusy] = useState(false);
+  const [restartMsg, setRestartMsg] = useState("");
   const [restartErr, setRestartErr] = useState("");
   const [restartPhase, setRestartPhase] = useState<BotRestartPhase>("idle");
   const [shardedRuntime, setShardedRuntime] = useState<boolean | null>(null);
-  const botCheckRef = useRef<BotUpdateCheckData | null>(null);
+  const [internalBotCheck, setInternalBotCheck] = useState<BotUpdateCheckData | null>(null);
+  const shardedRef = useRef<boolean | null>(null);
 
-  const restartProgressLabel = botRestartPhaseLabel(restartPhase);
+  useEffect(() => {
+    shardedRef.current = shardedRuntime;
+  }, [shardedRuntime]);
+
+  const effectiveBotCheck = options?.botUpdateCheck ?? internalBotCheck;
+
+  const restartAvailable = Boolean(
+    effectiveBotCheck?.restart_available && effectiveBotCheck?.deployment_mode !== "docker",
+  );
+
+  const restartProgressLabel = useMemo(
+    () => botRestartPhaseLabel(restartPhase) || restartMsg,
+    [restartPhase, restartMsg],
+  );
+
   const restartInProgress =
     restartBusy
     || (restartPhase !== "idle"
       && restartPhase !== "online"
       && restartPhase !== "timeout"
       && restartPhase !== "failed");
-  const restartAvailable = Boolean(
-    botCheckRef.current?.restart_available && botCheckRef.current?.deployment_mode !== "docker",
-  );
 
   const ensureRestartContext = useCallback(async () => {
-    if (!botCheckRef.current) {
+    if (options?.botUpdateCheck == null && !internalBotCheck) {
       try {
-        botCheckRef.current = await fetchBotUpdateCheck();
+        setInternalBotCheck(await fetchBotUpdateCheck());
       } catch {
-        botCheckRef.current = null;
+        setInternalBotCheck(null);
       }
     }
-    if (shardedRuntime != null) return;
+    if (shardedRef.current != null) return;
     try {
       const obs = await fetchShardObservability();
       setShardedRuntime(Boolean(obs.sharded));
     } catch {
       setShardedRuntime(false);
     }
-  }, [shardedRuntime]);
+  }, [internalBotCheck, options?.botUpdateCheck]);
 
-  const restartBot = useCallback(async (workersOnly = false): Promise<boolean> => {
-    await ensureRestartContext();
-    if (!restartAvailable) return false;
-    const prompt = workersOnly
-      ? "确定仅重启分片节点进程？主节点与其它组件不受影响。"
-      : "确定重启 Bot 进程？数秒内连接会短暂中断。";
-    if (!window.confirm(prompt)) return false;
+  const restartBot = useCallback(
+    async (workersOnly = false): Promise<boolean> => {
+      await ensureRestartContext();
+      const bot = options?.botUpdateCheck ?? internalBotCheck;
+      const available = Boolean(bot?.restart_available && bot?.deployment_mode !== "docker");
+      if (!available) return false;
+      const prompt = workersOnly
+        ? "确定仅重启分片节点进程？主节点与其它组件不受影响。"
+        : "确定重启 Bot 进程？数秒内连接会短暂中断。";
+      if (!window.confirm(prompt)) return false;
 
-    setRestartBusy(true);
-    setRestartErr("");
-    setRestartPhase("scheduled");
-    try {
-      await postSystemRestart({ workersOnly });
-      setRestartPhase("reconnecting");
-      const online = await waitForBotOnline();
-      if (online) {
-        setRestartPhase("online");
-        setRestartErr("");
-        return true;
+      setRestartBusy(true);
+      setRestartErr("");
+      setRestartMsg("");
+      setRestartPhase("scheduled");
+      try {
+        const r = await postSystemRestart({ workersOnly });
+        setRestartMsg(r.message || botRestartPhaseLabel("scheduled"));
+        setRestartPhase("reconnecting");
+        const online = await waitForBotOnline();
+        if (online) {
+          setRestartPhase("online");
+          setRestartMsg(botRestartPhaseLabel("online"));
+          setRestartErr("");
+          return true;
+        }
+        setRestartPhase("timeout");
+        const timeoutMsg = botRestartPhaseLabel("timeout");
+        setRestartMsg(timeoutMsg);
+        setRestartErr(timeoutMsg);
+        return false;
+      } catch (e) {
+        setRestartPhase("failed");
+        setRestartErr(axiosErrorDetail(e));
+        return false;
+      } finally {
+        setRestartBusy(false);
       }
-      setRestartPhase("timeout");
-      setRestartErr(botRestartPhaseLabel("timeout"));
-      return false;
-    } catch (e) {
-      setRestartPhase("failed");
-      setRestartErr(axiosErrorDetail(e));
-      return false;
-    } finally {
-      setRestartBusy(false);
-    }
-  }, [ensureRestartContext, restartAvailable]);
+    },
+    [ensureRestartContext, internalBotCheck, options?.botUpdateCheck],
+  );
 
   return {
     restartBusy,
+    restartMsg,
     restartErr,
     restartProgressLabel,
     restartInProgress,

@@ -1,28 +1,36 @@
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
-import {
-  fetchPluginConfig,
-  putPluginConfig,
-} from "@/api/console";
+import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateCheckAll,
   postBotUpdateApply,
-  postSystemRestart,
   postUpdateApply,
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@pallas-vue/utils/releaseNotesHtml";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@pallas-vue/utils/versionDisplay";
+import {
+  PALLAS_BOT_DOC,
+  PALLAS_BOT_RELEASES,
+  PALLAS_BOT_REPO,
+  PALLAS_WEBUI_RELEASES,
+  PALLAS_WEBUI_REPO,
+} from "@pallas-vue/utils/pallasExternalLinks";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import UiBadge from "@/components/ui/UiBadge";
+import UiButton from "@/components/ui/UiButton";
+import UiInput from "@/components/ui/UiInput";
+import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
+const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
+const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
 
 function formatCheckedAt(ts?: number | null): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
@@ -46,8 +54,21 @@ function botDeployLabel(mode?: string | null): string {
   return "—";
 }
 
+function releaseNotesFoldSummary(
+  currentTag: string | null | undefined,
+  latestTag: string | null | undefined,
+  hasUpdate: boolean | null | undefined,
+): string {
+  const latest = (latestTag || "").trim();
+  const current = (currentTag || "").trim();
+  if (hasUpdate && current && latest) return `${current} → ${latest} 更新说明`;
+  if (latest) return `「${latest}」发行说明`;
+  return "发行说明";
+}
+
 export default function UpdatePage() {
   const qc = useQueryClient();
+  const location = useLocation();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -62,20 +83,49 @@ export default function UpdatePage() {
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
+  const {
+    restartBusy,
+    restartErr,
+    restartMsg,
+    restartProgressLabel,
+    restartInProgress,
+    restartAvailable,
+    shardedRuntime,
+    ensureRestartContext,
+    restartBot,
+  } = useBotSystemRestart({ botUpdateCheck: bot ?? null });
+
   const webCurrentDisplay = updateCheckCurrentTagLabel(web?.current_tag);
   const botCurrentDisplay = pallasBotVersionLabel(undefined, bot);
   const webReleaseNotesHtml = useMemo(() => releaseNotesToSafeHtml(web?.release_notes), [web?.release_notes]);
   const botReleaseNotesHtml = useMemo(() => releaseNotesToSafeHtml(bot?.release_notes), [bot?.release_notes]);
+  const webReleaseNotesSummary = releaseNotesFoldSummary(web?.current_tag, web?.latest_tag, web?.has_update);
+  const botReleaseNotesSummary = releaseNotesFoldSummary(bot?.current_tag, bot?.latest_tag, bot?.has_update);
 
   const webCallout = web?.has_update ? "更新完成后页面会自动刷新。" : null;
-  const botCallout = useMemo(() => {
+  const botCallout = useMemo((): { kind: "warn" | "info"; text: string } | null => {
     if (!bot) return null;
-    if (bot.deployment_mode === "docker") return "控制台不能 git 拉代码；请按文档拉新镜像并重启容器。";
-    if (bot.deployment_mode === "release_tag_dirty") {
-      return `更新前会自动 stash ${bot.dirty_file_count ?? 0} 项本地改动；冲突时需 git stash pop。`;
+    if (bot.deployment_mode === "docker") {
+      return { kind: "warn", text: "控制台不能 git 拉代码；请按下方步骤拉新镜像并重启容器。" };
     }
-    if (bot.deployment_mode === "dev_clone") return "更新时执行 git pull --ff-only --autostash。";
+    if (bot.deployment_mode === "release_tag_dirty") {
+      return {
+        kind: "warn",
+        text: `更新前会自动 stash ${bot.dirty_file_count ?? 0} 项本地改动；冲突时需 git stash pop。建议插件放 local/plugins/。`,
+      };
+    }
+    if (bot.deployment_mode === "dev_clone") {
+      return { kind: "info", text: "更新时执行 git pull --ff-only --autostash。" };
+    }
     return null;
+  }, [bot]);
+
+  const botMetaParts = useMemo(() => {
+    if (!bot) return [] as string[];
+    const parts: string[] = [botDeployLabel(bot.deployment_mode)];
+    if (bot.git_available && bot.current_branch) parts.push(`分支 ${bot.current_branch}`);
+    if (bot.dirty && (bot.dirty_file_count ?? 0) > 0) parts.push(`改动 ${bot.dirty_file_count} 项`);
+    return parts;
   }, [bot]);
 
   const updateMastheadLead = useMemo(() => {
@@ -85,9 +135,50 @@ export default function UpdatePage() {
     return parts.length ? parts.join(" · ") : "检查 WebUI 与 Bot 版本并应用更新。";
   }, [bot, botCurrentDisplay, web, webCurrentDisplay]);
 
+  const checkedAtDisplay = formatCheckedAt(q.data?.checked_at);
+  const webApplyDisabled = busy || !web?.has_update || !web?.latest_tag;
+  const botApplyDisabled =
+    busy || !bot?.has_update || !bot?.latest_tag || bot?.deployment_mode === "docker";
+
+  const botDocLinks = useMemo(() => {
+    const isDocker = bot?.deployment_mode === "docker";
+    const links: { href: string; label: string }[] = [
+      { href: PALLAS_BOT_DOC.home, label: "在线文档" },
+      { href: PALLAS_BOT_REPO, label: "Pallas-Bot 仓库" },
+      { href: PALLAS_BOT_DOC.siteCustomization, label: "站点定制与更新" },
+      { href: PALLAS_BOT_DOC.localReadme, label: "local 目录说明" },
+    ];
+    if (isDocker) links.unshift({ href: PALLAS_BOT_DOC.dockerDeployment, label: "Docker 部署" });
+    else links.push({ href: PALLAS_BOT_DOC.deployment, label: "标准部署" });
+    links.push({ href: PALLAS_BOT_DOC.faqUpdates, label: "FAQ · 更新与版本" });
+    return links;
+  }, [bot?.deployment_mode]);
+
+  const webDocLinks = useMemo(
+    () => [
+      { href: (web?.release_url || "").trim() || WEBUI_RELEASES_PAGE, label: "GitHub Release" },
+      { href: PALLAS_WEBUI_REPO, label: "Pallas-Bot-WebUI 仓库" },
+      { href: PALLAS_BOT_DOC.siteCustomization, label: "站点定制与更新" },
+      { href: PALLAS_BOT_DOC.faqUpdates, label: "FAQ · 更新与版本" },
+    ],
+    [web?.release_url],
+  );
+
   useEffect(() => {
     void loadGithubTokenHint();
   }, []);
+
+  useEffect(() => {
+    if (q.isSuccess) void ensureRestartContext();
+  }, [q.isSuccess, ensureRestartContext]);
+
+  useEffect(() => {
+    const raw = (location.hash || "").replace(/^#/, "").trim();
+    if (!raw || q.isLoading) return;
+    requestAnimationFrame(() => {
+      document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [location.hash, q.isLoading, q.dataUpdatedAt]);
 
   async function loadGithubTokenHint() {
     setGhTokenErr("");
@@ -149,26 +240,16 @@ export default function UpdatePage() {
     }
   }
 
-  async function run(action: "web-apply" | "bot-apply" | "restart") {
-    if (busy) return;
+  async function applyWeb() {
+    if (!web?.latest_tag) return;
+    if (!window.confirm(`将 WebUI 更新到 ${web.latest_tag}？`)) return;
     setBusy(true);
     setErr("");
     setMsg("");
     try {
-      if (action === "web-apply") {
-        if (!window.confirm(`将 WebUI 更新到 ${web?.latest_tag || "最新"}？`)) return;
-        const r = await postUpdateApply();
-        setMsg(r.message || "WebUI 更新已应用，页面将刷新");
-        window.setTimeout(() => window.location.reload(), 1500);
-      } else if (action === "bot-apply") {
-        if (!window.confirm(`将 Bot 更新到 ${bot?.latest_tag || "最新"}？`)) return;
-        const r = await postBotUpdateApply({ restart: true });
-        setMsg(r.message || "Bot 更新已应用");
-      } else {
-        const r = await postSystemRestart();
-        setMsg(r.message || "已请求重启");
-      }
-      await qc.invalidateQueries({ queryKey: ["update-check-all"] });
+      const r = await postUpdateApply();
+      setMsg(r.message ? `${r.message} · 正在刷新页面以载入新版本…` : "WebUI 已更新，正在刷新页面…");
+      window.setTimeout(() => window.location.reload(), 800);
     } catch (e) {
       setErr(axiosErrorDetail(e));
     } finally {
@@ -176,26 +257,66 @@ export default function UpdatePage() {
     }
   }
 
+  async function applyBot(restart = false) {
+    if (!bot?.latest_tag) return;
+    const prompt = restart
+      ? `将 Bot 更新到 ${bot.latest_tag} 并重启进程？`
+      : `将 Bot 更新到 ${bot.latest_tag}？`;
+    if (!window.confirm(prompt)) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const r = await postBotUpdateApply({ restart });
+      setMsg(r.message || (restart ? "已触发更新与重启。" : "已触发。"));
+      if (!restart) await qc.invalidateQueries({ queryKey: ["update-check-all"] });
+    } catch (e) {
+      setErr(axiosErrorDetail(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function triggerBotRestart(workersOnly = false) {
+    setErr("");
+    setMsg("");
+    const ok = await restartBot(workersOnly);
+    if (ok) setMsg(restartProgressLabel || restartMsg || "Bot 已恢复在线。");
+    else if (restartErr) setErr(restartErr);
+  }
+
   return (
     <div className="update-page console-hub-page">
+      {err ? <div className="alert alert--err">{err}</div> : null}
+      {msg ? <div className="alert alert--ok">{msg}</div> : null}
+
       <PageHeader
         title="更新"
-        description={updateMastheadLead}
+        description={
+          <>
+            {updateMastheadLead}
+            {checkedAtDisplay !== "—" ? (
+              <span className="update-page__checked-at muted"> · 检查于 {checkedAtDisplay}</span>
+            ) : null}
+          </>
+        }
         actions={
-          <div className="console-hub-toolbar-strip__masthead-actions row-actions">
-            <button type="button" className="btn" onClick={() => setGitMirrorOpen(true)}>
+          <div className="console-hub-toolbar-strip__masthead-actions">
+            <UiButton variant="outline" onClick={() => setGitMirrorOpen(true)}>
               镜像源
-            </button>
-            <RefreshIconButton embedded={false} busy={q.isFetching || busy} label="检查更新" showLabel onClick={() => void q.refetch()} />
+            </UiButton>
+            <RefreshIconButton
+              embedded
+              className="hub-refresh-wide-only"
+              busy={q.isFetching || busy}
+              label="重新检查"
+              onClick={() => void q.refetch()}
+            />
           </div>
         }
       />
 
-      {msg ? <p className="alert alert--ok mb-3">{msg}</p> : null}
-      {err ? <p className="alert alert--err mb-3">{err}</p> : null}
-      <p className="update-page__checked-at muted mb-4 text-sm">上次检查：{formatCheckedAt(q.data?.checked_at)}</p>
-
-      <div className="update-page__overview mb-4 grid gap-4 lg:grid-cols-2">
+      <div className="update-page__overview">
         <a
           href="#console-update-webui"
           className={cn("update-page__overview-card", web?.has_update && "update-page__overview-card--warn")}
@@ -218,83 +339,298 @@ export default function UpdatePage() {
         </a>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div id="console-update-webui">
-          <section className="panel update-page__panel">
-            <div className="panel__hd panel__hd--split">
-              <h2 className="panel__title">
-                WebUI
-                {web?.has_update ? <span className="badge badge--warn">有更新</span> : <span className="badge badge--ok">已是最新</span>}
-              </h2>
-            </div>
-            <div className="panel__bd space-y-2 text-sm">
-              {webCallout ? <p className="alert alert--info">{webCallout}</p> : null}
-              <Row k="当前" v={webCurrentDisplay} />
-              <Row k="最新" v={web?.latest_tag || "—"} />
-              <Row
-                k="发布页"
-                v={
-                  web?.release_url ? (
-                    <a className="community-page__inline-link" href={web.release_url} target="_blank" rel="noreferrer">
-                      打开 Release
-                    </a>
-                  ) : (
-                    "—"
-                  )
-                }
-              />
-              {web?.error ? <p className="alert alert--err">{web.error}</p> : null}
-              {webReleaseNotesHtml ? (
-                <details className="update-page__release-notes">
-                  <summary className="update-page__release-notes-summary">发行说明</summary>
-                  <div className="update-page__release-notes-body readme-markdown" dangerouslySetInnerHTML={{ __html: webReleaseNotesHtml }} />
-                </details>
-              ) : null}
-              <button type="button" className="btn btn--primary mt-2" disabled={busy || !web?.has_update} onClick={() => void run("web-apply")}>
-                应用 WebUI 更新
-              </button>
-            </div>
-          </section>
+      <section id="console-update-webui" className="panel update-page__panel">
+        <div className="panel__hd panel__hd--split update-page__panel-hd-nowrap">
+          <h2 className="panel__title">
+            WebUI
+            <RefreshIconButton
+              embedded
+              showLabel={false}
+              busy={q.isFetching}
+              disabled={busy}
+              label="刷新 WebUI 更新检查"
+              onClick={() => void q.refetch()}
+            />
+            {web?.has_update ? (
+              <UiBadge className="update-page__status-pill" variant="warn">
+                有更新
+              </UiBadge>
+            ) : (
+              <UiBadge className="update-page__status-pill" variant="ok">
+                已是最新
+              </UiBadge>
+            )}
+          </h2>
         </div>
+        <div className="panel__bd update-page__bd update-page__bd--release">
+          <div className="update-page__release-summary">
+            <div className="update-page__release-stat">
+              <span className="update-page__release-stat-label">当前</span>
+              <span className="update-page__release-stat-value">{webCurrentDisplay}</span>
+            </div>
+            <span className="update-page__release-stat-arrow muted" aria-hidden="true">
+              →
+            </span>
+            <div className="update-page__release-stat">
+              <span className="update-page__release-stat-label">远端</span>
+              <span className="update-page__release-stat-value">{web?.latest_tag ?? "—"}</span>
+            </div>
+          </div>
 
-        <div id="console-update-bot">
-          <section className="panel update-page__panel">
-            <div className="panel__hd panel__hd--split">
-              <h2 className="panel__title">
-                Bot
-                {bot?.has_update ? <span className="badge badge--warn">有更新</span> : <span className="badge badge--ok">已是最新</span>}
-              </h2>
-            </div>
-            <div className="panel__bd space-y-2 text-sm">
-              <p className="muted">{botDeployLabel(bot?.deployment_mode)}</p>
-              {botCallout ? <p className="alert alert--warn">{botCallout}</p> : null}
-              <Row k="当前" v={botCurrentDisplay} />
-              <Row k="最新" v={bot?.latest_tag || "—"} />
-              <Row k="分支" v={bot?.current_branch || "—"} />
-              {bot?.error ? <p className="alert alert--err">{bot.error}</p> : null}
-              {botReleaseNotesHtml ? (
-                <details className="update-page__release-notes">
-                  <summary className="update-page__release-notes-summary">发行说明</summary>
-                  <div className="update-page__release-notes-body readme-markdown" dangerouslySetInnerHTML={{ __html: botReleaseNotesHtml }} />
-                </details>
-              ) : null}
-              <div className="row-actions flex flex-wrap gap-2 pt-2">
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  disabled={busy || !bot?.has_update || bot?.deployment_mode === "docker"}
-                  onClick={() => void run("bot-apply")}
+          <div className="update-page__release-primary">
+            <UiButton variant="primary" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
+              {busy ? "处理中…" : "应用 WebUI 更新"}
+            </UiButton>
+            <a
+              className="update-page__link update-page__release-ext-link"
+              href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub Release
+            </a>
+          </div>
+
+          {web?.error ? (
+            <p className="alert alert--err update-page__release-inline-alert">{web.error}</p>
+          ) : webCallout ? (
+            <div className="update-page__release-callout update-page__release-callout--info">{webCallout}</div>
+          ) : null}
+
+          <details className="update-page__release-fold update-page__release-notes">
+            <summary className="update-page__release-fold-summary">{webReleaseNotesSummary}</summary>
+            {(web?.release_notes || "").trim() ? (
+              <div
+                className="update-page__release-notes-body update-page__release-notes-body--md"
+                dangerouslySetInnerHTML={{ __html: webReleaseNotesHtml }}
+              />
+            ) : (
+              <p className="update-page__release-notes-empty muted">
+                GitHub 未提供发行说明正文，请查看{" "}
+                <a
+                  className="update-page__link"
+                  href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  应用 Bot 更新
-                </button>
-                <button type="button" className="btn" disabled={busy} onClick={() => void run("restart")}>
-                  重启 Bot
-                </button>
-              </div>
-            </div>
-          </section>
+                  Release 页面
+                </a>
+                。
+              </p>
+            )}
+          </details>
+
+          <details className="update-page__release-fold update-page__doc-links">
+            <summary className="update-page__release-fold-summary">相关文档</summary>
+            <ul className="update-page__doc-links-list">
+              {webDocLinks.map((link) => (
+                <li key={link.href}>
+                  <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          <p className="update-page__release-foot muted">
+            由 Bot 从 GitHub 下载 <code>dist.zip</code> 并解压到控制台静态目录。
+          </p>
         </div>
-      </div>
+      </section>
+
+      <section id="console-update-bot" className="panel update-page__panel">
+        <div className="panel__hd panel__hd--split update-page__panel-hd-nowrap">
+          <h2 className="panel__title">
+            Bot 本体
+            <RefreshIconButton
+              embedded
+              showLabel={false}
+              busy={q.isFetching}
+              disabled={busy}
+              label="刷新 Bot 更新检查"
+              onClick={() => void q.refetch()}
+            />
+            {bot?.has_update ? (
+              <UiBadge className="update-page__status-pill" variant="warn">
+                有更新
+              </UiBadge>
+            ) : bot?.development_build ? (
+              <UiBadge
+                className="update-page__status-pill"
+                variant="secondary"
+                title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
+              >
+                开发构建
+              </UiBadge>
+            ) : (
+              <UiBadge className="update-page__status-pill" variant="ok">
+                已是最新
+              </UiBadge>
+            )}
+          </h2>
+        </div>
+        <div className="panel__bd update-page__bd update-page__bd--release">
+          <div className="update-page__release-summary">
+            <div className="update-page__release-stat">
+              <span className="update-page__release-stat-label">当前</span>
+              <span className="update-page__release-stat-value">{botCurrentDisplay}</span>
+              {bot?.current_commit ? (
+                <span className="update-page__release-stat-sub muted">{bot.current_commit.slice(0, 7)}</span>
+              ) : null}
+            </div>
+            <span className="update-page__release-stat-arrow muted" aria-hidden="true">
+              →
+            </span>
+            <div className="update-page__release-stat">
+              <span className="update-page__release-stat-label">远端</span>
+              <span className="update-page__release-stat-value">{bot?.latest_tag ?? "—"}</span>
+            </div>
+          </div>
+
+          {botMetaParts.length ? (
+            <p className="update-page__release-meta muted">{botMetaParts.join(" · ")}</p>
+          ) : null}
+
+          <div className="update-page__release-primary">
+            {bot?.deployment_mode !== "docker" ? (
+              <UiButton variant="primary" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
+                应用 Bot 更新
+              </UiButton>
+            ) : null}
+            {bot?.deployment_mode !== "docker" && bot?.restart_available ? (
+              <UiButton variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
+                更新并重启
+              </UiButton>
+            ) : null}
+            <a
+              className="update-page__link update-page__release-ext-link"
+              href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub Release
+            </a>
+          </div>
+
+          {bot?.error ? (
+            <p className="alert alert--err update-page__release-inline-alert">{bot.error}</p>
+          ) : botCallout ? (
+            <div
+              className={cn(
+                "update-page__release-callout",
+                botCallout.kind === "warn" ? "alert alert--warn" : "update-page__release-callout--info",
+              )}
+            >
+              {botCallout.text}
+            </div>
+          ) : null}
+
+          {bot?.deployment_mode === "docker" ? (
+            <section className="update-page__release-section update-page__docker-hint">
+              <h3 className="update-page__release-section-title">Docker 更新步骤</h3>
+              <ol className="update-page__docker-steps">
+                <li>
+                  <code>docker compose pull pallasbot</code>
+                </li>
+                <li>
+                  <code>docker compose up -d pallasbot</code>（未换镜像时加 <code>--force-recreate</code>）
+                </li>
+                <li>
+                  未用 <code>:latest</code> 时，先把 compose 里 image tag 改为目标版本
+                </li>
+              </ol>
+              <p className="muted update-page__docker-foot">
+                数据与配置通常在卷中（<code>data/</code>、<code>config/pallas.toml</code>、<code>local/plugins/</code>）。
+              </p>
+            </section>
+          ) : null}
+
+          <details className="update-page__release-fold update-page__release-notes">
+            <summary className="update-page__release-fold-summary">{botReleaseNotesSummary}</summary>
+            {(bot?.release_notes || "").trim() ? (
+              <div
+                className="update-page__release-notes-body update-page__release-notes-body--md"
+                dangerouslySetInnerHTML={{ __html: botReleaseNotesHtml }}
+              />
+            ) : (
+              <p className="update-page__release-notes-empty muted">
+                GitHub 未提供发行说明正文，请查看{" "}
+                <a
+                  className="update-page__link"
+                  href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Release 页面
+                </a>
+                。
+              </p>
+            )}
+          </details>
+
+          <details className="update-page__release-fold update-page__doc-links">
+            <summary className="update-page__release-fold-summary">相关文档</summary>
+            <ul className="update-page__doc-links-list">
+              {botDocLinks.map((link) => (
+                <li key={link.href}>
+                  <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          {bot?.deployment_mode !== "docker" ? (
+            <p className="update-page__release-foot muted">
+              配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      {restartAvailable ? (
+        <section id="console-update-restart" className="panel update-page__panel update-page__panel--ops">
+          <div className="panel__hd panel__hd--split update-page__ops-hd">
+            <h2 className="panel__title">运维</h2>
+          </div>
+          <div className="panel__bd update-page__bd">
+            <p className="muted update-page__ops-lead">
+              安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
+              {shardedRuntime ? "分片部署下可选择仅重启分片节点或重启全部进程。" : null}
+            </p>
+            {restartInProgress || restartMsg ? (
+              <p className="muted update-page__ops-lead" role="status">
+                {restartProgressLabel || restartMsg}
+              </p>
+            ) : null}
+            {restartErr ? (
+              <p className="alert alert--err update-page__ops-lead" role="alert">
+                {restartErr}
+              </p>
+            ) : null}
+            <div className="row-actions update-page__ops-actions">
+              {shardedRuntime ? (
+                <UiButton
+                  variant="outline"
+                  disabled={restartBusy || restartInProgress}
+                  onClick={() => void triggerBotRestart(true)}
+                >
+                  重启 Worker
+                </UiButton>
+              ) : null}
+              <UiButton
+                variant="destructive"
+                disabled={restartBusy || restartInProgress}
+                onClick={() => void triggerBotRestart(false)}
+              >
+                {restartInProgress ? "重启中…" : shardedRuntime ? "重启全部进程" : "重启 Bot"}
+              </UiButton>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <details id="console-update-github" className="update-page__gh-fold">
         <summary className="update-page__gh-fold-summary">
@@ -304,26 +640,27 @@ export default function UpdatePage() {
         <div className="update-page__gh-fold-body muted update-page__bd">
           <p>
             可选。用于 Release 检查与下载、协议端在线拉包等。也可在{" "}
-            <Link to={`/plugins/${PB_PROTOCOL_PLUGIN}`}>插件配置 → 协议端</Link>
-            {" "}填写 <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
+            <Link to={`/plugins/${PB_PROTOCOL_PLUGIN}`}>插件配置 → 协议端</Link> 填写{" "}
+            <code>PALLAS_PROTOCOL_GITHUB_TOKEN</code>。
           </p>
           <div className="update-page__gh-row">
-            <input
-              className="inp update-page__gh-inp"
+            <UiInput
+              className="update-page__gh-inp"
               type="password"
+              revealable
               autoComplete="off"
               placeholder="粘贴 fine-grained 或 classic PAT"
               disabled={ghTokenBusy}
               value={ghTokenInput}
-              onChange={(e) => setGhTokenInput(e.target.value)}
+              onValueChange={setGhTokenInput}
             />
-            <button type="button" className="btn btn--primary" disabled={ghTokenBusy} onClick={() => void saveGithubToken()}>
+            <UiButton variant="primary" disabled={ghTokenBusy} onClick={() => void saveGithubToken()}>
               {ghTokenBusy ? "保存中…" : "保存"}
-            </button>
+            </UiButton>
             {ghTokenHadValue ? (
-              <button type="button" className="btn" disabled={ghTokenBusy} onClick={() => void clearGithubToken()}>
+              <UiButton variant="outline" disabled={ghTokenBusy} onClick={() => void clearGithubToken()}>
                 清除
-              </button>
+              </UiButton>
             ) : null}
           </div>
           {ghTokenErr ? <div className="alert alert--err update-page__gh-alert">{ghTokenErr}</div> : null}
@@ -332,15 +669,6 @@ export default function UpdatePage() {
       </details>
 
       <GitMirrorDialog open={gitMirrorOpen} onClose={() => setGitMirrorOpen(false)} />
-    </div>
-  );
-}
-
-function Row({ k, v }: { k: string; v: ReactNode }) {
-  return (
-    <div className="home-dl update-page__meta-row">
-      <dt>{k}</dt>
-      <dd>{v}</dd>
     </div>
   );
 }
