@@ -16685,9 +16685,6 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
     flex: 1 1 0;
   }
 
-  .home-kpi-head__side {
-    flex: 0 1 19rem;
-  }
 }
 
 @media (min-width: 900px) {

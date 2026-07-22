@@ -9,5 +9,6 @@ describe("home KPI layout", () => {
     expect(appStyles).toContain("@media (min-width: 861px)");
     expect(appStyles).toContain(".home-kpi-head {\n    flex-wrap: nowrap;");
     expect(appStyles).toContain(".home-kpi-head > .home-kpi-bar {\n    flex: 1 1 0;");
+    expect(appStyles).not.toContain(".home-kpi-head__side {\n    flex: 0 1 19rem;");
   });
 });
