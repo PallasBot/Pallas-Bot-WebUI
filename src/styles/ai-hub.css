@@ -1,4 +1,11 @@
-/* AI Hub：观测 + 配置共用视觉（现代化卡片 / KPI / 链接条） */
+/* AI Hub：观测 + 配置共用视觉（现代化卡片 / KPI / 链接条）
+ *
+ * 滚动契约：
+ * - 观测壳 PagePinned 钉顶；body 默认 overflow:hidden 把高度交给子页
+ * - 历史「会话」：AppShell --fill + PageFill 双栏内滚
+ * - 历史其它工作区：ai-history-page--page-scroll 文档滚
+ * - 配置 / 体检 / 总览 / 统计：主内容区随 shell 或页内自然滚
+ */
 
 .ai-observation-layout__tab-lead {
   margin: 0;
@@ -12,6 +19,9 @@
   flex-direction: column;
   gap: var(--hub-page-gap, 18px);
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ai-hub-panel {
@@ -446,13 +456,5 @@ html[data-theme="light"][data-surface="solid"] .ai-hub-panel {
 
   .ai-history-context-bar__inp {
     max-width: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .ai-config-page__rail-group {
-    overflow-x: auto;
-    flex-wrap: nowrap !important;
-    padding-bottom: 4px;
   }
 }

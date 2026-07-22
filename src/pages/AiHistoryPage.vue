@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import {
   fetchConversationKernelKnowledgeSources,
   fetchConversationKernelMemory,
@@ -64,12 +64,16 @@ import AiHistoryReplayResultDialog from "@/components/ai-history/AiHistoryReplay
 import AiHistoryRulesWorkspace from "@/components/ai-history/AiHistoryRulesWorkspace.vue";
 import AiHistorySessionDetailPane from "@/components/ai-history/AiHistorySessionDetailPane.vue";
 import AiHistorySessionListPane from "@/components/ai-history/AiHistorySessionListPane.vue";
+import AiHistorySessionsWorkspace from "@/components/ai-history/AiHistorySessionsWorkspace.vue";
 import AiHistorySessionTurnDecisionBlock from "@/components/ai-history/AiHistorySessionTurnDecisionBlock.vue";
 import AiHistorySessionTurnMaintainBlock from "@/components/ai-history/AiHistorySessionTurnMaintainBlock.vue";
 import AiHistorySessionTurnThread from "@/components/ai-history/AiHistorySessionTurnThread.vue";
 import AiHistoryWorkspaceTabs from "@/components/ai-history/AiHistoryWorkspaceTabs.vue";
-import PageFill from "@/components/PageFill.vue";
 import { useAiObservationRefresh } from "@/composables/useAiObservationRefresh";
+import {
+  type AiHistoryWorkspace,
+  useAiHistoryWorkspaceQuery,
+} from "@/composables/useAiHistoryWorkspaceQuery";
 import { AI_STATS_LIMITS } from "@/config/aiConstants";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import {
@@ -89,7 +93,6 @@ import { botPickerRowsFromInstances } from "@/utils/botDisplay";
 import { memoryScopeSummary } from "@/utils/memoryScope";
 
 const router = useRouter();
-const route = useRoute();
 const LEARNING_LOOP_DISMISS_KEY = "pallas.aiHistory.learningLoopDismissed";
 
 const sessions = ref<LlmHistorySessionSummary[]>([]);
@@ -166,7 +169,7 @@ const expandedKernelTraceKeys = ref<Record<string, boolean>>({});
 const expandedBehaviorTraceKeys = ref<Record<string, boolean>>({});
 const expandedObserveAnnotateIds = ref<Record<string, boolean>>({});
 const sessionDetailPane = ref<{ detailAnchor: HTMLElement | null } | null>(null);
-const sessionsWorkspaceAnchor = ref<HTMLElement | null>(null);
+const sessionsWorkspaceAnchor = ref<{ $el?: HTMLElement } | null>(null);
 const expandedObserveKeys = ref<Record<string, boolean>>({});
 type MaintainPanelKey = "persona" | "feedback" | "promotion" | "behavior" | "kernel";
 const maintainPanelExpanded = ref<Record<MaintainPanelKey, boolean>>({
@@ -182,7 +185,6 @@ const learningLoopDismissed = ref(
 );
 const showDecisionTraces = ref(false);
 
-type AiHistoryWorkspace = "sessions" | "maintain" | "rules" | "memory";
 const WORKSPACE_TABS: Array<{
   label: string;
   value: AiHistoryWorkspace;
@@ -194,6 +196,7 @@ const WORKSPACE_TABS: Array<{
   { label: "记忆", value: "memory", icon: "database" },
 ];
 const activeWorkspace = ref<AiHistoryWorkspace>("sessions");
+const { applyFromQuery } = useAiHistoryWorkspaceQuery(activeWorkspace);
 
 // 会话筛选：bot / group / user（空 = 不限）
 const filterBot = ref("");
@@ -583,32 +586,13 @@ function openLlmCommonConfig(focusLearningLoop = false): void {
   );
 }
 
-function applyWorkspaceFromQuery(raw: unknown = route.query.workspace): void {
-  const workspaceRaw = String(raw ?? "").trim();
-  if (
-    workspaceRaw === "sessions"
-    || workspaceRaw === "maintain"
-    || workspaceRaw === "rules"
-    || workspaceRaw === "memory"
-  ) {
-    activeWorkspace.value = workspaceRaw;
-  }
-}
-
-/** 学习闭环已开时：切到「会话」做排除/期望回复验证（同页 query 不会驱动 tab，需写 ref） */
 function openHistoryVerify(): void {
   activeWorkspace.value = "sessions";
-  if (String(route.query.workspace ?? "") !== "sessions") {
-    void router.replace({
-      path: route.path,
-      query: { ...route.query, workspace: "sessions" },
-    });
-  }
   void nextTick(() => {
     if (selectedSessionKey.value) {
       scrollSessionDetailIntoView();
     }
-    sessionsWorkspaceAnchor.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    sessionsWorkspaceAnchor.value?.$el?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 const workspaceContextLabel = computed(() => {
@@ -1896,13 +1880,8 @@ watch(behaviorRunsScene, (next) => {
   }
 });
 
-watch(
-  () => route.query.workspace,
-  (raw) => applyWorkspaceFromQuery(raw),
-);
-
 onMounted(() => {
-  applyWorkspaceFromQuery();
+  applyFromQuery();
   void refreshAll();
   void loadMemoryBots();
   feedbackGroup.value = filterGroup.value;
@@ -1919,7 +1898,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ai-history-page ai-history-page--chrome">
+  <div
+    class="ai-history-page ai-history-page--chrome"
+    :class="{ 'ai-history-page--page-scroll': activeWorkspace !== 'sessions' }"
+  >
 
     <div v-if="combinedErr" class="alert alert--err">{{ combinedErr }}</div>
 
@@ -1959,33 +1941,32 @@ onMounted(() => {
       @update:scene-value="onContextSceneChange"
     />
 
-    <div
+    <AiHistorySessionsWorkspace
       v-show="activeWorkspace === 'sessions'"
       ref="sessionsWorkspaceAnchor"
-      class="ai-history-page__workspace ai-history-page__workspace--sessions ai-history-page__workspace--fill"
     >
-    <PageFill class="ai-history-page__sessions-fill">
-    <section class="ai-history-split ai-hub-panel">
-      <AiHistorySessionListPane
-        v-model:filter-bot="filterBot"
-        v-model:filter-group="filterGroup"
-        v-model:filter-user="filterUser"
-        v-model:selected-session-key="selectedSessionKey"
-        v-model:show-all-sessions="showAllSessions"
-        :sessions="sessions"
-        :visible-sessions="visibleSessions"
-        :busy="historyBusy"
-        @apply="refreshSessions"
-        @reset="refreshSessions"
-      />
-
-      <AiHistorySessionDetailPane
-        ref="sessionDetailPane"
-        v-model:show-decision-traces="showDecisionTraces"
-        :selected-session="selectedSession"
-        :context-label="workspaceContextLabel"
-        :has-detail="Boolean(sessionDetail)"
-      >
+      <template #list>
+        <AiHistorySessionListPane
+          v-model:filter-bot="filterBot"
+          v-model:filter-group="filterGroup"
+          v-model:filter-user="filterUser"
+          v-model:selected-session-key="selectedSessionKey"
+          v-model:show-all-sessions="showAllSessions"
+          :sessions="sessions"
+          :visible-sessions="visibleSessions"
+          :busy="historyBusy"
+          @apply="refreshSessions"
+          @reset="refreshSessions"
+        />
+      </template>
+      <template #detail>
+        <AiHistorySessionDetailPane
+          ref="sessionDetailPane"
+          v-model:show-decision-traces="showDecisionTraces"
+          :selected-session="selectedSession"
+          :context-label="workspaceContextLabel"
+          :has-detail="Boolean(sessionDetail)"
+        >
           <AiHistorySessionTurnThread
             :rows="sessionTurnRows.rows"
             :expanded-keys="expandedTurnKeys"
@@ -2059,10 +2040,9 @@ onMounted(() => {
             @update:outcome="changeBehaviorOutcome"
             @toggle-disabled="toggleBehaviorDisabled"
           />
-      </AiHistorySessionDetailPane>
-    </section>
-    </PageFill>
-    </div>
+        </AiHistorySessionDetailPane>
+      </template>
+    </AiHistorySessionsWorkspace>
 
     <AiHistoryMaintainWorkspace v-show="activeWorkspace === 'maintain'">
     <AiHistoryMaintainPersonaPanel
