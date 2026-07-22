@@ -58,9 +58,9 @@ import {
 import { slicePage } from "@/utils/paginate";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import UiInput from "@/components/ui/UiInput.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
@@ -821,6 +821,11 @@ onUnmounted(() => {
           />
         </h2>
         <div class="inst-db-panel__hd-side">
+          <span class="inst-db-stat muted">
+            当前已连接
+            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
+            / {{ protocolAccountsTotalCount }} 账号
+          </span>
           <div
             class="console-view-toggle"
             role="group"
@@ -843,18 +848,12 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="inst-db-panel__actions">
-          <span class="inst-db-stat muted">
-            当前已连接
-            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
-            / {{ protocolAccountsTotalCount }} 账号
-          </span>
           <div class="inst-db-panel__action-controls">
-            <UiInput
+            <ConsoleHubSearch
               v-model="protoSearchQ"
               class="inst-db-search"
-              type="search"
               placeholder="搜索账号 / 昵称 / 协议 / ID"
-              title="按账号、昵称、协议、ID 筛选"
+              aria-label="搜索账号 / 昵称 / 协议 / ID"
             />
             <UiButton
               v-if="protoActionsEnabled"

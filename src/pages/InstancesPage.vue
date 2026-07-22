@@ -28,9 +28,9 @@ import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PageChrome from "@/components/PageChrome.vue";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import UiInput from "@/components/ui/UiInput.vue";
 import { useCardBulkSelection } from "@/composables/useCardBulkSelection";
 import { consolePrefs, setConsolePrefs } from "@/utils/consolePrefs";
 import { accountHasNonebotBot } from "@/utils/botConnection";
@@ -550,6 +550,14 @@ onUnmounted(() => {
             />
           </h2>
           <div class="inst-db-panel__hd-side">
+            <span
+              v-if="data"
+              class="inst-db-stat muted"
+            >
+              当前已连接
+              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
+              / {{ dbBotsTotalCount }} 账号
+            </span>
             <div
               class="console-view-toggle"
               role="group"
@@ -572,19 +580,10 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="inst-db-panel__actions">
-            <span
-              v-if="data"
-              class="inst-db-stat muted"
-            >
-              当前已连接
-              <strong class="inst-db-stat__num">{{ dbBotsConnectedCount }}</strong>
-              / {{ dbBotsTotalCount }} 账号
-            </span>
-            <div class="inst-db-panel__action-controls">
-              <UiInput
+            <div class="inst-db-panel__action-controls inst-db-panel__action-controls--search-fill">
+              <ConsoleHubSearch
                 v-model="dbBotSearchQ"
                 class="inst-db-search"
-                type="search"
                 placeholder="搜索账号 / 昵称 / 管理员 / 插件"
                 aria-label="搜索账号 / 昵称 / 管理员 / 插件"
               />
