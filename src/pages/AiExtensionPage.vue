@@ -487,13 +487,17 @@ onMounted(() => {
   min-width: 0;
 }
 
+.ai-config-page__content {
+  min-width: 0;
+}
+
 .ai-config-page__section-lead {
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1024px) {
   .ai-config-page__shell {
     grid-template-columns: 1fr;
   }

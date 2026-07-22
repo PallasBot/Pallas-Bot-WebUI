@@ -11,13 +11,26 @@ function readSource(relativePath: string): string {
 describe("AI provider expert layout", () => {
   it("keeps expert mode as one panel with upstream/tasks/local tabs", () => {
     const source = readSource("src/components/ai-config/AiConfigProviderSection.vue");
-    expect(source).toContain("AiExtensionStatusBar");
     expect(source).toContain("expertTab === 'upstream'");
     expect(source).toContain("expertTab === 'tasks'");
     expect(source).toContain("expertTab === 'local'");
     expect(source).toContain("<LocalModelRoutingPanel compact />");
     expect(source).toContain("<ModelAdminPanel embedded />");
     expect(source).toContain(":panel=\"expertTab === 'tasks' ? 'tasks' : 'upstream'\"");
+  });
+
+  it("keeps the compact mode switch and content layout usable on narrow screens", () => {
+    const toggle = readSource("src/components/ai-config/AiConfigExpertModeToggle.vue");
+    const page = readSource("src/pages/AiExtensionPage.vue");
+    const manager = readSource("src/components/ai-config/providers/ProviderManager.vue");
+
+    expect(toggle).toContain("ai-config-expert-toggle__controls console-view-toggle");
+    expect(toggle).toContain("ai-config-expert-toggle__hint");
+    expect(page).toContain("@media (max-width: 1024px)");
+    expect(page).toContain("grid-template-columns: 1fr");
+    expect(page).toContain("overflow-x: auto");
+    expect(manager).toContain(".provider-manager__card-main");
+    expect(manager).toContain("overflow-wrap: anywhere");
   });
 
   it("wires provider presets into add/edit and provider cards", () => {
