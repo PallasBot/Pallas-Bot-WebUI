@@ -6,6 +6,8 @@ import {
   protocolListSnowlumaRuntimes,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 export default function ProtocolCreateTab() {
@@ -110,55 +112,50 @@ export default function ProtocolCreateTab() {
           <div className="panel__bd protocol-form-grid">
             <label className="field">
               <span className="field__label">QQ 号</span>
-              <input
-                className="inp"
+              <UiInput
                 inputMode="numeric"
                 autoComplete="off"
                 value={qq}
-                onChange={(e) => setQq(e.target.value)}
+                onValueChange={setQq}
               />
             </label>
             <label className="field">
               <span className="field__label">显示昵称</span>
-              <input
-                className="inp"
+              <UiInput
                 autoComplete="off"
                 placeholder="可选"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onValueChange={setDisplayName}
               />
             </label>
             <label className="field">
               <span className="field__label">协议端类型</span>
-              <select
-                className="sel ui-select"
+              <UiSelect
                 value={protocolBackend}
-                onChange={(e) => setProtocolBackend(e.target.value)}
+                onValueChange={setProtocolBackend}
               >
                 <option value="napcat">NapCat</option>
                 <option value="snowluma">SnowLuma</option>
-              </select>
+              </UiSelect>
             </label>
             {protocolBackend === "snowluma" ? (
               <>
                 <label className="field">
                   <span className="field__label">SnowLuma Runtime</span>
-                  <select
-                    className="sel ui-select"
+                  <UiSelect
                     value={snowlumaRuntimeMode}
-                    onChange={(e) => setSnowlumaRuntimeMode(e.target.value as "new" | "existing")}
+                    onValueChange={(v) => setSnowlumaRuntimeMode(v as "new" | "existing")}
                   >
                     <option value="new">新建 Runtime（一进程可再加号）</option>
                     <option value="existing">加入已有 Runtime</option>
-                  </select>
+                  </UiSelect>
                 </label>
                 {snowlumaRuntimeMode === "existing" ? (
                   <label className="field">
                     <span className="field__label">选择 Runtime</span>
-                    <select
-                      className="sel ui-select"
+                    <UiSelect
                       value={snowlumaRuntimeId}
-                      onChange={(e) => setSnowlumaRuntimeId(e.target.value)}
+                      onValueChange={setSnowlumaRuntimeId}
                     >
                       <option value="">请选择…</option>
                       {snowlumaRuntimes.map((rt) => (
@@ -166,62 +163,57 @@ export default function ProtocolCreateTab() {
                           {rt.display_name || rt.id}（{rt.member_count ?? 0} 号）
                         </option>
                       ))}
-                    </select>
+                    </UiSelect>
                   </label>
                 ) : null}
               </>
             ) : null}
             <label className="field">
               <span className="field__label">内置 WebUI 端口</span>
-              <input
-                className="inp"
+              <UiInput
                 type="number"
                 placeholder="留空自动分配；加入已有 Runtime 时沿用 Runtime 端口"
                 value={webuiPort}
-                onChange={(e) => setWebuiPort(e.target.value)}
+                onValueChange={setWebuiPort}
               />
             </label>
             {protocolBackend !== "snowluma" ? (
               <label className="field">
                 <span className="field__label">WebUI token</span>
-                <input
-                  className="inp"
+                <UiInput
                   type="password"
                   autoComplete="off"
                   placeholder="留空随机生成"
                   value={webuiToken}
-                  onChange={(e) => setWebuiToken(e.target.value)}
+                  onValueChange={setWebuiToken}
                 />
               </label>
             ) : null}
             <label className="field field--full">
               <span className="field__label">WS 连接地址</span>
-              <input
-                className="inp"
+              <UiInput
                 placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
                 autoComplete="off"
                 value={wsUrl}
-                onChange={(e) => setWsUrl(e.target.value)}
+                onValueChange={setWsUrl}
               />
             </label>
             <label className="field">
               <span className="field__label">连接名</span>
-              <input
-                className="inp"
+              <UiInput
                 placeholder="pallas"
                 autoComplete="off"
                 value={wsName}
-                onChange={(e) => setWsName(e.target.value)}
+                onValueChange={setWsName}
               />
             </label>
             <label className="field">
               <span className="field__label">WS Token</span>
-              <input
-                className="inp"
+              <UiInput
                 type="password"
                 autoComplete="off"
                 value={wsToken}
-                onChange={(e) => setWsToken(e.target.value)}
+                onValueChange={setWsToken}
               />
             </label>
             <div className="field field--full row-actions">

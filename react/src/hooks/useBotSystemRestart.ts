@@ -7,48 +7,15 @@ import {
 import type { BotUpdateCheckData } from "@pallas-vue/api/pallasTypes";
 import { fetchHealth } from "@/api/health";
 import { axiosErrorDetail } from "@/api/http";
+import {
+  botRestartPhaseLabel,
+  healthBootFingerprint,
+  waitForBotRestartOnline,
+  type BotRestartPhase,
+} from "@pallas-vue/utils/botRestartProgress";
+import { syncRestartSession } from "@/state/botRestartSession";
 
-export type BotRestartPhase =
-  | "idle"
-  | "scheduled"
-  | "disconnecting"
-  | "reconnecting"
-  | "online"
-  | "timeout"
-  | "failed";
-
-function botRestartPhaseLabel(phase: BotRestartPhase): string {
-  switch (phase) {
-    case "scheduled":
-      return "已安排重启…";
-    case "disconnecting":
-      return "连接断开…";
-    case "reconnecting":
-      return "探测 Bot 恢复…";
-    case "online":
-      return "Bot 已恢复在线";
-    case "timeout":
-      return "重启超时，请手动刷新页面";
-    case "failed":
-      return "重启失败";
-    default:
-      return "";
-  }
-}
-
-async function waitForBotOnline(timeoutMs = 120_000): Promise<boolean> {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const health = await fetchHealth();
-      if (health.ok) return true;
-    } catch {
-      /* still restarting */
-    }
-    await new Promise((r) => window.setTimeout(r, 1500));
-  }
-  return false;
-}
+export type { BotRestartPhase };
 
 export async function trackRestartFromPluginResult(
   result: {
@@ -58,8 +25,21 @@ export async function trackRestartFromPluginResult(
   onPhase?: (phase: BotRestartPhase) => void,
 ): Promise<boolean> {
   if (!result?.restart_scheduled) return true;
+  syncRestartSession({ open: true, busy: true, phase: "scheduled", msg: "", err: "", progressPercent: 0 });
   onPhase?.("scheduled");
-  const online = await waitForBotOnline();
+  const online = await waitForBotRestartOnline({
+    onPhase: (phase) => {
+      syncRestartSession({ phase, msg: botRestartPhaseLabel(phase) });
+      onPhase?.(phase);
+    },
+    onProgress: (percent) => syncRestartSession({ progressPercent: percent }),
+  });
+  syncRestartSession({
+    phase: online ? "online" : "timeout",
+    msg: botRestartPhaseLabel(online ? "online" : "timeout"),
+    busy: false,
+    progressPercent: online ? 100 : undefined,
+  });
   onPhase?.(online ? "online" : "timeout");
   return online;
 }
@@ -128,29 +108,67 @@ export function useBotSystemRestart(options?: {
       setRestartBusy(true);
       setRestartErr("");
       setRestartMsg("");
-      setRestartPhase("scheduled");
+      setRestartPhase("idle");
+      syncRestartSession({
+        open: true,
+        busy: true,
+        phase: "idle",
+        msg: "",
+        err: "",
+        progressPercent: 0,
+      });
       try {
+        let baselineFingerprint = "";
+        try {
+          baselineFingerprint = healthBootFingerprint(await fetchHealth({ bypassCache: true }));
+        } catch {
+          baselineFingerprint = "";
+        }
         const r = await postSystemRestart({ workersOnly });
+        setRestartPhase("scheduled");
         setRestartMsg(r.message || botRestartPhaseLabel("scheduled"));
-        setRestartPhase("reconnecting");
-        const online = await waitForBotOnline();
+        syncRestartSession({
+          phase: "scheduled",
+          msg: r.message || botRestartPhaseLabel("scheduled"),
+        });
+        const online = await waitForBotRestartOnline({
+          workersOnly,
+          baselineFingerprint,
+          onPhase: (phase) => {
+            setRestartPhase(phase);
+            const label = botRestartPhaseLabel(phase);
+            if (label) setRestartMsg(label);
+            syncRestartSession({ phase, msg: label || undefined });
+          },
+          onProgress: (percent) => syncRestartSession({ progressPercent: percent }),
+        });
         if (online) {
           setRestartPhase("online");
           setRestartMsg(botRestartPhaseLabel("online"));
           setRestartErr("");
+          syncRestartSession({
+            phase: "online",
+            msg: botRestartPhaseLabel("online"),
+            err: "",
+            progressPercent: 100,
+          });
           return true;
         }
         setRestartPhase("timeout");
         const timeoutMsg = botRestartPhaseLabel("timeout");
         setRestartMsg(timeoutMsg);
         setRestartErr(timeoutMsg);
+        syncRestartSession({ phase: "timeout", msg: timeoutMsg, err: timeoutMsg });
         return false;
       } catch (e) {
         setRestartPhase("failed");
-        setRestartErr(axiosErrorDetail(e));
+        const detail = axiosErrorDetail(e);
+        setRestartErr(detail);
+        syncRestartSession({ phase: "failed", err: detail, busy: false });
         return false;
       } finally {
         setRestartBusy(false);
+        syncRestartSession({ busy: false });
       }
     },
     [ensureRestartContext, internalBotCheck, options?.botUpdateCheck],

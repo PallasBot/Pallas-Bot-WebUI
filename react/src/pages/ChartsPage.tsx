@@ -14,6 +14,8 @@ import IngressDispatchPanel from "@/components/IngressDispatchPanel";
 import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
 import StatTrendCard from "@/components/StatTrendCard";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import {
   currentMonthIso,
@@ -199,11 +201,11 @@ export default function ChartsPage() {
             {sortedBots.length > 1 ? (
               <label className="charts-page__account-label charts-page__account-label--masthead">
                 <span className="charts-page__account-label-text">账号</span>
-                <select
-                  className="sel charts-page__account-sel"
+                <UiSelect
+                  className="charts-page__account-sel"
                   aria-label="选择 Bot 账号"
-                  value={selectedAccount ?? ""}
-                  onChange={(e) => setSelectedAccount(Number(e.target.value) || null)}
+                  value={selectedAccount != null ? String(selectedAccount) : ""}
+                  onValueChange={(v) => setSelectedAccount(Number(v) || null)}
                 >
                   {sortedBots.map((b) => {
                     const nick = instQ.data?.bot_profiles?.[String(b.account)]?.nickname?.trim() || "BOT";
@@ -213,7 +215,7 @@ export default function ChartsPage() {
                       </option>
                     );
                   })}
-                </select>
+                </UiSelect>
               </label>
             ) : null}
             <button type="button" className="btn" disabled={refreshing} onClick={() => void refreshAll()}>
@@ -233,22 +235,22 @@ export default function ChartsPage() {
           <div className="charts-page__filter-group">
             <label className="charts-page__date-label">
               <span className="charts-page__date-label-text">起始</span>
-              <input
-                className="charts-page__date-inp inp"
+              <UiInput
+                className="charts-page__date-inp"
                 type="date"
                 aria-label="起始日期"
                 value={rangeStart}
-                onChange={(e) => setRangeStart(e.target.value)}
+                onValueChange={setRangeStart}
               />
             </label>
             <label className="charts-page__date-label">
               <span className="charts-page__date-label-text">结束</span>
-              <input
-                className="charts-page__date-inp inp"
+              <UiInput
+                className="charts-page__date-inp"
                 type="date"
                 aria-label="结束日期"
                 value={rangeEnd}
-                onChange={(e) => setRangeEnd(e.target.value)}
+                onValueChange={setRangeEnd}
               />
             </label>
           </div>

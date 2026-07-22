@@ -22,6 +22,7 @@ import "@pallas-vue/styles/ai-history.css";
 import "./styles/ui-atoms.css";
 import "./styles/update-page.css";
 import "./styles/git-mirror-dialog.css";
+import "./styles/bot-restart-dialog.css";
 import "./index.css";
 import App from "./App";
 import { applyShellTheme } from "./theme/applyShellTheme";

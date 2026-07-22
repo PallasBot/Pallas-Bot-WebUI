@@ -30,6 +30,7 @@ import {
   protocolUpdateAccount,
 } from "@/api/protocol";
 import StatCard from "@/components/StatCard";
+import UiInput from "@/components/ui/UiInput";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import { protocolBackendDisplayName } from "@/utils/protocolUi";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -758,58 +759,53 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   <label className="field">
                     <span className="field__label">实例名</span>
                     <span className="field__hint muted">控制台与列表中的展示称呼。</span>
-                    <input
-                      className="inp"
+                    <UiInput
                       type="text"
                       autoComplete="off"
                       value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      onValueChange={setDisplayName}
                     />
                   </label>
                   <label className="field">
                     <span className="field__label">内置 WebUI 端口</span>
                     <span className="field__hint muted">协议端自带 Web 控制台监听端口。</span>
-                    <input
-                      className="inp"
+                    <UiInput
                       type="number"
                       min={1}
                       max={65535}
                       value={webuiPort}
-                      onChange={(e) => setWebuiPort(e.target.value)}
+                      onValueChange={setWebuiPort}
                     />
                   </label>
                   <label className="field field--full">
                     <span className="field__label">WS 连接地址</span>
                     <span className="field__hint muted">Bot 连接 OneBot WebSocket 的完整地址。</span>
-                    <input
-                      className="inp"
+                    <UiInput
                       type="text"
                       autoComplete="off"
                       placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
                       value={wsUrl}
-                      onChange={(e) => setWsUrl(e.target.value)}
+                      onValueChange={setWsUrl}
                     />
                   </label>
                   <label className="field">
                     <span className="field__label">连接名</span>
                     <span className="field__hint muted">实例列表里显示的连接标识。</span>
-                    <input
-                      className="inp"
+                    <UiInput
                       type="text"
                       autoComplete="off"
                       value={wsName}
-                      onChange={(e) => setWsName(e.target.value)}
+                      onValueChange={setWsName}
                     />
                   </label>
                   <label className="field">
                     <span className="field__label">WS Token</span>
                     <span className="field__hint muted">须与协议端鉴权配置一致。</span>
-                    <input
-                      className="inp"
+                    <UiInput
                       type="password"
                       autoComplete="off"
                       value={wsToken}
-                      onChange={(e) => setWsToken(e.target.value)}
+                      onValueChange={setWsToken}
                     />
                   </label>
                   {!isDialog ? (

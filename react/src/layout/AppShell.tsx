@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import brandMarkAsset from "@pallas-vue/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
 import { MAIN_NAV_ITEMS, sectionIcon } from "@/config/mainNav";
+import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
 import { cn } from "@/lib/utils";
 import { readSidebarCollapsed, writeSidebarCollapsed } from "@/theme/applyShellTheme";
@@ -193,7 +194,7 @@ export default function AppShell() {
   const isNarrow = useIsShellNarrow();
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
-  const healthQ = useQuery({ queryKey: ["health"], queryFn: fetchHealth, refetchInterval: 15_000 });
+  const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth(), refetchInterval: 15_000 });
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
 
@@ -354,6 +355,7 @@ export default function AppShell() {
         </div>
       </div>
       <ConsoleToastHost />
+      <BotRestartProgressDialog />
     </div>
   );
 }

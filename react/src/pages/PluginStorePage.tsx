@@ -39,12 +39,15 @@ import {
   type PluginStoreQueueKind,
   withPluginStoreQueueSuffix,
 } from "@pallas-vue/utils/pluginStoreActionQueue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
+import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
 import ConsoleModal from "@/components/ConsoleModal";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageHeader from "@/components/PageHeader";
 import PluginStoreCard, { type PluginStoreMenuItem } from "@/components/PluginStoreCard";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import UiInput from "@/components/ui/UiInput";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { waitForInstallJob } from "@/utils/installJobStream";
 import {
@@ -80,7 +83,6 @@ import {
   resultNeedsRestart,
 } from "@/utils/pluginStorePageHelpers";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 
 type DetailTab = "readme" | "changelog";
 type DetailKind = "official" | "community";
@@ -996,54 +998,53 @@ export default function PluginStorePage() {
         }
       />
 
-      <div className="console-hub-page__search-wrap hub-search-wide-only">
-        <Input
-          className="console-hub-page__search-input"
-          placeholder={
-            storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
-          }
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      <ConsoleHubSearch
+        className="hub-search-wide-only"
+        placeholder={
+          storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
+        }
+        value={searchQuery}
+        onValueChange={setSearchQuery}
+      />
 
-      <div className="console-hub-toolbar-strip">
-        <div className="console-hub-page__search-wrap">
-          <Input
-            className="console-hub-page__search-input"
+      <ConsoleHubToolbarStrip
+        search={
+          <ConsoleHubSearch
             placeholder={
               storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
             }
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onValueChange={setSearchQuery}
           />
-        </div>
-        <div className="console-hub-toolbar-strip__middle row-actions">
-          <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitMirrorOpen(true)}>
-            镜像源
-          </button>
-          {storeSection === "community" && communityWebuiInstallEnabled ? (
-            <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitInstallOpen(true)}>
-              Git 安装
+        }
+        middle={
+          <div className="row-actions">
+            <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitMirrorOpen(true)}>
+              镜像源
             </button>
-          ) : null}
-          {storeSection !== "local" ? (
-            <button
-              type="button"
-              className="btn plugin-store-page__strip-btn"
-              disabled={checkingUpdate || loading}
-              onClick={() => void checkUpdates()}
-            >
-              {checkingUpdate ? "检查中…" : "检查更新"}
-            </button>
-          ) : null}
-        </div>
-        {storeSection === "local" ? (
-          <div className="console-hub-toolbar-strip__actions">
-            <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
+            {storeSection === "community" && communityWebuiInstallEnabled ? (
+              <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitInstallOpen(true)}>
+                Git 安装
+              </button>
+            ) : null}
+            {storeSection !== "local" ? (
+              <button
+                type="button"
+                className="btn plugin-store-page__strip-btn"
+                disabled={checkingUpdate || loading}
+                onClick={() => void checkUpdates()}
+              >
+                {checkingUpdate ? "检查中…" : "检查更新"}
+              </button>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        }
+        actions={
+          storeSection === "local" ? (
+            <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
+          ) : null
+        }
+      />
 
       <div className="console-hub-filter-bar">
         <div className="console-hub-filter-bar__primary">
@@ -1575,12 +1576,12 @@ export default function PluginStorePage() {
         <div className="plugin-store-page__git-form">
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">插件 ID</span>
-            <Input
+            <UiInput
               className="plugin-store-page__git-input"
               value={gitPluginId}
               disabled={gitInstallBusy}
               placeholder="小写字母开头，如 my_plugin"
-              onChange={(e) => setGitPluginId(e.target.value)}
+              onValueChange={setGitPluginId}
             />
             <span className="muted plugin-store-page__git-hint">
               须与目录名一致，安装路径为 local/plugins/&lt;ID&gt;/
@@ -1588,22 +1589,22 @@ export default function PluginStorePage() {
           </label>
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">Git 仓库</span>
-            <Input
+            <UiInput
               className="plugin-store-page__git-input"
               value={gitRepositoryUrl}
               disabled={gitInstallBusy}
               placeholder="https://github.com/org/repo.git"
-              onChange={(e) => setGitRepositoryUrl(e.target.value)}
+              onValueChange={setGitRepositoryUrl}
             />
           </label>
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">分支 / Tag</span>
-            <Input
+            <UiInput
               className="plugin-store-page__git-input"
               value={gitRef}
               disabled={gitInstallBusy}
               placeholder="main"
-              onChange={(e) => setGitRef(e.target.value)}
+              onValueChange={setGitRef}
             />
           </label>
         </div>

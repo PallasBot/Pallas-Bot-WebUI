@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { protocolApiErrorMessage, protocolImportAccounts } from "@/api/protocol";
+import UiInput from "@/components/ui/UiInput";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 export default function ProtocolImportTab() {
@@ -84,26 +85,24 @@ export default function ProtocolImportTab() {
           <div className="panel__bd protocol-form-grid">
             <label className="field field--full">
               <span className="field__label">账号文件夹根目录</span>
-              <input
-                className="inp"
+              <UiInput
                 placeholder="/path/to/instances"
                 autoComplete="off"
                 value={sourceDir}
-                onChange={(e) => setSourceDir(e.target.value)}
+                onValueChange={setSourceDir}
               />
             </label>
             <label className="field field--full">
               <span className="field__label">默认 WS 地址</span>
-              <input className="inp" autoComplete="off" value={wsUrl} onChange={(e) => setWsUrl(e.target.value)} />
+              <UiInput autoComplete="off" value={wsUrl} onValueChange={setWsUrl} />
             </label>
             <label className="field field--full">
               <span className="field__label">WS Token</span>
-              <input
-                className="inp"
+              <UiInput
                 type="password"
                 autoComplete="off"
                 value={wsToken}
-                onChange={(e) => setWsToken(e.target.value)}
+                onValueChange={setWsToken}
               />
             </label>
             <label className="field field--check">

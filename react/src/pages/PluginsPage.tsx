@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
@@ -14,10 +14,10 @@ import {
   pluginCategory,
   type PluginCategory,
 } from "@/utils/pluginCategory";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import PluginCatalogCard from "@/components/PluginCatalogCard";
 import PluginConfigDialog from "@/components/PluginConfigDialog";
 import PageHeader from "@/components/PageHeader";
-import { Input } from "@/components/ui/input";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import {
@@ -168,17 +168,11 @@ export default function PluginsPage() {
           <p className="muted console-hub-page__lead plugins-page__hero-note--shard">{processHint}</p>
         ) : null}
 
-        <div className="plugins-page__search-glass">
-          <div className="plugins-page__search console-hub-page__search-wrap">
-            <Search className="plugins-page__search-ico" size={16} />
-            <Input
-              className="plugins-page__search-input console-hub-page__search-input"
-              placeholder="搜索插件名、ID 或说明…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-        </div>
+        <ConsoleHubSearch
+          placeholder="搜索插件名、ID 或说明…"
+          value={q}
+          onValueChange={setQ}
+        />
 
         <div className="console-hub-filter-bar">
           <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="插件分类">

@@ -29,6 +29,7 @@ import {
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
@@ -590,13 +591,12 @@ export default function ProtocolAccountsTab() {
           </div>
           <div className="inst-db-panel__actions">
             <div className="inst-db-panel__action-controls">
-              <input
-                className="inp inst-db-search"
-                type="search"
+              <ConsoleHubSearch
+                className="inst-db-search"
                 placeholder="搜索账号 / 昵称 / 协议 / ID"
-                aria-label="搜索账号 / 昵称 / 协议 / ID"
+                ariaLabel="搜索账号 / 昵称 / 协议 / ID"
                 value={protoSearchQ}
-                onChange={(e) => setProtoSearchQ(e.target.value)}
+                onValueChange={setProtoSearchQ}
               />
               {protoActionsEnabled ? (
                 <>

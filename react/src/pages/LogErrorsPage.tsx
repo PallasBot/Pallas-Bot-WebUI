@@ -11,9 +11,11 @@ import {
   parseLogErrorPlugin,
 } from "@pallas-vue/utils/logErrorDisplay";
 import { formatLogDisplayTime } from "@pallas-vue/utils/logDisplay";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
+import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import { Input } from "@/components/ui/input";
+import UiSelect from "@/components/ui/UiSelect";
 import { axiosErrorDetail } from "@/api/http";
 import { cn } from "@/lib/utils";
 
@@ -152,18 +154,18 @@ export default function LogErrorsPage() {
           actions={
             <div className="console-hub-toolbar-strip__masthead-actions row-actions">
               {shardedLogErrors ? (
-                <select
-                  className="sel ui-select log-errors-page__source-sel"
+                <UiSelect
+                  className="log-errors-page__source-sel"
                   aria-label="报错来源"
                   value={logSource}
-                  onChange={(e) => setLogSource(e.target.value)}
+                  onValueChange={setLogSource}
                 >
                   {sourceOptions.map((s) => (
                     <option key={`err-src-${s}`} value={s}>
                       {s === "all" ? "全部来源" : s}
                     </option>
                   ))}
-                </select>
+                </UiSelect>
               ) : null}
               <button
                 type="button"
@@ -184,58 +186,57 @@ export default function LogErrorsPage() {
           }
         />
 
-        <div className="console-hub-page__search-wrap hub-search-wide-only">
-          <Input
-            className="console-hub-page__search-input"
-            placeholder="搜索消息、类型、来源…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
+        <ConsoleHubSearch
+          className="hub-search-wide-only"
+          placeholder="搜索消息、类型、来源…"
+          value={q}
+          onValueChange={setQ}
+        />
 
-        <div className="console-hub-toolbar-strip">
-          <div className="console-hub-page__search-wrap">
-            <Input
-              className="console-hub-page__search-input"
+        <ConsoleHubToolbarStrip
+          search={
+            <ConsoleHubSearch
               placeholder="搜索消息、类型、来源…"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onValueChange={setQ}
             />
-          </div>
-          <div className="console-hub-toolbar-strip__middle row-actions">
-            {shardedLogErrors ? (
-              <select
-                className="sel ui-select log-errors-page__source-sel log-errors-page__source-sel--strip"
-                aria-label="报错来源"
-                value={logSource}
-                onChange={(e) => setLogSource(e.target.value)}
+          }
+          middle={
+            <div className="row-actions">
+              {shardedLogErrors ? (
+                <UiSelect
+                  className="log-errors-page__source-sel log-errors-page__source-sel--strip"
+                  aria-label="报错来源"
+                  value={logSource}
+                  onValueChange={setLogSource}
+                >
+                  {sourceOptions.map((s) => (
+                    <option key={`err-src-strip-${s}`} value={s}>
+                      {s === "all" ? "全部来源" : s}
+                    </option>
+                  ))}
+                </UiSelect>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn--danger log-errors-page__clear-btn log-errors-page__clear-btn--strip"
+                disabled={clearing || query.isFetching || !entries.length}
+                title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
+                onClick={() => void clearLogErrors()}
               >
-                {sourceOptions.map((s) => (
-                  <option key={`err-src-strip-${s}`} value={s}>
-                    {s === "all" ? "全部来源" : s}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <button
-              type="button"
-              className="btn btn--danger log-errors-page__clear-btn log-errors-page__clear-btn--strip"
-              disabled={clearing || query.isFetching || !entries.length}
-              title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
-              onClick={() => void clearLogErrors()}
-            >
-              {clearing ? "清理中…" : "清理"}
-            </button>
-          </div>
-          <div className="console-hub-toolbar-strip__actions">
+                {clearing ? "清理中…" : "清理"}
+              </button>
+            </div>
+          }
+          actions={
             <RefreshIconButton
               embedded
               busy={query.isFetching}
               label="刷新"
               onClick={() => void query.refetch()}
             />
-          </div>
-        </div>
+          }
+        />
       </div>
 
       <section className="panel ui-card ui-card--glass log-errors-page__panel">
