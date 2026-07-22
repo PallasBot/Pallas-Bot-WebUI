@@ -1947,18 +1947,18 @@ onMounted(() => {
     >
       <template #list>
         <AiHistorySessionListPane
-          v-model:filter-bot="filterBot"
-          v-model:filter-group="filterGroup"
-          v-model:filter-user="filterUser"
+            v-model:filter-bot="filterBot"
+            v-model:filter-group="filterGroup"
+            v-model:filter-user="filterUser"
           v-model:selected-session-key="selectedSessionKey"
           v-model:show-all-sessions="showAllSessions"
           :sessions="sessions"
           :visible-sessions="visibleSessions"
-          :busy="historyBusy"
-          @apply="refreshSessions"
-          @reset="refreshSessions"
-        />
-      </template>
+            :busy="historyBusy"
+            @apply="refreshSessions"
+            @reset="refreshSessions"
+          />
+              </template>
       <template #detail>
         <AiHistorySessionDetailPane
           ref="sessionDetailPane"
@@ -2015,7 +2015,7 @@ onMounted(() => {
                 @update:outcome="row.behaviorRun && changeBehaviorOutcome(row.behaviorRun, $event)"
                 @toggle-disabled="row.behaviorRun && toggleBehaviorDisabled(row.behaviorRun)"
               />
-            </template>
+                    </template>
           </AiHistorySessionTurnThread>
           <AiHistoryOrphanBehaviorSection
             :runs="sessionTurnRows.orphanRuns"
@@ -2041,19 +2041,19 @@ onMounted(() => {
             @toggle-disabled="toggleBehaviorDisabled"
           />
         </AiHistorySessionDetailPane>
-      </template>
+                    </template>
     </AiHistorySessionsWorkspace>
 
     <AiHistoryMaintainWorkspace v-show="activeWorkspace === 'maintain'">
     <AiHistoryMaintainPersonaPanel
       :expanded="isMaintainPanelExpanded('persona')"
       :summary="personaPanelSummary"
-      :sync-group-id="observeGroup"
+          :sync-group-id="observeGroup"
       @toggle="toggleMaintainPanel('persona')"
       @pick-group="pickGroupFromSessions"
     />
     <AiHistoryMaintainFeedbackPanel
-      :expanded="isMaintainPanelExpanded('feedback')"
+        :expanded="isMaintainPanelExpanded('feedback')"
       :summary="feedbackPanelSummary"
       :err="feedbackErr"
       :items="visibleFeedbackItems"
@@ -2062,7 +2062,7 @@ onMounted(() => {
       :correction-drafts="feedbackCorrectionDraft"
       :manage-busy="feedbackManageBusy"
       :expanded-text-keys="expandedObserveKeys"
-      @toggle="toggleMaintainPanel('feedback')"
+        @toggle="toggleMaintainPanel('feedback')"
       @apply-scene="applyObserveScene"
       @update-correction="setFeedbackCardCorrectionDraft"
       @save-correction="saveFeedbackCardCorrection"
@@ -2072,10 +2072,10 @@ onMounted(() => {
     />
     <AiHistoryMaintainPromotionPanel
       v-model:include-resolved="promotionIncludeResolved"
-      :expanded="isMaintainPanelExpanded('promotion')"
+        :expanded="isMaintainPanelExpanded('promotion')"
       :summary="promotionPanelSummary"
       :err="promotionCandidatesErr"
-      :busy="promotionCandidatesBusy"
+                :busy="promotionCandidatesBusy"
       :feedback-group-id="feedbackGroupId"
       :candidates="promotionCandidates"
       :pending-count="pendingPromotionCandidates.length"
@@ -2094,7 +2094,7 @@ onMounted(() => {
       v-model:runs-scene="behaviorRunsScene"
       v-model:runs-outcome="behaviorRunsOutcome"
       v-model:include-disabled="behaviorRunsIncludeDisabled"
-      :expanded="isMaintainPanelExpanded('behavior')"
+        :expanded="isMaintainPanelExpanded('behavior')"
       :summary="behaviorPanelSummary"
       :err="behaviorRunsErr"
       :busy="behaviorRunsBusy"
@@ -2111,7 +2111,7 @@ onMounted(() => {
       :agent-trace="behaviorAgentTrace"
       :agent-trace-highlights="behaviorAgentTraceHighlights"
       :session-key-for-run="sessionKeyForBehaviorRun"
-      @toggle="toggleMaintainPanel('behavior')"
+        @toggle="toggleMaintainPanel('behavior')"
       @refresh="refreshBehaviorRuns"
       @group-touched="onBehaviorRunsGroupTouched"
       @apply-scene="applyObserveScene"
@@ -2128,7 +2128,7 @@ onMounted(() => {
       @open-session="openRunInSession"
     />
     <AiHistoryMaintainKernelPanel
-      :expanded="isMaintainPanelExpanded('kernel')"
+        :expanded="isMaintainPanelExpanded('kernel')"
       :status-err="kernelStatusErr"
       :traces-err="kernelTracesErr"
       :status-overview="kernelStatusOverview"
@@ -2142,7 +2142,7 @@ onMounted(() => {
       :trace-summary="kernelTraceSummary"
       :opportunity-class="kernelTraceOpportunityClass"
       :opportunity-label="kernelTraceOpportunityLabel"
-      @toggle="toggleMaintainPanel('kernel')"
+        @toggle="toggleMaintainPanel('kernel')"
       @toggle-trace="toggleKernelTraceExpanded"
     />
     </AiHistoryMaintainWorkspace>
