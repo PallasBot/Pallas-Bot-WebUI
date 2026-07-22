@@ -6,15 +6,20 @@ import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
   protocolFetchAccount,
+  protocolFetchAccountConfigs,
   protocolFetchAccountLogs,
   protocolFetchQrcodeImageBlob,
   protocolFetchQrcodeMeta,
   protocolRefreshAccountQrcode,
   protocolRestartAccount,
+  protocolListSnowlumaRuntimes,
   protocolSnowlumaInjectHook,
   protocolStartAccount,
   protocolStopAccount,
+  protocolSwitchAccountRuntime,
   protocolUpdateAccount,
+  protocolUpdateAccountConfigs,
+  type SnowlumaRuntimeRow,
 } from "@/api/protocolApi";
 import ConsoleNavIcon from "@/components/ConsoleNavIcon.vue";
 import StatCard from "@/components/StatCard.vue";
@@ -99,6 +104,15 @@ const webuiPort = ref("");
 const wsUrl = ref("");
 const wsName = ref("");
 const wsToken = ref("");
+const targetBackend = ref<"napcat" | "snowluma">("napcat");
+const napcatDockerImage = ref("");
+const bypassEnabled = ref(false);
+const runtimeMode = ref<"new" | "existing">("new");
+const runtimeId = ref("");
+const snowlumaRuntimes = ref<SnowlumaRuntimeRow[]>([]);
+const savedRuntimeSettings = ref("");
+const savedBypassEnabled = ref(false);
+const savedConnectionSettings = ref("");
 
 const qrHint = ref("");
 const qrExists = ref(false);
@@ -295,12 +309,57 @@ async function loadAccount(brief = false) {
       wsUrl.value = String(row.ws_url ?? "");
       wsName.value = String(row.ws_name ?? "");
       wsToken.value = String(row.ws_token ?? "");
+      savedConnectionSettings.value = connectionSettingsKey();
+      targetBackend.value =
+        String(row.protocol_backend ?? "").trim().toLowerCase() === "snowluma"
+          ? "snowluma"
+          : "napcat";
+      napcatDockerImage.value = String(row.docker_image ?? "");
+      runtimeId.value = String(row.snowluma_runtime_id ?? "");
+      runtimeMode.value = runtimeId.value ? "existing" : "new";
+      savedRuntimeSettings.value = runtimeSettingsKey();
+      const [configs, runtimes] = await Promise.all([
+        protocolFetchAccountConfigs(mount, id),
+        protocolListSnowlumaRuntimes(mount),
+      ]);
+      bypassEnabled.value = configs.napcat?.bypass_enabled === true;
+      savedBypassEnabled.value = bypassEnabled.value;
+      snowlumaRuntimes.value = runtimes;
     }
   } catch (e) {
     pushConsoleToast(protocolApiErrorMessage(e, "加载账号失败"), "err");
   } finally {
     if (!brief) loadBusy.value = false;
   }
+}
+
+function runtimeSettingsKey(): string {
+  return JSON.stringify({
+    protocol_backend: targetBackend.value,
+    docker_image: napcatDockerImage.value.trim(),
+    runtime_mode: runtimeMode.value,
+    runtime_id: runtimeId.value.trim(),
+  });
+}
+
+function connectionSettingsKey(): string {
+  return JSON.stringify({
+    display_name: displayName.value.trim(),
+    webui_port: webuiPort.value.trim(),
+    ws_url: wsUrl.value.trim(),
+    ws_name: wsName.value.trim(),
+    ws_token: wsToken.value,
+  });
+}
+
+function validateRuntimeSettings(): string | null {
+  if (targetBackend.value !== "snowluma" || runtimeMode.value !== "existing") return null;
+  const selectedRuntimeId = runtimeId.value.trim();
+  if (!selectedRuntimeId) return "请选择已有 SnowLuma Runtime";
+  if (!snowlumaRuntimes.value.some((runtime) => runtime.id === selectedRuntimeId)) {
+    return "所选 SnowLuma Runtime 不存在或已被删除";
+  }
+  return null;
 }
 
 async function loadLogs() {
@@ -377,17 +436,39 @@ async function saveSettings() {
   const mount = props.mountUrl;
   const id = props.accountId;
   if (!mount || !id || saveBusy.value) return;
+  const runtimeError = validateRuntimeSettings();
+  if (runtimeError) {
+    pushConsoleToast(runtimeError, "warn");
+    return;
+  }
+  const runtimeChanged = runtimeSettingsKey() !== savedRuntimeSettings.value;
+  const connectionChanged = connectionSettingsKey() !== savedConnectionSettings.value;
   saveBusy.value = true;
   try {
-    const body: Record<string, unknown> = {
-      display_name: displayName.value.trim(),
-      ws_url: wsUrl.value.trim(),
-      ws_name: wsName.value.trim(),
-      ws_token: wsToken.value,
-    };
-    const wp = parseInt(webuiPort.value.trim(), 10);
-    if (webuiPort.value.trim() && !Number.isNaN(wp)) body.webui_port = wp;
-    await protocolUpdateAccount(mount, id, body, true);
+    if (runtimeChanged) {
+      await protocolSwitchAccountRuntime(mount, id, {
+        protocol_backend: targetBackend.value,
+        docker_image: napcatDockerImage.value.trim() || undefined,
+        runtime_mode: runtimeMode.value,
+        runtime_id: runtimeId.value.trim() || undefined,
+      });
+    }
+    if (connectionChanged) {
+      const body: Record<string, unknown> = {
+        display_name: displayName.value.trim(),
+        ws_url: wsUrl.value.trim(),
+        ws_name: wsName.value.trim(),
+        ws_token: wsToken.value,
+      };
+      const wp = parseInt(webuiPort.value.trim(), 10);
+      if (webuiPort.value.trim() && !Number.isNaN(wp)) body.webui_port = wp;
+      await protocolUpdateAccount(mount, id, body, true);
+    }
+    if (bypassEnabled.value !== savedBypassEnabled.value) {
+      await protocolUpdateAccountConfigs(mount, id, {
+        napcat: { bypass_enabled: bypassEnabled.value },
+      });
+    }
     pushConsoleToast("已保存并重启协议进程", "ok");
     await loadAccount(false);
   } catch (e) {
@@ -846,6 +927,78 @@ defineExpose({
                 max="65535"
               />
             </label>
+            <div class="field field--full protocol-account-workspace__runtime-heading">
+              <span class="field__label">协议与运行时</span>
+              <span class="field__hint muted">切换到 SnowLuma 时保留原 NapCat 数据目录。</span>
+            </div>
+            <label class="field">
+              <span class="field__label">协议实现</span>
+              <span class="field__hint muted">保存后按所选实现重启协议进程。</span>
+              <select
+                v-model="targetBackend"
+                class="sel"
+              >
+                <option value="napcat">NapCat</option>
+                <option value="snowluma">SnowLuma</option>
+              </select>
+            </label>
+            <label
+              v-if="targetBackend === 'napcat'"
+              class="field"
+            >
+              <span class="field__label">NapCat Docker 镜像</span>
+              <span class="field__hint muted">留空时使用服务端默认镜像。</span>
+              <UiInput
+                v-model="napcatDockerImage"
+                type="text"
+                autocomplete="off"
+                placeholder="mlikiowa/napcat-docker:latest"
+              />
+            </label>
+            <label
+              v-if="targetBackend === 'napcat'"
+              class="field field--check"
+            >
+              <input
+                v-model="bypassEnabled"
+                type="checkbox"
+              >
+              启用 NapCat bypass 总开关
+              <span class="field__hint muted">关闭后不写入 NapCat bypass 配置。</span>
+            </label>
+            <template v-else>
+              <label class="field">
+                <span class="field__label">SnowLuma Runtime 模式</span>
+                <span class="field__hint muted">可新建独立 Runtime，或挂载到已有 Runtime。</span>
+                <select
+                  v-model="runtimeMode"
+                  class="sel"
+                >
+                  <option value="new">新建独立 Runtime</option>
+                  <option value="existing">挂载已有 Runtime</option>
+                </select>
+              </label>
+              <label
+                v-if="runtimeMode === 'existing'"
+                class="field"
+              >
+                <span class="field__label">已有 SnowLuma Runtime</span>
+                <span class="field__hint muted">选择要挂载的现有运行时。</span>
+                <select
+                  v-model="runtimeId"
+                  class="sel"
+                >
+                  <option value="">请选择已有 SnowLuma Runtime</option>
+                  <option
+                    v-for="runtime in snowlumaRuntimes"
+                    :key="runtime.id"
+                    :value="runtime.id"
+                  >
+                    {{ runtime.id }}
+                  </option>
+                </select>
+              </label>
+            </template>
             <label class="field field--full">
               <span class="field__label">WS 连接地址</span>
               <span class="field__hint muted">Bot 连接 OneBot WebSocket 的完整地址。</span>
@@ -1020,6 +1173,15 @@ defineExpose({
   margin: 0 0 6px;
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+.protocol-account-workspace__runtime-heading {
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.protocol-account-workspace__form-grid .sel {
+  width: 100%;
 }
 
 .protocol-account-workspace__panel-lead {

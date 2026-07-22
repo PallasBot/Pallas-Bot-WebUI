@@ -1,10 +1,15 @@
 import axios, { type AxiosInstance, isAxiosError } from "axios";
 import type { NapcatAccountRow } from "./pallasTypes";
 
-function protocolHttp(mountUrl: string): AxiosInstance {
+function protocolApiBase(mountUrl: string): string {
   const base = mountUrl.replace(/\/$/, "");
+  if (base === "/pallas/protocol") return "/protocol/console";
+  return base;
+}
+
+function protocolHttp(mountUrl: string): AxiosInstance {
   const client = axios.create({
-    baseURL: base,
+    baseURL: protocolApiBase(mountUrl),
     timeout: 120_000,
     withCredentials: true,
   });
@@ -110,7 +115,7 @@ export async function protocolFetchBatchJob(
 }
 
 export function protocolStreamBatchJob(mountUrl: string, jobId: string): EventSource {
-  const base = mountUrl.replace(/\/$/, "");
+  const base = protocolApiBase(mountUrl);
   return new EventSource(`${base}/api/accounts/batch/${encodeURIComponent(jobId)}/stream`, {
     withCredentials: true,
   });
@@ -254,6 +259,21 @@ export type SnowlumaRuntimeRow = {
   [key: string]: unknown;
 };
 
+export type ProtocolAccountConfigs = {
+  napcat?: {
+    bypass_enabled?: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+export type ProtocolAccountRuntimeSwitch = {
+  protocol_backend: "napcat" | "snowluma";
+  docker_image?: string;
+  runtime_mode: "new" | "existing";
+  runtime_id?: string;
+};
+
 export async function protocolListSnowlumaRuntimes(
   mountUrl: string,
 ): Promise<SnowlumaRuntimeRow[]> {
@@ -261,6 +281,40 @@ export async function protocolListSnowlumaRuntimes(
     "/api/snowluma/runtimes",
   );
   return Array.isArray(data?.runtimes) ? data.runtimes : [];
+}
+
+export async function protocolFetchAccountConfigs(
+  mountUrl: string,
+  accountId: string,
+): Promise<ProtocolAccountConfigs> {
+  const { data } = await protocolHttp(mountUrl).get<ProtocolAccountConfigs>(
+    `/api/accounts/${encodeURIComponent(accountId)}/configs`,
+  );
+  return data ?? {};
+}
+
+export async function protocolUpdateAccountConfigs(
+  mountUrl: string,
+  accountId: string,
+  configs: ProtocolAccountConfigs,
+): Promise<ProtocolAccountConfigs> {
+  const { data } = await protocolHttp(mountUrl).put<ProtocolAccountConfigs>(
+    `/api/accounts/${encodeURIComponent(accountId)}/configs`,
+    configs,
+  );
+  return data ?? {};
+}
+
+export async function protocolSwitchAccountRuntime(
+  mountUrl: string,
+  accountId: string,
+  payload: ProtocolAccountRuntimeSwitch,
+): Promise<NapcatAccountRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<AccountActionBody>(
+    `/api/accounts/${encodeURIComponent(accountId)}/runtime-switch`,
+    payload,
+  );
+  return data?.account ?? null;
 }
 
 export async function protocolCreateSnowlumaRuntime(
@@ -359,7 +413,7 @@ export function protocolQrcodeImageUrl(
   accountId: string,
   updatedAt?: number,
 ): string {
-  const base = mountUrl.replace(/\/$/, "");
+  const base = protocolApiBase(mountUrl);
   const q = updatedAt != null && updatedAt > 0 ? `?t=${updatedAt}` : "";
   return `${base}/api/accounts/${encodeURIComponent(accountId)}/qrcode${q}`;
 }
