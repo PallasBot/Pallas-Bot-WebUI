@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.6.49] - 2026-07-22
+
+### 🐛 错误修复
+
+* fix(webui): 优化 AI 配置窄屏布局 ([647161a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/647161ae689c92e3e3dc11adbd0ca73df6df8952))
+
+**完整变更**: [`v0.6.48...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.48...HEAD)
+
+
 ## [0.6.48] - 2026-07-22
 
 ### 🚀 新功能
