@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@pallas-vue/api/pallasTypes";
@@ -35,12 +35,15 @@ import ConsolePagerBar from "@/components/ConsolePagerBar";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
+import RefreshIconButton from "@/components/RefreshIconButton";
+import UiButton from "@/components/ui/UiButton";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import {
   coerceBoolean,
   protocolBackendDisplayName,
+  protocolDisp,
   protocolRuntimeModeLabel,
   protocolRuntimeVersionText,
 } from "@/utils/protocolUi";
@@ -122,11 +125,33 @@ function restartLabel(busy: boolean): string {
   return busy ? "重启中…" : "重启";
 }
 
+function boolPillClass(on: boolean): string {
+  return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
+}
+
+function pillLabel(d: ReturnType<typeof protocolDisp>): string {
+  return d.kind === "pill" ? (d.on ? d.onLabel : d.offLabel) : d.text;
+}
+
+function pillOn(d: ReturnType<typeof protocolDisp>): boolean {
+  return d.kind === "pill" && d.on;
+}
+
 export default function ProtocolAccountsTab() {
-  const { mountUrl, instances, system, protoActionsEnabled, reload } = useOutletContext<ProtocolOutletContext>();
+  const {
+    mountUrl,
+    snap,
+    instances,
+    system,
+    protocolExtensionInstalled,
+    protoActionsEnabled,
+    reload,
+  } = useOutletContext<ProtocolOutletContext>();
   const qc = useQueryClient();
   const prefs = useConsolePrefs();
   const { favorites, toggleFavorite } = useBotFavorites();
+  const webuiEnabledDisp = protocolDisp(snap?.webui_enabled, "已启用", "未启用");
+  const consoleAuthDisp = protocolDisp(snap?.console_auth_configured, "已配置", "未配置");
 
   const [expProtocolAccounts, setExpProtocolAccounts] = useState(true);
   const [protoSearchQ, setProtoSearchQ] = useState("");
@@ -961,8 +986,70 @@ export default function ProtocolAccountsTab() {
         ) : null}
       </section>
 
+      {protocolExtensionInstalled ? (
+        <section className="panel ui-card ui-card--glass protocol-page__panel mt-6">
+          <div className="panel__hd panel__hd--split inst-db-panel__hd">
+            <h2 className="panel__title">
+              协议端入口
+              <RefreshIconButton
+                embedded
+                showLabel={false}
+                busy={accountsQ.isFetching || runtimesQ.isFetching}
+                label="刷新协议端数据"
+                onClick={() => void refreshLists()}
+              />
+            </h2>
+            <div className="row-actions" />
+          </div>
+          <div className="panel__bd">
+            <div className="protocol-page__meta console-kv-block">
+              <div className="data-summary-card__row">
+                <span className="data-summary-card__label">内置 WebUI</span>
+                {webuiEnabledDisp.kind === "pill" ? (
+                  <span className={boolPillClass(pillOn(webuiEnabledDisp))}>{pillLabel(webuiEnabledDisp)}</span>
+                ) : (
+                  <span className="muted">{pillLabel(webuiEnabledDisp)}</span>
+                )}
+              </div>
+              {snap?.webui_path ? (
+                <p className="muted protocol-page__meta-path">
+                  路径 <code>{snap.webui_path}</code>
+                </p>
+              ) : null}
+              <div className="data-summary-card__row">
+                <span className="data-summary-card__label">控制台鉴权</span>
+                {consoleAuthDisp.kind === "pill" ? (
+                  <span className={boolPillClass(pillOn(consoleAuthDisp))}>{pillLabel(consoleAuthDisp)}</span>
+                ) : (
+                  <span className="muted">{pillLabel(consoleAuthDisp)}</span>
+                )}
+              </div>
+            </div>
+            <p className="muted protocol-page__entry-hint">
+              运行时下载、Docker 镜像与全局运行模式已迁入本控制台{" "}
+              <Link className="link-quiet" to="/protocol/assets">
+                协议资产
+              </Link>
+              ；下方按钮仍可打开协议插件内置页（创建 / 导入账号等）。
+            </p>
+            <div className="row-actions protocol-page__actions protocol-page__entry-actions">
+              <Link className="ui-btn ui-btn--outline" to="/protocol/create">
+                创建账号
+              </Link>
+              <Link className="ui-btn ui-btn--outline" to="/protocol/import">
+                导入账号
+              </Link>
+              <Link className="ui-btn ui-btn--outline" to="/protocol/assets">
+                协议资产
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Vue: only when snowlumaRuntimes.length；顺序在「协议端入口」之后 */}
       {snowlumaRuntimes.length ? (
-        <section className="panel protocol-page__panel mt-6">
+        <section className="panel ui-card ui-card--glass protocol-page__panel mt-6">
           <div className="panel__hd">
             <h2 className="panel__title">SnowLuma Runtime</h2>
           </div>
@@ -993,22 +1080,22 @@ export default function ProtocolAccountsTab() {
                     ) : null}
                   </div>
                   <div className="row-actions protocol-runtime-row__actions">
-                    <button
-                      type="button"
-                      className="btn btn--sm"
+                    <UiButton
+                      size="sm"
+                      variant="outline"
                       disabled={snowlumaRuntimeBusyId === rt.id}
                       onClick={() => void startSnowlumaRuntime(rt.id)}
                     >
                       {snowlumaRuntimeBusyId === rt.id ? "启动中…" : "启 Runtime"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--sm"
+                    </UiButton>
+                    <UiButton
+                      size="sm"
+                      variant="outline"
                       disabled={snowlumaRuntimeBusyId === rt.id}
                       onClick={() => void stopSnowlumaRuntime(rt.id)}
                     >
                       {snowlumaRuntimeBusyId === rt.id ? "停止中…" : "停 Runtime"}
-                    </button>
+                    </UiButton>
                   </div>
                 </div>
               ))}

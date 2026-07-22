@@ -1,0 +1,21 @@
+/* Align Vue ProtocolManagePage.vue scoped meta/entry density */
+.protocol-page__meta {
+  margin-bottom: 14px;
+}
+
+.protocol-page__meta.console-kv-block {
+  gap: 2px;
+}
+
+.protocol-page__meta.console-kv-block .data-summary-card__row > :not(.data-summary-card__label) {
+  justify-self: end;
+}
+
+.protocol-page__meta-path {
+  margin: 0;
+  font-size: 12px;
+}
+
+.protocol-page__actions {
+  margin-top: 4px;
+}
