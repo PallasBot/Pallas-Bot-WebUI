@@ -1025,7 +1025,42 @@ html[data-theme="light"] .shell__brand-badge {
   overflow-x: hidden;
   padding-right: 0;
   margin-right: 0;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.shell__sidebar:hover .shell__nav,
+.shell__nav:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--text-dim) 28%, transparent) transparent;
+}
+
+.shell__nav::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.shell__nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+  border: 0;
+  background-clip: border-box;
+  transition: background 0.15s ease;
+}
+
+.shell__sidebar:hover .shell__nav::-webkit-scrollbar-thumb,
+.shell__nav:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-dim) 28%, transparent);
+}
+
+.shell__sidebar:hover .shell__nav::-webkit-scrollbar-thumb:hover,
+.shell__nav:focus-within::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
+}
+
+.shell__nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 10px;
 }
 
 .shell__nav-item {

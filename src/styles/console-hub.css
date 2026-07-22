@@ -1866,7 +1866,7 @@ html[data-layout="hub"] .shell__nav {
   padding: 0;
   margin-right: 0;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 html[data-layout="hub"] .shell__nav-section,
