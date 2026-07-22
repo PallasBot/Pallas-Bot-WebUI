@@ -501,6 +501,10 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
+.provider-manager__card-main {
+  min-width: 0;
+}
+
 .provider-manager__card-id {
   font-size: 14px;
   font-weight: 700;
@@ -517,6 +521,8 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .provider-manager__card-actions {

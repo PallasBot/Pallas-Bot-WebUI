@@ -20,9 +20,9 @@ describe("aiConfigSections", () => {
     });
   });
 
-  it("surfaces AI service connection in extension group", () => {
+  it("surfaces media services in extension group", () => {
     expect(aiConfigSectionMeta("connection")).toMatchObject({
-      label: "AI 服务",
+      label: "媒体服务",
       groupId: "extension",
     });
   });

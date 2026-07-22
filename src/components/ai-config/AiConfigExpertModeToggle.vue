@@ -5,25 +5,27 @@ const { expertMode, setExpertMode } = useAiConfigExpertMode();
 </script>
 
 <template>
-  <div
-    class="ai-config-expert-toggle console-view-toggle"
-    role="group"
-    aria-label="配置模式"
-  >
-    <button
-      type="button"
-      :class="{ 'is-on': !expertMode }"
-      @click="setExpertMode(false)"
+  <div class="ai-config-expert-toggle">
+    <div
+      class="ai-config-expert-toggle__controls console-view-toggle"
+      role="group"
+      aria-label="配置模式"
     >
-      简单
-    </button>
-    <button
-      type="button"
-      :class="{ 'is-on': expertMode }"
-      @click="setExpertMode(true)"
-    >
-      专家
-    </button>
+      <button
+        type="button"
+        :class="{ 'is-on': !expertMode }"
+        @click="setExpertMode(false)"
+      >
+        简单
+      </button>
+      <button
+        type="button"
+        :class="{ 'is-on': expertMode }"
+        @click="setExpertMode(true)"
+      >
+        专家
+      </button>
+    </div>
     <span class="muted ai-config-expert-toggle__hint">
       {{
         expertMode
@@ -36,25 +38,21 @@ const { expertMode, setExpertMode } = useAiConfigExpertMode();
 
 <style scoped>
 .ai-config-expert-toggle {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  gap: 6px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
+.ai-config-expert-toggle__controls {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .ai-config-expert-toggle__hint {
-  flex: 1 1 12rem;
   min-width: 0;
   font-size: 0.76rem;
   line-height: 1.35;
-}
-
-@media (max-width: 560px) {
-  .ai-config-expert-toggle__hint {
-    flex-basis: 100%;
-  }
 }
 </style>
