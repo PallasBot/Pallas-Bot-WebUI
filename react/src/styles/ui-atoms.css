@@ -756,8 +756,238 @@ html[data-layout="hub"] .ui-btn--sm {
   }
 }
 
-/* ── Ui dialog shell（轻量，供后续 P1） ── */
+/* ── UiBadge（壳层 token，不对齐 Vue --primary HSL） ── */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.ui-badge--default {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+.ui-badge--secondary {
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  color: var(--text-muted);
+}
+
+.ui-badge--outline {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.ui-badge--ok {
+  color: color-mix(in srgb, var(--success, #34d399) 88%, #000);
+  background: color-mix(in srgb, var(--success, #34d399) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success, #34d399) 35%, transparent);
+}
+
+.ui-badge--warn {
+  color: color-mix(in srgb, var(--warn) 88%, #000);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+.ui-badge--muted {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  border-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.ui-badge--destructive {
+  color: var(--console-danger, #fecaca);
+  background: color-mix(in srgb, var(--console-danger, #f87171) 22%, transparent);
+  border-color: color-mix(in srgb, var(--console-danger, #f87171) 40%, transparent);
+}
+
+/* ── Ui dialog shell（对齐 Vue UiDialog / console-modal） ── */
+.ui-dialog.console-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.ui-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.52);
+  cursor: pointer;
+  animation: shell-mobile-backdrop-in 0.2s var(--ease, ease) both;
+}
+
+.ui-dialog__backdrop:disabled {
+  cursor: default;
+}
+
+.ui-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: min(90vh, 920px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  animation: ui-dialog-panel-in 0.22s var(--ease, ease) both;
+}
+
+@keyframes ui-dialog-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.ui-dialog__hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ui-dialog__bd {
+  padding: 16px 20px 22px;
+  overflow-y: auto;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(75vh, calc(100dvh - 140px));
+}
+
 .ui-dialog__ft {
   flex-shrink: 0;
   padding: 0 20px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .ui-dialog.console-modal {
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px
+      max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .ui-dialog .ui-dialog__panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .ui-dialog .ui-dialog__bd {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-dialog__panel,
+  .ui-dialog__backdrop {
+    animation: none;
+  }
+}
+
+/* ── Social config dialogs（非 AI 对话框密度） ── */
+.console-modal__dialog.social-config-dialog,
+.ui-dialog__panel.social-config-dialog {
+  width: min(560px, 100%);
+}
+
+.console-modal__dialog.social-config-dialog--sm,
+.ui-dialog__panel.social-config-dialog--sm {
+  width: min(420px, 100%);
+}
+
+.social-config-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.social-config-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.social-config-dialog__row .ui-select,
+.social-config-dialog__row .sel {
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.social-config-dialog__block-hd {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.social-config-dialog__checklist {
+  max-height: 10rem;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-control, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.social-config-dialog__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-config-dialog__add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.social-config-dialog__qq-inp {
+  width: 10rem;
+  max-width: 100%;
+}
+
+.social-config-dialog__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.social-config-dialog__chip {
+  padding: 2px 8px;
+  font-size: 12px;
+  min-height: 0;
 }

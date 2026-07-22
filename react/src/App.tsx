@@ -63,6 +63,8 @@ export default function App() {
         <Route path="database" element={<DatabasePage />} />
         <Route path="database/backups" element={<DatabaseBackupsPage />} />
         <Route path="community" element={<CommunityPage />} />
+        <Route path="corpus-config" element={<Navigate to="/plugins/pb_core" replace />} />
+        <Route path="community-stats-config" element={<Navigate to="/plugins/pb_stats" replace />} />
         <Route path="common-config" element={<CommonConfigLegacyRedirect />} />
         <Route path="common-config/:sectionId" element={<CommonConfigLegacyRedirect fromPathParam />} />
         <Route path="preferences" element={<PreferencesPage />} />

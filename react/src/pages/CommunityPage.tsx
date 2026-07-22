@@ -13,9 +13,13 @@ import type {
   CorpusSourceStatusData,
 } from "@pallas-vue/api/pallasTypes";
 import { PALLAS_COMMUNITY_HUB } from "@pallas-vue/utils/pallasExternalLinks";
+import { copyTextToClipboard } from "@pallas-vue/utils/clipboard";
 import CorpusWordCloud from "@/components/CorpusWordCloud";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import UiBadge from "@/components/ui/UiBadge";
+import UiButton from "@/components/ui/UiButton";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
@@ -104,6 +108,13 @@ function matrixCellText(state: "on" | "off" | "na"): string {
   return "—";
 }
 
+function ingressEnabledLabel(raw: string | undefined): string {
+  const s = (raw || "auto").trim() || "auto";
+  if (s === "true") return "开启";
+  if (s === "false") return "关闭";
+  return "自动";
+}
+
 export default function CommunityPage() {
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [hotReloadToken, setHotReloadToken] = useState(0);
@@ -113,11 +124,16 @@ export default function CommunityPage() {
 
   const statsQ = useQuery({ queryKey: ["community-stats"], queryFn: () => fetchCommunityStats({}) });
   const corpusStatusQ = useQuery({ queryKey: ["corpus-status"], queryFn: fetchCorpusStatus });
-  const federationQ = useQuery({ queryKey: ["federation-onboarding"], queryFn: fetchFederationOnboarding });
+  const federationQ = useQuery({
+    queryKey: ["federation-onboarding"],
+    queryFn: fetchFederationOnboarding,
+    retry: false,
+  });
 
   const communityStats = statsQ.data ?? null;
   const corpusStatus = corpusStatusQ.data ?? null;
   const federationOnboarding = federationQ.data ?? null;
+  const federationOnboardingUnavailable = federationQ.isFetched && federationOnboarding == null;
   const pageReady = statsQ.isFetched || corpusStatusQ.isFetched;
 
   const onlineHint = useMemo(() => {
@@ -157,6 +173,22 @@ export default function CommunityPage() {
     return "共享池中的触发词与回复条目";
   }, [communityStats]);
 
+  const corpusOnlineEnrollHint = useMemo(() => {
+    const total = communityStats?.corpus?.enrollments_total;
+    const parts: string[] = [`${onlineHint}且已接入共享语料`];
+    if (total != null) parts.push(`历史累计 ${formatCommunityStatNum(total)} 套`);
+    return parts.join(" · ");
+  }, [communityStats, onlineHint]);
+
+  const corpusTotalEnrollHint = useMemo(() => {
+    const recent = communityStats?.corpus?.enrollments_recent_24h;
+    const contrib = communityStats?.corpus?.contribute_enabled_total;
+    const parts: string[] = ["曾经接入过社区共享语料的安装总数"];
+    if (recent != null && recent > 0) parts.push(`近 24 小时新增 ${formatCommunityStatNum(recent)} 套`);
+    if (contrib != null) parts.push(`其中 ${formatCommunityStatNum(contrib)} 套允许上传新回复`);
+    return parts.join(" · ");
+  }, [communityStats]);
+
   const onlineVersions = useMemo((): CommunityVersionCountData[] => {
     const rows = communityStats?.online_versions;
     if (!Array.isArray(rows)) return [];
@@ -167,6 +199,59 @@ export default function CommunityPage() {
   const statsUrl = (communityStats?.stats_url || "").trim();
   const communityHubUrl = (federationOnboarding?.stats_primary_url || PALLAS_COMMUNITY_HUB).trim() || PALLAS_COMMUNITY_HUB;
 
+  const federationSecret = (federationOnboarding?.instance_secret || "").trim();
+  const federationCoordDisplay = useMemo(() => {
+    const c = federationOnboarding?.coord;
+    if (!c) return "";
+    const display = (c.redis_url_display || "").trim();
+    if (display) return display;
+    const host = (c.host || "").trim();
+    if (!host) return "";
+    const port = c.port != null ? `:${c.port}` : "";
+    const db = c.db != null ? `/${c.db}` : "";
+    return `redis://${host}${port}${db}`;
+  }, [federationOnboarding]);
+  const federationCoordEndpoint = useMemo(() => {
+    const c = federationOnboarding?.coord;
+    if (!c) return "";
+    const host = (c.host || "").trim();
+    if (!host) return "";
+    const port = c.port != null ? String(c.port) : "";
+    const db = c.db != null ? `/${c.db}` : "";
+    return port ? `${host}:${port}${db}` : `${host}${db}`;
+  }, [federationOnboarding]);
+  const federationCoordActiveLabel = useMemo(() => {
+    const n = federationOnboarding?.pool_stats?.coord_active_deployments
+      ?? communityStats?.federation?.coord_active_deployments;
+    if (n == null) return "—";
+    return formatCommunityStatNum(n);
+  }, [communityStats, federationOnboarding]);
+
+  async function copyFederationSecret() {
+    if (!federationSecret) {
+      pushConsoleToast("中心未提供入池密钥", "err");
+      return;
+    }
+    if (!(await copyTextToClipboard(federationSecret))) {
+      pushConsoleToast("复制失败", "err");
+      return;
+    }
+    pushConsoleToast("已复制入池密钥", "ok");
+  }
+
+  async function copyCoordAddress() {
+    const text = federationCoordDisplay || federationCoordEndpoint;
+    if (!text) {
+      pushConsoleToast("暂无去重服务器地址", "err");
+      return;
+    }
+    if (!(await copyTextToClipboard(text))) {
+      pushConsoleToast("复制失败", "err");
+      return;
+    }
+    pushConsoleToast("已复制去重服务器地址（不含密码）", "ok");
+  }
+
   const fedSourceVisible = (fed: CorpusSourceStatusData | undefined) => !!(fed?.configured || fed?.enabled);
   const visibleSourceKeys = useMemo((): SourceKey[] => {
     const keys: SourceKey[] = ["local"];
@@ -174,6 +259,12 @@ export default function CommunityPage() {
     keys.push("community");
     return keys;
   }, [corpusStatus]);
+
+  const sourceApiEntries = useMemo(() => {
+    return visibleSourceKeys
+      .map((key) => ({ key, url: (corpusStatus?.sources?.[key]?.api_base || "").trim() }))
+      .filter((row) => row.url);
+  }, [corpusStatus, visibleSourceKeys]);
 
   const mergeOrderSteps = useMemo(() => {
     const order = corpusStatus?.merge_order;
@@ -236,27 +327,42 @@ export default function CommunityPage() {
     <div className="community-page console-hub-page">
       <PageHeader
         title="统计与语料"
-        description="社区中心公开统计与本部署语料、多机协同状态；数据只读。"
+        description={
+          <>
+            <span>社区中心公开统计与本部署语料、多机协同状态；数据只读。</span>
+            <p className="community-page__masthead-links muted">
+              <a className="community-page__inline-link" href={communityHubUrl} target="_blank" rel="noopener noreferrer">
+                社区主站
+              </a>
+              {" · "}
+              <Link to="/plugins/pb_stats">在线统计</Link>
+              {" · "}
+              <Link to="/plugins/pb_core">共享接话库</Link>
+              {" · "}
+              <Link to="/corpus-config">语料设置</Link>
+            </p>
+          </>
+        }
         actions={<RefreshIconButton embedded className="hub-refresh-wide-only" busy={refreshBusy} label="刷新" onClick={() => void refresh()} />}
       />
-      <p className="community-page__masthead-links muted">
-        <a className="community-page__inline-link" href={communityHubUrl} target="_blank" rel="noopener noreferrer">
-          社区主站
-        </a>
-        {" · "}
-        <Link to="/plugins/pb_stats">在线统计</Link>
-        {" · "}
-        <Link to="/plugins/pb_core">共享接话库</Link>
-      </p>
 
       {err ? <p className="alert alert--err community-page__alert">{err}</p> : null}
 
       {!communityStats ? (
         <p className="alert alert--warn community-page__alert">
           暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
-          <button type="button" className="btn community-page__alert-probe-btn" disabled={connectivityBusy} onClick={() => void runConnectivityCheck()}>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            className="community-page__alert-probe-btn"
+            disabled={connectivityBusy}
+            onClick={() => void runConnectivityCheck()}
+          >
             {connectivityBusy ? "检测中…" : "检测连通"}
-          </button>
+          </UiButton>
+          <Link className="community-page__inline-link" to="/community-stats-config">
+            前往在线统计设置
+          </Link>
         </p>
       ) : null}
 
@@ -268,10 +374,16 @@ export default function CommunityPage() {
               <RefreshIconButton embedded className="hub-refresh-narrow-only" showLabel={false} busy={refreshBusy} label="刷新" onClick={() => void refresh()} />
             </h2>
             <div className="row-actions community-page__hd-actions community-page__deploy-hd-actions">
-              <button type="button" className="btn community-page__deploy-probe-btn" disabled={connectivityBusy} onClick={() => void runConnectivityCheck()}>
+              <UiButton
+                variant="ghost"
+                size="sm"
+                className="community-page__deploy-probe-btn"
+                disabled={connectivityBusy}
+                onClick={() => void runConnectivityCheck()}
+              >
                 {connectivityBusy ? "检测中…" : "检测连通"}
-              </button>
-              <Link to="/plugins/pb_stats" className="btn community-page__deploy-settings-btn">
+              </UiButton>
+              <Link to="/community-stats-config" className="btn community-page__deploy-settings-btn">
                 在线统计设置
               </Link>
             </div>
@@ -305,14 +417,15 @@ export default function CommunityPage() {
             ) : null}
 
             <div className="community-page__kpi-bar home-kpi-bar community-page__deploy-grid">
-              <MetricTile label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
-              <MetricTile label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
+              <MetricTile icon="globe" label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
+              <MetricTile icon="account" label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
               <MetricTile
+                icon="layers"
                 label="分片安装"
                 value={`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`}
                 hint="采用分片架构的安装数 / 在线工作进程数"
               />
-              <MetricTile label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
+              <MetricTile icon="activity" label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
             </div>
 
             <dl className="home-dl community-page__detail-dl community-page__meta-dl">
@@ -373,12 +486,119 @@ export default function CommunityPage() {
             </div>
           </div>
           <div className="panel__bd community-page__federation-bd">
-            {federationOnboarding?.summary ? <p className="community-page__federation-summary">{federationOnboarding.summary}</p> : null}
+            {federationOnboarding?.summary ? (
+              <p className="community-page__federation-summary">{federationOnboarding.summary}</p>
+            ) : federationOnboardingUnavailable ? (
+              <p className="muted community-page__federation-summary">
+                社区中心暂未提供入池说明；你仍可在「多机协同」配置中手动填写密钥与相关项。
+              </p>
+            ) : null}
+            {federationOnboarding?.ingress_note ? (
+              <p className="community-page__federation-ingress-note muted">{federationOnboarding.ingress_note}</p>
+            ) : null}
+            <p className="muted community-page__federation-pool-note">
+              左两列为已登记协同配置且近期上报在线统计的安装；右列为去重服务上仍有活跃标记的安装。
+            </p>
             <div className="community-page__kpi-bar home-kpi-bar community-page__federation-pool-grid">
-              <MetricTile label="累计入池" value={formatCommunityStatNum(federationPoolStats?.members_total)} hint="曾成功从社区中心领取协同配置的安装套数" />
-              <MetricTile label="在线入池" value={formatCommunityStatNum(federationPoolStats?.members_online)} hint="已入池且近期有在线统计上报的安装套数" />
-              <MetricTile label="去重活跃" value={formatCommunityStatNum(federationPoolStats?.coord_active_deployments)} hint="去重服务上仍有活跃标记的安装数" />
+              <MetricTile icon="users" label="累计入池" value={formatCommunityStatNum(federationPoolStats?.members_total)} hint="曾成功从社区中心领取协同配置的安装套数" />
+              <MetricTile icon="network" label="在线入池" value={formatCommunityStatNum(federationPoolStats?.members_online)} hint="已入池且近期有在线统计上报的安装套数" />
+              <MetricTile icon="activity" label="去重活跃" value={federationCoordActiveLabel} hint="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息" />
             </div>
+
+            {federationSecret ? (
+              <div className="community-page__federation-secret">
+                <div className="community-page__federation-secret-hd">
+                  <span className="community-page__federation-secret-label">
+                    {federationOnboarding?.instance_secret_label || "入池密钥"}
+                  </span>
+                  <UiButton variant="ghost" size="sm" onClick={() => void copyFederationSecret()}>
+                    复制密钥
+                  </UiButton>
+                </div>
+                <code className="community-page__federation-secret-value community-page__mono">{federationSecret}</code>
+                {federationOnboarding?.instance_secret_hint ? (
+                  <p className="community-page__federation-secret-hint muted">{federationOnboarding.instance_secret_hint}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {federationOnboarding ? (
+              <dl className="home-dl community-page__detail-dl community-page__federation-meta">
+                <dt>协同池</dt>
+                <dd className="community-page__mono">{federationOnboarding.federate_id || "—"}</dd>
+                <dt>自动拉取配置</dt>
+                <dd>
+                  <UiBadge variant={federationOnboarding.bootstrap_enabled ? "ok" : "secondary"}>
+                    {federationOnboarding.bootstrap_enabled ? "已开启" : "已关闭"}
+                  </UiBadge>
+                </dd>
+                <dt>去重服务器</dt>
+                <dd className="community-page__federation-coord-dd">
+                  {federationCoordDisplay || federationCoordEndpoint ? (
+                    <div className="community-page__federation-coord-row">
+                      <code className="community-page__federation-coord-value community-page__mono">
+                        {federationCoordDisplay || federationCoordEndpoint}
+                      </code>
+                      <UiButton variant="ghost" size="sm" onClick={() => void copyCoordAddress()}>
+                        复制地址
+                      </UiButton>
+                    </div>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                  {federationOnboarding.coord_redis_hint ? (
+                    <p className="community-page__federation-coord-hint muted">{federationOnboarding.coord_redis_hint}</p>
+                  ) : null}
+                </dd>
+              </dl>
+            ) : null}
+
+            {controlPlane ? (
+              <div className="community-page__federation-local">
+                <h3 className="community-page__subhd">本部署状态</h3>
+                <div className="community-page__corpus-meta-bar">
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">多机协同</span>
+                    <span className={`community-page__corpus-meta-v ${controlPlane.enabled ? "is-ok" : "is-off"}`}>
+                      {controlPlane.enabled ? "已开启" : "已关闭"}
+                    </span>
+                  </span>
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">入池密钥</span>
+                    <span className={`community-page__corpus-meta-v ${controlPlane.instance_secret_configured ? "is-ok" : "is-off"}`}>
+                      {controlPlane.instance_secret_configured ? "已填写" : "未填写"}
+                    </span>
+                  </span>
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">中心配置</span>
+                    <span className={`community-page__corpus-meta-v ${controlPlane.bootstrap_valid ? "is-ok" : "is-off"}`}>
+                      {controlPlane.bootstrap_valid ? "已获取" : "待拉取或过期"}
+                    </span>
+                  </span>
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">消息去重</span>
+                    <span className="community-page__corpus-meta-v">{ingressEnabledLabel(controlPlane.federate_ingress_enabled)}</span>
+                  </span>
+                  {controlPlane.federate_id ? (
+                    <span className="community-page__corpus-meta-item community-page__corpus-meta-item--grow">
+                      <span className="community-page__corpus-meta-k">池编号</span>
+                      <span className="community-page__corpus-meta-v community-page__mono">{controlPlane.federate_id}</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {federationOnboarding?.steps?.length ? (
+              <ol className="community-page__federation-steps">
+                {federationOnboarding.steps.map((step) => (
+                  <li key={step.order} className="community-page__federation-step">
+                    <span className="community-page__federation-step-title">{step.title}</span>
+                    <span className="community-page__federation-step-detail">{step.detail}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </div>
         </div>
       </section>
@@ -387,13 +607,20 @@ export default function CommunityPage() {
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
             <h2 className="panel__title community-page__section-title">共享语料</h2>
+            <div className="row-actions community-page__hd-actions">
+              <Link to="/corpus-config" className="btn">
+                语料设置
+              </Link>
+            </div>
           </div>
           <div className="panel__bd">
             <div className="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
-              <MetricTile label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
-              <MetricTile label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={`${onlineHint}且已接入共享语料`} />
-              <MetricTile label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint="曾经接入过社区共享语料的安装总数" />
-              <MetricTile label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
+              <MetricTile icon="list" label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
+              <MetricTile icon="globe" label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
+              <MetricTile icon="users" label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
+              <MetricTile icon="activity" label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
+              <MetricTile icon="sparkles" label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
+              <MetricTile icon="database" label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
             </div>
           </div>
         </div>
@@ -486,22 +713,31 @@ export default function CommunityPage() {
                   </table>
                 </div>
 
-                {controlPlane ? (
-                  <div className="community-page__corpus-meta-bar">
-                    <span className="community-page__corpus-meta-item">
-                      <span className="community-page__corpus-meta-k">多机协同</span>
-                      <span className={`community-page__corpus-meta-v ${controlPlane.enabled ? "is-ok" : "is-off"}`}>
-                        {controlPlane.enabled ? "已开启" : "已关闭"}
-                      </span>
-                    </span>
-                    <span className="community-page__corpus-meta-item">
-                      <span className="community-page__corpus-meta-k">在线统计</span>
-                      <span className={`community-page__corpus-meta-v ${corpusStatus.deployment?.community_stats_enabled ? "is-ok" : "is-off"}`}>
-                        {corpusStatus.deployment?.community_stats_enabled ? "已开启" : "已关闭"}
-                      </span>
-                    </span>
-                  </div>
+                {sourceApiEntries.length ? (
+                  <ul className="community-page__api-list">
+                    {sourceApiEntries.map((entry) => (
+                      <li key={entry.key} className="community-page__api-list-item">
+                        <span className="community-page__api-list-k">{sourceLabel(entry.key)}</span>
+                        <code className="community-page__api-list-v">{entry.url}</code>
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
+
+                <div className="community-page__corpus-meta-bar">
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">多机协同</span>
+                    <span className={`community-page__corpus-meta-v ${controlPlane?.enabled ? "is-ok" : "is-off"}`}>
+                      {controlPlane?.enabled ? "已开启" : "已关闭"}
+                    </span>
+                  </span>
+                  <span className="community-page__corpus-meta-item">
+                    <span className="community-page__corpus-meta-k">在线统计</span>
+                    <span className={`community-page__corpus-meta-v ${corpusStatus.deployment?.community_stats_enabled ? "is-ok" : "is-off"}`}>
+                      {corpusStatus.deployment?.community_stats_enabled ? "已开启" : "已关闭"}
+                    </span>
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
@@ -513,10 +749,21 @@ export default function CommunityPage() {
   );
 }
 
-function MetricTile({ label, value, hint }: { label: string; value: string; hint: string }) {
+function MetricTile({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon?: string;
+  label: string;
+  value: string;
+  hint: string;
+}) {
   return (
     <div className="metric-tile">
       <div className="metric-tile__head">
+        {icon ? <span className={`metric-tile__ico metric-tile__ico--${icon}`} aria-hidden="true" /> : null}
         <span className="metric-tile__label">{label}</span>
       </div>
       <div className="metric-tile__value-slot">

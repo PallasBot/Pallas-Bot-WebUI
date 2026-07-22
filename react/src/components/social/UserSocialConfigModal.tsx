@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchUserConfigById, putUserConfig } from "@/api/fullConsole";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import ConsoleModal from "@/components/ConsoleModal";
+import UiButton from "@/components/ui/UiButton";
+import UiSelect from "@/components/ui/UiSelect";
 
 type Props = {
   open: boolean;
@@ -82,43 +77,66 @@ export default function UserSocialConfigModal({
     }
   }
 
+  const busy = loadBusy || saveBusy;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置"}</DialogTitle>
-          <DialogDescription>
-            QQ {loadedId ?? userId ?? "—"}
-            {userNickname?.trim() ? ` · ${userNickname.trim()}` : ""}
-          </DialogDescription>
-        </DialogHeader>
-        {loadBusy ? <p className="text-sm text-muted-foreground">加载中…</p> : null}
-        {loadErr ? <p className="text-sm text-destructive">{loadErr}</p> : null}
-        {!loadBusy && !loadErr && loadedId != null ? (
-          <div className="space-y-4">
-            {saveErr ? <p className="text-sm text-destructive">{saveErr}</p> : null}
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span>封禁</span>
-              <select
-                className="h-9 rounded-md border bg-background px-3"
-                value={banned ? "1" : "0"}
-                onChange={(e) => setBanned(e.target.value === "1")}
-              >
-                <option value="1">是</option>
-                <option value="0">否</option>
-              </select>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={saveBusy} onClick={() => void save()}>
-                保存
-              </Button>
-              <Button size="sm" variant="outline" disabled={saveBusy} onClick={() => onOpenChange(false)}>
-                取消
-              </Button>
-            </div>
+    <ConsoleModal
+      open={open}
+      titleId="user-social-config-title"
+      panelClass="social-config-dialog social-config-dialog--sm"
+      busy={busy}
+      onClose={() => {
+        if (!busy) onOpenChange(false);
+      }}
+      header={
+        <>
+          <div className="console-modal__head-text">
+            <h2 id="user-social-config-title" className="console-modal__title">
+              {defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置"}
+            </h2>
+            <p className="console-modal__subtitle muted">
+              QQ {loadedId ?? userId ?? "—"}
+              {userNickname?.trim() ? ` · ${userNickname.trim()}` : ""}
+            </p>
           </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+          <button
+            type="button"
+            className="console-modal__close"
+            aria-label="关闭"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+          >
+            ×
+          </button>
+        </>
+      }
+      footer={
+        !loadBusy && !loadErr && loadedId != null ? (
+          <>
+            <UiButton variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
+              取消
+            </UiButton>
+            <UiButton variant="primary" size="sm" disabled={saveBusy} onClick={() => void save()}>
+              {saveBusy ? "保存中…" : "保存"}
+            </UiButton>
+          </>
+        ) : null
+      }
+    >
+      {loadBusy ? <p className="muted">加载中…</p> : null}
+      {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
+      {!loadBusy && !loadErr && loadedId != null ? (
+        <div className="social-config-dialog__body">
+          {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
+          <label className="social-config-dialog__row">
+            <span>封禁</span>
+            <UiSelect value={banned ? "1" : "0"} onValueChange={(v) => setBanned(v === "1")}>
+              <option value="1">是</option>
+              <option value="0">否</option>
+            </UiSelect>
+          </label>
+        </div>
+      ) : null}
+    </ConsoleModal>
   );
 }
