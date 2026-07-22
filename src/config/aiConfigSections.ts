@@ -147,7 +147,7 @@ export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/provider";
 
 export const AI_CONFIG_HUB_LEAD =
-  "用上方分区切换链路；不确定可从「诊断」或体检向导开始，高级项可稍后再动。";
+  "左侧切换配置分区；不确定可从「诊断」或体检向导开始，高级项可稍后再动。";
 
 export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;

@@ -191,6 +191,7 @@ onMounted(() => {
     v-bind="embedded ? { 'aria-label': 'Ollama 与推理' } : { tag: 'section', glass: true }"
     class="model-admin"
     :class="{ 'model-admin--embedded': embedded }"
+    id="model-admin"
   >
     <div class="panel__hd panel__hd--split home-page__panel-hd-nowrap model-admin__hd">
       <h2 class="panel__title">
@@ -355,6 +356,7 @@ onMounted(() => {
 
       <div class="row-actions model-admin__actions">
         <UiButton
+          size="sm"
           variant="primary"
           :busy="busy"
           :disabled="busy || loading"
@@ -363,6 +365,7 @@ onMounted(() => {
           切换模型
         </UiButton>
         <UiButton
+          size="sm"
           variant="outline"
           :disabled="busy || loading"
           @click="askNumGpu"
@@ -371,6 +374,7 @@ onMounted(() => {
         </UiButton>
         <UiButton
           v-if="!props.simpleMode"
+          size="sm"
           variant="outline"
           :disabled="busy || loading"
           @click="askReload"
@@ -379,6 +383,7 @@ onMounted(() => {
         </UiButton>
         <UiButton
           v-if="!props.simpleMode"
+          size="sm"
           variant="destructive"
           :disabled="busy || loading"
           @click="askUnload"
@@ -568,19 +573,19 @@ onMounted(() => {
   font-size: 13px;
 }
 
-/* 两列均分；压过窄屏 .panel__bd .row-actions 竖排全宽 */
+/* 紧凑横排；压过窄屏 .panel__bd .row-actions 竖排全宽 */
 .model-admin__actions.row-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
 }
 
 .model-admin__actions.row-actions > :deep(.ui-btn),
 .model-admin__actions.row-actions > :deep(.btn) {
   width: auto;
+  flex: 0 0 auto;
   min-width: 0;
-  justify-content: center;
 }
 
 .model-admin__hint {
