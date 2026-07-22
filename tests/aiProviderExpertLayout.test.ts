@@ -23,6 +23,7 @@ describe("AI provider expert layout", () => {
     const toggle = readSource("src/components/ai-config/AiConfigExpertModeToggle.vue");
     const page = readSource("src/pages/AiExtensionPage.vue");
     const manager = readSource("src/components/ai-config/providers/ProviderManager.vue");
+    const appStyles = readSource("src/styles/app.css");
 
     expect(toggle).toContain("ai-config-expert-toggle__controls console-view-toggle");
     expect(toggle).toContain("ai-config-expert-toggle__hint");
@@ -31,6 +32,8 @@ describe("AI provider expert layout", () => {
     expect(page).toContain("overflow-x: auto");
     expect(manager).toContain(".provider-manager__card-main");
     expect(manager).toContain("overflow-wrap: anywhere");
+    expect(appStyles).toContain(".plugin-config-page {\n  container-type: inline-size;");
+    expect(appStyles).toContain("@container (min-width: 1100px)");
   });
 
   it("wires provider presets into add/edit and provider cards", () => {
