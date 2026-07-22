@@ -160,10 +160,10 @@ export function buildBucketBarPack(
 
   const W = 440;
   const H = 212;
-  const padL = 42;
-  const padR = 10;
+  const padL = 48;
+  const padR = 12;
   const padT = 10;
-  const padB = 34;
+  const padB = 36;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const left = padL;
@@ -206,7 +206,8 @@ export function buildBucketBarPack(
     { y: bottom - innerH * 0.75, t: fmtTick(axisMax * 0.75) },
     { y: top, t: axisTopPlus ? `${fmtTick(axisMax)}+` : fmtTick(axisMax) },
   ];
-  const xi = pickTickIndices(nT, 9);
+  const maxXTicks = narrowViewport ? 5 : nT > 36 ? 6 : nT > 24 ? 7 : 8;
+  const xi = pickTickIndices(nT, maxXTicks);
   const xTicks = xi.map((idx) => ({
     x: left + (idx + 0.5) * slotW,
     t: fmtBucketAxisTime(plotTimes[idx]!),

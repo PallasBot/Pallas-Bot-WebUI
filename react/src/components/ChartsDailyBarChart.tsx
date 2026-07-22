@@ -48,7 +48,7 @@ export default function ChartsDailyBarChart({
     const maxV = Math.max(...values, 1);
     const W = 640;
     const H = 220;
-    const padL = 40;
+    const padL = 46;
     const padR = 12;
     const padT = 16;
     const padB = 36;
@@ -73,7 +73,8 @@ export default function ChartsDailyBarChart({
       { y: bottom - innerH * 0.75, t: fmtTick(maxV * 0.75) },
       { y: padT, t: fmtTick(maxV) },
     ];
-    const xTicks = pickTickIndices(n, 12).map((i) => ({ x: bars[i]!.cx, t: bars[i]!.dayLabel }));
+    const maxXTicks = n > 28 ? 7 : n > 18 ? 9 : 11;
+    const xTicks = pickTickIndices(n, maxXTicks).map((i) => ({ x: bars[i]!.cx, t: bars[i]!.dayLabel }));
     return { W, H, left, bottom, bars, yTicks, xTicks, gap, barW };
   }, [points]);
 
@@ -102,18 +103,28 @@ export default function ChartsDailyBarChart({
 
   return (
     <div className="charts-daily-bar">
-      {title ? <div className="charts-daily-bar__title">{title}</div> : null}
+      {title ? (
+        <div className="charts-daily-bar__hd">
+          <h3 className="charts-daily-bar__title">{title}</h3>
+        </div>
+      ) : null}
       <div
         ref={plotRef}
-        className="charts-daily-bar__plot"
+        className="charts-daily-bar__viz charts-daily-bar__viz--interactive"
         onPointerMove={onPlotMove}
         onPointerLeave={() => setHoverIndex(null)}
       >
         <svg ref={svgRef} viewBox={`0 0 ${chart.W} ${chart.H}`} className="charts-daily-bar__svg" role="img">
           {chart.yTicks.map((t) => (
             <g key={`y-${t.y}`}>
-              <line x1={chart.left} x2={chart.W - 12} y1={t.y} y2={t.y} stroke="var(--border)" strokeWidth={1} />
-              <text x={chart.left - 6} y={t.y + 3} textAnchor="end" fontSize={10} fill="var(--text-muted)">
+              <line
+                className="charts-daily-bar__grid"
+                x1={chart.left}
+                x2={chart.W - 12}
+                y1={t.y}
+                y2={t.y}
+              />
+              <text className="charts-daily-bar__ytick" x={chart.left - 6} y={t.y + 3} textAnchor="end">
                 {t.t}
               </text>
             </g>
@@ -121,6 +132,7 @@ export default function ChartsDailyBarChart({
           {chart.bars.map((b, i) => (
             <rect
               key={b.date}
+              className={hoverIndex === i ? "charts-daily-bar__bar charts-daily-bar__bar--active" : "charts-daily-bar__bar"}
               x={b.x}
               y={b.y}
               width={b.w}
@@ -131,15 +143,15 @@ export default function ChartsDailyBarChart({
             />
           ))}
           {chart.xTicks.map((t) => (
-            <text key={`x-${t.x}`} x={t.x} y={chart.H - 10} textAnchor="middle" fontSize={10} fill="var(--text-muted)">
+            <text key={`x-${t.x}`} className="charts-daily-bar__xtick" x={t.x} y={chart.H - 10} textAnchor="middle">
               {t.t}
             </text>
           ))}
         </svg>
         {hoverBar ? (
-          <div className="charts-daily-bar__tip" style={{ left: tooltipX }}>
-            <div>{hoverBar.date}</div>
-            <div>
+          <div className="charts-daily-bar__tooltip" style={{ left: tooltipX }}>
+            <div className="charts-daily-bar__tooltip-date">{hoverBar.date}</div>
+            <div className="charts-daily-bar__tooltip-val">
               {hoverBar.v.toLocaleString()}
               {unit ? ` ${unit}` : ""}
             </div>
