@@ -513,18 +513,17 @@ onMounted(() => {
     margin-bottom: 0;
   }
 
-  .ai-config-page__rail-scroll {
-    flex-direction: row;
-    flex-wrap: nowrap;
+  .ai-config-page__rail-scroll,
+  .ai-config-page__rail-hits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.75rem, 1fr));
     gap: 6px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
+    overflow: visible;
+    padding-bottom: 0;
   }
 
   .ai-config-page__rail-hits {
-    flex-direction: row;
-    flex-wrap: nowrap;
+    grid-column: 1 / -1;
     margin-bottom: 0;
   }
 
@@ -533,13 +532,14 @@ onMounted(() => {
   }
 
   .ai-config-page__rail-item {
-    flex: 0 0 auto;
-    width: auto;
-    white-space: nowrap;
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
   }
 
   .ai-config-page__rail-gate {
     margin: 0 2px;
   }
 }
+
 </style>

@@ -389,6 +389,11 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.provider-manager {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .provider-manager--embedded > .panel__hd {
   padding-left: 0;
   padding-right: 0;
@@ -543,7 +548,12 @@ onMounted(async () => {
   word-break: break-all;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
+  .provider-manager__list-head {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
   .provider-manager__card {
     flex-direction: column;
     align-items: flex-start;
@@ -551,6 +561,7 @@ onMounted(async () => {
 
   .provider-manager__card-actions {
     flex-wrap: wrap;
+    max-width: 100%;
   }
 }
 </style>
