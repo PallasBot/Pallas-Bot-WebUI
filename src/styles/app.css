@@ -9125,6 +9125,24 @@ html[data-theme="light"] .sel {
   border-color: rgba(56, 189, 248, 0.45);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+
+/* Safari date：去掉原生内层板，避免「框中框」；本地化长日期也不要撑破布局 */
+.inp[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+}
+
+.inp[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 1.25em;
+}
+
+.inp[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  cursor: pointer;
+}
 .textarea,
 textarea.inp,
 textarea.textarea {
@@ -15470,6 +15488,18 @@ html[data-theme="light"] .corpus-hot__pill-score {
   gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
+  min-width: 0;
+}
+
+.charts-page__date-label-text {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.charts-page__date-label .ui-input-wrap,
+.charts-page__date-inp {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .charts-page__date-inp {
@@ -15907,14 +15937,18 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
     align-items: stretch;
   }
 
+  /* Safari 本地化日期文案更宽，并排会把「起始/结束」挤成竖排 */
   .charts-page__filter-group {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .charts-page__date-label {
-    flex: 1 1 0;
+    flex: none;
+    width: 100%;
     min-width: 0;
-    justify-content: space-between;
   }
 
   .charts-page__nav-btn {
@@ -15923,9 +15957,11 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   }
 
   .charts-page__account-sel,
+  .charts-page__date-label .ui-input-wrap,
   .charts-page__date-inp {
     min-width: 0;
-    width: 100%;
+    width: auto;
+    flex: 1 1 auto;
     max-width: 100%;
   }
 }
