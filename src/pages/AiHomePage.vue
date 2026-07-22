@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import AiRuntimeDiagnosticPanel from "@/components/ai-config/AiRuntimeDiagnosticPanel.vue";
 import AiConfigLogsSection from "@/components/ai-config/AiConfigLogsSection.vue";
@@ -13,6 +13,14 @@ import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { runtimeStateDotClass } from "@/utils/aiRuntimeState";
 import type { AiRuntimeSnapshotItem } from "@/utils/aiRuntimeTypes";
 import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
+import {
+  AI_HOME_CARD_DEFS,
+  type AiHomeCardId,
+  type AiHomeCardLayout,
+  readAiHomeCardLayout,
+  visibleAiHomeCards,
+  writeAiHomeCardLayout,
+} from "@/utils/aiHomeCardPrefs";
 
 const route = useRoute();
 const {
@@ -29,6 +37,34 @@ const {
   wizardStatus,
   refresh,
 } = useAiRuntimeSnapshot();
+
+const cardLayout = ref<AiHomeCardLayout>(readAiHomeCardLayout());
+const cardEditOpen = ref(false);
+const visibleCards = computed(() => visibleAiHomeCards(cardLayout.value));
+
+function persistCardLayout(): void {
+  writeAiHomeCardLayout(cardLayout.value);
+}
+
+function toggleCardHidden(id: AiHomeCardId): void {
+  const hidden = new Set(cardLayout.value.hidden);
+  if (hidden.has(id)) hidden.delete(id);
+  else hidden.add(id);
+  cardLayout.value = { ...cardLayout.value, hidden: [...hidden] };
+  persistCardLayout();
+}
+
+function moveCard(id: AiHomeCardId, dir: -1 | 1): void {
+  const order = [...cardLayout.value.order];
+  const i = order.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  cardLayout.value = { ...cardLayout.value, order };
+  persistCardLayout();
+}
+
+const cardLabel = (id: AiHomeCardId) => AI_HOME_CARD_DEFS.find((d) => d.id === id)?.label ?? id;
 
 const dotClass = runtimeStateDotClass;
 
@@ -147,14 +183,63 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
             {{ runtimeHealthSummary }}
           </p>
         </div>
-        <UiButton
-          variant="outline"
-          size="sm"
-          class="ai-home-page__hero-btn"
-          @click="scrollToRuntimeDiagnostic"
+        <div class="ai-home-page__hero-actions">
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="ai-home-page__hero-btn"
+            @click="scrollToRuntimeDiagnostic"
+          >
+            运行诊断
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            class="ai-home-page__hero-btn"
+            :aria-expanded="cardEditOpen"
+            @click="cardEditOpen = !cardEditOpen"
+          >
+            编排卡片
+          </UiButton>
+        </div>
+      </div>
+      <div
+        v-if="cardEditOpen"
+        class="ai-home-page__card-edit"
+      >
+        <p class="muted ai-home-page__card-edit-lead">
+          调整下方卡片显隐与顺序（保存在本机）。
+        </p>
+        <div
+          v-for="id in cardLayout.order"
+          :key="id"
+          class="ai-home-page__card-edit-row"
         >
-          运行诊断
-        </UiButton>
+          <label class="ai-home-page__card-edit-check">
+            <input
+              type="checkbox"
+              :checked="!cardLayout.hidden.includes(id)"
+              @change="toggleCardHidden(id)"
+            >
+            {{ cardLabel(id) }}
+          </label>
+          <span class="ai-home-page__card-edit-move">
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              @click="moveCard(id, -1)"
+            >
+              上移
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              @click="moveCard(id, 1)"
+            >
+              下移
+            </button>
+          </span>
+        </div>
       </div>
       <div
         class="ai-stat-grid ai-home-page__kpi"
@@ -180,8 +265,12 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
       </div>
     </UiCard>
 
-    <section class="ai-home-page__grid">
+    <section
+      v-if="visibleCards.includes('focus') || visibleCards.includes('modules')"
+      class="ai-home-page__grid"
+    >
       <UiCard
+        v-if="visibleCards.includes('focus')"
         glass
         class="ai-hub-panel ai-home-page__panel"
       >
@@ -239,6 +328,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
       </UiCard>
 
       <UiCard
+        v-if="visibleCards.includes('modules')"
         glass
         class="ai-hub-panel ai-home-page__panel"
       >
@@ -291,6 +381,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     </section>
 
     <AiRuntimeDiagnosticPanel
+      v-if="visibleCards.includes('diagnostic')"
       id="runtime-diagnostic"
       embedded
       :loading="loading"
@@ -302,6 +393,7 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
     />
 
     <section
+      v-if="visibleCards.includes('logs')"
       id="ai-service-logs"
       class="ai-home-page__logs"
       aria-label="AI 服务日志"
@@ -359,6 +451,49 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 .ai-home-page__hero-btn {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.ai-home-page__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.ai-home-page__card-edit {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+  display: grid;
+  gap: 8px;
+}
+
+.ai-home-page__card-edit-lead {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.ai-home-page__card-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-home-page__card-edit-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+
+.ai-home-page__card-edit-move {
+  display: inline-flex;
+  gap: 4px;
 }
 
 .ai-home-page__grid {
