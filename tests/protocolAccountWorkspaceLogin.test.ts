@@ -5,6 +5,13 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(resolve(__dirname, "../src/components/ProtocolAccountWorkspace.vue"), "utf8");
 
 describe("ProtocolAccountWorkspace 登录加载", () => {
+  it("协议 API 将控制台入口归一到真实接口基址", () => {
+    const apiSource = readFileSync(resolve(__dirname, "../src/api/protocolApi.ts"), "utf8");
+
+    expect(apiSource).toContain('base === "/pallas/protocol"');
+    expect(apiSource).toContain('return "/protocol/console"');
+  });
+
   it("打开账号卡片时只读取二维码状态", () => {
     const bootWorkspace = source.match(
       /async function bootWorkspace\(\) \{[\s\S]*?\n\}/,

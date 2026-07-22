@@ -1,10 +1,15 @@
 import axios, { type AxiosInstance, isAxiosError } from "axios";
 import type { NapcatAccountRow } from "./pallasTypes";
 
-function protocolHttp(mountUrl: string): AxiosInstance {
+function protocolApiBase(mountUrl: string): string {
   const base = mountUrl.replace(/\/$/, "");
+  if (base === "/pallas/protocol") return "/protocol/console";
+  return base;
+}
+
+function protocolHttp(mountUrl: string): AxiosInstance {
   const client = axios.create({
-    baseURL: base,
+    baseURL: protocolApiBase(mountUrl),
     timeout: 120_000,
     withCredentials: true,
   });
@@ -110,7 +115,7 @@ export async function protocolFetchBatchJob(
 }
 
 export function protocolStreamBatchJob(mountUrl: string, jobId: string): EventSource {
-  const base = mountUrl.replace(/\/$/, "");
+  const base = protocolApiBase(mountUrl);
   return new EventSource(`${base}/api/accounts/batch/${encodeURIComponent(jobId)}/stream`, {
     withCredentials: true,
   });
@@ -408,7 +413,7 @@ export function protocolQrcodeImageUrl(
   accountId: string,
   updatedAt?: number,
 ): string {
-  const base = mountUrl.replace(/\/$/, "");
+  const base = protocolApiBase(mountUrl);
   const q = updatedAt != null && updatedAt > 0 ? `?t=${updatedAt}` : "";
   return `${base}/api/accounts/${encodeURIComponent(accountId)}/qrcode${q}`;
 }
