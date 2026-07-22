@@ -6,6 +6,23 @@
 
 <!-- entries -->
 
+## [0.6.51] - 2026-07-22
+
+### 🚀 新功能
+
+* feat(protocol): 增加账号运行时切换设置 ([a682490](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a6824907a3d761ce418b4459148a9ccfac287d8e))
+
+### 🐛 错误修复
+
+* fix(protocol): 修复控制台接口基址 ([baeebb3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/baeebb351286b81d6c2f2d4157e7c1922ca35bb7))
+
+### 🔨 其他更改
+
+* chore(worktree): 忽略本地工作树 ([865a348](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/865a34811b11c20d02f6c853677d11ccf36eea47))
+
+**完整变更**: [`v0.6.50...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.50...HEAD)
+
+
 ## [0.6.50] - 2026-07-22
 
 ### 🐛 错误修复
