@@ -6,6 +6,33 @@
 
 <!-- entries -->
 
+## [0.6.48] - 2026-07-22
+
+### 🚀 新功能
+
+* feat(ai): 配置页搜索、专家模式切换与模型管理紧凑操作 ([cac5039](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cac50399a724c02e4ec107048ecd0d369bd2ec2d))
+* feat(ai): AI 首页卡片顺序与显隐偏好 ([02ce58f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02ce58f11811073a82728e5bd706613f6d1ed284))
+* feat(ai): 拆分历史会话工作区并按 workspace 同步路由 ([7fe6466](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7fe64669d483336c2cb712fef504c89d5e058803))
+* feat(ai): 侧栏按 AI 可达性收成 essentials 导航 ([2053028](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20530282dd1471130453b5abe3d7aadd1cf61d03))
+* feat(protocol): 协议账号日志按二维码行分段渲染 ([c7b9e51](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c7b9e5105cd40b5761e0eaea5f08aec8d4fe1704))
+* feat(protocol): SnowLuma Runtime 管理与创建流 ([d3ee813](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3ee8130346ae7956a6365d7be3728b71e46fbb8))
+
+### 🐛 错误修复
+
+* fix(ai): AI 体检向导接入 PagePinned 钉顶布局 ([bc3b7e6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bc3b7e62c6ad208e24c78f65da36dc29a8764ffc))
+* fix(ui): 插件商店非本地分区隐藏空工具条 actions ([956d99d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/956d99d25f395efccf9b9b5ec3d27ed8688ab4a4))
+* fix(ui): 运行日志搜索筛选同行并移除刷新按钮 ([4598890](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/459889061e1a22715fbdda468556ac12076f090a))
+* fix(ui): 实例与协议面板标题栏统计位与搜索全宽 ([ef44ece](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef44ecea33dadb0e15aa3d24f59bdd3d0480a495))
+* fix(ui): Hub 工具条窄屏保持单行并截断来源 select ([c12ab38](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c12ab38bddf5bc4dc3652650cbb94d96583ffd99))
+* fix(ui): Safari 日期控件与统计筛选窄屏布局 ([50a26ce](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/50a26cea8d78d598efaee3ac74572fc95971e28c))
+
+### 🔨 其他更改
+
+* style(ui): 侧栏滚动条默认隐藏、悬停显现 ([89d6e29](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/89d6e293ba6715e1f58f7353c7bf950cbb02a6ca))
+
+**完整变更**: [`v0.6.47...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.47...HEAD)
+
+
 ## [0.6.47] - 2026-07-21
 
 ### 🐛 错误修复
