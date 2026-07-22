@@ -222,8 +222,14 @@ const mainInnerClass = computed(() => ({
   "shell__main-inner": true,
   "shell__main-inner--logs":
     route.name === "logs" || route.name === "log-errors",
+  /* AI 历史仅会话双栏需要 fill；群维护等用页内 page-scroll */
   "shell__main-inner--fill":
-    route.name === "logs" || route.name === "log-errors" || route.name === "ai-history",
+    route.name === "logs"
+    || route.name === "log-errors"
+    || (route.name === "ai-history"
+      && (route.query.workspace == null
+        || route.query.workspace === ""
+        || route.query.workspace === "sessions")),
   "shell__main-inner--home": route.name === "home",
   "shell__main-inner--plugin-store": route.name === "plugin-store" || route.name === "plugins",
   "shell__main-inner--hub": true,

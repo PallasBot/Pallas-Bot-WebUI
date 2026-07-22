@@ -1025,7 +1025,42 @@ html[data-theme="light"] .shell__brand-badge {
   overflow-x: hidden;
   padding-right: 0;
   margin-right: 0;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.shell__sidebar:hover .shell__nav,
+.shell__nav:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--text-dim) 28%, transparent) transparent;
+}
+
+.shell__nav::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.shell__nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 99px;
+  border: 0;
+  background-clip: border-box;
+  transition: background 0.15s ease;
+}
+
+.shell__sidebar:hover .shell__nav::-webkit-scrollbar-thumb,
+.shell__nav:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-dim) 28%, transparent);
+}
+
+.shell__sidebar:hover .shell__nav::-webkit-scrollbar-thumb:hover,
+.shell__nav:focus-within::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
+}
+
+.shell__nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 10px;
 }
 
 .shell__nav-item {
@@ -2011,6 +2046,15 @@ html[data-theme="light"] .shell-back-top {
   min-width: 0;
 }
 
+.logs-page__search-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
 .logs-page__toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -2039,13 +2083,15 @@ html[data-theme="light"] .shell-back-top {
 }
 
 .logs-page__search {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
   max-width: none;
   min-width: 0;
 }
 
 .logs-page__filter-toggle {
   flex: 0 0 auto;
+  align-self: stretch;
 }
 
 .logs-page__field {
@@ -2163,15 +2209,17 @@ html[data-theme="light"] .shell-back-top {
 .logs-page__hd-tools .logs-page__view-btns,
 .logs-page__toolbar-row .logs-page__view-btns {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
   flex: 1 1 auto;
   min-width: 0;
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.logs-page__toolbar-row .logs-page__view-btns > .ui-btn,
+.logs-page__toolbar-row .logs-page__view-btns > button {
+  flex: 0 0 auto;
+}
+
 .logs-page__filter-toggle.ui-btn {
   min-height: 28px;
   padding: 3px 10px;
@@ -2667,36 +2715,97 @@ html[data-theme="light"] .logs-page__level-btn--error.logs-page__level-btn--on {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
   margin-left: auto;
 }
 
-/* 统计文案与「搜索 + 操作按钮」分组：后者作为一整块换行，避免搜索与按钮错位 */
-.inst-db-panel__actions > .inst-db-stat {
+/* 标题行右侧：连接统计紧挨视图切换，占据标题与切换之间的空白 */
+.inst-db-panel__hd-side > .inst-db-stat {
   flex: 0 1 auto;
   min-width: 0;
+  white-space: nowrap;
 }
 
 .inst-db-panel__action-controls {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px 10px;
   flex: 1 1 240px;
+  width: 100%;
   min-width: 0;
 }
 
 .inst-db-search.inp,
-.inst-db-search.ui-input-wrap {
+.inst-db-search.ui-input-wrap,
+.inst-db-search.console-hub-page__search-wrap {
   box-sizing: border-box;
   display: block;
   width: auto;
-  max-width: min(220px, 42vw);
-  min-width: 120px;
-  flex: 1 1 140px;
+  min-width: 0;
+  flex: 1 1 0;
+  max-width: none;
   margin-left: 0;
   align-self: center;
+}
+
+/* 仅搜索（实例页）：整行占满 */
+.inst-db-panel__action-controls--search-fill {
+  width: 100%;
+}
+
+.inst-db-panel__action-controls--search-fill .inst-db-search.inp,
+.inst-db-panel__action-controls--search-fill .inst-db-search.ui-input-wrap,
+.inst-db-panel__action-controls--search-fill .inst-db-search.console-hub-page__search-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 面板标题内搜索：绝对定位放大镜（避免 flex 收缩时 grid 叠层丢图标） */
+.inst-db-panel__action-controls .console-hub-page__search,
+.inst-db-search.console-hub-page__search-wrap .console-hub-page__search {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.inst-db-panel__action-controls .console-hub-page__search-ico,
+.inst-db-search.console-hub-page__search-wrap .console-hub-page__search-ico {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.inst-db-panel__action-controls .console-hub-page__search-input,
+.inst-db-panel__action-controls .console-hub-page__search-input .inp,
+.inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input,
+.inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input .inp {
+  width: 100%;
+  min-width: 0;
+}
+
+.inst-db-panel__action-controls .console-hub-page__search-input .inp,
+.inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input .inp {
+  min-height: 40px;
+  padding-left: 2.5rem;
+  border-radius: 999px;
+}
+
+.inst-db-panel__action-controls input[type="search"].inp::-webkit-search-decoration,
+.inst-db-panel__action-controls input[type="search"].inp::-webkit-search-cancel-button,
+.inst-db-search input[type="search"].inp::-webkit-search-decoration,
+.inst-db-search input[type="search"].inp::-webkit-search-cancel-button {
+  -webkit-appearance: none;
 }
 
 .inst-db-panel__action-controls > .btn,
@@ -7967,6 +8076,13 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   min-width: 0;
 }
 
+.protocol-runtime-row__members {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .protocol-runtime-row__actions {
   flex-shrink: 0;
 }
@@ -7989,10 +8105,14 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
     flex: 1 1 calc(50% - 4px);
   }
   .inst-db-panel__actions .btn,
-  .inst-db-panel__actions .ui-btn,
+  .inst-db-panel__actions .ui-btn {
+    flex: 1 1 auto;
+  }
+
+  /* 协议页操作行：按钮不撑开，与搜索保持单行 */
   .inst-db-panel__action-controls > .btn,
   .inst-db-panel__action-controls > .ui-btn {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 }
 
@@ -8696,6 +8816,10 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     padding: 8px 10px 10px;
   }
 
+  .logs-page__search-row {
+    gap: 6px;
+  }
+
   .logs-page__toolbar-row {
     flex-wrap: nowrap;
     gap: 6px;
@@ -8707,25 +8831,20 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   }
 
   .logs-page__toolbar-row .logs-page__view-btns {
-    display: flex;
     flex: 1 1 auto;
-    gap: 4px;
     min-width: 0;
   }
 
-  .logs-page__toolbar-row .logs-page__view-btns > .btn,
-  .logs-page__toolbar-row .logs-page__view-btns > .ui-btn {
-    flex: 1 1 0;
-    min-width: 0;
+  .logs-page__toolbar-row .logs-page__view-btns > button {
+    flex: 0 0 auto;
     min-height: 28px;
-    padding: 3px 8px;
-    font-size: 11px;
-    justify-content: center;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .logs-page__filter-toggle {
     flex: 0 0 auto;
-    min-height: 28px;
+    min-height: 34px;
     padding: 3px 8px;
     font-size: 11px;
   }
@@ -8902,6 +9021,12 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     grid-area: hd-side;
     align-self: center;
     margin-left: 0;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+
+  .panel__hd.inst-db-panel__hd .inst-db-panel__hd-side > .inst-db-stat {
+    font-size: 12px;
   }
 
   .panel__hd.inst-db-panel__hd .inst-db-panel__actions {
@@ -8915,18 +9040,32 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   }
 
   .panel__hd.inst-db-panel__hd .inst-db-panel__action-controls {
+    display: flex;
+    flex-wrap: nowrap;
     flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
+    margin-left: 0;
     justify-content: flex-start;
   }
 
   .panel__hd.inst-db-panel__hd .inst-db-search.inp,
-  .panel__hd.inst-db-panel__hd .inst-db-search.ui-input-wrap {
+  .panel__hd.inst-db-panel__hd .inst-db-search.ui-input-wrap,
+  .panel__hd.inst-db-panel__hd .inst-db-search.console-hub-page__search-wrap {
     width: auto;
-    min-width: 100px;
-    flex: 1 1 120px;
-    max-width: 240px;
+    min-width: 0;
+    flex: 1 1 0;
+    max-width: none;
     margin-left: 0;
+  }
+
+  .panel__hd.inst-db-panel__hd .inst-db-panel__action-controls--search-fill .inst-db-search.inp,
+  .panel__hd.inst-db-panel__hd .inst-db-panel__action-controls--search-fill .inst-db-search.ui-input-wrap,
+  .panel__hd.inst-db-panel__hd
+    .inst-db-panel__action-controls--search-fill
+    .inst-db-search.console-hub-page__search-wrap {
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -9082,6 +9221,24 @@ html[data-theme="light"] .sel {
 .textarea:focus {
   border-color: rgba(56, 189, 248, 0.45);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Safari date：去掉原生内层板，避免「框中框」；本地化长日期也不要撑破布局 */
+.inp[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+}
+
+.inp[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 1.25em;
+}
+
+.inp[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.65;
+  cursor: pointer;
 }
 .textarea,
 textarea.inp,
@@ -15428,6 +15585,18 @@ html[data-theme="light"] .corpus-hot__pill-score {
   gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
+  min-width: 0;
+}
+
+.charts-page__date-label-text {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.charts-page__date-label .ui-input-wrap,
+.charts-page__date-inp {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .charts-page__date-inp {
@@ -15865,14 +16034,18 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
     align-items: stretch;
   }
 
+  /* Safari 本地化日期文案更宽，并排会把「起始/结束」挤成竖排 */
   .charts-page__filter-group {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .charts-page__date-label {
-    flex: 1 1 0;
+    flex: none;
+    width: 100%;
     min-width: 0;
-    justify-content: space-between;
   }
 
   .charts-page__nav-btn {
@@ -15881,9 +16054,11 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   }
 
   .charts-page__account-sel,
+  .charts-page__date-label .ui-input-wrap,
   .charts-page__date-inp {
     min-width: 0;
-    width: 100%;
+    width: auto;
+    flex: 1 1 auto;
     max-width: 100%;
   }
 }

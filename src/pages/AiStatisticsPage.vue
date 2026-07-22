@@ -166,26 +166,33 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 
 <template>
   <div class="ai-stats-page">
-    <div class="ai-hub-toolbar ai-stats-page__toolbar">
-      <div class="ai-stats-page__date-filters">
-        <label class="ai-date-field">
-          <span class="ai-date-field__label">起始</span>
+    <div class="ai-stats-page__toolbar charts-page__filter-toolbar">
+      <div class="charts-page__filter-group ai-stats-page__date-filters">
+        <label class="charts-page__date-label">
+          <span class="charts-page__date-label-text">起始</span>
           <UiInput
             v-model="start"
+            class="charts-page__date-inp"
             type="date"
             aria-label="选择起始日期"
           />
         </label>
-        <label class="ai-date-field">
-          <span class="ai-date-field__label">结束</span>
+        <label class="charts-page__date-label">
+          <span class="charts-page__date-label-text">结束</span>
           <UiInput
             v-model="end"
+            class="charts-page__date-inp"
             type="date"
             aria-label="选择结束日期"
           />
         </label>
       </div>
-      <p v-if="persistenceHint" class="muted ai-stats-page__hint">{{ persistenceHint }}</p>
+      <p
+        v-if="persistenceHint"
+        class="muted ai-stats-page__hint"
+      >
+        {{ persistenceHint }}
+      </p>
     </div>
 
     <div v-if="err" class="alert alert--err">{{ err }}</div>
@@ -469,54 +476,13 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 }
 
 .ai-stats-page__toolbar {
-  align-items: flex-end;
-}
-
-.ai-stats-page__toolbar .ai-stats-page__date-filters {
-  margin-left: auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 .ai-stats-page__date-filters {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.ai-date-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-  padding: 4px 10px;
-  border-radius: var(--radius-pill, 999px);
-  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
-}
-
-.ai-date-field__label {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.ai-date-field .ui-input-wrap {
-  width: auto;
-  min-width: 0;
-}
-
-.ai-date-field .inp {
-  border: none;
-  background: transparent;
-  padding: 2px 4px;
-  min-height: 28px;
-  font-size: 0.8125rem;
-  color: var(--text);
-}
-
-.ai-date-field .inp:focus {
-  outline: none;
-  box-shadow: none;
+  width: 100%;
 }
 
 .ai-stats-page__top-metrics {
@@ -575,8 +541,10 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 }
 
 .ai-stats-page__hint {
-  margin-top: 8px;
+  margin: 0;
+  max-width: 52rem;
   font-size: 0.8125rem;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 
@@ -790,27 +758,6 @@ useAiObservationRefresh(refresh, { isBusy: () => loading.value });
 }
 
 @media (max-width: 560px) {
-  .ai-stats-page__toolbar {
-    align-items: stretch;
-  }
-
-  .ai-stats-page__toolbar .ai-stats-page__date-filters {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .ai-date-field {
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: space-between;
-  }
-
-  .ai-date-field .ui-input-wrap,
-  .ai-date-field .inp {
-    min-width: 0;
-    max-width: 100%;
-  }
-
   .ai-stats-page__top-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -8,6 +8,7 @@ import {
   sidebarPinToken,
   type SidebarPinDefinition,
 } from "@/config/sidebarPins";
+import { aiSidebarPathAllowed, useAiNavGate } from "@/composables/useAiNavGate";
 import { consolePrefs } from "@/utils/consolePrefs";
 import { effectiveSidebarSection } from "@/utils/sidebarSectionLabels";
 
@@ -81,6 +82,8 @@ export function flattenSidebarNavEntries(entries: SidebarNavEntry[]): SidebarNav
 }
 
 export function useSidebarNavLists() {
+  const { essentialsOnly } = useAiNavGate();
+
   const sidebarNavRows = computed((): SidebarNavRowView[] => {
     const raw: SidebarNavRow[] = [];
     for (const token of consolePrefs.sidebarNavOrder) {
@@ -90,7 +93,12 @@ export function useSidebarNavLists() {
         continue;
       }
       const item = mainNavItemByPath(token);
-      if (item) raw.push({ kind: "main", token, item });
+      if (item) {
+        if (item.to.startsWith("/ai/") && !aiSidebarPathAllowed(item.to, essentialsOnly.value)) {
+          continue;
+        }
+        raw.push({ kind: "main", token, item });
+      }
     }
     return raw.map((r) => {
       const fallback = r.kind === "main" ? r.item.section : r.pin.section;

@@ -1310,6 +1310,7 @@ onDeactivated(() => {
               {{ checkingUpdate ? "检查中…" : "检查更新" }}
             </UiButton>
             <RefreshIconButton
+              v-if="storeSection === 'local'"
               embedded
               :busy="loading"
               label="刷新列表"
@@ -1359,7 +1360,10 @@ onDeactivated(() => {
             {{ checkingUpdate ? "检查中…" : "检查更新" }}
           </UiButton>
         </template>
-        <template #actions>
+        <template
+          v-if="storeSection === 'local'"
+          #actions
+        >
           <RefreshIconButton
             embedded
             :busy="loading"

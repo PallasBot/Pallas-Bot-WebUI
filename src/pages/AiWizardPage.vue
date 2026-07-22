@@ -21,12 +21,15 @@ import { aiHealthStateLabel } from "@/utils/aiHealthLabel";
 import { mediaCapabilityLabel } from "@/utils/runtimeOverviewRows";
 import MetricTile from "@/components/MetricTile.vue";
 import PageChrome from "@/components/PageChrome.vue";
+import PagePinned from "@/components/PagePinned.vue";
 import RuntimeCheckResults from "@/components/config/RuntimeCheckResults.vue";
 import UiBadge from "@/components/ui/UiBadge.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { wizardActionForCheckId } from "@/config/aiWizardGuide";
+import { AI_CONFIG_SIDEBAR_PATH } from "@/config/aiConfigSections";
+import { AI_OBSERVATION_SIDEBAR_PATH } from "@/config/aiObservationNav";
 
 type WizardActionTarget = {
   to: string;
@@ -229,26 +232,54 @@ onMounted(() => {
 
 <template>
   <div class="console-hub-page ai-wizard-page">
-    <PageChrome
-      :icon="panelNavIcon"
-      title="AI 诊断向导"
-      lead="一键检测系统各项 AI 服务配置与网络连通性。不仅为您提供具体的配置修复建议，更能直接发起真实的网络探针探测。"
-    >
-      <template #actions>
-        <RouterLink
-          custom
-          v-slot="{ navigate }"
-          to="/ai/home"
-        >
-          <UiButton variant="outline" @click="navigate">返回首页</UiButton>
-        </RouterLink>
-        <UiButton variant="primary" :busy="loading" @click="refresh">
-          刷新诊断报告
-        </UiButton>
-      </template>
-    </PageChrome>
+    <PagePinned>
+      <PageChrome
+        :icon="panelNavIcon"
+        title="AI 诊断向导"
+        lead="一键检测系统各项 AI 服务配置与网络连通性。不仅为您提供具体的配置修复建议，更能直接发起真实的网络探针探测。"
+      >
+        <template #actions>
+          <RouterLink
+            custom
+            v-slot="{ navigate }"
+            :to="AI_OBSERVATION_SIDEBAR_PATH"
+          >
+            <UiButton
+              variant="outline"
+              @click="navigate"
+            >
+              AI 观测
+            </UiButton>
+          </RouterLink>
+          <RouterLink
+            custom
+            v-slot="{ navigate }"
+            :to="AI_CONFIG_SIDEBAR_PATH"
+          >
+            <UiButton
+              variant="ghost"
+              @click="navigate"
+            >
+              AI 配置
+            </UiButton>
+          </RouterLink>
+          <UiButton
+            variant="primary"
+            :busy="loading"
+            @click="refresh"
+          >
+            刷新诊断报告
+          </UiButton>
+        </template>
+      </PageChrome>
+    </PagePinned>
 
-    <div v-if="err" class="alert alert--err">{{ err }}</div>
+    <div
+      v-if="err"
+      class="alert alert--err"
+    >
+      {{ err }}
+    </div>
     <div v-else-if="allChecksPassed" class="alert alert--ok">
       配置检查已通过！各项服务均处于良好状态，可前往 AI 观测了解运行详情。
     </div>

@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { protocolApiErrorMessage, protocolCreateAccount } from "@/api/protocolApi";
+import {
+  protocolApiErrorMessage,
+  protocolCreateAccount,
+  protocolListSnowlumaRuntimes,
+  type SnowlumaRuntimeRow,
+} from "@/api/protocolApi";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton.vue";
 import PageChrome from "@/components/PageChrome.vue";
 import UiButton from "@/components/ui/UiButton.vue";
@@ -25,6 +30,30 @@ const wsUrl = ref("");
 const wsName = ref("");
 const wsToken = ref("");
 const busy = ref(false);
+const snowlumaRuntimes = ref<SnowlumaRuntimeRow[]>([]);
+const snowlumaRuntimeId = ref("");
+const snowlumaRuntimeMode = ref<"new" | "existing">("new");
+
+async function loadSnowlumaRuntimes() {
+  const mount = mountUrl.value;
+  if (!mount) {
+    snowlumaRuntimes.value = [];
+    return;
+  }
+  try {
+    snowlumaRuntimes.value = await protocolListSnowlumaRuntimes(mount);
+  } catch {
+    snowlumaRuntimes.value = [];
+  }
+}
+
+watch(protocolBackend, (v) => {
+  if (v === "snowluma") void loadSnowlumaRuntimes();
+});
+
+onMounted(() => {
+  if (protocolBackend.value === "snowluma") void loadSnowlumaRuntimes();
+});
 
 async function submitCreate() {
   const mount = mountUrl.value;
@@ -36,6 +65,12 @@ async function submitCreate() {
   if (!q) {
     pushConsoleToast("请填写 QQ 号", "warn");
     return;
+  }
+  if (protocolBackend.value === "snowluma" && snowlumaRuntimeMode.value === "existing") {
+    if (!snowlumaRuntimeId.value.trim()) {
+      pushConsoleToast("请选择已有 SnowLuma Runtime", "warn");
+      return;
+    }
   }
   busy.value = true;
   try {
@@ -50,6 +85,14 @@ async function submitCreate() {
     if (webuiPort.value.trim() && !Number.isNaN(wp)) body.webui_port = wp;
     if (protocolBackend.value !== "snowluma" && webuiToken.value.trim()) {
       body.webui_token = webuiToken.value.trim();
+    }
+    if (protocolBackend.value === "snowluma") {
+      if (snowlumaRuntimeMode.value === "existing") {
+        body.snowluma_runtime_id = snowlumaRuntimeId.value.trim();
+        body.create_runtime = false;
+      } else {
+        body.create_runtime = true;
+      }
     }
     if (wsUrl.value.trim()) body.ws_url = wsUrl.value.trim();
     if (wsName.value.trim()) body.ws_name = wsName.value.trim();
@@ -135,12 +178,43 @@ async function submitCreate() {
               </option>
             </UiSelect>
           </label>
+          <template v-if="protocolBackend === 'snowluma'">
+            <label class="field">
+              <span class="field__label">SnowLuma Runtime</span>
+              <UiSelect v-model="snowlumaRuntimeMode">
+                <option value="new">
+                  新建 Runtime（一进程可再加号）
+                </option>
+                <option value="existing">
+                  加入已有 Runtime
+                </option>
+              </UiSelect>
+            </label>
+            <label
+              v-if="snowlumaRuntimeMode === 'existing'"
+              class="field"
+            >
+              <span class="field__label">选择 Runtime</span>
+              <UiSelect v-model="snowlumaRuntimeId">
+                <option value="">
+                  请选择…
+                </option>
+                <option
+                  v-for="rt in snowlumaRuntimes"
+                  :key="rt.id"
+                  :value="rt.id"
+                >
+                  {{ rt.display_name || rt.id }}（{{ rt.member_count ?? 0 }} 号）
+                </option>
+              </UiSelect>
+            </label>
+          </template>
           <label class="field">
             <span class="field__label">内置 WebUI 端口</span>
             <UiInput
               v-model="webuiPort"
               type="number"
-              placeholder="留空自动分配"
+              placeholder="留空自动分配；加入已有 Runtime 时沿用 Runtime 端口"
             />
           </label>
           <label

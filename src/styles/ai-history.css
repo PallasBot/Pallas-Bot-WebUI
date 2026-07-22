@@ -9,6 +9,16 @@
   gap: var(--hub-page-gap, 16px);
   flex: 1 1 auto;
   min-height: 0;
+  /* 会话双栏：在 PageFill 内滚；群维护等长页：见 --page-scroll */
+  overflow: hidden;
+}
+
+/* shell__main-inner--fill 为 overflow:hidden，非会话工作区需本层可滚 */
+.ai-history-page--chrome.ai-history-page--page-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ai-history-page__sessions-fill {
@@ -53,6 +63,8 @@
 }
 
 .ai-date-field__label {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-muted);

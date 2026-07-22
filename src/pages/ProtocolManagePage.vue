@@ -12,9 +12,13 @@ import {
   protocolApiErrorMessage,
   protocolDeleteAccount,
   protocolListAccounts,
+  protocolListSnowlumaRuntimes,
   protocolRestartAccount,
   protocolStartAccount,
+  protocolStartSnowlumaRuntime,
   protocolStopAccount,
+  protocolStopSnowlumaRuntime,
+  type SnowlumaRuntimeRow,
 } from "@/api/protocolApi";
 import { useProtocolAccountBatch } from "@/composables/useProtocolAccountBatch";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
@@ -54,9 +58,9 @@ import {
 import { slicePage } from "@/utils/paginate";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret.vue";
 import RefreshIconButton from "@/components/RefreshIconButton.vue";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
-import UiInput from "@/components/ui/UiInput.vue";
 import { usePanelNavIcon } from "@/composables/usePanelNavIcon";
 import { botFavoriteAccounts, toggleFavoriteBot } from "@/utils/botFavorites";
 import { useInstancesCatalogSync } from "@/composables/useInstancesCatalogSync";
@@ -74,6 +78,8 @@ const instances = ref<InstancesData | null>(null);
 }
 
 const protoAccountsLive = ref<NapcatAccountRow[] | null>(null);
+const snowlumaRuntimes = ref<SnowlumaRuntimeRow[]>([]);
+const snowlumaRuntimeBusyId = ref("");
 
 const snap = computed(() => {
   const base = protocolSnapshot(instances.value);
@@ -395,9 +401,25 @@ function setAccountActionBusy(accountId: string, action: ProtocolAccountAction, 
   actionBusy.value = next;
 }
 
+function isSnowlumaAccount(a: NapcatAccountRow): boolean {
+  return String(a.protocol_backend ?? "").trim().toLowerCase() === "snowluma";
+}
+
+function snowlumaRuntimeLabel(a: NapcatAccountRow): string {
+  const rid = String(a.snowluma_runtime_id ?? "").trim();
+  if (!rid) return "—";
+  const hit = snowlumaRuntimes.value.find((rt) => rt.id === rid);
+  return hit?.display_name?.trim() || rid;
+}
+
 function togglePowerLabel(a: NapcatAccountRow): string {
   const running = isProcessRunning(a);
-  if (isAccountActionBusy(a, "power")) return running ? "停止中…" : "启动中…";
+  const snow = isSnowlumaAccount(a);
+  if (isAccountActionBusy(a, "power")) {
+    if (snow) return running ? "停 QQ 中…" : "启 QQ 中…";
+    return running ? "停止中…" : "启动中…";
+  }
+  if (snow) return running ? "停 QQ" : "启 QQ";
   return running ? "停止" : "启动";
 }
 
@@ -461,6 +483,41 @@ async function pollProtocolAccounts() {
     applyProtocolAccounts(accounts);
   } catch {
     /* 保留上一轮账号快照 */
+  }
+  try {
+    snowlumaRuntimes.value = await protocolListSnowlumaRuntimes(mount);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function startSnowlumaRuntime(runtimeId: string) {
+  const mount = protoMountUrl.value;
+  if (!mount) return;
+  snowlumaRuntimeBusyId.value = runtimeId;
+  try {
+    await protocolStartSnowlumaRuntime(mount, runtimeId);
+    pushConsoleToast("已启动 SnowLuma Runtime", "ok");
+    await pollProtocolAccounts();
+  } catch (e) {
+    pushConsoleToast(protocolApiErrorMessage(e, "启动 Runtime 失败"), "err");
+  } finally {
+    snowlumaRuntimeBusyId.value = "";
+  }
+}
+
+async function stopSnowlumaRuntime(runtimeId: string) {
+  const mount = protoMountUrl.value;
+  if (!mount) return;
+  snowlumaRuntimeBusyId.value = runtimeId;
+  try {
+    await protocolStopSnowlumaRuntime(mount, runtimeId);
+    pushConsoleToast("已停止 SnowLuma Runtime", "ok");
+    await pollProtocolAccounts();
+  } catch (e) {
+    pushConsoleToast(protocolApiErrorMessage(e, "停止 Runtime 失败"), "err");
+  } finally {
+    snowlumaRuntimeBusyId.value = "";
   }
 }
 
@@ -764,6 +821,11 @@ onUnmounted(() => {
           />
         </h2>
         <div class="inst-db-panel__hd-side">
+          <span class="inst-db-stat muted">
+            当前已连接
+            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
+            / {{ protocolAccountsTotalCount }} 账号
+          </span>
           <div
             class="console-view-toggle"
             role="group"
@@ -786,18 +848,12 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="inst-db-panel__actions">
-          <span class="inst-db-stat muted">
-            当前已连接
-            <strong class="inst-db-stat__num">{{ protocolConnectedCount }}</strong>
-            / {{ protocolAccountsTotalCount }} 账号
-          </span>
           <div class="inst-db-panel__action-controls">
-            <UiInput
+            <ConsoleHubSearch
               v-model="protoSearchQ"
               class="inst-db-search"
-              type="search"
               placeholder="搜索账号 / 昵称 / 协议 / ID"
-              title="按账号、昵称、协议、ID 筛选"
+              aria-label="搜索账号 / 昵称 / 协议 / ID"
             />
             <UiButton
               v-if="protoActionsEnabled"
@@ -841,6 +897,7 @@ onUnmounted(() => {
                 <th>昵称</th>
                 <th>账号</th>
                 <th>协议</th>
+                <th>Runtime</th>
                 <th>运行方式</th>
                 <th>版本</th>
                 <th>连接</th>
@@ -858,6 +915,10 @@ onUnmounted(() => {
                 <td style="font-weight: 600">{{ primaryTitle(a) }}</td>
                 <td>{{ a.qq ?? a.id ?? "—" }}</td>
                 <td>{{ protocolBackendDisplayName(a) }}</td>
+                <td
+                  class="muted"
+                  :title="String(a.snowluma_runtime_id ?? '').trim() || undefined"
+                >{{ isSnowlumaAccount(a) ? snowlumaRuntimeLabel(a) : "—" }}</td>
                 <td>{{ protocolRuntimeModeLabel(a) }}</td>
                 <td
                   class="muted"
@@ -1026,6 +1087,16 @@ onUnmounted(() => {
             <div class="data-summary-card__row">
               <span class="data-summary-card__label">协议实现</span>
               <span class="data-summary-card__val">{{ protocolBackendDisplayName(a) }}</span>
+            </div>
+            <div
+              v-if="isSnowlumaAccount(a)"
+              class="data-summary-card__row"
+            >
+              <span class="data-summary-card__label">Runtime</span>
+              <span
+                class="data-summary-card__val muted"
+                :title="String(a.snowluma_runtime_id ?? '').trim() || undefined"
+              >{{ snowlumaRuntimeLabel(a) }}</span>
             </div>
             <div class="data-summary-card__row">
               <span class="data-summary-card__label">运行方式</span>
@@ -1201,6 +1272,67 @@ onUnmounted(() => {
           >
             协议资产
           </RouterLink>
+        </div>
+      </div>
+    </UiCard>
+
+    <UiCard
+      v-if="snowlumaRuntimes.length"
+      tag="div"
+      glass
+      class="protocol-page__panel"
+    >
+      <div class="panel__hd">
+        <h2 class="panel__title">
+          SnowLuma Runtime
+        </h2>
+      </div>
+      <div class="panel__bd">
+        <p class="muted">
+          一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
+        </p>
+        <div class="protocol-runtime-list">
+          <div
+            v-for="rt in snowlumaRuntimes"
+            :key="rt.id"
+            class="protocol-runtime-row"
+          >
+            <div class="protocol-runtime-row__main">
+              <strong>{{ rt.display_name || rt.id }}</strong>
+              <span class="muted">{{ rt.id }}</span>
+              <span
+                :class="rt.process_running ? 'pill pill--ok' : 'pill'"
+              >{{ rt.process_running ? "运行中" : "已停止" }}</span>
+              <span class="muted">{{ rt.member_count ?? 0 }} 个 QQ</span>
+              <span
+                v-if="rt.webui_port != null && String(rt.webui_port).trim()"
+                class="muted"
+              >WebUI :{{ rt.webui_port }}</span>
+              <span
+                v-if="(rt.member_account_ids ?? []).length"
+                class="muted protocol-runtime-row__members"
+                :title="(rt.member_account_ids ?? []).join(', ')"
+              >成员 {{ (rt.member_account_ids ?? []).join(", ") }}</span>
+            </div>
+            <div class="row-actions protocol-runtime-row__actions">
+              <UiButton
+                size="sm"
+                variant="outline"
+                :busy="snowlumaRuntimeBusyId === rt.id"
+                @click="startSnowlumaRuntime(rt.id)"
+              >
+                启 Runtime
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :busy="snowlumaRuntimeBusyId === rt.id"
+                @click="stopSnowlumaRuntime(rt.id)"
+              >
+                停 Runtime
+              </UiButton>
+            </div>
+          </div>
         </div>
       </div>
     </UiCard>

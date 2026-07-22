@@ -54,6 +54,38 @@ const emit = defineEmits<{
   "account-loaded": [row: NapcatAccountRow];
 }>();
 
+/** 终端半块二维码行（▀▄█ 等），需 line-height:1 + 等宽才可扫 */
+const PROTOCOL_LOG_QR_LINE_RE = /^[\s\u2580-\u259F]+$/u;
+
+function isProtocolLogQrLine(line: string): boolean {
+  const t = line.replace(/\s+$/u, "");
+  if (t.length < 10) return false;
+  if (!PROTOCOL_LOG_QR_LINE_RE.test(t)) return false;
+  return t.replace(/\s/gu, "").length >= 10;
+}
+
+type ProtocolLogSegment = { kind: "text" | "qr"; text: string };
+
+function segmentProtocolLogLines(lines: string[]): ProtocolLogSegment[] {
+  if (!lines.length) return [];
+  const out: ProtocolLogSegment[] = [];
+  let kind: "text" | "qr" | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (!kind || !buf.length) return;
+    out.push({ kind, text: buf.join("\n") });
+    buf = [];
+  };
+  for (const line of lines) {
+    const next: "text" | "qr" = isProtocolLogQrLine(line) ? "qr" : "text";
+    if (kind != null && kind !== next) flush();
+    kind = next;
+    buf.push(line);
+  }
+  flush();
+  return out;
+}
+
 const account = ref<NapcatAccountRow | null>(null);
 const logs = ref<string[]>([]);
 const loadBusy = ref(false);
@@ -79,6 +111,8 @@ const logPreEl = ref<HTMLElement | null>(null);
 const followLogTail = ref(true);
 
 const resolvedSystem = computed(() => props.system ?? systemLocal.value);
+
+const logSegments = computed(() => segmentProtocolLogLines(logs.value));
 
 const pageTitle = computed(() => {
   const name = (account.value?.display_name || "").trim();
@@ -746,7 +780,13 @@ defineExpose({
               ref="logPreEl"
               class="protocol-account-workspace__log-pre"
               @scroll="onLogPreScroll"
-            >{{ logs.join("\n") || "暂无进程输出" }}</pre>
+            ><template v-if="!logs.length">暂无进程输出</template><template v-else><template
+              v-for="(seg, i) in logSegments"
+              :key="i"
+            ><span
+              v-if="seg.kind === 'qr'"
+              class="protocol-account-workspace__log-qr"
+            >{{ seg.text }}</span><template v-else>{{ seg.text }}</template><template v-if="i < logSegments.length - 1">{{ "\n" }}</template></template></template></pre>
           </div>
         </UiCard>
       </section>
@@ -1102,10 +1142,25 @@ defineExpose({
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   background: color-mix(in srgb, var(--text) 4%, var(--bg-card));
-  font-size: 0.75rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+
+.protocol-account-workspace__log-qr {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
 }
 
 .protocol-account-workspace--dialog .protocol-account-workspace__log-pre {

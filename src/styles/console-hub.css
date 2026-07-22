@@ -272,6 +272,8 @@ html[data-layout="hub"] .textarea:focus {
 html[data-layout="hub"] input[type="search"].inp,
 html[data-layout="hub"] .inst-db-search.inp,
 html[data-layout="hub"] .inst-db-search.ui-input-wrap .inp,
+html[data-layout="hub"] .inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input.inp,
+html[data-layout="hub"] .inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input .inp,
 html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp,
 html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap .inp {
   min-height: 40px;
@@ -622,7 +624,7 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
     margin-top: 2px;
   }
 
-  /* 窄屏：搜索框与操作按钮同处一行，搜索自适应伸缩 */
+  /* 窄屏：搜索与操作同一行；select 可收缩，避免按最长 option 撑破 */
   html[data-layout="hub"] .console-hub-toolbar-strip__main {
     display: flex;
     flex-wrap: nowrap;
@@ -635,20 +637,40 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
     min-width: 0;
   }
 
+  html[data-layout="hub"] .console-hub-toolbar-strip__search .console-hub-page__search-wrap,
+  html[data-layout="hub"] .console-hub-toolbar-strip__search .console-hub-page__search,
+  html[data-layout="hub"] .console-hub-toolbar-strip__search .console-hub-page__search-input,
+  html[data-layout="hub"] .console-hub-toolbar-strip__search .console-hub-page__search-input .inp {
+    min-width: 0;
+    width: 100%;
+  }
+
   html[data-layout="hub"] .console-hub-toolbar-strip__middle {
     display: flex;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
     min-width: 0;
   }
 
-  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .ui-btn,
-  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .sel {
+  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .ui-btn {
     flex: 0 0 auto;
-    min-width: 0;
     min-height: var(--ui-ctrl-height);
+  }
+
+  /* 压过 UiSelect width:100% 与原生 select 按 option 定宽；过长文字截断 */
+  html[data-layout="hub"] .console-hub-toolbar-strip__middle > .sel {
+    flex: 0 1 7.5rem;
+    box-sizing: border-box;
+    width: 7.5rem;
+    min-width: 5.5rem;
+    max-width: 9rem;
+    min-height: var(--ui-ctrl-height);
+    padding-inline: 10px var(--ui-sel-arrow-pad);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   html[data-layout="hub"] .console-hub-toolbar-strip__actions {
@@ -1459,10 +1481,6 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
   border-radius: 999px;
 }
 
-html[data-layout="hub"] .log-errors-page .console-hub-toolbar-strip__middle .sel {
-  min-width: 9rem;
-}
-
 /* ── 偏好 / 设置卡片（GsCore 风格） ── */
 .prefs-page__grid {
   display: grid;
@@ -1866,7 +1884,7 @@ html[data-layout="hub"] .shell__nav {
   padding: 0;
   margin-right: 0;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 html[data-layout="hub"] .shell__nav-section,

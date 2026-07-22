@@ -9,7 +9,6 @@ import LogVirtualFeed from "@/components/LogVirtualFeed.vue";
 import PageChrome from "@/components/PageChrome.vue";
 import PageFill from "@/components/PageFill.vue";
 import PagePinned from "@/components/PagePinned.vue";
-import RefreshIconButton from "@/components/RefreshIconButton.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import UiCard from "@/components/ui/UiCard.vue";
 import UiInput from "@/components/ui/UiInput.vue";
@@ -599,41 +598,16 @@ onUnmounted(() => {
           :icon="panelNavIcon"
           title="运行日志"
           lead="支持结构化与原始行视图；可按范围、来源与条数筛选，并实时跟随推送。"
-        >
-          <template #actions>
-            <RefreshIconButton
-              embedded
-              :busy="loading"
-              label="刷新"
-              @click="load"
-            />
-          </template>
-        </PageChrome>
+        />
 
         <div class="logs-page__chrome-tools">
-          <ConsoleHubSearch
-            v-model="q"
-            class="logs-page__search"
-            placeholder="搜索消息、scope、级别…"
-            aria-label="按消息、scope、级别等过滤"
-          />
-          <div class="logs-page__toolbar-row">
-            <div class="logs-page__view-btns">
-              <UiButton
-                size="sm"
-                :variant="view === 'feed' ? 'primary' : 'outline'"
-                @click="view = 'feed'"
-              >
-                结构化
-              </UiButton>
-              <UiButton
-                size="sm"
-                :variant="view === 'raw' ? 'primary' : 'outline'"
-                @click="view = 'raw'"
-              >
-                原始行
-              </UiButton>
-            </div>
+          <div class="logs-page__search-row">
+            <ConsoleHubSearch
+              v-model="q"
+              class="logs-page__search"
+              placeholder="搜索消息、scope、级别…"
+              aria-label="按消息、scope、级别等过滤"
+            />
             <UiButton
               class="logs-page__filter-toggle"
               size="sm"
@@ -643,6 +617,28 @@ onUnmounted(() => {
             >
               筛选<span v-if="activeFilterCount"> ({{ activeFilterCount }})</span>
             </UiButton>
+          </div>
+          <div class="logs-page__toolbar-row">
+            <div
+              class="logs-page__view-btns console-view-toggle"
+              role="group"
+              aria-label="日志视图"
+            >
+              <button
+                type="button"
+                :class="{ 'is-on': view === 'feed' }"
+                @click="view = 'feed'"
+              >
+                结构化
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': view === 'raw' }"
+                @click="view = 'raw'"
+              >
+                原始行
+              </button>
+            </div>
           </div>
           <div
             v-show="advancedOpen"
