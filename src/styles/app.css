@@ -2046,6 +2046,15 @@ html[data-theme="light"] .shell-back-top {
   min-width: 0;
 }
 
+.logs-page__search-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
 .logs-page__toolbar-row {
   display: flex;
   flex-wrap: wrap;
@@ -2074,13 +2083,15 @@ html[data-theme="light"] .shell-back-top {
 }
 
 .logs-page__search {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
   max-width: none;
   min-width: 0;
 }
 
 .logs-page__filter-toggle {
   flex: 0 0 auto;
+  align-self: stretch;
 }
 
 .logs-page__field {
@@ -2198,15 +2209,17 @@ html[data-theme="light"] .shell-back-top {
 .logs-page__hd-tools .logs-page__view-btns,
 .logs-page__toolbar-row .logs-page__view-btns {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
   flex: 1 1 auto;
   min-width: 0;
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.logs-page__toolbar-row .logs-page__view-btns > .ui-btn,
+.logs-page__toolbar-row .logs-page__view-btns > button {
+  flex: 0 0 auto;
+}
+
 .logs-page__filter-toggle.ui-btn {
   min-height: 28px;
   padding: 3px 10px;
@@ -8803,6 +8816,10 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     padding: 8px 10px 10px;
   }
 
+  .logs-page__search-row {
+    gap: 6px;
+  }
+
   .logs-page__toolbar-row {
     flex-wrap: nowrap;
     gap: 6px;
@@ -8814,25 +8831,20 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
   }
 
   .logs-page__toolbar-row .logs-page__view-btns {
-    display: flex;
     flex: 1 1 auto;
-    gap: 4px;
     min-width: 0;
   }
 
-  .logs-page__toolbar-row .logs-page__view-btns > .btn,
-  .logs-page__toolbar-row .logs-page__view-btns > .ui-btn {
-    flex: 1 1 0;
-    min-width: 0;
+  .logs-page__toolbar-row .logs-page__view-btns > button {
+    flex: 0 0 auto;
     min-height: 28px;
-    padding: 3px 8px;
-    font-size: 11px;
-    justify-content: center;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .logs-page__filter-toggle {
     flex: 0 0 auto;
-    min-height: 28px;
+    min-height: 34px;
     padding: 3px 8px;
     font-size: 11px;
   }
