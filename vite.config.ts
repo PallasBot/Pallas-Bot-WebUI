@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     port: 5173,
+    // 仓内 react/ 仅迁栈实验，勿触发 Vue HMR
+    watch: {
+      ignored: ["**/react/**", "**/node_modules/**"],
+    },
     // 开发时 /pallas/api 转发到机器人，避免跨域
     proxy: {
       "/pallas/api": {

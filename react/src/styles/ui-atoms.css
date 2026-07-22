@@ -1,0 +1,763 @@
+/*
+ * React Ui* 原子样式：对齐 Vue UiField / UiInput / UiSelect / UiButton，
+ * 故意不用 Vue ui.css 的 :root { --background: var(--bg-deep) }，以免打坏 Tailwind hsl(var(--background))。
+ * 语义色走 Vue shell token（--text / --border / --accent / --bg-card）。
+ */
+
+/* ── UiButton（Vue ui.css，token 改映射） ── */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ui-ctrl-height, 38px);
+  padding: var(--ui-btn-pad-y, 7px) var(--ui-btn-pad-x, 14px);
+  font-family: var(--font-sans);
+  font-size: var(--ui-btn-font, 13px);
+  font-weight: var(--ui-btn-weight, 600);
+  line-height: 1.2;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.18s var(--ease, ease),
+    border-color 0.18s var(--ease, ease),
+    box-shadow 0.18s var(--ease, ease),
+    transform 0.12s var(--ease, ease),
+    color 0.18s var(--ease, ease);
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+.ui-btn--sm {
+  min-height: 32px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ui-btn--lg {
+  min-height: 42px;
+  padding: 9px 18px;
+  font-size: 14px;
+}
+
+.ui-btn--default {
+  background: color-mix(in srgb, var(--text) 6%, var(--bg-card));
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="light"] .ui-btn--default {
+  background: var(--surface-control, #fff);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.ui-btn--default:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 5%, color-mix(in srgb, var(--text) 6%, var(--bg-card)));
+  border-color: color-mix(in srgb, var(--border) 80%, var(--text));
+}
+
+.ui-btn--primary {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  color: #fff;
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, #ffffff 12%);
+}
+
+.ui-btn--destructive {
+  background: #dc2626;
+  border-color: color-mix(in srgb, #dc2626 72%, transparent);
+  color: #fff;
+}
+
+.ui-btn--destructive:hover:not(:disabled) {
+  background: color-mix(in srgb, #dc2626 88%, #ffffff 10%);
+}
+
+.ui-btn--outline {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="light"] .ui-btn--outline {
+  background: var(--surface-control, #fff);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.ui-btn--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+
+.ui-btn__ico {
+  flex-shrink: 0;
+}
+
+html[data-layout="hub"] .ui-btn:not(.btn-refresh-action--embedded) {
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+html[data-layout="hub"] .ui-btn--sm {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+/* ── UiField（Vue UiField.vue scoped） ── */
+.ui-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  align-content: start;
+  overflow: hidden;
+}
+
+.ui-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 20px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ui-field__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.ui-field__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.ui-field__label-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-field__required {
+  color: color-mix(in srgb, var(--danger, #ef4444) 80%, var(--text) 10%);
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ui-field__secret {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 42%, transparent);
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  color: color-mix(in srgb, #f59e0b 84%, var(--text) 8%);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ui-field__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 42%;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+}
+
+.ui-field__control {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-field__meta {
+    opacity: 0;
+  }
+
+  .ui-field:hover .ui-field__meta,
+  .ui-field:focus-within .ui-field__meta {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .ui-field__label-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .ui-field__label {
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
+
+  .ui-field__meta {
+    opacity: 1;
+    max-width: 100%;
+    flex: 1 1 auto;
+  }
+}
+
+/* ── UiInput / UiSelect ── */
+.ui-input-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-input {
+  width: 100%;
+}
+
+.ui-input-wrap--revealable .ui-input {
+  padding-right: 40px;
+}
+
+.ui-input--invalid,
+.ui-select--invalid {
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 55%, var(--control-border));
+}
+
+.ui-input__eye {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ui-input__eye:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.ui-input__eye:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-select {
+  width: 100%;
+}
+
+/* ── Config field shell help「?」── */
+.plugin-config-form-item__help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+  flex-shrink: 0;
+  opacity: 0.45;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.plugin-config-form-item__help-btn:hover,
+.plugin-config-form-item__help-btn[aria-expanded="true"] {
+  opacity: 1;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text) 12%);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.plugin-config-form-item__help-btn--has-desc {
+  opacity: 0.62;
+  color: color-mix(in srgb, var(--accent) 68%, var(--text-muted) 32%);
+}
+
+.plugin-config-form-item__help-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+.plugin-config-form-item--tall {
+  grid-column: 1 / -1;
+}
+
+.plugin-config-form-item__meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  background: transparent;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+/* ── Config field renderer bool head（app.css 已有部分；补 React 缺省） ── */
+.config-field-renderer {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.config-field-renderer__title {
+  margin-bottom: 0;
+}
+
+.config-field-renderer__kind {
+  font-weight: 500;
+}
+
+.config-field-renderer__desc {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+.config-field-renderer__bool-only {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.config-field-renderer .form-field__control,
+.config-field-renderer .sel,
+.config-field-renderer .inp,
+.config-field-renderer .ui-input-wrap,
+.config-field-renderer .ui-select {
+  width: 100%;
+}
+
+.config-field-renderer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.config-field-renderer__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elev, var(--bg-card)) 90%, transparent);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.config-field-renderer__tag-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.config-field-renderer__tag-remove:hover {
+  color: var(--danger, #ef4444);
+}
+
+.config-field-renderer__tags-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+}
+
+.config-field-renderer__number {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  max-width: 100%;
+  width: min(100%, 520px);
+}
+
+.config-field-renderer__number .inp {
+  border-radius: var(--radius-control, 8px) 0 0 var(--radius-control, 8px);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.config-field-renderer__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  border: 1px solid var(--control-border, var(--border));
+  border-left: none;
+  background: color-mix(in srgb, var(--control-bg, var(--bg-card)) 88%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.config-field-renderer__step:last-child {
+  border-radius: 0 var(--radius-control, 8px) var(--radius-control, 8px) 0;
+}
+
+.config-field-renderer__step:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.config-field-renderer__step:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Plugin governance flat sections（Vue PluginGovernancePanel scoped） ── */
+.plugin-governance-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.plugin-governance-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plugin-governance-panel__dialog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plugin-governance-panel__title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-governance-panel__desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plugin-governance-panel__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.plugin-governance-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--accent, #38bdf8) 82%, var(--text, #fff) 10%);
+  background: color-mix(in srgb, var(--accent, #38bdf8) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #38bdf8) 18%, transparent);
+}
+
+.plugin-governance-panel__group {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.02)) 98%, transparent);
+}
+
+.plugin-governance-panel__group-head {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 72%, transparent);
+}
+
+.plugin-governance-panel__group-title {
+  margin: 0;
+  font-size: var(--console-panel-title-size, 1.0625rem);
+  line-height: 1.35;
+  font-weight: var(--console-panel-title-weight, 650);
+}
+
+.plugin-governance-panel__group-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plugin-governance-panel__switches {
+  display: grid;
+  gap: 10px;
+}
+
+.plugin-governance-panel--dialog .plugin-governance-panel__switches {
+  gap: 0;
+}
+
+.plugin-governance-panel__empty,
+.plugin-governance-panel__saving {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.plugin-governance-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.plugin-governance-panel__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elev, var(--bg-card)) 92%, transparent);
+  font-size: 12px;
+}
+
+.plugin-governance-panel__chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.plugin-governance-panel__chip-remove:hover {
+  color: var(--danger, #ef4444);
+}
+
+.plugin-governance-panel__add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.plugin-governance-panel__add-row .inp,
+.plugin-governance-panel__add-row .ui-input-wrap {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 280px;
+}
+
+.plugin-governance-panel__cmd-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.plugin-governance-panel__cmd-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.plugin-governance-panel__cmd-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plugin-governance-panel__cmd-meta {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.plugin-governance-panel__cmd-row--limits {
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  align-items: center;
+  column-gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .plugin-governance-panel__head {
+    flex-direction: column;
+  }
+
+  .plugin-governance-panel__badges,
+  .plugin-governance-panel__dialog-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .plugin-governance-panel__group {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .plugin-governance-panel__cmd-row--limits {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Runtime switch row ── */
+.plugin-runtime-switch {
+  display: grid;
+  gap: 10px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.1)) 82%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-2, rgba(255, 255, 255, 0.045)) 82%, transparent),
+      transparent 72%
+    ),
+    color-mix(in srgb, var(--surface-1, rgba(255, 255, 255, 0.028)) 97%, transparent);
+}
+
+.plugin-runtime-switch--disabled {
+  opacity: 0.72;
+}
+
+.plugin-runtime-switch--plain {
+  gap: 6px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 82%, transparent);
+}
+
+.plugin-runtime-switch--plain:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.plugin-runtime-switch--plain:first-child {
+  padding-top: 0;
+}
+
+.plugin-runtime-switch__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plugin-runtime-switch__title {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.plugin-runtime-switch__desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted, rgba(255, 255, 255, 0.72));
+}
+
+.plugin-runtime-switch__desc p {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .plugin-runtime-switch__row {
+    align-items: flex-start;
+  }
+}
+
+/* ── Ui dialog shell（轻量，供后续 P1） ── */
+.ui-dialog__ft {
+  flex-shrink: 0;
+  padding: 0 20px 16px;
+}
