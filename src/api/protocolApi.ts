@@ -242,6 +242,69 @@ export async function protocolListAccounts(mountUrl: string): Promise<NapcatAcco
   return Array.isArray(data?.accounts) ? data.accounts : [];
 }
 
+export type SnowlumaRuntimeRow = {
+  id: string;
+  display_name?: string;
+  data_dir?: string;
+  webui_port?: number | string;
+  member_account_ids?: string[];
+  member_count?: number;
+  process_running?: boolean;
+  snowluma_managed_webui_password?: string;
+  [key: string]: unknown;
+};
+
+export async function protocolListSnowlumaRuntimes(
+  mountUrl: string,
+): Promise<SnowlumaRuntimeRow[]> {
+  const { data } = await protocolHttp(mountUrl).get<{ runtimes?: SnowlumaRuntimeRow[] }>(
+    "/api/snowluma/runtimes",
+  );
+  return Array.isArray(data?.runtimes) ? data.runtimes : [];
+}
+
+export async function protocolCreateSnowlumaRuntime(
+  mountUrl: string,
+  payload: Record<string, unknown>,
+): Promise<SnowlumaRuntimeRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<{ runtime?: SnowlumaRuntimeRow }>(
+    "/api/snowluma/runtimes",
+    payload,
+  );
+  return data?.runtime ?? null;
+}
+
+export async function protocolStartSnowlumaRuntime(
+  mountUrl: string,
+  runtimeId: string,
+): Promise<SnowlumaRuntimeRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<{ runtime?: SnowlumaRuntimeRow }>(
+    `/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}/start`,
+  );
+  return data?.runtime ?? null;
+}
+
+export async function protocolStopSnowlumaRuntime(
+  mountUrl: string,
+  runtimeId: string,
+): Promise<SnowlumaRuntimeRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<{ runtime?: SnowlumaRuntimeRow }>(
+    `/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}/stop`,
+  );
+  return data?.runtime ?? null;
+}
+
+export async function protocolDeleteSnowlumaRuntime(
+  mountUrl: string,
+  runtimeId: string,
+  force = false,
+): Promise<void> {
+  await protocolHttp(mountUrl).delete(
+    `/api/snowluma/runtimes/${encodeURIComponent(runtimeId)}`,
+    { params: force ? { force: "1" } : undefined },
+  );
+}
+
 export async function protocolStartAccount(mountUrl: string, accountId: string): Promise<NapcatAccountRow | null> {
   const { data } = await protocolHttp(mountUrl).post<AccountActionBody>(
     `/api/accounts/${encodeURIComponent(accountId)}/start`,

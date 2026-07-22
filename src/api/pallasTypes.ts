@@ -1640,6 +1640,9 @@ export interface NapcatAccountRow {
   snowluma_runtime_webui_password?: string;
   snowluma_webui_default_user?: string;
   snowluma_linux_docker?: boolean;
+  /** SnowLuma 多 QQ 共享进程/容器 id */
+  snowluma_runtime_id?: string;
+  snowluma_runtime_legacy_container_account_id?: string;
   running?: boolean;
   connected?: boolean;
   process_running?: boolean;

@@ -7967,6 +7967,13 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   min-width: 0;
 }
 
+.protocol-runtime-row__members {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .protocol-runtime-row__actions {
   flex-shrink: 0;
 }
