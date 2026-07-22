@@ -21,6 +21,8 @@ import PageHeader from "@/components/PageHeader";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 
 const FG_LIST_SKEL_ROWS = 8;
@@ -395,11 +397,11 @@ export default function FriendsGroupsPage() {
           </h2>
           <div className="friends-groups-account-hd-tail">
             <span className="friends-groups-hd-pin-wrap friends-groups-account-hd-pin-wrap" />
-            <select
-              className="sel friends-groups-account-sel"
+            <UiSelect
+              className="friends-groups-account-sel"
               value={selfIdStr}
-              onChange={(e) => {
-                setSelfIdStr(e.target.value);
+              onValueChange={(v) => {
+                setSelfIdStr(v);
                 setFriendListQ("");
                 setGroupListQ("");
               }}
@@ -410,7 +412,7 @@ export default function FriendsGroupsPage() {
                   {botOptionLabel(b)}
                 </option>
               ))}
-            </select>
+            </UiSelect>
           </div>
         </div>
       </section>
@@ -427,14 +429,14 @@ export default function FriendsGroupsPage() {
           </h2>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <input
-              className="inp friends-groups-list-search"
+            <UiInput
+              className="friends-groups-list-search"
               type="search"
               placeholder="搜索 QQ / 昵称 / 备注"
               title="按 QQ、昵称、备注筛选当前列表"
               value={friendListQ}
               disabled={!selfIdStr.trim() || fgListsSkeleton}
-              onChange={(e) => setFriendListQ(e.target.value)}
+              onValueChange={setFriendListQ}
             />
             <div className="friends-groups-list-hd-actions__tail">
               {selfIdStr && listsBusy ? (
@@ -555,14 +557,14 @@ export default function FriendsGroupsPage() {
           </h2>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <input
-              className="inp friends-groups-list-search"
+            <UiInput
+              className="friends-groups-list-search"
               type="search"
               placeholder="搜索群号 / 群名"
               title="按群号、群名、成员数筛选当前列表"
               value={groupListQ}
               disabled={!selfIdStr.trim() || fgListsSkeleton}
-              onChange={(e) => setGroupListQ(e.target.value)}
+              onValueChange={setGroupListQ}
             />
             <div className="friends-groups-list-hd-actions__tail">
               {selfIdStr && listsBusy ? (

@@ -55,7 +55,7 @@ export default function PreferencesPage() {
       return fetchConsoleSetupStatus();
     },
   });
-  const healthQ = useQuery({ queryKey: ["health"], queryFn: fetchHealth });
+  const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth() });
   const webuiDevModeActive = Boolean(healthQ.data?.console?.pallas_webui_dev_mode);
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
   type ProtocolRuntimeJob,
   type ProtocolRuntimeProfile,
 } from "@/api/protocol";
+import UiInput from "@/components/ui/UiInput";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 const RUNTIME_MODES = [
@@ -300,23 +301,21 @@ export default function ProtocolAssetsTab() {
               <div className="protocol-form-grid protocol-assets-docker-grid">
                 <label className="field">
                   <span className="field__label">NapCat Docker 镜像</span>
-                  <input
-                    className="inp"
+                  <UiInput
                     placeholder="mlikiowa/napcat-docker:latest"
                     autoComplete="off"
                     value={profileForm.docker_image ?? ""}
-                    onChange={(e) => setProfileForm((p) => ({ ...p, docker_image: e.target.value }))}
+                    onValueChange={(v) => setProfileForm((p) => ({ ...p, docker_image: v }))}
                   />
                 </label>
                 <label className="field">
                   <span className="field__label">SnowLuma Docker 镜像</span>
-                  <input
-                    className="inp"
+                  <UiInput
                     placeholder="motricseven7/snowluma:latest"
                     autoComplete="off"
                     value={profileForm.snowluma_docker_image ?? ""}
-                    onChange={(e) =>
-                      setProfileForm((p) => ({ ...p, snowluma_docker_image: e.target.value }))
+                    onValueChange={(v) =>
+                      setProfileForm((p) => ({ ...p, snowluma_docker_image: v }))
                     }
                   />
                 </label>
@@ -357,11 +356,11 @@ export default function ProtocolAssetsTab() {
                 <span className="muted protocol-assets-job">{jobStatusLabel(napcatJob)}</span>
               </div>
               <div className="row-actions protocol-assets-download">
-                <input
-                  className="inp protocol-assets-download__tag"
+                <UiInput
+                  className="protocol-assets-download__tag"
                   placeholder="版本 tag（可选，默认 latest）"
                   value={napcatTag}
-                  onChange={(e) => setNapcatTag(e.target.value)}
+                  onValueChange={setNapcatTag}
                 />
                 <button
                   type="button"
@@ -379,11 +378,11 @@ export default function ProtocolAssetsTab() {
                 <span className="muted protocol-assets-job">{jobStatusLabel(snowlumaJob)}</span>
               </div>
               <div className="row-actions protocol-assets-download">
-                <input
-                  className="inp protocol-assets-download__tag"
+                <UiInput
+                  className="protocol-assets-download__tag"
                   placeholder="版本 tag（可选，默认 latest）"
                   value={snowlumaTag}
-                  onChange={(e) => setSnowlumaTag(e.target.value)}
+                  onValueChange={setSnowlumaTag}
                 />
                 <button
                   type="button"

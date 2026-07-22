@@ -1,4 +1,4 @@
-import { useState, type InputHTMLAttributes } from "react";
+import { useState, type CSSProperties, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
@@ -7,6 +7,8 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> &
   invalid?: boolean;
   revealable?: boolean;
   wrapClassName?: string;
+  /** 与 Vue 一致：外层 class 落在 wrap；style 默认也落在 wrap 以支持 flex 布局 */
+  wrapStyle?: CSSProperties;
 };
 
 export default function UiInput({
@@ -18,6 +20,8 @@ export default function UiInput({
   disabled,
   className,
   wrapClassName,
+  wrapStyle,
+  style,
   ...rest
 }: Props) {
   const [revealed, setRevealed] = useState(false);
@@ -25,7 +29,10 @@ export default function UiInput({
   const inputType = showEye ? (revealed ? "text" : "password") : type;
 
   return (
-    <div className={cn("ui-input-wrap", showEye && "ui-input-wrap--revealable", wrapClassName, className)}>
+    <div
+      className={cn("ui-input-wrap", showEye && "ui-input-wrap--revealable", wrapClassName, className)}
+      style={wrapStyle ?? style}
+    >
       <input
         {...rest}
         className={cn("inp ui-input", invalid && "ui-input--invalid")}

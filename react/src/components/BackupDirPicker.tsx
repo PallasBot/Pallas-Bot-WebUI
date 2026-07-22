@@ -2,12 +2,7 @@ import { useEffect, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchDbBackupBrowse } from "@/api/fullConsole";
 import type { DbBackupBrowseData } from "@pallas-vue/api/pallasTypes";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import ConsoleModal from "@/components/ConsoleModal";
 
 export default function BackupDirPicker({
   open,
@@ -54,64 +49,88 @@ export default function BackupDirPicker({
     : "加载中…";
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="backup-dir-picker__dialog max-w-lg">
-        <DialogHeader>
-          <DialogTitle id="backup-dir-picker-title">选择备份父目录</DialogTitle>
-          <p className="muted text-sm">在允许的目录范围内浏览并选择输出位置</p>
-        </DialogHeader>
-        <div className="backup-dir-picker__bd">
-          {err ? <div className="alert alert--err backup-dir-picker__alert">{err}</div> : null}
-          <div className="backup-dir-picker__path muted backup-dir-picker__path-hover" title={browse?.current || ""}>
-            {pathTail}
+    <ConsoleModal
+      open={open}
+      titleId="backup-dir-picker-title"
+      panelClass="backup-dir-picker__dialog"
+      bodyClass="backup-dir-picker__bd"
+      busy={busy}
+      onClose={onClose}
+      header={
+        <>
+          <div className="console-modal__head-text">
+            <h2 id="backup-dir-picker-title" className="console-modal__title">
+              选择备份父目录
+            </h2>
+            <p className="console-modal__subtitle muted">在允许的目录范围内浏览并选择输出位置</p>
           </div>
-          <div className="backup-dir-picker__toolbar row-actions">
-            <button type="button" className="btn" disabled={busy || !browse?.parent} onClick={() => void loadBrowse(browse?.parent || undefined)}>
-              上一级
-            </button>
-            <button
-              type="button"
-              className="btn"
-              disabled={busy || !browse?.default_path}
-              onClick={() => void loadBrowse(browse?.default_path || "")}
-            >
-              默认目录
-            </button>
-          </div>
-          <ul className="backup-dir-picker__list" aria-label="子目录">
-            {busy && !browse?.entries?.length ? (
-              <li className="backup-dir-picker__empty muted">正在读取目录…</li>
-            ) : !browse?.entries?.length ? (
-              <li className="backup-dir-picker__empty muted">当前目录下没有可进入的子文件夹</li>
-            ) : (
-              browse.entries.map((entry) => (
-                <li key={entry.path}>
-                  <button
-                    type="button"
-                    className="backup-dir-picker__item"
-                    disabled={busy}
-                    title={entry.path}
-                    onClick={() => void loadBrowse(entry.path)}
-                  >
-                    <span className="backup-dir-picker__item-ico" aria-hidden="true">
-                      📁
-                    </span>
-                    <span className="backup-dir-picker__item-name">{entry.name}</span>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="row-actions backup-dir-picker__actions">
-            <button type="button" className="btn" disabled={busy} onClick={onClose}>
-              取消
-            </button>
-            <button type="button" className="btn btn--primary" disabled={busy || !browse?.current} onClick={chooseCurrent}>
-              选择此目录
-            </button>
-          </div>
+          <button type="button" className="console-modal__close" aria-label="关闭" onClick={onClose}>
+            ×
+          </button>
+        </>
+      }
+      footer={
+        <div className="row-actions backup-dir-picker__actions">
+          <button type="button" className="btn" disabled={busy} onClick={onClose}>
+            取消
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={busy || !browse?.current}
+            onClick={chooseCurrent}
+          >
+            选择此目录
+          </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      {err ? <div className="alert alert--err backup-dir-picker__alert">{err}</div> : null}
+      <div className="backup-dir-picker__path muted backup-dir-picker__path-hover" title={browse?.current || ""}>
+        {pathTail}
+      </div>
+      <div className="backup-dir-picker__toolbar row-actions">
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || !browse?.parent}
+          onClick={() => void loadBrowse(browse?.parent || undefined)}
+        >
+          上一级
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || !browse?.default_path}
+          onClick={() => void loadBrowse(browse?.default_path || "")}
+        >
+          默认目录
+        </button>
+      </div>
+      <ul className="backup-dir-picker__list" aria-label="子目录">
+        {busy && !browse?.entries?.length ? (
+          <li className="backup-dir-picker__empty muted">正在读取目录…</li>
+        ) : !browse?.entries?.length ? (
+          <li className="backup-dir-picker__empty muted">当前目录下没有可进入的子文件夹</li>
+        ) : (
+          browse.entries.map((entry) => (
+            <li key={entry.path}>
+              <button
+                type="button"
+                className="backup-dir-picker__item"
+                disabled={busy}
+                title={entry.path}
+                onClick={() => void loadBrowse(entry.path)}
+              >
+                <span className="backup-dir-picker__item-ico" aria-hidden="true">
+                  📁
+                </span>
+                <span className="backup-dir-picker__item-name">{entry.name}</span>
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </ConsoleModal>
   );
 }

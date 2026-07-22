@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { putBotConfig } from "@/api/fullConsole";
 import ConsoleModal from "@/components/ConsoleModal";
+import UiInput from "@/components/ui/UiInput";
 import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@pallas-vue/api/pallasTypes";
 import {
   PERSONA_SEED_PREF_OPTIONS,
@@ -279,15 +280,14 @@ export default function BotConfigModal({
               输入号码后点击添加；每个账号右上角 × 可移除。
             </p>
             <div className="row-actions" style={{ marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
-              <input
-                className="inp"
+              <UiInput
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
                 placeholder="QQ 号"
                 style={{ maxWidth: 200, minWidth: 0, flex: "1 1 140px" }}
                 value={addAdminInput}
-                onChange={(e) => setAddAdminInput(e.target.value)}
+                onValueChange={setAddAdminInput}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();

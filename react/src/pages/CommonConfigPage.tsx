@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCommonConfigSections } from "@/api/fullConsole";
 import CommonConfigForm from "@/components/CommonConfigForm";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import PageHeader from "@/components/PageHeader";
 import StateBlock from "@/components/StateBlock";
 import { cn } from "@/lib/utils";
@@ -29,13 +30,8 @@ export default function CommonConfigPage() {
     return (
       <div className="common-config-page console-hub-page">
         <PageHeader title="通用配置" description="控制台 common-config 各段；点击进入编辑。" />
-        <div className="console-hub-page__search-wrap mb-4 max-w-md">
-          <input
-            className="inp console-hub-page__search-input"
-            placeholder="搜索段…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+        <div className="mb-4 max-w-md">
+          <ConsoleHubSearch placeholder="搜索段…" value={q} onValueChange={setQ} />
         </div>
         <StateBlock loading={sectionsQ.isLoading} error={sectionsQ.error} empty={!filtered.length}>
           <div className="common-config-page__grid">

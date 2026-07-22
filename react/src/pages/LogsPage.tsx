@@ -7,9 +7,11 @@ import {
 } from "react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@pallas-vue/api/pallasTypes";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
 import PageHeader from "@/components/PageHeader";
-import { Input } from "@/components/ui/input";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import {
   LOG_ENTRY_LEVELS,
   loadLogsEnabledLevels,
@@ -365,15 +367,13 @@ export default function LogsPage() {
 
         <div className="logs-page__chrome-tools">
           <div className="logs-page__search-row">
-            <div className="logs-page__search console-hub-page__search-wrap">
-              <Input
-                className="console-hub-page__search-input"
-                placeholder="搜索消息、scope、级别…"
-                aria-label="按消息、scope、级别等过滤"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
+            <ConsoleHubSearch
+              className="logs-page__search"
+              placeholder="搜索消息、scope、级别…"
+              ariaLabel="按消息、scope、级别等过滤"
+              value={q}
+              onValueChange={setQ}
+            />
             <button
               type="button"
               className={cn(
@@ -409,44 +409,42 @@ export default function LogsPage() {
               <div className="logs-page__filter-row form-toolbar">
                 <label className="logs-page__field">
                   <span className="logs-page__field-label">范围</span>
-                  <select
-                    className="sel ui-select"
+                  <UiSelect
                     aria-label="日志范围"
                     value={scope}
-                    onChange={(e) => setScope(e.target.value as LogScope)}
+                    onValueChange={(v) => setScope(v as LogScope)}
                   >
                     <option value="all">全部</option>
                     <option value="webui">WebUI</option>
                     <option value="protocol">协议</option>
-                  </select>
+                  </UiSelect>
                 </label>
                 {payload?.sharded_logs ? (
                   <label className="logs-page__field">
                     <span className="logs-page__field-label">来源</span>
-                    <select
-                      className="sel ui-select"
+                    <UiSelect
                       aria-label="日志来源"
                       value={logSource}
-                      onChange={(e) => setLogSource(e.target.value)}
+                      onValueChange={setLogSource}
                     >
                       {sourceOptions.map((s) => (
                         <option key={`src-${s}`} value={s}>
                           {s === "all" ? "全部来源" : s}
                         </option>
                       ))}
-                    </select>
+                    </UiSelect>
                   </label>
                 ) : null}
                 <label className="logs-page__field">
                   <span className="logs-page__field-label">条数</span>
-                  <Input
-                    className="logs-page__n-inp inp ui-input-wrap"
+                  <UiInput
+                    className="logs-page__n-inp"
                     type="number"
                     min={20}
                     max={2000}
                     aria-label="拉取条数"
                     value={String(n)}
-                    onChange={(e) => onNInput(e.target.value, setN)}
+                    onValueChange={(v) => onNInput(v, setN)}
                   />
                 </label>
               </div>

@@ -11,6 +11,7 @@ import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
+import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import PageHeader from "@/components/PageHeader";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -325,14 +326,13 @@ export default function InstancesPage() {
               </div>
               <div className="inst-db-panel__actions">
                 <div className="inst-db-panel__action-controls inst-db-panel__action-controls--search-fill">
-                  <input
-                    className="inp inst-db-search"
-                    type="search"
+                  <ConsoleHubSearch
+                    className="inst-db-search"
                     placeholder="搜索账号 / 昵称 / 管理员 / 插件"
-                    aria-label="搜索账号 / 昵称 / 管理员 / 插件"
+                    ariaLabel="搜索账号 / 昵称 / 管理员 / 插件"
                     value={dbBotSearchQ}
-                    onChange={(e) => {
-                      setDbBotSearchQ(e.target.value);
+                    onValueChange={(v) => {
+                      setDbBotSearchQ(v);
                       setInstDbPage(1);
                     }}
                   />

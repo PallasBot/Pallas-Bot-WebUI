@@ -15,6 +15,8 @@ import BackupDirPicker from "@/components/BackupDirPicker";
 import BackupTargetTree from "@/components/BackupTargetTree";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import { useDbBackup } from "@/hooks/useDbBackup";
 import { formatBackupBytes, formatBackupElapsed } from "@/utils/dbBackupFormat";
 
@@ -470,12 +472,11 @@ export default function DatabaseBackupsPage() {
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">备份父目录</label>
                   <div className="database-backups-page__dir-row">
-                    <input
-                      className="inp"
+                    <UiInput
                       placeholder="留空使用默认"
                       value={backup.outputParent}
                       disabled={listBusy || deleting || backup.busy}
-                      onChange={(e) => backup.setOutputParent(e.target.value)}
+                      onValueChange={backup.setOutputParent}
                     />
                     <button type="button" className="btn" disabled={listBusy || deleting || backup.busy} onClick={() => setDirPickerOpen(true)}>
                       浏览…
@@ -488,37 +489,54 @@ export default function DatabaseBackupsPage() {
                 </div>
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">目录后缀（可选）</label>
-                  <input className="inp" placeholder="例如 before_upgrade" value={backup.label} disabled={backup.busy} onChange={(e) => backup.setLabel(e.target.value)} />
+                  <UiInput
+                    placeholder="例如 before_upgrade"
+                    value={backup.label}
+                    disabled={backup.busy}
+                    onValueChange={backup.setLabel}
+                  />
                 </div>
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">备份范围</label>
-                  <select className="sel" value={backup.targetMode} disabled={backup.busy} onChange={(e) => backup.setTargetMode(e.target.value as "all" | "selected")}>
+                  <UiSelect
+                    value={backup.targetMode}
+                    disabled={backup.busy}
+                    onValueChange={(v) => backup.setTargetMode(v as "all" | "selected")}
+                  >
                     <option value="all">
                       {backup.backupInfo?.backend === "mongodb" ? "整库 / 预设关键集合" : "整库"}
                     </option>
                     <option value="selected">指定{backup.backupInfo?.backend === "postgres" ? "表" : "集合"}</option>
-                  </select>
+                  </UiSelect>
                 </div>
                 {backup.backupInfo?.backend === "mongodb" && backup.targetMode === "all" ? (
                   <div className="prefs-form-field">
                     <label className="prefs-form-field__label">MongoDB 预设</label>
-                    <select className="sel" value={backup.scope} disabled={backup.busy} onChange={(e) => backup.setScope(e.target.value as "full" | "important")}>
+                    <UiSelect
+                      value={backup.scope}
+                      disabled={backup.busy}
+                      onValueChange={(v) => backup.setScope(v as "full" | "important")}
+                    >
                       {backup.scopeOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
                       ))}
-                    </select>
+                    </UiSelect>
                   </div>
                 ) : null}
                 {backup.backupInfo?.backend === "postgres" ? (
                   <div className="prefs-form-field">
                     <label className="prefs-form-field__label">PostgreSQL 格式</label>
-                    <select className="sel" value={backup.pgFormat} disabled={backup.busy} onChange={(e) => backup.setPgFormat(e.target.value as "custom" | "plain" | "directory")}>
+                    <UiSelect
+                      value={backup.pgFormat}
+                      disabled={backup.busy}
+                      onValueChange={(v) => backup.setPgFormat(v as "custom" | "plain" | "directory")}
+                    >
                       <option value="custom">custom（.dump，推荐）</option>
                       <option value="plain">plain SQL（.sql）</option>
                       <option value="directory">directory（目录格式）</option>
-                    </select>
+                    </UiSelect>
                   </div>
                 ) : null}
                 {backup.targetMode === "selected" && targetOptions.length ? (

@@ -20,6 +20,8 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
+import UiInput from "@/components/ui/UiInput";
+import UiSelect from "@/components/ui/UiSelect";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 
 const CONFIG_LIST_LIMIT = 10_000;
@@ -270,15 +272,15 @@ export default function DatabasePage() {
           </h2>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <input
-              className="inp friends-groups-list-search"
+            <UiInput
+              className="friends-groups-list-search"
               type="search"
               placeholder="搜索群号 / 轮盘 / 封禁 / 插件 / 拉黑"
               title="按群号、轮盘模式、封禁状态、禁用插件、拉黑 QQ 筛选"
               value={groupListQ}
               disabled={socialConfigsBusy}
-              onChange={(e) => {
-                setGroupListQ(e.target.value);
+              onValueChange={(v) => {
+                setGroupListQ(v);
                 setPageGroups(1);
               }}
             />
@@ -370,15 +372,15 @@ export default function DatabasePage() {
           </h2>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <input
-              className="inp friends-groups-list-search"
+            <UiInput
+              className="friends-groups-list-search"
               type="search"
               placeholder="搜索 QQ / 封禁状态"
               title="按 QQ、封禁状态筛选"
               value={userListQ}
               disabled={socialConfigsBusy}
-              onChange={(e) => {
-                setUserListQ(e.target.value);
+              onValueChange={(v) => {
+                setUserListQ(v);
                 setPageUsers(1);
               }}
             />
@@ -398,15 +400,15 @@ export default function DatabasePage() {
                 输入 QQ 号后点击添加并设置封禁。此为全局拉黑，与私聊「牛牛拉黑」写入同一字段；本群维度拉黑请在上方群配置中维护。
               </p>
               <div className="row-actions database-user-config-add__row">
-                <input
-                  className="inp database-user-config-add__inp"
+                <UiInput
+                  className="database-user-config-add__inp"
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
                   placeholder="QQ 号"
                   value={addUserInput}
                   disabled={socialConfigsBusy}
-                  onChange={(e) => setAddUserInput(e.target.value)}
+                  onValueChange={setAddUserInput}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -554,16 +556,18 @@ export default function DatabasePage() {
                 集合名
               </label>
               {mongoCollections.length ? (
-                <select className="sel" style={{ maxWidth: 420, width: "100%" }} value={collection} onChange={(e) => setCollection(e.target.value)}>
+                <UiSelect style={{ maxWidth: 420, width: "100%" }} value={collection} onValueChange={setCollection}>
                   <option value="">请选择集合</option>
                   {mongoCollections.map((c) => (
                     <option key={c.name} value={c.name}>
                       {c.name}（{nf.format(c.count)}）
                     </option>
                   ))}
-                </select>
+                </UiSelect>
               ) : (
-                <input className="inp" style={{ maxWidth: 360, width: "100%" }} placeholder="collection" value={collection} onChange={(e) => setCollection(e.target.value)} />
+                <div style={{ maxWidth: 360, width: "100%" }}>
+                  <UiInput placeholder="collection" value={collection} onValueChange={setCollection} />
+                </div>
               )}
             </div>
             <label className="muted" style={{ display: "block", marginBottom: 6 }}>
