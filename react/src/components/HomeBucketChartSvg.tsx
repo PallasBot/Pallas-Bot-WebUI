@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { BucketBarPack } from "@/utils/homePluginChartPack";
+import { cn } from "@/lib/utils";
 
 export default function HomeBucketChartSvg({
   pack,
@@ -93,17 +94,18 @@ export default function HomeBucketChartSvg({
         {pack.bars.map((b, bi) => (
           <rect
             key={`bb-${bi}`}
-            className="home-plugin-bucket__bar"
+            className={cn("home-plugin-bucket__bar", hoverIndex != null && "home-plugin-bucket__bar--active")}
             x={b.x}
             y={b.y}
             width={b.w}
             height={b.h}
+            rx={2.5}
             fill={b.fill}
           />
         ))}
         {hoverX != null ? (
           <line
-            className="home-plugin-bucket__crosshair"
+            className="home-plugin-bucket__cursor"
             x1={hoverX}
             y1={pack.top}
             x2={hoverX}
@@ -112,13 +114,13 @@ export default function HomeBucketChartSvg({
         ) : null}
       </svg>
       {hoverTime != null && hoverRows.length ? (
-        <div className="home-plugin-bucket-chart__tooltip" style={{ left: `${tooltipX}px` }} role="status">
-          <div className="home-plugin-bucket-chart__tooltip-time">{formatTimeLabel(hoverTime)}</div>
+        <div className="home-plugin-chart-tooltip" style={{ left: `${tooltipX}px` }} role="status">
+          <div className="home-plugin-chart-tooltip__hd">{formatTimeLabel(hoverTime)}</div>
           {hoverRows.map((r) => (
-            <div key={r.label} className="home-plugin-bucket-chart__tooltip-row">
-              <i className="home-plugin-bucket-chart__tooltip-dot" style={{ background: r.color }} aria-hidden="true" />
-              <span className="home-plugin-bucket-chart__tooltip-label">{r.label}</span>
-              <span className="home-plugin-bucket-chart__tooltip-val">{r.value}</span>
+            <div key={r.label} className="home-plugin-chart-tooltip__row">
+              <span className="home-plugin-chart-tooltip__dot" style={{ background: r.color }} aria-hidden="true" />
+              <span className="home-plugin-chart-tooltip__label">{r.label}</span>
+              <span className="home-plugin-chart-tooltip__val">{r.value.toLocaleString()}</span>
             </div>
           ))}
         </div>

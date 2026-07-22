@@ -1,0 +1,198 @@
+/* Ported from Vue GsDualAxisTrendChart.vue scoped */
+.gs-trend-chart {
+  min-width: 0;
+  width: 100%;
+}
+
+.gs-trend-chart__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  width: 100%;
+}
+
+.gs-trend-chart__empty {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.gs-trend-chart__plot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  touch-action: none;
+}
+
+.gs-trend-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  max-height: 320px;
+}
+
+.gs-trend-chart__grid {
+  stroke: color-mix(in srgb, var(--border) 72%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 2 6;
+}
+
+.gs-trend-chart__axis {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-sans, system-ui);
+}
+
+.gs-trend-chart__axis--left {
+  text-anchor: start;
+}
+
+.gs-trend-chart__axis--right {
+  text-anchor: end;
+}
+
+.gs-trend-chart__axis--x {
+  text-anchor: middle;
+}
+
+.gs-trend-chart__area {
+  opacity: 0;
+  animation: gs-trend-area-in 0.65s ease forwards;
+}
+
+.gs-trend-chart__line {
+  stroke-width: 2.25px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.gs-trend-chart__line--animate {
+  stroke-dasharray: 2400;
+  stroke-dashoffset: 2400;
+  animation: gs-trend-line-draw 1.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.gs-trend-chart__crosshair {
+  stroke: color-mix(in srgb, var(--text-muted) 55%, transparent);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.gs-trend-chart__dot {
+  transition: r 0.15s ease, stroke 0.15s ease;
+  pointer-events: none;
+}
+
+.gs-trend-chart__hit {
+  cursor: crosshair;
+}
+
+.gs-trend-chart__tooltip {
+  position: absolute;
+  top: 6px;
+  z-index: 2;
+  transform: translateX(-50%);
+  min-width: 148px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--panel, #fff) 92%, transparent);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(15, 23, 42, 0.12));
+  pointer-events: none;
+  animation: gs-trend-tip-in 0.16s ease;
+}
+
+.gs-trend-chart__tooltip-date {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.gs-trend-chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.gs-trend-chart__tooltip-row + .gs-trend-chart__tooltip-row {
+  margin-top: 3px;
+}
+
+.gs-trend-chart__tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.gs-trend-chart__tooltip-label {
+  flex: 1 1 auto;
+  color: var(--text-muted);
+}
+
+.gs-trend-chart__tooltip-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.gs-trend-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 18px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gs-trend-chart__leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gs-trend-chart__leg-swatch {
+  width: 14px;
+  height: 4px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+@keyframes gs-trend-line-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gs-trend-area-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gs-trend-tip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
