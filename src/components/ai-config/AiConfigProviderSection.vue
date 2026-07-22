@@ -112,6 +112,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .ai-config-section__layer-hint {
@@ -121,15 +122,29 @@ defineExpose({
 }
 
 .ai-config-section__expert {
+  min-width: 0;
   overflow: hidden;
 }
 
 .ai-config-section__tabs {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin: 12px 12px 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .ai-config-section__tab-body {
+  min-width: 0;
   padding: 12px;
+}
+
+.ai-config-section__expert :deep(.ui-card__content) {
+  min-width: 0;
 }
 
 .ai-config-section__local {
@@ -138,9 +153,18 @@ defineExpose({
   gap: 14px;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 1024px) {
   .ai-config-section__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
     margin: 10px 10px 0;
+  }
+
+  .ai-config-section__tabs button {
+    min-width: 0;
+    padding-inline: 8px;
+    white-space: normal;
   }
 
   .ai-config-section__tab-body {

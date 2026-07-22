@@ -29,11 +29,25 @@ describe("AI provider expert layout", () => {
     expect(toggle).toContain("ai-config-expert-toggle__hint");
     expect(page).toContain("@media (max-width: 1024px)");
     expect(page).toContain("grid-template-columns: 1fr");
-    expect(page).toContain("overflow-x: auto");
+    expect(page).toContain("grid-template-columns: repeat(auto-fit, minmax(8.75rem, 1fr))");
     expect(manager).toContain(".provider-manager__card-main");
     expect(manager).toContain("overflow-wrap: anywhere");
     expect(appStyles).toContain(".plugin-config-page {\n  container-type: inline-size;");
     expect(appStyles).toContain("@container (min-width: 1100px)");
+  });
+
+  it("allows the expert provider panel to shrink within the narrow-screen viewport", () => {
+    const section = readSource("src/components/ai-config/AiConfigProviderSection.vue");
+    const page = readSource("src/pages/AiExtensionPage.vue");
+    const manager = readSource("src/components/ai-config/providers/ProviderManager.vue");
+    const modelAdmin = readSource("src/components/ai-config/ModelAdminPanel.vue");
+
+    expect(section).toMatch(/\.ai-config-section__expert \{[\s\S]*?min-width: 0;/);
+    expect(section).toMatch(/\.ai-config-section__tabs \{[\s\S]*?min-width: 0;/);
+    expect(section).toMatch(/\.ai-config-section__tab-body \{[\s\S]*?min-width: 0;/);
+    expect(page).toMatch(/@media \(max-width: 1024px\) \{[\s\S]*?\.ai-config-page__rail-scroll,\s+\.ai-config-page__rail-hits \{[\s\S]*?grid-template-columns: repeat\(auto-fit, minmax\(8\.75rem, 1fr\)\);/);
+    expect(manager).toMatch(/@media \(max-width: 1024px\) \{[\s\S]*?\.provider-manager__card-actions \{[\s\S]*?max-width: 100%;/);
+    expect(modelAdmin).toMatch(/@media \(max-width: 560px\) \{[\s\S]*?\.model-admin__actions\.row-actions \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   });
 
   it("wires provider presets into add/edit and provider cards", () => {
