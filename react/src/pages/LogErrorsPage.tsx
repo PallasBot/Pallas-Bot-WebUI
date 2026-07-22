@@ -15,9 +15,10 @@ import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import UiButton from "@/components/ui/UiButton";
 import UiSelect from "@/components/ui/UiSelect";
 import { axiosErrorDetail } from "@/api/http";
-import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 let logErrorsCache: Awaited<ReturnType<typeof fetchLogErrors>> | null = null;
 
@@ -34,9 +35,7 @@ export default function LogErrorsPage() {
   const [q, setQ] = useState("");
   const [clearing, setClearing] = useState(false);
   const [err, setErr] = useState("");
-  const [toast, setToast] = useState("");
   const [logSource, setLogSource] = useState("all");
-  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
   const query = useQuery({
     queryKey: ["log-errors", logSource],
@@ -73,15 +72,12 @@ export default function LogErrorsPage() {
     });
   }, [entries, q]);
 
-  const allExpanded = displayEntries.length > 0 && displayEntries.every((it, idx) => expandedKeys[cardKey(it, idx)]);
-
   async function runCopy(label: string, text: string) {
     if (!(await copyTextToClipboard(text))) {
-      setToast("复制失败");
+      pushConsoleToast("复制失败", "err");
       return;
     }
-    setToast(`已复制${label}`);
-    window.setTimeout(() => setToast(""), 2500);
+    pushConsoleToast(`已复制${label}`, "ok");
   }
 
   async function copySummary(it: ErrorRow) {
@@ -92,7 +88,7 @@ export default function LogErrorsPage() {
   async function copyTraceback(it: ErrorRow) {
     const tb = (it.traceback ?? "").trim();
     if (!tb) {
-      setToast("无堆栈内容");
+      pushConsoleToast("无堆栈内容", "warn");
       return;
     }
     await runCopy("堆栈", tb);
@@ -116,36 +112,19 @@ export default function LogErrorsPage() {
     setErr("");
     try {
       await postLogErrorsCleanup();
-      setToast("已清理日志报错记录");
+      pushConsoleToast("已清理日志报错记录", "ok");
       await query.refetch();
     } catch (e) {
       setErr(axiosErrorDetail(e));
-      setToast("清理失败");
+      pushConsoleToast("清理失败", "err");
     } finally {
       setClearing(false);
     }
   }
 
-  function toggleExpanded(key: string) {
-    setExpandedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function toggleExpandAll() {
-    if (allExpanded) {
-      setExpandedKeys({});
-      return;
-    }
-    const next: Record<string, boolean> = {};
-    displayEntries.forEach((it, idx) => {
-      if (it.traceback?.trim()) next[cardKey(it, idx)] = true;
-    });
-    setExpandedKeys(next);
-  }
-
   return (
     <div className="page-fill log-errors-page console-hub-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
-      {toast ? <p className="muted log-errors-page__hint">{toast}</p> : null}
 
       <div className="page-pinned">
         <PageHeader
@@ -167,15 +146,15 @@ export default function LogErrorsPage() {
                   ))}
                 </UiSelect>
               ) : null}
-              <button
-                type="button"
-                className="btn btn--danger log-errors-page__clear-btn"
+              <UiButton
+                variant="destructive"
+                className="log-errors-page__clear-btn"
                 disabled={clearing || query.isFetching || !entries.length}
                 title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
                 onClick={() => void clearLogErrors()}
               >
                 {clearing ? "清理中…" : "清理全部"}
-              </button>
+              </UiButton>
               <RefreshIconButton
                 embedded
                 busy={query.isFetching}
@@ -217,15 +196,15 @@ export default function LogErrorsPage() {
                   ))}
                 </UiSelect>
               ) : null}
-              <button
-                type="button"
-                className="btn btn--danger log-errors-page__clear-btn log-errors-page__clear-btn--strip"
+              <UiButton
+                variant="destructive"
+                className="log-errors-page__clear-btn log-errors-page__clear-btn--strip"
                 disabled={clearing || query.isFetching || !entries.length}
                 title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
                 onClick={() => void clearLogErrors()}
               >
                 {clearing ? "清理中…" : "清理"}
-              </button>
+              </UiButton>
             </div>
           }
           actions={
@@ -241,11 +220,6 @@ export default function LogErrorsPage() {
 
       <section className="panel ui-card ui-card--glass log-errors-page__panel">
         <div className="panel__bd">
-          {displayEntries.some((it) => it.traceback?.trim()) ? (
-            <button type="button" className="log-errors-page__expand-all btn btn--ghost" onClick={toggleExpandAll}>
-              {allExpanded ? "全部收起堆栈" : "全部展开堆栈"}
-            </button>
-          ) : null}
           <div className="log-errors-page__scroll">
             {query.isLoading && !entries.length ? (
               <p className="muted log-errors-page__empty">加载中…</p>
@@ -258,7 +232,6 @@ export default function LogErrorsPage() {
                 {displayEntries.map((it, idx) => {
                   const key = cardKey(it, idx);
                   const tb = (it.traceback ?? "").trim();
-                  const expanded = Boolean(expandedKeys[key]);
                   return (
                     <article key={key} className="log-error-card">
                       <header className="log-error-card__hd">
@@ -280,55 +253,40 @@ export default function LogErrorsPage() {
                         ) : null}
                       </header>
                       {tb ? (
-                        expanded ? (
-                          <pre className="log-error-card__tb log-error-card__tb--full">{it.traceback}</pre>
-                        ) : (
-                          <div className="log-error-card__summary-row">
-                            <p className="log-error-card__summary">{it.message || "（点击查看堆栈）"}</p>
-                            <button type="button" className="btn btn--ghost" onClick={() => toggleExpanded(key)}>
-                              展开堆栈
-                            </button>
-                          </div>
-                        )
+                        <pre className="log-error-card__tb log-error-card__tb--full">{it.traceback}</pre>
                       ) : (
                         <p className="log-error-card__summary">{it.message || "（无摘要）"}</p>
                       )}
                       <div className="log-error-card__actions">
-                        <button
-                          type="button"
-                          className="btn log-error-card__copy-btn"
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          className="log-error-card__copy-btn"
                           title="复制时间与摘要"
                           onClick={() => void copySummary(it)}
                         >
                           复制摘要
-                        </button>
+                        </UiButton>
                         {tb ? (
-                          <button
-                            type="button"
-                            className="btn log-error-card__copy-btn"
+                          <UiButton
+                            variant="outline"
+                            size="sm"
+                            className="log-error-card__copy-btn"
                             title="复制堆栈文本"
                             onClick={() => void copyTraceback(it)}
                           >
                             复制堆栈
-                          </button>
+                          </UiButton>
                         ) : null}
-                        <button
-                          type="button"
-                          className="btn log-error-card__copy-btn"
+                        <UiButton
+                          variant="outline"
+                          size="sm"
+                          className="log-error-card__copy-btn"
                           title="复制时间与完整堆栈"
                           onClick={() => void copyFull(it)}
                         >
                           复制全部
-                        </button>
-                        {tb ? (
-                          <button
-                            type="button"
-                            className={cn("btn log-error-card__copy-btn", expanded && "btn--primary")}
-                            onClick={() => toggleExpanded(key)}
-                          >
-                            {expanded ? "收起堆栈" : "展开堆栈"}
-                          </button>
-                        ) : null}
+                        </UiButton>
                       </div>
                     </article>
                   );
