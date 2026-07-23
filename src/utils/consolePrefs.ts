@@ -75,6 +75,8 @@ export interface ConsolePrefsState {
   glassBlur: number;
   /** 卡片毛玻璃不透明度（0.12–0.72） */
   cardGlassOpacity: number;
+  /** 卡片/壳层阴影强度倍率（0.4–1.8） */
+  shadowIntensity: number;
   density: DensityMode;
   /** 强调色预设（链接、主按钮、高亮等） */
   accentPreset: AccentPreset;
@@ -110,6 +112,7 @@ const defaults: ConsolePrefsState = {
   surfaceStyle: "glass",
   glassBlur: 12,
   cardGlassOpacity: 0.25,
+  shadowIntensity: 1,
   density: "comfortable",
   accentPreset: "sky",
   uiPreset: "shadcn",
@@ -250,6 +253,10 @@ function load(): ConsolePrefsState {
     if (Number.isFinite(blurRaw)) merged.glassBlur = Math.min(40, Math.max(8, Math.round(blurRaw)));
     const opRaw = Number((parsed as { cardGlassOpacity?: unknown }).cardGlassOpacity ?? merged.cardGlassOpacity);
     if (Number.isFinite(opRaw)) merged.cardGlassOpacity = Math.min(0.72, Math.max(0.12, opRaw));
+    const shadowRaw = Number((parsed as { shadowIntensity?: unknown }).shadowIntensity ?? merged.shadowIntensity);
+    if (Number.isFinite(shadowRaw)) {
+      merged.shadowIntensity = Math.min(1.8, Math.max(0.4, Math.round(shadowRaw * 100) / 100));
+    }
     if (merged.density !== "comfortable" && merged.density !== "compact") {
       merged.density = defaults.density;
     }
@@ -308,6 +315,7 @@ export function applyConsolePrefsToDocument(): void {
   el.style.setProperty("--card-glass-opacity", String(consolePrefs.cardGlassOpacity));
   el.style.setProperty("--shell-glass-pct", `${glassPct}%`);
   el.style.setProperty("--glass-saturate", saturate.toFixed(2));
+  el.style.setProperty("--shadow-intensity", String(consolePrefs.shadowIntensity));
 }
 
 export function persistConsolePrefs(): void {

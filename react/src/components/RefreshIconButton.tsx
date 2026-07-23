@@ -1,5 +1,8 @@
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/** 刷新：走 shadcn Button（gsuid 扁平），勿再用太鼓的 `.ui-btn` 胶囊。 */
 export default function RefreshIconButton({
   busy = false,
   disabled = false,
@@ -25,37 +28,28 @@ export default function RefreshIconButton({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant={embedded ? "ghost" : "outline"}
+      size={showLabel ? "default" : "icon"}
       className={cn(
-        "ui-btn btn-refresh-action",
-        embedded ? "ui-btn--ghost btn-refresh-action--embedded" : "ui-btn--outline",
+        "btn-refresh-action",
+        embedded && "btn-refresh-action--embedded",
         busy && "btn-refresh-action--busy",
         !showLabel && "btn-refresh-action--icon-only",
+        showLabel && "gap-1.5 px-3",
         className,
       )}
-      disabled={disabled}
+      disabled={disabled || busy}
       aria-label={label}
       title={label}
       onClick={handleClick}
     >
-      <svg
-        className={cn("ui-btn__ico btn-refresh-action__ico", busy && "btn-refresh-action__ico--spin")}
-        viewBox="0 0 24 24"
-        width={16}
-        height={16}
-        aria-hidden="true"
-      >
-        <path
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
-        />
-      </svg>
+      <RefreshCw
+        className={cn("btn-refresh-action__ico size-4", busy && "btn-refresh-action__ico--spin")}
+        aria-hidden
+      />
       {showLabel ? <span className="btn-refresh-action__text">{busy ? busyLabel : label}</span> : null}
-    </button>
+    </Button>
   );
 }
