@@ -6,17 +6,24 @@ import {
   fetchPluginRunStats,
 } from "@/api/fullConsole";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
-import ChartsDailyBarChart from "@/components/ChartsDailyBarChart";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
-import HomePluginRunCharts from "@/components/HomePluginRunCharts";
-import IngressDispatchPanel from "@/components/IngressDispatchPanel";
-import PageHeader from "@/components/PageHeader";
-import Panel from "@/components/Panel";
-import RefreshIconButton from "@/components/RefreshIconButton";
-import StatTrendCard from "@/components/StatTrendCard";
+import ChromeField from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
 import DatePicker from "@/components/DatePicker";
-import UiSelect from "@/components/ui/UiSelect";
+import HomePluginRunCharts, { type ChartPanelId } from "@/components/HomePluginRunCharts";
+import IngressDispatchPanel from "@/components/IngressDispatchPanel";
+import PageMasthead from "@/components/PageMasthead";
+import RefreshIconButton from "@/components/RefreshIconButton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
+import { cn } from "@/lib/utils";
 import {
   currentMonthIso,
   fillDailyRows,
@@ -25,6 +32,38 @@ import {
   todayIso,
   writeSavedHomeAccount,
 } from "@/utils/chartsPageHelpers";
+
+/** 看板次要区：排行列表 + 一条实时桶图（其余面板保留 API/组件能力，默认不铺满墙） */
+const DASHBOARD_SECONDARY_PANELS: ChartPanelId[] = ["plugins_top", "matcher_bucket"];
+
+const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
+const CHART_PANEL_HD =
+  "panel__hd panel__hd--split home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
+const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
+const ACCOUNT_SEL =
+  "charts-page__account-sel h-8 w-auto min-w-[10rem] max-w-[16rem] shrink-0 [&>span]:truncate";
+
+function MetricTile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="metric-tile">
+      <div className="metric-tile__head">
+        <span className="metric-tile__label">{label}</span>
+      </div>
+      <div className="metric-tile__value-slot">
+        <span className="metric-tile__value metric-tile__value--inline">{value}</span>
+        {hint ? <span className="metric-tile__hint muted">{hint}</span> : null}
+      </div>
+    </div>
+  );
+}
 
 export default function ChartsPage() {
   const [rangeStart, setRangeStart] = useState(() => monthBounds(currentMonthIso()).start);
@@ -117,14 +156,15 @@ export default function ChartsPage() {
     return fillDailyRows(dailyRowsScoped, queryRange.start, queryRange.end, String(selectedAccount));
   }, [dailyRowsScoped, queryRange.end, queryRange.start, selectedAccount]);
 
-  const rangeCommandPoints = useMemo(
-    () => dailyRowsScoped.map((r) => ({ date: r.date, value: r.matcher_runs })),
+  const rangeCommandTotal = useMemo(
+    () => dailyRowsScoped.reduce((s, r) => s + (r.matcher_runs || 0), 0),
     [dailyRowsScoped],
   );
-  const rangeApiPoints = useMemo(
-    () => dailyRowsScoped.map((r) => ({ date: r.date, value: r.api_calls ?? 0 })),
+  const rangeApiTotal = useMemo(
+    () => dailyRowsScoped.reduce((s, r) => s + (r.api_calls ?? 0), 0),
     [dailyRowsScoped],
   );
+  const rangeDayCount = Math.max(1, dailyRowsScoped.length);
 
   const pluginRunMain = pluginRunStatsScoped ?? pluginRunGlobalQ.data;
 
@@ -147,39 +187,8 @@ export default function ChartsPage() {
     return String(Math.floor(Number(n)));
   })();
 
-  const msgSparkValues = useMemo((): number[] => {
-    const intraday =
-      scopedBotStatsRow?.message_traffic_history?.map((p) => p.received + p.sent) ?? [];
-    if (intraday.length >= 2) return intraday;
-    const rows = [...(consoleDailyStats?.rows ?? [])]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-14);
-    return rows.map((r) => r.received + r.sent);
-  }, [consoleDailyStats?.rows, scopedBotStatsRow]);
-
-  const apiSparkValues = useMemo((): number[] => {
-    const api = scopedBotStatsRow?.api_calls_history?.map((p) => p.total) ?? [];
-    return api.length >= 2 ? api : [];
-  }, [scopedBotStatsRow]);
-
-  const matcherSparkValues = useMemo((): number[] => {
-    const series = scopedMatcherRunsByPlugin;
-    if (!series.length) return [];
-    const maxLen = Math.max(...series.map((s) => s.points.length));
-    if (maxLen < 2) return [];
-    const out = new Array<number>(maxLen).fill(0);
-    for (const s of series) {
-      for (let i = 0; i < s.points.length; i++) {
-        out[i] += Number(s.points[i]?.total) || 0;
-      }
-    }
-    return out;
-  }, [scopedMatcherRunsByPlugin]);
-
   const rangeBusy = dailyRangeQ.isFetching;
   const refreshing = instQ.isFetching || pluginRunGlobalQ.isFetching || chartsBusy || rangeBusy;
-  const commandTotal = rangeCommandPoints.reduce((s, p) => s + p.value, 0);
-  const dashboardReady = !chartsBusy;
 
   async function refreshAll() {
     await Promise.all([
@@ -190,34 +199,57 @@ export default function ChartsPage() {
     ]);
   }
 
+  function botLabel(account: number): string {
+    const nick = instQ.data?.bot_profiles?.[String(account)]?.nickname?.trim() || "BOT";
+    return `${nick} · ${account}`;
+  }
+
   return (
-    <div className="console-hub-page charts-page charts-page--dashboard">
-      <PageHeader
-        title="数据看板"
-        description="流量编排、月度命令、API、LLM 与详细图表；悬停各图可查看明细。"
+    <div className="charts-page charts-page--dashboard">
+      <PageMasthead
         className="charts-page__masthead"
-        actions={
-          <div className="charts-page__masthead-tools">
-            {sortedBots.length > 1 ? (
-              <label className="charts-page__account-label charts-page__account-label--masthead">
-                <span className="charts-page__account-label-text">账号</span>
-                <UiSelect
-                  className="charts-page__account-sel"
-                  aria-label="选择 Bot 账号"
-                  value={selectedAccount != null ? String(selectedAccount) : ""}
-                  onValueChange={(v) => setSelectedAccount(Number(v) || null)}
-                >
-                  {sortedBots.map((b) => {
-                    const nick = instQ.data?.bot_profiles?.[String(b.account)]?.nickname?.trim() || "BOT";
-                    return (
-                      <option key={b.account} value={b.account}>
-                        {nick} · {b.account}
-                      </option>
-                    );
-                  })}
-                </UiSelect>
-              </label>
-            ) : null}
+        title="数据看板"
+        description="流量与命令概览；趋势一张图，细节用排行与实时桶。"
+      />
+
+      {sortedBots.length ? (
+        <ChromeTools>
+          {sortedBots.length > 1 ? (
+            <ChromeField label="账号">
+              <Select
+                value={selectedAccount != null ? String(selectedAccount) : undefined}
+                onValueChange={(v) => setSelectedAccount(Number(v) || null)}
+              >
+                <SelectTrigger className={ACCOUNT_SEL} aria-label="选择 Bot 账号">
+                  <SelectValue placeholder="选择账号" />
+                </SelectTrigger>
+                <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
+                  {sortedBots.map((b) => (
+                    <SelectItem key={b.account} value={String(b.account)}>
+                      {botLabel(b.account)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ChromeField>
+          ) : null}
+          <ChromeField label="起始">
+            <DatePicker
+              className="charts-page__date-inp h-8 min-h-8 min-w-[9.5rem]"
+              ariaLabel="起始日期"
+              value={rangeStart}
+              onValueChange={setRangeStart}
+            />
+          </ChromeField>
+          <ChromeField label="结束">
+            <DatePicker
+              className="charts-page__date-inp h-8 min-h-8 min-w-[9.5rem]"
+              ariaLabel="结束日期"
+              value={rangeEnd}
+              onValueChange={setRangeEnd}
+            />
+          </ChromeField>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <RefreshIconButton
               embedded
               busy={refreshing}
@@ -226,146 +258,89 @@ export default function ChartsPage() {
               onClick={() => void refreshAll()}
             />
           </div>
-        }
-      />
+        </ChromeTools>
+      ) : null}
 
-      <div className="charts-page__ingress">
-        <IngressDispatchPanel />
-      </div>
-
-      {sortedBots.length ? (
-        <div className="charts-page__filter-toolbar">
-          <div className="charts-page__filter-group">
-            <label className="charts-page__date-label">
-              <span className="charts-page__date-label-text">起始</span>
-              <DatePicker
-                className="charts-page__date-inp"
-                ariaLabel="起始日期"
-                value={rangeStart}
-                onValueChange={setRangeStart}
-              />
-            </label>
-            <label className="charts-page__date-label">
-              <span className="charts-page__date-label-text">结束</span>
-              <DatePicker
-                className="charts-page__date-inp"
-                ariaLabel="结束日期"
-                value={rangeEnd}
-                onValueChange={setRangeEnd}
-              />
-            </label>
-          </div>
-        </div>
-      ) : (
+      {!sortedBots.length ? (
         <p className="muted charts-page__empty">数据库中暂无 Bot 配置。请先在「数据库实例」创建账号。</p>
-      )}
+      ) : null}
 
       {selectedAccount != null ? (
-        <div className="charts-page__layout">
-          <div className="charts-page__main" aria-busy={refreshing || undefined}>
-            <section id="charts-monthly" className="charts-page__section">
-              <Panel className="charts-page__panel" title="月度命令统计">
+        <div className="charts-page__layout" aria-busy={refreshing || undefined}>
+          <section className="charts-page__kpi home-kpi-bar" aria-label="今日与区间摘要">
+            <MetricTile label="今日消息" value={accountTodayMsg} hint="收 / 发" />
+            <MetricTile label="今日协议 API" value={accountTodayApi} hint="成功调用" />
+            <MetricTile
+              label="今日 Matcher"
+              value={accountMatcherRuns}
+              hint={`异常 ${accountMatcherErrors}`}
+            />
+            <MetricTile
+              label="区间 Matcher"
+              value={rangeCommandTotal.toLocaleString()}
+              hint={`日均 ${Math.round(rangeCommandTotal / rangeDayCount).toLocaleString()}`}
+            />
+            <MetricTile
+              label="区间协议 API"
+              value={rangeApiTotal.toLocaleString()}
+              hint={`日均 ${Math.round(rangeApiTotal / rangeDayCount).toLocaleString()}`}
+            />
+          </section>
+
+          <section id="charts-trend" className="charts-page__section charts-page__section--hero">
+            <Card className={cn(CHART_PANEL, "charts-page__panel--hero")}>
+              <CardHeader className={CHART_PANEL_HD}>
+                <CardTitle className="panel__title">区间趋势</CardTitle>
+              </CardHeader>
+              <CardContent className={CHART_PANEL_BD}>
                 <p className="muted charts-page__section-lead">
-                  按自然日汇总（磁盘持久化）；左轴为发送/接收消息，右轴为 Matcher 与协议 API。鼠标悬停查看每日明细。
+                  按自然日汇总：左轴消息收发，右轴 Matcher 与协议 API。悬停查看每日明细。
                 </p>
                 <ChartsMonthlyCommandChart
                   rows={monthlyDailyRows}
                   busy={rangeBusy || chartsBusy}
                   emptyText="所选区间暂无持久化数据，请保持 Bot 运行并跨日写入。"
                 />
-              </Panel>
-            </section>
+              </CardContent>
+            </Card>
+          </section>
 
-            <section id="charts-commands" className="charts-page__section">
-              <Panel className="charts-page__panel" title="命令使用量">
-                <ChartsDailyBarChart points={rangeCommandPoints} title="Matcher" unit="次" accent="#d946ef" />
-                {rangeCommandPoints.length ? (
-                  <dl className="home-dl charts-page__summary-dl">
-                    <dt>区间合计</dt>
-                    <dd>{commandTotal.toLocaleString()} 次</dd>
-                    <dt>日均</dt>
-                    <dd>
-                      {Math.round(commandTotal / Math.max(1, rangeCommandPoints.length)).toLocaleString()} 次
-                    </dd>
-                  </dl>
-                ) : null}
-              </Panel>
-            </section>
-
-            <section id="charts-api" className="charts-page__section">
-              <Panel className="charts-page__panel" title="API 使用量">
-                <ChartsDailyBarChart
-                  points={rangeApiPoints}
-                  title="协议 API 调用"
-                  unit="次"
-                  accent="#38bdf8"
-                  emptyText="所选区间暂无 API 按日落盘数据；新版起随 console_daily_stats 一并持久化。"
-                />
-                <p className="muted charts-page__section-note">
-                  今日实时曲线见下方「详细图表」中的协议 API 桶图；此处为按自然日汇总。
+          <section id="charts-detail" className="charts-page__section charts-page__section--secondary">
+            <div className="charts-page__board">
+              <HomePluginRunCharts
+                layoutMode="dashboard"
+                dashboardPanels={DASHBOARD_SECONDARY_PANELS}
+                plugins={scopedPluginPlugins}
+                pluginsMeta={pluginsList}
+                series={pluginRunTimeSamples}
+                busy={chartsBusy}
+                apiHistoryByApi={scopedApiCallsByApi}
+                apiHistoryBucketSec={accountMessageStats?.api_calls_history_bucket_sec}
+                matcherRunsByPlugin={scopedMatcherRunsByPlugin}
+                matcherErrorsByPlugin={scopedMatcherErrorsByPlugin}
+                matcherAvgDurationMsByPlugin={scopedMatcherAvgDurationByPlugin}
+                matcherDurationMsByPlugin={scopedMatcherDurationMsByPlugin}
+                matcherDurationLog={scopedMatcherDurationLog}
+                matcherDurationLogCap={scopedPluginRunRow?.matcher_duration_log_cap ?? 150}
+                matcherDurationLogPerPluginCap={scopedPluginRunRow?.matcher_duration_log_per_plugin_cap ?? 30}
+                matcherHistoryBucketSec={pluginRunMain?.matcher_calls_history_bucket_sec}
+                matcherErrorsToday={scopedPluginRunRow?.errors_today ?? 0}
+                matcherErrorLog={scopedMatcherErrorLog}
+                dailyStatRows={consoleDailyStats?.rows ?? []}
+              />
+              {!chartsBusy && !scopedPluginPlugins.length ? (
+                <p className="muted charts-page__board-note">
+                  插件排行与实时桶需进程运行一段时间后才有数据；区间趋势依赖按日落盘。
                 </p>
-              </Panel>
-            </section>
-
-            <section id="charts-detail" className="charts-page__section charts-page__section--detail">
-              <section className="charts-page__kpi">
-                <StatTrendCard
-                  dense
-                  label="今日消息"
-                  value={accountTodayMsg}
-                  hint="收 / 发 · 当前账号"
-                  sparkValues={msgSparkValues}
-                  chartVariant="msg"
-                />
-                <StatTrendCard
-                  dense
-                  label="协议 API"
-                  value={accountTodayApi}
-                  hint="今日成功调用 · 当前账号"
-                  sparkValues={apiSparkValues}
-                  chartVariant="api"
-                />
-                <StatTrendCard
-                  dense
-                  label="Matcher"
-                  value={accountMatcherRuns}
-                  hint={`今日执行 · 异常 ${accountMatcherErrors}`}
-                  sparkValues={matcherSparkValues}
-                  chartVariant="matcher"
-                />
-              </section>
-
-              <div className="charts-page__board">
-                <HomePluginRunCharts
-                  layoutMode="dashboard"
-                  plugins={scopedPluginPlugins}
-                  pluginsMeta={pluginsList}
-                  series={pluginRunTimeSamples}
-                  busy={chartsBusy}
-                  apiHistoryByApi={scopedApiCallsByApi}
-                  apiHistoryBucketSec={accountMessageStats?.api_calls_history_bucket_sec}
-                  matcherRunsByPlugin={scopedMatcherRunsByPlugin}
-                  matcherErrorsByPlugin={scopedMatcherErrorsByPlugin}
-                  matcherAvgDurationMsByPlugin={scopedMatcherAvgDurationByPlugin}
-                  matcherDurationMsByPlugin={scopedMatcherDurationMsByPlugin}
-                  matcherDurationLog={scopedMatcherDurationLog}
-                  matcherDurationLogCap={scopedPluginRunRow?.matcher_duration_log_cap ?? 150}
-                  matcherDurationLogPerPluginCap={scopedPluginRunRow?.matcher_duration_log_per_plugin_cap ?? 30}
-                  matcherHistoryBucketSec={pluginRunMain?.matcher_calls_history_bucket_sec}
-                  matcherErrorsToday={scopedPluginRunRow?.errors_today ?? 0}
-                  matcherErrorLog={scopedMatcherErrorLog}
-                  dailyStatRows={consoleDailyStats?.rows ?? []}
-                />
-                {dashboardReady && !msgSparkValues.length && !apiSparkValues.length ? (
-                  <p className="muted charts-page__board-note">
-                    部分曲线需进程运行一段时间后才有时间桶数据；按日汇总图依赖历史落盘。
-                  </p>
-                ) : null}
-              </div>
-            </section>
-          </div>
+              ) : null}
+            </div>
+          </section>
         </div>
       ) : null}
+
+      <div className="charts-page__ingress">
+        <IngressDispatchPanel />
+      </div>
     </div>
   );
 }

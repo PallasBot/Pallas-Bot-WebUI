@@ -34,12 +34,23 @@ import {
 } from "@/utils/homeActionDismissals";
 import { readSavedHomeAccount, writeSavedHomeAccount } from "@/utils/chartsPageHelpers";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
+import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
+import HomeLazyReveal from "@/components/HomeLazyReveal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 const HOME_SYSTEM_POLL_MS = 5000;
 const HOME_THROUGHPUT_POLL_MS = 5 * 60 * 1000;
 const HOME_CONN_DURATION_TICK_MS = 1000;
 const RESOURCE_WARN_PCT = 90;
+
+/** shadcn Card + hub home 旧度量（圆角/描边/阴影/内边距由 home-page.css 扣） */
+const HOME_PANEL = "home-panel flex h-full flex-col shadow-none";
+const HOME_PANEL_HD =
+  "home-panel__hd flex-row items-center justify-between space-y-0 border-b p-0";
+const HOME_PANEL_BD = "home-panel__bd p-0";
+const HOME_PANEL_TITLE = "home-panel__title leading-tight tracking-[-0.015em]";
+const HOME_PANEL_TAG = "home-panel__tag";
 
 function MetricTile({ icon, label, children }: { icon?: string; label: string; children: ReactNode }) {
   return (
@@ -99,7 +110,7 @@ function gpuMemBarPct(used: number, total: number): number | null {
   return barPct(null, used, total);
 }
 
-function uptimeDisplayParts(boot: number | null | undefined, nowSec: number) {
+function uptimeDisplayParts(boot: number | null | undefined, nowSec: number, slotCount = 7) {
   if (boot == null) return null;
   let s = Math.max(0, nowSec - boot);
   const d = Math.floor(s / 86400);
@@ -109,9 +120,9 @@ function uptimeDisplayParts(boot: number | null | undefined, nowSec: number) {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   const dayRemSec = h * 3600 + m * 60 + sec;
-  const UPTIME_DAY_SLOTS = 7;
-  const slotSec = 86400 / UPTIME_DAY_SLOTS;
-  const dayHourFills = Array.from({ length: UPTIME_DAY_SLOTS }, (_, i) => {
+  const slots = Math.max(1, Math.floor(slotCount) || 7);
+  const slotSec = 86400 / slots;
+  const dayHourFills = Array.from({ length: slots }, (_, i) => {
     const slotStart = i * slotSec;
     const slotEnd = slotStart + slotSec;
     if (dayRemSec >= slotEnd) return 100;
@@ -431,18 +442,20 @@ export default function HomePage() {
   const accountStatsBusy = overviewQ.isFetching || accountStatsQ.isFetching;
   const accountTodayApiCallsDisplay = (() => {
     const n = scopedBotStatsRow?.today_api_calls;
-    if (n == null || !Number.isFinite(Number(n))) return accountStatsBusy ? "…" : "—";
+    if (n == null || !Number.isFinite(Number(n))) {
+      return accountStatsBusy ? <SkelValue className="skel-value--narrow" /> : "—";
+    }
     return String(Math.floor(Number(n)));
   })();
   const accountTodayRxDisplay = scopedBotStatsRow
     ? String(scopedBotStatsRow.today_received ?? "—")
     : accountStatsBusy
-      ? "…"
+      ? <SkelValue className="skel-value--narrow" />
       : "—";
   const accountTodayTxDisplay = scopedBotStatsRow
     ? String(scopedBotStatsRow.today_sent ?? "—")
     : accountStatsBusy
-      ? "…"
+      ? <SkelValue className="skel-value--narrow" />
       : "—";
 
   const accountSocialPending =
@@ -539,7 +552,11 @@ export default function HomePage() {
     typeof system?.server_time === "number" && Number.isFinite(system.server_time)
       ? system.server_time
       : Date.now() / 1000;
-  const uptimeParts = uptimeDisplayParts(runtime?.boot_time ?? null, uptimeNowSec);
+  const uptimeParts = uptimeDisplayParts(
+    runtime?.boot_time ?? null,
+    uptimeNowSec,
+    cpuPerCorePercents.length || 7,
+  );
   const uptimeHint = (() => {
     const boot = runtime?.boot_time;
     if (boot == null) return undefined;
@@ -594,9 +611,9 @@ export default function HomePage() {
       {!pageReady ? (
         <ConsolePageSkeleton panels={3} />
       ) : (
-        <div className="home-body">
+        <div className={overviewRefreshing ? "home-body home-page__body--syncing" : "home-body"}>
           {overviewRefreshing ? (
-            <p className="home-sync" role="status">
+            <p className="home-sync visually-hidden" role="status" aria-live="polite">
               正在加载概况…
             </p>
           ) : null}
@@ -674,8 +691,11 @@ export default function HomePage() {
           ) : null}
 
           <div className="home-grid">
-            <div className="home-card home-card--acct" style={{ gridArea: "acct" }}>
-              <div className="home-card__hd home-acct__hd">
+            <Card
+              className={cn(HOME_PANEL, "home-card--acct overflow-visible")}
+              style={{ gridArea: "acct" }}
+            >
+              <CardHeader className={cn(HOME_PANEL_HD, "home-acct__hd items-start")}>
                 <div className="home-acct__hd-left">
                   <div className="home-acct__avatar">
                     {selectedAccount != null ? (
@@ -693,7 +713,7 @@ export default function HomePage() {
                     ) : null}
                   </div>
                   <div ref={accountPickerRoot} className="home-acct__title-wrap">
-                    <h2 className="home-card__title home-acct__title">
+                    <CardTitle className="home-acct__title">
                       <span className="home-acct__name">
                         {selectedAccount != null ? dbNick(selectedAccount) || "BOT" : "BOT"}
                       </span>
@@ -726,7 +746,7 @@ export default function HomePage() {
                           ★
                         </button>
                       ) : null}
-                    </h2>
+                    </CardTitle>
                     <p className="home-acct__qq muted">QQ {selectedAccount ?? "—"}</p>
                     {accountPickerOpen && sortedDbBots.length > 1 ? (
                       <div className="home-acct-picker" role="listbox" aria-label="选择 Bot 账号">
@@ -782,9 +802,9 @@ export default function HomePage() {
                     onClick={() => void refreshAll(true)}
                   />
                 </div>
-              </div>
+              </CardHeader>
               {selectedAccount != null ? (
-                <div className="home-card__bd home-acct__bd">
+                <CardContent className={cn(HOME_PANEL_BD, "home-acct__bd flex flex-1 flex-col")}>
                   <div className="home-acct-meta">
                     <Link className="home-acct-meta__tag" to="/protocol">
                       协议 · {accountAdapterDisplay}
@@ -793,18 +813,34 @@ export default function HomePage() {
                       {selectedAdminsLabel}
                     </span>
                   </div>
-                  <div className={accountSocialPending ? "home-lazy-reveal home-lazy-reveal--loading" : "home-lazy-reveal"}>
+                  <HomeLazyReveal
+                    loading={accountSocialPending && socialQ.data?.fl == null && socialQ.data?.gl == null}
+                    variant="account-social"
+                    ariaLabel="账号概况加载中"
+                  >
                     <div className="home-acct-grid">
                       <div className="home-acct-tile">
                         <span className="home-acct-tile__label">好友</span>
                         <span className="home-acct-tile__value">
-                          {socialQ.data?.fl != null ? String(socialQ.data.fl.friends?.length ?? 0) : accountSocialPending ? "…" : "—"}
+                          {socialQ.data?.fl != null ? (
+                            String(socialQ.data.fl.friends?.length ?? 0)
+                          ) : accountSocialPending ? (
+                            <SkelValue className="skel-value--narrow" />
+                          ) : (
+                            "—"
+                          )}
                         </span>
                       </div>
                       <div className="home-acct-tile">
                         <span className="home-acct-tile__label">群聊</span>
                         <span className="home-acct-tile__value">
-                          {socialQ.data?.gl != null ? String(socialQ.data.gl.groups?.length ?? 0) : accountSocialPending ? "…" : "—"}
+                          {socialQ.data?.gl != null ? (
+                            String(socialQ.data.gl.groups?.length ?? 0)
+                          ) : accountSocialPending ? (
+                            <SkelValue className="skel-value--narrow" />
+                          ) : (
+                            "—"
+                          )}
                         </span>
                       </div>
                       <div className="home-acct-tile home-acct-tile--sub">
@@ -848,7 +884,7 @@ export default function HomePage() {
                         ) : null}
                       </div>
                     ) : null}
-                  </div>
+                  </HomeLazyReveal>
                   <div className="home-acct__foot">
                     {scopedMatcherErrorLog.length ? (
                       <details className="home-acct-matcher">
@@ -883,27 +919,31 @@ export default function HomePage() {
                       已连接 {selectedConnDurationDisplay} · {selectedConnDateDisplay}
                     </div>
                   </div>
-                </div>
+                </CardContent>
               ) : sortedDbBots.length ? (
-                <div className="home-card__bd home-card__bd--empty">
+                <CardContent className={cn(HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
                   <p className="muted">请选择一个 Bot 账号</p>
-                </div>
+                </CardContent>
               ) : (
-                <div className="home-card__bd home-card__bd--empty">
+                <CardContent className={cn(HOME_PANEL_BD, "flex min-h-[120px] flex-1 items-center justify-center")}>
                   <p className="muted">数据库中暂无牛牛账号记录，请先添加账号配置后刷新。</p>
-                </div>
+                </CardContent>
               )}
-            </div>
+            </Card>
 
-            <div
-              className={`home-card home-card--sys${sysResourceWarn ? " home-card--resource-warn" : ""}`}
+            <Card
+              className={cn(
+                HOME_PANEL,
+                "home-card--sys overflow-hidden",
+                sysResourceWarn && "home-card--resource-warn",
+              )}
               style={{ gridArea: "sys" }}
             >
-              <div className="home-card__hd">
-                <h2 className="home-card__title">系统性能</h2>
-                <span className="home-card__tag muted">节点采样</span>
-              </div>
-              <div className="home-card__bd">
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={HOME_PANEL_TITLE}>系统性能</CardTitle>
+                <span className={HOME_PANEL_TAG}>节点采样</span>
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
                 {!perfSampled ? (
                   <p className="muted" style={{ margin: 0 }}>
                     当前未上报 CPU/内存/磁盘/GPU 等指标。
@@ -931,34 +971,6 @@ export default function HomePage() {
                         ) : null}
                       </div>
                     </div>
-                    <div className={`home-sys-card${memResourceWarn ? " home-sys-card--warn" : ""}`}>
-                      <div className="home-sys-card__head">
-                        <span className="home-sys-card__label">内存</span>
-                        <span className="home-sys-card__value">{pct(runtime?.memory?.percent ?? null, 2)}</span>
-                      </div>
-                      <div className="home-sys-card__viz">
-                        {memBarPct != null ? (
-                          <div className="home-sys-card__bar">
-                            <span style={{ width: `${memBarPct}%` }} />
-                          </div>
-                        ) : null}
-                      </div>
-                      {memHint ? <p className="home-sys-card__hint">{memHint}</p> : null}
-                    </div>
-                    <div className={`home-sys-card${diskResourceWarn ? " home-sys-card--warn" : ""}`}>
-                      <div className="home-sys-card__head">
-                        <span className="home-sys-card__label">磁盘</span>
-                        <span className="home-sys-card__value">{pct(runtime?.disk?.percent ?? null)}</span>
-                      </div>
-                      <div className="home-sys-card__viz">
-                        {diskBarPct != null ? (
-                          <div className="home-sys-card__bar">
-                            <span style={{ width: `${diskBarPct}%` }} />
-                          </div>
-                        ) : null}
-                      </div>
-                      {diskHint ? <p className="home-sys-card__hint">{diskHint}</p> : null}
-                    </div>
                     <div className="home-sys-card home-sys-card--uptime">
                       <div className="home-sys-card__head">
                         <span className="home-sys-card__label">运行时长</span>
@@ -974,15 +986,69 @@ export default function HomePage() {
                       <div className="home-sys-card__viz">
                         {uptimeParts?.dayHourFills.length ? (
                           <div className="home-uptime-hours" role="img" aria-label={`已运行 ${uptimeParts.value} ${uptimeParts.unit}`}>
-                            {uptimeParts.dayHourFills.map((fill, i) => (
-                              <div key={i} className="home-uptime-hours__slot" title={`第 ${i}–${i + 1} 小时`}>
-                                <span className="home-uptime-hours__fill" style={{ height: `${fill}%` }} />
-                              </div>
-                            ))}
+                            {uptimeParts.dayHourFills.map((fill, i) => {
+                              const n = uptimeParts.dayHourFills.length;
+                              const startH = (i * 24) / n;
+                              const endH = ((i + 1) * 24) / n;
+                              const fmt = (h: number) => {
+                                const whole = Math.floor(h);
+                                const mins = Math.round((h - whole) * 60);
+                                return mins ? `${whole}:${String(mins).padStart(2, "0")}` : `${whole}`;
+                              };
+                              return (
+                                <div
+                                  key={i}
+                                  className="home-uptime-hours__slot"
+                                  title={`今日 ${fmt(startH)}–${fmt(endH)}`}
+                                >
+                                  <span className="home-uptime-hours__fill" style={{ height: `${fill}%` }} />
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : null}
                       </div>
-                      {uptimeHint ? <p className="home-sys-card__hint">{uptimeHint}</p> : null}
+                      {uptimeHint ? (
+                        <p className="home-sys-card__hint" title={uptimeHint}>
+                          {uptimeHint}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className={`home-sys-card${memResourceWarn ? " home-sys-card--warn" : ""}`}>
+                      <div className="home-sys-card__head">
+                        <span className="home-sys-card__label">内存</span>
+                        <span className="home-sys-card__value">{pct(runtime?.memory?.percent ?? null, 2)}</span>
+                      </div>
+                      <div className="home-sys-card__viz">
+                        {memBarPct != null ? (
+                          <div className="home-sys-card__bar">
+                            <span style={{ width: `${memBarPct}%` }} />
+                          </div>
+                        ) : null}
+                      </div>
+                      {memHint ? (
+                        <p className="home-sys-card__hint" title={memHint}>
+                          {memHint}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className={`home-sys-card${diskResourceWarn ? " home-sys-card--warn" : ""}`}>
+                      <div className="home-sys-card__head">
+                        <span className="home-sys-card__label">磁盘</span>
+                        <span className="home-sys-card__value">{pct(runtime?.disk?.percent ?? null)}</span>
+                      </div>
+                      <div className="home-sys-card__viz">
+                        {diskBarPct != null ? (
+                          <div className="home-sys-card__bar">
+                            <span style={{ width: `${diskBarPct}%` }} />
+                          </div>
+                        ) : null}
+                      </div>
+                      {diskHint ? (
+                        <p className="home-sys-card__hint" title={diskHint}>
+                          {diskHint}
+                        </p>
+                      ) : null}
                     </div>
                     {gpuDevices.map((dev) => {
                       const utilPct = gpuUtilBarPct(dev.utilization_gpu);
@@ -993,13 +1059,18 @@ export default function HomePage() {
                         dev.memory_total > 0
                           ? pct((dev.memory_used / dev.memory_total) * 100)
                           : pct(dev.utilization_memory);
+                      const gpuFoot = `${fmtBytes(dev.memory_used)} / ${fmtBytes(dev.memory_total)}${
+                        dev.temperature != null ? ` · ${tempDisplay(dev.temperature)}` : ""
+                      }`;
                       return (
                         <div key={dev.index} className="home-sys-card home-sys-card--gpu">
                           <div className="home-sys-card__head">
                             <span className="home-sys-card__label">GPU {dev.index}</span>
                             <span className="home-sys-card__value">{pct(dev.utilization_gpu)}</span>
                           </div>
-                          <p className="home-sys-card__hint">{gpuNameShort(dev.name || "", 36)}</p>
+                          <p className="home-sys-card__hint" title={dev.name || undefined}>
+                            {gpuNameShort(dev.name || "", 36)}
+                          </p>
                           <div className="home-sys-card__gpu-metrics">
                             <div className="home-sys-card__gpu-metric">
                               <div className="home-sys-card__row home-sys-card__row--sub">
@@ -1026,94 +1097,122 @@ export default function HomePage() {
                               ) : null}
                             </div>
                           </div>
-                          <p className="home-sys-card__hint">
-                            {fmtBytes(dev.memory_used)} / {fmtBytes(dev.memory_total)}
-                            {dev.temperature != null ? ` · ${tempDisplay(dev.temperature)}` : ""}
+                          <p className="home-sys-card__hint" title={gpuFoot}>
+                            {gpuFoot}
                           </p>
                         </div>
                       );
                     })}
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div className="home-card home-card--ver" style={{ gridArea: "verL" }}>
-              <div className="home-card__hd">
-                <h2 className="home-card__title">版本</h2>
+            <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verL" }}>
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={HOME_PANEL_TITLE}>版本</CardTitle>
                 {botUpdate?.has_update || webUpdate?.has_update ? (
-                  <span className="home-card__tag">
-                    <span className="badge badge--warn">有更新</span>
-                  </span>
+                  <span className="badge badge--warn">有更新</span>
                 ) : null}
-              </div>
-              <div className="home-card__bd">
-                <div className={versionMetaPending ? "home-lazy-reveal home-lazy-reveal--loading" : "home-lazy-reveal"}>
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
+                <HomeLazyReveal loading={versionMetaPending && !botUpdate && !webUpdate} variant="version-dl" ariaLabel="版本信息加载中">
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>消息框架</dt>
                       <dd>
-                        <span className="home-ver-dl__val">
-                          {(() => {
-                            const s = (health?.nonebot2 ?? "").trim();
-                            const x = displayVersionWithoutSha(s);
-                            return x || s || "—";
-                          })()}
+                        {(() => {
+                          const s = (health?.nonebot2 ?? "").trim();
+                          const x = displayVersionWithoutSha(s);
+                          const label = x || s || "—";
+                          return (
+                            <span className="home-ver-dl__val" title={label === "—" ? undefined : label}>
+                              {label}
+                            </span>
+                          );
+                        })()}
+                        <span className="home-ver-dl__meta">
+                          <span className="home-ver-dl__tag">Nonebot</span>
                         </span>
-                        <span className="home-ver-dl__tag">底层</span>
                       </dd>
                     </div>
                     <div className="home-ver-dl__row">
                       <dt>Pallas-Bot</dt>
                       <dd>
-                        <span className="home-ver-dl__val">{pallasBotVersionLabel(health ?? null, botUpdate ?? null)}</span>
-                        {botUpdate?.has_update ? (
-                          <Link className="home-ver-dl__link" to="/update#console-update-bot">
-                            <span className="badge badge--warn">有更新</span>
-                          </Link>
-                        ) : botUpdate?.development_build ? (
-                          <span className="badge badge--secondary" title={botDevelopmentBuildTitle}>
-                            开发构建
-                          </span>
-                        ) : null}
-                        <span className="home-ver-dl__tag">业务</span>
+                        {(() => {
+                          const label = pallasBotVersionLabel(health ?? null, botUpdate ?? null);
+                          return (
+                            <span className="home-ver-dl__val" title={label && label !== "—" ? label : undefined}>
+                              {label}
+                            </span>
+                          );
+                        })()}
+                        <span className="home-ver-dl__meta">
+                          {botUpdate?.has_update ? (
+                            <Link className="home-ver-dl__link" to="/update#console-update-bot">
+                              <span className="badge badge--warn">有更新</span>
+                            </Link>
+                          ) : botUpdate?.development_build ? (
+                            <span className="badge badge--secondary" title={botDevelopmentBuildTitle}>
+                              开发构建
+                            </span>
+                          ) : null}
+                          <span className="home-ver-dl__tag">业务</span>
+                        </span>
                       </dd>
                     </div>
                     <div className="home-ver-dl__row">
                       <dt>控制台资源</dt>
                       <dd>
-                        <span className="home-ver-dl__val">
-                          {consoleResourceVersionLabel(health ?? null, webUpdate ?? null, {
+                        {(() => {
+                          const label = consoleResourceVersionLabel(health ?? null, webUpdate ?? null, {
                             webuiBuildVersion: __WEBUI_VERSION__,
-                          })}
-                        </span>
+                          });
+                          return (
+                            <span className="home-ver-dl__val" title={label && label !== "—" ? label : undefined}>
+                              {label}
+                            </span>
+                          );
+                        })()}
                         {webUpdate?.has_update ? (
-                          <Link className="home-ver-dl__link" to="/update#console-update-webui">
-                            <span className="badge badge--warn">有更新</span>
-                          </Link>
+                          <span className="home-ver-dl__meta">
+                            <Link className="home-ver-dl__link" to="/update#console-update-webui">
+                              <span className="badge badge--warn">有更新</span>
+                            </Link>
+                          </span>
                         ) : null}
                       </dd>
                     </div>
                     <div className="home-ver-dl__row">
                       <dt>Python</dt>
                       <dd>
-                        <span className="home-ver-dl__val home-ver-dl__val--mono">
-                          {runtime?.python?.trim() || "—"}
-                        </span>
+                        {(() => {
+                          const label = runtime?.python?.trim() || "—";
+                          return (
+                            <span
+                              className="home-ver-dl__val home-ver-dl__val--mono"
+                              title={label === "—" ? undefined : label}
+                            >
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </dd>
                     </div>
                   </dl>
-                </div>
-              </div>
-            </div>
+                </HomeLazyReveal>
+              </CardContent>
+            </Card>
 
-            <div className="home-card home-card--ver" style={{ gridArea: "verR" }}>
-              <div className="home-card__hd">
-                <h2 className="home-card__title">环境</h2>
-                {health?.ok ? <span className="home-card__tag home-card__tag--ok muted">API 已连接</span> : null}
-              </div>
-              <div className="home-card__bd">
-                <div className={versionMetaPending ? "home-lazy-reveal home-lazy-reveal--loading" : "home-lazy-reveal"}>
+            <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verR" }}>
+              <CardHeader className={HOME_PANEL_HD}>
+                <CardTitle className={HOME_PANEL_TITLE}>环境</CardTitle>
+                {health?.ok ? (
+                  <span className={cn(HOME_PANEL_TAG, "home-card__tag--ok")}>API 已连接</span>
+                ) : null}
+              </CardHeader>
+              <CardContent className={HOME_PANEL_BD}>
+                <HomeLazyReveal loading={versionMetaPending && !system} variant="version-dl" ariaLabel="环境信息加载中">
                   <dl className="home-ver-dl">
                     <div className="home-ver-dl__row">
                       <dt>服务时间</dt>
@@ -1151,9 +1250,9 @@ export default function HomePage() {
                       </dd>
                     </div>
                   </dl>
-                </div>
-              </div>
-            </div>
+                </HomeLazyReveal>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}

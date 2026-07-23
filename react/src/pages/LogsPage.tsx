@@ -5,15 +5,27 @@ import {
   useRef,
   useState,
 } from "react";
+import { Search, Eye, LayoutList, FileText, FolderOpen, Globe, Monitor, Radio, Hash } from "lucide-react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
+import PageMasthead from "@/components/PageMasthead";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
-import PageChrome from "@/components/layout/PageChrome";
-import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LOG_ENTRY_LEVELS,
   loadLogsEnabledLevels,
@@ -75,8 +87,85 @@ export default function LogsPage() {
   const rawScrollElRef = useRef<HTMLPreElement | null>(null);
   const logFeedRef = useRef<LogVirtualFeedHandle | null>(null);
   const suppressRawFollowUpdateRef = useRef(0);
+  const logScrollBottomRafRef = useRef(0);
+  const logScrollBottomForceRef = useRef(false);
+  const logScrollBottomRetryTimersRef = useRef<number[]>([]);
+  const viewRef = useRef(view);
+  const followLogTailRef = useRef(followLogTail);
+  viewRef.current = view;
+  followLogTailRef.current = followLogTail;
 
   const bumpLiveTick = useCallback(() => setLiveTick((v) => v + 1), []);
+
+  const isRawNearBottom = useCallback((el: HTMLElement) => {
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return gap <= 80;
+  }, []);
+
+  const cancelScrollActiveLogRetries = useCallback(() => {
+    for (const id of logScrollBottomRetryTimersRef.current) window.clearTimeout(id);
+    logScrollBottomRetryTimersRef.current = [];
+  }, []);
+
+  const scrollActiveLogToBottom = useCallback(
+    async (force = false) => {
+      await Promise.resolve();
+      if (viewRef.current === "feed") {
+        if (force || followLogTailRef.current) {
+          // 强制进页滚底时先锁跟尾，避免 scrollTop=0 的残留 scroll 事件把 follow 打回 false
+          if (force) setFollowLogTail(true);
+          await logFeedRef.current?.scrollToBottom(true);
+        }
+        return;
+      }
+      const el = rawScrollElRef.current;
+      if (!el || (!force && !followLogTailRef.current)) return;
+      if (force) setFollowLogTail(true);
+      suppressRawFollowUpdateRef.current += 1;
+      const apply = () => {
+        el.scrollTop = el.scrollHeight;
+      };
+      apply();
+      window.requestAnimationFrame(() => {
+        apply();
+        window.requestAnimationFrame(() => {
+          apply();
+          suppressRawFollowUpdateRef.current = Math.max(0, suppressRawFollowUpdateRef.current - 1);
+          setFollowLogTail(isRawNearBottom(el));
+        });
+      });
+    },
+    [isRawNearBottom],
+  );
+
+  const scheduleScrollActiveLogToBottom = useCallback(
+    (force = false) => {
+      if (force) logScrollBottomForceRef.current = true;
+      if (logScrollBottomRafRef.current) window.cancelAnimationFrame(logScrollBottomRafRef.current);
+      logScrollBottomRafRef.current = window.requestAnimationFrame(() => {
+        logScrollBottomRafRef.current = 0;
+        const useForce = logScrollBottomForceRef.current;
+        logScrollBottomForceRef.current = false;
+        void scrollActiveLogToBottom(useForce);
+      });
+    },
+    [scrollActiveLogToBottom],
+  );
+
+  /** 进页/激活：布局未完成时多拍几次强制滚底 */
+  const scheduleEnterLogScroll = useCallback(() => {
+    setFollowLogTail(true);
+    scheduleScrollActiveLogToBottom(true);
+    cancelScrollActiveLogRetries();
+    for (const ms of [50, 120, 320]) {
+      logScrollBottomRetryTimersRef.current.push(
+        window.setTimeout(() => {
+          setFollowLogTail(true);
+          scheduleScrollActiveLogToBottom(true);
+        }, ms),
+      );
+    }
+  }, [cancelScrollActiveLogRetries, scheduleScrollActiveLogToBottom]);
 
   const pushLiveEntry = useCallback(
     (raw: LogEntry) => {
@@ -120,11 +209,11 @@ export default function LogsPage() {
         setPageReady(true);
         if (!silent) {
           setFollowLogTail(true);
-          void logFeedRef.current?.scrollToBottom(true);
+          scheduleEnterLogScroll();
         }
       }
     },
-    [logSource, n, scope],
+    [logSource, n, scheduleEnterLogScroll, scope],
   );
 
   const stopLogPolling = useCallback(() => {
@@ -209,11 +298,11 @@ export default function LogsPage() {
   const bootLogsPage = useCallback(async () => {
     if (document.visibilityState === "hidden") return;
     await load({ silent: pageReady });
-    setFollowLogTail(true);
-    void logFeedRef.current?.scrollToBottom(true);
+    // silent 刷新不会在 load.finally 里滚底；数据落地后再强制一次
+    scheduleEnterLogScroll();
     startLogPolling();
     startLogStream();
-  }, [load, pageReady, startLogPolling, startLogStream]);
+  }, [load, pageReady, scheduleEnterLogScroll, startLogPolling, startLogStream]);
 
   useEffect(() => {
     if (logsSnapshotCache) {
@@ -226,12 +315,20 @@ export default function LogsPage() {
       }
       setPageReady(true);
     }
+    // 进页：先锁跟尾并滚底，再拉历史
+    scheduleEnterLogScroll();
     void bootLogsPage();
     return () => {
+      cancelScrollActiveLogRetries();
+      if (logScrollBottomRafRef.current) {
+        window.cancelAnimationFrame(logScrollBottomRafRef.current);
+        logScrollBottomRafRef.current = 0;
+      }
+      logScrollBottomForceRef.current = false;
       stopLogPolling();
       closeLogStream();
     };
-  }, [bootLogsPage, closeLogStream, stopLogPolling]);
+  }, [bootLogsPage, cancelScrollActiveLogRetries, closeLogStream, scheduleEnterLogScroll, stopLogPolling]);
 
   useEffect(() => {
     void load();
@@ -302,6 +399,14 @@ export default function LogsPage() {
 
   const visibleCount = view === "feed" ? filtered.length : filteredRawLines.length;
 
+  useEffect(() => {
+    scheduleScrollActiveLogToBottom();
+  }, [view, filtered.length, filteredRawLines.length, payload?.entries?.length, scheduleScrollActiveLogToBottom]);
+
+  useEffect(() => {
+    scheduleScrollActiveLogToBottom(followLogTail);
+  }, [liveTick, followLogTail, scheduleScrollActiveLogToBottom]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (q.trim()) count += 1;
@@ -313,11 +418,11 @@ export default function LogsPage() {
   }, [enabledLevels.size, logSource, n, q, scope]);
 
   const streamBadgeLabel = streamLive ? "实时" : streamReconnecting ? "重连中" : "连接中";
-  const streamBadgeClass = streamLive
-    ? "logs-page__badge--live"
+  const streamBadgeVariant = streamLive
+    ? "success"
     : streamReconnecting
-      ? "logs-page__badge--reconnect"
-      : "logs-page__badge--pending";
+      ? "warn"
+      : "secondary";
 
   const levelCounts = useMemo(() => {
     void liveTick;
@@ -345,129 +450,138 @@ export default function LogsPage() {
   function onRawScroll(ev: React.UIEvent<HTMLPreElement>) {
     if (suppressRawFollowUpdateRef.current > 0) return;
     const el = ev.currentTarget;
-    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setFollowLogTail(gap <= 80);
+    setFollowLogTail(isRawNearBottom(el));
   }
 
   if (!pageReady) {
     return (
-      <PageFill className="logs-page console-hub-page">
-        <p className="muted">加载日志…</p>
+      <PageFill className="logs-page">
+        <ConsolePageSkeleton panels={2} />
       </PageFill>
     );
   }
 
   return (
-    <PageFill className="logs-page console-hub-page">
+    <PageFill className="logs-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
 
       <PagePinned>
-        <PageChrome
+        <PageMasthead
           title="运行日志"
-          description="支持结构化与原始行视图；可按范围、来源与条数筛选，并实时跟随推送。"
+          description="结构化 / 原始日志；可筛选与跟随。"
         />
 
-        <div className="logs-page__chrome-tools">
-          <div className="logs-page__search-row">
-            <ConsoleHubSearch
-              className="logs-page__search"
-              placeholder="搜索消息、scope、级别…"
-              ariaLabel="按消息、scope、级别等过滤"
-              value={q}
-              onValueChange={setQ}
-            />
-            <button
-              type="button"
-              className={cn(
-                "btn logs-page__filter-toggle",
-                (advancedOpen || activeFilterCount > 0) && "btn--primary",
-              )}
-              aria-expanded={advancedOpen}
-              onClick={() => setAdvancedOpen((v) => !v)}
-            >
-              筛选{activeFilterCount ? ` (${activeFilterCount})` : ""}
-            </button>
-          </div>
-          <div className="logs-page__toolbar-row">
-            <div className="logs-page__view-btns console-view-toggle" role="group" aria-label="日志视图">
-              <button
-                type="button"
-                className={cn(view === "feed" && "is-on")}
-                onClick={() => setView("feed")}
-              >
-                结构化
-              </button>
-              <button
-                type="button"
-                className={cn(view === "raw" && "is-on")}
-                onClick={() => setView("raw")}
-              >
-                原始行
-              </button>
-            </div>
-          </div>
-          {advancedOpen ? (
-            <div className="logs-page__hd-advanced">
-              <div className="logs-page__filter-row form-toolbar">
-                <label className="logs-page__field">
-                  <span className="logs-page__field-label">范围</span>
-                  <UiSelect
-                    aria-label="日志范围"
-                    value={scope}
-                    onValueChange={(v) => setScope(v as LogScope)}
-                  >
-                    <option value="all">全部</option>
-                    <option value="webui">WebUI</option>
-                    <option value="protocol">协议</option>
-                  </UiSelect>
-                </label>
+        <ChromeTools
+          advanced={
+            advancedOpen ? (
+              <>
+                <ChromeField label="范围" icon={FolderOpen}>
+                  <Select value={scope} onValueChange={(v) => setScope(v as LogScope)}>
+                    <SelectTrigger className="h-8 w-auto min-w-[6.5rem]" aria-label="日志范围">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        <ChromeOptionLabel icon={Globe}>全部</ChromeOptionLabel>
+                      </SelectItem>
+                      <SelectItem value="webui">
+                        <ChromeOptionLabel icon={Monitor}>WebUI</ChromeOptionLabel>
+                      </SelectItem>
+                      <SelectItem value="protocol">
+                        <ChromeOptionLabel icon={Radio}>协议</ChromeOptionLabel>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ChromeField>
                 {payload?.sharded_logs ? (
-                  <label className="logs-page__field">
-                    <span className="logs-page__field-label">来源</span>
-                    <UiSelect
-                      aria-label="日志来源"
-                      value={logSource}
-                      onValueChange={setLogSource}
-                    >
-                      {sourceOptions.map((s) => (
-                        <option key={`src-${s}`} value={s}>
-                          {s === "all" ? "全部来源" : s}
-                        </option>
-                      ))}
-                    </UiSelect>
-                  </label>
+                  <ChromeField label="来源" icon={Radio}>
+                    <Select value={logSource} onValueChange={setLogSource}>
+                      <SelectTrigger className="h-8 w-auto min-w-[7rem]" aria-label="日志来源">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sourceOptions.map((s) => (
+                          <SelectItem key={`src-${s}`} value={s}>
+                            <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
+                              {s === "all" ? "全部来源" : s}
+                            </ChromeOptionLabel>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </ChromeField>
                 ) : null}
-                <label className="logs-page__field">
-                  <span className="logs-page__field-label">条数</span>
-                  <UiInput
-                    className="logs-page__n-inp"
+                <ChromeField label="条数" icon={Hash}>
+                  <Input
+                    className="h-8 min-h-8 w-[4.5rem]"
                     type="number"
                     min={20}
                     max={2000}
                     aria-label="拉取条数"
                     value={String(n)}
-                    onValueChange={(v) => onNInput(v, setN)}
+                    onChange={(e) => onNInput(e.target.value, setN)}
                   />
-                </label>
-              </div>
-            </div>
-          ) : null}
-        </div>
+                </ChromeField>
+              </>
+            ) : undefined
+          }
+        >
+          <div className="relative min-w-[8rem] flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <Input
+              type="search"
+              className="h-8 min-h-8 pl-8"
+              placeholder="搜索消息、scope、级别…"
+              aria-label="按消息、scope、级别等过滤"
+              autoComplete="off"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <ChromeField label="视图" icon={Eye}>
+            <Select value={view} onValueChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
+              <SelectTrigger
+                className="h-8 w-auto min-w-[6.5rem] max-w-[9rem] shrink-0"
+                aria-label="日志视图"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="min-w-[10rem]">
+                <SelectItem value="feed">
+                  <ChromeOptionLabel icon={LayoutList}>结构化</ChromeOptionLabel>
+                </SelectItem>
+                <SelectItem value="raw">
+                  <ChromeOptionLabel icon={FileText}>原始行</ChromeOptionLabel>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </ChromeField>
+          <Button
+            type="button"
+            variant={advancedOpen || activeFilterCount > 0 ? "default" : "secondary"}
+            size="sm"
+            className="shrink-0"
+            aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((v) => !v)}
+          >
+            筛选{activeFilterCount ? ` (${activeFilterCount})` : ""}
+          </Button>
+        </ChromeTools>
       </PagePinned>
 
-      <section className="panel ui-card ui-card--glass logs-page__panel">
-        <div className="panel__bd">
+      <Card className="logs-page__panel flex min-h-0 flex-1 flex-col overflow-hidden shadow-none">
+        <CardContent className="logs-page__panel-bd flex min-h-0 flex-1 flex-col gap-1.5 px-4 pb-4 pt-2">
           {payload?.max != null ? (
-            <div className="logs-page__status">
-              <span className={cn("logs-page__badge", streamBadgeClass)}>{streamBadgeLabel}</span>
-              <span className="logs-page__badge">历史 {historyEntryCount}</span>
-              {liveExtraCount ? (
-                <span className="logs-page__badge logs-page__badge--accent">+{liveExtraCount} 实时</span>
-              ) : null}
-              <span className="logs-page__badge">显示 {visibleCount}</span>
-              {activeFilterCount ? (
-                <span className="logs-page__badge logs-page__badge--muted">筛选中</span>
-              ) : null}
+            <div className="logs-page__status flex flex-wrap items-center gap-1.5">
+              <Badge variant={streamBadgeVariant}>{streamBadgeLabel}</Badge>
+              <Badge variant="outline">历史 {historyEntryCount}</Badge>
+              {liveExtraCount ? <Badge variant="default">+{liveExtraCount} 实时</Badge> : null}
+              <Badge variant="outline">显示 {visibleCount}</Badge>
+              {activeFilterCount ? <Badge variant="muted">筛选中</Badge> : null}
             </div>
           ) : null}
 
@@ -523,8 +637,8 @@ export default function LogsPage() {
               </pre>
             )}
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </PageFill>
   );
 }

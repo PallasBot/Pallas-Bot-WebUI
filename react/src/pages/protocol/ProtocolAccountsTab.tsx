@@ -28,21 +28,23 @@ import {
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
+import ChromeTools from "@/components/ChromeTools";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import UiButton from "@/components/ui/UiButton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import {
   coerceBoolean,
   protocolBackendDisplayName,
-  protocolDisp,
   protocolRuntimeModeLabel,
   protocolRuntimeVersionText,
 } from "@/utils/protocolUi";
@@ -52,6 +54,14 @@ import {
   waitForProtocolBatchJob,
 } from "@/utils/protocolBatch";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const PROTO_PANEL =
+  "protocol-page__panel flex flex-col overflow-hidden shadow-none";
+const PROTO_PANEL_HD =
+  "panel__hd panel__hd--split inst-db-panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const PROTO_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
 type ProtocolAccountAction = "power" | "restart";
 
@@ -124,22 +134,9 @@ function restartLabel(busy: boolean): string {
   return busy ? "重启中…" : "重启";
 }
 
-function boolPillClass(on: boolean): string {
-  return on ? "data-pill data-pill--on" : "data-pill data-pill--off";
-}
-
-function pillLabel(d: ReturnType<typeof protocolDisp>): string {
-  return d.kind === "pill" ? (d.on ? d.onLabel : d.offLabel) : d.text;
-}
-
-function pillOn(d: ReturnType<typeof protocolDisp>): boolean {
-  return d.kind === "pill" && d.on;
-}
-
 export default function ProtocolAccountsTab() {
   const {
     mountUrl,
-    snap,
     instances,
     system,
     protocolExtensionInstalled,
@@ -149,8 +146,6 @@ export default function ProtocolAccountsTab() {
   const qc = useQueryClient();
   const prefs = useConsolePrefs();
   const { favorites, toggleFavorite } = useBotFavorites();
-  const webuiEnabledDisp = protocolDisp(snap?.webui_enabled, "已启用", "未启用");
-  const consoleAuthDisp = protocolDisp(snap?.console_auth_configured, "已配置", "未配置");
 
   const [expProtocolAccounts, setExpProtocolAccounts] = useState(true);
   const [protoSearchQ, setProtoSearchQ] = useState("");
@@ -162,6 +157,7 @@ export default function ProtocolAccountsTab() {
   const [actionBusy, setActionBusy] = useState<Set<string>>(new Set());
   const [restartAllBusy, setRestartAllBusy] = useState(false);
   const [restartSelectedBusy, setRestartSelectedBusy] = useState(false);
+  const [stopSelectedBusy, setStopSelectedBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteErr, setDeleteErr] = useState("");
@@ -428,6 +424,34 @@ export default function ProtocolAccountsTab() {
     }
   }
 
+  async function stopSelectedAccounts() {
+    const ids = [...selected].sort();
+    if (!ids.length) {
+      pushConsoleToast("请先勾选要停止的账号", "warn");
+      return;
+    }
+    if (stopSelectedBusy) return;
+    setStopSelectedBusy(true);
+    try {
+      const job = await runBatch(
+        { action: "stop", account_ids: ids },
+        `将按间隔依次停止 ${ids.length} 个账号。继续？`,
+      );
+      if (job) {
+        const failed = (job.results ?? []).filter((r) => !r.ok).length;
+        pushConsoleToast(
+          failed ? `停止完成，${failed} 个失败` : `已停止 ${ids.length} 个账号`,
+          failed ? "warn" : "ok",
+        );
+        setSelected(new Set());
+        await refreshLists();
+      }
+    } finally {
+      setStopSelectedBusy(false);
+      closeBatchPanel();
+    }
+  }
+
   async function restartAllAccounts() {
     const ids = protocolAccountsSorted
       .map((a) => accountProtocolId(a))
@@ -561,20 +585,111 @@ export default function ProtocolAccountsTab() {
       {!mountUrl ? <p className="muted text-sm mb-4">协议 API 未挂载，无法加载账号列表。</p> : null}
 
       {batchOpen ? (
-        <div className="protocol-page__batch panel mb-4" role="status" aria-live="polite">
-          <div className="protocol-page__batch-track">
-            <div
-              className="protocol-page__batch-fill"
-              style={{ width: `${protocolBatchProgressPercent(batchJob)}%` }}
-            />
-          </div>
-          <p className="muted protocol-page__batch-msg">{batchPhase}</p>
-        </div>
+        <Card className="protocol-page__batch mb-4 shadow-none" role="status" aria-live="polite">
+          <CardContent className="space-y-2 p-4">
+            <div className="protocol-page__batch-track">
+              <div
+                className="protocol-page__batch-fill"
+                style={{ width: `${protocolBatchProgressPercent(batchJob)}%` }}
+              />
+            </div>
+            <p className="muted protocol-page__batch-msg">{batchPhase}</p>
+          </CardContent>
+        </Card>
       ) : null}
 
-      <section className="panel protocol-page__panel">
-        <div className="panel__hd panel__hd--split inst-db-panel__hd">
-          <h2 className="panel__title">
+      <ChromeTools>
+        <div className="relative min-w-[10rem] flex-1">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <Input
+            type="search"
+            className="h-8 min-h-8 w-full pl-8"
+            placeholder="搜索账号 / 昵称 / 协议 / ID"
+            aria-label="搜索账号 / 昵称 / 协议 / ID"
+            autoComplete="off"
+            value={protoSearchQ}
+            onChange={(e) => setProtoSearchQ(e.target.value)}
+          />
+        </div>
+        <div
+          className="console-view-toggle console-view-toggle--toolbar-seg"
+          role="group"
+          aria-label="实例表格或卡片视图"
+        >
+          <button
+            type="button"
+            className={prefs.protocolAccountsView === "table" ? "is-on" : undefined}
+            onClick={() => prefs.setProtocolAccountsView("table")}
+          >
+            表格
+          </button>
+          <button
+            type="button"
+            className={prefs.protocolAccountsView === "cards" ? "is-on" : undefined}
+            onClick={() => prefs.setProtocolAccountsView("cards")}
+          >
+            卡片
+          </button>
+        </div>
+        {protoActionsEnabled ? (
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={
+                restartAllBusy ||
+                stopSelectedBusy ||
+                batchBusy ||
+                protocolAccountsTotalCount === 0 ||
+                actionBusy.size > 0
+              }
+              onClick={() => void restartAllAccounts()}
+            >
+              {restartAllBusy ? "重启全部中…" : "重启全部"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={
+                restartSelectedBusy ||
+                stopSelectedBusy ||
+                batchBusy ||
+                selected.size === 0 ||
+                actionBusy.size > 0
+              }
+              onClick={() => void restartSelectedAccounts()}
+            >
+              {restartSelectedBusy ? "重启中…" : "重启所选"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={
+                stopSelectedBusy ||
+                restartSelectedBusy ||
+                restartAllBusy ||
+                batchBusy ||
+                selected.size === 0 ||
+                actionBusy.size > 0
+              }
+              onClick={() => void stopSelectedAccounts()}
+            >
+              {stopSelectedBusy ? "停止中…" : "停止所选"}
+            </Button>
+          </div>
+        ) : null}
+      </ChromeTools>
+
+      <Card className={cn(PROTO_PANEL, "mb-0")}>
+        <CardHeader className={PROTO_PANEL_HD}>
+          <CardTitle className="panel__title flex items-center gap-1.5">
             已连接账号
             <PanelHdCollapseCaret
               expanded={expProtocolAccounts}
@@ -588,75 +703,18 @@ export default function ProtocolAccountsTab() {
               label="刷新实例数据"
               onClick={() => void refreshLists()}
             />
-          </h2>
+          </CardTitle>
           <div className="inst-db-panel__hd-side">
             <span className="inst-db-stat muted">
               当前已连接 <strong className="inst-db-stat__num">{protocolConnectedCount}</strong> /{" "}
               {protocolAccountsTotalCount} 账号
             </span>
-            <div className="console-view-toggle" role="group" aria-label="实例表格或卡片视图">
-              <button
-                type="button"
-                className={prefs.protocolAccountsView === "table" ? "is-on" : undefined}
-                onClick={() => prefs.setProtocolAccountsView("table")}
-              >
-                表格
-              </button>
-              <button
-                type="button"
-                className={prefs.protocolAccountsView === "cards" ? "is-on" : undefined}
-                onClick={() => prefs.setProtocolAccountsView("cards")}
-              >
-                卡片
-              </button>
-            </div>
           </div>
-          <div className="inst-db-panel__actions">
-            <div className="inst-db-panel__action-controls">
-              <ConsoleHubSearch
-                className="inst-db-search"
-                placeholder="搜索账号 / 昵称 / 协议 / ID"
-                ariaLabel="搜索账号 / 昵称 / 协议 / ID"
-                value={protoSearchQ}
-                onValueChange={setProtoSearchQ}
-              />
-              {protoActionsEnabled ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={
-                      restartAllBusy ||
-                      batchBusy ||
-                      protocolAccountsTotalCount === 0 ||
-                      actionBusy.size > 0
-                    }
-                    onClick={() => void restartAllAccounts()}
-                  >
-                    {restartAllBusy ? "重启全部中…" : "重启全部"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={
-                      restartSelectedBusy ||
-                      batchBusy ||
-                      selected.size === 0 ||
-                      actionBusy.size > 0
-                    }
-                    onClick={() => void restartSelectedAccounts()}
-                  >
-                    {restartSelectedBusy ? "重启中…" : "重启所选"}
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        </CardHeader>
 
         {expProtocolAccounts ? (
-          <div className="panel__bd">
-            {accountsQ.isLoading ? <p className="muted">加载账号列表…</p> : null}
+          <CardContent className={PROTO_PANEL_BD}>
+            {accountsQ.isLoading ? <ConsoleBlockSkeleton lines={4} label="账号列表加载中" /> : null}
             {accountsQ.error ? (
               <p className="alert alert--err">{protocolApiErrorMessage(accountsQ.error, "加载失败")}</p>
             ) : null}
@@ -979,14 +1037,14 @@ export default function ProtocolAccountsTab() {
                 onDelete={openDeleteModal}
               />
             ) : null}
-          </div>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
       {protocolExtensionInstalled ? (
-        <section className="panel ui-card ui-card--glass protocol-page__panel mt-6">
-          <div className="panel__hd panel__hd--split inst-db-panel__hd">
-            <h2 className="panel__title">
+        <Card className={cn(PROTO_PANEL, "mt-6")}>
+          <CardHeader className={PROTO_PANEL_HD}>
+            <CardTitle className="panel__title flex items-center gap-1.5">
               协议端入口
               <RefreshIconButton
                 embedded
@@ -995,62 +1053,41 @@ export default function ProtocolAccountsTab() {
                 label="刷新协议端数据"
                 onClick={() => void refreshLists()}
               />
-            </h2>
-            <div className="row-actions" />
-          </div>
-          <div className="panel__bd">
-            <div className="protocol-page__meta console-kv-block">
-              <div className="data-summary-card__row">
-                <span className="data-summary-card__label">内置 WebUI</span>
-                {webuiEnabledDisp.kind === "pill" ? (
-                  <span className={boolPillClass(pillOn(webuiEnabledDisp))}>{pillLabel(webuiEnabledDisp)}</span>
-                ) : (
-                  <span className="muted">{pillLabel(webuiEnabledDisp)}</span>
-                )}
-              </div>
-              {snap?.webui_path ? (
-                <p className="muted protocol-page__meta-path">
-                  路径 <code>{snap.webui_path}</code>
-                </p>
-              ) : null}
-              <div className="data-summary-card__row">
-                <span className="data-summary-card__label">控制台鉴权</span>
-                {consoleAuthDisp.kind === "pill" ? (
-                  <span className={boolPillClass(pillOn(consoleAuthDisp))}>{pillLabel(consoleAuthDisp)}</span>
-                ) : (
-                  <span className="muted">{pillLabel(consoleAuthDisp)}</span>
-                )}
-              </div>
-            </div>
+            </CardTitle>
+            <div className="inst-db-panel__hd-side" />
+          </CardHeader>
+          <CardContent className={PROTO_PANEL_BD}>
             <p className="muted protocol-page__entry-hint">
-              运行时下载、Docker 镜像与全局运行模式已迁入本控制台{" "}
+              运行时下载、Docker 镜像与全局运行模式请到{" "}
               <Link className="link-quiet" to="/protocol/assets">
                 协议资产
               </Link>
-              ；下方按钮仍可打开协议插件内置页（创建 / 导入账号等）。
+              ；下方可创建或导入账号。
             </p>
             <div className="row-actions protocol-page__actions protocol-page__entry-actions">
-              <Link className="ui-btn ui-btn--outline" to="/protocol/create">
-                创建账号
-              </Link>
-              <Link className="ui-btn ui-btn--outline" to="/protocol/import">
-                导入账号
-              </Link>
-              <Link className="ui-btn ui-btn--outline" to="/protocol/assets">
-                协议资产
-              </Link>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/protocol/create">创建账号</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/protocol/import">导入账号</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/protocol/assets">协议资产</Link>
+              </Button>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       {/* Vue: only when snowlumaRuntimes.length；顺序在「协议端入口」之后 */}
       {snowlumaRuntimes.length ? (
-        <section className="panel ui-card ui-card--glass protocol-page__panel mt-6">
-          <div className="panel__hd">
-            <h2 className="panel__title">SnowLuma Runtime</h2>
-          </div>
-          <div className="panel__bd">
+        <Card className={cn(PROTO_PANEL, "mt-6")}>
+          <CardHeader className={cn(PROTO_PANEL_HD, "border-b")}>
+            <CardTitle className="panel__title">
+              SnowLuma Runtime
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={PROTO_PANEL_BD}>
             <p className="muted">
               一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
             </p>
@@ -1077,28 +1114,30 @@ export default function ProtocolAccountsTab() {
                     ) : null}
                   </div>
                   <div className="row-actions protocol-runtime-row__actions">
-                    <UiButton
+                    <Button
+                      type="button"
                       size="sm"
                       variant="outline"
                       disabled={snowlumaRuntimeBusyId === rt.id}
                       onClick={() => void startSnowlumaRuntime(rt.id)}
                     >
                       {snowlumaRuntimeBusyId === rt.id ? "启动中…" : "启 Runtime"}
-                    </UiButton>
-                    <UiButton
+                    </Button>
+                    <Button
+                      type="button"
                       size="sm"
                       variant="outline"
                       disabled={snowlumaRuntimeBusyId === rt.id}
                       onClick={() => void stopSnowlumaRuntime(rt.id)}
                     >
                       {snowlumaRuntimeBusyId === rt.id ? "停止中…" : "停 Runtime"}
-                    </UiButton>
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       <ProtocolAccountConfigDialog

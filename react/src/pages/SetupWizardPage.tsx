@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { changeConsoleLogin, fetchConsoleSetupStatus } from "@/api/fullConsole";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function setupSatisfied(data: Awaited<ReturnType<typeof fetchConsoleSetupStatus>> | undefined): boolean {
   if (!data) return false;
@@ -65,13 +68,20 @@ export default function SetupWizardPage() {
 
   return (
     <div className="console-hub-page setup-wizard-page">
-      <PageHeader
+      <PageMasthead
         title="首次 Setup Wizard"
-        description="改密为必做项；协议端与插件扩展为推荐项。"
+        description="改密必做；协议与扩展可选。"
         actions={
-          <button type="button" className="btn" disabled={setupQ.isFetching} onClick={() => void setupQ.refetch()}>
-            重新检查
-          </button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={setupQ.isFetching}
+            onClick={() => void setupQ.refetch()}
+          >
+            <RefreshCw className={cn("size-3.5", setupQ.isFetching && "animate-spin")} />
+            {setupQ.isFetching ? "检查中…" : "重新检查"}
+          </Button>
         }
       />
 

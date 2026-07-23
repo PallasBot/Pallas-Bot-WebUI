@@ -14,18 +14,28 @@ import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { rouletteModeLabel } from "@/utils/rouletteMode";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import UiInput from "@/components/ui/UiInput";
 import UiSelect from "@/components/ui/UiSelect";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CONFIG_LIST_LIMIT = 10_000;
 const nf = new Intl.NumberFormat("zh-CN");
+
+const DB_PANEL = "database-page__panel flex flex-col overflow-hidden shadow-none";
+const DB_PANEL_HD =
+  "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const DB_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
 function isMongo(o: DbOverviewData | null): o is Extract<DbOverviewData, { backend: "mongodb" }> {
   return o != null && o.backend === "mongodb";
@@ -207,15 +217,24 @@ export default function DatabasePage() {
       {err ? <div className="alert alert--err">{err}</div> : null}
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
-      <PageHeader
+      <PageMasthead
         title="数据库总览"
-        description="查看后端概览，并维护群 / 好友配置与存储明细。"
+        description="后端概览与群 / 好友配置。"
         actions={
-          <div className="row-actions">
-            <Link to="/database/backups" className="btn">
-              备份管理
-            </Link>
-            <RefreshIconButton embedded className="hub-refresh-wide-only" busy={dbRefreshBusy} label="刷新数据库总览" onClick={() => void loadAll()} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/database/backups">备份管理</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={dbRefreshBusy}
+              onClick={() => void loadAll()}
+            >
+              <RefreshCw className={cn("size-3.5", dbRefreshBusy && "animate-spin")} />
+              {dbRefreshBusy ? "刷新中…" : "刷新"}
+            </Button>
           </div>
         }
       />
@@ -260,9 +279,9 @@ export default function DatabasePage() {
         </section>
       ) : null}
 
-      <section id="db-group-configs" className="panel database-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="db-group-configs" className={DB_PANEL}>
+        <CardHeader className={DB_PANEL_HD}>
+          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
             群配置
             <PanelHdCollapseCaret
               expanded={prefs.databasePageGroupConfigsOpen}
@@ -270,7 +289,7 @@ export default function DatabasePage() {
               onToggle={() => prefs.setDatabasePageGroupConfigsOpen(!prefs.databasePageGroupConfigsOpen)}
             />
             <RefreshIconButton embedded showLabel={false} busy={socialConfigsBusy} label="刷新群配置列表" onClick={() => void loadSocialConfigs()} />
-          </h2>
+          </CardTitle>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
             <UiInput
@@ -287,24 +306,22 @@ export default function DatabasePage() {
             />
             <div className="friends-groups-list-hd-actions__tail">
               {socialConfigsBusy ? (
-                <span className="muted" style={{ fontSize: 12 }}>
+                <span className="visually-hidden" role="status" aria-live="polite">
                   加载中…
                 </span>
               ) : null}
             </div>
           </div>
-        </div>
+        </CardHeader>
         {prefs.databasePageGroupConfigsOpen ? (
-          <div className="panel__bd">
+          <CardContent className={DB_PANEL_BD}>
             {pluginsQ.error ? (
               <p className="muted" style={{ margin: "0 0 10px" }}>
                 插件列表加载失败，禁用插件列可能不完整：{axiosErrorDetail(pluginsQ.error)}
               </p>
             ) : null}
             {socialConfigsBusy && !groupConfigs.length ? (
-              <p className="muted" style={{ margin: 0 }}>
-                正在加载群配置…
-              </p>
+              <ConsoleBlockSkeleton lines={5} label="群配置加载中" />
             ) : !filteredGroupConfigs.length ? (
               <p className="muted">
                 {groupListQ.trim() && groupConfigs.length > 0 ? "无匹配结果。" : "数据库中暂无群配置记录。"}
@@ -356,13 +373,13 @@ export default function DatabasePage() {
                 onPageSizeChange={prefs.setTablePageSize}
               />
             ) : null}
-          </div>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
-      <section id="db-user-configs" className="panel database-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="db-user-configs" className={DB_PANEL}>
+        <CardHeader className={DB_PANEL_HD}>
+          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
             好友配置
             <PanelHdCollapseCaret
               expanded={prefs.databasePageUserConfigsOpen}
@@ -370,7 +387,7 @@ export default function DatabasePage() {
               onToggle={() => prefs.setDatabasePageUserConfigsOpen(!prefs.databasePageUserConfigsOpen)}
             />
             <RefreshIconButton embedded showLabel={false} busy={socialConfigsBusy} label="刷新好友配置列表" onClick={() => void loadSocialConfigs()} />
-          </h2>
+          </CardTitle>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
             <UiInput
@@ -387,15 +404,15 @@ export default function DatabasePage() {
             />
             <div className="friends-groups-list-hd-actions__tail">
               {socialConfigsBusy ? (
-                <span className="muted" style={{ fontSize: 12 }}>
+                <span className="visually-hidden" role="status" aria-live="polite">
                   加载中…
                 </span>
               ) : null}
             </div>
           </div>
-        </div>
+        </CardHeader>
         {prefs.databasePageUserConfigsOpen ? (
-          <div className="panel__bd">
+          <CardContent className={DB_PANEL_BD}>
             <div className="database-user-config-add" style={{ marginBottom: 12 }}>
               <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
                 输入 QQ 号后点击添加并设置封禁。此为全局拉黑，与私聊「牛牛拉黑」写入同一字段；本群维度拉黑请在上方群配置中维护。
@@ -417,9 +434,15 @@ export default function DatabasePage() {
                     }
                   }}
                 />
-                <button type="button" className="btn btn--primary database-user-config-add__btn" disabled={socialConfigsBusy} onClick={openAddUserConfig}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="database-user-config-add__btn"
+                  disabled={socialConfigsBusy}
+                  onClick={openAddUserConfig}
+                >
                   添加
-                </button>
+                </Button>
               </div>
               {addUserHint ? (
                 <p className="alert alert--err" style={{ margin: "8px 0 0", padding: "8px 10px", fontSize: 12 }}>
@@ -428,9 +451,7 @@ export default function DatabasePage() {
               ) : null}
             </div>
             {socialConfigsBusy && !userConfigs.length ? (
-              <p className="muted" style={{ margin: 0 }}>
-                正在加载好友配置…
-              </p>
+              <ConsoleBlockSkeleton lines={4} label="好友配置加载中" />
             ) : !filteredUserConfigs.length ? (
               <p className="muted">
                 {userListQ.trim() && userConfigs.length > 0
@@ -476,16 +497,16 @@ export default function DatabasePage() {
                 onPageSizeChange={prefs.setTablePageSize}
               />
             ) : null}
-          </div>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
       {overview?.backend === "mongodb" ? (
-        <section className="panel database-page__panel">
-          <div className="panel__hd panel__hd--split">
-            <h2 className="panel__title">集合与文档数</h2>
-          </div>
-          <div className="panel__bd">
+        <Card className={DB_PANEL}>
+          <CardHeader className={DB_PANEL_HD}>
+            <CardTitle className="panel__title">集合与文档数</CardTitle>
+          </CardHeader>
+          <CardContent className={DB_PANEL_BD}>
             <div className="table-wrap">
               <table className="data console-data-table database-page__storage-table">
                 <thead>
@@ -509,16 +530,16 @@ export default function DatabasePage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       {overview?.backend === "postgres" ? (
-        <section className="panel database-page__panel">
-          <div className="panel__hd panel__hd--split">
-            <h2 className="panel__title">表与行数</h2>
-          </div>
-          <div className="panel__bd">
+        <Card className={DB_PANEL}>
+          <CardHeader className={DB_PANEL_HD}>
+            <CardTitle className="panel__title">表与行数</CardTitle>
+          </CardHeader>
+          <CardContent className={DB_PANEL_BD}>
             <div className="table-wrap">
               <table className="data console-data-table database-page__storage-table">
                 <thead>
@@ -537,21 +558,21 @@ export default function DatabasePage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       {overview && overview.backend === "mongodb" ? (
-        <section className="panel database-page__panel">
-          <div className="panel__hd panel__hd--split">
-            <h2 className="panel__title">MongoDB 聚合</h2>
-            <div className="row-actions">
-              <button type="button" className="btn btn--primary" disabled={aggLoading || !collection.trim()} onClick={() => void runAggregate()}>
+        <Card className={DB_PANEL}>
+          <CardHeader className={DB_PANEL_HD}>
+            <CardTitle className="panel__title">MongoDB 聚合</CardTitle>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button type="button" size="sm" disabled={aggLoading || !collection.trim()} onClick={() => void runAggregate()}>
                 {aggLoading ? "执行中…" : "执行"}
-              </button>
+              </Button>
             </div>
-          </div>
-          <div className="panel__bd">
+          </CardHeader>
+          <CardContent className={DB_PANEL_BD}>
             <div style={{ marginBottom: 12 }}>
               <label className="muted" style={{ display: "block", marginBottom: 6 }}>
                 集合名
@@ -590,8 +611,8 @@ export default function DatabasePage() {
                 <pre className="pre-block">{aggResult}</pre>
               </div>
             ) : null}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       <GroupSocialConfigModal

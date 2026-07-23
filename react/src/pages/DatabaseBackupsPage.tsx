@@ -13,12 +13,15 @@ import {
 import type { DbBackupJobData, DbBackupRunRow, DbOverviewData } from "@/api/pallasTypes";
 import BackupDirPicker from "@/components/BackupDirPicker";
 import BackupTargetTree from "@/components/BackupTargetTree";
-import PageHeader from "@/components/PageHeader";
-import RefreshIconButton from "@/components/RefreshIconButton";
+import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
+import PageMasthead from "@/components/PageMasthead";
 import UiInput from "@/components/ui/UiInput";
 import UiSelect from "@/components/ui/UiSelect";
+import { Button } from "@/components/ui/button";
 import { useDbBackup } from "@/hooks/useDbBackup";
 import { formatBackupBytes, formatBackupElapsed } from "@/utils/dbBackupFormat";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type DownloadState = {
   status: "idle" | "downloading" | "done" | "failed";
@@ -364,15 +367,24 @@ export default function DatabaseBackupsPage() {
       {err ? <div className="alert alert--err">{err}</div> : null}
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
-      <PageHeader
+      <PageMasthead
         title="备份管理"
-        description="创建逻辑备份、浏览历史目录并下载或批量清理；进行中的任务不可删。"
+        description="创建、下载与清理数据库备份。"
         actions={
-          <div className="row-actions">
-            <Link to="/database" className="btn">
-              返回数据库
-            </Link>
-            <RefreshIconButton embedded busy={listBusy} label="刷新列表" onClick={() => void loadRuns()} />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/database">返回数据库</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={listBusy}
+              onClick={() => void loadRuns()}
+            >
+              <RefreshCw className={cn("size-3.5", listBusy && "animate-spin")} />
+              {listBusy ? "刷新中…" : "刷新"}
+            </Button>
           </div>
         }
       />
@@ -387,7 +399,11 @@ export default function DatabaseBackupsPage() {
               <div className="metric-tile__value-slot">
                 <span className="metric-tile__value metric-tile__value--inline">{backup.backendLabel}</span>
                 <span className="database-page__kpi-hint muted">
-                  {backup.backupInfo?.tool_name ? `工具 ${backup.backupInfo.tool_name}` : "加载中…"}
+                  {backup.backupInfo?.tool_name ? (
+                    `工具 ${backup.backupInfo.tool_name}`
+                  ) : (
+                    <SkelValue className="skel-value--wide" />
+                  )}
                 </span>
               </div>
             </div>
@@ -478,12 +494,12 @@ export default function DatabaseBackupsPage() {
                       disabled={listBusy || deleting || backup.busy}
                       onValueChange={backup.setOutputParent}
                     />
-                    <button type="button" className="btn" disabled={listBusy || deleting || backup.busy} onClick={() => setDirPickerOpen(true)}>
+                    <Button type="button" variant="secondary" size="sm" disabled={listBusy || deleting || backup.busy} onClick={() => setDirPickerOpen(true)}>
                       浏览…
-                    </button>
-                    <button type="button" className="btn" disabled={listBusy || deleting || backup.busy} onClick={() => void applyDirectoryAndRefresh()}>
+                    </Button>
+                    <Button type="button" variant="secondary" size="sm" disabled={listBusy || deleting || backup.busy} onClick={() => void applyDirectoryAndRefresh()}>
                       {listBusy ? "刷新中…" : "应用目录"}
-                    </button>
+                    </Button>
                   </div>
                   <p className="prefs-form-field__hint muted">将在该目录下创建带时间戳的子文件夹；列表扫描同一父目录。</p>
                 </div>
@@ -745,7 +761,9 @@ export default function DatabaseBackupsPage() {
             </div>
           </section>
         </>
-      ) : null}
+      ) : (
+        <ConsolePageSkeleton panels={3} />
+      )}
 
       <BackupDirPicker
         open={dirPickerOpen}

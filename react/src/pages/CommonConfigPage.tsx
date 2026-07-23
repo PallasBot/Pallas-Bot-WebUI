@@ -1,10 +1,13 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { fetchCommonConfigSections } from "@/api/fullConsole";
 import CommonConfigForm from "@/components/CommonConfigForm";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
-import PageHeader from "@/components/PageHeader";
+import ChromeTools from "@/components/ChromeTools";
+import PageMasthead from "@/components/PageMasthead";
 import StateBlock from "@/components/StateBlock";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 
@@ -29,10 +32,25 @@ export default function CommonConfigPage() {
   if (!sectionId) {
     return (
       <div className="common-config-page console-hub-page">
-        <PageHeader title="通用配置" description="控制台 common-config 各段；点击进入编辑。" />
-        <div className="mb-4 max-w-md">
-          <ConsoleHubSearch placeholder="搜索段…" value={q} onValueChange={setQ} />
-        </div>
+        <PageMasthead title="通用配置" description="通用配置各段。" />
+        <ChromeTools>
+          <div className="relative min-w-[8rem] flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <Input
+              type="search"
+              className="h-8 min-h-8 w-full pl-8"
+              placeholder="搜索段…"
+              aria-label="搜索段"
+              autoComplete="off"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+        </ChromeTools>
         <StateBlock loading={sectionsQ.isLoading} error={sectionsQ.error} empty={!filtered.length}>
           <div className="common-config-page__grid">
             {filtered.map((s) => (
@@ -53,13 +71,13 @@ export default function CommonConfigPage() {
 
   return (
     <div className="common-config-page console-hub-page">
-      <PageHeader
+      <PageMasthead
         title={sectionId}
         description="通用配置段编辑"
         actions={
-          <button type="button" className="btn" onClick={() => navigate("/common-config")}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => navigate("/common-config")}>
             返回列表
-          </button>
+          </Button>
         }
       />
       <section className="panel common-config-page__card mb-4">

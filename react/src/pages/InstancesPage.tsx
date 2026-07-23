@@ -10,13 +10,26 @@ import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
-import PageHeader from "@/components/PageHeader";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
+import ChromeTools from "@/components/ChromeTools";
+import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+
+const INST_PANEL = "instances-page__panel flex flex-col overflow-hidden shadow-none";
+const INST_PANEL_HD =
+  "panel__hd panel__hd--split inst-db-panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const INST_PANEL_HD_SIMPLE =
+  "panel__hd panel__hd--split flex-row items-center justify-between space-y-0 border-b px-4 py-3";
+const INST_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
 function parseSelfId(raw: string | undefined | null): number | null {
   const n = parseInt(String(raw ?? "").trim(), 10);
@@ -274,18 +287,60 @@ export default function InstancesPage() {
     <div className="instances-page console-hub-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
 
-      <PageHeader
+      <PageMasthead
         title="数据库实例"
-        description="管理已写入数据库的 Bot 账号配置，以及消息框架连接状态。"
+        description="Bot 账号配置与连接状态。"
       />
 
       {q.isLoading && !data ? (
-        <p className="muted">正在加载实例数据…</p>
+        <ConsolePageSkeleton panels={4} />
       ) : data ? (
         <>
-          <section className="panel instances-page__panel inst-db-panel">
-            <div className="panel__hd panel__hd--split inst-db-panel__hd">
-              <h2 className="panel__title">
+          <ChromeTools>
+            <div className="relative min-w-[8rem] flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <Input
+                type="search"
+                className="h-8 min-h-8 w-full pl-8"
+                placeholder="搜索账号 / 昵称 / 管理员 / 插件"
+                aria-label="搜索账号 / 昵称 / 管理员 / 插件"
+                autoComplete="off"
+                value={dbBotSearchQ}
+                onChange={(e) => {
+                  setDbBotSearchQ(e.target.value);
+                  setInstDbPage(1);
+                }}
+              />
+            </div>
+            <div
+              className="console-view-toggle console-view-toggle--toolbar-seg"
+              role="group"
+              aria-label="实例表格或卡片视图"
+            >
+              <button
+                type="button"
+                className={prefs.instancesBotView === "table" ? "is-on" : undefined}
+                onClick={() => prefs.setInstancesBotView("table")}
+              >
+                表格
+              </button>
+              <button
+                type="button"
+                className={prefs.instancesBotView === "cards" ? "is-on" : undefined}
+                onClick={() => prefs.setInstancesBotView("cards")}
+              >
+                卡片
+              </button>
+            </div>
+          </ChromeTools>
+
+          <Card className={cn(INST_PANEL, "inst-db-panel")}>
+            <CardHeader className={INST_PANEL_HD}>
+              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
                 数据库中的实例
                 <PanelHdCollapseCaret
                   expanded={expDbBots}
@@ -299,46 +354,16 @@ export default function InstancesPage() {
                   label="刷新实例数据"
                   onClick={() => void reloadFromUser()}
                 />
-              </h2>
+              </CardTitle>
               <div className="inst-db-panel__hd-side">
                 <span className="inst-db-stat muted">
                   当前已连接 <strong className="inst-db-stat__num">{dbBotsConnectedCount}</strong> /{" "}
                   {dbBotsTotalCount} 账号
                 </span>
-                <div className="console-view-toggle" role="group" aria-label="实例表格或卡片视图">
-                  <button
-                    type="button"
-                    className={prefs.instancesBotView === "table" ? "is-on" : undefined}
-                    onClick={() => prefs.setInstancesBotView("table")}
-                  >
-                    表格
-                  </button>
-                  <button
-                    type="button"
-                    className={prefs.instancesBotView === "cards" ? "is-on" : undefined}
-                    onClick={() => prefs.setInstancesBotView("cards")}
-                  >
-                    卡片
-                  </button>
-                </div>
               </div>
-              <div className="inst-db-panel__actions">
-                <div className="inst-db-panel__action-controls inst-db-panel__action-controls--search-fill">
-                  <ConsoleHubSearch
-                    className="inst-db-search"
-                    placeholder="搜索账号 / 昵称 / 管理员 / 插件"
-                    ariaLabel="搜索账号 / 昵称 / 管理员 / 插件"
-                    value={dbBotSearchQ}
-                    onValueChange={(v) => {
-                      setDbBotSearchQ(v);
-                      setInstDbPage(1);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            </CardHeader>
             {expDbBots ? (
-              <div className="panel__bd">
+              <CardContent className={INST_PANEL_BD}>
                 {pluginLoadErr ? (
                   <p className="muted" style={{ margin: "0 0 10px" }}>
                     插件列表加载失败，禁用插件勾选不可用：{pluginLoadErr}
@@ -422,15 +447,17 @@ export default function InstancesPage() {
                             <td>
                               <div className="inst-actions">
                                 <ConsoleTableEdit label="编辑" onClick={() => startEdit(c)} />
-                                <button
+                                <Button
                                   type="button"
-                                  className="btn btn--ghost btn--sm inst-fav-star"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="inst-fav-star"
                                   aria-pressed={favorites.has(c.account)}
                                   title={favorites.has(c.account) ? "取消收藏" : "收藏"}
                                   onClick={() => toggleFavorite(c.account)}
                                 >
                                   ★
-                                </button>
+                                </Button>
                               </div>
                             </td>
                           </tr>
@@ -556,23 +583,23 @@ export default function InstancesPage() {
                     onDelete={openDeleteModal}
                   />
                 ) : null}
-              </div>
+              </CardContent>
             ) : null}
-          </section>
+          </Card>
 
-          <section className="panel instances-page__panel">
-            <div className="panel__hd panel__hd--split">
-              <h2 className="panel__title">
+          <Card className={INST_PANEL}>
+            <CardHeader className={INST_PANEL_HD_SIMPLE}>
+              <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
                 消息框架
                 <PanelHdCollapseCaret
                   expanded={expNonebot}
                   label="消息框架"
                   onToggle={() => setExpNonebot((v) => !v)}
                 />
-              </h2>
-            </div>
+              </CardTitle>
+            </CardHeader>
             {expNonebot ? (
-              <div className="panel__bd">
+              <CardContent className={INST_PANEL_BD}>
                 {nonebotBotsNeedingInit.length ? (
                   <p className="muted" style={{ margin: "0 0 10px" }}>
                     {nonebotBotsNeedingInit.length} 个已连接牛牛尚未写入数据库配置，可在下表点{" "}
@@ -613,13 +640,15 @@ export default function InstancesPage() {
                             </td>
                             <td>
                               {acc != null && !accountInDb(acc) ? (
-                                <button
+                                <Button
                                   type="button"
-                                  className="btn inst-nonebot-init-btn"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="inst-nonebot-init-btn"
                                   onClick={() => startInit(acc)}
                                 >
                                   初始化配置
-                                </button>
+                                </Button>
                               ) : (
                                 <span className="muted">—</span>
                               )}
@@ -639,19 +668,19 @@ export default function InstancesPage() {
                     onPageSizeChange={prefs.setTablePageSize}
                   />
                 ) : null}
-              </div>
+              </CardContent>
             ) : null}
-          </section>
+          </Card>
         </>
       ) : (
-        <section className="panel instances-page__panel">
-          <div className="panel__bd">
-            <p className="muted">实例数据未加载，可尝试重新拉取。</p>
-            <button type="button" className="btn btn--primary" disabled={reloadBusy} onClick={() => void reloadFromUser()}>
+        <Card className={INST_PANEL}>
+          <CardContent className={INST_PANEL_BD}>
+            <p className="muted mb-3">实例数据未加载，可尝试重新拉取。</p>
+            <Button type="button" disabled={reloadBusy} onClick={() => void reloadFromUser()}>
               重新加载
-            </button>
-          </div>
-        </section>
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <BotConfigModal

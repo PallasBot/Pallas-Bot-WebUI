@@ -6,9 +6,24 @@ import {
   protocolListSnowlumaRuntimes,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
-import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
+
+const FORM_PANEL = "protocol-sub-page__panel flex flex-col overflow-hidden shadow-none";
+const FORM_PANEL_HD =
+  "panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const FORM_PANEL_BD = "panel__bd protocol-form-grid px-4 pb-4 pt-3";
 
 export default function ProtocolCreateTab() {
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
@@ -86,149 +101,181 @@ export default function ProtocolCreateTab() {
   }
 
   return (
-    <div className="protocol-sub-page">
-      <div className="panel protocol-sub-page__lead mb-4">
-        <div className="panel__hd panel__hd--split inst-db-panel__hd">
+    <div className="protocol-sub-page space-y-4">
+      <Card className={cn(FORM_PANEL, "mb-0")}>
+        <CardHeader className={cn(FORM_PANEL_HD, "inst-db-panel__hd")}>
           <div>
-            <h2 className="panel__title">创建协议账号</h2>
-            <p className="muted">填写 QQ 与连接参数后创建协议端实例；完成后可返回列表启停。</p>
+            <CardTitle className="panel__title">创建协议账号</CardTitle>
+            <CardDescription className="muted mt-1">创建协议端账号实例。</CardDescription>
           </div>
-          <div className="row-actions">
-            <Link className="btn" to="/protocol">
-              返回实例列表
-            </Link>
-            <button type="button" className="btn" disabled={busy} onClick={() => void reload()}>
+          <div className="row-actions inst-db-panel__hd-side">
+            <Button asChild type="button" variant="outline" size="sm">
+              <Link to="/protocol">返回实例列表</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => void reload()}
+            >
               刷新
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
-      {msg ? <p className="muted text-sm mb-4">{msg}</p> : null}
-      {!mountUrl ? <p className="alert alert--err mb-4">协议 API 未挂载，无法创建账号。</p> : null}
+      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
+      {!mountUrl ? <p className="alert alert--err mb-0">协议 API 未挂载，无法创建账号。</p> : null}
 
-      <div className="ui-card ui-card--glass protocol-sub-page__panel">
-        <div className="ui-card__content">
-          <div className="panel__bd protocol-form-grid">
-            <label className="field">
-              <span className="field__label">QQ 号</span>
-              <UiInput
-                inputMode="numeric"
-                autoComplete="off"
-                value={qq}
-                onValueChange={setQq}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">显示昵称</span>
-              <UiInput
-                autoComplete="off"
-                placeholder="可选"
-                value={displayName}
-                onValueChange={setDisplayName}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">协议端类型</span>
-              <UiSelect
-                value={protocolBackend}
-                onValueChange={setProtocolBackend}
-              >
-                <option value="napcat">NapCat</option>
-                <option value="snowluma">SnowLuma</option>
-              </UiSelect>
-            </label>
-            {protocolBackend === "snowluma" ? (
-              <>
-                <label className="field">
-                  <span className="field__label">SnowLuma Runtime</span>
-                  <UiSelect
-                    value={snowlumaRuntimeMode}
-                    onValueChange={(v) => setSnowlumaRuntimeMode(v as "new" | "existing")}
+      <Card className={FORM_PANEL}>
+        <CardContent className={FORM_PANEL_BD}>
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-qq">QQ 号</Label>
+            <Input
+              id="create-qq"
+              className="h-9"
+              inputMode="numeric"
+              autoComplete="off"
+              value={qq}
+              onChange={(e) => setQq(e.target.value)}
+            />
+          </div>
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-display-name">显示昵称</Label>
+            <Input
+              id="create-display-name"
+              className="h-9"
+              autoComplete="off"
+              placeholder="可选"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-protocol-backend">协议端类型</Label>
+            <Select value={protocolBackend} onValueChange={setProtocolBackend}>
+              <SelectTrigger id="create-protocol-backend" className="h-9 w-full" aria-label="协议端类型">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="napcat">NapCat</SelectItem>
+                <SelectItem value="snowluma">SnowLuma</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {protocolBackend === "snowluma" ? (
+            <>
+              <div className="field space-y-1.5">
+                <Label htmlFor="create-snowluma-mode">SnowLuma Runtime</Label>
+                <Select
+                  value={snowlumaRuntimeMode}
+                  onValueChange={(v) => setSnowlumaRuntimeMode(v as "new" | "existing")}
+                >
+                  <SelectTrigger
+                    id="create-snowluma-mode"
+                    className="h-9 w-full"
+                    aria-label="SnowLuma Runtime 模式"
                   >
-                    <option value="new">新建 Runtime（一进程可再加号）</option>
-                    <option value="existing">加入已有 Runtime</option>
-                  </UiSelect>
-                </label>
-                {snowlumaRuntimeMode === "existing" ? (
-                  <label className="field">
-                    <span className="field__label">选择 Runtime</span>
-                    <UiSelect
-                      value={snowlumaRuntimeId}
-                      onValueChange={setSnowlumaRuntimeId}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">新建 Runtime（一进程可再加号）</SelectItem>
+                    <SelectItem value="existing">加入已有 Runtime</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {snowlumaRuntimeMode === "existing" ? (
+                <div className="field space-y-1.5">
+                  <Label htmlFor="create-snowluma-runtime">选择 Runtime</Label>
+                  <Select
+                    value={snowlumaRuntimeId || undefined}
+                    onValueChange={setSnowlumaRuntimeId}
+                  >
+                    <SelectTrigger
+                      id="create-snowluma-runtime"
+                      className="h-9 w-full"
+                      aria-label="选择 Runtime"
                     >
-                      <option value="">请选择…</option>
+                      <SelectValue placeholder="请选择…" />
+                    </SelectTrigger>
+                    <SelectContent>
                       {snowlumaRuntimes.map((rt) => (
-                        <option key={rt.id} value={rt.id}>
+                        <SelectItem key={rt.id} value={rt.id}>
                           {rt.display_name || rt.id}（{rt.member_count ?? 0} 号）
-                        </option>
+                        </SelectItem>
                       ))}
-                    </UiSelect>
-                  </label>
-                ) : null}
-              </>
-            ) : null}
-            <label className="field">
-              <span className="field__label">内置 WebUI 端口</span>
-              <UiInput
-                type="number"
-                placeholder="留空自动分配；加入已有 Runtime 时沿用 Runtime 端口"
-                value={webuiPort}
-                onValueChange={setWebuiPort}
-              />
-            </label>
-            {protocolBackend !== "snowluma" ? (
-              <label className="field">
-                <span className="field__label">WebUI token</span>
-                <UiInput
-                  type="password"
-                  autoComplete="off"
-                  placeholder="留空随机生成"
-                  value={webuiToken}
-                  onValueChange={setWebuiToken}
-                />
-              </label>
-            ) : null}
-            <label className="field field--full">
-              <span className="field__label">WS 连接地址</span>
-              <UiInput
-                placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
-                autoComplete="off"
-                value={wsUrl}
-                onValueChange={setWsUrl}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">连接名</span>
-              <UiInput
-                placeholder="pallas"
-                autoComplete="off"
-                value={wsName}
-                onValueChange={setWsName}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">WS Token</span>
-              <UiInput
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-webui-port">内置 WebUI 端口</Label>
+            <Input
+              id="create-webui-port"
+              className="h-9"
+              type="number"
+              placeholder="留空自动分配；加入已有 Runtime 时沿用 Runtime 端口"
+              value={webuiPort}
+              onChange={(e) => setWebuiPort(e.target.value)}
+            />
+          </div>
+          {protocolBackend !== "snowluma" ? (
+            <div className="field space-y-1.5">
+              <Label htmlFor="create-webui-token">WebUI token</Label>
+              <Input
+                id="create-webui-token"
+                className="h-9"
                 type="password"
                 autoComplete="off"
-                value={wsToken}
-                onValueChange={setWsToken}
+                placeholder="留空随机生成"
+                value={webuiToken}
+                onChange={(e) => setWebuiToken(e.target.value)}
               />
-            </label>
-            <div className="field field--full row-actions">
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={!mountUrl || busy}
-                onClick={() => void submitCreate()}
-              >
-                {busy ? "创建中…" : "创建"}
-              </button>
             </div>
+          ) : null}
+          <div className="field field--full space-y-1.5">
+            <Label htmlFor="create-ws-url">WS 连接地址</Label>
+            <Input
+              id="create-ws-url"
+              className="h-9"
+              placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
+              autoComplete="off"
+              value={wsUrl}
+              onChange={(e) => setWsUrl(e.target.value)}
+            />
           </div>
-        </div>
-      </div>
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-ws-name">连接名</Label>
+            <Input
+              id="create-ws-name"
+              className="h-9"
+              placeholder="pallas"
+              autoComplete="off"
+              value={wsName}
+              onChange={(e) => setWsName(e.target.value)}
+            />
+          </div>
+          <div className="field space-y-1.5">
+            <Label htmlFor="create-ws-token">WS Token</Label>
+            <Input
+              id="create-ws-token"
+              className="h-9"
+              type="password"
+              autoComplete="off"
+              value={wsToken}
+              onChange={(e) => setWsToken(e.target.value)}
+            />
+          </div>
+          <div className="field field--full row-actions">
+            <Button type="button" size="sm" disabled={!mountUrl || busy} onClick={() => void submitCreate()}>
+              {busy ? "创建中…" : "创建"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
