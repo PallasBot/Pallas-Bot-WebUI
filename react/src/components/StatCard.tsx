@@ -10,7 +10,7 @@ export default function StatCard({
   dense?: boolean;
 }) {
   return (
-    <div className={`ui-card ui-card--glass stat-card${dense ? " stat-card--dense" : ""}`}>
+    <div className={`ui-card stat-card${dense ? " stat-card--dense" : ""}`}>
       <div className="ui-card__content">
         <div className="card__body">
           <div className="stat-card__label">{label}</div>

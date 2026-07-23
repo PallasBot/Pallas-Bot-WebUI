@@ -34,6 +34,7 @@ import "./styles/protocol-page-entry.css";
 import "./styles/protocol-account-workspace.css";
 import "./styles/home-page.css";
 import "./styles/console-pager.css";
+import "./styles/react-parity-pass.css";
 import "./index.css";
 import App from "./App";
 import { applyShellTheme } from "./theme/applyShellTheme";

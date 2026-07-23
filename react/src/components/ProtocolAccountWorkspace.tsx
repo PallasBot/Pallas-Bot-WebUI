@@ -525,7 +525,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
             </div>
 
             <div
-              className={`ui-card ui-card--glass protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : ""}`}
+              className={`ui-card protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : " ui-card--glass"}`}
             >
               <div className="ui-card__content">
                 {!isDialog ? (
@@ -549,7 +549,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   <div className="protocol-account-workspace__actions">
                     <button
                       type="button"
-                      className="btn"
+                      className="btn ui-btn"
                       disabled={actionBusy}
                       onClick={() => void runAction("start")}
                     >
@@ -557,7 +557,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     </button>
                     <button
                       type="button"
-                      className="btn"
+                      className="btn ui-btn"
                       disabled={actionBusy}
                       onClick={() => void runAction("stop")}
                     >
@@ -565,7 +565,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     </button>
                     <button
                       type="button"
-                      className="btn"
+                      className="btn ui-btn"
                       disabled={actionBusy}
                       onClick={() => void runAction("restart")}
                     >
@@ -574,14 +574,18 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     {isSnowluma ? (
                       <button
                         type="button"
-                        className="btn"
+                        className="btn ui-btn"
                         disabled={injectBusy}
                         onClick={() => void injectHook()}
                       >
                         注入 Hook
                       </button>
                     ) : null}
-                    <button type="button" className="btn btn--danger" onClick={openDeleteModal}>
+                    <button
+                      type="button"
+                      className="btn ui-btn btn--danger ui-btn--destructive"
+                      onClick={openDeleteModal}
+                    >
                       删除账号
                     </button>
                   </div>
@@ -655,7 +659,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
             </div>
 
             <div
-              className={`ui-card ui-card--glass protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : ""}`}
+              className={`ui-card protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : " ui-card--glass"}`}
             >
               <div className="ui-card__content">
                 <div
@@ -735,7 +739,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         {activeTab === "settings" ? (
           <section className="protocol-account-workspace__section" aria-label="账号设置">
             <div
-              className={`ui-card ui-card--glass protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : ""}`}
+              className={`ui-card protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : " ui-card--glass"}`}
             >
               <div className="ui-card__content">
                 {!isDialog ? (

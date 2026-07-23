@@ -1071,9 +1071,18 @@ html[data-layout="hub"] .ui-btn--sm {
 
 /* 治理弹窗：body 由 workspace 内边距负责，避免双层挤窄 */
 .ui-dialog__panel.plugin-config-dialog,
-.console-modal__dialog.plugin-config-dialog {
+.console-modal__dialog.plugin-config-dialog,
+.console-modal.ui-dialog .console-modal__dialog.plugin-config-dialog {
   width: min(960px, 96vw);
-  max-height: min(90vh, 920px);
+  max-width: min(960px, 96vw);
+  max-height: min(92vh, 960px);
+}
+
+.ui-dialog__panel.protocol-account-config-dialog,
+.console-modal__dialog.protocol-account-config-dialog {
+  width: min(920px, 96vw);
+  max-width: min(920px, 96vw);
+  max-height: min(92vh, 940px);
 }
 
 .ui-dialog__bd.plugin-config-dialog__bd,

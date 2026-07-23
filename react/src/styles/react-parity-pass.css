@@ -1,0 +1,290 @@
+/* React 相对 Vue / gsuid_hub 的视觉收口（非 AI） */
+
+/* ── 弹窗：默认 560 被 plugin-config 覆盖；提高优先级 ── */
+.console-modal.ui-dialog .console-modal__dialog.ui-dialog__panel.plugin-config-dialog,
+.console-modal.ui-dialog .ui-dialog__panel.plugin-config-dialog {
+  width: min(960px, 96vw);
+  max-width: min(960px, 96vw);
+  max-height: min(92vh, 960px);
+}
+
+.console-modal.ui-dialog .console-modal__dialog.ui-dialog__panel.protocol-account-config-dialog,
+.console-modal.ui-dialog .ui-dialog__panel.protocol-account-config-dialog {
+  width: min(920px, 96vw);
+  max-width: min(920px, 96vw);
+  max-height: min(92vh, 940px);
+}
+
+.console-modal.ui-dialog .console-modal__dialog.plugin-store-page__detail-dialog,
+.console-modal.ui-dialog .ui-dialog__panel.plugin-store-page__detail-dialog {
+  width: min(920px, 94vw);
+  max-width: min(920px, 94vw);
+}
+
+/* ── 协议账号概览：对齐 Vue 卡片排版 ── */
+.protocol-account-config-dialog__bd {
+  padding: 12px 16px 16px;
+  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-elev) 45%);
+}
+
+html[data-theme="light"] .protocol-account-config-dialog__bd {
+  background: color-mix(in srgb, #e8eef6 70%, #f7f9fc 30%);
+}
+
+.protocol-account-workspace--dialog .protocol-account-workspace__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.protocol-account-workspace--dialog .protocol-account-workspace__metrics > .stat-card {
+  margin: 0;
+  background: var(--bg-card, #fff);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  box-shadow: none;
+  border-radius: var(--radius-control, 12px);
+}
+
+html[data-theme="light"] .protocol-account-workspace--dialog .protocol-account-workspace__metrics > .stat-card {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--foreground, #0f172a) 8%, transparent);
+}
+
+.protocol-account-workspace--dialog .protocol-account-workspace__metrics .stat-card.ui-card--glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.protocol-account-workspace--dialog .protocol-account-workspace__panel.ui-card {
+  background: var(--bg-card, #fff);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  box-shadow: none;
+  border-radius: var(--radius-control, 12px);
+}
+
+html[data-theme="light"] .protocol-account-workspace--dialog .protocol-account-workspace__panel.ui-card {
+  background: #fff;
+}
+
+.protocol-account-workspace__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.protocol-account-workspace__actions > .btn,
+.protocol-account-workspace__actions > .ui-btn {
+  flex: 0 0 auto;
+  border-radius: var(--radius-control, 10px);
+  min-height: 36px;
+  padding-inline: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: var(--bg-card, #fff);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.protocol-account-workspace__actions > .btn.btn--danger,
+.protocol-account-workspace__actions > .ui-btn--destructive {
+  background: var(--destructive, #dc2626);
+  border-color: color-mix(in srgb, var(--destructive, #dc2626) 72%, transparent);
+  color: var(--destructive-foreground, #fff);
+}
+
+/* ── 商店卡片脚：更新/卸载整行均分 ── */
+.plugin-store-page--hub .ui-card__footer {
+  width: 100%;
+  display: block;
+  padding: 0;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 2px 14px 12px;
+  box-sizing: border-box;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  flex: none;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main > .btn,
+.plugin-store-page--hub .plugin-store-card__foot-main > .ui-btn,
+.plugin-store-page--hub .plugin-store-card__foot-main > a.btn {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  border-radius: var(--radius-control, 10px);
+}
+
+/* ── 侧栏滚动条（gsuid_hub 同款细条） ── */
+nav.shell__nav {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted, #64748b) 35%, transparent) transparent;
+}
+
+nav.shell__nav::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+nav.shell__nav::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--bg-muted, #f1f5f9) 30%, transparent);
+}
+
+nav.shell__nav::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted, #64748b) 22%, transparent);
+  border-radius: 999px;
+}
+
+nav.shell__nav::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted, #64748b) 40%, transparent);
+}
+
+/* ── 彩色 / 黑白：主按钮跟预设走（对齐 gsuid 质感） ── */
+html[data-ui-preset="gs"] .btn--primary,
+html[data-ui-preset="gs"] .ui-btn--primary {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 78%, transparent);
+  color: #fff;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+html[data-ui-preset="gs"] .btn--primary:hover:not(:disabled),
+html[data-ui-preset="gs"] .ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, #000 12%);
+  border-color: color-mix(in srgb, var(--accent) 88%, transparent);
+  color: #fff;
+}
+
+html[data-ui-preset="shadcn"] .btn--primary,
+html[data-ui-preset="shadcn"] .ui-btn--primary {
+  background: var(--foreground, var(--text));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 82%, transparent);
+  color: var(--background, var(--bg-card));
+  box-shadow: none;
+}
+
+html[data-ui-preset="shadcn"] .btn--primary:hover:not(:disabled),
+html[data-ui-preset="shadcn"] .ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 88%, transparent);
+  color: var(--background, var(--bg-card));
+}
+
+/* ── 配置表单：白底控件 + 字段卡对比（gsuid ConfigField 感） ── */
+.plugin-config-form-grid {
+  gap: 12px;
+}
+
+.plugin-config-form-grid > .ui-field,
+.plugin-config-form-item {
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--bg-muted) 35%, var(--bg-card) 65%);
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: calc(var(--radius-control, 10px) + 2px);
+}
+
+html[data-theme="light"] .plugin-config-form-grid > .ui-field,
+html[data-theme="light"] .plugin-config-form-item {
+  background: color-mix(in srgb, var(--bg-muted) 40%, #fff 60%);
+  border-color: color-mix(in srgb, var(--foreground, #0f172a) 7%, transparent);
+}
+
+.plugin-config-form-grid .ui-field__control .inp,
+.plugin-config-form-grid .ui-field__control .sel,
+.plugin-config-form-grid .ui-input-wrap,
+.plugin-config-form-item .inp,
+.plugin-config-form-item .sel {
+  background: var(--bg-card, #fff);
+  border-radius: var(--radius-control, 10px);
+}
+
+html[data-theme="light"] .plugin-config-form-grid .ui-field__control .inp,
+html[data-theme="light"] .plugin-config-form-grid .ui-field__control .sel,
+html[data-theme="light"] .plugin-config-form-grid .ui-input-wrap,
+html[data-theme="light"] .plugin-config-form-item .inp,
+html[data-theme="light"] .plugin-config-form-item .sel {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--foreground, #0f172a) 10%, transparent);
+}
+
+/* ── README：对话框内排版 ── */
+.plugin-config-dialog__bd .plugin-readme-panel {
+  padding: 4px 4px 12px;
+}
+
+.plugin-config-dialog__bd .plugin-readme-panel__body.readme-markdown {
+  padding: 8px 12px 20px;
+  color: var(--text);
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.plugin-config-dialog__bd .readme-markdown h1,
+.plugin-config-dialog__bd .readme-markdown h2,
+.plugin-config-dialog__bd .readme-markdown h3 {
+  color: var(--text);
+  font-weight: 650;
+  margin: 1.1em 0 0.45em;
+  line-height: 1.3;
+}
+
+.plugin-config-dialog__bd .readme-markdown img {
+  max-width: min(100%, 420px);
+  height: auto;
+  border-radius: var(--radius-control, 10px);
+  display: block;
+  margin: 12px auto;
+}
+
+.plugin-config-dialog__bd .readme-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  font-size: 0.875rem;
+}
+
+.plugin-config-dialog__bd .readme-markdown th,
+.plugin-config-dialog__bd .readme-markdown td {
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.plugin-config-dialog__bd .readme-markdown code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.84em;
+  padding: 0.12em 0.45em;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-muted) 80%, var(--bg-card));
+}
+
+.plugin-config-dialog__bd .readme-markdown pre {
+  padding: 12px 14px;
+  border-radius: var(--radius-control, 10px);
+  overflow-x: auto;
+  background: color-mix(in srgb, var(--bg-muted) 70%, var(--bg-card));
+}
+
+.plugin-config-dialog__bd .readme-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
