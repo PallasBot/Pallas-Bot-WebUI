@@ -18,48 +18,91 @@
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
   --accent: #38bdf8;
+  /*
+   * Hub 语义桥：全部是「完整色值」，给 color-mix / 传统 CSS 用。
+   * Tailwind/shadcn 只用 --ui-* HSL 分量（见 index.css / tailwind.config）。
+   * 两套禁止同名混用格式，否则边框与选中态会整页失效。
+   */
+  --background: var(--bg-deep);
+  --foreground: var(--text);
+  --card: var(--bg-card);
+  --card-foreground: var(--text);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in srgb, var(--text) 6%, var(--bg-card));
+  --secondary-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--text-muted) 14%, var(--bg-card));
+  --muted-foreground: var(--text-muted);
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border-ui: var(--border);
+  --input: var(--control-border);
+  --ring: color-mix(in srgb, var(--accent) 42%, transparent);
+  --surface: var(--bg-card);
+  /* 阴影强度由偏好 --shadow-intensity 缩放（默认 1） */
+  --shadow-intensity: 1;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / calc(0.18 * var(--shadow-intensity)));
+  --shadow-md: 0 2px 8px rgb(0 0 0 / calc(0.22 * var(--shadow-intensity))),
+    0 1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-intensity)));
   --accent-soft: rgba(56, 189, 248, 0.14);
   --accent-glow: rgba(56, 189, 248, 0.35);
   --success: #4ade80;
   --warn: #fbbf24;
   --danger: #f87171;
-  /* 表面清爽：控件/卡片同系圆角；胶囊仅 Switch/Chip/分段（--radius-pill） */
-  --radius-lg: 20px;
-  --radius-md: 18px;
-  --radius-sm: 14px;
-  --radius-control: 16px;
+  /* 圆角靠拢 gsuid（~8px 基准）；胶囊仅 Switch/Chip（--radius-pill） */
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-control: 8px;
   --radius-pill: 999px;
-  --radius-shell: 18px;
+  --radius-shell: 10px;
   /* 多行输入：勿用胶囊圆角，避免矮 textarea 被裁成半圆 */
   --radius-textarea: var(--radius-sm);
-  --surface-blur: 12px;
+  --surface-blur: 10px;
   --card-glass-opacity: 0.25;
-  /* 主内容边距；hub 布局在 console-hub.css 覆盖 */
+  /* 主内容边距；page-top 对齐 gsuid 标题页呼吸距 */
   --layout-gutter: 40px;
-  --layout-page-top: 12px;
+  --layout-page-top: 2.75rem;
   --layout-page-bottom: 48px;
-  --glass-saturate: 1.12;
-  --glass-elev-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  /* 页标题 → 下一块（工具条 / 正文）；与 hub --hub-page-gap 同值 */
+  --console-page-masthead-gap: 18px;
+  /* 略降饱和，减轻玻璃上文字发糊 */
+  --glass-saturate: 1.05;
+  --glass-elev-shadow: 0 8px 32px rgb(0 0 0 / calc(0.15 * var(--shadow-intensity)));
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
-  --shell-chrome-edge: color-mix(in srgb, var(--border) 30%, transparent);
-  --shell-chrome-separator: color-mix(in srgb, var(--border) 30%, transparent);
-  --shell-chrome-shadow-x: 4px 0 24px rgba(0, 0, 0, 0.06);
-  --shell-chrome-shadow-y: 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shell-chrome-edge: color-mix(in srgb, var(--border) 55%, transparent);
+  --shell-chrome-separator: color-mix(in srgb, var(--border) 55%, transparent);
+  --shell-chrome-shadow-x: 4px 0 24px rgb(0 0 0 / calc(0.06 * var(--shadow-intensity)));
+  --shell-chrome-shadow-y: 0 4px 16px rgb(0 0 0 / calc(0.04 * var(--shadow-intensity)));
   --shell-chrome-inset: inset 0 1px 0 color-mix(in srgb, var(--accent) 5%, transparent);
   --shell-sidebar-surface: var(--bg-card);
+  /* 侧栏 chrome 须可读：玻璃不透明度有下限，避免壁纸透出发糊 */
   --shell-sidebar-glass-mix: 1;
+  --shell-sidebar-glass-floor: 0.88;
   --shell-sidebar-glass-bg: color-mix(
     in srgb,
-    var(--shell-sidebar-surface) calc(min(var(--card-glass-opacity) * var(--shell-sidebar-glass-mix), 0.88) * 100%),
+    var(--shell-sidebar-surface)
+      calc(
+        min(max(var(--card-glass-opacity) * var(--shell-sidebar-glass-mix), var(--shell-sidebar-glass-floor)), 0.97) *
+          100%
+      ),
     transparent
   );
-  --font-sans: "Poppins", "Noto Sans SC", system-ui, sans-serif;
+  /* Latin：Poppins；中文优先系统黑体 */
+  --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
-  --console-page-title-size: clamp(1.1rem, 2.1vw, 1.25rem);
+  /* gsuid H1 text-3xl */
+  --console-page-title-size: 1.875rem;
   --console-page-title-weight: 700;
   --console-panel-title-size: 1.0625rem;
+  /* 对齐 gsuid CardTitle（font-semibold） */
   --console-panel-title-weight: 600;
-  --shadow-card: 0 0 0 1px var(--border), 0 4px 16px rgba(0, 0, 0, 0.28);
+  /* 勿再叠 1px ring：panel 已有 border，双描边会发「铁框」 */
+  --shadow-card: 0 2px 8px rgb(0 0 0 / calc(0.22 * var(--shadow-intensity))),
+    0 8px 24px -4px rgb(0 0 0 / calc(0.18 * var(--shadow-intensity)));
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
   /* 顶栏与侧栏共用 */
@@ -75,9 +118,12 @@
   --shell-brand-mark-radius: 999px;
   --home-aside-min-w: 300px;
   --home-aside-max-w: 360px;
-  /* 表单控件：贴卡片表面，细边即可 */
+  /* 表单控件描边（Select / Input / 搜索）；日期选择走 Button outline，不跟这套 */
   --control-bg: #222228;
-  --control-border: rgba(255, 255, 255, 0.1);
+  --control-border: rgba(255, 255, 255, 0.18);
+  --control-border-mix: 100%;
+  --control-edge: var(--control-border);
+  --control-shadow: 0 1px 2px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.04);
   /* 图表系列色（随 accent 预设变化） */
   --chart-palette-1: var(--accent);
   --chart-palette-2: color-mix(in srgb, var(--accent) 72%, var(--warn) 28%);
@@ -109,9 +155,9 @@
   --ui-field-label-size: 12px;
   --ui-field-label-weight: 500;
   --ui-check-size: 14px;
-  /* 标题层级：顶栏（当前页）> 面板分区 > 卡片主标题 */
+  /* 标题层级：顶栏（当前页）> 面板分区 > 卡片主标题；贴近已加载字重 400/500/600/700 */
   --console-card-title-size: 14px;
-  --console-card-title-weight: 600;
+  --console-card-title-weight: 500;
   /* StatCard 注释行（格栅密集布局用 compact） */
   --stat-hint-size: 13px;
   --stat-hint-size-dense: 13px;
@@ -122,10 +168,10 @@
   --stat-card-body-pad-x: 18px;
   --stat-card-body-pad-y-dense: 14px;
   --stat-card-body-pad-x-dense: 16px;
-  /* 侧栏导航标题 */
+  /* 侧栏导航标题（略收，贴近 gsuid 密度；清晰度仍靠实色 active，非字号） */
   --shell-brand-title-size: 1.02rem;
-  --shell-nav-label-size: 14px;
-  --shell-nav-section-size: 11px;
+  --shell-nav-label-size: 13px;
+  --shell-nav-section-size: 10.5px;
   /* 主内容区最大宽度（仪表盘双列等） */
   --shell-content-max: 1450px;
   --ui-scale: 1.1;
@@ -139,7 +185,7 @@
   --surface-elevated: var(--bg-card);
   --surface-control: var(--control-bg);
   --surface-chip: color-mix(in srgb, var(--bg-card) 72%, var(--bg-muted) 28%);
-  --surface-segment: color-mix(in srgb, var(--text) 4%, var(--bg-card));
+  --surface-segment: var(--bg-card);
   --surface-segment-active: var(--surface-control);
   --surface-glass: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
   --surface-glass-fg: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 100%), transparent);
@@ -170,7 +216,7 @@ html[data-radius="default"] {
 }
 
 html[data-radius="round"] {
-  /* 更圆但仍非胶囊；胶囊仅 --radius-pill（chip/switch/分段） */
+  /* 更圆但仍非胶囊；胶囊仅 --radius-pill（chip/switch） */
   --radius-lg: 20px;
   --radius-md: 18px;
   --radius-sm: 14px;
@@ -200,16 +246,17 @@ html[data-surface="glass"] .panel {
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
-  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
+  border-color: color-mix(in srgb, var(--border) 40%, transparent);
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-surface="glass"] .shell__sidebar {
   background: var(--shell-sidebar-glass-bg);
-  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
-  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  /* 侧栏少用 blur：强 blur + 半透明会把壁纸糊进文字 */
+  backdrop-filter: blur(6px) saturate(1.02);
+  -webkit-backdrop-filter: blur(6px) saturate(1.02);
   border-right: 1px solid var(--shell-chrome-edge);
-  box-shadow: var(--shell-chrome-shadow-x), var(--glass-inset-highlight);
+  box-shadow: var(--shell-chrome-shadow-x);
 }
 
 html[data-surface="glass"] .shell__topbar {
@@ -226,7 +273,15 @@ html[data-surface="glass"] .textarea {
   background: color-mix(in srgb, var(--control-bg) 58%, transparent);
   backdrop-filter: blur(10px) saturate(1.2);
   -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  border-color: color-mix(in srgb, var(--control-border) 88%, transparent);
+  border-color: color-mix(in srgb, var(--control-border) 50%, transparent);
+}
+
+/* shadcn Input / Textarea：与 .inp 同手法，避免玻璃面上仍用满不透明描边 */
+html[data-surface="glass"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html[data-surface="glass"] textarea {
+  background: color-mix(in srgb, var(--control-bg) 58%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
 
 html[data-surface="glass"] .inp:focus,
@@ -266,8 +321,10 @@ html[data-theme="light"][data-surface="glass"] {
     color-mix(in srgb, #fff 52%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 38%, transparent) 100%
   );
-  --shell-sidebar-surface: #ffffff;
-  --shell-sidebar-glass-mix: 2;
+  /* gsuid：侧栏近白中性灰，勿用偏紫 #f4f4f7；玻璃态也保持近实底 */
+  --shell-sidebar-surface: #fafafa;
+  --shell-sidebar-glass-mix: 3.5;
+  --shell-sidebar-glass-floor: 0.94;
   --surface-elevated: var(--surface-glass-fg);
   --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
   --surface-segment-active: #ffffff;
@@ -279,15 +336,17 @@ html[data-theme="light"][data-surface="glass"] {
 }
 
 html[data-theme="light"][data-surface="glass"] .panel {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
-  border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
-  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+  background: color-mix(in srgb, var(--bg-card) calc(max(var(--card-glass-opacity), 0.72) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border) 45%, transparent);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.08), var(--glass-inset-highlight);
 }
 
 html[data-theme="light"][data-surface="glass"] .shell__sidebar {
   background: var(--shell-sidebar-glass-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-right: 1px solid var(--shell-chrome-edge);
-  box-shadow: var(--shell-chrome-shadow-x), var(--glass-inset-highlight);
+  box-shadow: var(--shell-chrome-shadow-x);
 }
 
 html[data-theme="light"][data-surface="glass"] .shell__topbar {
@@ -363,7 +422,7 @@ html[data-theme="light"][data-accent="violet"] {
 code {
   font-family: var(--font-sans);
   font-size: 0.92em;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.02em;
   font-synthesis: weight;
   color: color-mix(in srgb, var(--text-muted) 10%, var(--text) 90%);
@@ -432,40 +491,56 @@ html[data-theme="light"] .update-page__release-notes-body--md pre code {
 
 html[data-theme="light"] {
   color-scheme: light;
-  --font-sans: "Noto Sans SC", "Poppins", system-ui, sans-serif;
+  --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --ui-btn-font: 14px;
-  /* 冷灰画布 + 近白卡片，拉开层级（对齐 gsuid 对比感） */
-  --bg-deep: #e8e8ec;
-  --bg-elev: #f0f0f3;
+  /* gsuid：近白画布 + 白卡片；侧栏略沉于画布 */
+  --bg-deep: #fcfcfc;
+  --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
+  /* 浅色描边对齐 gsuid：约 border/40 观感，避免「铁框」 */
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
   --text: #0f172a;
-  --text-muted: #64748b;
-  --text-dim: #94a3b8;
+  /* 略加深 muted，减轻灰底上灰字发糊 */
+  --text-muted: #526277;
+  --text-dim: #7b8a9e;
   --accent: #0284c7;
   --accent-soft: rgba(2, 132, 199, 0.12);
   --accent-glow: rgba(2, 132, 199, 0.2);
   --success: #15803d;
   --warn: #b45309;
   --danger: #b91c1c;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.05);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity))),
+    0 4px 16px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity)));
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / calc(0.06 * var(--shadow-intensity)));
+  --shadow-md: 0 2px 8px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity))),
+    0 1px 2px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity)));
+  --muted: rgba(15, 23, 42, 0.05);
+  --secondary: rgba(15, 23, 42, 0.05);
+  --destructive: #b91c1c;
+  --ring: color-mix(in srgb, var(--accent) 42%, transparent);
   --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
-  --shell-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+  /* 侧栏 chrome：近白中性灰 */
+  --shell-chrome-bg: linear-gradient(180deg, #fbfbfb 0%, #fafafa 100%);
+  --shell-chrome-edge: color-mix(in srgb, var(--border) 70%, transparent);
+  --shell-chrome-separator: color-mix(in srgb, var(--border) 70%, transparent);
   --control-bg: #ffffff;
-  --control-border: rgba(15, 23, 42, 0.12);
+  --control-border: rgba(15, 23, 42, 0.13);
+  --control-edge: var(--control-border);
+  --control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   --bg-muted: color-mix(in srgb, var(--text) 2.5%, var(--bg-elev));
   --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 2%, transparent);
   --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 3.5%, transparent);
   --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
-  --surface-segment: color-mix(in srgb, var(--foreground, var(--text)) 3.5%, var(--bg-elev));
+  --surface-segment: var(--bg-card);
   --surface-segment-active: #ffffff;
   --surface-chip: color-mix(in srgb, var(--surface-control) 92%, var(--bg-muted) 8%);
   --surface-overlay: color-mix(in srgb, #000 8%, transparent);
   --shell-brand-mark-bg: #ffffff;
   --shell-brand-mark-border: color-mix(in srgb, var(--foreground, var(--text)) 12%, var(--border));
-  --shell-sidebar-surface: #ffffff;
+  --shell-sidebar-surface: #fafafa;
 }
 
 html[data-surface="solid"] .shell__bg {
@@ -482,7 +557,8 @@ html[data-theme="light"] .inp {
 }
 
 html[data-theme="light"] nav.shell__nav .shell__nav-link:hover {
-  background: var(--surface-1);
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 html[data-theme="light"] table.data tbody tr:hover td {
@@ -544,8 +620,10 @@ body {
   line-height: 1.55;
   color: var(--text);
   background: var(--bg-deep);
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
   font-feature-settings: "kern" 1, "liga" 1;
+  text-rendering: optimizeLegibility;
 }
 
 #app {

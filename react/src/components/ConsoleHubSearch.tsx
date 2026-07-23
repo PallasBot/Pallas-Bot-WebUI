@@ -1,7 +1,8 @@
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import UiInput from "@/components/ui/UiInput";
 
-/** 对齐 Vue ConsoleHubSearch：圆角搜索 + 内嵌图标 */
+/** 全站 hub 搜索：图标在输入框外（避免叠字），描边跟 control 面。 */
 export default function ConsoleHubSearch({
   value,
   onValueChange,
@@ -21,32 +22,17 @@ export default function ConsoleHubSearch({
     <div className={cn("console-hub-page__search-wrap", className)}>
       <label className="console-hub-page__search">
         <span className="console-hub-page__search-ico" aria-hidden="true">
-          <svg
-            className="console-hub-page__search-svg"
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="7" cy="7" r="4.25" stroke="currentColor" strokeWidth="1.5" />
-            <path
-              d="M10.25 10.25L13.5 13.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Search className="console-hub-page__search-svg" strokeWidth={1.75} />
         </span>
-        <UiInput
-          className="console-hub-page__search-input"
+        <Input
+          className="console-hub-page__search-input h-8 min-h-8 focus-visible:ring-0 focus-visible:ring-offset-0"
           type="search"
           placeholder={placeholder}
           aria-label={ariaLabel || placeholder}
           autoComplete="off"
           disabled={disabled}
           value={value}
-          onValueChange={onValueChange}
+          onChange={(e) => onValueChange(e.target.value)}
         />
       </label>
     </div>

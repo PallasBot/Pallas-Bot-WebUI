@@ -4,9 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { changeConsoleLogin } from "@/api/fullConsole";
 import { fetchHealth } from "@/api/health";
 import ConsoleDevModePanel from "@/components/ConsoleDevModePanel";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import PrefsGlassPreview from "@/components/PrefsGlassPreview";
 import PrefsSettingCard from "@/components/PrefsSettingCard";
+import { Switch } from "@/components/ui/switch";
 import { ACCENT_PRESET_OPTIONS } from "@/config/accentPresets";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -25,9 +26,7 @@ import {
 const CONTROL_RADIUS_MIN = 4;
 const CONTROL_RADIUS_MAX = 20;
 
-function boolSwitchLabel(on: boolean): string {
-  return on ? "开" : "关";
-}
+const PREFS_SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
 
 export default function PreferencesPage() {
   const location = useLocation();
@@ -42,6 +41,7 @@ export default function PreferencesPage() {
   const [radius, setRadius] = useState<RadiusMode>(prefs.radius);
   const [controlRadiusDraft, setControlRadiusDraft] = useState(prefs.controlRadius);
   const [density, setDensity] = useState<DensityMode>(prefs.density);
+  const [shadowIntensityDraft, setShadowIntensityDraft] = useState(prefs.shadowIntensity);
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [pwdErr, setPwdErr] = useState("");
@@ -77,6 +77,7 @@ export default function PreferencesPage() {
     setRadius(next.radius);
     setControlRadiusDraft(next.controlRadius);
     setDensity(next.density);
+    setShadowIntensityDraft(next.shadowIntensity);
   }
 
   function onGlassBlurInput(v: number) {
@@ -99,6 +100,12 @@ export default function PreferencesPage() {
     const next = Math.min(CONTROL_RADIUS_MAX, Math.max(CONTROL_RADIUS_MIN, Math.round(v)));
     setControlRadiusDraft(next);
     patchPrefs({ controlRadius: next });
+  }
+
+  function onShadowIntensityInput(v: number) {
+    const next = Math.min(1.8, Math.max(0.4, Math.round(v * 100) / 100));
+    setShadowIntensityDraft(next);
+    patchPrefs({ shadowIntensity: next });
   }
 
   function onWebuiDevModeUpdated(active: boolean) {
@@ -143,7 +150,7 @@ export default function PreferencesPage() {
 
   return (
     <div className="console-hub-page prefs-page">
-      <PageHeader title="偏好与口令" description="自定义控制台外观与安全设置。" />
+      <PageMasthead title="偏好与口令" description="外观与安全设置。" />
 
       {setupQ.data?.requires_setup ? (
         <div className="alert alert--warn">
@@ -199,15 +206,20 @@ export default function PreferencesPage() {
 
         <PrefsSettingCard title="界面风格" lead="毛玻璃更有层次，纯色更省资源。">
           <div className="prefs-switch-row">
-            <span className="prefs-switch-row__label">毛玻璃效果</span>
-            <label className="prefs-switch-row">
-              <input
-                type="checkbox"
+            <span className="prefs-switch-row__label" id="prefs-glass-label">
+              毛玻璃效果
+            </span>
+            <div className="prefs-switch-row__control">
+              <Switch
                 checked={surfaceStyle === "glass"}
-                onChange={(e) => patchPrefs({ surfaceStyle: e.target.checked ? "glass" : "solid" })}
+                onCheckedChange={(on) => patchPrefs({ surfaceStyle: on ? "glass" : "solid" })}
+                aria-labelledby="prefs-glass-label"
+                className={PREFS_SWITCH_CLASS}
               />
-              <span>{boolSwitchLabel(surfaceStyle === "glass")}</span>
-            </label>
+              <span className="prefs-switch-row__state" aria-hidden="true">
+                {surfaceStyle === "glass" ? "开" : "关"}
+              </span>
+            </div>
           </div>
         </PrefsSettingCard>
 
@@ -282,13 +294,7 @@ export default function PreferencesPage() {
                   aria-pressed={accentPreset === opt.id}
                   onClick={() => patchPrefs({ accentPreset: opt.id })}
                 >
-                  <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }}>
-                    {accentPreset === opt.id ? (
-                      <span className="prefs-accent-swatch__check" aria-hidden="true">
-                        ✓
-                      </span>
-                    ) : null}
-                  </span>
+                  <span className="prefs-accent-swatch__dot" style={{ background: opt.swatch }} />
                   <span className="prefs-accent-swatch__label">{opt.label}</span>
                 </button>
               ))}
@@ -332,17 +338,42 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
+        <PrefsSettingCard
+          title="阴影强度"
+          lead="调节卡片与壳层投影深浅；输入框描边由边色控制，不受此滑块影响。"
+        >
+          <div className="prefs-form-field prefs-form-field--range">
+            <label className="prefs-form-field__label">
+              阴影强度 {Math.round(shadowIntensityDraft * 100)}%
+            </label>
+            <input
+              className="inp"
+              type="range"
+              min={40}
+              max={180}
+              step={5}
+              value={Math.round(shadowIntensityDraft * 100)}
+              onInput={(e) => onShadowIntensityInput(Number(e.currentTarget.value) / 100)}
+            />
+          </div>
+        </PrefsSettingCard>
+
         <PrefsSettingCard title="内容密度" lead="紧凑模式缩小间距与控件高度。">
           <div className="prefs-switch-row">
-            <span className="prefs-switch-row__label">紧凑布局</span>
-            <label className="prefs-switch-row">
-              <input
-                type="checkbox"
+            <span className="prefs-switch-row__label" id="prefs-density-label">
+              紧凑布局
+            </span>
+            <div className="prefs-switch-row__control">
+              <Switch
                 checked={density === "compact"}
-                onChange={(e) => patchPrefs({ density: e.target.checked ? "compact" : "comfortable" })}
+                onCheckedChange={(on) => patchPrefs({ density: on ? "compact" : "comfortable" })}
+                aria-labelledby="prefs-density-label"
+                className={PREFS_SWITCH_CLASS}
               />
-              <span>{boolSwitchLabel(density === "compact")}</span>
-            </label>
+              <span className="prefs-switch-row__state" aria-hidden="true">
+                {density === "compact" ? "开" : "关"}
+              </span>
+            </div>
           </div>
         </PrefsSettingCard>
 

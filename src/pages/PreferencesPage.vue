@@ -63,10 +63,14 @@ function setGlassBlur(v: number) {
 function setCardGlassOpacity(v: number) {
   setConsolePrefs({ cardGlassOpacity: Math.min(0.72, Math.max(0.12, v)) });
 }
+function setShadowIntensity(v: number) {
+  setConsolePrefs({ shadowIntensity: Math.min(1.8, Math.max(0.4, Math.round(v * 100) / 100)) });
+}
 
 const glassBlurDraft = ref(consolePrefs.glassBlur);
 const cardGlassOpacityDraft = ref(consolePrefs.cardGlassOpacity);
 const controlRadiusDraft = ref(consolePrefs.controlRadius);
+const shadowIntensityDraft = ref(consolePrefs.shadowIntensity);
 
 watch(
   () => consolePrefs.glassBlur,
@@ -84,6 +88,12 @@ watch(
   () => consolePrefs.controlRadius,
   (v) => {
     controlRadiusDraft.value = v;
+  },
+);
+watch(
+  () => consolePrefs.shadowIntensity,
+  (v) => {
+    shadowIntensityDraft.value = v;
   },
 );
 
@@ -108,6 +118,11 @@ function onControlRadiusInput(v: number) {
   const next = Math.min(CONTROL_RADIUS_MAX, Math.max(CONTROL_RADIUS_MIN, Math.round(v)));
   controlRadiusDraft.value = next;
   setControlRadius(next);
+}
+function onShadowIntensityInput(v: number) {
+  const next = Math.min(1.8, Math.max(0.4, Math.round(v * 100) / 100));
+  shadowIntensityDraft.value = next;
+  setShadowIntensity(next);
 }
 function setDensity(v: DensityMode) {
   setConsolePrefs({ density: v });
@@ -413,6 +428,25 @@ async function loadSetupStatus(force = false) {
             step="1"
             :value="controlRadiusDraft"
             @input="onControlRadiusInput(Number(($event.target as HTMLInputElement).value))"
+          >
+        </div>
+      </PrefsSettingCard>
+
+      <PrefsSettingCard
+        icon="layers"
+        title="阴影强度"
+        lead="调节卡片与壳层投影深浅；输入框描边由边色控制，不受此滑块影响。"
+      >
+        <div class="prefs-form-field prefs-form-field--range">
+          <label class="prefs-form-field__label">阴影强度 {{ Math.round(shadowIntensityDraft * 100) }}%</label>
+          <input
+            class="inp"
+            type="range"
+            min="40"
+            max="180"
+            step="5"
+            :value="Math.round(shadowIntensityDraft * 100)"
+            @input="onShadowIntensityInput(Number(($event.target as HTMLInputElement).value) / 100)"
           >
         </div>
       </PrefsSettingCard>

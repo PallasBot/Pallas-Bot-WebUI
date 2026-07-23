@@ -21,7 +21,15 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3
+      ref={ref}
+      className={cn(
+        /* 字重对齐 gsuid CardTitle（font-semibold）；字号走控制台 token */
+        "text-[length:var(--console-panel-title-size,1.0625rem)] font-semibold leading-none tracking-tight",
+        className,
+      )}
+      {...props}
+    />
   ),
 );
 CardTitle.displayName = "CardTitle";

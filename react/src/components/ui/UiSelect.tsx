@@ -6,7 +6,7 @@ import type { SelectHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const nativeSelectClassName =
-  "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full appearance-none rounded-[var(--radius-control,8px)] border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full appearance-none rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-[var(--control-bg,hsl(var(--ui-background)))] px-3 py-1.5 text-sm text-[var(--text)] shadow-[var(--control-shadow)] focus-visible:outline-none focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)] disabled:cursor-not-allowed disabled:opacity-50 max-w-full";
 
 type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange"> & {
   value?: string;

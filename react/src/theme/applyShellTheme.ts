@@ -22,12 +22,14 @@ export type PrefsSlice = {
   sidebarCollapsed: boolean;
   glassBlur: number;
   cardGlassOpacity: number;
+  /** 卡片/壳层阴影强度倍率（0.4–1.8，默认 1） */
+  shadowIntensity: number;
 };
 
 const DEFAULTS: PrefsSlice = {
   theme: "system",
-  controlRadius: 16,
-  radius: "round",
+  controlRadius: 10,
+  radius: "default",
   surfaceStyle: "glass",
   density: "comfortable",
   accentPreset: "sky",
@@ -35,12 +37,28 @@ const DEFAULTS: PrefsSlice = {
   sidebarCollapsed: false,
   glassBlur: 12,
   cardGlassOpacity: 0.25,
+  shadowIntensity: 1,
 };
 
 const ACCENTS = new Set<AccentPreset>(["sky", "indigo", "emerald", "rose", "amber", "violet"]);
 
+/** shadcn HSL 分量（无 hsl() 包裹），与 tokens.css 各 data-accent 对齐。 */
+const ACCENT_HSL: Record<AccentPreset, { dark: string; light: string; fgDark: string; fgLight: string }> = {
+  sky: { dark: "199 89% 60%", light: "199 89% 40%", fgDark: "210 40% 98%", fgLight: "0 0% 100%" },
+  indigo: { dark: "239 84% 74%", light: "239 84% 60%", fgDark: "240 10% 8%", fgLight: "0 0% 100%" },
+  emerald: { dark: "160 84% 52%", light: "160 84% 32%", fgDark: "160 20% 8%", fgLight: "0 0% 100%" },
+  rose: { dark: "350 89% 72%", light: "347 77% 50%", fgDark: "0 0% 100%", fgLight: "0 0% 100%" },
+  amber: { dark: "43 96% 56%", light: "32 95% 44%", fgDark: "30 20% 10%", fgLight: "0 0% 100%" },
+  violet: { dark: "258 90% 76%", light: "263 70% 58%", fgDark: "260 20% 10%", fgLight: "0 0% 100%" },
+};
+
 function clampControlRadius(px: number): number {
   return Math.min(20, Math.max(4, Math.round(Number.isFinite(px) ? px : 16)));
+}
+
+function clampShadowIntensity(v: number): number {
+  const n = Number.isFinite(v) ? v : DEFAULTS.shadowIntensity;
+  return Math.min(1.8, Math.max(0.4, Math.round(n * 100) / 100));
 }
 
 function radiusModeFromControlPx(px: number): RadiusMode {
@@ -77,6 +95,11 @@ export function readPrefs(): PrefsSlice {
       cardGlassOpacity: Number.isFinite(Number(parsed.cardGlassOpacity))
         ? Number(parsed.cardGlassOpacity)
         : DEFAULTS.cardGlassOpacity,
+      shadowIntensity: clampShadowIntensity(
+        Number.isFinite(Number(parsed.shadowIntensity))
+          ? Number(parsed.shadowIntensity)
+          : DEFAULTS.shadowIntensity,
+      ),
     };
   } catch {
     return { ...DEFAULTS };
@@ -126,9 +149,10 @@ export function writeSidebarCollapsed(collapsed: boolean): void {
 function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   const r = clampControlRadius(controlPx);
   const sm = Math.max(2, r - 2);
-  const md = r + 2;
-  const lg = r + 4;
-  const shell = r + 2;
+  /* 贴合 gsuid ~8px */
+  const md = r;
+  const lg = r + 2;
+  const shell = r;
   el.style.setProperty("--radius-control", `${r}px`);
   el.style.setProperty("--radius-sm", `${sm}px`);
   el.style.setProperty("--radius-md", `${md}px`);
@@ -136,6 +160,28 @@ function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   el.style.setProperty("--radius-shell", `${shell}px`);
   el.style.setProperty("--radius-textarea", `${sm}px`);
   el.style.setProperty("--radius", `${r}px`);
+}
+
+/** 把 hub accent preset 同步到 shadcn --ui-primary / --ui-ring（HSL 分量）。
+ * 勿写 hub 的 --accent / --primary / --ring：那些是完整色值，供 color-mix 使用。
+ */
+function applyShadcnAccentVars(el: HTMLElement, accent: AccentPreset, theme: "dark" | "light"): void {
+  const row = ACCENT_HSL[accent] ?? ACCENT_HSL.sky;
+  const primary = theme === "dark" ? row.dark : row.light;
+  const primaryFg = theme === "dark" ? row.fgDark : row.fgLight;
+  // 清掉旧版误写的 HSL 分量，避免盖住 hub 完整色值
+  el.style.removeProperty("--primary");
+  el.style.removeProperty("--primary-foreground");
+  el.style.removeProperty("--ring");
+  el.style.removeProperty("--sidebar-primary");
+  el.style.removeProperty("--sidebar-primary-foreground");
+  el.style.removeProperty("--sidebar-ring");
+  el.style.setProperty("--ui-primary", primary);
+  el.style.setProperty("--ui-primary-foreground", primaryFg);
+  el.style.setProperty("--ui-ring", primary);
+  el.style.setProperty("--ui-sidebar-primary", primary);
+  el.style.setProperty("--ui-sidebar-primary-foreground", primaryFg);
+  el.style.setProperty("--ui-sidebar-ring", primary);
 }
 
 export function applyShellTheme(): void {
@@ -153,6 +199,7 @@ export function applyShellTheme(): void {
   el.classList.toggle("light", theme === "light");
   el.style.colorScheme = theme;
   applyRadiusCssVars(el, prefs.controlRadius);
+  applyShadcnAccentVars(el, prefs.accentPreset, theme);
   const blur = prefs.glassBlur;
   const saturate = 1.08 + ((blur - 8) / 32) * 0.18;
   const glassPct = Math.round(prefs.cardGlassOpacity * 100);
@@ -160,4 +207,5 @@ export function applyShellTheme(): void {
   el.style.setProperty("--card-glass-opacity", String(prefs.cardGlassOpacity));
   el.style.setProperty("--shell-glass-pct", `${glassPct}%`);
   el.style.setProperty("--glass-saturate", saturate.toFixed(2));
+  el.style.setProperty("--shadow-intensity", String(clampShadowIntensity(prefs.shadowIntensity)));
 }
