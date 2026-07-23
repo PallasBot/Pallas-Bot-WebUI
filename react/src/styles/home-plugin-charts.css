@@ -105,18 +105,18 @@
   min-height: auto;
 }
 .home-plugin-bars--plugin-rank .home-plugin-bars__row--plugin-rank {
-  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
+  grid-template-columns: minmax(6.5rem, 1fr) minmax(56px, 1.35fr) minmax(4.75rem, max-content);
   min-height: 2rem;
   align-items: center;
-  gap: 15px;
-  padding-left: 8px;
+  gap: 10px 12px;
+  padding-left: 4px;
 }
 .home-plugin-bars--duration-rank .home-plugin-bars__row--duration-rank {
-  grid-template-columns: fit-content(5.75rem) minmax(72px, 1.45fr) minmax(5.25rem, 6rem);
+  grid-template-columns: minmax(6.5rem, 1fr) minmax(56px, 1.35fr) minmax(4.75rem, max-content);
   min-height: 2.85rem;
   align-items: center;
-  gap: 15px;
-  padding-left: 8px;
+  gap: 10px 12px;
+  padding-left: 4px;
 }
 .home-plugin-charts__viz.home-plugin-duration-rank {
   flex: 0 1 auto;
@@ -139,7 +139,14 @@
 .home-plugin-bars--plugin-rank .home-plugin-bars__name,
 .home-plugin-bars--duration-rank .home-plugin-bars__name {
   min-width: 0;
-  max-width: 5.75rem;
+  line-height: 1.3;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .home-plugin-bars__track {
   height: 8px;

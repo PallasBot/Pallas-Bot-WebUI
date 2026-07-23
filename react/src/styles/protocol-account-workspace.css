@@ -27,10 +27,61 @@
   gap: 12px;
 }
 
-.protocol-account-workspace__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+.protocol-account-workspace__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 0;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-control, 10px);
+  background: color-mix(in srgb, var(--text) 3.5%, var(--bg-elev, transparent));
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+html[data-theme="light"] .protocol-account-workspace__meta {
+  background: color-mix(in srgb, var(--text) 2.5%, #fff);
+  border-color: color-mix(in srgb, var(--foreground, #0f172a) 7%, transparent);
+}
+
+.protocol-account-workspace__meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 12px;
+  border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.protocol-account-workspace__meta-item:first-child {
+  padding-left: 0;
+}
+
+.protocol-account-workspace__meta-item:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.protocol-account-workspace__meta-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.protocol-account-workspace__meta-value {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .protocol-account-workspace__panel.ui-card > .ui-card__content {
@@ -277,16 +328,19 @@
   padding-top: 4px;
 }
 
-@media (max-width: 900px) {
-  .protocol-account-workspace__metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 560px) {
-  .protocol-account-workspace__metrics {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+  .protocol-account-workspace__meta {
+    gap: 8px 0;
+  }
+
+  .protocol-account-workspace__meta-item {
+    flex: 1 1 calc(50% - 12px);
+    border-right: none;
+    padding: 0 8px 0 0;
+  }
+
+  .protocol-account-workspace__meta-item:nth-child(odd) {
+    padding-left: 0;
   }
 
   .protocol-account-workspace__form-grid {

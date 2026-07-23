@@ -78,8 +78,9 @@
   gap: 10px;
 }
 
+/* 列间距由 .console-hub-page 的 gap 统一，勿再叠 margin */
 .update-page__panel + .update-page__panel {
-  margin-top: var(--hub-page-gap, 14px);
+  margin-top: 0;
 }
 
 .update-page__panel-hd-nowrap.panel__hd--split {
@@ -240,9 +241,9 @@
 .update-page__release-fold-summary {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
-  padding: 0;
+  padding: 2px 0;
   list-style: none;
   cursor: pointer;
   font-size: 13px;
@@ -259,18 +260,16 @@
   content: "";
 }
 
-.update-page__release-fold-summary::before {
-  content: "";
-  flex: 0 0 0.7rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  box-sizing: border-box;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(-45deg);
-  transform-origin: center;
+.update-page__release-fold-chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
   opacity: 0.72;
-  transition: transform 0.16s ease;
+  color: var(--text-muted);
+  transition:
+    transform 0.16s ease,
+    opacity 0.16s ease,
+    color 0.16s ease;
 }
 
 .update-page__release-fold[open] > .update-page__release-fold-summary {
@@ -278,9 +277,10 @@
   font-weight: 600;
 }
 
-.update-page__release-fold[open] > .update-page__release-fold-summary::before {
-  transform: rotate(45deg);
-  opacity: 0.9;
+.update-page__release-fold[open] > .update-page__release-fold-summary .update-page__release-fold-chevron {
+  transform: rotate(90deg);
+  opacity: 0.95;
+  color: var(--text);
 }
 
 .update-page__release-foot {
@@ -351,10 +351,14 @@
 .update-page__release-notes-body--md h2,
 .update-page__release-notes-body--md h3,
 .update-page__release-notes-body--md h4 {
-  margin: 10px 0 6px;
+  margin: 0.85em 0 0.35em;
   color: var(--text);
   font-weight: 600;
   line-height: 1.35;
+}
+
+.update-page__release-notes-body--md > :first-child {
+  margin-top: 0;
 }
 
 .update-page__release-notes-body--md h2 {
@@ -370,21 +374,25 @@
 }
 
 .update-page__release-notes-body--md p {
-  margin: 4px 0;
+  margin: 0.35em 0;
 }
 
 .update-page__release-notes-body--md ul,
 .update-page__release-notes-body--md ol {
-  margin: 4px 0 8px;
+  margin: 0.35em 0 0.55em;
   padding-left: 1.25rem;
 }
 
 .update-page__release-notes-body--md li {
-  margin-bottom: 4px;
+  margin: 0.15em 0;
+}
+
+.update-page__release-notes-body--md li + li {
+  margin-top: 0.15em;
 }
 
 .update-page__release-notes-body--md blockquote {
-  margin: 8px 0;
+  margin: 0.55em 0;
   padding: 0 0 0 10px;
   border-left: 3px solid var(--border);
   color: var(--text-muted);
@@ -407,10 +415,16 @@
   text-underline-offset: 2px;
 }
 
+.update-page__release-notes-body--md hr {
+  margin: 0.75em 0;
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
 .update-page__release-notes-body--md pre {
   overflow-x: auto;
-  margin: 8px 0;
-  padding: 10px 12px;
+  margin: 0.55em 0;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--bg-muted) 70%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
@@ -419,7 +433,7 @@
 }
 
 .update-page__release-notes-body--md .readme-code-block {
-  margin: 8px 0;
+  margin: 0.55em 0;
 }
 
 .update-page__release-notes-body--md .readme-code-block pre {
@@ -428,15 +442,9 @@
   padding-right: 4.25rem;
 }
 
-.update-page__release-notes-body--md pre code {
-  font-family: var(--font-mono);
-  font-size: inherit;
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.update-page__release-notes-body--md :not(pre > code) {
+/* 仅行内 code 用紧凑 chip；勿用 :not(pre > code)（会命中 p/li/a 等） */
+.update-page__release-notes-body--md :not(pre) > code {
+  display: inline;
   font-family: var(--font-mono);
   font-size: 0.92em;
   font-weight: 600;
@@ -444,19 +452,32 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  word-break: break-word;
+  vertical-align: text-bottom;
+}
+
+.update-page__release-notes-body--md pre code {
+  display: inline;
+  font-family: var(--font-mono);
+  font-size: inherit;
+  font-weight: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  vertical-align: baseline;
 }
 
 .update-page__release-notes-body--md table {
   width: 100%;
   border-collapse: collapse;
-  margin: 8px 0;
+  margin: 0.55em 0;
   font-size: 12px;
 }
 
 .update-page__release-notes-body--md th,
 .update-page__release-notes-body--md td {
   border: 1px solid var(--border);
-  padding: 5px 8px;
+  padding: 4px 7px;
   text-align: left;
   vertical-align: top;
   word-break: break-word;
