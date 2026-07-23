@@ -691,7 +691,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
             </div>
 
             <div
-              className={`ui-card ui-card--glass protocol-account-workspace__panel protocol-account-workspace__panel--logs${isDialog ? " protocol-account-workspace__panel--compact" : ""}`}
+              className={`ui-card protocol-account-workspace__panel protocol-account-workspace__panel--logs${isDialog ? " protocol-account-workspace__panel--compact" : " ui-card--glass"}`}
             >
               <div className="ui-card__content">
                 {!isDialog ? (
