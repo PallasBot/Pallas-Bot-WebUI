@@ -139,7 +139,12 @@ export default function PluginCatalogCard({ plugin, iconUrl, avatarUrl, active, 
       </div>
 
       <div className="ui-card__footer">
-        <button type="button" className="btn btn--primary" style={{ width: "100%" }} onClick={onSelect}>
+        <button
+          type="button"
+          className="btn btn--primary ui-btn ui-btn--primary plugin-store-card__foot-btn"
+          style={{ width: "100%" }}
+          onClick={onSelect}
+        >
           编辑配置
         </button>
       </div>

@@ -1046,24 +1046,22 @@ export default function PluginStorePage() {
         }
       />
 
-      <div className="console-hub-filter-bar">
-        <div className="console-hub-filter-bar__primary">
-          <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="商店类型">
-            {sectionOptions.map((sec) => (
-              <button
-                key={sec.value}
-                type="button"
-                role="tab"
-                className={cn(storeSection === sec.value && "is-on")}
-                aria-selected={storeSection === sec.value}
-                onClick={() => setStoreSection(sec.value)}
-              >
-                <span>{sec.label}</span>
-              </button>
-            ))}
-          </div>
+      <div className="console-hub-page__filter-bar">
+        <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="商店类型">
+          {sectionOptions.map((sec) => (
+            <button
+              key={sec.value}
+              type="button"
+              role="tab"
+              className={cn(storeSection === sec.value && "is-on")}
+              aria-selected={storeSection === sec.value}
+              onClick={() => setStoreSection(sec.value)}
+            >
+              <span>{sec.label}</span>
+            </button>
+          ))}
         </div>
-        <div className="console-hub-filter-bar__secondary">
+        <div className="console-hub-page__filter-row">
           <div className="console-view-toggle" role="tablist" aria-label="列表筛选">
             {tabOptions.map((tab) => (
               <button
@@ -1078,8 +1076,8 @@ export default function PluginStorePage() {
               </button>
             ))}
           </div>
+          <p className="console-hub-page__result-count muted">共 {resultCount} 项</p>
         </div>
-        <p className="console-hub-page__result-count muted">共 {resultCount} 项</p>
       </div>
 
       {storeSection === "community" && communityIndexSourceDisplay ? (

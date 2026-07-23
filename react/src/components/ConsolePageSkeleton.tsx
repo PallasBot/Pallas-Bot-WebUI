@@ -1,4 +1,5 @@
-/** 对齐 Vue ConsolePageSkeleton：加载时用面板占位，避免整页空白。 */
+/** 对齐 Vue ConsolePageSkeleton：首屏占位，避免空白洗屏 */
+
 export default function ConsolePageSkeleton({ panels = 3 }: { panels?: number }) {
   const count = Math.max(1, Math.min(6, panels));
   return (

@@ -20,6 +20,7 @@ import "@pallas-vue/styles/ai-hub.css";
 import "@pallas-vue/styles/ai-history.css";
 /* Ui* 原子：不用 Vue ui.css，避免覆写 Tailwind --background HSL 分量 */
 import "./styles/ui-atoms.css";
+import "./styles/console-page-skel.css";
 import "./styles/update-page.css";
 import "./styles/git-mirror-dialog.css";
 import "./styles/bot-restart-dialog.css";
