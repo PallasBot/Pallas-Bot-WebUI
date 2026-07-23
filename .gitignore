@@ -8,3 +8,7 @@ dist
 .env
 .env.*.local
 *.tsbuildinfo
+.superpowers/
+docs/superpowers/
+.cursor/
+.worktrees/
