@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { deleteBotConfig, fetchInstances, fetchPlugins } from "@/api/fullConsole";
 import type { BotConfigPublic, InstancesData, PluginRow } from "@pallas-vue/api/pallasTypes";
 import { accountHasNonebotBot } from "@pallas-vue/utils/botConnection";
@@ -14,6 +13,7 @@ import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import PageHeader from "@/components/PageHeader";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
+import RefreshIconButton from "@/components/RefreshIconButton";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -292,15 +292,13 @@ export default function InstancesPage() {
                   label="数据库中的实例"
                   onToggle={() => setExpDbBots((v) => !v)}
                 />
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={reloadBusy}
-                  aria-label="刷新实例数据"
+                <RefreshIconButton
+                  embedded
+                  showLabel={false}
+                  busy={reloadBusy}
+                  label="刷新实例数据"
                   onClick={() => void reloadFromUser()}
-                >
-                  <RefreshCw className={reloadBusy ? "animate-spin" : undefined} size={14} />
-                </button>
+                />
               </h2>
               <div className="inst-db-panel__hd-side">
                 <span className="inst-db-stat muted">

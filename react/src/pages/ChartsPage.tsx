@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import {
   fetchConsoleDailyStats,
   fetchInstances,
@@ -13,6 +12,7 @@ import HomePluginRunCharts from "@/components/HomePluginRunCharts";
 import IngressDispatchPanel from "@/components/IngressDispatchPanel";
 import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
+import RefreshIconButton from "@/components/RefreshIconButton";
 import StatTrendCard from "@/components/StatTrendCard";
 import UiInput from "@/components/ui/UiInput";
 import UiSelect from "@/components/ui/UiSelect";
@@ -218,10 +218,13 @@ export default function ChartsPage() {
                 </UiSelect>
               </label>
             ) : null}
-            <button type="button" className="btn" disabled={refreshing} onClick={() => void refreshAll()}>
-              <RefreshCw className={refreshing ? "animate-spin" : undefined} size={16} />
-              刷新
-            </button>
+            <RefreshIconButton
+              embedded
+              busy={refreshing}
+              label="刷新"
+              showLabel
+              onClick={() => void refreshAll()}
+            />
           </div>
         }
       />

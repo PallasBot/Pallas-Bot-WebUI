@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
@@ -18,6 +17,7 @@ import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import PluginCatalogCard from "@/components/PluginCatalogCard";
 import PluginConfigDialog from "@/components/PluginConfigDialog";
 import PageHeader from "@/components/PageHeader";
+import RefreshIconButton from "@/components/RefreshIconButton";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import {
@@ -152,15 +152,13 @@ export default function PluginsPage() {
           title="插件管理"
           description="点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。"
           actions={
-            <button
-              type="button"
-              className="btn"
-              disabled={pluginsQ.isFetching}
+            <RefreshIconButton
+              embedded
+              busy={pluginsQ.isFetching}
+              label="刷新"
+              showLabel
               onClick={() => void pluginsQ.refetch()}
-            >
-              <RefreshCw className={pluginsQ.isFetching ? "animate-spin" : undefined} size={16} />
-              刷新
-            </button>
+            />
           }
         />
 
@@ -174,7 +172,7 @@ export default function PluginsPage() {
           onValueChange={setQ}
         />
 
-        <div className="console-hub-filter-bar">
+        <div className="console-hub-page__filter-bar">
           <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="插件分类">
             {PLUGIN_LIST_CATEGORY_TABS.map((tab) => (
               <button

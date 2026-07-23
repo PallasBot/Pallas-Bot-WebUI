@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@pallas-vue/api/pallasTypes";
 import {
   isExternalProtocolAccount,
@@ -582,15 +581,13 @@ export default function ProtocolAccountsTab() {
               label="已连接账号"
               onToggle={() => setExpProtocolAccounts((v) => !v)}
             />
-            <button
-              type="button"
-              className="btn"
-              disabled={accountsQ.isFetching}
-              aria-label="刷新实例数据"
+            <RefreshIconButton
+              embedded
+              showLabel={false}
+              busy={accountsQ.isFetching}
+              label="刷新实例数据"
               onClick={() => void refreshLists()}
-            >
-              <RefreshCw className={accountsQ.isFetching ? "animate-spin" : undefined} size={14} />
-            </button>
+            />
           </h2>
           <div className="inst-db-panel__hd-side">
             <span className="inst-db-stat muted">

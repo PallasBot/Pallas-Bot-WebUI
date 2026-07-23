@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
 import {
   fetchBotUpdateCheck,
   fetchCommunityStats,
@@ -34,6 +33,8 @@ import {
   saveHomeActionDismissal,
 } from "@/utils/homeActionDismissals";
 import { readSavedHomeAccount, writeSavedHomeAccount } from "@/utils/chartsPageHelpers";
+import RefreshIconButton from "@/components/RefreshIconButton";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 
 const HOME_SYSTEM_POLL_MS = 5000;
 const HOME_THROUGHPUT_POLL_MS = 5 * 60 * 1000;
@@ -583,11 +584,14 @@ export default function HomePage() {
       ) : null}
 
       {!pageReady ? (
-        <p className="home-sync" role="status">
-          正在加载概况…
-        </p>
+        <ConsolePageSkeleton panels={3} />
       ) : (
         <div className="home-body">
+          {overviewRefreshing ? (
+            <p className="home-sync" role="status">
+              正在加载概况…
+            </p>
+          ) : null}
           <div className="home-kpi-head">
             <div className="home-kpi-bar">
               <MetricTile icon="account" label="在线 Bot">
@@ -762,15 +766,13 @@ export default function HomePage() {
                   ) : selectedAccount != null ? (
                     <span className="home-acct__conn home-acct__conn--off">未连接</span>
                   ) : null}
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={overviewRefreshing}
-                    aria-label="刷新概况"
+                  <RefreshIconButton
+                    embedded
+                    showLabel={false}
+                    busy={overviewRefreshing}
+                    label="刷新概况"
                     onClick={() => void refreshAll(true)}
-                  >
-                    <RefreshCw className={overviewRefreshing ? "animate-spin" : undefined} size={14} />
-                  </button>
+                  />
                 </div>
               </div>
               {selectedAccount != null ? (

@@ -28,8 +28,8 @@ export default function RefreshIconButton({
     <button
       type="button"
       className={cn(
-        "btn btn-refresh-action",
-        embedded && "btn-refresh-action--embedded",
+        "ui-btn btn-refresh-action",
+        embedded ? "ui-btn--ghost btn-refresh-action--embedded" : "ui-btn--outline",
         busy && "btn-refresh-action--busy",
         !showLabel && "btn-refresh-action--icon-only",
         className,

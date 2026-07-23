@@ -991,3 +991,173 @@ html[data-layout="hub"] .ui-btn--sm {
   font-size: 12px;
   min-height: 0;
 }
+
+/* ── UiCard（不用 Vue ui.css，避免 --card HSL 分量破坏 background） ── */
+.ui-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: calc(var(--radius-control, 10px) + 2px);
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: var(--shadow-card, var(--shadow-md, none));
+  overflow: hidden;
+  transition:
+    transform 0.2s var(--ease, ease),
+    box-shadow 0.2s var(--ease, ease),
+    border-color 0.2s var(--ease, ease);
+}
+
+.ui-card--glass {
+  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border-strong, var(--border)) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow, none), var(--glass-inset-highlight, none);
+}
+
+.ui-card--interactive {
+  cursor: default;
+}
+
+.ui-card--interactive:hover {
+  transform: translateY(-1px);
+}
+
+.ui-card--active,
+.ui-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 4px 16px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ui-card__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 14px;
+}
+
+.ui-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 14px;
+  margin-top: auto;
+}
+
+.plugin-catalog-card.ui-card .ui-card__content {
+  padding: 0;
+}
+
+.plugin-catalog-card.ui-card .ui-card__footer {
+  padding: 0 14px 14px;
+}
+
+.plugin-catalog-card .ui-card__footer .btn--primary,
+.plugin-catalog-card .ui-card__footer .ui-btn--primary {
+  color: var(--primary-foreground, #fff);
+  background: var(--accent, #0ea5e9);
+  border-color: color-mix(in srgb, var(--accent, #0ea5e9) 70%, transparent);
+}
+
+.plugin-catalog-card .ui-card__footer .btn--primary:hover:not(:disabled),
+.plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+/* 治理弹窗略松：dialog 内分组与 body 留白 */
+.plugin-config-dialog__bd {
+  padding: 12px 16px 16px;
+}
+
+.plugin-config-workspace--dialog .plugin-config-page__governance-dialog {
+  padding: 4px 2px 8px;
+}
+
+.plugin-governance-panel--dialog {
+  gap: 16px;
+}
+
+.plugin-governance-panel--dialog .plugin-governance-panel__group {
+  gap: 12px;
+  padding: 16px;
+}
+
+.plugin-governance-panel--dialog .plugin-governance-panel__switches {
+  gap: 8px;
+}
+
+/* ── 配置表单 / 分栏对比色（对齐 gsuid muted 分层：canvas → card → field） ── */
+.plugin-config-workspace,
+.plugin-config-page,
+.common-config-page,
+.plugin-config-dialog__bd .plugin-config-workspace--dialog {
+  background: transparent;
+}
+
+.plugin-config-group-card,
+.plugin-config-workspace .plugin-config-page__card-bd,
+.common-config-page .panel__bd {
+  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
+  border-radius: var(--radius-control, 10px);
+}
+
+.plugin-config-form-grid > .ui-field,
+.plugin-config-form-item,
+.common-config-page .ui-field {
+  padding: 10px 12px;
+  border-radius: calc(var(--radius-control, 10px) - 2px);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+html[data-theme="light"] .plugin-config-form-grid > .ui-field,
+html[data-theme="light"] .plugin-config-form-item,
+html[data-theme="light"] .common-config-page .ui-field {
+  background: color-mix(in srgb, #fff 88%, var(--bg-muted) 12%);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
+}
+
+.plugin-governance-panel__group {
+  background: color-mix(in srgb, var(--bg-muted) 40%, var(--bg-card) 60%);
+}
+
+html[data-theme="light"] .plugin-governance-panel__group {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 2.5%, var(--bg-card));
+}
+
+/* 分栏轨道与选中段对比 */
+.console-view-toggle {
+  background: color-mix(in srgb, var(--text) 5.5%, var(--bg-muted));
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+html[data-theme="light"] .console-view-toggle {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 4%, var(--bg-elev));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 8%, transparent);
+}
+
+.console-view-toggle button.is-on,
+.console-view-toggle > a.is-on {
+  background: var(--surface-segment-active, var(--bg-card));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #000) 8%, transparent);
+}
+
+html[data-theme="light"] .console-view-toggle button.is-on,
+html[data-theme="light"] .console-view-toggle > a.is-on {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 10%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground, #0f172a) 8%, transparent);
+}
+
+/* 实例/协议卡片脚按钮：用 control 圆角，避免胶囊感 */
+.inst-card-actions > .btn,
+.inst-card-actions > .ui-btn {
+  border-radius: var(--radius-control, 10px);
+}
