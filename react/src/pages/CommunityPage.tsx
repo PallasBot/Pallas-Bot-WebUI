@@ -15,11 +15,15 @@ import type {
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud from "@/components/CorpusWordCloud";
-import PageHeader from "@/components/PageHeader";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
+import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
+import { Button } from "@/components/ui/button";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
@@ -195,6 +199,11 @@ export default function CommunityPage() {
     return [...rows].sort((a, b) => b.count - a.count);
   }, [communityStats]);
 
+  const onlineVersionsTotal = useMemo(
+    () => onlineVersions.reduce((sum, row) => sum + (row.count || 0), 0),
+    [onlineVersions],
+  );
+
   const statsAsOfText = (communityStats?.as_of || "").trim() ? `快照 ${communityStats?.as_of}` : "";
   const statsUrl = (communityStats?.stats_url || "").trim();
   const communityHubUrl = (federationOnboarding?.stats_primary_url || PALLAS_COMMUNITY_HUB).trim() || PALLAS_COMMUNITY_HUB;
@@ -318,18 +327,18 @@ export default function CommunityPage() {
   if (!pageReady) {
     return (
       <div className="community-page console-hub-page">
-        <p className="muted">加载社区统计…</p>
+        <ConsolePageSkeleton panels={3} />
       </div>
     );
   }
 
   return (
     <div className="community-page console-hub-page">
-      <PageHeader
+      <PageMasthead
         title="统计与语料"
         description={
           <>
-            <span>社区中心公开统计与本部署语料、多机协同状态；数据只读。</span>
+            <span>社区统计、语料与多机协同（只读）。</span>
             <p className="community-page__masthead-links muted">
               <a className="community-page__inline-link" href={communityHubUrl} target="_blank" rel="noopener noreferrer">
                 社区主站
@@ -343,7 +352,18 @@ export default function CommunityPage() {
             </p>
           </>
         }
-        actions={<RefreshIconButton embedded className="hub-refresh-wide-only" busy={refreshBusy} label="刷新" onClick={() => void refresh()} />}
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={refreshBusy}
+            onClick={() => void refresh()}
+          >
+            <RefreshCw className={cn("size-3.5", refreshBusy && "animate-spin")} />
+            {refreshBusy ? "刷新中…" : "刷新"}
+          </Button>
+        }
       />
 
       {err ? <p className="alert alert--err community-page__alert">{err}</p> : null}
@@ -462,12 +482,40 @@ export default function CommunityPage() {
               <div className="community-page__versions">
                 <h3 className="community-page__subhd">在线版本分布</h3>
                 <ul className="community-page__version-list">
-                  {onlineVersions.map((row) => (
-                    <li key={row.version} className="community-page__version-row">
-                      <span className="community-page__version-name community-page__mono">{row.version || "—"}</span>
-                      <span className="community-page__version-count">{formatCommunityStatNum(row.count)} 套</span>
-                    </li>
-                  ))}
+                  {onlineVersions.map((row, index) => {
+                    const count = row.count || 0;
+                    const share =
+                      onlineVersionsTotal > 0 ? Math.min(100, (count / onlineVersionsTotal) * 100) : 0;
+                    const isTop = index === 0 && count > 0;
+                    return (
+                      <li
+                        key={row.version}
+                        className={`community-page__version-row${isTop ? " community-page__version-row--top" : ""}`}
+                      >
+                        <div className="community-page__version-head">
+                          <span className="community-page__version-name community-page__mono">
+                            {row.version || "—"}
+                          </span>
+                          <span className="community-page__version-count">
+                            {formatCommunityStatNum(count)} 套
+                          </span>
+                        </div>
+                        <div
+                          className="community-page__version-track"
+                          role="meter"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={Math.round(share)}
+                          aria-label={`${row.version || "未知"} 占比 ${Math.round(share)}%`}
+                        >
+                          <span
+                            className="community-page__version-fill"
+                            style={{ width: `${share}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ) : null}
@@ -632,7 +680,7 @@ export default function CommunityPage() {
             <h2 className="panel__title community-page__section-title">共享语料热词</h2>
           </div>
           <div className="panel__bd">
-            <p className="muted community-page__hot-lead">默认展示近24h各部署热词叠加（机群榜）；「高频池」为共享语料累计。</p>
+            <p className="muted community-page__hot-lead">机群：近24h叠加 · 高频池：共享累计 · 本月：近期活跃</p>
             <CorpusWordCloud source="community" reloadToken={hotReloadToken} />
           </div>
         </div>

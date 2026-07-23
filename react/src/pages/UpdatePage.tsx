@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
@@ -18,19 +18,37 @@ import {
   PALLAS_WEBUI_REPO,
 } from "@/utils/pallasExternalLinks";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import UiBadge from "@/components/ui/UiBadge";
-import UiButton from "@/components/ui/UiButton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import UiInput from "@/components/ui/UiInput";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { ChevronRight, RefreshCw } from "lucide-react";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
+
+const UPDATE_PANEL = "update-page__panel flex flex-col overflow-hidden shadow-none";
+const UPDATE_PANEL_HD =
+  "panel__hd panel__hd--split update-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
+const UPDATE_PANEL_BD = "panel__bd update-page__bd update-page__bd--release space-y-0 px-4 pb-4 pt-3";
+const UPDATE_OPS_BD = "panel__bd update-page__bd px-4 pb-4 pt-3";
+const UPDATE_STATUS_PILL = "update-page__status-pill";
+
+function UpdateFoldSummary({ children }: { children: ReactNode }) {
+  return (
+    <summary className="update-page__release-fold-summary">
+      <ChevronRight className="update-page__release-fold-chevron" aria-hidden strokeWidth={2} />
+      <span className="min-w-0">{children}</span>
+    </summary>
+  );
+}
 
 function formatCheckedAt(ts?: number | null): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
@@ -132,7 +150,7 @@ export default function UpdatePage() {
     const parts: string[] = [];
     if (web) parts.push(`WebUI ${webCurrentDisplay}${web.has_update ? " · 有更新" : ""}`);
     if (bot) parts.push(`Bot ${botCurrentDisplay}${bot.has_update ? " · 有更新" : ""}`);
-    return parts.length ? parts.join(" · ") : "检查 WebUI 与 Bot 版本并应用更新。";
+    return parts.length ? parts.join(" · ") : "WebUI 与 Bot 版本更新。";
   }, [bot, botCurrentDisplay, web, webCurrentDisplay]);
 
   const checkedAtDisplay = formatCheckedAt(q.data?.checked_at);
@@ -290,7 +308,7 @@ export default function UpdatePage() {
       {err ? <div className="alert alert--err">{err}</div> : null}
       {msg ? <div className="alert alert--ok">{msg}</div> : null}
 
-      <PageHeader
+      <PageMasthead
         title="更新"
         description={
           <>
@@ -301,17 +319,20 @@ export default function UpdatePage() {
           </>
         }
         actions={
-          <div className="console-hub-toolbar-strip__masthead-actions">
-            <UiButton variant="outline" onClick={() => setGitMirrorOpen(true)}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
               镜像源
-            </UiButton>
-            <RefreshIconButton
-              embedded
-              className="hub-refresh-wide-only"
-              busy={q.isFetching || busy}
-              label="重新检查"
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={q.isFetching || busy}
               onClick={() => void q.refetch()}
-            />
+            >
+              <RefreshCw className={cn("size-3.5", (q.isFetching || busy) && "animate-spin")} />
+              {q.isFetching || busy ? "检查中…" : "重新检查"}
+            </Button>
           </div>
         }
       />
@@ -339,9 +360,9 @@ export default function UpdatePage() {
         </a>
       </div>
 
-      <section id="console-update-webui" className="panel update-page__panel">
-        <div className="panel__hd panel__hd--split update-page__panel-hd-nowrap">
-          <h2 className="panel__title">
+      <Card id="console-update-webui" className={UPDATE_PANEL}>
+        <CardHeader className={UPDATE_PANEL_HD}>
+          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
             WebUI
             <RefreshIconButton
               embedded
@@ -352,17 +373,17 @@ export default function UpdatePage() {
               onClick={() => void q.refetch()}
             />
             {web?.has_update ? (
-              <UiBadge className="update-page__status-pill" variant="warn">
+              <Badge className={UPDATE_STATUS_PILL} variant="warn">
                 有更新
-              </UiBadge>
+              </Badge>
             ) : (
-              <UiBadge className="update-page__status-pill" variant="ok">
+              <Badge className={UPDATE_STATUS_PILL} variant="success">
                 已是最新
-              </UiBadge>
+              </Badge>
             )}
-          </h2>
-        </div>
-        <div className="panel__bd update-page__bd update-page__bd--release">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={UPDATE_PANEL_BD}>
           <div className="update-page__release-summary">
             <div className="update-page__release-stat">
               <span className="update-page__release-stat-label">当前</span>
@@ -378,9 +399,9 @@ export default function UpdatePage() {
           </div>
 
           <div className="update-page__release-primary">
-            <UiButton variant="primary" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
+            <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
               {busy ? "处理中…" : "应用 WebUI 更新"}
-            </UiButton>
+            </Button>
             <a
               className="update-page__link update-page__release-ext-link"
               href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
@@ -398,7 +419,7 @@ export default function UpdatePage() {
           ) : null}
 
           <details className="update-page__release-fold update-page__release-notes">
-            <summary className="update-page__release-fold-summary">{webReleaseNotesSummary}</summary>
+            <UpdateFoldSummary>{webReleaseNotesSummary}</UpdateFoldSummary>
             {(web?.release_notes || "").trim() ? (
               <div
                 className="update-page__release-notes-body update-page__release-notes-body--md"
@@ -421,7 +442,7 @@ export default function UpdatePage() {
           </details>
 
           <details className="update-page__release-fold update-page__doc-links">
-            <summary className="update-page__release-fold-summary">相关文档</summary>
+            <UpdateFoldSummary>相关文档</UpdateFoldSummary>
             <ul className="update-page__doc-links-list">
               {webDocLinks.map((link) => (
                 <li key={link.href}>
@@ -436,12 +457,12 @@ export default function UpdatePage() {
           <p className="update-page__release-foot muted">
             由 Bot 从 GitHub 下载 <code>dist.zip</code> 并解压到控制台静态目录。
           </p>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section id="console-update-bot" className="panel update-page__panel">
-        <div className="panel__hd panel__hd--split update-page__panel-hd-nowrap">
-          <h2 className="panel__title">
+      <Card id="console-update-bot" className={UPDATE_PANEL}>
+        <CardHeader className={UPDATE_PANEL_HD}>
+          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
             Bot 本体
             <RefreshIconButton
               embedded
@@ -452,25 +473,25 @@ export default function UpdatePage() {
               onClick={() => void q.refetch()}
             />
             {bot?.has_update ? (
-              <UiBadge className="update-page__status-pill" variant="warn">
+              <Badge className={UPDATE_STATUS_PILL} variant="warn">
                 有更新
-              </UiBadge>
+              </Badge>
             ) : bot?.development_build ? (
-              <UiBadge
-                className="update-page__status-pill"
+              <Badge
+                className={UPDATE_STATUS_PILL}
                 variant="secondary"
                 title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
               >
                 开发构建
-              </UiBadge>
+              </Badge>
             ) : (
-              <UiBadge className="update-page__status-pill" variant="ok">
+              <Badge className={UPDATE_STATUS_PILL} variant="success">
                 已是最新
-              </UiBadge>
+              </Badge>
             )}
-          </h2>
-        </div>
-        <div className="panel__bd update-page__bd update-page__bd--release">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={UPDATE_PANEL_BD}>
           <div className="update-page__release-summary">
             <div className="update-page__release-stat">
               <span className="update-page__release-stat-label">当前</span>
@@ -494,14 +515,14 @@ export default function UpdatePage() {
 
           <div className="update-page__release-primary">
             {bot?.deployment_mode !== "docker" ? (
-              <UiButton variant="primary" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
+              <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
                 应用 Bot 更新
-              </UiButton>
+              </Button>
             ) : null}
             {bot?.deployment_mode !== "docker" && bot?.restart_available ? (
-              <UiButton variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
+              <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
                 更新并重启
-              </UiButton>
+              </Button>
             ) : null}
             <a
               className="update-page__link update-page__release-ext-link"
@@ -547,7 +568,7 @@ export default function UpdatePage() {
           ) : null}
 
           <details className="update-page__release-fold update-page__release-notes">
-            <summary className="update-page__release-fold-summary">{botReleaseNotesSummary}</summary>
+            <UpdateFoldSummary>{botReleaseNotesSummary}</UpdateFoldSummary>
             {(bot?.release_notes || "").trim() ? (
               <div
                 className="update-page__release-notes-body update-page__release-notes-body--md"
@@ -570,7 +591,7 @@ export default function UpdatePage() {
           </details>
 
           <details className="update-page__release-fold update-page__doc-links">
-            <summary className="update-page__release-fold-summary">相关文档</summary>
+            <UpdateFoldSummary>相关文档</UpdateFoldSummary>
             <ul className="update-page__doc-links-list">
               {botDocLinks.map((link) => (
                 <li key={link.href}>
@@ -587,15 +608,15 @@ export default function UpdatePage() {
               配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
             </p>
           ) : null}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {restartAvailable ? (
-        <section id="console-update-restart" className="panel update-page__panel update-page__panel--ops">
-          <div className="panel__hd panel__hd--split update-page__ops-hd">
-            <h2 className="panel__title">运维</h2>
-          </div>
-          <div className="panel__bd update-page__bd">
+        <Card id="console-update-restart" className={cn(UPDATE_PANEL, "update-page__panel--ops")}>
+          <CardHeader className={cn(UPDATE_PANEL_HD, "update-page__ops-hd")}>
+            <CardTitle className="panel__title">运维</CardTitle>
+          </CardHeader>
+          <CardContent className={UPDATE_OPS_BD}>
             <p className="muted update-page__ops-lead">
               安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
               {shardedRuntime ? "分片部署下可选择仅重启分片节点或重启全部进程。" : null}
@@ -610,26 +631,30 @@ export default function UpdatePage() {
                 {restartErr}
               </p>
             ) : null}
-            <div className="row-actions update-page__ops-actions">
+            <div className="flex flex-wrap items-center gap-1.5 update-page__ops-actions">
               {shardedRuntime ? (
-                <UiButton
+                <Button
+                  type="button"
                   variant="outline"
+                  size="sm"
                   disabled={restartBusy || restartInProgress}
                   onClick={() => void triggerBotRestart(true)}
                 >
                   重启 Worker
-                </UiButton>
+                </Button>
               ) : null}
-              <UiButton
+              <Button
+                type="button"
                 variant="destructive"
+                size="sm"
                 disabled={restartBusy || restartInProgress}
                 onClick={() => void triggerBotRestart(false)}
               >
                 {restartInProgress ? "重启中…" : shardedRuntime ? "重启全部进程" : "重启 Bot"}
-              </UiButton>
+              </Button>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
 
       <details id="console-update-github" className="update-page__gh-fold">
@@ -654,13 +679,13 @@ export default function UpdatePage() {
               value={ghTokenInput}
               onValueChange={setGhTokenInput}
             />
-            <UiButton variant="primary" disabled={ghTokenBusy} onClick={() => void saveGithubToken()}>
+            <Button type="button" size="sm" disabled={ghTokenBusy} onClick={() => void saveGithubToken()}>
               {ghTokenBusy ? "保存中…" : "保存"}
-            </UiButton>
+            </Button>
             {ghTokenHadValue ? (
-              <UiButton variant="outline" disabled={ghTokenBusy} onClick={() => void clearGithubToken()}>
+              <Button type="button" variant="outline" size="sm" disabled={ghTokenBusy} onClick={() => void clearGithubToken()}>
                 清除
-              </UiButton>
+              </Button>
             ) : null}
           </div>
           {ghTokenErr ? <div className="alert alert--err update-page__gh-alert">{ghTokenErr}</div> : null}

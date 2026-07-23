@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -12,7 +12,7 @@ export default function PlaceholderPage({
 }) {
   return (
     <div>
-      <PageHeader title={title} description={description} />
+      <PageMasthead title={title} description={description} />
       <Card>
         <CardHeader>
           <CardTitle>壳层已接入</CardTitle>

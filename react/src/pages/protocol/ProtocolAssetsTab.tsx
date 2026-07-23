@@ -13,7 +13,19 @@ import {
   type ProtocolRuntimeJob,
   type ProtocolRuntimeProfile,
 } from "@/api/protocol";
-import UiInput from "@/components/ui/UiInput";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 const RUNTIME_MODES = [
@@ -29,6 +41,11 @@ const TARGET_PLATFORMS = [
   { value: "windows-amd64", label: "windows-amd64" },
 ];
 
+const ASSET_PANEL = "protocol-sub-page__panel flex flex-col overflow-hidden shadow-none";
+const ASSET_PANEL_HD =
+  "panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const ASSET_PANEL_BD = "panel__bd space-y-4 px-4 pb-4 pt-3";
+
 function jobFromOverview(ov: Record<string, unknown> | null, key: string): ProtocolRuntimeJob | null {
   if (!ov || typeof ov[key] !== "object" || ov[key] === null) return null;
   return ov[key] as ProtocolRuntimeJob;
@@ -38,6 +55,33 @@ function jobStatusLabel(job: ProtocolRuntimeJob | null): string {
   if (!job?.status) return "空闲";
   const msg = job.message?.trim();
   return msg ? `${job.status}：${msg}` : String(job.status);
+}
+
+function ProfileSelect(props: {
+  id: string;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  const { id, label, value, options, onChange } = props;
+  return (
+    <div className="field space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value || undefined} onValueChange={onChange}>
+        <SelectTrigger id={id} className="h-9 w-full">
+          <SelectValue placeholder="请选择" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 export default function ProtocolAssetsTab() {
@@ -211,261 +255,250 @@ export default function ProtocolAssetsTab() {
   }
 
   return (
-    <div className="protocol-sub-page">
-      <div className="panel protocol-sub-page__lead mb-4">
-        <div className="panel__hd panel__hd--split inst-db-panel__hd">
+    <div className="protocol-sub-page space-y-4">
+      <Card className={cn(ASSET_PANEL, "mb-0")}>
+        <CardHeader className={cn(ASSET_PANEL_HD, "inst-db-panel__hd")}>
           <div>
-            <h2 className="panel__title">协议资产</h2>
-            <p className="muted">
-              管理 NapCat / SnowLuma 发行包、全局运行模式与 Docker 镜像；保存后可能影响已有协议容器。
-            </p>
+            <CardTitle className="panel__title">协议资产</CardTitle>
+            <CardDescription className="muted mt-1">发行包、运行模式与 Docker 镜像。</CardDescription>
           </div>
-          <div className="row-actions">
-            <Link className="btn" to="/protocol">
-              返回实例列表
-            </Link>
-            <button type="button" className="btn" disabled={loadBusy} onClick={() => void loadAssets()}>
+          <div className="row-actions inst-db-panel__hd-side">
+            <Button asChild type="button" variant="outline" size="sm">
+              <Link to="/protocol">返回实例列表</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={loadBusy}
+              onClick={() => void loadAssets()}
+            >
               {loadBusy ? "刷新中…" : "刷新"}
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
-      {msg ? <p className="muted text-sm mb-4">{msg}</p> : null}
+      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
 
-      <div className="ui-card ui-card--glass protocol-sub-page__panel">
-        <div className="ui-card__content">
-          <div className="panel__hd">
-            <h2 className="panel__title protocol-assets-section-title">全局运行配置</h2>
+      <Card className={ASSET_PANEL}>
+        <CardHeader className={ASSET_PANEL_HD}>
+          <CardTitle className="panel__title protocol-assets-section-title">
+            全局运行配置
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={ASSET_PANEL_BD}>
+          <div className="protocol-form-grid">
+            <ProfileSelect
+              id="napcat-runtime-mode"
+              label="NapCat 运行模式"
+              value={profileForm.napcat_runtime_mode ?? ""}
+              options={RUNTIME_MODES}
+              onChange={(v) => setProfileForm((p) => ({ ...p, napcat_runtime_mode: v }))}
+            />
+            <ProfileSelect
+              id="snowluma-runtime-mode"
+              label="SnowLuma 运行模式"
+              value={profileForm.snowluma_runtime_mode ?? ""}
+              options={RUNTIME_MODES}
+              onChange={(v) => setProfileForm((p) => ({ ...p, snowluma_runtime_mode: v }))}
+            />
+            <ProfileSelect
+              id="target-platform"
+              label="下载目标平台（NapCat）"
+              value={profileForm.target_platform ?? ""}
+              options={TARGET_PLATFORMS}
+              onChange={(v) => setProfileForm((p) => ({ ...p, target_platform: v }))}
+            />
+            <div className="field field--check flex items-center gap-2 pt-6">
+              <Switch
+                id="follow-bot-lifecycle"
+                checked={Boolean(profileForm.follow_bot_lifecycle)}
+                onCheckedChange={(checked) =>
+                  setProfileForm((p) => ({ ...p, follow_bot_lifecycle: checked }))
+                }
+              />
+              <Label htmlFor="follow-bot-lifecycle">实例随 Bot 启停（全局）</Label>
+            </div>
           </div>
-          <div className="panel__bd">
-            <div className="protocol-form-grid">
-              <label className="field">
-                <span className="field__label">NapCat 运行模式</span>
-                <select
-                  className="sel ui-select"
-                  value={profileForm.napcat_runtime_mode ?? ""}
+          {showDockerSection ? (
+            <div className="protocol-form-grid protocol-assets-docker-grid">
+              <div className="field space-y-1.5">
+                <Label htmlFor="napcat-docker-image">NapCat Docker 镜像</Label>
+                <Input
+                  id="napcat-docker-image"
+                  className="h-9"
+                  placeholder="mlikiowa/napcat-docker:latest"
+                  autoComplete="off"
+                  value={profileForm.docker_image ?? ""}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, docker_image: e.target.value }))}
+                />
+              </div>
+              <div className="field space-y-1.5">
+                <Label htmlFor="snowluma-docker-image">SnowLuma Docker 镜像</Label>
+                <Input
+                  id="snowluma-docker-image"
+                  className="h-9"
+                  placeholder="motricseven7/snowluma:latest"
+                  autoComplete="off"
+                  value={profileForm.snowluma_docker_image ?? ""}
                   onChange={(e) =>
-                    setProfileForm((p) => ({ ...p, napcat_runtime_mode: e.target.value }))
-                  }
-                >
-                  {RUNTIME_MODES.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span className="field__label">SnowLuma 运行模式</span>
-                <select
-                  className="sel ui-select"
-                  value={profileForm.snowluma_runtime_mode ?? ""}
-                  onChange={(e) =>
-                    setProfileForm((p) => ({ ...p, snowluma_runtime_mode: e.target.value }))
-                  }
-                >
-                  {RUNTIME_MODES.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span className="field__label">下载目标平台（NapCat）</span>
-                <select
-                  className="sel ui-select"
-                  value={profileForm.target_platform ?? ""}
-                  onChange={(e) => setProfileForm((p) => ({ ...p, target_platform: e.target.value }))}
-                >
-                  {TARGET_PLATFORMS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field field--check">
-                <input
-                  type="checkbox"
-                  checked={Boolean(profileForm.follow_bot_lifecycle)}
-                  onChange={(e) =>
-                    setProfileForm((p) => ({ ...p, follow_bot_lifecycle: e.target.checked }))
+                    setProfileForm((p) => ({ ...p, snowluma_docker_image: e.target.value }))
                   }
                 />
-                实例随 Bot 启停（全局）
-              </label>
-            </div>
-            {showDockerSection ? (
-              <div className="protocol-form-grid protocol-assets-docker-grid">
-                <label className="field">
-                  <span className="field__label">NapCat Docker 镜像</span>
-                  <UiInput
-                    placeholder="mlikiowa/napcat-docker:latest"
-                    autoComplete="off"
-                    value={profileForm.docker_image ?? ""}
-                    onValueChange={(v) => setProfileForm((p) => ({ ...p, docker_image: v }))}
-                  />
-                </label>
-                <label className="field">
-                  <span className="field__label">SnowLuma Docker 镜像</span>
-                  <UiInput
-                    placeholder="motricseven7/snowluma:latest"
-                    autoComplete="off"
-                    value={profileForm.snowluma_docker_image ?? ""}
-                    onValueChange={(v) =>
-                      setProfileForm((p) => ({ ...p, snowluma_docker_image: v }))
-                    }
-                  />
-                </label>
               </div>
-            ) : null}
-            <div className="row-actions protocol-assets-actions">
-              <button
+            </div>
+          ) : null}
+          <div className="row-actions protocol-assets-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={cleanupBusy || !mountUrl}
+              onClick={() => void cleanupDist()}
+            >
+              {cleanupBusy ? "清理中…" : "清理下载缓存"}
+            </Button>
+            <span className="flex-1" />
+            <Button
+              type="button"
+              size="sm"
+              disabled={saveBusy || !mountUrl}
+              onClick={() => void saveProfile()}
+            >
+              {saveBusy ? "保存中…" : "保存设置"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className={ASSET_PANEL}>
+        <CardHeader className={ASSET_PANEL_HD}>
+          <CardTitle className="panel__title protocol-assets-section-title">
+            运行时下载
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={ASSET_PANEL_BD}>
+          <div className="protocol-assets-runtime-block">
+            <div className="protocol-assets-runtime-block__hd">
+              <strong>NapCat</strong>
+              <span className="muted protocol-assets-job">{jobStatusLabel(napcatJob)}</span>
+            </div>
+            <div className="row-actions protocol-assets-download">
+              <Input
+                className="protocol-assets-download__tag h-9 min-w-[10rem] flex-1"
+                placeholder="版本 tag（可选，默认 latest）"
+                value={napcatTag}
+                onChange={(e) => setNapcatTag(e.target.value)}
+              />
+              <Button
                 type="button"
-                className="btn"
-                disabled={cleanupBusy || !mountUrl}
-                onClick={() => void cleanupDist()}
+                size="sm"
+                disabled={!mountUrl || napcatDownloadBusy}
+                onClick={() => void downloadNapcat()}
               >
-                {cleanupBusy ? "清理中…" : "清理下载缓存"}
-              </button>
-              <span style={{ flex: 1 }} />
-              <button
+                {napcatDownloadBusy ? "下载中…" : "下载 NapCat 运行时"}
+              </Button>
+            </div>
+          </div>
+          <div className="protocol-assets-runtime-block">
+            <div className="protocol-assets-runtime-block__hd">
+              <strong>SnowLuma</strong>
+              <span className="muted protocol-assets-job">{jobStatusLabel(snowlumaJob)}</span>
+            </div>
+            <div className="row-actions protocol-assets-download">
+              <Input
+                className="protocol-assets-download__tag h-9 min-w-[10rem] flex-1"
+                placeholder="版本 tag（可选，默认 latest）"
+                value={snowlumaTag}
+                onChange={(e) => setSnowlumaTag(e.target.value)}
+              />
+              <Button
                 type="button"
-                className="btn btn--primary"
-                disabled={saveBusy || !mountUrl}
-                onClick={() => void saveProfile()}
+                size="sm"
+                disabled={!mountUrl || snowlumaDownloadBusy}
+                onClick={() => void downloadSnowluma()}
               >
-                {saveBusy ? "保存中…" : "保存设置"}
-              </button>
+                {snowlumaDownloadBusy ? "下载中…" : "下载 SnowLuma 运行时"}
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="ui-card ui-card--glass protocol-sub-page__panel mt-4">
-        <div className="ui-card__content">
-          <div className="panel__hd">
-            <h2 className="panel__title protocol-assets-section-title">运行时下载</h2>
-          </div>
-          <div className="panel__bd">
-            <div className="protocol-assets-runtime-block">
-              <div className="protocol-assets-runtime-block__hd">
-                <strong>NapCat</strong>
-                <span className="muted protocol-assets-job">{jobStatusLabel(napcatJob)}</span>
-              </div>
-              <div className="row-actions protocol-assets-download">
-                <UiInput
-                  className="protocol-assets-download__tag"
-                  placeholder="版本 tag（可选，默认 latest）"
-                  value={napcatTag}
-                  onValueChange={setNapcatTag}
-                />
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  disabled={!mountUrl || napcatDownloadBusy}
-                  onClick={() => void downloadNapcat()}
-                >
-                  {napcatDownloadBusy ? "下载中…" : "下载 NapCat 运行时"}
-                </button>
-              </div>
-            </div>
-            <div className="protocol-assets-runtime-block">
-              <div className="protocol-assets-runtime-block__hd">
-                <strong>SnowLuma</strong>
-                <span className="muted protocol-assets-job">{jobStatusLabel(snowlumaJob)}</span>
-              </div>
-              <div className="row-actions protocol-assets-download">
-                <UiInput
-                  className="protocol-assets-download__tag"
-                  placeholder="版本 tag（可选，默认 latest）"
-                  value={snowlumaTag}
-                  onValueChange={setSnowlumaTag}
-                />
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  disabled={!mountUrl || snowlumaDownloadBusy}
-                  onClick={() => void downloadSnowluma()}
-                >
-                  {snowlumaDownloadBusy ? "下载中…" : "下载 SnowLuma 运行时"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {showDockerSection ? (
-        <div className="ui-card ui-card--glass protocol-sub-page__panel mt-4">
-          <div className="ui-card__content">
-            <div className="panel__hd">
-              <h2 className="panel__title protocol-assets-section-title">Docker 镜像</h2>
-            </div>
-            <div className="panel__bd">
-              <p className="muted">
-                需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时会提示在宿主机手动 pull。
-              </p>
-              <div className="protocol-assets-docker-row">
-                <div className="row-actions protocol-assets-download">
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={!mountUrl || napcatPullBusy}
-                    onClick={() => void pullDocker("napcat")}
-                  >
-                    {napcatPullBusy ? "拉取中…" : "拉取 NapCat 镜像"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={!mountUrl || napcatListBusy}
-                    onClick={() => void listDocker("napcat")}
-                  >
-                    {napcatListBusy ? "查询中…" : "查看 NapCat 本地镜像"}
-                  </button>
-                </div>
-                {napcatImages.length ? (
-                  <ul className="protocol-assets-image-list muted">
-                    {napcatImages.map((img) => (
-                      <li key={img}>{img}</li>
-                    ))}
-                  </ul>
-                ) : null}
+        <Card className={ASSET_PANEL}>
+          <CardHeader className={ASSET_PANEL_HD}>
+            <CardTitle className="panel__title protocol-assets-section-title">
+              Docker 镜像
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={ASSET_PANEL_BD}>
+            <p className="muted">
+              需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时会提示在宿主机手动
+              pull。
+            </p>
+            <div className="protocol-assets-docker-row">
+              <div className="row-actions protocol-assets-download">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!mountUrl || napcatPullBusy}
+                  onClick={() => void pullDocker("napcat")}
+                >
+                  {napcatPullBusy ? "拉取中…" : "拉取 NapCat 镜像"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!mountUrl || napcatListBusy}
+                  onClick={() => void listDocker("napcat")}
+                >
+                  {napcatListBusy ? "查询中…" : "查看 NapCat 本地镜像"}
+                </Button>
               </div>
-              <div className="protocol-assets-docker-row">
-                <div className="row-actions protocol-assets-download">
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={!mountUrl || snowlumaPullBusy}
-                    onClick={() => void pullDocker("snowluma")}
-                  >
-                    {snowlumaPullBusy ? "拉取中…" : "拉取 SnowLuma 镜像"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={!mountUrl || snowlumaListBusy}
-                    onClick={() => void listDocker("snowluma")}
-                  >
-                    {snowlumaListBusy ? "查询中…" : "查看 SnowLuma 本地镜像"}
-                  </button>
-                </div>
-                {snowlumaImages.length ? (
-                  <ul className="protocol-assets-image-list muted">
-                    {snowlumaImages.map((img) => (
-                      <li key={img}>{img}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              {dockerPullLog ? <pre className="protocol-assets-pre">{dockerPullLog}</pre> : null}
+              {napcatImages.length ? (
+                <ul className="protocol-assets-image-list muted">
+                  {napcatImages.map((img) => (
+                    <li key={img}>{img}</li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-          </div>
-        </div>
+            <div className="protocol-assets-docker-row">
+              <div className="row-actions protocol-assets-download">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!mountUrl || snowlumaPullBusy}
+                  onClick={() => void pullDocker("snowluma")}
+                >
+                  {snowlumaPullBusy ? "拉取中…" : "拉取 SnowLuma 镜像"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!mountUrl || snowlumaListBusy}
+                  onClick={() => void listDocker("snowluma")}
+                >
+                  {snowlumaListBusy ? "查询中…" : "查看 SnowLuma 本地镜像"}
+                </Button>
+              </div>
+              {snowlumaImages.length ? (
+                <ul className="protocol-assets-image-list muted">
+                  {snowlumaImages.map((img) => (
+                    <li key={img}>{img}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            {dockerPullLog ? <pre className="protocol-assets-pre">{dockerPullLog}</pre> : null}
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );

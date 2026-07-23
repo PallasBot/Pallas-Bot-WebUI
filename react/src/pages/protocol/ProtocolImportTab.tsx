@@ -1,8 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { protocolApiErrorMessage, protocolImportAccounts } from "@/api/protocol";
-import UiInput from "@/components/ui/UiInput";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
+
+const FORM_PANEL = "protocol-sub-page__panel flex flex-col overflow-hidden shadow-none";
+const FORM_PANEL_HD =
+  "panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const FORM_PANEL_BD = "panel__bd protocol-form-grid px-4 pb-4 pt-3";
 
 export default function ProtocolImportTab() {
   const { mountUrl } = useOutletContext<ProtocolOutletContext>();
@@ -62,93 +72,94 @@ export default function ProtocolImportTab() {
   }
 
   return (
-    <div className="protocol-sub-page">
-      <div className="panel protocol-sub-page__lead mb-4">
-        <div className="panel__hd panel__hd--split inst-db-panel__hd">
+    <div className="protocol-sub-page space-y-4">
+      <Card className={cn(FORM_PANEL, "mb-0")}>
+        <CardHeader className={cn(FORM_PANEL_HD, "inst-db-panel__hd")}>
           <div>
-            <h2 className="panel__title">导入协议账号</h2>
-            <p className="muted">从本地账号目录批量导入；可先 dry run 预检。</p>
+            <CardTitle className="panel__title">导入协议账号</CardTitle>
+            <CardDescription className="muted mt-1">从本地目录导入账号。</CardDescription>
           </div>
-          <div className="row-actions">
-            <Link className="btn" to="/protocol">
-              返回实例列表
-            </Link>
+          <div className="row-actions inst-db-panel__hd-side">
+            <Button asChild type="button" variant="outline" size="sm">
+              <Link to="/protocol">返回实例列表</Link>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
-      {msg ? <p className="muted text-sm mb-4">{msg}</p> : null}
-      {!mountUrl ? <p className="alert alert--err mb-4">协议 API 未挂载，无法导入。</p> : null}
+      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
+      {!mountUrl ? <p className="alert alert--err mb-0">协议 API 未挂载，无法导入。</p> : null}
 
-      <div className="ui-card ui-card--glass protocol-sub-page__panel">
-        <div className="ui-card__content">
-          <div className="panel__bd protocol-form-grid">
-            <label className="field field--full">
-              <span className="field__label">账号文件夹根目录</span>
-              <UiInput
-                placeholder="/path/to/instances"
-                autoComplete="off"
-                value={sourceDir}
-                onValueChange={setSourceDir}
-              />
-            </label>
-            <label className="field field--full">
-              <span className="field__label">默认 WS 地址</span>
-              <UiInput autoComplete="off" value={wsUrl} onValueChange={setWsUrl} />
-            </label>
-            <label className="field field--full">
-              <span className="field__label">WS Token</span>
-              <UiInput
-                type="password"
-                autoComplete="off"
-                value={wsToken}
-                onValueChange={setWsToken}
-              />
-            </label>
-            <label className="field field--check">
-              <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-              仅预检（dry run）
-            </label>
-            <label className="field field--check">
-              <input type="checkbox" checked={skipExisting} onChange={(e) => setSkipExisting(e.target.checked)} />
-              跳过已存在账号
-            </label>
-            <div className="field field--full row-actions">
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={!mountUrl || busy}
-                onClick={() => void submitImport()}
-              >
-                {busy ? "处理中…" : dryRun ? "开始预检" : "开始导入"}
-              </button>
-            </div>
+      <Card className={FORM_PANEL}>
+        <CardContent className={FORM_PANEL_BD}>
+          <div className="field field--full space-y-1.5">
+            <Label htmlFor="import-source-dir">账号文件夹根目录</Label>
+            <Input
+              id="import-source-dir"
+              className="h-9"
+              placeholder="/path/to/instances"
+              autoComplete="off"
+              value={sourceDir}
+              onChange={(e) => setSourceDir(e.target.value)}
+            />
           </div>
-        </div>
-      </div>
+          <div className="field field--full space-y-1.5">
+            <Label htmlFor="import-ws-url">默认 WS 地址</Label>
+            <Input
+              id="import-ws-url"
+              className="h-9"
+              autoComplete="off"
+              value={wsUrl}
+              onChange={(e) => setWsUrl(e.target.value)}
+            />
+          </div>
+          <div className="field field--full space-y-1.5">
+            <Label htmlFor="import-ws-token">WS Token</Label>
+            <Input
+              id="import-ws-token"
+              className="h-9"
+              type="password"
+              autoComplete="off"
+              value={wsToken}
+              onChange={(e) => setWsToken(e.target.value)}
+            />
+          </div>
+          <div className="field field--check flex items-center gap-2">
+            <Switch id="import-dry-run" checked={dryRun} onCheckedChange={setDryRun} />
+            <Label htmlFor="import-dry-run">仅预检（dry run）</Label>
+          </div>
+          <div className="field field--check flex items-center gap-2">
+            <Switch id="import-skip-existing" checked={skipExisting} onCheckedChange={setSkipExisting} />
+            <Label htmlFor="import-skip-existing">跳过已存在账号</Label>
+          </div>
+          <div className="field field--full row-actions">
+            <Button type="button" size="sm" disabled={!mountUrl || busy} onClick={() => void submitImport()}>
+              {busy ? "处理中…" : dryRun ? "开始预检" : "开始导入"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {result ? (
-        <div className="ui-card ui-card--glass protocol-sub-page__panel mt-4">
-          <div className="ui-card__content">
-            <div className="panel__hd">
-              <h3 className="panel__title">导入结果</h3>
-            </div>
-            <div className="panel__bd protocol-import-result">
-              <p>
-                已导入：{counts.imported} · 跳过：{counts.skipped} · 失败：{counts.failed}
-              </p>
-              {failedRows.length ? (
-                <ul className="protocol-import-result__list">
-                  {failedRows.map((row, i) => (
-                    <li key={`f-${i}`}>
-                      {row.folder || "—"}：{row.reason}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          </div>
-        </div>
+        <Card className={FORM_PANEL}>
+          <CardHeader className={FORM_PANEL_HD}>
+            <CardTitle className="panel__title">导入结果</CardTitle>
+          </CardHeader>
+          <CardContent className="panel__bd protocol-import-result px-4 pb-4 pt-3">
+            <p>
+              已导入：{counts.imported} · 跳过：{counts.skipped} · 失败：{counts.failed}
+            </p>
+            {failedRows.length ? (
+              <ul className="protocol-import-result__list">
+                {failedRows.map((row, i) => (
+                  <li key={`f-${i}`}>
+                    {row.folder || "—"}：{row.reason}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );

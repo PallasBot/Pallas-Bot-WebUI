@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useProtocolMount } from "@/hooks/useProtocolMount";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 
 export default function ProtocolPage() {
@@ -22,10 +22,10 @@ export default function ProtocolPage() {
     location.pathname.replace(/\/$/, "") === "/pallas/protocol";
 
   return (
-    <div className="protocol-page console-hub-page">
-      <PageHeader
+    <div className="protocol-page">
+      <PageMasthead
         title="协议连接"
-        description="查看协议端已连接账号，启停与批量操作；协议资产与创建入口见下方卡片。"
+        description="协议账号启停与批量操作。"
       />
 
       {err ? <p className="alert alert--err mb-4">{err}</p> : null}

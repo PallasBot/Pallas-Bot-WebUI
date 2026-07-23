@@ -13,6 +13,7 @@ import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import GsDualAxisTrendChart from "@/components/GsDualAxisTrendChart";
 import HomeBucketChartSvg from "@/components/HomeBucketChartSvg";
 import HomeHourlyChartSvg from "@/components/HomeHourlyChartSvg";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import {
   aggregateLocalToday,
   buildBucketBarPack,
@@ -22,7 +23,7 @@ import {
   rankBarWidthPercent,
 } from "@/utils/homePluginChartPack";
 
-type ChartPanelId =
+export type ChartPanelId =
   | "daily_msg_matcher"
   | "api_bucket"
   | "matcher_bucket"
@@ -190,32 +191,35 @@ export default function HomePluginRunCharts({
         <div key={id} className={dashboardCellClass(id)} data-panel={id}>
           {isDashboard ? <h3 className="home-plugin-charts-dashboard__title">{PANEL_LABELS[id]}</h3> : null}
           {busy && !topPlugins.length ? (
-            <p className="muted home-plugin-charts__empty">加载中…</p>
+            <ConsoleBlockSkeleton lines={4} label="插件图表加载中" className="home-plugin-charts__empty" />
           ) : !topPlugins.length ? (
             <p className="muted home-plugin-charts__empty">暂无今日 Matcher 数据。</p>
           ) : (
             <div className="home-plugin-bars home-plugin-bars--fill home-plugin-bars--plugin-rank home-plugin-charts__viz">
-              {topPlugins.slice(0, 12).map((p) => (
-                <div key={p.name} className="home-plugin-bars__row home-plugin-bars__row--plugin-rank">
-                  <span className="home-plugin-bars__name" title={p.name}>
-                    {pluginBarLabel(p.name, pluginsMeta)}
-                  </span>
-                  <div className="home-plugin-bars__track">
-                    <span
-                      className="home-plugin-bars__fill home-plugin-bars__fill--runs"
-                      style={{ width: `${rankBarWidthPercent(p.runs_today, maxRunsToday)}%` }}
-                    />
+              {topPlugins.slice(0, 12).map((p) => {
+                const label = pluginBarLabel(p.name, pluginsMeta);
+                return (
+                  <div key={p.name} className="home-plugin-bars__row home-plugin-bars__row--plugin-rank">
+                    <span className="home-plugin-bars__name" title={label}>
+                      {label}
+                    </span>
+                    <div className="home-plugin-bars__track">
+                      <span
+                        className="home-plugin-bars__fill home-plugin-bars__fill--runs"
+                        style={{ width: `${rankBarWidthPercent(p.runs_today, maxRunsToday)}%` }}
+                      />
+                    </div>
+                    <span className="home-plugin-bars__val home-plugin-bars__val--stack">
+                      <span className="home-plugin-bars__val-line">今日 {p.runs_today} 次</span>
+                      {p.avg_duration_ms_today != null ? (
+                        <span className="home-plugin-bars__val-line muted">
+                          均 {fmtDurationMs(p.avg_duration_ms_today)}
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
-                  <span className="home-plugin-bars__val home-plugin-bars__val--stack">
-                    <span className="home-plugin-bars__val-line">今日 {p.runs_today} 次</span>
-                    {p.avg_duration_ms_today != null ? (
-                      <span className="home-plugin-bars__val-line muted">
-                        均 {fmtDurationMs(p.avg_duration_ms_today)}
-                      </span>
-                    ) : null}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -340,7 +344,7 @@ export default function HomePluginRunCharts({
   return (
     <div className="home-plugin-charts home-plugin-charts--dashboard">
       <div className="home-plugin-charts-dashboard">
-        {DEFAULT_DASHBOARD_PANELS.map((id) => renderPanel(id))}
+        {effectivePanels.map((id) => renderPanel(id))}
       </div>
     </div>
   );

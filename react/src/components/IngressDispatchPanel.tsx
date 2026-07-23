@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchIngressDispatch, fetchShardObservability } from "@/api/fullConsole";
 import type { IngressDispatchData, ShardObservabilityData } from "@/api/pallasTypes";
 import Metric from "@/components/Metric";
-import Panel from "@/components/Panel";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const INGRESS_DISPATCH_ALERT_LABELS: Record<string, string> = {
@@ -137,21 +138,17 @@ export default function IngressDispatchPanel() {
   })();
 
   return (
-    <Panel
-      className="charts-page__panel charts-page__ingress-panel"
-      title={
-        <>
+    <Card className="charts-page__panel charts-page__ingress-panel flex flex-col overflow-hidden shadow-none">
+      <CardHeader className="panel__hd home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3">
+        <CardTitle className="panel__title flex items-center">
           流量编排
-          <span className="muted" style={{ marginLeft: 8, fontSize: "0.75rem", fontWeight: 500 }}>
-            {shardObsVisible ? "分片" : "单进程"}
-          </span>
-        </>
-      }
-      hdNowrap
-    >
+          <span className="muted ml-2 text-xs font-medium">{shardObsVisible ? "分片" : "单进程"}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="panel__bd px-4 pb-4 pt-3">
       <div className="space-y-4" aria-busy={loading || undefined}>
         {loading ? (
-          <p className="muted text-sm">正在加载…</p>
+          <ConsoleBlockSkeleton lines={4} label="流量编排加载中" />
         ) : panelVisible ? (
           <>
             <p className="muted text-sm">{lede}</p>
@@ -213,6 +210,7 @@ export default function IngressDispatchPanel() {
           </>
         ) : null}
       </div>
-    </Panel>
+      </CardContent>
+    </Card>
   );
 }

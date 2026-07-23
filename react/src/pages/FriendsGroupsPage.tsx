@@ -17,13 +17,32 @@ import { requestOverviewToFriendOverview } from "@/utils/consoleSocialCache";
 import { slicePage } from "@/utils/paginate";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
-import PageHeader from "@/components/PageHeader";
+import ChromeField from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
+import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
-import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Bot } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
+
+const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden shadow-none";
+const FG_PANEL_HD =
+  "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
+const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
+const FG_ACCOUNT_SEL =
+  "friends-groups-account-sel h-8 w-auto min-w-[12rem] max-w-[16rem] shrink-0 [&>span]:truncate";
 
 const FG_LIST_SKEL_ROWS = 8;
 
@@ -378,84 +397,83 @@ export default function FriendsGroupsPage() {
       : null;
 
   return (
-    <div className="friends-groups-page console-hub-page">
+    <div className="friends-groups-page flex min-w-0 flex-col gap-[var(--console-page-masthead-gap,18px)]">
       {err ? <div className="alert alert--err">{err}</div> : null}
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
-      <PageHeader
+      <PageMasthead
         title="好友与群聊"
-        description="选择账号查看好友、群聊与入群/好友申请。"
-        actions={
-          <RefreshIconButton embedded className="hub-refresh-wide-only" busy={pageRefreshBusy} label="刷新" onClick={() => void refreshPage()} />
-        }
+        description="好友、群聊与申请审批。"
       />
 
-      <section id="fg-account" className="panel friends-groups-page__panel friends-groups-account-panel">
-        <div className="panel__hd panel__hd--flush friends-groups-account-panel__hd">
-          <h2 className="panel__title">
-            当前账号
-            <RefreshIconButton embedded className="hub-refresh-narrow-only" showLabel={false} busy={pageRefreshBusy} label="刷新本页数据" onClick={() => void refreshPage()} />
-          </h2>
-          <div className="friends-groups-account-hd-tail">
-            <span className="friends-groups-hd-pin-wrap friends-groups-account-hd-pin-wrap" />
-            <UiSelect
-              className="friends-groups-account-sel"
-              value={selfIdStr}
-              onValueChange={(v) => {
-                setSelfIdStr(v);
-                setFriendListQ("");
-                setGroupListQ("");
-              }}
-            >
-              <option value="">请选择 Bot…</option>
+      <ChromeTools>
+        <ChromeField label="账号" icon={Bot} className="min-w-0">
+          <Select
+            value={selfIdStr || "__none__"}
+            onValueChange={(v) => {
+              setSelfIdStr(v === "__none__" ? "" : v);
+              setFriendListQ("");
+              setGroupListQ("");
+            }}
+          >
+            <SelectTrigger className={FG_ACCOUNT_SEL} aria-label="当前 Bot 账号">
+              <SelectValue placeholder="请选择 Bot…" />
+            </SelectTrigger>
+            <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
+              <SelectItem value="__none__">请选择 Bot…</SelectItem>
               {botsVisible.map((b) => (
-                <option key={b.self_id} value={b.self_id}>
+                <SelectItem key={b.self_id} value={b.self_id}>
                   {botOptionLabel(b)}
-                </option>
+                </SelectItem>
               ))}
-            </UiSelect>
-          </div>
+            </SelectContent>
+          </Select>
+        </ChromeField>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <RefreshIconButton
+            embedded
+            busy={pageRefreshBusy}
+            label="刷新"
+            showLabel
+            onClick={() => void refreshPage()}
+          />
         </div>
-      </section>
+      </ChromeTools>
 
-      <section id="fg-friends" className="panel friends-groups-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="fg-friends" className={FG_PANEL}>
+        <CardHeader className={FG_PANEL_HD}>
+          <CardTitle className="panel__title flex items-center gap-1.5">
             好友列表
             <PanelHdCollapseCaret
               expanded={prefs.friendsPageFriendsListOpen}
               label="好友列表"
               onToggle={() => prefs.setFriendsPageFriendsListOpen(!prefs.friendsPageFriendsListOpen)}
             />
-          </h2>
+          </CardTitle>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <UiInput
-              className="friends-groups-list-search"
+            <Input
+              className="friends-groups-list-search h-8 min-h-8"
               type="search"
               placeholder="搜索 QQ / 昵称 / 备注"
               title="按 QQ、昵称、备注筛选当前列表"
               value={friendListQ}
               disabled={!selfIdStr.trim() || fgListsSkeleton}
-              onValueChange={setFriendListQ}
+              onChange={(e) => setFriendListQ(e.target.value)}
             />
             <div className="friends-groups-list-hd-actions__tail">
               {selfIdStr && listsBusy ? (
-                <span className="muted" style={{ fontSize: 12 }}>
-                  列表加载中…
-                </span>
+                <span className="muted text-xs">列表加载中…</span>
               ) : friends?.truncated ? (
-                <span className="badge badge--warn">已截断</span>
+                <Badge variant="secondary">已截断</Badge>
               ) : null}
             </div>
           </div>
-        </div>
+        </CardHeader>
         {prefs.friendsPageFriendsListOpen ? (
-          <div className="panel__bd">
+          <CardContent className={FG_PANEL_BD}>
             {!selfIdStr.trim() ? (
-              <p className="muted" style={{ margin: 0 }}>
-                请选择 Bot 后加载好友列表。
-              </p>
+              <p className="muted m-0">请选择 Bot 后加载好友列表。</p>
             ) : fgListsSkeleton ? (
               <div className="fg-table-skel" aria-busy="true" aria-label="好友列表加载中">
                 <div className="table-wrap">
@@ -465,9 +483,7 @@ export default function FriendsGroupsPage() {
                         <th>QQ</th>
                         <th>昵称</th>
                         <th>备注</th>
-                        <th style={{ minWidth: 88, width: "1%" }}>
-                          操作
-                        </th>
+                        <th style={{ minWidth: 88, width: "1%" }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -505,9 +521,7 @@ export default function FriendsGroupsPage() {
                       <th>QQ</th>
                       <th>昵称</th>
                       <th>备注</th>
-                      <th style={{ minWidth: 88, width: "1%" }}>
-                        操作
-                      </th>
+                      <th style={{ minWidth: 88, width: "1%" }}>操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -542,50 +556,44 @@ export default function FriendsGroupsPage() {
                 onPageSizeChange={prefs.setTablePageSize}
               />
             ) : null}
-          </div>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
-      <section id="fg-groups" className="panel friends-groups-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="fg-groups" className={FG_PANEL}>
+        <CardHeader className={FG_PANEL_HD}>
+          <CardTitle className="panel__title flex items-center gap-1.5">
             群聊列表
             <PanelHdCollapseCaret
               expanded={prefs.friendsPageGroupsListOpen}
               label="群聊列表"
               onToggle={() => prefs.setFriendsPageGroupsListOpen(!prefs.friendsPageGroupsListOpen)}
             />
-          </h2>
+          </CardTitle>
           <div className="row-actions friends-groups-list-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
-            <UiInput
-              className="friends-groups-list-search"
+            <Input
+              className="friends-groups-list-search h-8 min-h-8"
               type="search"
               placeholder="搜索群号 / 群名"
               title="按群号、群名、成员数筛选当前列表"
               value={groupListQ}
               disabled={!selfIdStr.trim() || fgListsSkeleton}
-              onValueChange={setGroupListQ}
+              onChange={(e) => setGroupListQ(e.target.value)}
             />
             <div className="friends-groups-list-hd-actions__tail">
               {selfIdStr && listsBusy ? (
-                <span className="muted" style={{ fontSize: 12 }}>
-                  列表加载中…
-                </span>
+                <span className="muted text-xs">列表加载中…</span>
               ) : groups?.truncated ? (
-                <span className="badge badge--warn">
-                  已截断 · limit {groups?.limit}
-                </span>
+                <Badge variant="secondary">已截断 · limit {groups?.limit}</Badge>
               ) : null}
             </div>
           </div>
-        </div>
+        </CardHeader>
         {prefs.friendsPageGroupsListOpen ? (
-          <div className="panel__bd">
+          <CardContent className={FG_PANEL_BD}>
             {!selfIdStr.trim() ? (
-              <p className="muted" style={{ margin: 0 }}>
-                请选择 Bot 后加载群聊列表。
-              </p>
+              <p className="muted m-0">请选择 Bot 后加载群聊列表。</p>
             ) : fgListsSkeleton ? (
               <div className="fg-table-skel" aria-busy="true" aria-label="群聊列表加载中">
                 <div className="table-wrap">
@@ -595,9 +603,7 @@ export default function FriendsGroupsPage() {
                         <th>群号</th>
                         <th>群名</th>
                         <th>成员</th>
-                        <th style={{ minWidth: 88, width: "1%" }}>
-                          操作
-                        </th>
+                        <th style={{ minWidth: 88, width: "1%" }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -635,9 +641,7 @@ export default function FriendsGroupsPage() {
                       <th>群号</th>
                       <th>群名</th>
                       <th>成员</th>
-                      <th style={{ minWidth: 88, width: "1%" }}>
-                        操作
-                      </th>
+                      <th style={{ minWidth: 88, width: "1%" }}>操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -669,16 +673,22 @@ export default function FriendsGroupsPage() {
                 onPageSizeChange={prefs.setTablePageSize}
               />
             ) : null}
-          </div>
+          </CardContent>
         ) : null}
-      </section>
+      </Card>
 
-      <section id="friends-groups-friend-requests" className="panel friends-groups-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="friends-groups-friend-requests" className={FG_PANEL}>
+        <CardHeader className={FG_PANEL_HD}>
+          <CardTitle className="panel__title flex items-center gap-1.5">
             好友申请
-            <RefreshIconButton embedded showLabel={false} busy={reqsBusy} label="刷新审批数据" onClick={() => void reqQ.refetch()} />
-          </h2>
+            <RefreshIconButton
+              embedded
+              showLabel={false}
+              busy={reqsBusy}
+              label="刷新审批数据"
+              onClick={() => void reqQ.refetch()}
+            />
+          </CardTitle>
           <div className="row-actions friends-groups-req-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
             <div className="friends-groups-req-hd-meta">
@@ -686,13 +696,13 @@ export default function FriendsGroupsPage() {
                 <span className="muted friends-groups-req-hd-meta__hint">审批数据加载中…</span>
               ) : null}
               {requestRows.length ? (
-                <span className="badge badge--warn">{requestRows.length} 条</span>
+                <Badge variant="secondary">{requestRows.length} 条</Badge>
               ) : null}
             </div>
             <div className="friends-groups-req-hd-bulk-btns">
-              <button
+              <Button
                 type="button"
-                className="btn btn--primary"
+                size="sm"
                 disabled={busy || pickedFriendKeys.size === 0}
                 onClick={() =>
                   void actFriendBatch(
@@ -702,10 +712,11 @@ export default function FriendsGroupsPage() {
                 }
               >
                 同意所选
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="btn"
+                variant="secondary"
+                size="sm"
                 disabled={busy || pickedFriendKeys.size === 0}
                 onClick={() =>
                   void actFriendBatch(
@@ -715,19 +726,19 @@ export default function FriendsGroupsPage() {
                 }
               >
                 拒绝所选
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="btn btn--primary"
+                size="sm"
                 disabled={busy || !requestRows.length}
                 onClick={() => void actFriendBatch([...requestRows], "approve")}
               >
                 全部同意
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-        <div className="panel__bd">
+        </CardHeader>
+        <CardContent className={FG_PANEL_BD}>
           {reqsBusy ? (
             <p className="muted">
               {listsBusy
@@ -762,9 +773,7 @@ export default function FriendsGroupsPage() {
                     <th>用户 QQ</th>
                     <th>用户昵称</th>
                     <th>来源</th>
-                    <th style={{ minWidth: 108, width: "1%" }}>
-                      操作
-                    </th>
+                    <th style={{ minWidth: 108, width: "1%" }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -791,22 +800,23 @@ export default function FriendsGroupsPage() {
                       <td>{friendSourceLabel(row.source)}</td>
                       <td>
                         <div className="friends-req-actions">
-                          <button
+                          <Button
                             type="button"
-                            className="btn btn--primary"
+                            size="sm"
                             disabled={busy}
                             onClick={() => void actFriend(row.self_id, row.user_id, "approve", row.source)}
                           >
                             同意
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            className="btn btn--danger"
+                            variant="destructive"
+                            size="sm"
                             disabled={busy}
                             onClick={() => void actFriend(row.self_id, row.user_id, "reject", row.source)}
                           >
                             拒绝
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -824,15 +834,21 @@ export default function FriendsGroupsPage() {
               onPageSizeChange={prefs.setTablePageSize}
             />
           ) : null}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section id="friends-groups-group-requests" className="panel friends-groups-page__panel">
-        <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">
+      <Card id="friends-groups-group-requests" className={FG_PANEL}>
+        <CardHeader className={FG_PANEL_HD}>
+          <CardTitle className="panel__title flex items-center gap-1.5">
             入群请求
-            <RefreshIconButton embedded showLabel={false} busy={reqsBusy} label="刷新审批数据" onClick={() => void reqQ.refetch()} />
-          </h2>
+            <RefreshIconButton
+              embedded
+              showLabel={false}
+              busy={reqsBusy}
+              label="刷新审批数据"
+              onClick={() => void reqQ.refetch()}
+            />
+          </CardTitle>
           <div className="row-actions friends-groups-req-hd-actions">
             <span className="friends-groups-hd-pin-wrap" />
             <div className="friends-groups-req-hd-meta">
@@ -840,13 +856,13 @@ export default function FriendsGroupsPage() {
                 <span className="muted friends-groups-req-hd-meta__hint">审批数据加载中…</span>
               ) : null}
               {groupRequestRows.length ? (
-                <span className="badge badge--warn">{groupRequestRows.length} 条</span>
+                <Badge variant="secondary">{groupRequestRows.length} 条</Badge>
               ) : null}
             </div>
             <div className="friends-groups-req-hd-bulk-btns">
-              <button
+              <Button
                 type="button"
-                className="btn btn--primary"
+                size="sm"
                 disabled={busy || pickedGroupKeys.size === 0}
                 onClick={() =>
                   void actGroupBatch(
@@ -856,10 +872,11 @@ export default function FriendsGroupsPage() {
                 }
               >
                 同意所选
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="btn"
+                variant="secondary"
+                size="sm"
                 disabled={busy || pickedGroupKeys.size === 0}
                 onClick={() =>
                   void actGroupBatch(
@@ -869,19 +886,19 @@ export default function FriendsGroupsPage() {
                 }
               >
                 拒绝所选
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="btn btn--primary"
+                size="sm"
                 disabled={busy || !groupRequestRows.length}
                 onClick={() => void actGroupBatch([...groupRequestRows], "approve")}
               >
                 全部同意
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-        <div className="panel__bd">
+        </CardHeader>
+        <CardContent className={FG_PANEL_BD}>
           {reqsBusy ? (
             <p className="muted">正在拉取入群审批与概览，请稍候；也可点击标题旁刷新图标重试。</p>
           ) : !selfIdStr.trim() ? (
@@ -911,9 +928,7 @@ export default function FriendsGroupsPage() {
                     <th>用户 QQ</th>
                     <th>类型</th>
                     <th>备注</th>
-                    <th style={{ minWidth: 108, width: "1%" }}>
-                      操作
-                    </th>
+                    <th style={{ minWidth: 108, width: "1%" }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -941,22 +956,23 @@ export default function FriendsGroupsPage() {
                       <td className="muted">{row.comment}</td>
                       <td>
                         <div className="friends-req-actions">
-                          <button
+                          <Button
                             type="button"
-                            className="btn btn--primary"
+                            size="sm"
                             disabled={busy}
                             onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "approve")}
                           >
                             同意
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            className="btn btn--danger"
+                            variant="destructive"
+                            size="sm"
                             disabled={busy}
                             onClick={() => void actGroup(row.self_id, row.user_id, row.group_id, "reject")}
                           >
                             拒绝
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -974,8 +990,8 @@ export default function FriendsGroupsPage() {
               onPageSizeChange={prefs.setTablePageSize}
             />
           ) : null}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       <GroupSocialConfigModal
         open={groupModal != null}

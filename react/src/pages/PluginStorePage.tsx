@@ -39,15 +39,31 @@ import {
   type PluginStoreQueueKind,
   withPluginStoreQueueSuffix,
 } from "@/utils/pluginStoreActionQueue";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
-import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
-import ConsoleModal from "@/components/ConsoleModal";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import PluginStoreCard, { type PluginStoreMenuItem } from "@/components/PluginStoreCard";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import UiInput from "@/components/ui/UiInput";
+import { BadgeCheck, Filter, FolderOpen, Package, Search, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { waitForInstallJob } from "@/utils/installJobStream";
 import {
@@ -197,7 +213,6 @@ export default function PluginStorePage() {
   } = useBotSystemRestart();
 
   const webuiInstallEnabled = rows.some((row) => row.webui_install);
-  const restartAvailable = rows.some((row) => row.restart_available);
   const communityRows = communityStore?.plugins ?? [];
   const communityRestartAvailable = Boolean(communityStore?.restart_available);
   const communityExtraDirsReady = communityStore?.extra_plugin_dirs_ready !== false;
@@ -927,37 +942,30 @@ export default function PluginStorePage() {
 
   const pageLead =
     storeSection === "official" ? (
-      <>
-        浏览并安装 Pallas 官方插件（<span className="console-hub-chip">uv run pallas ext install</span>）。
-        {webuiInstallEnabled ? (
-          restartAvailable ? (
-            <>支持一键安装；结果会按扩展生效策略提示（可热更新 / 重启分片节点 / 重启全部进程）。</>
-          ) : (
-            <>安装后请按页面提示重启或手动生效。</>
-          )
-        ) : (
-          <>
-            当前环境不支持 WebUI 安装，可复制命令或放入 <span className="console-hub-chip">local/plugins/</span>。
-          </>
-        )}
-      </>
+      webuiInstallEnabled ? (
+        "安装官方扩展包。"
+      ) : (
+        <>
+          官方扩展；可复制命令或放入 <span className="console-hub-chip">local/plugins/</span>。
+        </>
+      )
     ) : storeSection === "community" ? (
       <>
-        浏览
         <a href={COMMUNITY_INDEX_REPO_URL} target="_blank" rel="noopener noreferrer">
-          社区插件索引
+          社区插件
         </a>
-        中的策展插件，或使用「从 Git 安装」粘贴仓库地址；同名时优先于官方插件。
+        与 Git 安装。
       </>
     ) : (
       <>
-        <code>local/plugins/</code> 目录下已加载的本地插件；可直接放入插件文件夹，重启后生效。
+        <code>local/plugins/</code> 本地插件。
       </>
     );
 
   if (!pageReady) {
     return (
       <div className="console-hub-page plugin-store-page plugin-store-page--hub">
+        <PageMasthead title="插件商店" description="加载商店目录…" />
         <div className="plugin-store-page__grid">
           {Array.from({ length: 8 }, (_, i) => (
             <PluginStoreCardSkeleton key={i} />
@@ -969,116 +977,100 @@ export default function PluginStorePage() {
 
   return (
     <div className="console-hub-page plugin-store-page plugin-store-page--hub">
-      <PageHeader
-        title="插件商店"
-        description={pageLead}
-        actions={
-          <div className="console-hub-toolbar-strip__masthead-actions row-actions">
-            <button type="button" className="btn" onClick={() => setGitMirrorOpen(true)}>
-              镜像源
-            </button>
-            {storeSection === "community" && communityWebuiInstallEnabled ? (
-              <button type="button" className="btn" onClick={() => setGitInstallOpen(true)}>
-                从 Git 安装
-              </button>
-            ) : null}
-            {storeSection !== "local" ? (
-              <button
-                type="button"
-                className="btn"
-                disabled={checkingUpdate || loading}
-                onClick={() => void checkUpdates()}
-              >
-                {checkingUpdate ? "检查中…" : "检查更新"}
-              </button>
-            ) : (
-              <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
-            )}
-          </div>
-        }
-      />
+      <PageMasthead title="插件商店" description={pageLead} />
 
-      <ConsoleHubSearch
-        className="hub-search-wide-only"
-        placeholder={
-          storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
-        }
-        value={searchQuery}
-        onValueChange={setSearchQuery}
-      />
-
-      <ConsoleHubToolbarStrip
-        search={
-          <ConsoleHubSearch
+      <ChromeTools>
+        {/* 搜索 flex 铺满；类型/筛选 Select shrink-0 + nowrap，避免挤换行 */}
+        <div className="relative min-w-[8rem] flex-1">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <Input
+            type="search"
+            className="h-8 min-h-8 w-full pl-8"
             placeholder={
               storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
             }
+            aria-label={
+              storeSection === "official" ? "搜索扩展包名或插件 ID" : "搜索社区插件名、ID 或标签"
+            }
+            autoComplete="off"
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        }
-        middle={
-          <div className="row-actions">
-            <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitMirrorOpen(true)}>
-              镜像源
-            </button>
-            {storeSection === "community" && communityWebuiInstallEnabled ? (
-              <button type="button" className="btn plugin-store-page__strip-btn" onClick={() => setGitInstallOpen(true)}>
-                Git 安装
-              </button>
-            ) : null}
-            {storeSection !== "local" ? (
-              <button
-                type="button"
-                className="btn plugin-store-page__strip-btn"
-                disabled={checkingUpdate || loading}
-                onClick={() => void checkUpdates()}
-              >
-                {checkingUpdate ? "检查中…" : "检查更新"}
-              </button>
-            ) : null}
-          </div>
-        }
-        actions={
-          storeSection === "local" ? (
-            <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
-          ) : null
-        }
-      />
-
-      <div className="console-hub-page__filter-bar">
-        <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="商店类型">
-          {sectionOptions.map((sec) => (
-            <button
-              key={sec.value}
-              type="button"
-              role="tab"
-              className={cn(storeSection === sec.value && "is-on")}
-              aria-selected={storeSection === sec.value}
-              onClick={() => setStoreSection(sec.value)}
+        </div>
+        <ChromeField label="类型" icon={Package}>
+          <Select value={storeSection} onValueChange={(v) => setStoreSection(v as StoreSection)}>
+            <SelectTrigger
+              className="h-8 w-auto min-w-[7.5rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+              aria-label="商店类型"
             >
-              <span>{sec.label}</span>
-            </button>
-          ))}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end" className="min-w-[9rem]">
+              {sectionOptions.map((sec) => (
+                <SelectItem key={sec.value} value={sec.value}>
+                  <ChromeOptionLabel
+                    icon={
+                      sec.value === "official"
+                        ? BadgeCheck
+                        : sec.value === "community"
+                          ? Users
+                          : FolderOpen
+                    }
+                  >
+                    {sec.label}
+                  </ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+        <ChromeField label="筛选" icon={Filter}>
+          <Select value={activeTab} onValueChange={(v) => setActiveTab(v as StoreTab)}>
+            <SelectTrigger
+              className="h-8 w-auto min-w-[6.75rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+              aria-label="列表筛选"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end" className="min-w-[8.5rem]">
+              {tabOptions.map((tab) => (
+                <SelectItem key={tab.value} value={tab.value}>
+                  <ChromeOptionLabel icon={Filter}>{tab.label}</ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
+            镜像源
+          </Button>
+          {storeSection === "community" && communityWebuiInstallEnabled ? (
+            <Button type="button" variant="secondary" size="sm" onClick={() => setGitInstallOpen(true)}>
+              Git 安装
+            </Button>
+          ) : null}
+          {storeSection !== "local" ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={checkingUpdate || loading}
+              onClick={() => void checkUpdates()}
+            >
+              {checkingUpdate ? "检查中…" : "检查更新"}
+            </Button>
+          ) : (
+            <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
+          )}
         </div>
-        <div className="console-hub-page__filter-row">
-          <div className="console-view-toggle" role="tablist" aria-label="列表筛选">
-            {tabOptions.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                role="tab"
-                className={cn(activeTab === tab.value && "is-on")}
-                aria-selected={activeTab === tab.value}
-                onClick={() => setActiveTab(tab.value)}
-              >
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-          <p className="console-hub-page__result-count muted">共 {resultCount} 项</p>
-        </div>
-      </div>
+      </ChromeTools>
+
+      <p className="muted text-sm">共 {resultCount} 项</p>
 
       {storeSection === "community" && communityIndexSourceDisplay ? (
         <p className="muted plugin-store-page__hint" role="status">
@@ -1285,174 +1277,38 @@ export default function PluginStorePage() {
         </div>
       )}
 
-      <ConsoleModal
+      <Dialog
         open={detailOpen && Boolean(detailTarget)}
-        titleId="plugin-store-detail-title"
-        panelClass="plugin-store-page__detail-dialog"
-        bodyClass="plugin-store-page__detail-bd"
-        onClose={closeDetail}
-        header={
-          <>
-            <div className="console-modal__head-text">
-              <h2 id="plugin-store-detail-title" className="console-modal__title">
-                {detailTarget?.title}
-              </h2>
-              <p className="console-modal__subtitle">
-                <code>{detailTarget?.subtitle}</code>
-                {detailTarget?.description ? (
-                  <span className="plugin-store-page__detail-sub"> · {detailTarget.description}</span>
-                ) : null}
-              </p>
-              {detailTarget?.kind === "official" && detailTarget.official ? (
-                <p className="plugin-store-page__detail-activation">{officialActivationHint(detailTarget.official)}</p>
-              ) : null}
-              {detailTarget?.kind === "community" && detailTarget.community ? (
-                <p className="plugin-store-page__detail-activation">{communityActivationHint(detailTarget.community)}</p>
-              ) : null}
-            </div>
-            <button type="button" className="console-modal__close" aria-label="关闭" onClick={closeDetail}>
-              ×
-            </button>
-          </>
-        }
-        footer={
-          detailTarget ? (
-            <div className="plugin-store-page__detail-foot">
-              {detailTarget.kind === "official" && detailTarget.official ? (
-                <>
-                  {detailTarget.official.can_install ? (
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      disabled={
-                        isOfficialInstallUpdateQueued(detailTarget.official.package, "install")
-                        || (storeBusyPackage === detailTarget.official.package
-                          && storeBusyOfficialAction === "install")
-                      }
-                      onClick={() =>
-                        enqueueInstallUpdate({
-                          kind: "official",
-                          action: "install",
-                          restart: false,
-                          row: detailTarget.official!,
-                        })
-                      }
-                    >
-                      一键安装
-                    </button>
-                  ) : null}
-                  {officialUpdateEnabled(detailTarget.official, officialActionState[detailTarget.official.package] ?? null) ? (
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      disabled={
-                        isOfficialInstallUpdateQueued(detailTarget.official.package, "update")
-                        || (storeBusyPackage === detailTarget.official.package
-                          && storeBusyOfficialAction === "update")
-                      }
-                      onClick={() =>
-                        enqueueInstallUpdate({
-                          kind: "official",
-                          action: "update",
-                          restart: false,
-                          row: detailTarget.official!,
-                        })
-                      }
-                    >
-                      更新
-                    </button>
-                  ) : null}
-                  {detailTarget.official.can_uninstall ? (
-                    <button
-                      type="button"
-                      className="btn btn--danger"
-                      disabled={
-                        storeBusyPackage === detailTarget.official.package
-                        && storeBusyOfficialAction === "uninstall"
-                      }
-                      onClick={() => void uninstallExtension(detailTarget.official!, false)}
-                    >
-                      卸载
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-              {detailTarget.kind === "community" && detailTarget.community ? (
-                <>
-                  {detailTarget.community.can_install ? (
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      disabled={
-                        isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "install")
-                        || (storeBusyPluginId === detailTarget.community.plugin_id
-                          && storeBusyCommunityAction === "install")
-                      }
-                      onClick={() =>
-                        enqueueInstallUpdate({
-                          kind: "community",
-                          action: "install",
-                          restart: false,
-                          row: detailTarget.community!,
-                        })
-                      }
-                    >
-                      安装
-                    </button>
-                  ) : null}
-                  {communityUpdateEnabled(
-                    detailTarget.community,
-                    communityActionState[detailTarget.community.plugin_id] ?? null,
-                  ) ? (
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      disabled={
-                        isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "update")
-                        || (storeBusyPluginId === detailTarget.community.plugin_id
-                          && storeBusyCommunityAction === "update")
-                      }
-                      onClick={() =>
-                        enqueueInstallUpdate({
-                          kind: "community",
-                          action: "update",
-                          restart: false,
-                          row: detailTarget.community!,
-                        })
-                      }
-                    >
-                      更新
-                    </button>
-                  ) : null}
-                  {detailTarget.community.can_uninstall ? (
-                    <button
-                      type="button"
-                      className="btn btn--danger"
-                      disabled={
-                        storeBusyPluginId === detailTarget.community.plugin_id
-                        && storeBusyCommunityAction === "uninstall"
-                      }
-                      onClick={() => void uninstallCommunity(detailTarget.community!, false)}
-                    >
-                      删除
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-              {detailTarget.repositoryUrl ? (
-                <a
-                  className="btn"
-                  href={detailTarget.repositoryUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  打开仓库
-                </a>
-              ) : null}
-            </div>
-          ) : null
-        }
+        onOpenChange={(next) => {
+          if (!next) closeDetail();
+        }}
       >
+        <DialogContent className="plugin-store-page__detail-dialog flex max-h-[min(92vh,860px)] w-[min(720px,96vw)] max-w-[min(720px,96vw)] gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="plugin-store-detail-title">{detailTarget?.title}</DialogTitle>
+            <DialogDescription asChild>
+              <div>
+                <p className="m-0 text-sm text-muted-foreground">
+                  <code>{detailTarget?.subtitle}</code>
+                  {detailTarget?.description ? (
+                    <span className="plugin-store-page__detail-sub"> · {detailTarget.description}</span>
+                  ) : null}
+                </p>
+                {detailTarget?.kind === "official" && detailTarget.official ? (
+                  <p className="plugin-store-page__detail-activation mt-1.5">
+                    {officialActivationHint(detailTarget.official)}
+                  </p>
+                ) : null}
+                {detailTarget?.kind === "community" && detailTarget.community ? (
+                  <p className="plugin-store-page__detail-activation mt-1.5">
+                    {communityActivationHint(detailTarget.community)}
+                  </p>
+                ) : null}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="plugin-store-page__detail-bd min-h-0 flex-1 overflow-auto px-4 py-3">
         {detailTarget ? (
           <>
             <div className="plugin-store-page__detail-tabs console-view-toggle" role="tablist" aria-label="详情分栏">
@@ -1513,73 +1369,177 @@ export default function PluginStorePage() {
             )}
           </>
         ) : null}
-      </ConsoleModal>
-
-      <ConsoleModal
-        open={gitInstallOpen}
-        titleId="plugin-store-git-install-title"
-        panelClass="plugin-store-page__git-dialog"
-        bodyClass="plugin-store-page__git-bd"
-        busy={gitInstallBusy}
-        onClose={() => {
-          if (!gitInstallBusy) setGitInstallOpen(false);
-        }}
-        header={
-          <>
-            <div className="console-modal__head-text">
-              <h2 id="plugin-store-git-install-title" className="console-modal__title">
-                从 Git 安装
-              </h2>
-              <p className="console-modal__subtitle">
-                无需收录到社区索引，直接 clone 到 <code>local/plugins/&lt;ID&gt;/</code>
-              </p>
-            </div>
-            <button
-              type="button"
-              className="console-modal__close"
-              aria-label="关闭"
-              disabled={gitInstallBusy}
-              onClick={() => setGitInstallOpen(false)}
-            >
-              ×
-            </button>
-          </>
-        }
-        footer={
-          <div className="plugin-store-page__git-foot">
-            <button type="button" className="btn" disabled={gitInstallBusy} onClick={() => setGitInstallOpen(false)}>
-              取消
-            </button>
-            <button
-              type="button"
-              className="btn btn--primary"
-              disabled={!gitInstallValid || gitInstallBusy}
-              onClick={() => void installCommunityFromGit(false)}
-            >
-              {gitInstallBusy ? "安装中…" : "安装"}
-            </button>
-            {communityRestartAvailable ? (
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={!gitInstallValid || gitInstallBusy}
-                onClick={() => void installCommunityFromGit(true)}
-              >
-                安装并重启
-              </button>
-            ) : null}
           </div>
-        }
+
+          {detailTarget ? (
+            <DialogFooter className="plugin-store-page__detail-foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end sm:space-x-2">
+              {detailTarget.kind === "official" && detailTarget.official ? (
+                <>
+                  {detailTarget.official.can_install ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        isOfficialInstallUpdateQueued(detailTarget.official.package, "install")
+                        || (storeBusyPackage === detailTarget.official.package
+                          && storeBusyOfficialAction === "install")
+                      }
+                      onClick={() =>
+                        enqueueInstallUpdate({
+                          kind: "official",
+                          action: "install",
+                          restart: false,
+                          row: detailTarget.official!,
+                        })
+                      }
+                    >
+                      一键安装
+                    </Button>
+                  ) : null}
+                  {officialUpdateEnabled(detailTarget.official, officialActionState[detailTarget.official.package] ?? null) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        isOfficialInstallUpdateQueued(detailTarget.official.package, "update")
+                        || (storeBusyPackage === detailTarget.official.package
+                          && storeBusyOfficialAction === "update")
+                      }
+                      onClick={() =>
+                        enqueueInstallUpdate({
+                          kind: "official",
+                          action: "update",
+                          restart: false,
+                          row: detailTarget.official!,
+                        })
+                      }
+                    >
+                      更新
+                    </Button>
+                  ) : null}
+                  {detailTarget.official.can_uninstall ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={
+                        storeBusyPackage === detailTarget.official.package
+                        && storeBusyOfficialAction === "uninstall"
+                      }
+                      onClick={() => void uninstallExtension(detailTarget.official!, false)}
+                    >
+                      卸载
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+              {detailTarget.kind === "community" && detailTarget.community ? (
+                <>
+                  {detailTarget.community.can_install ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "install")
+                        || (storeBusyPluginId === detailTarget.community.plugin_id
+                          && storeBusyCommunityAction === "install")
+                      }
+                      onClick={() =>
+                        enqueueInstallUpdate({
+                          kind: "community",
+                          action: "install",
+                          restart: false,
+                          row: detailTarget.community!,
+                        })
+                      }
+                    >
+                      安装
+                    </Button>
+                  ) : null}
+                  {communityUpdateEnabled(
+                    detailTarget.community,
+                    communityActionState[detailTarget.community.plugin_id] ?? null,
+                  ) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        isCommunityInstallUpdateQueued(detailTarget.community.plugin_id, "update")
+                        || (storeBusyPluginId === detailTarget.community.plugin_id
+                          && storeBusyCommunityAction === "update")
+                      }
+                      onClick={() =>
+                        enqueueInstallUpdate({
+                          kind: "community",
+                          action: "update",
+                          restart: false,
+                          row: detailTarget.community!,
+                        })
+                      }
+                    >
+                      更新
+                    </Button>
+                  ) : null}
+                  {detailTarget.community.can_uninstall ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={
+                        storeBusyPluginId === detailTarget.community.plugin_id
+                        && storeBusyCommunityAction === "uninstall"
+                      }
+                      onClick={() => void uninstallCommunity(detailTarget.community!, false)}
+                    >
+                      删除
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+              {detailTarget.repositoryUrl ? (
+                <Button asChild type="button" variant="outline" size="sm">
+                  <a href={detailTarget.repositoryUrl} target="_blank" rel="noopener noreferrer">
+                    打开仓库
+                  </a>
+                </Button>
+              ) : null}
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={gitInstallOpen}
+        onOpenChange={(next) => {
+          if (!next && !gitInstallBusy) setGitInstallOpen(false);
+        }}
       >
+        <DialogContent
+          className="plugin-store-page__git-dialog flex w-[min(480px,96vw)] max-w-[min(480px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          onEscapeKeyDown={(e) => {
+            if (gitInstallBusy) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (gitInstallBusy) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="plugin-store-git-install-title">从 Git 安装</DialogTitle>
+            <DialogDescription>
+              无需收录到社区索引，直接 clone 到 <code>local/plugins/&lt;ID&gt;/</code>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="plugin-store-page__git-bd px-4 py-3">
         <div className="plugin-store-page__git-form">
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">插件 ID</span>
-            <UiInput
-              className="plugin-store-page__git-input"
+            <Input
+              className="plugin-store-page__git-input h-9"
               value={gitPluginId}
               disabled={gitInstallBusy}
               placeholder="小写字母开头，如 my_plugin"
-              onValueChange={setGitPluginId}
+              onChange={(e) => setGitPluginId(e.target.value)}
             />
             <span className="muted plugin-store-page__git-hint">
               须与目录名一致，安装路径为 local/plugins/&lt;ID&gt;/
@@ -1587,26 +1547,52 @@ export default function PluginStorePage() {
           </label>
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">Git 仓库</span>
-            <UiInput
-              className="plugin-store-page__git-input"
+            <Input
+              className="plugin-store-page__git-input h-9"
               value={gitRepositoryUrl}
               disabled={gitInstallBusy}
               placeholder="https://github.com/org/repo.git"
-              onValueChange={setGitRepositoryUrl}
+              onChange={(e) => setGitRepositoryUrl(e.target.value)}
             />
           </label>
           <label className="plugin-store-page__git-field">
             <span className="plugin-store-page__git-label">分支 / Tag</span>
-            <UiInput
-              className="plugin-store-page__git-input"
+            <Input
+              className="plugin-store-page__git-input h-9"
               value={gitRef}
               disabled={gitInstallBusy}
               placeholder="main"
-              onValueChange={setGitRef}
+              onChange={(e) => setGitRef(e.target.value)}
             />
           </label>
         </div>
-      </ConsoleModal>
+          </div>
+
+          <DialogFooter className="plugin-store-page__git-foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end sm:space-x-2">
+            <Button type="button" variant="outline" size="sm" disabled={gitInstallBusy} onClick={() => setGitInstallOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!gitInstallValid || gitInstallBusy}
+              onClick={() => void installCommunityFromGit(false)}
+            >
+              {gitInstallBusy ? "安装中…" : "安装"}
+            </Button>
+            {communityRestartAvailable ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={!gitInstallValid || gitInstallBusy}
+                onClick={() => void installCommunityFromGit(true)}
+              >
+                安装并重启
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <GitMirrorDialog open={gitMirrorOpen} onClose={() => setGitMirrorOpen(false)} />
     </div>

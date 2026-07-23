@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { FileText, Radio, RefreshCw, Search } from "lucide-react";
 import { fetchLogErrors, postLogErrorsCleanup } from "@/api/fullConsole";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
+import { axiosErrorDetail } from "@/api/http";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import {
   formatLogErrorExcType,
@@ -11,16 +13,25 @@ import {
   parseLogErrorPlugin,
 } from "@/utils/logErrorDisplay";
 import { formatLogDisplayTime } from "@/utils/logDisplay";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
-import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
-import PageHeader from "@/components/PageHeader";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import PageMasthead from "@/components/PageMasthead";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
-import RefreshIconButton from "@/components/RefreshIconButton";
-import UiButton from "@/components/ui/UiButton";
-import UiSelect from "@/components/ui/UiSelect";
-import { axiosErrorDetail } from "@/api/http";
-import { pushConsoleToast } from "@/utils/consoleToast";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 let logErrorsCache: Awaited<ReturnType<typeof fetchLogErrors>> | null = null;
 
@@ -125,106 +136,84 @@ export default function LogErrorsPage() {
   }
 
   return (
-    <PageFill className="log-errors-page console-hub-page">
+    <PageFill className="log-errors-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
 
       <PagePinned>
-        <PageHeader
+        <PageMasthead
           title="日志报错"
-          description="每条报错独立成卡；分片时可按来源筛选。「清理全部」与每日 4:00 自动清理中的日志报错部分一致。"
-          actions={
-            <div className="console-hub-toolbar-strip__masthead-actions row-actions">
-              {shardedLogErrors ? (
-                <UiSelect
-                  className="log-errors-page__source-sel"
-                  aria-label="报错来源"
-                  value={logSource}
-                  onValueChange={setLogSource}
-                >
-                  {sourceOptions.map((s) => (
-                    <option key={`err-src-${s}`} value={s}>
-                      {s === "all" ? "全部来源" : s}
-                    </option>
-                  ))}
-                </UiSelect>
-              ) : null}
-              <UiButton
-                variant="destructive"
-                className="log-errors-page__clear-btn"
-                disabled={clearing || query.isFetching || !entries.length}
-                title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
-                onClick={() => void clearLogErrors()}
-              >
-                {clearing ? "清理中…" : "清理全部"}
-              </UiButton>
-              <RefreshIconButton
-                embedded
-                busy={query.isFetching}
-                label="刷新"
-                onClick={() => void query.refetch()}
-              />
-            </div>
-          }
+          description="运行期报错；可筛选与清理。"
         />
 
-        <ConsoleHubSearch
-          className="hub-search-wide-only"
-          placeholder="搜索消息、类型、来源…"
-          value={q}
-          onValueChange={setQ}
-        />
-
-        <ConsoleHubToolbarStrip
-          search={
-            <ConsoleHubSearch
+        <ChromeTools>
+          <div className="relative min-w-[10rem] flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <Input
+              type="search"
+              className="h-8 min-h-8 w-full pl-8"
               placeholder="搜索消息、类型、来源…"
+              aria-label="搜索消息、类型、来源"
+              autoComplete="off"
               value={q}
-              onValueChange={setQ}
+              onChange={(e) => setQ(e.target.value)}
             />
-          }
-          middle={
-            <div className="row-actions">
-              {shardedLogErrors ? (
-                <UiSelect
-                  className="log-errors-page__source-sel log-errors-page__source-sel--strip"
+          </div>
+          {shardedLogErrors ? (
+            <ChromeField label="来源" icon={Radio}>
+              <Select value={logSource} onValueChange={setLogSource}>
+                <SelectTrigger
+                  className="h-8 w-auto min-w-[9rem] shrink-0 whitespace-nowrap"
                   aria-label="报错来源"
-                  value={logSource}
-                  onValueChange={setLogSource}
                 >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end" className="min-w-[10rem]">
                   {sourceOptions.map((s) => (
-                    <option key={`err-src-strip-${s}`} value={s}>
-                      {s === "all" ? "全部来源" : s}
-                    </option>
+                    <SelectItem key={`err-src-${s}`} value={s}>
+                      <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
+                        {s === "all" ? "全部来源" : s}
+                      </ChromeOptionLabel>
+                    </SelectItem>
                   ))}
-                </UiSelect>
-              ) : null}
-              <UiButton
-                variant="destructive"
-                className="log-errors-page__clear-btn log-errors-page__clear-btn--strip"
-                disabled={clearing || query.isFetching || !entries.length}
-                title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
-                onClick={() => void clearLogErrors()}
-              >
-                {clearing ? "清理中…" : "清理"}
-              </UiButton>
-            </div>
-          }
-          actions={
-            <RefreshIconButton
-              embedded
-              busy={query.isFetching}
-              label="刷新"
+                </SelectContent>
+              </Select>
+            </ChromeField>
+          ) : null}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={clearing || query.isFetching || !entries.length}
+              title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
+              onClick={() => void clearLogErrors()}
+            >
+              {clearing ? "清理中…" : "清理全部"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0"
+              disabled={query.isFetching}
+              aria-label="刷新"
               onClick={() => void query.refetch()}
-            />
-          }
-        />
+            >
+              <RefreshCw className={cn("size-3.5", query.isFetching && "animate-spin")} />
+            </Button>
+          </div>
+        </ChromeTools>
       </PagePinned>
 
-      <section className="panel ui-card ui-card--glass log-errors-page__panel">
-        <div className="panel__bd">
+      <Card className="log-errors-page__panel flex min-h-0 flex-1 flex-col overflow-hidden shadow-none">
+        <CardContent className="log-errors-page__panel-bd flex min-h-0 flex-1 flex-col p-0 px-4 pb-4 pt-2">
           <div className="log-errors-page__scroll">
             {query.isLoading && !entries.length ? (
-              <p className="muted log-errors-page__empty">加载中…</p>
+              <ConsoleBlockSkeleton lines={5} label="报错记录加载中" className="log-errors-page__empty" />
             ) : !displayEntries.length ? (
               <p className="muted log-errors-page__empty">
                 {entries.length && q ? "无匹配结果。" : "暂无报错记录。"}
@@ -238,12 +227,13 @@ export default function LogErrorsPage() {
                     <article key={key} className="log-error-card">
                       <header className="log-error-card__hd">
                         <time className="log-error-card__time">{formatLogDisplayTime(it.at)}</time>
-                        <span
+                        <Badge
+                          variant="destructive"
                           className="log-error-card__type"
                           title={it.exc_type !== it.displayExcType ? it.exc_type : undefined}
                         >
                           {it.displayExcType}
-                        </span>
+                        </Badge>
                         <span className="log-error-card__source">
                           <span className="log-error-card__source-tag">{it.meta.source}</span>
                           {it.meta.module && it.meta.module !== "log" ? (
@@ -251,7 +241,7 @@ export default function LogErrorsPage() {
                           ) : null}
                         </span>
                         {tb && isTracebackTruncated(it.traceback) ? (
-                          <span className="log-error-card__trunc-badge muted">落盘时已截断</span>
+                          <Badge variant="muted">落盘时已截断</Badge>
                         ) : null}
                       </header>
                       {tb ? (
@@ -260,35 +250,32 @@ export default function LogErrorsPage() {
                         <p className="log-error-card__summary">{it.message || "（无摘要）"}</p>
                       )}
                       <div className="log-error-card__actions">
-                        <UiButton
+                        <Button
                           variant="outline"
                           size="sm"
-                          className="log-error-card__copy-btn"
                           title="复制时间与摘要"
                           onClick={() => void copySummary(it)}
                         >
                           复制摘要
-                        </UiButton>
+                        </Button>
                         {tb ? (
-                          <UiButton
+                          <Button
                             variant="outline"
                             size="sm"
-                            className="log-error-card__copy-btn"
                             title="复制堆栈文本"
                             onClick={() => void copyTraceback(it)}
                           >
                             复制堆栈
-                          </UiButton>
+                          </Button>
                         ) : null}
-                        <UiButton
+                        <Button
                           variant="outline"
                           size="sm"
-                          className="log-error-card__copy-btn"
                           title="复制时间与完整堆栈"
                           onClick={() => void copyFull(it)}
                         >
                           复制全部
-                        </UiButton>
+                        </Button>
                       </div>
                     </article>
                   );
@@ -296,8 +283,8 @@ export default function LogErrorsPage() {
               </div>
             )}
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </PageFill>
   );
 }

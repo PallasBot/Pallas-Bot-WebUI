@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Cpu, FolderOpen, Globe, Puzzle, RefreshCw, Search, Tags } from "lucide-react";
 import {
   fetchCommunityPluginStore,
   fetchOfficialExtensions,
@@ -13,11 +14,21 @@ import {
   pluginCategory,
   type PluginCategory,
 } from "@/utils/pluginCategory";
-import ConsoleHubSearch from "@/components/ConsoleHubSearch";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
 import PluginCatalogCard from "@/components/PluginCatalogCard";
 import PluginConfigDialog from "@/components/PluginConfigDialog";
-import PageHeader from "@/components/PageHeader";
-import RefreshIconButton from "@/components/RefreshIconButton";
+import PageMasthead from "@/components/PageMasthead";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import {
@@ -26,7 +37,6 @@ import {
   shouldShowPluginAvatar,
 } from "@/utils/pluginIconUrl";
 import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
-import { cn } from "@/lib/utils";
 
 export default function PluginsPage() {
   const { name: routeName } = useParams();
@@ -148,46 +158,77 @@ export default function PluginsPage() {
   return (
     <div className="plugins-page plugins-page--hub console-hub-page">
       <div className="plugins-page__body">
-        <PageHeader
+        <PageMasthead
           title="插件管理"
-          description="点击卡片「编辑配置」在弹窗中调整权限、冷却、运行开关与插件参数；README 可在弹窗分栏查看。"
-          actions={
-            <RefreshIconButton
-              embedded
-              busy={pluginsQ.isFetching}
-              label="刷新"
-              showLabel
-              onClick={() => void pluginsQ.refetch()}
-            />
-          }
+          description="编辑已加载插件的权限、冷却与参数。"
         />
 
         {processHint ? (
           <p className="muted console-hub-page__lead plugins-page__hero-note--shard">{processHint}</p>
         ) : null}
 
-        <ConsoleHubSearch
-          placeholder="搜索插件名、ID 或说明…"
-          value={q}
-          onValueChange={setQ}
-        />
-
-        <div className="console-hub-page__filter-bar">
-          <div className="console-view-toggle console-view-toggle--full" role="tablist" aria-label="插件分类">
-            {PLUGIN_LIST_CATEGORY_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                className={cn(activeCategory === tab.id && "is-on")}
-                aria-selected={activeCategory === tab.id}
-                onClick={() => setActiveCategory(tab.id)}
-              >
-                <span>{tab.label}</span>
-              </button>
-            ))}
+        <ChromeTools>
+          <div className="relative min-w-[8rem] flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <Input
+              type="search"
+              className="h-8 min-h-8 w-full pl-8"
+              placeholder="搜索插件名、ID 或说明…"
+              aria-label="搜索插件名、ID 或说明"
+              autoComplete="off"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
-        </div>
+          <ChromeField label="分类" icon={Tags}>
+            <Select
+              value={activeCategory}
+              onValueChange={(v) => setActiveCategory(v as PluginCategory | "all")}
+            >
+              <SelectTrigger
+                className="h-8 w-auto shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+                aria-label="插件分类"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end" className="min-w-[8.5rem]">
+                {PLUGIN_LIST_CATEGORY_TABS.map((tab) => (
+                  <SelectItem key={tab.id} value={tab.id}>
+                    <ChromeOptionLabel
+                      icon={
+                        tab.id === "all"
+                          ? Globe
+                          : tab.id === "core"
+                            ? Cpu
+                            : tab.id === "extra"
+                              ? Puzzle
+                              : FolderOpen
+                      }
+                    >
+                      {tab.label}
+                    </ChromeOptionLabel>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ChromeField>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pluginsQ.isFetching}
+              onClick={() => void pluginsQ.refetch()}
+            >
+              <RefreshCw className={cn("size-3.5", pluginsQ.isFetching && "animate-spin")} />
+              {pluginsQ.isFetching ? "刷新中…" : "刷新"}
+            </Button>
+          </div>
+        </ChromeTools>
 
         {pluginsQ.isError ? (
           <p className="alert alert--err text-sm">加载失败：{(pluginsQ.error as Error).message}</p>
