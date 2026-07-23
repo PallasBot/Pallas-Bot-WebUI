@@ -29,7 +29,6 @@ import {
   protocolStopAccount,
   protocolUpdateAccount,
 } from "@/api/protocol";
-import StatCard from "@/components/StatCard";
 import UiInput from "@/components/ui/UiInput";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import { protocolBackendDisplayName } from "@/utils/protocolUi";
@@ -512,17 +511,16 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
         {activeTab === "overview" ? (
           <section className="protocol-account-workspace__section" aria-label="账号概览">
-            <div className="protocol-account-workspace__metrics">
+            <dl className="protocol-account-workspace__meta">
               {statusMetrics.map((metric) => (
-                <StatCard
-                  key={metric.label}
-                  dense
-                  label={metric.label}
-                  value={metric.value}
-                  hint={metric.hint}
-                />
+                <div key={metric.label} className="protocol-account-workspace__meta-item">
+                  <dt className="protocol-account-workspace__meta-label">{metric.label}</dt>
+                  <dd className="protocol-account-workspace__meta-value" title={metric.hint || undefined}>
+                    {metric.value}
+                  </dd>
+                </div>
               ))}
-            </div>
+            </dl>
 
             <div
               className={`ui-card protocol-account-workspace__panel${isDialog ? " protocol-account-workspace__panel--compact" : " ui-card--glass"}`}

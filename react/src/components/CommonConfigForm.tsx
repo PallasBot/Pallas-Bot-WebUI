@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommonConfig, fetchCommonConfigRaw, putCommonConfig, putCommonConfigRaw } from "@/api/console";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
+import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
 import { cn } from "@/lib/utils";
@@ -80,7 +81,9 @@ export default function CommonConfigForm({
       ) : null}
       {mode === "form" ? (
         <StateBlock loading={cfgQ.isLoading} error={cfgQ.error} empty={!fields.length} emptyText="该分区无可编辑字段">
-          <div className="plugin-config-form-grid">
+          <PluginConfigFormSection
+            subtitle={`共 ${fields.length} 项参数，保存后写入运行配置`}
+          >
             {fields.map((f) => (
               <PluginConfigFieldShell
                 key={f.name}
@@ -89,7 +92,7 @@ export default function CommonConfigForm({
                 onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
               />
             ))}
-          </div>
+          </PluginConfigFormSection>
           <div className="mt-4">
             <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? "保存中…" : "保存"}

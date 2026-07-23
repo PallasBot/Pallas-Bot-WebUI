@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchUserConfigById, putUserConfig } from "@/api/fullConsole";
-import ConsoleModal from "@/components/ConsoleModal";
-import UiButton from "@/components/ui/UiButton";
-import UiSelect from "@/components/ui/UiSelect";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   open: boolean;
@@ -14,6 +27,7 @@ type Props = {
   onSaved?: () => void;
 };
 
+/** 用户颗粒配置：shadcn Dialog，标题左对齐。 */
 export default function UserSocialConfigModal({
   open,
   userId,
@@ -80,63 +94,64 @@ export default function UserSocialConfigModal({
   const busy = loadBusy || saveBusy;
 
   return (
-    <ConsoleModal
+    <Dialog
       open={open}
-      titleId="user-social-config-title"
-      panelClass="social-config-dialog social-config-dialog--sm"
-      busy={busy}
-      onClose={() => {
-        if (!busy) onOpenChange(false);
+      onOpenChange={(next) => {
+        if (!next && !busy) onOpenChange(false);
       }}
-      header={
-        <>
-          <div className="console-modal__head-text">
-            <h2 id="user-social-config-title" className="console-modal__title">
-              {defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置"}
-            </h2>
-            <p className="console-modal__subtitle muted">
-              QQ {loadedId ?? userId ?? "—"}
-              {userNickname?.trim() ? ` · ${userNickname.trim()}` : ""}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="console-modal__close"
-            aria-label="关闭"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            ×
-          </button>
-        </>
-      }
-      footer={
-        !loadBusy && !loadErr && loadedId != null ? (
-          <>
-            <UiButton variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
-              取消
-            </UiButton>
-            <UiButton variant="primary" size="sm" disabled={saveBusy} onClick={() => void save()}>
-              {saveBusy ? "保存中…" : "保存"}
-            </UiButton>
-          </>
-        ) : null
-      }
     >
-      {loadBusy ? <p className="muted">加载中…</p> : null}
-      {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
-      {!loadBusy && !loadErr && loadedId != null ? (
-        <div className="social-config-dialog__body">
-          {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
-          <label className="social-config-dialog__row">
-            <span>封禁</span>
-            <UiSelect value={banned ? "1" : "0"} onValueChange={(v) => setBanned(v === "1")}>
-              <option value="1">是</option>
-              <option value="0">否</option>
-            </UiSelect>
-          </label>
+      <DialogContent
+        className="social-config-dialog social-config-dialog--sm flex max-h-[min(92vh,480px)] w-[min(420px,96vw)] max-w-[min(420px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        onEscapeKeyDown={(e) => {
+          if (busy) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (busy) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+          <DialogTitle id="user-social-config-title">
+            {defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置"}
+          </DialogTitle>
+          <DialogDescription className="muted">
+            QQ {loadedId ?? userId ?? "—"}
+            {userNickname?.trim() ? ` · ${userNickname.trim()}` : ""}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+          {loadBusy ? <p className="muted">加载中…</p> : null}
+          {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
+          {!loadBusy && !loadErr && loadedId != null ? (
+            <div className="social-config-dialog__body">
+              {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
+              <div className="social-config-dialog__row">
+                <span>封禁</span>
+                <Select value={banned ? "1" : "0"} onValueChange={(v) => setBanned(v === "1")}>
+                  <SelectTrigger className="h-9 w-auto min-w-[5rem]" aria-label="封禁">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">是</SelectItem>
+                    <SelectItem value="0">否</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
-    </ConsoleModal>
+
+        {!loadBusy && !loadErr && loadedId != null ? (
+          <DialogFooter className="border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+            <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
+              取消
+            </Button>
+            <Button type="button" size="sm" disabled={saveBusy} onClick={() => void save()}>
+              {saveBusy ? "保存中…" : "保存"}
+            </Button>
+          </DialogFooter>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

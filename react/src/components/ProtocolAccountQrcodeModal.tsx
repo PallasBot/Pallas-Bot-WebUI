@@ -5,8 +5,17 @@ import {
   protocolFetchQrcodeMeta,
   protocolRefreshAccountQrcode,
 } from "@/api/protocol";
-import ConsoleModal from "@/components/ConsoleModal";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
+/** 协议登录二维码：shadcn Dialog。 */
 export default function ProtocolAccountQrcodeModal({
   open,
   mountUrl,
@@ -144,47 +153,51 @@ export default function ProtocolAccountQrcodeModal({
   }, [open, mountUrl, accountId]);
 
   return (
-    <ConsoleModal
+    <Dialog
       open={open}
-      titleId="protocol-qrcode-modal-title"
-      panelClass="protocol-qrcode-modal__dialog"
-      bodyClass="protocol-qrcode-modal__bd"
-      onClose={onClose}
-      header={
-        <>
-          <div className="console-modal__head-text">
-            <h2 id="protocol-qrcode-modal-title" className="console-modal__title">
-              登录二维码
-            </h2>
-            {accountTitle ? (
-              <p className="console-modal__subtitle muted">{accountTitle}</p>
-            ) : null}
-          </div>
-          <button type="button" className="console-modal__close" aria-label="关闭" onClick={onClose}>
-            ×
-          </button>
-        </>
-      }
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <p className="muted protocol-qrcode-modal__hint">{hint}</p>
-      {exists && imageObjectUrl && !imageErr ? (
-        <div className="protocol-qrcode-modal__frame">
-          <img
-            className="protocol-qrcode-modal__img"
-            src={imageObjectUrl}
-            alt="协议端登录二维码"
-            onError={onImageError}
-          />
+      <DialogContent className="protocol-qrcode-modal__dialog gap-0 overflow-hidden bg-card p-0 sm:max-w-md">
+        <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+          <DialogTitle id="protocol-qrcode-modal-title">登录二维码</DialogTitle>
+          {accountTitle ? (
+            <DialogDescription className="muted">{accountTitle}</DialogDescription>
+          ) : (
+            <DialogDescription className="sr-only">协议端登录二维码</DialogDescription>
+          )}
+        </DialogHeader>
+
+        <div className="protocol-qrcode-modal__bd space-y-3 px-4 py-3">
+          <p className="muted protocol-qrcode-modal__hint">{hint}</p>
+          {exists && imageObjectUrl && !imageErr ? (
+            <div className="protocol-qrcode-modal__frame">
+              <img
+                className="protocol-qrcode-modal__img"
+                src={imageObjectUrl}
+                alt="协议端登录二维码"
+                onError={onImageError}
+              />
+            </div>
+          ) : null}
         </div>
-      ) : null}
-      <div className="row-actions protocol-qrcode-modal__actions">
-        <button type="button" className="btn" disabled={refreshBusy} onClick={() => void refreshMeta(false)}>
-          {refreshBusy ? "刷新中…" : "刷新"}
-        </button>
-        <button type="button" className="btn btn--primary" onClick={onClose}>
-          关闭
-        </button>
-      </div>
-    </ConsoleModal>
+
+        <DialogFooter className="protocol-qrcode-modal__actions border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={refreshBusy}
+            onClick={() => void refreshMeta(false)}
+          >
+            {refreshBusy ? "刷新中…" : "刷新"}
+          </Button>
+          <Button type="button" size="sm" onClick={onClose}>
+            关闭
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

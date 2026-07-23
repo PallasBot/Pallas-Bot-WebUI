@@ -46,9 +46,7 @@ export default function CorpusWordCloud({
           : `${tabLabel}近期活跃`;
 
   const statusHint =
-    source === "local" || tab === "fleet"
-      ? "标签越大越热 · 点击查看热度"
-      : "标签越大越热 · 点击查看代表回复";
+    source === "local" || tab === "fleet" ? "越大越热 · 点选查看" : "越大越热 · 点选看回复";
 
   const items = data?.items || [];
   const rankedNodes = useMemo(() => rankHotItems(items), [items]);
@@ -125,12 +123,12 @@ export default function CorpusWordCloud({
   return (
     <div className="corpus-hot">
       {source === "community" ? (
-        <div className="corpus-hot__tabs" role="tablist" aria-label="热词统计范围">
+        <div className="corpus-hot__tabs console-view-toggle" role="tablist" aria-label="热词统计范围">
           {communityTabs.map((row) => (
             <button
               key={row.key}
               type="button"
-              className={cn("corpus-hot__tab", tab === row.key && "corpus-hot__tab--active")}
+              className={cn(tab === row.key && "is-on")}
               role="tab"
               aria-selected={tab === row.key}
               disabled={busy}

@@ -311,11 +311,9 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           <section className="plugin-governance-panel__group">
             <header className="plugin-governance-panel__group-head">
               <h4 className="plugin-governance-panel__group-title">运行控制</h4>
-              {!isDialog ? (
-                <p className="muted plugin-governance-panel__group-desc">
-                  控制插件是否参与运行，以及是否出现在帮助菜单中。
-                </p>
-              ) : null}
+              <p className="muted plugin-governance-panel__group-desc">
+                控制插件是否参与运行，以及是否出现在帮助菜单中。
+              </p>
             </header>
             <div className="plugin-governance-panel__switches">
               <PluginRuntimeSwitchRow
@@ -380,11 +378,9 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           <section className="plugin-governance-panel__group">
             <header className="plugin-governance-panel__group-head">
               <h4 className="plugin-governance-panel__group-title">群级白名单</h4>
-              {!isDialog ? (
-                <p className="muted plugin-governance-panel__group-desc">
-                  全实例禁用后，白名单群仍可使用该插件。
-                </p>
-              ) : null}
+              <p className="muted plugin-governance-panel__group-desc">
+                全实例禁用后，白名单群仍可使用该插件。
+              </p>
             </header>
             <div className="plugin-governance-panel__chips">
               {whitelistedGroupIds.length ? (
@@ -426,11 +422,9 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           <section className="plugin-governance-panel__group">
             <header className="plugin-governance-panel__group-head">
               <h4 className="plugin-governance-panel__group-title">用户禁用</h4>
-              {!isDialog ? (
-                <p className="muted plugin-governance-panel__group-desc">
-                  名单中的 QQ 无法使用该插件（号主除外）。
-                </p>
-              ) : null}
+              <p className="muted plugin-governance-panel__group-desc">
+                名单中的 QQ 无法使用该插件（号主除外）。
+              </p>
             </header>
             <div className="plugin-governance-panel__chips">
               {blockedUserIds.map((uid) => (
@@ -459,11 +453,9 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           <section className="plugin-governance-panel__group">
             <header className="plugin-governance-panel__group-head">
               <h4 className="plugin-governance-panel__group-title">命令权限</h4>
-              {!isDialog ? (
-                <p className="muted plugin-governance-panel__group-desc">
-                  展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。
-                </p>
-              ) : null}
+              <p className="muted plugin-governance-panel__group-desc">
+                展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。
+              </p>
             </header>
             {permPlugin?.commands?.length ? (
               permPlugin.commands.map((cmd) => (
@@ -496,11 +488,9 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
           <section className="plugin-governance-panel__group">
             <header className="plugin-governance-panel__group-head">
               <h4 className="plugin-governance-panel__group-title">命令冷却</h4>
-              {!isDialog ? (
-                <p className="muted plugin-governance-panel__group-desc">
-                  输入秒数后自动保存；留空或设为默认值表示不覆盖默认冷却。
-                </p>
-              ) : null}
+              <p className="muted plugin-governance-panel__group-desc">
+                输入秒数后自动保存；留空或设为默认值表示不覆盖默认冷却。
+              </p>
             </header>
             {limitsPlugin?.commands?.length ? (
               limitsPlugin.commands.map((cmd) => (

@@ -1,4 +1,13 @@
-import ConsoleModal from "@/components/ConsoleModal";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type ConsoleDeleteListItem = {
   key: string;
@@ -19,6 +28,7 @@ type Props = {
   onConfirm: () => void;
 };
 
+/** 删除确认：shadcn AlertDialog（实心底；异步删除期间由 `open`/`busy` 控制关闭）。 */
 export default function ConsoleDeleteConfirmModal({
   open,
   title,
@@ -35,51 +45,41 @@ export default function ConsoleDeleteConfirmModal({
   const headingId = titleId || "console-delete-modal-title";
 
   return (
-    <ConsoleModal
+    <AlertDialog
       open={open}
-      titleId={headingId}
-      busy={busy}
-      onClose={onClose}
-      header={
-        <>
-          <div className="console-modal__head-text">
-            <h2 id={headingId} className="console-modal__title">
-              {title}
-            </h2>
-            <p className="console-modal__subtitle muted">{subtitle}</p>
-          </div>
-          <button type="button" className="console-modal__close" aria-label="关闭" disabled={busy} onClick={onClose}>
-            ×
-          </button>
-        </>
-      }
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
     >
-      {error ? (
-        <p className="alert alert--err" style={{ margin: "0 0 12px" }}>
-          {error}
-        </p>
-      ) : null}
-      {(warnings ?? []).map((w, wi) => (
-        <p key={`warn-${wi}`} className="alert alert--err" style={{ margin: "0 0 12px" }}>
-          {w}
-        </p>
-      ))}
-      <p className="muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
-        账号列表
-      </p>
-      <ul className="inst-delete-account-list muted">
-        {items.map((item) => (
-          <li key={item.key}>{item.label}</li>
+      <AlertDialogContent className="bg-card sm:max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle id={headingId}>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{subtitle}</AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {error ? <p className="alert alert--err m-0">{error}</p> : null}
+        {(warnings ?? []).map((w, wi) => (
+          <p key={`warn-${wi}`} className="alert alert--err m-0">
+            {w}
+          </p>
         ))}
-      </ul>
-      <div className="row-actions" style={{ marginTop: 18, flexWrap: "wrap", gap: 8 }}>
-        <button type="button" className="btn btn--danger" disabled={busy} onClick={onConfirm}>
-          {busy ? "删除中…" : confirmLabel || "确认删除"}
-        </button>
-        <button type="button" className="btn" disabled={busy} onClick={onClose}>
-          取消
-        </button>
-      </div>
-    </ConsoleModal>
+
+        <div className="space-y-2">
+          <p className="m-0 text-[13px] text-muted-foreground">账号列表</p>
+          <ul className="inst-delete-account-list muted m-0">
+            {items.map((item) => (
+              <li key={item.key}>{item.label}</li>
+            ))}
+          </ul>
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
+          <Button type="button" variant="destructive" disabled={busy} onClick={onConfirm}>
+            {busy ? "删除中…" : confirmLabel || "确认删除"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

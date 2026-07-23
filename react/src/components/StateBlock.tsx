@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 
 export default function StateBlock({
   loading,
@@ -13,7 +14,7 @@ export default function StateBlock({
   emptyText?: string;
   children: ReactNode;
 }) {
-  if (loading) return <p className="text-sm text-muted-foreground">加载中…</p>;
+  if (loading) return <ConsoleBlockSkeleton lines={3} label="加载中" />;
   if (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return <p className="text-sm text-destructive">加载失败：{msg}</p>;

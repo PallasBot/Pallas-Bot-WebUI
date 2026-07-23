@@ -24,6 +24,7 @@ import {
 import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
+import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
@@ -302,7 +303,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
       {detailTab === "governance" && hasGovernanceTab ? (
         <section className={isDialog ? "plugin-config-page__governance-dialog" : "plugin-config-page__tab-panel"}>
-          <PluginGovernancePanel pluginName={pluginRow?.name || name} />
+          <PluginGovernancePanel
+            pluginName={pluginRow?.name || name}
+            presentation={isDialog ? "dialog" : "page"}
+          />
         </section>
       ) : null}
 
@@ -342,7 +346,9 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               empty={!fields.length && !isHelpPlugin}
               emptyText="该插件无可编辑配置字段"
             >
-              <div className="plugin-config-form-grid">
+              <PluginConfigFormSection
+                subtitle={`共 ${fields.length} 项参数，保存后按插件热重载策略生效`}
+              >
                 {fields.map((f) => (
                   <PluginConfigFieldShell
                     key={f.name}
@@ -351,7 +357,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                     onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
                   />
                 ))}
-              </div>
+              </PluginConfigFormSection>
               {!isDialog ? (
                 <div className="mt-4">
                   <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
