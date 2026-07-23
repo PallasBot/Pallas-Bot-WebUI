@@ -6,7 +6,7 @@ import {
   fetchDbBackupJob,
   postDbBackup,
 } from "@/api/fullConsole";
-import type { DbBackupInfo, DbBackupJobData, DbBackupResult } from "@pallas-vue/api/pallasTypes";
+import type { DbBackupInfo, DbBackupJobData, DbBackupResult } from "@/api/pallasTypes";
 import { formatBackupBytes } from "@/utils/dbBackupFormat";
 
 const BACKUP_POLL_MS = 1500;

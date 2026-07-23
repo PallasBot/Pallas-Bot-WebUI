@@ -24,8 +24,8 @@ import {
   buildPluginIconMap,
   resolvePluginIconForRow,
   shouldShowPluginAvatar,
-} from "@pallas-vue/utils/pluginIconUrl";
-import { catalogProcessHint } from "@pallas-vue/utils/pluginLoadRoleLabel";
+} from "@/utils/pluginIconUrl";
+import { catalogProcessHint } from "@/utils/pluginLoadRoleLabel";
 import { cn } from "@/lib/utils";
 
 export default function PluginsPage() {

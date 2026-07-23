@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { LogEntry } from "@pallas-vue/api/pallasTypes";
-import { formatLogDisplayTime } from "@pallas-vue/utils/logDisplay";
+import type { LogEntry } from "@/api/pallasTypes";
+import { formatLogDisplayTime } from "@/utils/logDisplay";
 import { cn } from "@/lib/utils";
 
 export type LogVirtualFeedHandle = {

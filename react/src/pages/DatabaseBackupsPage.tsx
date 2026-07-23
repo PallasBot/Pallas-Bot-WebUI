@@ -10,7 +10,7 @@ import {
   postDbBackupRestore,
   postDbBackupRunsDelete,
 } from "@/api/fullConsole";
-import type { DbBackupJobData, DbBackupRunRow, DbOverviewData } from "@pallas-vue/api/pallasTypes";
+import type { DbBackupJobData, DbBackupRunRow, DbOverviewData } from "@/api/pallasTypes";
 import BackupDirPicker from "@/components/BackupDirPicker";
 import BackupTargetTree from "@/components/BackupTargetTree";
 import PageHeader from "@/components/PageHeader";

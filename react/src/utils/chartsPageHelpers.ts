@@ -1,4 +1,4 @@
-import type { ConsoleDailyStatRow as DailyStatRow } from "@pallas-vue/api/pallasTypes";
+import type { ConsoleDailyStatRow as DailyStatRow } from "@/api/pallasTypes";
 
 export const HOME_SELECTED_ACCOUNT_KEY = "pallas_home_selected_account_v1";
 

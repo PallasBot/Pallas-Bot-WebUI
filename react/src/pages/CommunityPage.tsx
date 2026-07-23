@@ -11,9 +11,9 @@ import type {
   CommunityConnectivityCheckData,
   CommunityVersionCountData,
   CorpusSourceStatusData,
-} from "@pallas-vue/api/pallasTypes";
-import { PALLAS_COMMUNITY_HUB } from "@pallas-vue/utils/pallasExternalLinks";
-import { copyTextToClipboard } from "@pallas-vue/utils/clipboard";
+} from "@/api/pallasTypes";
+import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
+import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud from "@/components/CorpusWordCloud";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";

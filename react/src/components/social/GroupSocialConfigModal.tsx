@@ -5,12 +5,12 @@ import ConsoleModal from "@/components/ConsoleModal";
 import UiButton from "@/components/ui/UiButton";
 import UiInput from "@/components/ui/UiInput";
 import UiSelect from "@/components/ui/UiSelect";
-import { pluginPickListFromRows } from "@pallas-vue/utils/pluginDisplay";
+import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import {
   parseRouletteModeSelect,
   rouletteModeSelectOptions,
   rouletteModeSelectValue,
-} from "@pallas-vue/utils/rouletteMode";
+} from "@/utils/rouletteMode";
 
 type Props = {
   open: boolean;

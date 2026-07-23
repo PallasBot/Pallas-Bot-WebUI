@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import brandMarkAsset from "@pallas-vue/assets/brand-avatar.png?url";
+import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
 import { MAIN_NAV_ITEMS, sectionIcon } from "@/config/mainNav";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";

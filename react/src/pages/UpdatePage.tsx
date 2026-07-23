@@ -8,15 +8,15 @@ import {
   postBotUpdateApply,
   postUpdateApply,
 } from "@/api/fullConsole";
-import { releaseNotesToSafeHtml } from "@pallas-vue/utils/releaseNotesHtml";
-import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@pallas-vue/utils/versionDisplay";
+import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
+import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 import {
   PALLAS_BOT_DOC,
   PALLAS_BOT_RELEASES,
   PALLAS_BOT_REPO,
   PALLAS_WEBUI_RELEASES,
   PALLAS_WEBUI_REPO,
-} from "@pallas-vue/utils/pallasExternalLinks";
+} from "@/utils/pallasExternalLinks";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageHeader from "@/components/PageHeader";
 import RefreshIconButton from "@/components/RefreshIconButton";

@@ -15,17 +15,17 @@ import {
   fetchUpdateCheck,
   refreshInstancesCatalogGlobal,
 } from "@/api/fullConsole";
-import type { BotConfigPublic, InstancesData } from "@pallas-vue/api/pallasTypes";
-import { accountHasNonebotBot } from "@pallas-vue/utils/botConnection";
-import { qqAvatarUrl } from "@pallas-vue/utils/botDisplay";
-import { mergeProtocolDisplayAccounts } from "@pallas-vue/utils/protocolDisplayAccounts";
-import { protocolBackendDisplayName } from "@pallas-vue/utils/protocolUi";
-import { pluginCountsAsLoadedInCatalog } from "@pallas-vue/utils/pluginLoadRoleLabel";
+import type { BotConfigPublic, InstancesData } from "@/api/pallasTypes";
+import { accountHasNonebotBot } from "@/utils/botConnection";
+import { qqAvatarUrl } from "@/utils/botDisplay";
+import { mergeProtocolDisplayAccounts } from "@/utils/protocolDisplayAccounts";
+import { protocolBackendDisplayName } from "@/utils/protocolUi";
+import { pluginCountsAsLoadedInCatalog } from "@/utils/pluginLoadRoleLabel";
 import {
   consoleResourceVersionLabel,
   displayVersionWithoutSha,
   pallasBotVersionLabel,
-} from "@pallas-vue/utils/versionDisplay";
+} from "@/utils/versionDisplay";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import {
   isHomeActionDismissed,

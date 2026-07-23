@@ -27,8 +27,8 @@ import type {
   OfficialExtensionRow,
   PluginRow,
 } from "@/api/pallasTypes";
-import { copyTextToClipboard } from "@pallas-vue/utils/clipboard";
-import { readmeMarkdownToSafeHtml } from "@pallas-vue/utils/pluginReadme";
+import { copyTextToClipboard } from "@/utils/clipboard";
+import { readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
 import {
   formatPluginStoreActiveHint,
   formatPluginStoreBatchCompleteHint,
@@ -38,7 +38,7 @@ import {
   type PluginStoreQueueAction,
   type PluginStoreQueueKind,
   withPluginStoreQueueSuffix,
-} from "@pallas-vue/utils/pluginStoreActionQueue";
+} from "@/utils/pluginStoreActionQueue";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
 import ConsoleModal from "@/components/ConsoleModal";

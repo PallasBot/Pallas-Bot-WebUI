@@ -6,15 +6,15 @@ import {
   useRef,
   useState,
 } from "react";
-import type { NapcatAccountRow, SystemData } from "@pallas-vue/api/pallasTypes";
-import { copyTextToClipboard } from "@pallas-vue/utils/clipboard";
+import type { NapcatAccountRow, SystemData } from "@/api/pallasTypes";
+import { copyTextToClipboard } from "@/utils/clipboard";
 import {
   accountSnowlumaNovncHref,
   snowlumaManagedWebuiPassword,
   snowlumaNovncPasswordHint,
   snowlumaRuntimeWebuiPassword,
   yn,
-} from "@pallas-vue/utils/protocolLinks";
+} from "@/utils/protocolLinks";
 import {
   protocolApiErrorMessage,
   protocolDeleteAccount,

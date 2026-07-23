@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { buildSparkBars, buildSparkGeometry } from "@pallas-vue/utils/sparkline";
+import { buildSparkBars, buildSparkGeometry } from "@/utils/sparkline";
 
 export default function StatTrendCard({
   label,

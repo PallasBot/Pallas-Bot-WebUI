@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchInstances, fetchSystem } from "@/api/fullConsole";
-import type { InstancesData, SystemData } from "@pallas-vue/api/pallasTypes";
-import { isProtocolExtensionInstalled } from "@pallas-vue/utils/protocolExtension";
+import type { InstancesData, SystemData } from "@/api/pallasTypes";
+import { isProtocolExtensionInstalled } from "@/utils/protocolExtension";
 import { resolveProtocolMountUrl } from "@/utils/protocolMount";
 
 export function useProtocolMount() {

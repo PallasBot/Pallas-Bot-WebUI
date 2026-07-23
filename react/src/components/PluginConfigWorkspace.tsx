@@ -21,14 +21,14 @@ import {
   fetchPlugins,
   postPluginConfigCheck,
 } from "@/api/fullConsole";
-import type { PluginRow } from "@pallas-vue/api/pallasTypes";
+import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
-import type { PluginReadmeTarget } from "@pallas-vue/utils/pluginReadmeTarget";
+import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 import { normalizeBundledReadmeMarkdown, readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
 import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";

@@ -1,4 +1,4 @@
-import type { ConsoleDailyStatRow } from "@pallas-vue/api/pallasTypes";
+import type { ConsoleDailyStatRow } from "@/api/pallasTypes";
 import GsDualAxisTrendChart from "@/components/GsDualAxisTrendChart";
 
 export default function ChartsMonthlyCommandChart({

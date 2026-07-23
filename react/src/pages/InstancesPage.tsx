@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { deleteBotConfig, fetchInstances, fetchPlugins } from "@/api/fullConsole";
-import type { BotConfigPublic, InstancesData, PluginRow } from "@pallas-vue/api/pallasTypes";
-import { accountHasNonebotBot } from "@pallas-vue/utils/botConnection";
-import { formatDisabledPluginIds } from "@pallas-vue/utils/pluginDisplay";
-import { slicePage } from "@pallas-vue/utils/paginate";
+import type { BotConfigPublic, InstancesData, PluginRow } from "@/api/pallasTypes";
+import { accountHasNonebotBot } from "@/utils/botConnection";
+import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
+import { slicePage } from "@/utils/paginate";
 import BotConfigModal from "@/components/BotConfigModal";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";

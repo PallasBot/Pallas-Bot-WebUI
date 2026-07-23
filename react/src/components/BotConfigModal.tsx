@@ -3,12 +3,12 @@ import { axiosErrorDetail } from "@/api/http";
 import { putBotConfig } from "@/api/fullConsole";
 import ConsoleModal from "@/components/ConsoleModal";
 import UiInput from "@/components/ui/UiInput";
-import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@pallas-vue/api/pallasTypes";
+import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@/api/pallasTypes";
 import {
   PERSONA_SEED_PREF_OPTIONS,
   readBotPersonaSeedPrefs,
-} from "@pallas-vue/api/pallasTypes";
-import { pluginPickListFromRows } from "@pallas-vue/utils/pluginDisplay";
+} from "@/api/pallasTypes";
+import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 
 type Draft = {
   security: boolean;

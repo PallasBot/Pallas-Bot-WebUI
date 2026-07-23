@@ -4,24 +4,24 @@ import type {
   OfficialExtensionInstallResult,
   OfficialExtensionRow,
   PluginRow,
-} from "@pallas-vue/api/pallasTypes";
+} from "@/api/pallasTypes";
 import {
   communityActivationDetailHint,
   extensionActionStateLabel,
   extensionActivationDetailHint,
   extensionResultAction,
   extensionResultNeedsRestart,
-} from "@pallas-vue/config/extensionActivationSemantics";
+} from "@/config/extensionActivationSemantics";
 import {
   resolveOfficialExtensionDescription,
   resolveOfficialExtensionTitle,
-} from "@pallas-vue/utils/officialExtensionMeta";
+} from "@/utils/officialExtensionMeta";
 import {
   communityPluginIconBustKey,
   resolveCommunityPluginIconUrlWithBust,
   resolveOfficialExtensionIconUrl,
   withPluginIconCacheBust,
-} from "@pallas-vue/utils/pluginIconUrl";
+} from "@/utils/pluginIconUrl";
 
 export type StoreSection = "official" | "community" | "local";
 export type StoreTab = "all" | "installed" | "available";

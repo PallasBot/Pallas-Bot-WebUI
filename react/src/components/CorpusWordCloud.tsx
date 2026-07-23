@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/fullConsole";
-import type { CommunityCorpusHotData, CommunityHotTab } from "@pallas-vue/api/pallasTypes";
-import { rankHotItems, type HotTagNode } from "@pallas-vue/utils/hotBubbleLayout";
+import type { CommunityCorpusHotData, CommunityHotTab } from "@/api/pallasTypes";
+import { rankHotItems, type HotTagNode } from "@/utils/hotBubbleLayout";
 import { cn } from "@/lib/utils";
 
 const communityTabs: Array<{ key: CommunityHotTab; label: string }> = [

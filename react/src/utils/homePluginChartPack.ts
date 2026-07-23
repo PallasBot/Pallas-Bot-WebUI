@@ -1,5 +1,5 @@
-import { pickTickIndices } from "@pallas-vue/utils/gsTrendChart";
-import { readChartPalette } from "@pallas-vue/utils/chartTheme";
+import { pickTickIndices } from "@/utils/gsTrendChart";
+import { readChartPalette } from "@/utils/chartTheme";
 
 export type BucketBarSeries = { label: string; color: string; vals: number[] };
 
