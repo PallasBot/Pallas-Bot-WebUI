@@ -11,8 +11,8 @@ import {
   postLlmBehaviorPatternUpsert,
   postLlmHistoryBehaviorAnnotate,
 } from "@/api/fullConsole";
-import type { LlmBehaviorPattern, LlmHistoryBehaviorRun } from "@pallas-vue/api/pallasTypes";
-import { BEHAVIOR_OUTCOME_OPTIONS } from "@pallas-vue/utils/aiHistoryLabels";
+import type { LlmBehaviorPattern, LlmHistoryBehaviorRun } from "@/api/pallasTypes";
+import { BEHAVIOR_OUTCOME_OPTIONS } from "@/utils/aiHistoryLabels";
 import PageHeader from "@/components/PageHeader";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";

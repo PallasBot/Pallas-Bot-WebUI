@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchIngressDispatch, fetchShardObservability } from "@/api/fullConsole";
-import type { IngressDispatchData, ShardObservabilityData } from "@pallas-vue/api/pallasTypes";
+import type { IngressDispatchData, ShardObservabilityData } from "@/api/pallasTypes";
 import Metric from "@/components/Metric";
 import Panel from "@/components/Panel";
 import { cn } from "@/lib/utils";

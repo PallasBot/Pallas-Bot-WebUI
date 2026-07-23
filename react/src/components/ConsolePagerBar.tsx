@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { totalPages } from "@pallas-vue/utils/paginate";
+import { totalPages } from "@/utils/paginate";
 
 export default function ConsolePagerBar({
   page,

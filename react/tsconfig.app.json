@@ -17,17 +17,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/utils/catalogSync": ["src/shims/catalogSync.ts"],
-      "@/utils/protocolUi": ["../src/utils/protocolUi.ts"],
-      "@/config/aiConstants": ["../src/config/aiConstants.ts"],
-      "@/config/consoleNavIcons": ["../src/config/consoleNavIcons.ts"],
-      "@/utils/pluginReadme": ["../src/utils/pluginReadme.ts"],
-      "@/api/pallasTypes": ["../src/api/pallasTypes.ts"],
-      "@/utils/pluginDisplayMeta": ["../src/utils/pluginDisplayMeta.ts"],
-      "@/*": ["src/*"],
-      "@pallas-vue/*": ["../src/*"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["src"]

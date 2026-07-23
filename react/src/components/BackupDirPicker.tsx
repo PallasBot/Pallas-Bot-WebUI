@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchDbBackupBrowse } from "@/api/fullConsole";
-import type { DbBackupBrowseData } from "@pallas-vue/api/pallasTypes";
+import type { DbBackupBrowseData } from "@/api/pallasTypes";
 import ConsoleModal from "@/components/ConsoleModal";
 
 export default function BackupDirPicker({

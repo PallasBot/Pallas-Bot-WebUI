@@ -10,11 +10,11 @@ import {
   postRequestAction,
   postRequestActionsBatch,
 } from "@/api/fullConsole";
-import type { BotRow, FriendListData, GroupListData } from "@pallas-vue/api/pallasTypes";
-import { accountHasNonebotBot } from "@pallas-vue/utils/botConnection";
-import { botPickerRowsFromInstances } from "@pallas-vue/utils/botDisplay";
-import { requestOverviewToFriendOverview } from "@pallas-vue/utils/consoleSocialCache";
-import { slicePage } from "@pallas-vue/utils/paginate";
+import type { BotRow, FriendListData, GroupListData } from "@/api/pallasTypes";
+import { accountHasNonebotBot } from "@/utils/botConnection";
+import { botPickerRowsFromInstances } from "@/utils/botDisplay";
+import { requestOverviewToFriendOverview } from "@/utils/consoleSocialCache";
+import { slicePage } from "@/utils/paginate";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import PageHeader from "@/components/PageHeader";
@@ -85,6 +85,7 @@ export default function FriendsGroupsPage() {
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const instances = instQ.data ?? null;
   const botsVisible = useMemo(() => botPickerRowsFromInstances(instances), [instances]);
+
 
   const selfIdNum = useMemo(() => {
     const n = parseInt(selfIdStr, 10);

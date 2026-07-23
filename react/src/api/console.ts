@@ -4,7 +4,7 @@ import type {
   CommunityPluginRow,
   OfficialExtensionRow,
   PluginRow,
-} from "@pallas-vue/api/pallasTypes";
+} from "@/api/pallasTypes";
 import { http } from "./http";
 
 export type { CommunityPluginRow, OfficialExtensionRow, PluginRow };

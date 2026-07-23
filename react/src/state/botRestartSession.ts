@@ -1,7 +1,7 @@
 import {
   botRestartPhaseLabel,
   type BotRestartPhase,
-} from "@pallas-vue/utils/botRestartProgress";
+} from "@/utils/botRestartProgress";
 
 export type { BotRestartPhase };
 

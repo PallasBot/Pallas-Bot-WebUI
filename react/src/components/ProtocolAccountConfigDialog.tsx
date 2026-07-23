@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { SystemData } from "@pallas-vue/api/pallasTypes";
+import type { SystemData } from "@/api/pallasTypes";
 import ConsoleModal from "@/components/ConsoleModal";
 import ProtocolAccountWorkspace, {
   type ProtocolAccountTab,

@@ -7,9 +7,9 @@ import type {
   PluginMatcherNamedSeries,
   PluginRow,
   PluginRunStatsRow,
-} from "@pallas-vue/api/pallasTypes";
-import type { PluginRunSample } from "@pallas-vue/utils/pluginRunHistory";
-import { matcherPluginDisplayName } from "@pallas-vue/utils/pluginDisplayLabel";
+} from "@/api/pallasTypes";
+import type { PluginRunSample } from "@/utils/pluginRunHistory";
+import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import GsDualAxisTrendChart from "@/components/GsDualAxisTrendChart";
 import HomeBucketChartSvg from "@/components/HomeBucketChartSvg";
 import HomeHourlyChartSvg from "@/components/HomeHourlyChartSvg";

@@ -10,7 +10,7 @@ import {
   postGitMirrorProbe,
   putGitMirrorPreferred,
 } from "@/api/fullConsole";
-import type { GitMirrorInfo, GitMirrorScopes, GitMirrorTargetRow } from "@pallas-vue/api/pallasTypes";
+import type { GitMirrorInfo, GitMirrorScopes, GitMirrorTargetRow } from "@/api/pallasTypes";
 import ConsoleModal from "@/components/ConsoleModal";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";

@@ -15,7 +15,7 @@ import type {
   GroupFleetWhitelistEntry,
   PluginGovernanceBody,
   PluginGovernanceData,
-} from "@pallas-vue/api/pallasTypes";
+} from "@/api/pallasTypes";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";

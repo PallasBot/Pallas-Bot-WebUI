@@ -1,4 +1,4 @@
-import type { OfficialExtensionRow, PluginRow } from "@pallas-vue/api/pallasTypes";
+import type { OfficialExtensionRow, PluginRow } from "@/api/pallasTypes";
 
 export type PluginCategory = "core" | "extra" | "local";
 

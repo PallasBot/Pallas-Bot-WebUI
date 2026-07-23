@@ -6,10 +6,12 @@ import {
   useState,
 } from "react";
 import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
-import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@pallas-vue/api/pallasTypes";
+import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
-import PageHeader from "@/components/PageHeader";
+import PageFill from "@/components/layout/PageFill";
+import PagePinned from "@/components/layout/PagePinned";
+import PageChrome from "@/components/layout/PageChrome";
 import UiInput from "@/components/ui/UiInput";
 import UiSelect from "@/components/ui/UiSelect";
 import {
@@ -20,11 +22,11 @@ import {
   parseLogLineLevel,
   persistLogsEnabledLevels,
   stripYearFromLogLine,
-} from "@pallas-vue/utils/logDisplay";
+} from "@/utils/logDisplay";
 import {
   loadLogsLastEventId,
   persistLogsLastEventId,
-} from "@pallas-vue/utils/logStreamResume";
+} from "@/utils/logStreamResume";
 import { cn } from "@/lib/utils";
 
 type LogsSnapshot = {
@@ -349,18 +351,18 @@ export default function LogsPage() {
 
   if (!pageReady) {
     return (
-      <div className="page-fill logs-page console-hub-page">
+      <PageFill className="logs-page console-hub-page">
         <p className="muted">加载日志…</p>
-      </div>
+      </PageFill>
     );
   }
 
   return (
-    <div className="page-fill logs-page console-hub-page">
+    <PageFill className="logs-page console-hub-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
 
-      <div className="page-pinned">
-        <PageHeader
+      <PagePinned>
+        <PageChrome
           title="运行日志"
           description="支持结构化与原始行视图；可按范围、来源与条数筛选，并实时跟随推送。"
         />
@@ -451,7 +453,7 @@ export default function LogsPage() {
             </div>
           ) : null}
         </div>
-      </div>
+      </PagePinned>
 
       <section className="panel ui-card ui-card--glass logs-page__panel">
         <div className="panel__bd">
@@ -523,6 +525,6 @@ export default function LogsPage() {
           </div>
         </div>
       </section>
-    </div>
+    </PageFill>
   );
 }

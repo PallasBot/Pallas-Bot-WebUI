@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import type { PluginRow } from "@pallas-vue/api/pallasTypes";
+import type { PluginRow } from "@/api/pallasTypes";
 import {
   pluginDisplayDescription,
   pluginDisplaySubtitle,
   pluginDisplayTitle,
   pluginResolvedId,
-} from "@pallas-vue/utils/pluginDisplayMeta";
+} from "@/utils/pluginDisplayMeta";
 import {
   pluginLoadBadgeText,
   pluginLoadProcessTags,
   pluginLoadWhere,
-} from "@pallas-vue/utils/pluginLoadRoleLabel";
-import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@pallas-vue/utils/pluginSourceLabel";
+} from "@/utils/pluginLoadRoleLabel";
+import { hasPluginSource, pluginSourceDir, pluginSourceLabel } from "@/utils/pluginSourceLabel";
 import PluginIcon from "@/components/PluginIcon";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import { cn } from "@/lib/utils";

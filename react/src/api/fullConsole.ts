@@ -1,10 +1,10 @@
 /**
- * 整包复用 Vue 控制台 API（OpenAPI 客户端 + 业务封装）。
+ * 控制台 API 入口：本地 `consoleApi` + 类型。
  * 页面可直接 `import { fetchX } from "@/api/fullConsole"`。
  */
-export * from "@pallas-vue/api/consoleApi";
+export * from "@/api/consoleApi";
 export type {
   GroupFleetWhitelistEntry,
   PluginGovernanceBody,
   PluginGovernanceData,
-} from "@pallas-vue/api/pallasTypes";
+} from "@/api/pallasTypes";

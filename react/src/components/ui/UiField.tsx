@@ -1,4 +1,9 @@
+/**
+ * @deprecated 新代码可用 Label + 自建布局，或后续 Field 原语。
+ * 本壳保留 Vue 期字段标签行结构。
+ */
 import type { ReactNode } from "react";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 export default function UiField({
@@ -23,26 +28,30 @@ export default function UiField({
   const showLabelRow = !hideLabel && Boolean(label || labelEnd || meta);
 
   return (
-    <div className={cn("ui-field", className)}>
+    <div className={cn("ui-field space-y-1.5", className)}>
       {showLabelRow ? (
-        <div className="ui-field__label-row">
-          <div className="ui-field__label">
-            <div className="ui-field__title">
+        <div className="ui-field__label-row flex items-start justify-between gap-2">
+          <div className="ui-field__label flex min-w-0 items-center gap-1.5">
+            <div className="ui-field__title flex min-w-0 items-center gap-1.5">
               {label ? (
-                <span className="ui-field__label-text" title={label}>
+                <Label className="ui-field__label-text truncate" title={label}>
                   {label}
-                </span>
+                </Label>
               ) : null}
               {labelEnd}
             </div>
             {required ? (
-              <span className="ui-field__required" aria-hidden="true">
+              <span className="text-destructive" aria-hidden="true">
                 *
               </span>
             ) : null}
-            {secret ? <span className="ui-field__secret">密钥</span> : null}
+            {secret ? (
+              <span className="rounded-[var(--radius-control,6px)] bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                密钥
+              </span>
+            ) : null}
           </div>
-          {meta ? <div className="ui-field__meta">{meta}</div> : null}
+          {meta ? <div className="ui-field__meta shrink-0 text-xs text-muted-foreground">{meta}</div> : null}
         </div>
       ) : null}
       <div className="ui-field__control">{children}</div>

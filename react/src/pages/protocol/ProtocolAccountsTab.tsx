@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { InstancesData, NapcatAccountRow, SystemData } from "@pallas-vue/api/pallasTypes";
+import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import {
   isExternalProtocolAccount,
   isPluginManagedProtocolAccount,
   mergeProtocolDisplayAccounts,
-} from "@pallas-vue/utils/protocolDisplayAccounts";
+} from "@/utils/protocolDisplayAccounts";
 import {
   accountConnectedWsPortLabel,
   accountProtocolId,
   accountWebUiHref,
-} from "@pallas-vue/utils/protocolLinks";
-import { slicePage } from "@pallas-vue/utils/paginate";
+} from "@/utils/protocolLinks";
+import { slicePage } from "@/utils/paginate";
 import {
   protocolApiErrorMessage,
   protocolDeleteAccount,

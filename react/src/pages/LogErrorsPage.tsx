@@ -1,19 +1,21 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchLogErrors, postLogErrorsCleanup } from "@/api/fullConsole";
-import type { MatcherErrorLogEntry } from "@pallas-vue/api/pallasTypes";
-import { copyTextToClipboard } from "@pallas-vue/utils/clipboard";
+import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
+import { copyTextToClipboard } from "@/utils/clipboard";
 import {
   formatLogErrorExcType,
   formatLogErrorFull,
   formatLogErrorSummary,
   isTracebackTruncated,
   parseLogErrorPlugin,
-} from "@pallas-vue/utils/logErrorDisplay";
-import { formatLogDisplayTime } from "@pallas-vue/utils/logDisplay";
+} from "@/utils/logErrorDisplay";
+import { formatLogDisplayTime } from "@/utils/logDisplay";
 import ConsoleHubSearch from "@/components/ConsoleHubSearch";
 import ConsoleHubToolbarStrip from "@/components/ConsoleHubToolbarStrip";
 import PageHeader from "@/components/PageHeader";
+import PageFill from "@/components/layout/PageFill";
+import PagePinned from "@/components/layout/PagePinned";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import UiButton from "@/components/ui/UiButton";
 import UiSelect from "@/components/ui/UiSelect";
@@ -123,10 +125,10 @@ export default function LogErrorsPage() {
   }
 
   return (
-    <div className="page-fill log-errors-page console-hub-page">
+    <PageFill className="log-errors-page console-hub-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
 
-      <div className="page-pinned">
+      <PagePinned>
         <PageHeader
           title="日志报错"
           description="每条报错独立成卡；分片时可按来源筛选。「清理全部」与每日 4:00 自动清理中的日志报错部分一致。"
@@ -216,7 +218,7 @@ export default function LogErrorsPage() {
             />
           }
         />
-      </div>
+      </PagePinned>
 
       <section className="panel ui-card ui-card--glass log-errors-page__panel">
         <div className="panel__bd">
@@ -296,6 +298,6 @@ export default function LogErrorsPage() {
           </div>
         </div>
       </section>
-    </div>
+    </PageFill>
   );
 }

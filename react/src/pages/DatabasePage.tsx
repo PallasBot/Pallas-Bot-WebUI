@@ -9,10 +9,10 @@ import {
   fetchUserConfigs,
   postMongoAggregate,
 } from "@/api/fullConsole";
-import type { DbOverviewData, GroupConfigPublic, UserConfigPublic } from "@pallas-vue/api/pallasTypes";
-import { formatDisabledPluginIds } from "@pallas-vue/utils/pluginDisplay";
-import { slicePage } from "@pallas-vue/utils/paginate";
-import { rouletteModeLabel } from "@pallas-vue/utils/rouletteMode";
+import type { DbOverviewData, GroupConfigPublic, UserConfigPublic } from "@/api/pallasTypes";
+import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
+import { slicePage } from "@/utils/paginate";
+import { rouletteModeLabel } from "@/utils/rouletteMode";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import PageHeader from "@/components/PageHeader";
@@ -64,6 +64,7 @@ export default function DatabasePage() {
   const [pipelineText, setPipelineText] = useState('[\n  { "$limit": 20 }\n]');
   const [aggResult, setAggResult] = useState("");
   const [aggLoading, setAggLoading] = useState(false);
+
 
   const overviewQ = useQuery({ queryKey: ["db-overview"], queryFn: fetchDbOverview });
   const pluginsQ = useQuery({ queryKey: ["plugins-catalog"], queryFn: () => fetchPlugins() });

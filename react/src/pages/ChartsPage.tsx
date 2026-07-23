@@ -5,7 +5,7 @@ import {
   fetchInstances,
   fetchPluginRunStats,
 } from "@/api/fullConsole";
-import type { BotConfigPublic, ConsoleDailyStatRow } from "@pallas-vue/api/pallasTypes";
+import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
 import ChartsDailyBarChart from "@/components/ChartsDailyBarChart";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import HomePluginRunCharts from "@/components/HomePluginRunCharts";

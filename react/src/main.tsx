@@ -13,12 +13,13 @@ import "@fontsource/noto-sans-sc/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/700.css";
-/* 先挂 Vue 现网视觉，再挂 Tailwind（工具类 + shadcn 组件） */
-import "@pallas-vue/styles/app.css";
-import "@pallas-vue/styles/console-hub.css";
-import "@pallas-vue/styles/ai-hub.css";
-import "@pallas-vue/styles/ai-history.css";
-/* Ui* 原子：不用 Vue ui.css，避免覆写 Tailwind --background HSL 分量 */
+/* P3：自有 console 样式（不再依赖 Vue styles） */
+import "./styles/console/tokens.css";
+import "./styles/console/app.css";
+import "./styles/console/console-hub.css";
+import "./styles/console/ai-hub.css";
+import "./styles/console/ai-history.css";
+/* Ui* 兼容层原子；勿引入 Vue ui.css（会打坏 Tailwind --background HSL） */
 import "./styles/ui-atoms.css";
 import "./styles/console-page-skel.css";
 import "./styles/update-page.css";

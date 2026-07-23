@@ -8,10 +8,10 @@ import type {
   CommunityPluginRow,
   OfficialExtensionRow,
   PluginRow,
-} from "@pallas-vue/api/pallasTypes";
-import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@pallas-vue/config/aiEntrySemantics";
+} from "@/api/pallasTypes";
+import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
-import { resolvePluginReadmeTarget } from "@pallas-vue/utils/pluginReadmeTarget";
+import { resolvePluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 
 type Props = {
   open: boolean;

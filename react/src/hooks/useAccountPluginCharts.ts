@@ -11,9 +11,9 @@ import type {
   MessageStatsData,
   PluginRow,
   PluginRunStatsData,
-} from "@pallas-vue/api/pallasTypes";
-import type { PluginRunSample } from "@pallas-vue/utils/pluginRunHistory";
-import { pushPluginRunSample, readPluginRunSeries } from "@pallas-vue/utils/pluginRunHistory";
+} from "@/api/pallasTypes";
+import type { PluginRunSample } from "@/utils/pluginRunHistory";
+import { pushPluginRunSample, readPluginRunSeries } from "@/utils/pluginRunHistory";
 
 export function useAccountPluginCharts(selectedAccount: number | null) {
   const [pluginsList, setPluginsList] = useState<PluginRow[]>(() => peekPluginsCache() ?? []);

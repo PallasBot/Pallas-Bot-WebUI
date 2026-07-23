@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ConsoleDailyStatRow } from "@pallas-vue/api/pallasTypes";
+import type { ConsoleDailyStatRow } from "@/api/pallasTypes";
 import {
   buildGsTrendChartPack,
   fmtAxisCount,
   type GsTrendSeriesId,
-} from "@pallas-vue/utils/gsTrendChart";
+} from "@/utils/gsTrendChart";
 
 type Props = {
   rows: ConsoleDailyStatRow[];

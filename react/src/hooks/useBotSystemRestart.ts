@@ -4,7 +4,7 @@ import {
   fetchShardObservability,
   postSystemRestart,
 } from "@/api/fullConsole";
-import type { BotUpdateCheckData } from "@pallas-vue/api/pallasTypes";
+import type { BotUpdateCheckData } from "@/api/pallasTypes";
 import { fetchHealth } from "@/api/health";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -12,7 +12,7 @@ import {
   healthBootFingerprint,
   waitForBotRestartOnline,
   type BotRestartPhase,
-} from "@pallas-vue/utils/botRestartProgress";
+} from "@/utils/botRestartProgress";
 import { syncRestartSession } from "@/state/botRestartSession";
 
 export type { BotRestartPhase };
