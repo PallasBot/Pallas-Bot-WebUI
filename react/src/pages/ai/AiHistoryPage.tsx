@@ -13,7 +13,7 @@ import {
 } from "@/api/fullConsole";
 import type { LlmBehaviorPattern, LlmHistoryBehaviorRun } from "@/api/pallasTypes";
 import { BEHAVIOR_OUTCOME_OPTIONS } from "@/utils/aiHistoryLabels";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -191,9 +191,9 @@ export default function AiHistoryPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageMasthead
         title="AI 历史"
-        description="最近会话列表；行为标注与规则维护。"
+        description="会话列表与行为规则。"
         actions={
           <Button variant="outline" size="sm" disabled={q.isFetching} onClick={() => void q.refetch()}>
             <RefreshCw className={q.isFetching ? "animate-spin" : undefined} />

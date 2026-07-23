@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchConversationKernelMemory,
@@ -60,27 +59,14 @@ export default function AiConfigKernelSection() {
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
-  const refresh = () => {
-    void statusQ.refetch();
-    void tracesQ.refetch();
-    void memoryQ.refetch();
-    void notesQ.refetch();
-  };
-
   return (
     <div className="space-y-4">
       {msg ? <p className={cn("text-sm", msg.includes("已删除") ? "text-emerald-400" : "text-destructive")}>{msg}</p> : null}
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div>
-            <CardTitle>会话内核</CardTitle>
-            <CardDescription>status / traces / memory / relationship-notes</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={refresh}>
-            <RefreshCw />
-            刷新
-          </Button>
+        <CardHeader>
+          <CardTitle>会话内核</CardTitle>
+          <CardDescription>status / traces / memory / relationship-notes；用顶部工具条刷新。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">

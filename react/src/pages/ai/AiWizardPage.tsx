@@ -3,7 +3,7 @@ import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchLlmWizardStatus, postAiExtensionTest } from "@/api/console";
 import { postServiceGatewaysConnectivityCheck } from "@/api/fullConsole";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,9 @@ export default function AiWizardPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageMasthead
         title="AI 体检向导"
-        description="连通性与提供方检查摘要。"
+        description="连通性与提供方摘要。"
         actions={
           <>
             <Button

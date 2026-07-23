@@ -6,7 +6,7 @@ import {
   fetchLlmRuntimeOverview,
 } from "@/api/console";
 import Metric from "@/components/Metric";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,9 @@ export default function AiHomePage() {
 
   return (
     <div>
-      <PageHeader
+      <PageMasthead
         title="AI 观测"
-        description="运行时健康、服务进程与提供方状态。"
+        description="运行时健康与提供方状态。"
         actions={
           <Button
             variant="outline"
