@@ -14,7 +14,7 @@
   padding: var(--ui-btn-pad-y, 7px) var(--ui-btn-pad-x, 14px);
   font-family: var(--font-sans);
   font-size: var(--ui-btn-font, 13px);
-  font-weight: var(--ui-btn-weight, 600);
+  font-weight: var(--ui-btn-weight, 500);
   line-height: 1.2;
   border-radius: var(--radius-control, 8px);
   border: 1px solid transparent;
@@ -35,7 +35,7 @@
 
 .ui-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .ui-btn:disabled,
@@ -57,7 +57,7 @@
   min-height: 32px;
   padding: 5px 12px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ui-btn--lg {
@@ -67,54 +67,84 @@
 }
 
 .ui-btn--default {
-  background: color-mix(in srgb, var(--text) 6%, var(--bg-card));
-  border-color: var(--border);
+  background: var(--control-bg, var(--bg-elev));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 10%, transparent);
   color: var(--text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, var(--text)) 3%, transparent);
 }
 
 html[data-theme="light"] .ui-btn--default {
-  background: var(--surface-control, #fff);
-  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+  background: #fff;
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
 }
 
 .ui-btn--default:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 5%, color-mix(in srgb, var(--text) 6%, var(--bg-card)));
-  border-color: color-mix(in srgb, var(--border) 80%, var(--text));
+  background: color-mix(in srgb, var(--text) 4%, var(--control-bg, var(--bg-elev)));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 14%, transparent);
+}
+
+html[data-theme="light"] .ui-btn--default:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 3.5%, #fff);
 }
 
 .ui-btn--primary {
   background: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
   color: #fff;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .ui-btn--primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 88%, #ffffff 12%);
+  background: color-mix(in srgb, var(--accent) 90%, #000 10%);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.ui-btn--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 82%, #000 18%);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: none;
 }
 
 .ui-btn--destructive {
   background: #dc2626;
-  border-color: color-mix(in srgb, #dc2626 72%, transparent);
+  border-color: color-mix(in srgb, #dc2626 38%, transparent);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.22);
 }
 
 .ui-btn--destructive:hover:not(:disabled) {
-  background: color-mix(in srgb, #dc2626 88%, #ffffff 10%);
+  background: color-mix(in srgb, #dc2626 90%, #000 10%);
+}
+
+.ui-btn--destructive:active:not(:disabled) {
+  background: color-mix(in srgb, #dc2626 82%, #000 18%);
+  box-shadow: none;
 }
 
 .ui-btn--outline {
-  background: transparent;
-  border-color: var(--border);
+  background: var(--control-bg, var(--bg-elev));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 10%, transparent);
   color: var(--text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, var(--text)) 3%, transparent);
 }
 
 html[data-theme="light"] .ui-btn--outline {
-  background: var(--surface-control, #fff);
-  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+  background: #fff;
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
 }
 
 .ui-btn--outline:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
+  background: color-mix(in srgb, var(--text) 4%, var(--control-bg, var(--bg-elev)));
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 14%, transparent);
+}
+
+html[data-theme="light"] .ui-btn--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 3.5%, #fff);
+}
+
+.ui-btn--outline:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 7%, var(--control-bg, var(--bg-elev)));
 }
 
 .ui-btn--ghost {
@@ -133,8 +163,8 @@ html[data-theme="light"] .ui-btn--outline {
 }
 
 html[data-layout="hub"] .ui-btn:not(.btn-refresh-action--embedded) {
-  min-height: 40px;
-  font-size: 14px;
+  min-height: var(--ui-ctrl-height, 36px);
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -211,7 +241,7 @@ html[data-layout="hub"] .ui-btn--sm {
   background: color-mix(in srgb, #f59e0b 8%, transparent);
   color: color-mix(in srgb, #f59e0b 84%, var(--text) 8%);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -328,7 +358,7 @@ html[data-layout="hub"] .ui-btn--sm {
   background: transparent;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
   cursor: help;
   flex-shrink: 0;
@@ -357,6 +387,105 @@ html[data-layout="hub"] .ui-btn--sm {
   line-height: 1.55;
   color: var(--text-muted);
   white-space: pre-wrap;
+}
+
+/* 对齐 Vue `.plugin-config-field-popover`（Teleport 到 body） */
+.plugin-config-field-popover {
+  z-index: 400;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border, rgba(120, 120, 140, 0.28)) 90%, transparent);
+  background: var(--popover, var(--bg-card, #1b1d27));
+  color: var(--popover-foreground, var(--text, inherit));
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--shadow, rgba(0, 0, 0, 0.35)) 60%, transparent);
+  backdrop-filter: blur(14px);
+  overflow: auto;
+  min-width: 240px;
+}
+
+.plugin-config-field-popover--dialog {
+  position: static;
+  z-index: auto;
+  box-shadow: none;
+  backdrop-filter: none;
+  min-width: 0;
+  max-height: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.plugin-config-field-popover__section {
+  display: grid;
+  gap: 6px;
+}
+
+.plugin-config-field-popover__eyebrow {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, rgba(255, 255, 255, 0.62));
+}
+
+.plugin-config-field-popover__title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.plugin-config-field-popover__desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.plugin-config-field-popover__desc--muted {
+  color: var(--text-muted, rgba(255, 255, 255, 0.66));
+}
+
+.plugin-config-field-popover__meta {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 86%, transparent);
+}
+
+.plugin-config-field-popover__meta > div {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+}
+
+.plugin-config-field-popover__meta dt {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted, rgba(255, 255, 255, 0.64));
+}
+
+.plugin-config-field-popover__meta dd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+@media (max-width: 560px) {
+  .plugin-config-field-popover:not(.plugin-config-field-popover--dialog) {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .plugin-config-field-popover__meta > div {
+    grid-template-columns: 48px 1fr;
+    gap: 8px;
+  }
 }
 
 .plugin-config-form-item--tall {
@@ -445,10 +574,24 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .config-field-renderer__tags-add {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   min-width: 0;
   width: 100%;
+}
+
+.config-field-renderer__tags-add .inp,
+.config-field-renderer__tags-add .ui-input-wrap {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.config-field-renderer__tags-add .btn,
+.config-field-renderer__tags-add .ui-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .config-field-renderer__number {
@@ -476,7 +619,7 @@ html[data-layout="hub"] .ui-btn--sm {
   color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .config-field-renderer__step:last-child {
@@ -516,7 +659,7 @@ html[data-layout="hub"] .ui-btn--sm {
   margin: 0;
   font-size: 15px;
   line-height: 1.35;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .plugin-governance-panel__desc {
@@ -539,7 +682,7 @@ html[data-layout="hub"] .ui-btn--sm {
   padding: 0 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   white-space: nowrap;
   color: color-mix(in srgb, var(--accent, #38bdf8) 82%, var(--text, #fff) 10%);
   background: color-mix(in srgb, var(--accent, #38bdf8) 10%, transparent);
@@ -567,7 +710,7 @@ html[data-layout="hub"] .ui-btn--sm {
   margin: 0;
   font-size: var(--console-panel-title-size, 1.0625rem);
   line-height: 1.35;
-  font-weight: var(--console-panel-title-weight, 650);
+  font-weight: var(--console-panel-title-weight, 600);
 }
 
 .plugin-governance-panel__group-desc {
@@ -651,7 +794,7 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .plugin-governance-panel__cmd-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -737,7 +880,7 @@ html[data-layout="hub"] .ui-btn--sm {
 .plugin-runtime-switch__title {
   font-size: 14px;
   line-height: 1.45;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .plugin-runtime-switch__desc {
@@ -765,7 +908,7 @@ html[data-layout="hub"] .ui-btn--sm {
   border-radius: 999px;
   border: 1px solid transparent;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   white-space: nowrap;
 }
@@ -829,9 +972,13 @@ html[data-layout="hub"] .ui-btn--sm {
   border: 0;
   padding: 0;
   margin: 0;
-  background: rgba(0, 0, 0, 0.52);
+  background: rgba(0, 0, 0, 0.48);
   cursor: pointer;
   animation: shell-mobile-backdrop-in 0.2s var(--ease, ease) both;
+}
+
+html[data-theme="light"] .ui-dialog__backdrop {
+  background: rgba(15, 23, 42, 0.28);
 }
 
 .ui-dialog__backdrop:disabled {
@@ -845,12 +992,23 @@ html[data-layout="hub"] .ui-btn--sm {
   max-height: min(90vh, 920px);
   display: flex;
   flex-direction: column;
+  /* 配置弹窗对齐 gsuid：实心底，不随 glass 主题半透 */
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   border-radius: var(--radius-md, 12px);
-  box-shadow: var(--shadow-card);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--text) 4%, transparent),
+    0 16px 48px -8px color-mix(in srgb, var(--text) 16%, transparent);
   overflow: hidden;
   animation: ui-dialog-panel-in 0.22s var(--ease, ease) both;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-theme="dark"] .ui-dialog__panel {
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.22),
+    0 18px 48px -8px rgba(0, 0, 0, 0.4);
 }
 
 @keyframes ui-dialog-panel-in {
@@ -948,7 +1106,7 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .social-config-dialog__block-hd {
   margin-bottom: 8px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .social-config-dialog__checklist {
@@ -998,7 +1156,7 @@ html[data-layout="hub"] .ui-btn--sm {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
   border-radius: calc(var(--radius-control, 10px) + 2px);
   background: var(--bg-card);
   color: var(--text);
@@ -1014,7 +1172,7 @@ html[data-layout="hub"] .ui-btn--sm {
   background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
   backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
-  border-color: color-mix(in srgb, var(--border-strong, var(--border)) 40%, transparent);
+  border-color: color-mix(in srgb, var(--border) 40%, transparent);
   box-shadow: var(--glass-elev-shadow, none), var(--glass-inset-highlight, none);
 }
 
@@ -1059,14 +1217,24 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .plugin-catalog-card .ui-card__footer .btn--primary,
 .plugin-catalog-card .ui-card__footer .ui-btn--primary {
-  color: var(--primary-foreground, #fff);
+  color: #fff;
   background: var(--accent, #0ea5e9);
-  border-color: color-mix(in srgb, var(--accent, #0ea5e9) 70%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #0ea5e9) 38%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent, #0ea5e9) 22%, transparent);
 }
 
 .plugin-catalog-card .ui-card__footer .btn--primary:hover:not(:disabled),
 .plugin-catalog-card .ui-card__footer .ui-btn--primary:hover:not(:disabled) {
-  filter: brightness(1.06);
+  background: color-mix(in srgb, var(--accent, #0ea5e9) 90%, #000 10%);
+  border-color: color-mix(in srgb, var(--accent, #0ea5e9) 48%, transparent);
+  filter: none;
+}
+
+.plugin-catalog-card .ui-card__footer .btn--primary:active:not(:disabled),
+.plugin-catalog-card .ui-card__footer .ui-btn--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, #0ea5e9) 82%, #000 18%);
+  filter: none;
+  box-shadow: none;
 }
 
 /* 治理弹窗：body 由 workspace 内边距负责，避免双层挤窄 */
@@ -1131,69 +1299,69 @@ html[data-layout="hub"] .ui-btn--sm {
   gap: 8px;
 }
 
-/* ── 配置表单 / 分栏对比色（对齐 gsuid muted 分层：canvas → card → field） ── */
+/* ── 配置表单 / 分栏：与弹窗面板同底（勿灰 muted 叠层） ── */
 .plugin-config-workspace,
 .plugin-config-page,
 .common-config-page,
+.plugin-config-dialog__bd,
 .plugin-config-dialog__bd .plugin-config-workspace--dialog {
   background: transparent;
 }
 
-.plugin-config-group-card,
 .plugin-config-workspace .plugin-config-page__card-bd,
+.plugin-config-workspace--dialog .plugin-config-page__card-bd,
 .common-config-page .panel__bd {
-  background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-card) 45%);
-  border-radius: var(--radius-control, 10px);
+  background: transparent;
+  border-radius: 0;
 }
 
-.plugin-config-form-grid > .ui-field,
-.plugin-config-form-item,
-.common-config-page .ui-field {
+/* 字段卡壳由 react-parity-pass 接管；此处只保留 common-config 非分区字段兜底 */
+.common-config-page .ui-field:not(.plugin-config-form-item) {
   padding: 10px 12px;
   border-radius: calc(var(--radius-control, 10px) - 2px);
   background: color-mix(in srgb, var(--bg-card) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-html[data-theme="light"] .plugin-config-form-grid > .ui-field,
-html[data-theme="light"] .plugin-config-form-item,
-html[data-theme="light"] .common-config-page .ui-field {
+html[data-theme="light"] .common-config-page .ui-field:not(.plugin-config-form-item) {
   background: color-mix(in srgb, #fff 88%, var(--bg-muted) 12%);
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 6%, transparent);
 }
 
 .plugin-governance-panel__group {
-  background: color-mix(in srgb, var(--bg-muted) 40%, var(--bg-card) 60%);
+  background: var(--bg-card);
 }
 
 html[data-theme="light"] .plugin-governance-panel__group {
-  background: color-mix(in srgb, var(--foreground, var(--text)) 2.5%, var(--bg-card));
+  background: var(--bg-card);
 }
 
-/* 分栏轨道与选中段对比 */
+/* 分栏轨道：白/卡片底（对齐 gsuid）；选中段仍走 accent */
 .console-view-toggle {
-  background: color-mix(in srgb, var(--text) 5.5%, var(--bg-muted));
+  background: var(--bg-card);
   border-color: color-mix(in srgb, var(--border) 85%, transparent);
 }
 
 html[data-theme="light"] .console-view-toggle {
-  background: color-mix(in srgb, var(--foreground, var(--text)) 4%, var(--bg-elev));
+  background: var(--bg-card);
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 8%, transparent);
 }
 
 .console-view-toggle button.is-on,
 .console-view-toggle > a.is-on {
-  background: var(--surface-segment-active, var(--bg-card));
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--border) 55%, transparent);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground, #000) 8%, transparent);
+  color: #fff;
+  font-weight: 500;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .console-view-toggle button.is-on,
 html[data-theme="light"] .console-view-toggle > a.is-on {
-  background: #fff;
-  border-color: color-mix(in srgb, var(--foreground, var(--text)) 10%, transparent);
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground, #0f172a) 8%, transparent);
+  color: #fff;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* 实例/协议卡片脚按钮：用 control 圆角，避免 hub 胶囊成圆 */
@@ -1237,43 +1405,74 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   justify-content: center;
 }
 
-/* 侧栏滚动条对齐 gsuid_hub（细圆角 + muted） */
+/* 侧栏滚动条：与 app.css 一致（gsuid 细圆角；勿再加粗） */
 .shell__nav {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text-dim) 28%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text-dim) 32%, transparent) transparent;
 }
 
 .shell__nav::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
+}
+
+.shell__nav::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+.shell__nav::-webkit-scrollbar-button:start:decrement,
+.shell__nav::-webkit-scrollbar-button:end:increment,
+.shell__nav::-webkit-scrollbar-button:vertical:start:decrement,
+.shell__nav::-webkit-scrollbar-button:vertical:end:increment {
+  display: none;
+  height: 0;
+  width: 0;
 }
 
 .shell__nav::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
-  border-radius: 99px;
-  margin-block: 8px;
+  background: transparent;
+  margin-block: 12px;
 }
 
 .shell__nav::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--text-dim) 28%, transparent);
   border-radius: 99px;
+  min-height: 0;
 }
 
 .shell__nav::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
+  background: color-mix(in srgb, var(--text-dim) 48%, transparent);
 }
 
-/* 彩色(gs) / 黑白(shadcn) 主按钮质感（学 gsuid preset） */
+.shell__nav::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 彩色(gs) / 黑白(shadcn) 主按钮质感（学 gsuid「更新全部」） */
 html[data-ui-preset="gs"] .btn--primary,
 html[data-ui-preset="gs"] .ui-btn--primary {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 78%, #ffffff 22%) 0%,
-    color-mix(in srgb, var(--accent) 92%, #000000 8%) 100%
-  );
-  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
   color: #fff;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+html[data-ui-preset="gs"] .btn--primary:hover:not(:disabled),
+html[data-ui-preset="gs"] .ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 90%, #000 10%);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  filter: none;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+html[data-ui-preset="gs"] .btn--primary:active:not(:disabled),
+html[data-ui-preset="gs"] .ui-btn--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 82%, #000 18%);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  filter: none;
+  box-shadow: none;
 }
 
 html[data-ui-preset="shadcn"] .btn--primary,
@@ -1299,32 +1498,5 @@ html[data-ui-preset="shadcn"] .ui-btn--destructive {
   box-shadow: none;
 }
 
-/* 插件配置字段：更接近 gsuid ConfigField（标签 muted、控件白底） */
-.plugin-config-form-grid > .ui-field .ui-field__label-text,
-.plugin-config-form-item .ui-field__label-text {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.plugin-config-form-grid > .ui-field .inp,
-.plugin-config-form-grid > .ui-field .sel,
-.plugin-config-form-item .inp,
-.plugin-config-form-item .sel {
-  background: var(--surface-control, var(--bg-card));
-}
-
-html[data-theme="light"] .plugin-config-form-grid > .ui-field .inp,
-html[data-theme="light"] .plugin-config-form-grid > .ui-field .sel,
-html[data-theme="light"] .plugin-config-form-item .inp,
-html[data-theme="light"] .plugin-config-form-item .sel {
-  background: #fff;
-}
-
-.protocol-account-workspace__metrics .stat-card.ui-card > .ui-card__content {
-  padding: 10px 12px;
-}
-
-.protocol-account-workspace__metrics .stat-card--dense .card__body {
-  padding: 0;
-}
+/* 插件配置字段：标签行与控件由 react-parity-pass 接管 */
 
