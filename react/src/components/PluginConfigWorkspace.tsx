@@ -92,7 +92,7 @@ function PluginBundledReadme({
       emptyText={readmeQ.error ? undefined : "暂无 README 内容"}
     >
       <div
-        className="plugin-readme-panel__body prose prose-invert max-w-none text-sm"
+        className="plugin-readme-panel__body readme-markdown markdown-body"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </StateBlock>

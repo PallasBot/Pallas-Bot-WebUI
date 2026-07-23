@@ -31,6 +31,7 @@ import "./styles/home-bucket-chart.css";
 import "./styles/home-hourly-chart.css";
 import "./styles/gs-trend-chart.css";
 import "./styles/protocol-page-entry.css";
+import "./styles/protocol-account-workspace.css";
 import "./styles/home-page.css";
 import "./styles/console-pager.css";
 import "./index.css";
