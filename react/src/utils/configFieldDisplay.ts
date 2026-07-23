@@ -26,6 +26,35 @@ export function fieldDisplayTitle(f: PluginConfigField): string {
   return (f.label || "").trim() || f.name;
 }
 
+/** 对齐 Vue `fieldTypeLabel`（插件配置帮助浮层） */
+export function fieldTypeLabel(field: PluginConfigField): string {
+  switch (field.kind) {
+    case "bool":
+      return "开关";
+    case "enum":
+      return "选项";
+    case "int":
+    case "float":
+      return "数字";
+    case "json":
+      return "JSON";
+    default:
+      return "文本";
+  }
+}
+
+/** 对齐 Vue `fieldHelpDefaultValue` */
+export function fieldHelpDefaultValue(field: PluginConfigField): string {
+  const value = field.default;
+  if (value == null || value === "") return "无";
+  try {
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    return text.length > 96 ? `${text.slice(0, 96)}…` : text;
+  } catch {
+    return String(value);
+  }
+}
+
 export function enumChoiceLabel(opt: string, field?: PluginConfigField): string {
   const key = String(opt).trim();
   if (field?.choice_labels?.[key]) return field.choice_labels[key];
