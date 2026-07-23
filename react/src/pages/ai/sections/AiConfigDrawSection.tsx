@@ -19,6 +19,16 @@ export default function AiConfigDrawSection() {
           <CommonConfigForm sectionId="draw" savedMessage="画画配置已保存" />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>原始 TOML</CardTitle>
+          <CardDescription>直接编辑 draw 分区原始配置；保存后覆盖表单字段。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CommonConfigForm sectionId="draw" mode="raw" savedMessage="画画 TOML 已保存" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

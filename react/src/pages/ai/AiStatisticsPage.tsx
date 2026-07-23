@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { fetchLlmRuntimeOverview } from "@/api/console";
 import { fetchLlmTaskStats } from "@/api/fullConsole";
-import PageHeader from "@/components/PageHeader";
+import PageMasthead from "@/components/PageMasthead";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,9 +54,9 @@ export default function AiStatisticsPage() {
 
   return (
     <div>
-      <PageHeader
+      <PageMasthead
         title="AI 统计"
-        description="任务统计（fetchLlmTaskStats）与运行时快照。"
+        description="任务统计与运行时快照。"
         actions={
           <Button
             variant="outline"
@@ -82,25 +82,25 @@ export default function AiStatisticsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">AI 连通</div>
-            <div className="text-xl font-semibold">{summary.reachable == null ? "…" : summary.reachable ? "正常" : "异常"}</div>
+            <div className="text-xl font-medium">{summary.reachable == null ? "…" : summary.reachable ? "正常" : "异常"}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">Bot 提交</div>
-            <div className="text-xl font-semibold tabular-nums">{summary.botOk}</div>
+            <div className="text-xl font-medium tabular-nums">{summary.botOk}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">AI 成功</div>
-            <div className="text-xl font-semibold tabular-nums">{summary.aiOk}</div>
+            <div className="text-xl font-medium tabular-nums">{summary.aiOk}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-xs text-muted-foreground">AI 失败</div>
-            <div className="text-xl font-semibold tabular-nums">{summary.aiFail}</div>
+            <div className="text-xl font-medium tabular-nums">{summary.aiFail}</div>
           </CardContent>
         </Card>
       </div>

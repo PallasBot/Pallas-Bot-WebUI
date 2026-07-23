@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchLlmBehaviorPatterns,
@@ -103,15 +102,6 @@ export default function AiConfigBehaviorSection() {
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
-  const refresh = () => {
-    void runsQ.refetch();
-    void patternsQ.refetch();
-    void feedbackQ.refetch();
-    void summaryQ.refetch();
-    void promoQ.refetch();
-    void personaQ.refetch();
-  };
-
   return (
     <div className="space-y-4">
       {msg ? (
@@ -119,15 +109,9 @@ export default function AiConfigBehaviorSection() {
       ) : null}
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div>
-            <CardTitle>行为与调试</CardTitle>
-            <CardDescription>patterns / runs / repeater / persona / runtime-debug</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={refresh}>
-            <RefreshCw />
-            刷新
-          </Button>
+        <CardHeader>
+          <CardTitle>行为与调试</CardTitle>
+          <CardDescription>patterns / runs / repeater / persona / runtime-debug；用顶部工具条刷新。</CardDescription>
         </CardHeader>
         <CardContent>
           <label className="block max-w-xs space-y-1 text-sm">

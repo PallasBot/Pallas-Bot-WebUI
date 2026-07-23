@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
+  fetchLlmProviderModels,
   fetchLlmModelAdminStatus,
   postLlmModelAdminNumGpu,
   postLlmModelAdminReload,
@@ -10,10 +10,12 @@ import {
   postLlmModelAdminUnload,
 } from "@/api/console";
 import StateBlock from "@/components/StateBlock";
+import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 export default function AiModelAdminPanel() {
@@ -21,9 +23,18 @@ export default function AiModelAdminPanel() {
   const [model, setModel] = useState("");
   const [numGpu, setNumGpu] = useState("");
   const [pull, setPull] = useState(true);
+  const [models, setModels] = useState<string[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
   const statusQ = useQuery({ queryKey: ["llm-model-admin"], queryFn: fetchLlmModelAdminStatus });
+
+  useEffect(() => {
+    void fetchLlmProviderModels("local", { kind: "local" })
+      .then((result) => {
+        if (result.ok) setModels(result.models || []);
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!statusQ.data) return;
@@ -61,15 +72,9 @@ export default function AiModelAdminPanel() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <div>
-          <CardTitle>本地模型管理</CardTitle>
-          <CardDescription>Ollama 切换 / 重载 / GPU 层数</CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void statusQ.refetch()}>
-          <RefreshCw className={statusQ.isFetching ? "animate-spin" : undefined} />
-          刷新
-        </Button>
+      <CardHeader>
+        <CardTitle>本地模型管理</CardTitle>
+        <CardDescription>Ollama 切换 / 重载 / GPU 层数；用顶部工具条刷新。</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {msg ? (
@@ -84,19 +89,17 @@ export default function AiModelAdminPanel() {
             <Badge variant="secondary">GPU {statusQ.data?.num_gpu ?? "—"}</Badge>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">模型名</span>
-              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="qwen2.5:7b" />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">num_gpu</span>
+            <AiConfigField label="模型名" description="选择本地 Provider 已发现的模型。">
+              <AiModelSelect value={model} options={[...(statusQ.data?.model ? [statusQ.data.model] : []), ...models]} placeholder="选择模型" onValueChange={setModel} />
+            </AiConfigField>
+            <AiConfigField label="num_gpu">
               <Input value={numGpu} onChange={(e) => setNumGpu(e.target.value)} type="number" />
-            </label>
+            </AiConfigField>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={pull} onChange={(e) => setPull(e.target.checked)} />
-            切换时尝试 pull
-          </label>
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <Switch checked={pull} onCheckedChange={setPull} />
+            <span>切换时尝试 pull</span>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"

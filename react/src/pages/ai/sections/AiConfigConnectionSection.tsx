@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchAiExtensionConfig,
@@ -13,11 +12,13 @@ import {
   postAiRuntimeStop,
   putAiExtensionConfig,
 } from "@/api/console";
+import AiConfigField from "@/components/ai/AiConfigField";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 
@@ -125,35 +126,43 @@ export default function AiConfigConnectionSection() {
       {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div>
-            <CardTitle>扩展连接</CardTitle>
-            <CardDescription>/ai-extension/config · test</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => void invalidate()}>
-            <RefreshCw />
-            刷新
-          </Button>
+        <CardHeader>
+          <CardTitle>扩展连接</CardTitle>
+          <CardDescription>Bot 访问 AI 扩展的地址与超时。</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent>
           <StateBlock loading={aiCfgQ.isLoading} error={aiCfgQ.error}>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">base_url</span>
-              <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">api_prefix</span>
-              <Input value={apiPrefix} onChange={(e) => setApiPrefix(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">timeout_sec</span>
-              <Input type="number" value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void saveMut.mutateAsync(); }}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AiConfigField label="服务地址" description="base_url，例如 http://127.0.0.1:9099">
+                <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+              </AiConfigField>
+              <AiConfigField label="API 前缀" description="api_prefix，通常为 /api">
+                <Input value={apiPrefix} onChange={(e) => setApiPrefix(e.target.value)} />
+              </AiConfigField>
+              <AiConfigField label="超时（秒）" description="请求超时上限">
+                <Input type="number" value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
+              </AiConfigField>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  setMsg(null);
+                  void saveMut.mutateAsync();
+                }}
+              >
                 保存
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => { setMsg(null); void testMut.mutateAsync(); }}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setMsg(null);
+                  void testMut.mutateAsync();
+                }}
+              >
                 测试连通
               </Button>
             </div>
@@ -164,9 +173,9 @@ export default function AiConfigConnectionSection() {
       <Card>
         <CardHeader>
           <CardTitle>运行时</CardTitle>
-          <CardDescription>start / stop / status / install</CardDescription>
+          <CardDescription>启动 / 停止 / 安装 AI 扩展进程。</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent>
           <StateBlock loading={runtimeQ.isLoading || installQ.isLoading} error={runtimeQ.error || installQ.error}>
             <div className="flex flex-wrap gap-2">
               <Badge variant={runtimeQ.data?.running ? "success" : "secondary"}>
@@ -174,42 +183,60 @@ export default function AiConfigConnectionSection() {
               </Badge>
               <Badge variant="outline">{runtimeQ.data?.layout || installQ.data?.layout || "—"}</Badge>
               <Badge variant={runtimeQ.data?.health?.ok ? "success" : "warn"}>
-                health {runtimeQ.data?.health?.ok ? "ok" : "fail"}
+                健康 {runtimeQ.data?.health?.ok ? "正常" : "异常"}
               </Badge>
             </div>
-            <p className="break-all font-mono text-xs text-muted-foreground">
+            <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
               {runtimeQ.data?.ai_root || installQ.data?.ai_root || "—"}
             </p>
-            <div className="flex flex-wrap gap-2 pt-2">
-              <label className="flex items-center gap-1 text-xs">
-                <input type="checkbox" checked={withMedia} onChange={(e) => setWithMedia(e.target.checked)} />
-                含媒体
-              </label>
-              <label className="flex items-center gap-1 text-xs">
-                <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} />
-                仅远程
-              </label>
-              <label className="flex items-center gap-1 text-xs">
-                <input type="checkbox" checked={useGpu} onChange={(e) => setUseGpu(e.target.checked)} />
-                GPU
-              </label>
-              <label className="flex items-center gap-1 text-xs">
-                <input type="checkbox" checked={noStart} onChange={(e) => setNoStart(e.target.checked)} />
-                安装后不启动
-              </label>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  ["含媒体依赖", withMedia, setWithMedia],
+                  ["仅远程拉取", remoteOnly, setRemoteOnly],
+                  ["使用 GPU", useGpu, setUseGpu],
+                  ["安装后不启动", noStart, setNoStart],
+                ] as const
+              ).map(([label, checked, set]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-3 py-2"
+                >
+                  <span className="text-xs">{label}</span>
+                  <Switch checked={checked} onCheckedChange={set} />
+                </div>
+              ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void startMut.mutateAsync(); }}>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  setMsg(null);
+                  void startMut.mutateAsync();
+                }}
+              >
                 启动
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => { setMsg(null); void stopMut.mutateAsync(); }}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setMsg(null);
+                  void stopMut.mutateAsync();
+                }}
+              >
                 停止
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                onClick={() => { setMsg(null); void installMut.mutateAsync("bootstrap"); }}
+                onClick={() => {
+                  setMsg(null);
+                  void installMut.mutateAsync("bootstrap");
+                }}
               >
                 Bootstrap
               </Button>
@@ -217,7 +244,10 @@ export default function AiConfigConnectionSection() {
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                onClick={() => { setMsg(null); void installMut.mutateAsync("clone_and_bootstrap"); }}
+                onClick={() => {
+                  setMsg(null);
+                  void installMut.mutateAsync("clone_and_bootstrap");
+                }}
               >
                 Clone+Bootstrap
               </Button>

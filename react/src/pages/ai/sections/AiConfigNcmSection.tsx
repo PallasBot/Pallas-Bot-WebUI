@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchAiNcmStatus, postAiNcmLogout, postAiNcmSendSms, postAiNcmVerifySms } from "@/api/console";
+import AiConfigField from "@/components/ai/AiConfigField";
 import { AI_NCM_DEFAULTS } from "@/config/aiConstants";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
@@ -57,55 +57,81 @@ export default function AiConfigNcmSection() {
   const busy = sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2">
-        <div>
-          <CardTitle>网易云登录</CardTitle>
-          <CardDescription>/ai-extension/ncm/*</CardDescription>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void statusQ.refetch()}>
-          <RefreshCw className={statusQ.isFetching ? "animate-spin" : undefined} />
-          刷新
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        {msg ? (
-          <p className={cn("text-sm", /成功|已发送|已登出/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-            {msg}
-          </p>
-        ) : null}
-        <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
-          <Badge variant={loggedIn ? "success" : "secondary"}>{loggedIn ? "已登录" : "未登录"}</Badge>
+    <div className="space-y-4">
+      {msg ? (
+        <p className={cn("text-sm", /成功|已发送|已登出/.test(msg) ? "text-emerald-400" : "text-destructive")}>
+          {msg}
+        </p>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>登录状态</CardTitle>
+          <CardDescription>当前网易云会话；用顶部工具条刷新。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
+            <Badge variant={loggedIn ? "success" : "secondary"}>{loggedIn ? "已登录" : "未登录"}</Badge>
+            <pre className="mt-3 max-h-48 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
+              {JSON.stringify(statusQ.data, null, 2)}
+            </pre>
+          </StateBlock>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>短信登录</CardTitle>
+          <CardDescription>短信验证码登录，用于点歌等能力。</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">手机号</span>
+            <AiConfigField label="手机号">
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">国家码</span>
+            </AiConfigField>
+            <AiConfigField label="国家码" description="默认 86">
               <Input value={ctcode} onChange={(e) => setCtcode(e.target.value)} type="number" />
-            </label>
-            <label className="block space-y-1 sm:col-span-2">
-              <span className="text-muted-foreground">验证码</span>
+            </AiConfigField>
+            <AiConfigField label="验证码" className="sm:col-span-2">
               <Input value={captcha} onChange={(e) => setCaptcha(e.target.value)} />
-            </label>
+            </AiConfigField>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void sendMut.mutateAsync(); }}>
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                void sendMut.mutateAsync();
+              }}
+            >
               发送验证码
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { setMsg(null); void verifyMut.mutateAsync(); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                void verifyMut.mutateAsync();
+              }}
+            >
               验证登录
             </Button>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => { setMsg(null); void logoutMut.mutateAsync(); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                void logoutMut.mutateAsync();
+              }}
+            >
               登出
             </Button>
           </div>
-          <pre className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
-            {JSON.stringify(statusQ.data, null, 2)}
-          </pre>
-        </StateBlock>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

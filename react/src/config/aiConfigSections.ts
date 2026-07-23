@@ -39,56 +39,56 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "provider",
     label: "接入",
-    lead: "连接模型服务，选择云端或本地模型。",
+    lead: "云端或本地模型接入。",
     icon: "server",
     groupId: "dialogue",
   },
   {
     id: "strategy",
     label: "对话",
-    lead: "设置 Bot 如何接话、限流与热载开关。",
+    lead: "接话、限流与热载。",
     icon: "sparkles",
     groupId: "dialogue",
   },
   {
     id: "knowledge",
     label: "知识库",
-    lead: "查询方舟数据，管理接话语料入口。",
+    lead: "方舟数据与接话语料。",
     icon: "database",
     groupId: "observe",
   },
   {
     id: "connection",
     label: "媒体服务",
-    lead: "唱歌/TTS 等媒体任务；仅当 LLM 运行时选 AI 服务时才影响聊天。",
+    lead: "唱歌 / TTS 等媒体任务。",
     icon: "radio",
     groupId: "extension",
   },
   {
     id: "capabilities",
     label: "能力包",
-    lead: "对话用 LLM；唱歌/TTS 权重；遗留 RWKV 仅兼容。",
+    lead: "对话 LLM 与媒体权重。",
     icon: "layers",
     groupId: "extension",
   },
   {
     id: "draw",
     label: "画画",
-    lead: "画画服务网关与连通性（与插件 draw 同一配置）。",
+    lead: "画画服务网关。",
     icon: "palette",
     groupId: "extension",
   },
   {
     id: "ncm",
     label: "网易云",
-    lead: "在扩展服务内登录网易云账号并查看状态。",
+    lead: "网易云登录与状态。",
     icon: "globe",
     groupId: "extension",
   },
   {
     id: "logs",
     label: "扩展日志",
-    lead: "拉取扩展侧日志；日常实时查看请用 AI 观测 · 服务日志。",
+    lead: "扩展侧日志。",
     icon: "logs",
     groupId: "extension",
   },
@@ -123,14 +123,14 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
     id: "home",
     label: "AI 观测",
-    lead: "运行总览、调用统计与会话历史。",
+    lead: "总览、统计与会话。",
     icon: "dashboard",
     path: "/ai/home",
   },
   {
     id: "config",
     label: "AI 配置",
-    lead: "运行模型、Provider、路由、Bot 策略与扩展能力的分层配置中心。",
+    lead: "模型、策略与扩展配置。",
     icon: "sparkles",
     path: "/ai/config/provider",
   },
@@ -146,8 +146,7 @@ export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 /** AI 配置主入口（默认落在「模型与 Provider」） */
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/provider";
 
-export const AI_CONFIG_HUB_LEAD =
-  "左侧切换配置分区；不确定可从「诊断」或体检向导开始，高级项可稍后再动。";
+export const AI_CONFIG_HUB_LEAD = "切换左侧分区配置。";
 
 export function aiConfigSectionPath(id: AiConfigSectionId): string {
   return `/ai/config/${id}`;

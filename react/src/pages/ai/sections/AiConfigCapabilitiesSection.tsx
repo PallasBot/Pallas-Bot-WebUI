@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchMediaAssetsDownloadJob,
@@ -13,6 +12,7 @@ import {
   putSingDefaults,
   putTtsDefaults,
 } from "@/api/console";
+import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,10 +27,13 @@ export default function AiConfigCapabilitiesSection() {
   const pollRef = useRef<number | null>(null);
 
   const mediaQ = useQuery({ queryKey: ["media-assets"], queryFn: fetchMediaAssetsStatus });
-  const singQ = useQuery({ queryKey: ["sing-models"], queryFn: async () => ({
-    speakers: await fetchSingSpeakers(),
-    backends: await fetchSingBackends(),
-  }) });
+  const singQ = useQuery({
+    queryKey: ["sing-models"],
+    queryFn: async () => ({
+      speakers: await fetchSingSpeakers(),
+      backends: await fetchSingBackends(),
+    }),
+  });
   const ttsQ = useQuery({ queryKey: ["tts-voices"], queryFn: fetchTtsVoices });
 
   const [defaultSpeaker, setDefaultSpeaker] = useState("");
@@ -58,11 +61,18 @@ export default function AiConfigCapabilitiesSection() {
     [],
   );
 
-  const refreshAll = () => {
-    void mediaQ.refetch();
-    void singQ.refetch();
-    void ttsQ.refetch();
-  };
+  const speakerOptions = useMemo(
+    () => (singQ.data?.speakers.speakers || []).map((s) => s.id).filter(Boolean),
+    [singQ.data],
+  );
+  const backendOptions = useMemo(
+    () => (singQ.data?.backends.backends || []).map((b) => b.id).filter(Boolean),
+    [singQ.data],
+  );
+  const voicePathOptions = useMemo(
+    () => (ttsQ.data?.voices || []).map((v) => v.path).filter(Boolean),
+    [ttsQ.data],
+  );
 
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
@@ -126,17 +136,11 @@ export default function AiConfigCapabilitiesSection() {
       ) : null}
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-2">
-          <div>
-            <CardTitle>媒体资产</CardTitle>
-            <CardDescription>download / delete / status</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={refreshAll}>
-            <RefreshCw className={mediaQ.isFetching ? "animate-spin" : undefined} />
-            刷新
-          </Button>
+        <CardHeader>
+          <CardTitle>媒体资产</CardTitle>
+          <CardDescription>下载、删除与就绪状态。</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent>
           <StateBlock loading={mediaQ.isLoading} error={mediaQ.error}>
             <div className="flex flex-wrap gap-2">
               <Badge variant={mediaQ.data?.all_media_assets_ready ? "success" : "warn"}>
@@ -144,19 +148,29 @@ export default function AiConfigCapabilitiesSection() {
               </Badge>
               <Badge variant="outline">{mediaQ.data?.deploy_mode || "—"}</Badge>
             </div>
-            <div className="space-y-2">
+            <div className="mt-3 space-y-2">
               {assetKeys.map((k) => {
                 const a = mediaQ.data?.assets?.[k];
                 return (
-                  <div key={k} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+                  <div
+                    key={k}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-control,8px)] border px-3 py-2"
+                  >
                     <span className="font-mono text-xs">{k}</span>
-                    <Badge variant={a?.ready ? "success" : "secondary"}>{a?.ready ? "ready" : "missing"}</Badge>
+                    <Badge variant={a?.ready ? "success" : "secondary"}>{a?.ready ? "就绪" : "缺失"}</Badge>
                   </div>
                 );
               })}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy || !mediaQ.data?.download_allowed} onClick={() => { setMsg(null); void downloadMut.mutateAsync(undefined); }}>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={busy || !mediaQ.data?.download_allowed}
+                onClick={() => {
+                  setMsg(null);
+                  void downloadMut.mutateAsync(undefined);
+                }}
+              >
                 下载全部
               </Button>
               {assetKeys.slice(0, 3).map((k) => (
@@ -165,14 +179,19 @@ export default function AiConfigCapabilitiesSection() {
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => { setMsg(null); void deleteMut.mutateAsync([k]); }}
+                  onClick={() => {
+                    setMsg(null);
+                    void deleteMut.mutateAsync([k]);
+                  }}
                 >
                   删 {k}
                 </Button>
               ))}
             </div>
             {jobLines.length ? (
-              <pre className="max-h-40 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">{jobLines.join("\n")}</pre>
+              <pre className="mt-3 max-h-40 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
+                {jobLines.join("\n")}
+              </pre>
             ) : null}
           </StateBlock>
         </CardContent>
@@ -181,25 +200,42 @@ export default function AiConfigCapabilitiesSection() {
       <Card>
         <CardHeader>
           <CardTitle>唱歌</CardTitle>
-          <CardDescription>backends / speakers / defaults</CardDescription>
+          <CardDescription>
+            后端 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "—"} · 说话人{" "}
+            {singQ.data?.speakers.speakers?.length ?? 0} 个
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent>
           <StateBlock loading={singQ.isLoading} error={singQ.error}>
-            <p className="text-xs text-muted-foreground">
-              后端 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "—"} · 说话人{" "}
-              {singQ.data?.speakers.speakers?.length ?? 0} 个
-            </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">default_speaker</span>
-                <Input value={defaultSpeaker} onChange={(e) => setDefaultSpeaker(e.target.value)} />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">preferred_backend</span>
-                <Input value={preferredBackend} onChange={(e) => setPreferredBackend(e.target.value)} />
-              </label>
+              <AiConfigField label="默认说话人" description="未指定时使用的唱歌音色。">
+                <AiModelSelect
+                  value={defaultSpeaker}
+                  options={speakerOptions}
+                  placeholder="选择说话人"
+                  emptyLabel="（未指定）"
+                  onValueChange={setDefaultSpeaker}
+                />
+              </AiConfigField>
+              <AiConfigField label="优先后端" description="首选推理后端。">
+                <AiModelSelect
+                  value={preferredBackend}
+                  options={backendOptions}
+                  placeholder="选择后端"
+                  emptyLabel="（未指定）"
+                  onValueChange={setPreferredBackend}
+                />
+              </AiConfigField>
             </div>
-            <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void singMut.mutateAsync(); }}>
+            <Button
+              className="mt-3"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                void singMut.mutateAsync();
+              }}
+            >
               保存唱歌默认
             </Button>
           </StateBlock>
@@ -209,30 +245,39 @@ export default function AiConfigCapabilitiesSection() {
       <Card>
         <CardHeader>
           <CardTitle>TTS</CardTitle>
-          <CardDescription>voices / defaults</CardDescription>
+          <CardDescription>音色 {ttsQ.data?.voices?.length ?? 0} 个</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent>
           <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
-            <p className="text-xs text-muted-foreground">音色 {ttsQ.data?.voices?.length ?? 0} 个</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">ref_audio_path</span>
-                <Input value={ttsRef} onChange={(e) => setTtsRef(e.target.value)} />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">prompt_text</span>
+              <AiConfigField label="参考音频" description="ref_audio_path">
+                <AiModelSelect
+                  value={ttsRef}
+                  options={voicePathOptions}
+                  placeholder="选择参考音频"
+                  emptyLabel="（未指定）"
+                  onValueChange={setTtsRef}
+                />
+              </AiConfigField>
+              <AiConfigField label="提示文本" description="prompt_text">
                 <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">prompt_lang</span>
+              </AiConfigField>
+              <AiConfigField label="提示语种" description="prompt_lang">
                 <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-muted-foreground">text_lang</span>
+              </AiConfigField>
+              <AiConfigField label="合成语种" description="text_lang">
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
-              </label>
+              </AiConfigField>
             </div>
-            <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void ttsMut.mutateAsync(); }}>
+            <Button
+              className="mt-3"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setMsg(null);
+                void ttsMut.mutateAsync();
+              }}
+            >
               保存 TTS 默认
             </Button>
           </StateBlock>
