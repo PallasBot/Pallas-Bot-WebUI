@@ -1195,3 +1195,127 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   border-radius: var(--radius-control, 10px);
   min-height: 28px;
 }
+
+/* 商店卡片脚：整行均分「最新/卸载」 */
+.plugin-store-page--hub .plugin-store-card.ui-card > .ui-card__footer {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1 1 auto;
+  width: 100%;
+  gap: 8px;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+.plugin-store-page--hub .plugin-store-card__foot-main > .btn,
+.plugin-store-page--hub .plugin-store-card__foot-main > .ui-btn,
+.plugin-store-page--hub .plugin-store-card__foot-main > a {
+  width: 100%;
+  justify-content: center;
+}
+
+/* 侧栏滚动条对齐 gsuid_hub（细圆角 + muted） */
+.shell__nav {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-dim) 28%, transparent) transparent;
+}
+
+.shell__nav::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.shell__nav::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  border-radius: 99px;
+  margin-block: 8px;
+}
+
+.shell__nav::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-dim) 28%, transparent);
+  border-radius: 99px;
+}
+
+.shell__nav::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-dim) 45%, transparent);
+}
+
+/* 彩色(gs) / 黑白(shadcn) 主按钮质感（学 gsuid preset） */
+html[data-ui-preset="gs"] .btn--primary,
+html[data-ui-preset="gs"] .ui-btn--primary {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 78%, #ffffff 22%) 0%,
+    color-mix(in srgb, var(--accent) 92%, #000000 8%) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  color: #fff;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+html[data-ui-preset="shadcn"] .btn--primary,
+html[data-ui-preset="shadcn"] .ui-btn--primary {
+  background: var(--foreground, var(--text));
+  border-color: var(--foreground, var(--text));
+  color: var(--background, var(--bg-card));
+  box-shadow: none;
+}
+
+html[data-ui-preset="shadcn"] .btn--primary:hover:not(:disabled),
+html[data-ui-preset="shadcn"] .ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 88%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 88%, transparent);
+  filter: none;
+}
+
+html[data-ui-preset="shadcn"] .btn--danger,
+html[data-ui-preset="shadcn"] .ui-btn--destructive {
+  background: color-mix(in srgb, var(--foreground, var(--text)) 14%, transparent);
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 22%, transparent);
+  color: var(--foreground, var(--text));
+  box-shadow: none;
+}
+
+/* 插件配置字段：更接近 gsuid ConfigField（标签 muted、控件白底） */
+.plugin-config-form-grid > .ui-field .ui-field__label-text,
+.plugin-config-form-item .ui-field__label-text {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.plugin-config-form-grid > .ui-field .inp,
+.plugin-config-form-grid > .ui-field .sel,
+.plugin-config-form-item .inp,
+.plugin-config-form-item .sel {
+  background: var(--surface-control, var(--bg-card));
+}
+
+html[data-theme="light"] .plugin-config-form-grid > .ui-field .inp,
+html[data-theme="light"] .plugin-config-form-grid > .ui-field .sel,
+html[data-theme="light"] .plugin-config-form-item .inp,
+html[data-theme="light"] .plugin-config-form-item .sel {
+  background: #fff;
+}
+
+.protocol-account-workspace__metrics .stat-card.ui-card > .ui-card__content {
+  padding: 10px 12px;
+}
+
+.protocol-account-workspace__metrics .stat-card--dense .card__body {
+  padding: 0;
+}
+
