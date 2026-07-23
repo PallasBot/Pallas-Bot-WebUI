@@ -17,8 +17,7 @@ import "@fontsource/jetbrains-mono/700.css";
 import "./styles/console/tokens.css";
 import "./styles/console/app.css";
 import "./styles/console/console-hub.css";
-import "./styles/console/ai-hub.css";
-import "./styles/console/ai-history.css";
+/* ai-hub.css / ai-history.css：Vue 遗留，React /ai/* 已 shadcn 原生，不再全局引入 */
 /* Ui* 兼容层原子；勿引入 Vue ui.css（会打坏 Tailwind --background HSL） */
 import "./styles/ui-atoms.css";
 import "./styles/console-page-skel.css";

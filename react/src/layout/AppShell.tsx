@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
 import { fetchHealth } from "@/api/health";
-import { MAIN_NAV_ITEMS, sectionIcon } from "@/config/mainNav";
+import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
+import type { MainNavItem } from "@/config/mainNav";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
+import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
+import {
+  botRestartInProgress,
+  getBotRestartSession,
+  subscribeBotRestartSession,
+} from "@/state/botRestartSession";
 import { readSidebarCollapsed, writeSidebarCollapsed } from "@/theme/applyShellTheme";
 
 const brandMarkUrl = String(brandMarkAsset);
@@ -36,16 +43,6 @@ function useIsShellNarrow(bp = 860) {
   return narrow;
 }
 
-function navGroups() {
-  const groups: { section: string; items: typeof MAIN_NAV_ITEMS }[] = [];
-  for (const item of MAIN_NAV_ITEMS) {
-    const last = groups[groups.length - 1];
-    if (last?.section === item.section) last.items.push(item);
-    else groups.push({ section: item.section, items: [item] });
-  }
-  return groups;
-}
-
 function readCollapsedGroups(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(SIDEBAR_GROUPS_KEY);
@@ -57,59 +54,80 @@ function readCollapsedGroups(): Record<string, boolean> {
   }
 }
 
-function isNavActive(pathname: string, to: string): boolean {
+function navExact(pathname: string, to: string): boolean {
   if (to === "/") return pathname === "/";
-  if (to === "/ai/home") {
-    return (
-      pathname === "/ai" ||
-      pathname === "/ai/home" ||
-      pathname.startsWith("/ai/home/") ||
-      pathname === "/ai/statistics" ||
-      pathname.startsWith("/ai/statistics/") ||
-      pathname === "/ai/history" ||
-      pathname.startsWith("/ai/history/")
-    );
-  }
-  if (to === "/ai/wizard") {
-    return pathname === "/ai/wizard" || pathname.startsWith("/ai/wizard/");
-  }
-  if (to === "/ai/config/provider" || to.startsWith("/ai/config/")) {
-    return pathname.startsWith("/ai/config");
-  }
-  if (pathname === to || pathname.startsWith(`${to}/`)) {
-    const moreSpecific = MAIN_NAV_ITEMS.some(
-      (other) =>
-        other.to !== to &&
-        other.to.startsWith(`${to}/`) &&
-        (pathname === other.to || pathname.startsWith(`${other.to}/`)),
-    );
-    return !moreSpecific;
-  }
-  return false;
+  if (to.startsWith("/ai/config")) return pathname.startsWith("/ai/config");
+  return pathname === to;
+}
+
+function NavItemLink({
+  item,
+  linkClass,
+  child,
+  onNavigate,
+}: {
+  item: MainNavItem;
+  linkClass: string;
+  child?: boolean;
+  onNavigate?: () => void;
+}) {
+  const location = useLocation();
+  const Icon = item.icon;
+  const active = isNavActive(location.pathname, item.to);
+  const exact = navExact(location.pathname, item.to);
+  return (
+    <div className={cn("shell__nav-item", child && "shell__nav-item--child")}>
+      <NavLink
+        to={item.to}
+        end={item.to === "/"}
+        onClick={onNavigate}
+        title={item.label}
+        className={cn(
+          linkClass,
+          child && "shell__nav-link--child",
+          item.to === "/" && "shell__nav-link--root",
+          active && "is-router-active",
+          exact && "is-router-exact",
+        )}
+        aria-current={exact ? "page" : undefined}
+        aria-label={item.label}
+      >
+        <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
+        <span className="shell__nav-text">
+          <span className="shell__nav-label">{item.label}</span>
+        </span>
+      </NavLink>
+    </div>
+  );
 }
 
 function NavTree({
   onNavigate,
   mobile,
+  railCollapsed,
 }: {
   onNavigate?: () => void;
   mobile?: boolean;
+  /** 桌面侧栏收起：扁平图标轨，隐藏分组折叠头 */
+  railCollapsed?: boolean;
 }) {
   const location = useLocation();
-  const groups = useMemo(() => navGroups(), []);
+  const entries = useMemo(() => buildNavEntries(MAIN_NAV_ITEMS), []);
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>(() => readCollapsedGroups());
   const linkClass = mobile ? "shell-mobile-nav__link" : "shell__nav-link";
 
-  function groupContainsActive(items: typeof MAIN_NAV_ITEMS): boolean {
+  function groupContainsActive(items: MainNavItem[]): boolean {
     return items.some((item) => isNavActive(location.pathname, item.to));
   }
 
-  function isGroupOpen(section: string, items: typeof MAIN_NAV_ITEMS): boolean {
+  function isGroupOpen(section: string, items: MainNavItem[]): boolean {
+    if (railCollapsed) return true;
     if (groupContainsActive(items)) return true;
     return !collapsedMap[section];
   }
 
-  function toggleGroup(section: string, items: typeof MAIN_NAV_ITEMS) {
+  function toggleGroup(section: string, items: MainNavItem[]) {
+    if (railCollapsed) return;
     if (groupContainsActive(items)) return;
     setCollapsedMap((prev) => {
       const next = { ...prev, [section]: !prev[section] };
@@ -124,62 +142,50 @@ function NavTree({
 
   return (
     <>
-      {groups.map((g) => {
-        const open = isGroupOpen(g.section, g.items);
-        const SectionIcon = sectionIcon(g.section);
+      {entries.map((entry) => {
+        if (entry.kind === "item") {
+          return (
+            <NavItemLink
+              key={entry.item.to}
+              item={entry.item}
+              linkClass={linkClass}
+              onNavigate={onNavigate}
+            />
+          );
+        }
+
+        const open = isGroupOpen(entry.section, entry.items);
+        const SectionIcon = sectionIcon(entry.section);
         return (
-          <div key={g.section} className={cn("shell__nav-group", open && "shell__nav-group--open")}>
-            <button
-              type="button"
-              className={cn(mobile ? "shell-mobile-nav__link shell__nav-group-toggle" : "shell__nav-group-toggle")}
-              aria-expanded={open}
-              aria-label={`${g.section}菜单`}
-              onClick={() => toggleGroup(g.section, g.items)}
-            >
-              <SectionIcon className="shell__nav-ico" width={18} height={18} aria-hidden />
-              <span className="shell__nav-text">
-                <span className="shell__nav-label">{g.section}</span>
-              </span>
-              <span className="shell__nav-group-chevron" aria-hidden="true">
-                ›
-              </span>
-            </button>
+          <div key={entry.section} className={cn("shell__nav-group", open && "shell__nav-group--open")}>
+            {railCollapsed ? null : (
+              <button
+                type="button"
+                className={cn(mobile ? "shell-mobile-nav__link shell__nav-group-toggle" : "shell__nav-group-toggle")}
+                aria-expanded={open}
+                aria-label={`${entry.section}菜单`}
+                onClick={() => toggleGroup(entry.section, entry.items)}
+              >
+                <SectionIcon className="shell__nav-ico" width={18} height={18} aria-hidden />
+                <span className="shell__nav-text">
+                  <span className="shell__nav-label">{entry.section}</span>
+                </span>
+                <span className="shell__nav-group-chevron" aria-hidden="true">
+                  ›
+                </span>
+              </button>
+            )}
             {open ? (
               <div className="shell__nav-group-children">
-                {g.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isNavActive(location.pathname, item.to);
-                  const exact =
-                    item.to === "/"
-                      ? location.pathname === "/"
-                      : item.to.startsWith("/ai/config")
-                        ? location.pathname.startsWith("/ai/config")
-                        : location.pathname === item.to;
-                  return (
-                    <div key={item.to} className="shell__nav-item shell__nav-item--child">
-                      <NavLink
-                        to={item.to}
-                        end={item.to === "/"}
-                        onClick={onNavigate}
-                        className={cn(
-                          linkClass,
-                          !mobile && "shell__nav-link--child",
-                          item.to === "/" && "shell__nav-link--root",
-                          ["/logs", "/instances", "/plugins", "/database"].includes(item.to) &&
-                            "shell__nav-link--heavy",
-                          active && "is-router-active",
-                          exact && "is-router-exact",
-                        )}
-                        aria-current={exact ? "page" : undefined}
-                      >
-                        <Icon className="shell__nav-ico" width={18} height={18} aria-hidden />
-                        <span className="shell__nav-text">
-                          <span className="shell__nav-label">{item.label}</span>
-                        </span>
-                      </NavLink>
-                    </div>
-                  );
-                })}
+                {entry.items.map((item) => (
+                  <NavItemLink
+                    key={item.to}
+                    item={item}
+                    linkClass={linkClass}
+                    child={!mobile}
+                    onNavigate={onNavigate}
+                  />
+                ))}
               </div>
             ) : null}
           </div>
@@ -195,8 +201,28 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileOpen, setMobileOpen] = useState(false);
   const healthQ = useQuery({ queryKey: ["health"], queryFn: () => fetchHealth(), refetchInterval: 15_000 });
+  const {
+    restartBusy,
+    restartInProgress,
+    restartAvailable,
+    shardedRuntime,
+    ensureRestartContext,
+    restartBot,
+  } = useBotSystemRestart();
+  const restartSession = useSyncExternalStore(subscribeBotRestartSession, getBotRestartSession, getBotRestartSession);
+  const restartActionBusy =
+    restartBusy || restartInProgress || restartSession.busy || botRestartInProgress(restartSession);
+  const fullRestartLabel = restartActionBusy
+    ? "重启中…"
+    : shardedRuntime
+      ? "重启全部进程"
+      : "重启 Bot";
 
   useEffect(() => setMobileOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    void ensureRestartContext();
+  }, [ensureRestartContext]);
 
   const connOk = Boolean(healthQ.data?.ok);
   const connText = connOk ? "已连接" : healthQ.isLoading ? "探测中" : "未连接";
@@ -210,6 +236,11 @@ export default function AppShell() {
     const next = !collapsed;
     setCollapsed(next);
     writeSidebarCollapsed(next);
+  }
+
+  async function triggerShellRestart(workersOnly = false) {
+    setMobileOpen(false);
+    await restartBot(workersOnly);
   }
 
   const mainMod =
@@ -239,9 +270,13 @@ export default function AppShell() {
           </button>
           <div className="shell__mobile-topbar-brand">
             <img className="shell__mobile-topbar-mark" src={brandMarkUrl} alt="" width={28} height={28} />
-            <span className="shell__mobile-topbar-title">Pallas Bot</span>
+            <div className="shell__brand-title-row shell__mobile-topbar-title-row">
+              <span className="shell__mobile-topbar-title">Pallas Bot</span>
+              <span className="shell__brand-badge shell__mobile-topbar-version" title="控制台资源版本">
+                r{__WEBUI_VERSION__}
+              </span>
+            </div>
           </div>
-          <span className="shell__mobile-topbar-version">r{__WEBUI_VERSION__}</span>
         </div>
       ) : null}
 
@@ -250,17 +285,33 @@ export default function AppShell() {
           {collapsed && !isNarrow ? (
             <>
               <div className="shell__brand-slot shell__brand-slot--avatar">
-                <div className="shell__brand-mark-wrap">
-                  <img className="shell__brand-mark" src={brandMarkUrl} alt="" width={44} height={44} decoding="async" />
+                <div className="shell__brand-mark-wrap" title={connText}>
+                  <img className="shell__brand-mark" src={brandMarkUrl} alt="" width={28} height={28} decoding="async" />
+                  <span
+                    className={cn(
+                      "shell__sidebar-conn shell__sidebar-conn--brand shell__sidebar-conn--collapsed-dot",
+                      connCls,
+                    )}
+                    aria-label={connText}
+                  />
                 </div>
-                <span className={cn("shell__sidebar-conn shell__sidebar-conn--brand shell__sidebar-conn--collapsed-dot", connCls)} aria-label={connText}>
-                  {connText}
-                </span>
               </div>
               <div className="shell__brand-slot shell__brand-slot--expand">
-                <button type="button" className="shell__brand-collapse shell__brand-expand" aria-label="展开菜单栏" onClick={toggleCollapsed}>
-                  <svg className="shell__brand-collapse-ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-                    <path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 5v14M10 8l4 4-4 4M19 5v14" />
+                <button
+                  type="button"
+                  className="shell__brand-collapse shell__brand-expand"
+                  aria-label="展开菜单栏"
+                  onClick={toggleCollapsed}
+                >
+                  <svg className="shell__brand-collapse-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 5v14M10 8l4 4-4 4M19 5v14"
+                    />
                   </svg>
                 </button>
               </div>
@@ -293,10 +344,62 @@ export default function AppShell() {
         </div>
 
         <nav className="shell__nav" aria-label="主导航">
-          <NavTree />
+          <NavTree railCollapsed={collapsed && !isNarrow} />
         </nav>
 
         <div className="shell__sidebar-tools">
+          {restartAvailable ? (
+            <div className="shell__sidebar-restart-group">
+              {shardedRuntime ? (
+                <button
+                  type="button"
+                  className="shell__sidebar-restart"
+                  title="重启 Worker"
+                  aria-label="重启 Worker"
+                  disabled={restartActionBusy}
+                  onClick={() => void triggerShellRestart(true)}
+                >
+                  <svg
+                    className="shell__ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M21 12a9 9 0 1 1-3.2-6.9" />
+                    <polyline points="21 3 21 9 15 9" />
+                  </svg>
+                  <span className="shell__sidebar-restart-label">重启 Worker</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="shell__sidebar-restart"
+                title={fullRestartLabel}
+                aria-label={fullRestartLabel}
+                disabled={restartActionBusy}
+                onClick={() => void triggerShellRestart(false)}
+              >
+                <svg
+                  className="shell__ico"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9" />
+                  <polyline points="3 3 3 9 9 9" />
+                </svg>
+                <span className="shell__sidebar-restart-label">{fullRestartLabel}</span>
+              </button>
+            </div>
+          ) : null}
           <button type="button" className="shell__sidebar-exit" title="退出控制台" aria-label="退出控制台" onClick={logout}>
             <svg className="shell__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -339,9 +442,31 @@ export default function AppShell() {
             <nav className="shell-mobile-nav__links" aria-label="主导航">
               <NavTree mobile onNavigate={() => setMobileOpen(false)} />
             </nav>
-            <div className="shell-mobile-nav__foot">
-              <button type="button" className="shell__sidebar-exit" onClick={logout}>
-                <span className="shell__sidebar-exit-label">退出控制台</span>
+            <div className="shell-mobile-nav__tools">
+              {restartAvailable ? (
+                <>
+                  {shardedRuntime ? (
+                    <button
+                      type="button"
+                      className="shell__sidebar-restart shell__sidebar-restart--mobile"
+                      disabled={restartActionBusy}
+                      onClick={() => void triggerShellRestart(true)}
+                    >
+                      重启 Worker
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="shell__sidebar-restart shell__sidebar-restart--mobile"
+                    disabled={restartActionBusy}
+                    onClick={() => void triggerShellRestart(false)}
+                  >
+                    {fullRestartLabel}
+                  </button>
+                </>
+              ) : null}
+              <button type="button" className="shell__sidebar-exit shell__sidebar-exit--mobile" onClick={logout}>
+                退出控制台
               </button>
             </div>
           </aside>
