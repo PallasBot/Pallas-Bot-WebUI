@@ -10,6 +10,7 @@ import {
 } from "@/utils/helpPreviewOptions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type Level = "menu" | "plugin" | "function";
 
@@ -112,7 +113,7 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
       aria-label="帮助图预览"
     >
       <div className="flex flex-wrap items-end gap-2">
-        <div className="flex flex-wrap gap-1 rounded-md border p-1" role="tablist" aria-label="帮助图预览级别">
+        <div className="console-view-toggle shrink-0" role="tablist" aria-label="帮助图预览级别">
           {(
             [
               ["menu", "菜单"],
@@ -124,7 +125,7 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
               key={id}
               type="button"
               role="tab"
-              className={`rounded px-2 py-1 text-sm ${level === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={cn(level === id && "is-on")}
               aria-selected={level === id}
               onClick={() => setLevel(id)}
             >
@@ -134,8 +135,8 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
         </div>
 
         {level === "menu" ? (
-          <label className="grid gap-1 text-sm">
-            <span className="text-muted-foreground">页码</span>
+          <label className="inline-flex shrink-0 items-center gap-1 text-sm">
+            <span className="text-muted-foreground whitespace-nowrap">页码</span>
             <Input
               type="number"
               min={1}
@@ -188,23 +189,32 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
           </label>
         ) : null}
 
-        <Button size="sm" variant="outline" disabled={previewLoading} onClick={() => setCacheBust(Date.now())}>
-          {previewLoading ? "加载中…" : "刷新预览"}
-        </Button>
-        <a
-          className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-muted/50"
-          href={buildHelpPreviewUrl({
-            level,
-            page: level === "menu" ? page : undefined,
-            plugin: level !== "menu" ? plugin : undefined,
-            function: level === "function" ? functionName : undefined,
-            cacheBust,
-          })}
-          target="_blank"
-          rel="noreferrer"
-        >
-          新标签打开
-        </a>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-[13px]"
+            disabled={previewLoading}
+            onClick={() => setCacheBust(Date.now())}
+          >
+            {previewLoading ? "加载中…" : "刷新预览"}
+          </Button>
+          <Button size="sm" variant="outline" className="text-[13px]" asChild>
+            <a
+              href={buildHelpPreviewUrl({
+                level,
+                page: level === "menu" ? page : undefined,
+                plugin: level !== "menu" ? plugin : undefined,
+                function: level === "function" ? functionName : undefined,
+                cacheBust,
+              })}
+              target="_blank"
+              rel="noreferrer"
+            >
+              新标签打开
+            </a>
+          </Button>
+        </div>
       </div>
 
       {pluginsQ.error ? (

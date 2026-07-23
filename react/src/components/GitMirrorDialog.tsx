@@ -11,11 +11,24 @@ import {
   putGitMirrorPreferred,
 } from "@/api/fullConsole";
 import type { GitMirrorInfo, GitMirrorScopes, GitMirrorTargetRow } from "@/api/pallasTypes";
-import ConsoleModal from "@/components/ConsoleModal";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
-import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
 import { pushConsoleToast } from "@/utils/consoleToast";
 
 const INHERIT = "__inherit__";
@@ -410,35 +423,29 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
 
   return (
     <>
-      <ConsoleModal
+      <Dialog
         open={open}
-        titleId="git-mirror-dialog-title"
-        panelClass="git-mirror-dialog"
-        bodyClass="git-mirror-dialog__bd"
-        busy={dialogBusy}
-        onClose={requestClose}
-        header={
-          <>
-            <div className="console-modal__head-text">
-              <h2 id="git-mirror-dialog-title" className="console-modal__title">
-                Git 镜像源
-              </h2>
-              <p className="console-modal__subtitle muted">
-                Bot 本体、WebUI、官方商店插件（独立仓库）与社区插件均可配置镜像；下方列表逐项说明。
-              </p>
-            </div>
-            <button
-              type="button"
-              className="console-modal__close"
-              aria-label="关闭"
-              disabled={dialogBusy}
-              onClick={requestClose}
-            >
-              ×
-            </button>
-          </>
-        }
+        onOpenChange={(next) => {
+          if (!next) requestClose();
+        }}
       >
+        <DialogContent
+          className="git-mirror-dialog flex max-h-[min(92vh,860px)] w-[min(720px,96vw)] max-w-[min(720px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          onEscapeKeyDown={(e) => {
+            if (dialogBusy) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (dialogBusy) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="git-mirror-dialog-title">Git 镜像源</DialogTitle>
+            <DialogDescription className="muted">
+              Bot 本体、WebUI、官方商店插件（独立仓库）与社区插件均可配置镜像；下方列表逐项说明。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="git-mirror-dialog__bd min-h-0 flex-1 overflow-auto px-4 py-3">
         {loading ? (
           <div className="git-mirror-dialog__state muted" role="status">
             正在加载…
@@ -457,35 +464,35 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                 <label className="git-mirror-dialog__label" htmlFor="git-mirror-preferred">
                   全局首选
                 </label>
-                <UiSelect
-                  id="git-mirror-preferred"
-                  className="git-mirror-dialog__select"
-                  value={preferredId}
-                  onValueChange={setPreferredId}
-                >
-                  {info.available_mirrors.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-                  {!info.available_mirrors.some((row) => row.id === "custom") ? (
-                    <option value="custom">自定义代理前缀</option>
-                  ) : null}
-                </UiSelect>
+                <Select value={preferredId} onValueChange={setPreferredId}>
+                  <SelectTrigger id="git-mirror-preferred" className="git-mirror-dialog__select h-9 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {info.available_mirrors.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {!info.available_mirrors.some((row) => row.id === "custom") ? (
+                      <SelectItem value="custom">自定义代理前缀</SelectItem>
+                    ) : null}
+                  </SelectContent>
+                </Select>
               </div>
               {showCustomPrefix ? (
                 <div className="git-mirror-dialog__field">
                   <label className="git-mirror-dialog__label" htmlFor="git-mirror-custom-prefix">
                     自定义 https 前缀
                   </label>
-                  <UiInput
+                  <Input
                     id="git-mirror-custom-prefix"
-                    className="git-mirror-dialog__input"
+                    className="git-mirror-dialog__input h-9"
                     type="url"
                     value={customPrefix}
                     placeholder="https://ghproxy.example"
                     autoComplete="off"
-                    onValueChange={setCustomPrefix}
+                    onChange={(e) => setCustomPrefix(e.target.value)}
                   />
                 </div>
               ) : null}
@@ -502,14 +509,19 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
                     <label className="git-mirror-dialog__label" htmlFor={id}>
                       {label}
                     </label>
-                    <UiSelect id={id} className="git-mirror-dialog__select" value={value} onValueChange={setter}>
-                      <option value={INHERIT}>跟随全局首选</option>
-                      {info.available_mirrors.map((opt) => (
-                        <option key={`${id}-${opt.id}`} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </UiSelect>
+                    <Select value={value} onValueChange={setter}>
+                      <SelectTrigger id={id} className="git-mirror-dialog__select h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={INHERIT}>跟随全局首选</SelectItem>
+                        {info.available_mirrors.map((opt) => (
+                          <SelectItem key={`${id}-${opt.id}`} value={opt.id}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ))}
               </div>
@@ -593,64 +605,73 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
             />
           </>
         ) : null}
-      </ConsoleModal>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <ConsoleModal
+      <Dialog
         open={Boolean(switchTarget)}
-        titleId="git-mirror-switch-title"
-        panelClass="git-mirror-switch-dialog"
-        busy={Boolean(applyBusyKey)}
-        onClose={() => {
-          if (!applyBusyKey) setSwitchTarget(null);
+        onOpenChange={(next) => {
+          if (!next && !applyBusyKey) setSwitchTarget(null);
         }}
-        header={
-          <>
-            <div className="console-modal__head-text">
-              <h2 id="git-mirror-switch-title" className="console-modal__title">
-                切换镜像源
-              </h2>
-              <p className="console-modal__subtitle muted">{switchTarget ? rowTitle(switchTarget) : ""}</p>
-            </div>
-            <button
-              type="button"
-              className="console-modal__close"
-              aria-label="关闭"
-              disabled={Boolean(applyBusyKey)}
-              onClick={() => setSwitchTarget(null)}
-            >
-              ×
-            </button>
-          </>
-        }
       >
+        <DialogContent
+          className="git-mirror-switch-dialog flex w-[min(420px,96vw)] max-w-[min(420px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          onEscapeKeyDown={(e) => {
+            if (applyBusyKey) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (applyBusyKey) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="git-mirror-switch-title">切换镜像源</DialogTitle>
+            <DialogDescription className="muted">
+              {switchTarget ? rowTitle(switchTarget) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-4 py-3">
         {switchTarget && info ? (
           <div className="git-mirror-dialog__section">
             <label className="git-mirror-dialog__label" htmlFor="git-mirror-switch-select">
               选择镜像源
             </label>
-            <UiSelect
-              id="git-mirror-switch-select"
-              className="git-mirror-dialog__select"
-              value={switchMirrorId}
-              onValueChange={setSwitchMirrorId}
-            >
-              {info.available_mirrors.map((opt) => (
-                <option key={`sw-${opt.id}`} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </UiSelect>
+            <Select value={switchMirrorId} onValueChange={setSwitchMirrorId}>
+              <SelectTrigger id="git-mirror-switch-select" className="git-mirror-dialog__select h-9 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {info.available_mirrors.map((opt) => (
+                  <SelectItem key={`sw-${opt.id}`} value={opt.id}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="git-mirror-dialog__confirm-actions">
-              <UiButton variant="ghost" size="sm" disabled={Boolean(applyBusyKey)} onClick={() => setSwitchTarget(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={Boolean(applyBusyKey)}
+                onClick={() => setSwitchTarget(null)}
+              >
                 取消
-              </UiButton>
-              <UiButton variant="primary" size="sm" disabled={Boolean(applyBusyKey)} onClick={() => void confirmSwitch()}>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={Boolean(applyBusyKey)}
+                onClick={() => void confirmSwitch()}
+              >
                 确认
-              </UiButton>
+              </Button>
             </div>
           </div>
         ) : null}
-      </ConsoleModal>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

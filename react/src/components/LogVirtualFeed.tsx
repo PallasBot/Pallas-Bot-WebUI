@@ -124,6 +124,12 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
 
   useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
 
+  // 挂载时强制贴底一次（对齐 Vue onMounted）；后续跟尾由 followTail 相关 effect 负责
+  useEffect(() => {
+    void scrollToBottom(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enter once
+  }, []);
+
   useEffect(() => {
     const el = scrollElRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -147,6 +153,10 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
     void token;
     if (followTail) void scrollToBottom(true);
   }, [rows, followTail, scrollToBottom]);
+
+  useEffect(() => {
+    if (followTail) void scrollToBottom(true);
+  }, [followTail, scrollToBottom]);
 
   function onScroll() {
     const el = scrollElRef.current;

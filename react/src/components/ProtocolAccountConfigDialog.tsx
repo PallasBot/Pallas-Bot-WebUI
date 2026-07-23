@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import type { SystemData } from "@/api/pallasTypes";
-import ConsoleModal from "@/components/ConsoleModal";
 import ProtocolAccountWorkspace, {
   type ProtocolAccountTab,
   type ProtocolAccountWorkspaceHandle,
 } from "@/components/ProtocolAccountWorkspace";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
+/** 协议账号配置弹窗：shadcn Dialog（居中实心底，对齐插件配置弹窗）。 */
 export default function ProtocolAccountConfigDialog({
   open,
   accountId,
@@ -52,61 +61,73 @@ export default function ProtocolAccountConfigDialog({
 
   const canSave = activeTab === "settings" && Boolean(mountUrl && accountId) && !loadBusy && !saveBusy;
 
+  function requestClose() {
+    if (saveBusy) return;
+    onClose();
+  }
+
   return (
-    <ConsoleModal
+    <Dialog
       open={open && Boolean(accountId)}
-      titleId="protocol-account-config-dialog-title"
-      panelClass="plugin-config-dialog protocol-account-config-dialog"
-      bodyClass="plugin-config-dialog__bd protocol-account-config-dialog__bd"
-      busy={saveBusy}
-      onClose={onClose}
-      header={
-        <>
-          <div className="console-modal__head-text protocol-account-config-dialog__head">
-            <div className="protocol-account-config-dialog__head-text">
-              <h2 id="protocol-account-config-dialog-title" className="console-modal__title">
-                {title || (accountId ? `账号 ${accountId}` : "协议账号")}
-              </h2>
-              {statusLine ? <p className="console-modal__subtitle muted">{statusLine}</p> : null}
-            </div>
+      onOpenChange={(next) => {
+        if (!next) requestClose();
+      }}
+    >
+      <DialogContent
+        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(92vh,960px)] w-[min(960px,96vw)] max-w-[min(960px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        onEscapeKeyDown={(e) => {
+          if (saveBusy) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (saveBusy) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+          <div className="plugin-config-dialog__head-text protocol-account-config-dialog__head space-y-1 pr-6">
+            <DialogTitle id="protocol-account-config-dialog-title">
+              {title || (accountId ? `账号 ${accountId}` : "协议账号")}
+            </DialogTitle>
+            {statusLine ? (
+              <DialogDescription className="muted">{statusLine}</DialogDescription>
+            ) : (
+              <DialogDescription className="sr-only">协议账号配置</DialogDescription>
+            )}
           </div>
-          <button type="button" className="console-modal__close" aria-label="关闭" onClick={onClose}>
-            ×
-          </button>
-        </>
-      }
-      footer={
-        <div className="plugin-config-dialog__foot row-actions">
-          {activeTab === "settings" ? (
-            <button
+        </DialogHeader>
+
+        <div className="plugin-config-dialog__bd protocol-account-config-dialog__bd min-h-[240px] flex-1 overflow-auto">
+          {open && accountId ? (
+            <ProtocolAccountWorkspace
+              key={accountId}
+              ref={workspaceRef}
+              presentation="dialog"
+              accountId={accountId}
+              mountUrl={mountUrl}
+              system={system}
+              activeTab={activeTab}
+              onActiveTabChange={setActiveTab}
+              onDeleted={() => {
+                onDeleted?.();
+                onClose();
+              }}
+            />
+          ) : null}
+        </div>
+
+        {activeTab === "settings" ? (
+          <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+            <Button
               type="button"
-              className="btn btn--primary"
+              size="sm"
               disabled={!canSave}
               title="Ctrl+S"
               onClick={() => void workspaceRef.current?.saveSettings()}
             >
               {saveBusy ? "保存中…" : "保存并重启"}
-            </button>
-          ) : null}
-        </div>
-      }
-    >
-      {open && accountId ? (
-        <ProtocolAccountWorkspace
-          key={accountId}
-          ref={workspaceRef}
-          presentation="dialog"
-          accountId={accountId}
-          mountUrl={mountUrl}
-          system={system}
-          activeTab={activeTab}
-          onActiveTabChange={setActiveTab}
-          onDeleted={() => {
-            onDeleted?.();
-            onClose();
-          }}
-        />
-      ) : null}
-    </ConsoleModal>
+            </Button>
+          </DialogFooter>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

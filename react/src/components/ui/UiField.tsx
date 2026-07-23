@@ -12,6 +12,7 @@ export default function UiField({
   secret = false,
   hideLabel = false,
   className,
+  labelStart,
   labelEnd,
   meta,
   children,
@@ -21,17 +22,19 @@ export default function UiField({
   secret?: boolean;
   hideLabel?: boolean;
   className?: string;
+  labelStart?: ReactNode;
   labelEnd?: ReactNode;
   meta?: ReactNode;
   children: ReactNode;
 }) {
-  const showLabelRow = !hideLabel && Boolean(label || labelEnd || meta);
+  const showLabelRow = !hideLabel && Boolean(label || labelStart || labelEnd || meta);
 
   return (
     <div className={cn("ui-field space-y-1.5", className)}>
       {showLabelRow ? (
         <div className="ui-field__label-row flex items-start justify-between gap-2">
           <div className="ui-field__label flex min-w-0 items-center gap-1.5">
+            {labelStart}
             <div className="ui-field__title flex min-w-0 items-center gap-1.5">
               {label ? (
                 <Label className="ui-field__label-text truncate" title={label}>

@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import ConsoleModal from "@/components/ConsoleModal";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
 } from "@/components/PluginConfigWorkspace";
@@ -11,6 +10,15 @@ import type {
 } from "@/api/pallasTypes";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { resolvePluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 
 type Props = {
@@ -22,6 +30,7 @@ type Props = {
   onClose: () => void;
 };
 
+/** 插件配置弹窗：shadcn Dialog（居中实心底，对齐 gsuid EditConfig 手法）。 */
 export default function PluginConfigDialog({
   open,
   pluginName,
@@ -52,75 +61,84 @@ export default function PluginConfigDialog({
     );
   }, [pluginRow, officialExtensions, communityPlugins]);
 
-  const canSave =
-    status.hasData && !status.loading && !status.saving && !status.checking;
+  const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
+  const busy = status.saving;
+
+  function requestClose() {
+    if (busy) return;
+    onClose();
+  }
 
   return (
-    <ConsoleModal
+    <Dialog
       open={open && Boolean(pluginName)}
-      titleId="plugin-config-dialog-title"
-      panelClass="plugin-config-dialog"
-      bodyClass="plugin-config-dialog__bd"
-      busy={status.saving}
-      onClose={onClose}
-      header={
-        <>
-          <div className="console-modal__head-text plugin-config-dialog__head">
-            <div className="plugin-config-dialog__head-text">
-              <h2 id="plugin-config-dialog-title" className="console-modal__title">
-                {displayTitle}
-              </h2>
-              <p className="console-modal__subtitle">
+      onOpenChange={(next) => {
+        if (!next) requestClose();
+      }}
+    >
+      <DialogContent
+        className="plugin-config-dialog flex max-h-[min(92vh,960px)] w-[min(960px,96vw)] max-w-[min(960px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        onEscapeKeyDown={(e) => {
+          if (busy) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (busy) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+          <div className="plugin-config-dialog__head-text space-y-1 pr-6">
+            <DialogTitle id="plugin-config-dialog-title">{displayTitle}</DialogTitle>
+            <DialogDescription asChild>
+              <p className="font-mono text-xs text-muted-foreground">
                 <code>{pluginResolvedId}</code>
               </p>
-            </div>
+            </DialogDescription>
           </div>
-          <button type="button" className="console-modal__close" aria-label="关闭" onClick={onClose}>
-            ×
-          </button>
-        </>
-      }
-      footer={
-        <div className="plugin-config-dialog__foot row-actions">
+        </DialogHeader>
+
+        <div className="plugin-config-dialog__bd min-h-[240px] flex-1 overflow-auto">
+          {showDrawAiConfigHint ? (
+            <p className="px-4 pt-3 text-sm text-muted-foreground">
+              推荐在 <Link to={aiConfigSectionPath("draw")} className="text-primary underline-offset-2 hover:underline">AI 配置 · 画画</Link>
+              管理网关；本页为兼容入口，配置键相同。
+            </p>
+          ) : null}
+          {pluginName ? (
+            <PluginConfigWorkspace
+              key={pluginName}
+              ref={workspaceRef}
+              presentation="dialog"
+              pluginName={pluginName}
+              initialPluginRow={pluginRow}
+              readmeTarget={readmeTarget}
+              onStatusChange={setStatus}
+            />
+          ) : null}
+        </div>
+
+        <DialogFooter className="plugin-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
           {status.supportsConfigCheck ? (
-            <button
+            <Button
               type="button"
-              className="btn btn--outline"
+              variant="outline"
+              size="sm"
               disabled={!canSave}
               onClick={() => void workspaceRef.current?.runConfigCheck()}
             >
               {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
-            className="btn btn--primary"
+            size="sm"
             disabled={!canSave}
             title="Ctrl+S"
             onClick={() => void workspaceRef.current?.save()}
           >
             {status.saving ? "保存中…" : "保存"}
-          </button>
-        </div>
-      }
-    >
-      {showDrawAiConfigHint ? (
-        <p className="muted plugin-config-dialog__ai-hint">
-          推荐在 <Link to={aiConfigSectionPath("draw")}>AI 配置 · 画画</Link>
-          管理网关；本页为兼容入口，配置键相同。
-        </p>
-      ) : null}
-      {pluginName ? (
-        <PluginConfigWorkspace
-          key={pluginName}
-          ref={workspaceRef}
-          presentation="dialog"
-          pluginName={pluginName}
-          initialPluginRow={pluginRow}
-          readmeTarget={readmeTarget}
-          onStatusChange={setStatus}
-        />
-      ) : null}
-    </ConsoleModal>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

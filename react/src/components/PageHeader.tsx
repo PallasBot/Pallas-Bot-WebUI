@@ -8,6 +8,7 @@ export default function PageHeader(props: {
   actions?: ReactNode;
   className?: string;
   hideLeadOnNarrow?: boolean;
+  showNavIcon?: boolean;
 }) {
   return <PageChrome {...props} />;
 }

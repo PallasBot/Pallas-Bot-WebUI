@@ -5,6 +5,7 @@ import {
   fmtAxisCount,
   type GsTrendSeriesId,
 } from "@/utils/gsTrendChart";
+import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 
 type Props = {
   rows: ConsoleDailyStatRow[];
@@ -101,7 +102,7 @@ export default function GsDualAxisTrendChart({
       ) : null}
 
       {busy && !pack ? (
-        <p className="muted gs-trend-chart__empty">加载中…</p>
+        <ConsoleBlockSkeleton lines={5} label="趋势图加载中" className="gs-trend-chart__empty" />
       ) : !pack ? (
         <p className="muted gs-trend-chart__empty">{emptyText}</p>
       ) : (

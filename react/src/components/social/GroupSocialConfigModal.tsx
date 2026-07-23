@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/fullConsole";
-import ConsoleModal from "@/components/ConsoleModal";
-import UiButton from "@/components/ui/UiButton";
-import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 import {
   parseRouletteModeSelect,
@@ -33,6 +46,7 @@ function normalizeBlocked(ids: number[]): number[] {
   return next;
 }
 
+/** 群颗粒配置：shadcn Dialog，标题左对齐。 */
 export default function GroupSocialConfigModal({ open, groupId, groupName, onOpenChange, onSaved }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loadedId, setLoadedId] = useState<number | null>(null);
@@ -143,136 +157,142 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
   const busy = loadBusy || saveBusy;
 
   return (
-    <ConsoleModal
+    <Dialog
       open={open}
-      titleId="group-social-config-title"
-      panelClass="social-config-dialog"
-      busy={busy}
-      onClose={() => {
-        if (!busy) onOpenChange(false);
+      onOpenChange={(next) => {
+        if (!next && !busy) onOpenChange(false);
       }}
-      header={
-        <>
-          <div className="console-modal__head-text">
-            <h2 id="group-social-config-title" className="console-modal__title">
-              编辑群颗粒配置
-            </h2>
-            <p className="console-modal__subtitle muted">
-              群 {loadedId ?? groupId ?? "—"}
-              {groupName?.trim() ? ` · ${groupName.trim()}` : ""}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="console-modal__close"
-            aria-label="关闭"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            ×
-          </button>
-        </>
-      }
-      footer={
-        !loadBusy && !loadErr && draft ? (
-          <>
-            <UiButton variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
-              取消
-            </UiButton>
-            <UiButton variant="primary" size="sm" disabled={saveBusy} onClick={() => void save()}>
-              {saveBusy ? "保存中…" : "保存"}
-            </UiButton>
-          </>
-        ) : null
-      }
     >
-      {loadBusy ? <p className="muted">加载中…</p> : null}
-      {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
-      {!loadBusy && !loadErr && draft ? (
-        <div className="social-config-dialog__body">
-          {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
-          <label className="social-config-dialog__row">
-            <span>封禁本群</span>
-            <UiSelect
-              value={draft.banned ? "1" : "0"}
-              onValueChange={(v) => setDraft({ ...draft, banned: v === "1" })}
-            >
-              <option value="1">是</option>
-              <option value="0">否</option>
-            </UiSelect>
-          </label>
-          <label className="social-config-dialog__row">
-            <span>轮盘模式</span>
-            <UiSelect
-              value={rouletteModeSelectValue(draft.roulette_mode)}
-              onValueChange={(v) =>
-                setDraft({
-                  ...draft,
-                  roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
-                })
-              }
-            >
-              {rouletteOpts.map((o) => (
-                <option key={o.value} value={String(o.value)}>
-                  {o.label}
-                </option>
-              ))}
-            </UiSelect>
-          </label>
-          <div className="social-config-dialog__block">
-            <div className="social-config-dialog__block-hd">禁用插件</div>
-            <div className="social-config-dialog__checklist">
-              {pluginNames.length === 0 ? (
-                <p className="muted">无插件列表</p>
-              ) : (
-                pluginNames.map((p) => (
-                  <label key={p.name} className="social-config-dialog__check">
-                    <input
-                      type="checkbox"
-                      checked={draft.disabled_plugins.includes(p.name)}
-                      onChange={(e) => togglePlugin(p.name, e.target.checked)}
-                    />
-                    <span>{p.label}</span>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-          <div className="social-config-dialog__block">
-            <div className="social-config-dialog__block-hd">屏蔽用户 QQ</div>
-            <div className="social-config-dialog__add-row">
-              <UiInput
-                className="social-config-dialog__qq-inp"
-                placeholder="QQ 号"
-                value={addBlocked}
-                onValueChange={setAddBlocked}
-              />
-              <UiButton type="button" size="sm" variant="outline" onClick={addBlockedUser}>
-                添加
-              </UiButton>
-            </div>
-            {blockedHint ? <p className="alert alert--err">{blockedHint}</p> : null}
-            <div className="social-config-dialog__chips">
-              {draft.blocked_user_ids.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="btn social-config-dialog__chip"
-                  onClick={() =>
+      <DialogContent
+        className="social-config-dialog flex max-h-[min(92vh,720px)] w-[min(560px,96vw)] max-w-[min(560px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        onEscapeKeyDown={(e) => {
+          if (busy) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (busy) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+          <DialogTitle id="group-social-config-title">编辑群颗粒配置</DialogTitle>
+          <DialogDescription className="muted">
+            群 {loadedId ?? groupId ?? "—"}
+            {groupName?.trim() ? ` · ${groupName.trim()}` : ""}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+          {loadBusy ? <p className="muted">加载中…</p> : null}
+          {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
+          {!loadBusy && !loadErr && draft ? (
+            <div className="social-config-dialog__body">
+              {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
+              <div className="social-config-dialog__row">
+                <span>封禁本群</span>
+                <Select
+                  value={draft.banned ? "1" : "0"}
+                  onValueChange={(v) => setDraft({ ...draft, banned: v === "1" })}
+                >
+                  <SelectTrigger className="h-9 w-auto min-w-[5rem]" aria-label="封禁本群">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">是</SelectItem>
+                    <SelectItem value="0">否</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="social-config-dialog__row">
+                <span>轮盘模式</span>
+                <Select
+                  value={rouletteModeSelectValue(draft.roulette_mode)}
+                  onValueChange={(v) =>
                     setDraft({
                       ...draft,
-                      blocked_user_ids: draft.blocked_user_ids.filter((x) => x !== id),
+                      roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
                     })
                   }
                 >
-                  {id} ×
-                </button>
-              ))}
-              {!draft.blocked_user_ids.length ? <span className="muted">无</span> : null}
+                  <SelectTrigger className="h-9 w-auto min-w-[8rem]" aria-label="轮盘模式">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rouletteOpts.map((o) => (
+                      <SelectItem key={o.value} value={String(o.value)}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="social-config-dialog__block">
+                <div className="social-config-dialog__block-hd">禁用插件</div>
+                <div className="social-config-dialog__checklist">
+                  {pluginNames.length === 0 ? (
+                    <p className="muted">无插件列表</p>
+                  ) : (
+                    pluginNames.map((p) => (
+                      <label key={p.name} className="social-config-dialog__check">
+                        <input
+                          type="checkbox"
+                          checked={draft.disabled_plugins.includes(p.name)}
+                          onChange={(e) => togglePlugin(p.name, e.target.checked)}
+                        />
+                        <span>{p.label}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="social-config-dialog__block">
+                <div className="social-config-dialog__block-hd">屏蔽用户 QQ</div>
+                <div className="social-config-dialog__add-row">
+                  <Input
+                    className="social-config-dialog__qq-inp h-9"
+                    placeholder="QQ 号"
+                    value={addBlocked}
+                    onChange={(e) => setAddBlocked(e.target.value)}
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={addBlockedUser}>
+                    添加
+                  </Button>
+                </div>
+                {blockedHint ? <p className="alert alert--err">{blockedHint}</p> : null}
+                <div className="social-config-dialog__chips">
+                  {draft.blocked_user_ids.map((id) => (
+                    <Button
+                      key={id}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="social-config-dialog__chip"
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          blocked_user_ids: draft.blocked_user_ids.filter((x) => x !== id),
+                        })
+                      }
+                    >
+                      {id} ×
+                    </Button>
+                  ))}
+                  {!draft.blocked_user_ids.length ? <span className="muted">无</span> : null}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
-      ) : null}
-    </ConsoleModal>
+
+        {!loadBusy && !loadErr && draft ? (
+          <DialogFooter className="border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+            <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
+              取消
+            </Button>
+            <Button type="button" size="sm" disabled={saveBusy} onClick={() => void save()}>
+              {saveBusy ? "保存中…" : "保存"}
+            </Button>
+          </DialogFooter>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
