@@ -1,0 +1,65 @@
+/* Home / shell canvas: one elev layer under cards; sys meters flat on card */
+
+html[data-layout="hub"] .shell__main-inner--home {
+  background: var(--bg-elev);
+}
+
+/* Cards once: solid card surface (not muted mix matching canvas) */
+html[data-layout="hub"] .home-page .home-card,
+html[data-layout="hub"] .home-page .home-kpi-bar {
+  background: var(--bg-card);
+}
+
+html[data-layout="hub"][data-theme="light"] .home-page .home-card,
+html[data-layout="hub"][data-theme="light"] .home-page .home-kpi-bar {
+  background: #ffffff;
+}
+
+/* Inner KPI / sys tiles: flat on card — dividers only, no canvas-colored nests */
+html[data-layout="hub"] .home-page .home-sys-card,
+html[data-layout="hub"] .home-page .home-kpi-cell,
+html[data-layout="hub"] .home-page .metric-tile {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-layout="hub"] .home-page .home-sys-card {
+  border: none;
+  padding: 10px 4px;
+  border-radius: 0;
+}
+
+html[data-layout="hub"] .home-page .home-sys-grid > .home-sys-card + .home-sys-card {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+html[data-layout="hub"] .home-page .home-sys-card--gpu {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+/*
+ * Progress fills: Tailwind @layer base may set --accent to HSL components,
+ * which invalidates `background: var(--accent)`. Use a concrete sky fill.
+ */
+.home-sys-card__bar > span,
+.home-sys-card__core-fill,
+.home-uptime-hours__fill {
+  background: #38bdf8;
+}
+
+html[data-theme="light"] .home-sys-card__bar > span,
+html[data-theme="light"] .home-sys-card__core-fill,
+html[data-theme="light"] .home-uptime-hours__fill {
+  background: #0284c7;
+}
+
+.home-sys-card--warn .home-sys-card__bar > span {
+  background: #f59e0b;
+}
+
+.home-sys-card__bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}

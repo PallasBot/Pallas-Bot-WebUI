@@ -213,7 +213,7 @@ export default function AppShell() {
   }
 
   const mainMod =
-    location.pathname.startsWith("/logs")
+    location.pathname.startsWith("/logs") || location.pathname.startsWith("/log-errors")
       ? "shell__main-inner--logs"
       : location.pathname.startsWith("/plugin-store")
         ? "shell__main-inner--plugin-store"

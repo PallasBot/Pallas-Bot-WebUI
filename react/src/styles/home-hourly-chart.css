@@ -23,25 +23,25 @@
   min-height: 0;
 }
 
-.home-plugin-hourly-chart__svg :deep(.home-plugin-bucket__grid) {
+.home-plugin-hourly-chart__svg .home-plugin-bucket__grid {
   stroke: color-mix(in srgb, var(--border) 88%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.home-plugin-hourly-chart__svg :deep(.home-plugin-bucket__axis) {
+.home-plugin-hourly-chart__svg .home-plugin-bucket__axis {
   stroke: color-mix(in srgb, var(--border-strong) 92%, var(--border) 8%);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.home-plugin-hourly-chart__svg :deep(.home-plugin-bucket__ytick) {
+.home-plugin-hourly-chart__svg .home-plugin-bucket__ytick {
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-muted);
 }
 
-.home-plugin-hourly-chart__svg :deep(.home-plugin-chart-line) {
+.home-plugin-hourly-chart__svg .home-plugin-chart-line {
   stroke-width: 2px;
   vector-effect: non-scaling-stroke;
 }
