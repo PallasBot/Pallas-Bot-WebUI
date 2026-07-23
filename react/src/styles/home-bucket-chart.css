@@ -11,30 +11,30 @@
   display: block;
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__grid) {
+.home-plugin-bucket-chart__svg .home-plugin-bucket__grid {
   stroke: color-mix(in srgb, var(--border) 88%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__axis) {
+.home-plugin-bucket-chart__svg .home-plugin-bucket__axis {
   stroke: color-mix(in srgb, var(--border-strong) 92%, var(--border) 8%);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__ytick),
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__xtick) {
+.home-plugin-bucket-chart__svg .home-plugin-bucket__ytick,
+.home-plugin-bucket-chart__svg .home-plugin-bucket__xtick {
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-muted);
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__bar) {
+.home-plugin-bucket-chart__svg .home-plugin-bucket__bar {
   transition: opacity 0.12s var(--ease);
 }
 
-.home-plugin-bucket-chart__svg :deep(.home-plugin-bucket__bar--active) {
+.home-plugin-bucket-chart__svg .home-plugin-bucket__bar--active {
   opacity: 0.82;
   filter: brightness(1.1);
 }

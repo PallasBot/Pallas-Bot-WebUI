@@ -14,7 +14,7 @@ import PageHeader from "@/components/PageHeader";
 import Panel from "@/components/Panel";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import StatTrendCard from "@/components/StatTrendCard";
-import UiInput from "@/components/ui/UiInput";
+import DatePicker from "@/components/DatePicker";
 import UiSelect from "@/components/ui/UiSelect";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import {
@@ -238,20 +238,18 @@ export default function ChartsPage() {
           <div className="charts-page__filter-group">
             <label className="charts-page__date-label">
               <span className="charts-page__date-label-text">起始</span>
-              <UiInput
+              <DatePicker
                 className="charts-page__date-inp"
-                type="date"
-                aria-label="起始日期"
+                ariaLabel="起始日期"
                 value={rangeStart}
                 onValueChange={setRangeStart}
               />
             </label>
             <label className="charts-page__date-label">
               <span className="charts-page__date-label-text">结束</span>
-              <UiInput
+              <DatePicker
                 className="charts-page__date-inp"
-                type="date"
-                aria-label="结束日期"
+                ariaLabel="结束日期"
                 value={rangeEnd}
                 onValueChange={setRangeEnd}
               />

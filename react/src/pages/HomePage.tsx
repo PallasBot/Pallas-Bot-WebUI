@@ -91,6 +91,14 @@ function barPct(
   return null;
 }
 
+function gpuUtilBarPct(util: number | null | undefined): number | null {
+  return barPct(util ?? null, null, null);
+}
+
+function gpuMemBarPct(used: number, total: number): number | null {
+  return barPct(null, used, total);
+}
+
 function uptimeDisplayParts(boot: number | null | undefined, nowSec: number) {
   if (boot == null) return null;
   let s = Math.max(0, nowSec - boot);
@@ -976,19 +984,55 @@ export default function HomePage() {
                       </div>
                       {uptimeHint ? <p className="home-sys-card__hint">{uptimeHint}</p> : null}
                     </div>
-                    {gpuDevices.map((dev) => (
-                      <div key={dev.index} className="home-sys-card home-sys-card--gpu">
-                        <div className="home-sys-card__head">
-                          <span className="home-sys-card__label">GPU {dev.index}</span>
-                          <span className="home-sys-card__value">{pct(dev.utilization_gpu)}</span>
+                    {gpuDevices.map((dev) => {
+                      const utilPct = gpuUtilBarPct(dev.utilization_gpu);
+                      const memPct =
+                        gpuMemBarPct(dev.memory_used, dev.memory_total)
+                        ?? barPct(dev.utilization_memory ?? null, null, null);
+                      const memLabel =
+                        dev.memory_total > 0
+                          ? pct((dev.memory_used / dev.memory_total) * 100)
+                          : pct(dev.utilization_memory);
+                      return (
+                        <div key={dev.index} className="home-sys-card home-sys-card--gpu">
+                          <div className="home-sys-card__head">
+                            <span className="home-sys-card__label">GPU {dev.index}</span>
+                            <span className="home-sys-card__value">{pct(dev.utilization_gpu)}</span>
+                          </div>
+                          <p className="home-sys-card__hint">{gpuNameShort(dev.name || "", 36)}</p>
+                          <div className="home-sys-card__gpu-metrics">
+                            <div className="home-sys-card__gpu-metric">
+                              <div className="home-sys-card__row home-sys-card__row--sub">
+                                <span className="home-sys-card__label">利用率</span>
+                                <span className="home-sys-card__value home-sys-card__value--sm" aria-hidden="true">
+                                  00.0%
+                                </span>
+                              </div>
+                              {utilPct != null ? (
+                                <div className="home-sys-card__bar">
+                                  <span style={{ width: `${utilPct}%` }} />
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="home-sys-card__gpu-metric">
+                              <div className="home-sys-card__row home-sys-card__row--sub">
+                                <span className="home-sys-card__label">显存</span>
+                                <span className="home-sys-card__value home-sys-card__value--sm">{memLabel}</span>
+                              </div>
+                              {memPct != null ? (
+                                <div className="home-sys-card__bar">
+                                  <span style={{ width: `${memPct}%` }} />
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <p className="home-sys-card__hint">
+                            {fmtBytes(dev.memory_used)} / {fmtBytes(dev.memory_total)}
+                            {dev.temperature != null ? ` · ${tempDisplay(dev.temperature)}` : ""}
+                          </p>
                         </div>
-                        <p className="home-sys-card__hint">{gpuNameShort(dev.name || "", 36)}</p>
-                        <p className="home-sys-card__hint">
-                          {fmtBytes(dev.memory_used)} / {fmtBytes(dev.memory_total)}
-                          {dev.temperature != null ? ` · ${tempDisplay(dev.temperature)}` : ""}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -1069,22 +1069,53 @@ html[data-layout="hub"] .ui-btn--sm {
   filter: brightness(1.06);
 }
 
-/* 治理弹窗略松：dialog 内分组与 body 留白 */
-.plugin-config-dialog__bd {
-  padding: 12px 16px 16px;
+/* 治理弹窗：body 由 workspace 内边距负责，避免双层挤窄 */
+.ui-dialog__panel.plugin-config-dialog,
+.console-modal__dialog.plugin-config-dialog {
+  width: min(960px, 96vw);
+  max-height: min(90vh, 920px);
+}
+
+.ui-dialog__bd.plugin-config-dialog__bd,
+.console-modal__bd.plugin-config-dialog__bd {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 240px;
+  padding: 0;
+  max-height: none;
+}
+
+.ui-dialog__panel.plugin-store-page__detail-dialog,
+.console-modal__dialog.plugin-store-page__detail-dialog {
+  width: min(920px, 94vw);
+  max-height: min(88vh, 900px);
+}
+
+.ui-dialog__bd.plugin-store-page__detail-bd,
+.console-modal__bd.plugin-store-page__detail-bd {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 200px;
+  max-height: none;
+}
+
+.ui-dialog__panel.plugin-store-page__git-dialog,
+.console-modal__dialog.plugin-store-page__git-dialog {
+  width: min(520px, 94vw);
+  max-height: min(88vh, 720px);
 }
 
 .plugin-config-workspace--dialog .plugin-config-page__governance-dialog {
-  padding: 4px 2px 8px;
+  padding: 2px 0 4px;
 }
 
 .plugin-governance-panel--dialog {
-  gap: 16px;
+  gap: 14px;
 }
 
 .plugin-governance-panel--dialog .plugin-governance-panel__group {
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px 14px;
 }
 
 .plugin-governance-panel--dialog .plugin-governance-panel__switches {
@@ -1156,8 +1187,11 @@ html[data-theme="light"] .console-view-toggle > a.is-on {
   box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground, #0f172a) 8%, transparent);
 }
 
-/* 实例/协议卡片脚按钮：用 control 圆角，避免胶囊感 */
+/* 实例/协议卡片脚按钮：用 control 圆角，避免 hub 胶囊成圆 */
+html[data-layout="hub"] .inst-card-actions > .btn:not(.panel-hd-collapse-btn),
+html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--embedded),
 .inst-card-actions > .btn,
 .inst-card-actions > .ui-btn {
   border-radius: var(--radius-control, 10px);
+  min-height: 28px;
 }
