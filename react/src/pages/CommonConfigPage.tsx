@@ -36,7 +36,7 @@ export default function CommonConfigPage() {
         <ChromeTools>
           <div className="relative min-w-[8rem] flex-1">
             <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
               strokeWidth={1.75}
               aria-hidden
             />

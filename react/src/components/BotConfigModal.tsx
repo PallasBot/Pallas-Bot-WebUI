@@ -243,9 +243,9 @@ export default function BotConfigModal({
           if (saveBusy) e.preventDefault();
         }}
       >
-        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <div className="plugin-config-dialog__head-text space-y-1 pr-6">
-            <DialogTitle id="bot-config-modal-title">
+        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
+          <div className="plugin-config-dialog__head-text w-full space-y-1 pr-6 text-left">
+            <DialogTitle id="bot-config-modal-title" className="text-left">
               {isInit ? "初始化 Bot 配置" : "编辑 Bot 配置"}
             </DialogTitle>
             <DialogDescription asChild>

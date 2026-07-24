@@ -82,9 +82,9 @@ export default function ProtocolAccountConfigDialog({
           if (saveBusy) e.preventDefault();
         }}
       >
-        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <div className="plugin-config-dialog__head-text protocol-account-config-dialog__head space-y-1 pr-6">
-            <DialogTitle id="protocol-account-config-dialog-title">
+        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
+          <div className="plugin-config-dialog__head-text protocol-account-config-dialog__head w-full space-y-1 pr-6 text-left">
+            <DialogTitle id="protocol-account-config-dialog-title" className="text-left">
               {title || (accountId ? `账号 ${accountId}` : "协议账号")}
             </DialogTitle>
             {statusLine ? (

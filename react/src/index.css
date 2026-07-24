@@ -165,7 +165,7 @@
   }
 
   .console-view-toggle > a.is-on {
-    color: #fff;
+    color: var(--accent-contrast, #fff);
     font-weight: 500;
     background: var(--accent);
     border-color: transparent;
@@ -173,7 +173,7 @@
   }
 
   html[data-theme="light"] .console-view-toggle > a.is-on {
-    color: #fff;
+    color: var(--accent-contrast, #fff);
     background: var(--accent);
     border-color: transparent;
     box-shadow: none;

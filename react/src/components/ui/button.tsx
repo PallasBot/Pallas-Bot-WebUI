@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 /**
  * 密度跟 hub（--radius-control / h-9）；
  * 主色跟 hub --accent；手法跟 gsuid：
- * - default：扁实心 accent + 白字（真·主 CTA）
- * - secondary / outline：白/近白实心底 + 浅边 + 深字（常见操作，勿灰板）
+ * - default：扁实心 accent + accent-contrast 字（shadcn 黑白下为深底浅字 / 浅底深字）
+ * - secondary / outline：control 实心底 + 浅边 + 正文色（常见操作，勿灰板）
  * hover 略压暗、active 更明确；勿胶囊 / 厚渐变 glow。
  */
 const buttonVariants = cva(
@@ -16,7 +16,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-[color-mix(in_srgb,var(--accent)_38%,transparent)] bg-[var(--accent)] text-white shadow-[0_1px_2px_color-mix(in_srgb,var(--accent)_22%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_90%,#000_10%)] hover:border-[color-mix(in_srgb,var(--accent)_48%,transparent)] hover:shadow-[0_1px_3px_color-mix(in_srgb,var(--accent)_16%,transparent)] active:bg-[color-mix(in_srgb,var(--accent)_82%,#000_18%)] active:border-[color-mix(in_srgb,var(--accent)_55%,transparent)] active:shadow-none",
+          "border border-[color-mix(in_srgb,var(--accent)_38%,transparent)] bg-[var(--accent)] text-[var(--accent-contrast,#fff)] shadow-[0_1px_2px_color-mix(in_srgb,var(--accent)_22%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_90%,#000_10%)] hover:border-[color-mix(in_srgb,var(--accent)_48%,transparent)] hover:shadow-[0_1px_3px_color-mix(in_srgb,var(--accent)_16%,transparent)] active:bg-[color-mix(in_srgb,var(--accent)_82%,#000_18%)] active:border-[color-mix(in_srgb,var(--accent)_55%,transparent)] active:shadow-none",
         destructive:
           "border border-[color-mix(in_srgb,#dc2626_38%,transparent)] bg-[#dc2626] text-white shadow-[0_1px_2px_rgba(220,38,38,0.22)] hover:bg-[color-mix(in_srgb,#dc2626_90%,#000_10%)] active:bg-[color-mix(in_srgb,#dc2626_82%,#000_18%)] active:shadow-none",
         outline:

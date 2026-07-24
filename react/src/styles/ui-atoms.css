@@ -90,7 +90,7 @@ html[data-theme="light"] .ui-btn--default:hover:not(:disabled) {
 .ui-btn--primary {
   background: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
@@ -1217,7 +1217,7 @@ html[data-theme="dark"] .ui-dialog__panel {
 
 .plugin-catalog-card .ui-card__footer .btn--primary,
 .plugin-catalog-card .ui-card__footer .ui-btn--primary {
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   background: var(--accent, #0ea5e9);
   border-color: color-mix(in srgb, var(--accent, #0ea5e9) 38%, transparent);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent, #0ea5e9) 22%, transparent);
@@ -1455,7 +1455,7 @@ html[data-ui-preset="gs"] .btn--primary,
 html[data-ui-preset="gs"] .ui-btn--primary {
   background: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
@@ -1479,7 +1479,7 @@ html[data-ui-preset="shadcn"] .btn--primary,
 html[data-ui-preset="shadcn"] .ui-btn--primary {
   background: var(--foreground, var(--text));
   border-color: var(--foreground, var(--text));
-  color: var(--background, var(--bg-card));
+  color: var(--accent-contrast, var(--background, var(--bg-card)));
   box-shadow: none;
 }
 
