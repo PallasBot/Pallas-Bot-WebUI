@@ -11,8 +11,18 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
   version: string;
 };
 
-/** 发版 CI 会注入 CONSOLE_VERSION（如 v0.7.0）；本地开发回退 package.json */
-const webuiVersion = (process.env.CONSOLE_VERSION || "").trim() || pkg.version;
+/** 发版 tag 为 v*（CONSOLE_VERSION）；本地 package.json 无前缀时补 v 以对齐 tag */
+function webuiVersionForDefine(raw: string): string {
+  const s = raw.trim();
+  if (!s) return s;
+  if (/^v/i.test(s)) return `v${s.slice(1)}`;
+  if (/^\d/.test(s)) return `v${s}`;
+  return s;
+}
+
+const webuiVersion = webuiVersionForDefine(
+  (process.env.CONSOLE_VERSION || "").trim() || pkg.version,
+);
 
 /** 与现有控件一致 */
 const BASE = "/pallas/";

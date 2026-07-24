@@ -162,13 +162,25 @@ function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   el.style.setProperty("--radius", `${r}px`);
 }
 
-/** 把 hub accent preset 同步到 shadcn --ui-primary / --ui-ring（HSL 分量）。
+/** 黑白预设：Tailwind `text-primary` / Switch 等走 --ui-*，须跟前景中性灰，勿留彩色 accent。 */
+const MONO_PRIMARY_HSL = {
+  dark: { primary: "240 5% 96%", primaryFg: "240 5% 8%" },
+  light: { primary: "240 6% 10%", primaryFg: "0 0% 100%" },
+} as const;
+
+/** 把 hub accent / 黑白预设同步到 shadcn --ui-primary / --ui-ring（HSL 分量）。
  * 勿写 hub 的 --accent / --primary / --ring：那些是完整色值，供 color-mix 使用。
  */
-function applyShadcnAccentVars(el: HTMLElement, accent: AccentPreset, theme: "dark" | "light"): void {
+function applyShadcnAccentVars(
+  el: HTMLElement,
+  accent: AccentPreset,
+  theme: "dark" | "light",
+  uiPreset: UiPreset,
+): void {
+  const mono = MONO_PRIMARY_HSL[theme];
   const row = ACCENT_HSL[accent] ?? ACCENT_HSL.violet;
-  const primary = theme === "dark" ? row.dark : row.light;
-  const primaryFg = theme === "dark" ? row.fgDark : row.fgLight;
+  const primary = uiPreset === "shadcn" ? mono.primary : theme === "dark" ? row.dark : row.light;
+  const primaryFg = uiPreset === "shadcn" ? mono.primaryFg : theme === "dark" ? row.fgDark : row.fgLight;
   // 清掉旧版误写的 HSL 分量，避免盖住 hub 完整色值
   el.style.removeProperty("--primary");
   el.style.removeProperty("--primary-foreground");
@@ -199,7 +211,7 @@ export function applyShellTheme(): void {
   el.classList.toggle("light", theme === "light");
   el.style.colorScheme = theme;
   applyRadiusCssVars(el, prefs.controlRadius);
-  applyShadcnAccentVars(el, prefs.accentPreset, theme);
+  applyShadcnAccentVars(el, prefs.accentPreset, theme, prefs.uiPreset);
   const blur = prefs.glassBlur;
   const saturate = 1.08 + ((blur - 8) / 32) * 0.18;
   const glassPct = Math.round(prefs.cardGlassOpacity * 100);

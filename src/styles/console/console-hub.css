@@ -236,6 +236,13 @@ html[data-layout="hub"] .panel__title .console-nav-icon {
   vertical-align: middle;
 }
 
+html[data-layout="hub"] svg.panel__title-ico {
+  display: block;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 1.5em;
+}
+
 html[data-layout="hub"][data-ui-preset="gs"] .panel__title-ico,
 html[data-layout="hub"][data-ui-preset="gs"] .panel__title .console-nav-icon {
   color: color-mix(in srgb, var(--accent) 55%, var(--text));
@@ -3049,6 +3056,17 @@ html[data-ui-preset="shadcn"] {
   --primary: var(--foreground);
   --primary-foreground: var(--background);
   --ring: color-mix(in srgb, var(--foreground) 42%, transparent);
+  /* 图表色板：跟前景中性阶，避免 warn/success 混色在黑白预设里仍花 */
+  --chart-palette-1: var(--foreground);
+  --chart-palette-2: color-mix(in srgb, var(--foreground) 72%, transparent);
+  --chart-palette-3: color-mix(in srgb, var(--foreground) 54%, transparent);
+  --chart-palette-4: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --chart-palette-5: color-mix(in srgb, var(--foreground) 64%, var(--text-muted) 36%);
+  --chart-palette-6: color-mix(in srgb, var(--foreground) 48%, var(--text-muted) 52%);
+  --chart-palette-7: color-mix(in srgb, var(--foreground) 36%, var(--text-muted) 64%);
+  --chart-palette-8: color-mix(in srgb, var(--foreground) 28%, var(--text-muted) 72%);
+  --chart-bar-mix: color-mix(in srgb, var(--foreground) 70%, transparent);
+  --chart-bar-alt: color-mix(in srgb, var(--foreground) 48%, var(--text-muted) 52%);
 }
 
 /* 覆盖 data-accent 主题色，避免黑白模式仍带彩色底 */

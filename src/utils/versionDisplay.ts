@@ -14,6 +14,15 @@ export function displayVersionWithoutSha(input: string | null | undefined): stri
   return s.trim();
 }
 
+/** 与发版 tag（v*）对齐：已有 v 则保留，纯数字 semver 补 v */
+export function withVersionVPrefix(input: string): string {
+  const s = input.trim();
+  if (!s || s === "—") return s;
+  if (/^v/i.test(s)) return `v${s.slice(1)}`;
+  if (/^\d/.test(s)) return `v${s}`;
+  return s;
+}
+
 function pickCleanVersion(input: string | null | undefined): string {
   const raw = (input ?? "").trim();
   if (!raw) return "";
@@ -39,14 +48,14 @@ export function consoleResourceVersionLabel(
   // 优先展示当前浏览器已加载的 bundle 版本（与 package.json / 构建产物一致），
   // 避免 /health 缓存或 dist 内 console-version.json 滞后时侧栏仍显示旧号。
   if (buildVer) {
-    return buildVer;
+    return withVersionVPrefix(buildVer);
   }
 
   const fromHealth = pickCleanVersion(health?.console?.version);
-  if (fromHealth) return fromHealth;
+  if (fromHealth) return withVersionVPrefix(fromHealth);
 
   const fromWeb = pickCleanVersion(webUpdate?.current_tag);
-  if (fromWeb) return fromWeb;
+  if (fromWeb) return withVersionVPrefix(fromWeb);
 
   return "—";
 }

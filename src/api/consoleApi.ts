@@ -100,7 +100,6 @@ import type {
   PluginRunStatsData,
   HomeOverviewData,
   ShardObservabilityData,
-  IngressDispatchData,
   ConsoleLoginChangeResult,
   ConsoleSetupStatus,
   GitMirrorInfo,
@@ -1889,20 +1888,6 @@ export async function fetchShardObservability(): Promise<ShardObservabilityData>
     });
   }
   return shardObsInflight;
-}
-
-let ingressDispatchInflight: Promise<IngressDispatchData> | null = null;
-
-export async function fetchIngressDispatch(): Promise<IngressDispatchData> {
-  if (!ingressDispatchInflight) {
-    ingressDispatchInflight = (async () =>
-      (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/ingress-dispatch"]["get"]>(
-        "/ingress-dispatch",
-      )) as IngressDispatchData)().finally(() => {
-      ingressDispatchInflight = null;
-    });
-  }
-  return ingressDispatchInflight;
 }
 
 export async function fetchCorpusStatus(): Promise<CorpusStatusData> {

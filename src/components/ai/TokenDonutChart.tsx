@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import TruncatedText from "@/components/TruncatedText";
 import { formatCompactNumber, type TokenRow } from "@/utils/aiTaskStats";
-import { readChartPalette } from "@/utils/chartTheme";
+import { fixedChartPalette } from "@/utils/chartTheme";
 import { cn } from "@/lib/utils";
 
 type Slice = {
@@ -62,7 +62,7 @@ export default function TokenDonutChart({
     const top = rows.slice(0, limit);
     const total = top.reduce((s, r) => s + r.totalTokens, 0);
     if (total <= 0) return [] as Slice[];
-    const palette = readChartPalette(Math.max(top.length, 8));
+    const palette = fixedChartPalette(Math.max(top.length, 8));
     const cx = 100;
     const cy = 100;
     const rOuter = 72;

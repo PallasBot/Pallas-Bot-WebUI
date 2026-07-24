@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, LineChart } from "lucide-react";
+import { Activity, BarChart3, Bot, LineChart } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchConsoleDailyStats,
@@ -8,12 +8,12 @@ import {
   fetchPluginRunStats,
 } from "@/api/fullConsole";
 import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
+import ChartsDailyBarChart from "@/components/ChartsDailyBarChart";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
+import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools from "@/components/ChromeTools";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
-import HomePluginRunCharts, { type ChartPanelId } from "@/components/HomePluginRunCharts";
-import IngressDispatchPanel from "@/components/IngressDispatchPanel";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,9 +34,8 @@ import {
   todayIso,
   writeSavedHomeAccount,
 } from "@/utils/chartsPageHelpers";
-
-/** 看板次要区：排行列表 + 一条实时桶图（其余面板保留 API/组件能力，默认不铺满墙） */
-const DASHBOARD_SECONDARY_PANELS: ChartPanelId[] = ["plugins_top", "matcher_bucket"];
+import { defaultTopKeys } from "@/utils/homePluginChartPack";
+import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 
 const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-none";
 const CHART_PANEL_HD =
@@ -44,6 +43,8 @@ const CHART_PANEL_HD =
 const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
 const ACCOUNT_SEL =
   "charts-page__account-sel h-8 w-[7rem] min-w-[5rem] max-w-[7rem] shrink-0 overflow-hidden";
+/** 与区间趋势 Matcher 序列同色，柱图不跟主题走 */
+const PLUGIN_TODAY_BAR_ACCENT = "#7c3aed";
 
 function MetricTile({
   label,
@@ -97,20 +98,11 @@ export default function ChartsPage() {
   const {
     pluginsList,
     chartsBusy,
-    pluginRunTimeSamples,
     scopedPluginPlugins,
-    scopedApiCallsByApi,
     scopedMatcherRunsByPlugin,
-    scopedMatcherErrorsByPlugin,
-    scopedMatcherAvgDurationByPlugin,
-    scopedMatcherDurationMsByPlugin,
-    scopedMatcherDurationLog,
-    scopedMatcherErrorLog,
     scopedPluginRunRow,
     scopedBotStatsRow,
-    pluginRunStatsScoped,
     consoleDailyStats,
-    accountMessageStats,
     refreshChartStats,
     ensurePluginsList,
   } = useAccountPluginCharts(selectedAccount);
@@ -169,7 +161,37 @@ export default function ChartsPage() {
   );
   const rangeDayCount = Math.max(1, dailyRowsScoped.length);
 
-  const pluginRunMain = pluginRunStatsScoped ?? pluginRunGlobalQ.data;
+  const topPluginBars = useMemo(() => {
+    return [...scopedPluginPlugins]
+      .filter((p) => p.runs_today > 0)
+      .sort((a, b) => b.runs_today - a.runs_today || a.name.localeCompare(b.name))
+      .slice(0, 12)
+      .map((p) => {
+        const label = matcherPluginDisplayName(p.name, pluginsList);
+        return {
+          date: label,
+          value: p.runs_today,
+          label: label.length > 8 ? `${label.slice(0, 7)}…` : label,
+        };
+      });
+  }, [pluginsList, scopedPluginPlugins]);
+
+  const matcherTrendSeries = useMemo(() => {
+    const keys = scopedMatcherRunsByPlugin
+      .filter((s) => (s.points?.length ?? 0) > 0)
+      .map((s) => s.plugin);
+    const top = keys.length
+      ? defaultTopKeys(keys, (k) => scopedMatcherRunsByPlugin.find((r) => r.plugin === k)?.points ?? [], 6)
+      : [];
+    return top.map((plugin) => {
+      const row = scopedMatcherRunsByPlugin.find((r) => r.plugin === plugin)!;
+      return {
+        id: plugin,
+        label: matcherPluginDisplayName(plugin, pluginsList),
+        points: row.points ?? [],
+      };
+    });
+  }, [pluginsList, scopedMatcherRunsByPlugin]);
 
   const accountTodayMsg = scopedBotStatsRow
     ? `${scopedBotStatsRow.today_received ?? "—"} / ${scopedBotStatsRow.today_sent ?? "—"}`
@@ -223,7 +245,11 @@ export default function ChartsPage() {
                 value={selectedAccount != null ? String(selectedAccount) : undefined}
                 onValueChange={(v) => setSelectedAccount(Number(v) || null)}
               >
-                <SelectTrigger className={ACCOUNT_SEL} aria-label="选择 Bot 账号" title={selectedAccount != null ? botLabel(selectedAccount) : undefined}>
+                <SelectTrigger
+                  className={ACCOUNT_SEL}
+                  aria-label="选择 Bot 账号"
+                  title={selectedAccount != null ? botLabel(selectedAccount) : undefined}
+                >
                   <SelectValue placeholder="选择账号" />
                 </SelectTrigger>
                 <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
@@ -304,41 +330,59 @@ export default function ChartsPage() {
           </section>
 
           <section id="charts-detail" className="charts-page__section charts-page__section--secondary">
-            <div className="charts-page__board">
-              <HomePluginRunCharts
-                layoutMode="dashboard"
-                dashboardPanels={DASHBOARD_SECONDARY_PANELS}
-                plugins={scopedPluginPlugins}
-                pluginsMeta={pluginsList}
-                series={pluginRunTimeSamples}
-                busy={chartsBusy}
-                apiHistoryByApi={scopedApiCallsByApi}
-                apiHistoryBucketSec={accountMessageStats?.api_calls_history_bucket_sec}
-                matcherRunsByPlugin={scopedMatcherRunsByPlugin}
-                matcherErrorsByPlugin={scopedMatcherErrorsByPlugin}
-                matcherAvgDurationMsByPlugin={scopedMatcherAvgDurationByPlugin}
-                matcherDurationMsByPlugin={scopedMatcherDurationMsByPlugin}
-                matcherDurationLog={scopedMatcherDurationLog}
-                matcherDurationLogCap={scopedPluginRunRow?.matcher_duration_log_cap ?? 150}
-                matcherDurationLogPerPluginCap={scopedPluginRunRow?.matcher_duration_log_per_plugin_cap ?? 30}
-                matcherHistoryBucketSec={pluginRunMain?.matcher_calls_history_bucket_sec}
-                matcherErrorsToday={scopedPluginRunRow?.errors_today ?? 0}
-                matcherErrorLog={scopedMatcherErrorLog}
-                dailyStatRows={consoleDailyStats?.rows ?? []}
-              />
-              {!chartsBusy && !scopedPluginPlugins.length ? (
-                <p className="muted charts-page__board-note">
-                  插件排行与实时桶需进程运行一段时间后才有数据；区间趋势依赖按日落盘。
-                </p>
-              ) : null}
+            <div className="charts-page__board charts-page__board--cards">
+              <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
+                <CardHeader className={CHART_PANEL_HD}>
+                  <CardTitle className="panel__title flex items-center gap-1.5">
+                    <PanelTitleIcon icon={BarChart3} />
+                    插件今日次数
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={CHART_PANEL_BD}>
+                  <p className="muted charts-page__section-lead">
+                    今日 Matcher 调用排行（最多 12 个）。悬停查看名称与次数。
+                  </p>
+                  <ChartsDailyBarChart
+                    points={topPluginBars}
+                    unit="次"
+                    accent={PLUGIN_TODAY_BAR_ACCENT}
+                    emptyText={
+                      chartsBusy
+                        ? "加载中…"
+                        : "暂无今日 Matcher 数据；进程运行一段时间后会出现。"
+                    }
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>
+                <CardHeader className={CHART_PANEL_HD}>
+                  <CardTitle className="panel__title flex items-center gap-1.5">
+                    <PanelTitleIcon icon={Activity} />
+                    Matcher · 按时间桶
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={CHART_PANEL_BD}>
+                  <p className="muted charts-page__section-lead">
+                    进程内实时桶：Top 插件折线，悬停看各桶明细（与上方区间趋势同款呈现）。
+                  </p>
+                  <ChartsNamedSeriesTrend
+                    series={matcherTrendSeries}
+                    busy={chartsBusy}
+                    chartUid="charts-matcher-bucket"
+                    emptyText="暂无 Matcher 时序数据；需 Bot 运行并产生调用。"
+                  />
+                </CardContent>
+              </Card>
             </div>
+            {!chartsBusy && !scopedPluginPlugins.length ? (
+              <p className="muted charts-page__board-note">
+                插件排行与实时桶需进程运行一段时间后才有数据；区间趋势依赖按日落盘。
+              </p>
+            ) : null}
           </section>
         </div>
       ) : null}
-
-      <div className="charts-page__ingress">
-        <IngressDispatchPanel />
-      </div>
     </div>
   );
 }

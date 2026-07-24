@@ -177,16 +177,10 @@ html[data-theme="light"][data-ui-preset="shadcn"][data-surface="glass"] .shell__
   font-weight: 600;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent-contrast, #fff);
+  background: var(--accent);
+  border: 1px solid var(--accent);
   box-sizing: border-box;
-}
-
-html[data-theme="light"] .shell__brand-badge {
-  color: color-mix(in srgb, var(--accent) 82%, var(--text));
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .shell__brand-badge--bot {
@@ -8087,6 +8081,14 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   opacity: 0.82;
   font-weight: 500;
   line-height: 1;
+}
+
+/* Lucide 直接挂在标题上时也是 SVG：跟盒子同大，用 currentColor */
+svg.panel__title-ico {
+  display: block;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 1.5em;
 }
 
 html[data-ui-preset="gs"] .panel__title-ico,
@@ -16160,6 +16162,18 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   min-width: 0;
 }
 
+.charts-page__board--cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: var(--console-panel-gap, 18px);
+  align-items: stretch;
+}
+
+.charts-page__board--cards > .charts-page__panel {
+  min-width: 0;
+  height: 100%;
+}
+
 .charts-page__board > .home-plugin-charts-wrap {
   width: 100%;
   min-width: 0;
@@ -16277,6 +16291,10 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
   }
 
   .charts-page__board .home-plugin-charts-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .charts-page__board--cards {
     grid-template-columns: 1fr;
   }
 
