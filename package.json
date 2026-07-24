@@ -1,6 +1,6 @@
 {
   "name": "pallas-bot-webui",
-  "version": "0.6.51",
+  "version": "0.7.0",
   "license": "MIT",
   "private": true,
   "type": "module",
