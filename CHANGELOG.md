@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.4] - 2026-07-24
+
+### 🐛 错误修复
+
+* fix(build): 恢复 Tailwind content glob（注释清洗误删 /**/） ([a0af0fa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a0af0fa9bd1fe294a0fa24254182a5f62680c175))
+
+**完整变更**: [`v0.7.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.3...HEAD)
+
+
 ## [0.7.3] - 2026-07-24
 
 ### 🐛 错误修复
