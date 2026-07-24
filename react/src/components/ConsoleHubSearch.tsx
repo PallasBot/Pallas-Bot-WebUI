@@ -22,7 +22,7 @@ export default function ConsoleHubSearch({
     <div className={cn("console-hub-page__search-wrap", className)}>
       <label className="console-hub-page__search">
         <span className="console-hub-page__search-ico" aria-hidden="true">
-          <Search className="console-hub-page__search-svg" strokeWidth={1.75} />
+          <Search className="console-hub-page__search-svg text-[var(--text-muted)]" strokeWidth={1.75} />
         </span>
         <Input
           className="console-hub-page__search-input h-8 min-h-8 focus-visible:ring-0 focus-visible:ring-offset-0"

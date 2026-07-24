@@ -85,9 +85,9 @@ export default function PluginConfigDialog({
           if (busy) e.preventDefault();
         }}
       >
-        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <div className="plugin-config-dialog__head-text space-y-1 pr-6">
-            <DialogTitle id="plugin-config-dialog-title">{displayTitle}</DialogTitle>
+        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
+          <div className="plugin-config-dialog__head-text w-full space-y-1 pr-6 text-left">
+            <DialogTitle id="plugin-config-dialog-title" className="text-left">{displayTitle}</DialogTitle>
             <DialogDescription asChild>
               <p className="font-mono text-xs text-muted-foreground">
                 <code>{pluginResolvedId}</code>

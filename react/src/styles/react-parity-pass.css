@@ -164,7 +164,7 @@ html[data-ui-preset="gs"] .btn--primary,
 html[data-ui-preset="gs"] .ui-btn--primary {
   background: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
@@ -172,7 +172,7 @@ html[data-ui-preset="gs"] .btn--primary:hover:not(:disabled),
 html[data-ui-preset="gs"] .ui-btn--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 90%, #000 10%);
   border-color: color-mix(in srgb, var(--accent) 48%, transparent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   filter: none;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 16%, transparent);
 }
@@ -189,14 +189,14 @@ html[data-ui-preset="shadcn"] .btn--primary,
 html[data-ui-preset="shadcn"] .ui-btn--primary {
   background: var(--foreground, var(--text));
   border-color: color-mix(in srgb, var(--foreground, var(--text)) 82%, transparent);
-  color: var(--background, var(--bg-card));
+  color: var(--accent-contrast, var(--background, var(--bg-card)));
   box-shadow: none;
 }
 
 html[data-ui-preset="shadcn"] .btn--primary:hover:not(:disabled),
 html[data-ui-preset="shadcn"] .ui-btn--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--foreground, var(--text)) 88%, transparent);
-  color: var(--background, var(--bg-card));
+  color: var(--accent-contrast, var(--background, var(--bg-card)));
 }
 
 /* ── 配置表单：对齐 gsuid「插件参数配置」密度 / 圆角 / 标签行 ── */

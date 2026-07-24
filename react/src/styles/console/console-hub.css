@@ -289,6 +289,7 @@ html[data-layout="hub"][data-theme="light"] .btn:not(.panel-hd-collapse-btn):not
 html[data-layout="hub"] .btn--primary {
   background: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--accent-contrast, #fff);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
@@ -810,6 +811,7 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
   height: 1.125rem;
   margin: 0;
   color: var(--text-muted);
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -818,6 +820,8 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
   display: block;
   width: 1.125rem;
   height: 1.125rem;
+  color: inherit;
+  stroke: currentColor;
 }
 
 .console-hub-page__search-input,
@@ -2855,9 +2859,11 @@ html[data-ui-preset="shadcn"] .shell-mobile-nav__brand {
 
 html[data-ui-preset="shadcn"] {
   --accent: var(--foreground);
+  --accent-contrast: var(--background);
   --accent-soft: color-mix(in srgb, var(--foreground) 12%, transparent);
   --accent-glow: color-mix(in srgb, var(--foreground) 18%, transparent);
   --primary: var(--foreground);
+  --primary-foreground: var(--background);
   --ring: color-mix(in srgb, var(--foreground) 42%, transparent);
 }
 
@@ -2881,9 +2887,11 @@ html[data-theme="dark"][data-ui-preset="shadcn"][data-accent="rose"],
 html[data-theme="dark"][data-ui-preset="shadcn"][data-accent="amber"],
 html[data-theme="dark"][data-ui-preset="shadcn"][data-accent="violet"] {
   --accent: var(--foreground);
+  --accent-contrast: var(--background);
   --accent-soft: color-mix(in srgb, var(--foreground) 12%, transparent);
   --accent-glow: color-mix(in srgb, var(--foreground) 18%, transparent);
   --primary: var(--foreground);
+  --primary-foreground: var(--background);
   --ring: color-mix(in srgb, var(--foreground) 42%, transparent);
 }
 
@@ -2904,7 +2912,7 @@ html[data-ui-preset="shadcn"] .shell__brand-mark-wrap {
 html[data-ui-preset="shadcn"] .ui-btn--primary {
   background: var(--foreground);
   border-color: var(--foreground);
-  color: var(--background);
+  color: var(--accent-contrast, var(--background));
 }
 
 /* 黑白预设：view-toggle 仍用前景实心底；prefs SelectTile 走 --accent（已映射 foreground） */
@@ -2912,7 +2920,7 @@ html[data-ui-preset="shadcn"] .console-view-toggle button.is-on,
 html[data-theme="light"][data-ui-preset="shadcn"] .console-view-toggle button.is-on,
 html[data-ui-preset="shadcn"] .console-view-toggle > a.is-on,
 html[data-theme="light"][data-ui-preset="shadcn"] .console-view-toggle > a.is-on {
-  color: var(--bg-card, #fff);
+  color: var(--accent-contrast, var(--bg-card, #fff));
   font-weight: 600;
   background: var(--foreground, var(--text));
   border-color: transparent;
