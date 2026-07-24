@@ -27,7 +27,8 @@ import UiInput from "@/components/ui/UiInput";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Wrench } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
@@ -363,6 +364,7 @@ export default function UpdatePage() {
       <Card id="console-update-webui" className={UPDATE_PANEL}>
         <CardHeader className={UPDATE_PANEL_HD}>
           <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+            <PanelTitleIcon icon={LayoutDashboard} />
             WebUI
             <RefreshIconButton
               embedded
@@ -463,6 +465,7 @@ export default function UpdatePage() {
       <Card id="console-update-bot" className={UPDATE_PANEL}>
         <CardHeader className={UPDATE_PANEL_HD}>
           <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+            <PanelTitleIcon icon={Bot} />
             Bot 本体
             <RefreshIconButton
               embedded
@@ -614,7 +617,10 @@ export default function UpdatePage() {
       {restartAvailable ? (
         <Card id="console-update-restart" className={cn(UPDATE_PANEL, "update-page__panel--ops")}>
           <CardHeader className={cn(UPDATE_PANEL_HD, "update-page__ops-hd")}>
-            <CardTitle className="panel__title">运维</CardTitle>
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Wrench} />
+              运维
+            </CardTitle>
           </CardHeader>
           <CardContent className={UPDATE_OPS_BD}>
             <p className="muted update-page__ops-lead">

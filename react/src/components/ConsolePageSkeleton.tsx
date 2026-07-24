@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-/** 对齐 Vue ConsolePageSkeleton：首屏占位，避免空白洗屏 */
+/** 
 export default function ConsolePageSkeleton({ panels = 3 }: { panels?: number }) {
   const count = Math.max(1, Math.min(6, panels));
   return (

@@ -1,8 +1,14 @@
-import { useState } from "react";
 import type { PluginConfigField } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
+import TagsInput from "@/components/config/TagsInput";
 import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   binaryEnumIsOn,
@@ -12,9 +18,17 @@ import {
   boolChoiceLabel,
   enumChoiceLabel,
   fieldDisplayTitle,
+  fieldHasLocalizedTitle,
   isBinaryBoolEnum,
 } from "@/utils/configFieldDisplay";
-import { isStringListField, tagsFromJsonText, tagsToJsonText } from "@/utils/pluginConfigFieldModel";
+import {
+  idTagsFromJsonText,
+  idTagsToJsonText,
+  isChipListField,
+  isIdListField,
+  tagsFromJsonText,
+  tagsToJsonText,
+} from "@/utils/pluginConfigFieldModel";
 
 function fieldChoices(field: PluginConfigField): string[] {
   if (field.choices?.length) return field.choices;
@@ -42,11 +56,11 @@ export default function ConfigFieldRenderer({
   const fieldWithChoices = { ...field, choices };
   const usesBoolSwitch = field.kind === "bool" || isBinaryBoolEnum(fieldWithChoices);
   const usesEnumSelect = field.kind === "enum" && choices.length > 0 && !isBinaryBoolEnum(fieldWithChoices);
-  const usesNumberStepper = field.kind === "int" || field.kind === "float" || field.kind === "number";
+  const usesNumberInput = field.kind === "int" || field.kind === "float" || field.kind === "number";
   const usesSecretInput = field.kind === "string" && Boolean(field.secret);
   const usesMultiline = field.kind === "string" && Boolean(field.multiline);
-  const usesTags = isStringListField(field);
-  const [tagDraft, setTagDraft] = useState("");
+  const usesTags = isChipListField(field);
+  const usesIdTags = isIdListField(field);
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -65,28 +79,14 @@ export default function ConfigFieldRenderer({
     );
   }
 
-  function stepNumber(delta: number) {
-    const isInt = field.kind === "int";
-    const cur = modelValue.trim() === "" ? 0 : Number(modelValue);
-    const base = Number.isFinite(cur) ? cur : 0;
-    const next = isInt ? Math.round(base + delta) : base + delta;
-    let clamped = next;
-    if (field.min_value != null && clamped < field.min_value) clamped = field.min_value;
-    if (field.max_value != null && clamped > field.max_value) clamped = field.max_value;
-    onValueChange(isInt ? String(Math.trunc(clamped)) : String(clamped));
-  }
+  const tags = usesTags
+    ? usesIdTags
+      ? idTagsFromJsonText(modelValue)
+      : tagsFromJsonText(modelValue)
+    : [];
 
-  const tags = usesTags ? tagsFromJsonText(modelValue) : [];
-
-  function addTag() {
-    const t = tagDraft.trim();
-    if (!t || tags.includes(t)) {
-      setTagDraft("");
-      return;
-    }
-    onValueChange(tagsToJsonText([...tags, t]));
-    setTagDraft("");
-  }
+  const enumKnown = choices.includes(modelValue);
+  const enumSelectValue = modelValue || undefined;
 
   return (
     <div className={cn("config-field-renderer form-field", usesBoolSwitch && "config-field-renderer--bool")}>
@@ -94,7 +94,9 @@ export default function ConfigFieldRenderer({
         <div className="config-field-renderer__bool-head">
           <div className="config-field-renderer__title form-field__label form-field__label--title">
             {fieldDisplayTitle(field)}
-            {!field.label ? <span className="muted config-field-renderer__kind">（{field.kind}）</span> : null}
+            {!fieldHasLocalizedTitle(field) ? (
+              <span className="muted config-field-renderer__kind">（{field.kind}）</span>
+            ) : null}
           </div>
           <ConsoleSwitch
             checked={boolOn}
@@ -117,7 +119,9 @@ export default function ConfigFieldRenderer({
       {!usesBoolSwitch && showLabel ? (
         <div className="form-field__label form-field__label--title config-field-renderer__title">
           {fieldDisplayTitle(field)}
-          {!field.label ? <span className="muted config-field-renderer__kind">（{field.kind}）</span> : null}
+          {!fieldHasLocalizedTitle(field) ? (
+            <span className="muted config-field-renderer__kind">（{field.kind}）</span>
+          ) : null}
         </div>
       ) : null}
 
@@ -132,47 +136,38 @@ export default function ConfigFieldRenderer({
       ) : null}
 
       {usesEnumSelect ? (
-        <UiSelect className="form-field__control" value={modelValue} onValueChange={onValueChange}>
-          {choices.map((opt) => (
-            <option key={opt} value={opt}>
-              {enumChoiceLabel(opt, fieldWithChoices)}
-            </option>
-          ))}
-        </UiSelect>
+        <Select value={enumSelectValue} onValueChange={onValueChange}>
+          <SelectTrigger
+            className="form-field__control w-full"
+            style={{ maxWidth: inputMaxWidth }}
+            aria-label={fieldDisplayTitle(field)}
+          >
+            <SelectValue placeholder="请选择" />
+          </SelectTrigger>
+          <SelectContent>
+            {!enumKnown && modelValue ? (
+              <SelectItem value={modelValue}>{enumChoiceLabel(modelValue, fieldWithChoices)}</SelectItem>
+            ) : null}
+            {choices.map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {enumChoiceLabel(opt, fieldWithChoices)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : null}
 
       {usesTags ? (
-        <div className="config-field-renderer__tags">
-          {tags.map((t) => (
-            <span key={t} className="config-field-renderer__tag">
-              {t}
-              <button
-                type="button"
-                className="config-field-renderer__tag-remove"
-                aria-label={`移除 ${t}`}
-                onClick={() => onValueChange(tagsToJsonText(tags.filter((x) => x !== t)))}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <div className="config-field-renderer__tags-add">
-            <UiInput
-              value={tagDraft}
-              placeholder="添加标签后回车"
-              onValueChange={setTagDraft}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-            />
-            <button type="button" className="btn ui-btn ui-btn--outline ui-btn--sm" onClick={addTag}>
-              添加
-            </button>
-          </div>
-        </div>
+        <TagsInput
+          variant="embedded"
+          value={tags}
+          onChange={(next) =>
+            onValueChange(usesIdTags ? idTagsToJsonText(next) : tagsToJsonText(next))
+          }
+          placeholder={usesIdTags ? "输入号码后回车添加…" : "添加标签后回车"}
+          inputMode={usesIdTags ? "numeric" : undefined}
+          acceptPattern={usesIdTags ? /^\d+$/ : undefined}
+        />
       ) : null}
 
       {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" ? (
@@ -197,24 +192,17 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {usesNumberStepper ? (
-        <div className="config-field-renderer__number" style={{ maxWidth: inputMaxWidth }}>
-          <input
-            className="inp"
-            type="number"
-            value={modelValue}
-            min={field.min_value}
-            max={field.max_value}
-            step={field.kind === "float" ? "any" : 1}
-            onChange={(e) => onValueChange(e.target.value)}
-          />
-          <button type="button" className="config-field-renderer__step" onClick={() => stepNumber(-1)} aria-label="减少">
-            −
-          </button>
-          <button type="button" className="config-field-renderer__step" onClick={() => stepNumber(1)} aria-label="增加">
-            +
-          </button>
-        </div>
+      {usesNumberInput ? (
+        <input
+          className="inp form-field__control"
+          type="number"
+          value={modelValue}
+          min={field.min_value}
+          max={field.max_value}
+          step={field.kind === "float" ? "any" : 1}
+          onChange={(e) => onValueChange(e.target.value)}
+          style={{ maxWidth: inputMaxWidth }}
+        />
       ) : null}
 
       {usesMultiline ? (
@@ -232,7 +220,7 @@ export default function ConfigFieldRenderer({
       !usesTags &&
       field.kind !== "json" &&
       !usesSecretInput &&
-      !usesNumberStepper &&
+      !usesNumberInput &&
       !usesMultiline ? (
         <UiInput className="form-field__control" type="text" value={modelValue} onValueChange={onValueChange} />
       ) : null}

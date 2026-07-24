@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** 对齐 Vue ConsoleHubToolbarStrip：窄屏搜索 + 中部操作 + 右侧 actions */
+/** 
 export default function ConsoleHubToolbarStrip({
   search,
   middle,

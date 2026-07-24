@@ -30,7 +30,7 @@ type Props = {
   onClose: () => void;
 };
 
-/** 插件配置弹窗：shadcn Dialog（居中实心底，对齐 gsuid EditConfig 手法）。 */
+/** 插件配置弹窗：shadcn Dialog（居中实心底）。 */
 export default function PluginConfigDialog({
   open,
   pluginName,
@@ -77,7 +77,7 @@ export default function PluginConfigDialog({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog flex max-h-[min(92vh,960px)] w-[min(960px,96vw)] max-w-[min(960px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(960px,calc(100vw-32px))] max-w-[min(960px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (busy) e.preventDefault();
         }}
@@ -99,7 +99,7 @@ export default function PluginConfigDialog({
         <div className="plugin-config-dialog__bd min-h-[240px] flex-1 overflow-auto">
           {showDrawAiConfigHint ? (
             <p className="px-4 pt-3 text-sm text-muted-foreground">
-              推荐在 <Link to={aiConfigSectionPath("draw")} className="text-primary underline-offset-2 hover:underline">AI 配置 · 画画</Link>
+              推荐在 <Link to={aiConfigSectionPath("media", "draw")} className="text-primary underline-offset-2 hover:underline">AI 配置 · 画画</Link>
               管理网关；本页为兼容入口，配置键相同。
             </p>
           ) : null}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/fullConsole";
 import type { CommunityCorpusHotData, CommunityHotTab } from "@/api/pallasTypes";
+import SegTabs from "@/components/SegTabs";
 import { rankHotItems, type HotTagNode } from "@/utils/hotBubbleLayout";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,11 @@ const communityTabs: Array<{ key: CommunityHotTab; label: string }> = [
   { key: "pool", label: "高频池" },
   { key: "month", label: "本月" },
 ];
+
+export const COMMUNITY_HOT_TAB_OPTIONS = communityTabs.map((row) => ({
+  value: row.key,
+  label: row.label,
+}));
 
 function pillClasses(node: HotTagNode, selected: string | null): string {
   const classes = ["corpus-hot__pill", `corpus-hot__pill--${node.sizeClass}`];
@@ -21,11 +27,20 @@ function pillClasses(node: HotTagNode, selected: string | null): string {
 export default function CorpusWordCloud({
   source = "community",
   reloadToken = 0,
+  tab: tabProp,
+  onTabChange,
+  showTabs = true,
 }: {
   source?: "community" | "local";
   reloadToken?: number;
+  /** 受控：与页级工具条 SegTabs 同步 */
+  tab?: CommunityHotTab;
+  onTabChange?: (tab: CommunityHotTab) => void;
+  /** 为 false 时不渲染内嵌分栏（由工具条托管） */
+  showTabs?: boolean;
 }) {
-  const [tab, setTab] = useState<CommunityHotTab>("fleet");
+  const [internalTab, setInternalTab] = useState<CommunityHotTab>("fleet");
+  const tab = tabProp ?? internalTab;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [data, setData] = useState<CommunityCorpusHotData | null>(null);
@@ -33,6 +48,16 @@ export default function CorpusWordCloud({
   const [cloudLoading, setCloudLoading] = useState(false);
   const [cloudEntering, setCloudEntering] = useState(false);
   const enterTimerRef = useRef<number | null>(null);
+  const prevTabRef = useRef<CommunityHotTab | null>(null);
+  const pendingTabEnterRef = useRef(false);
+
+  const setTab = useCallback(
+    (next: CommunityHotTab) => {
+      if (onTabChange) onTabChange(next);
+      if (tabProp === undefined) setInternalTab(next);
+    },
+    [onTabChange, tabProp],
+  );
 
   const tabLabel = communityTabs.find((row) => row.key === tab)?.label || "机群";
 
@@ -67,7 +92,7 @@ export default function CorpusWordCloud({
 
   const loadHot = useCallback(
     async (bypassCache = false) => {
-      const tabSwitch = cloudLoading;
+      const tabSwitch = pendingTabEnterRef.current || cloudLoading;
       setBusy(true);
       setErr("");
       try {
@@ -87,12 +112,22 @@ export default function CorpusWordCloud({
         setSelectedKeywords(null);
         setErr(axiosErrorDetail(e));
       } finally {
+        pendingTabEnterRef.current = false;
         setBusy(false);
         setCloudLoading(false);
       }
     },
     [cloudLoading, selectedKeywords, source, tab, triggerCloudEnter],
   );
+
+  useEffect(() => {
+    if (prevTabRef.current != null && prevTabRef.current !== tab) {
+      pendingTabEnterRef.current = true;
+      setCloudLoading(true);
+      setSelectedKeywords(null);
+    }
+    prevTabRef.current = tab;
+  }, [tab]);
 
   useEffect(() => {
     void loadHot();
@@ -111,9 +146,7 @@ export default function CorpusWordCloud({
 
   function selectTab(next: CommunityHotTab) {
     if (next === tab || busy) return;
-    if (items.length) setCloudLoading(true);
     setTab(next);
-    setSelectedKeywords(null);
   }
 
   function toggleKeyword(keywords: string) {
@@ -122,22 +155,16 @@ export default function CorpusWordCloud({
 
   return (
     <div className="corpus-hot">
-      {source === "community" ? (
-        <div className="corpus-hot__tabs console-view-toggle" role="tablist" aria-label="热词统计范围">
-          {communityTabs.map((row) => (
-            <button
-              key={row.key}
-              type="button"
-              className={cn(tab === row.key && "is-on")}
-              role="tab"
-              aria-selected={tab === row.key}
-              disabled={busy}
-              onClick={() => selectTab(row.key)}
-            >
-              {row.label}
-            </button>
-          ))}
-        </div>
+      {source === "community" && showTabs ? (
+        <SegTabs
+          className="corpus-hot__tabs"
+          full
+          ariaLabel="热词统计范围"
+          value={tab}
+          disabled={busy}
+          onValueChange={(v) => selectTab(v as CommunityHotTab)}
+          options={COMMUNITY_HOT_TAB_OPTIONS}
+        />
       ) : null}
 
       {busy && !items.length ? (

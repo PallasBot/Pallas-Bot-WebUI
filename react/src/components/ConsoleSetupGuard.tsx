@@ -4,7 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchConsoleSetupStatus } from "@/api/fullConsole";
 
 function allowsPendingSetup(pathname: string): boolean {
-  return pathname === "/setup" || pathname === "/preferences" || pathname.startsWith("/preferences/");
+  return (
+    pathname === "/setup" ||
+    pathname === "/login" ||
+    pathname === "/preferences" ||
+    pathname.startsWith("/preferences/")
+  );
 }
 
 function setupSatisfied(data: Awaited<ReturnType<typeof fetchConsoleSetupStatus>> | undefined): boolean {
@@ -13,7 +18,7 @@ function setupSatisfied(data: Awaited<ReturnType<typeof fetchConsoleSetupStatus>
   return false;
 }
 
-/** 对齐 Vue consoleSetupGuard：未完成首次设置时收口到 /setup */
+/** 
 export default function ConsoleSetupGuard({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();

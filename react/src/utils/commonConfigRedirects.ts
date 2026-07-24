@@ -1,4 +1,4 @@
-/** 对齐 Vue `src/utils/commonConfigRedirects.ts`：旧 /common-config 深链去向 */
+/** 弹层定位：旧 /common-config 深链去向 */
 
 const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
   "cmd_perm",
@@ -42,8 +42,8 @@ function commonConfigSectionRedirectTarget(sectionId: string): string | null {
 /** 旧 /common-config 链接统一重定向目标 path */
 export function commonConfigLegacyRedirectPath(sectionId: string): string {
   const id = sectionId.trim();
-  if (id === "llm") return "/ai/config/strategy";
-  if (id === "arknights_kb") return "/ai/config/knowledge";
-  if (id === "service_gateways") return "/ai/config/draw";
+  if (id === "llm") return "/ai/config/dialogue?panel=form";
+  if (id === "arknights_kb") return "/ai/config/dialogue?panel=arknights";
+  if (id === "service_gateways") return "/ai/config/media?panel=draw";
   return commonConfigSectionRedirectTarget(id) || "/plugins";
 }

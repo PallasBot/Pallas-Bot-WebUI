@@ -20,6 +20,7 @@ import "./styles/console/console-hub.css";
 /* ai-hub.css / ai-history.css：Vue 遗留，React /ai/* 已 shadcn 原生，不再全局引入 */
 /* Ui* 兼容层原子；勿引入 Vue ui.css（会打坏 Tailwind --background HSL） */
 import "./styles/ui-atoms.css";
+import "./styles/tags-input.css";
 import "./styles/console-page-skel.css";
 import "./styles/update-page.css";
 import "./styles/git-mirror-dialog.css";

@@ -1,24 +1,25 @@
-/* React 相对 Vue / gsuid_hub 的视觉收口（非 AI） */
+/* React 控制台视觉收口（非 AI） */
 
-/* ── 弹窗：默认 560 被 plugin-config 覆盖；提高优先级 ── */
+/* ── 弹窗：默认 560 被 plugin-config 覆盖；提高优先级；窄屏留 16px 呼吸距 ── */
 .console-modal.ui-dialog .console-modal__dialog.ui-dialog__panel.plugin-config-dialog,
 .console-modal.ui-dialog .ui-dialog__panel.plugin-config-dialog {
-  width: min(960px, 96vw);
-  max-width: min(960px, 96vw);
-  max-height: min(92vh, 960px);
+  width: min(960px, calc(100vw - 32px));
+  max-width: min(960px, calc(100vw - 32px));
+  max-height: min(92vh, calc(100dvh - 32px), 960px);
 }
 
 .console-modal.ui-dialog .console-modal__dialog.ui-dialog__panel.protocol-account-config-dialog,
 .console-modal.ui-dialog .ui-dialog__panel.protocol-account-config-dialog {
-  width: min(920px, 96vw);
-  max-width: min(920px, 96vw);
-  max-height: min(92vh, 940px);
+  width: min(920px, calc(100vw - 32px));
+  max-width: min(920px, calc(100vw - 32px));
+  max-height: min(92vh, calc(100dvh - 32px), 940px);
 }
 
 .console-modal.ui-dialog .console-modal__dialog.plugin-store-page__detail-dialog,
 .console-modal.ui-dialog .ui-dialog__panel.plugin-store-page__detail-dialog {
-  width: min(920px, 94vw);
-  max-width: min(920px, 94vw);
+  width: min(920px, calc(100vw - 32px));
+  max-width: min(920px, calc(100vw - 32px));
+  max-height: min(88vh, calc(100dvh - 32px), 900px);
 }
 
 /* ── 协议账号弹窗：单层画布，概览用 meta 条 ── */
@@ -110,7 +111,7 @@ html[data-theme="light"] .protocol-account-workspace--dialog .protocol-account-w
   border-radius: var(--radius-control, 10px);
 }
 
-/* ── 侧栏滚动条（gsuid/GsHub：5px 圆角 + 透明轨 + 浅灰 thumb） ── */
+/* ── 侧栏滚动条：5px 圆角 + 透明轨 + 浅灰 thumb ── */
 nav.shell__nav {
   overflow-x: hidden;
   overflow-y: auto;
@@ -159,7 +160,7 @@ nav.shell__nav::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* ── 彩色 / 黑白：主按钮跟预设走（对齐 gsuid「更新全部」质感） ── */
+/* ── 彩色 / 黑白：主按钮跟预设走（扁实心质感） ── */
 html[data-ui-preset="gs"] .btn--primary,
 html[data-ui-preset="gs"] .ui-btn--primary {
   background: var(--accent);
@@ -199,7 +200,7 @@ html[data-ui-preset="shadcn"] .ui-btn--primary:hover:not(:disabled) {
   color: var(--accent-contrast, var(--background, var(--bg-card)));
 }
 
-/* ── 配置表单：对齐 gsuid「插件参数配置」密度 / 圆角 / 标签行 ── */
+/* ── 配置表单：字段密度 / 圆角 / 标签行 ── */
 
 .plugin-config-group-card {
   gap: 16px;
@@ -255,8 +256,8 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
 }
 
 .plugin-config-group-card__title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 1.125rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);
 }
@@ -353,6 +354,21 @@ html[data-theme="light"] .plugin-config-form-item {
   font-weight: 500;
 }
 
+.plugin-config-form-item .form-field__label,
+.plugin-config-form-grid .form-field__label,
+.plugin-config-page .form-field__label,
+.plugin-config-workspace .form-field__label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.plugin-config-form-item .form-field__label--title,
+.plugin-config-page .form-field__label--title,
+.plugin-config-form-item .config-field-renderer__title,
+.plugin-config-page .config-field-renderer__title {
+  font-weight: 500;
+}
+
 .plugin-config-form-item__help-body {
   font-weight: 400;
   color: var(--text-muted);
@@ -407,9 +423,9 @@ html[data-theme="light"] .plugin-config-form-item {
 .plugin-config-form-grid .ui-field__control select,
 .plugin-config-form-grid .ui-field__control .inp,
 .plugin-config-form-grid .ui-field__control .sel {
-  min-height: 40px;
-  height: 40px;
-  padding-inline: 14px;
+  min-height: var(--ui-ctrl-height, 36px);
+  height: var(--ui-ctrl-height, 36px);
+  padding-inline: 12px;
   border-radius: var(--radius-control, 8px);
   background: var(--control-bg, var(--bg-card, #fff));
   border: 1px solid color-mix(in srgb, var(--control-border, var(--border)) 88%, transparent);
@@ -513,8 +529,8 @@ html[data-theme="light"] .plugin-config-form-item .console-bool-switch__track {
 }
 
 .plugin-config-form-item .config-field-renderer__step {
-  width: 40px;
-  height: 40px;
+  width: var(--ui-ctrl-height, 36px);
+  height: var(--ui-ctrl-height, 36px);
   border-radius: var(--radius-control, 8px);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: var(--control-bg, var(--bg-card, #fff));
@@ -542,10 +558,10 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   background: transparent;
 }
 
-/* 弹窗标题 / 副标题：gsuid 轻字重 */
+/* 弹窗标题 / 副标题：标题 semibold，说明 400 */
 .plugin-config-dialog .console-modal__title,
 .plugin-config-dialog .ui-dialog__title {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -555,9 +571,6 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
 }
 
 .plugin-config-page__tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-bottom: 0;
 }
 
@@ -588,11 +601,14 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   }
 
   .plugin-config-page__tabs {
-    display: flex;
     width: 100%;
   }
 
-  .plugin-config-page__tabs button {
+  .plugin-config-page__tabs [role="tablist"] {
+    width: 100%;
+  }
+
+  .plugin-config-page__tabs [role="tab"] {
     flex: 1 1 0;
     min-width: 0;
   }
@@ -602,13 +618,17 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
     margin-inline-start: 0;
   }
 
-  .plugin-config-page__mode-toggle button {
+  .plugin-config-page__mode-toggle [role="tablist"] {
+    width: 100%;
+  }
+
+  .plugin-config-page__mode-toggle [role="tab"] {
     flex: 1 1 0;
     min-width: 0;
   }
 }
 
-/* ── 治理面板：对齐 plugin-config-group-card 层次 / 间距 / 轻控件 ── */
+/* ── 治理面板：与 plugin-config-group-card 层次 / 间距 / 轻控件一致 ── */
 .plugin-governance-panel {
   gap: 16px;
 }
@@ -668,9 +688,21 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
   border-bottom: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
 }
 
+.plugin-governance-panel__group-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plugin-governance-panel__group-collapse {
+  flex-shrink: 0;
+}
+
 .plugin-governance-panel__group-title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 1.125rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);
 }
@@ -730,6 +762,7 @@ html[data-theme="light"] .plugin-governance-panel__chip {
 
 .plugin-governance-panel__add-row {
   gap: 10px;
+  flex-wrap: nowrap;
 }
 
 .plugin-governance-panel__add-row .ui-input-wrap > input,
@@ -772,7 +805,11 @@ html[data-theme="light"] .plugin-governance-panel__cmd-row select {
 }
 
 .plugin-governance-panel__cmd-row {
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem);
+  align-items: center;
+  column-gap: 12px;
+  gap: 0 12px;
   padding: 12px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
 }
@@ -796,6 +833,27 @@ html[data-theme="light"] .plugin-governance-panel__cmd-row select {
   .plugin-governance-panel--dialog .plugin-governance-panel__group {
     padding: 14px 12px 14px;
     border-radius: 14px;
+  }
+
+  .plugin-governance-panel__cmd-row,
+  .plugin-governance-panel__cmd-row--limits {
+    grid-template-columns: minmax(0, 1fr) minmax(6.75rem, 8.5rem);
+  }
+
+  .plugin-governance-panel__cmd-row--limits {
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
+  }
+
+  .plugin-governance-panel__add-row {
+    flex-wrap: nowrap;
+  }
+
+  .plugin-governance-panel__add-row .ui-input-wrap,
+  .plugin-governance-panel__add-row .plugin-governance-panel__add-input,
+  .plugin-governance-panel__add-row .inp {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
   }
 }
 

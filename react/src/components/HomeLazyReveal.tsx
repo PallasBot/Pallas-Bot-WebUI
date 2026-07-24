@@ -74,7 +74,7 @@ function Placeholder({ variant }: { variant: HomeLazyRevealVariant }) {
   return <StatsGridPlaceholder count={STAT_COUNTS[variant]} />;
 }
 
-/** 对齐 Vue HomeLazyReveal：加载态用 pulse 骨架，就绪后交叉淡入内容 */
+/** 
 export default function HomeLazyReveal({
   loading = false,
   variant = "stats-4",

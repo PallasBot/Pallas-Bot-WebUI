@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
@@ -15,6 +15,8 @@ import {
   subscribeBotRestartSession,
 } from "@/state/botRestartSession";
 import { readSidebarCollapsed, writeSidebarCollapsed } from "@/theme/applyShellTheme";
+import { PALLAS_SHELL_EXTERNAL_LINKS } from "@/utils/pallasExternalLinks";
+import { consoleResourceVersionLabel } from "@/utils/versionDisplay";
 
 const brandMarkUrl = String(brandMarkAsset);
 const SIDEBAR_GROUPS_KEY = "pallas.react.sidebar.groups.collapsed";
@@ -29,7 +31,7 @@ function logout() {
   form.submit();
 }
 
-/** 与 Vue shell 一致：≤860px 走移动顶栏 + 抽屉 */
+/** 与现有控件一致：≤860px 走移动顶栏 + 抽屉 */
 function useIsShellNarrow(bp = 860) {
   const [narrow, setNarrow] = useState(
     () => typeof window !== "undefined" && window.matchMedia(`(max-width: ${bp}px)`).matches,
@@ -231,6 +233,13 @@ export default function AppShell() {
     : healthQ.isLoading
       ? "shell__sidebar-conn--pending"
       : "shell__sidebar-conn--err";
+  const brandVersionDisplay = useMemo(
+    () =>
+      consoleResourceVersionLabel(healthQ.data, null, {
+        webuiBuildVersion: __WEBUI_VERSION__,
+      }),
+    [healthQ.data],
+  );
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -273,7 +282,7 @@ export default function AppShell() {
             <div className="shell__brand-title-row shell__mobile-topbar-title-row">
               <span className="shell__mobile-topbar-title">Pallas Bot</span>
               <span className="shell__brand-badge shell__mobile-topbar-version" title="控制台资源版本">
-                r{__WEBUI_VERSION__}
+                {brandVersionDisplay}
               </span>
             </div>
           </div>
@@ -324,12 +333,12 @@ export default function AppShell() {
               <div className="shell__brand-main">
                 <div className="shell__brand-title-row">
                   <div className="shell__title">PBWebUI</div>
-                  <span className="shell__brand-badge" title="控制台资源版本">
-                    r{__WEBUI_VERSION__}
-                  </span>
                 </div>
                 <div className="shell__brand-meta">
                   <span className={cn("shell__sidebar-conn shell__sidebar-conn--brand", connCls)}>{connText}</span>
+                  <span className="shell__brand-badge" title="控制台资源版本">
+                    {brandVersionDisplay}
+                  </span>
                 </div>
               </div>
               {!isNarrow ? (
@@ -412,6 +421,26 @@ export default function AppShell() {
 
         <div className="shell__sidebar-bottom">
           <footer className="shell__foot">
+            <nav className="shell__foot-links" aria-label="外部链接">
+              {PALLAS_SHELL_EXTERNAL_LINKS.map((item, index) => (
+                <Fragment key={item.href}>
+                  {index > 0 ? (
+                    <span className="shell__foot-sep" aria-hidden>
+                      {" "}
+                      ·{" "}
+                    </span>
+                  ) : null}
+                  <a
+                    className="shell__foot-link"
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.label}
+                  </a>
+                </Fragment>
+              ))}
+            </nav>
             <div className="shell__foot-copy">© PallasBot</div>
           </footer>
         </div>
@@ -428,7 +457,9 @@ export default function AppShell() {
                 <div className="shell-mobile-nav__brand-text">
                   <div className="shell__brand-title-row">
                     <span className="shell-mobile-nav__brand">PBWebUI</span>
-                    <span className="shell__brand-badge">r{__WEBUI_VERSION__}</span>
+                    <span className="shell__brand-badge" title="控制台资源版本">
+                      {brandVersionDisplay}
+                    </span>
                   </div>
                   <div className="shell__brand-meta shell__brand-meta--mobile">
                     <span className={cn("shell__sidebar-conn shell__sidebar-conn--brand", connCls)}>{connText}</span>
@@ -469,6 +500,26 @@ export default function AppShell() {
                 退出控制台
               </button>
             </div>
+            <nav className="shell-mobile-nav__external" aria-label="外部链接">
+              {PALLAS_SHELL_EXTERNAL_LINKS.map((item, index) => (
+                <Fragment key={item.href}>
+                  {index > 0 ? (
+                    <span className="shell__foot-sep" aria-hidden>
+                      {" "}
+                      ·{" "}
+                    </span>
+                  ) : null}
+                  <a
+                    className="shell-mobile-nav__external-link"
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.label}
+                  </a>
+                </Fragment>
+              ))}
+            </nav>
           </aside>
           <button type="button" className="shell-mobile-nav__backdrop" aria-label="关闭菜单" onClick={() => setMobileOpen(false)} />
         </div>

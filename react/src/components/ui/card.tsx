@@ -24,8 +24,8 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HT
     <h3
       ref={ref}
       className={cn(
-        /* 字重对齐 gsuid CardTitle（font-semibold）；字号走控制台 token */
-        "text-[length:var(--console-panel-title-size,1.0625rem)] font-semibold leading-none tracking-tight",
+        /* 字重 font-semibold；字号走控制台 token */
+        "text-[length:var(--console-panel-title-size,1.0625rem)] font-semibold leading-snug tracking-tight",
         className,
       )}
       {...props}

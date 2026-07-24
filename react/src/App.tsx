@@ -9,6 +9,7 @@ import FriendsGroupsPage from "@/pages/FriendsGroupsPage";
 import HomePage from "@/pages/HomePage";
 import InstancesPage from "@/pages/InstancesPage";
 import LogErrorsPage from "@/pages/LogErrorsPage";
+import LoginPage from "@/pages/LoginPage";
 import LogsPage from "@/pages/LogsPage";
 import PluginStorePage from "@/pages/PluginStorePage";
 import PluginsPage from "@/pages/PluginsPage";
@@ -19,16 +20,20 @@ import ProtocolAccountsTab from "@/pages/protocol/ProtocolAccountsTab";
 import ProtocolAssetsTab from "@/pages/protocol/ProtocolAssetsTab";
 import ProtocolCreateTab from "@/pages/protocol/ProtocolCreateTab";
 import ProtocolImportTab from "@/pages/protocol/ProtocolImportTab";
+import ProtocolRuntimeTab from "@/pages/protocol/ProtocolRuntimeTab";
 import UpdatePage from "@/pages/UpdatePage";
 import AiConfigPage from "@/pages/ai/AiConfigPage";
 import AiHistoryPage from "@/pages/ai/AiHistoryPage";
-import AiHomePage from "@/pages/ai/AiHomePage";
 import AiLayout from "@/pages/ai/AiLayout";
+import AiLogsPage from "@/pages/ai/AiLogsPage";
+import AiMemoryPage from "@/pages/ai/AiMemoryPage";
+import AiObservationLayout from "@/pages/ai/AiObservationLayout";
+import AiPersonaPage from "@/pages/ai/AiPersonaPage";
 import AiStatisticsPage from "@/pages/ai/AiStatisticsPage";
-import AiWizardPage from "@/pages/ai/AiWizardPage";
 import { commonConfigLegacyRedirectPath } from "@/utils/commonConfigRedirects";
+import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
-/** 对齐 Vue：旧 /common-config 书签重定向到插件页 / AI 配置 */
+/** 
 function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?: boolean }) {
   const { sectionId } = useParams();
   const [search] = useSearchParams();
@@ -39,9 +44,16 @@ function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?:
 
 export default function App() {
   return (
-    <ConsoleSetupGuard>
     <Routes>
-      <Route path="/" element={<AppShell />}>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ConsoleSetupGuard>
+            <AppShell />
+          </ConsoleSetupGuard>
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="charts" element={<ChartsPage />} />
         <Route path="logs" element={<LogsPage />} />
@@ -52,6 +64,7 @@ export default function App() {
           <Route path="create" element={<ProtocolCreateTab />} />
           <Route path="import" element={<ProtocolImportTab />} />
           <Route path="assets" element={<ProtocolAssetsTab />} />
+          <Route path="runtime" element={<ProtocolRuntimeTab />} />
           <Route path="*" element={<Navigate to="/protocol" replace />} />
         </Route>
         <Route path="plugins" element={<PluginsPage />} />
@@ -72,18 +85,23 @@ export default function App() {
         <Route path="security" element={<Navigate to="/preferences#console-password" replace />} />
         <Route path="update" element={<UpdatePage />} />
         <Route path="ai" element={<AiLayout />}>
-          <Route index element={<Navigate to="home" replace />} />
-          <Route path="home" element={<AiHomePage />} />
-          <Route path="statistics" element={<AiStatisticsPage />} />
-          <Route path="history" element={<AiHistoryPage />} />
+          <Route element={<AiObservationLayout />}>
+            <Route index element={<Navigate to="statistics" replace />} />
+            <Route path="home" element={<Navigate to={AI_OBSERVATION_DEFAULT_PATH} replace />} />
+            <Route path="statistics" element={<AiStatisticsPage />} />
+            <Route path="session" element={<AiHistoryPage />} />
+            <Route path="history" element={<Navigate to="/ai/session" replace />} />
+            <Route path="memory" element={<AiMemoryPage />} />
+            <Route path="persona" element={<AiPersonaPage />} />
+            <Route path="logs" element={<AiLogsPage />} />
+          </Route>
           <Route path="config" element={<Navigate to="provider" replace />} />
           <Route path="config/:section" element={<AiConfigPage />} />
-          <Route path="wizard" element={<AiWizardPage />} />
-          <Route path="*" element={<Navigate to="home" replace />} />
+          <Route path="wizard" element={<Navigate to={AI_OBSERVATION_DEFAULT_PATH} replace />} />
+          <Route path="*" element={<Navigate to="statistics" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
-    </ConsoleSetupGuard>
   );
 }

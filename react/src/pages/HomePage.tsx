@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+import { Bot, MessagesSquare, Puzzle, Zap, Activity, Package, Server } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchBotUpdateCheck,
   fetchCommunityStats,
@@ -52,11 +55,21 @@ const HOME_PANEL_BD = "home-panel__bd p-0";
 const HOME_PANEL_TITLE = "home-panel__title leading-tight tracking-[-0.015em]";
 const HOME_PANEL_TAG = "home-panel__tag";
 
-function MetricTile({ icon, label, children }: { icon?: string; label: string; children: ReactNode }) {
+function MetricTile({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon?: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="metric-tile">
       <div className="metric-tile__head">
-        {icon ? <span className={`metric-tile__ico metric-tile__ico--${icon}`} aria-hidden="true" /> : null}
+        {Icon ? (
+          <Icon className="metric-tile__ico" size={14} strokeWidth={2} aria-hidden />
+        ) : null}
         <span className="metric-tile__label">{label}</span>
       </div>
       <div className="metric-tile__value-slot">{children}</div>
@@ -619,28 +632,28 @@ export default function HomePage() {
           ) : null}
           <div className="home-kpi-head">
             <div className="home-kpi-bar">
-              <MetricTile icon="account" label="在线 Bot">
+              <MetricTile icon={Bot} label="在线 Bot">
                 <span className="metric-tile__value metric-tile__value--inline">
                   {String(bots.length)}
                   <span className="metric-tile__sep"> / </span>
                   {String(sortedDbBots.length || bots.length)}
                 </span>
               </MetricTile>
-              <MetricTile icon="layers" label="消息 收 / 发">
+              <MetricTile icon={MessagesSquare} label="消息 收 / 发">
                 <span className="metric-tile__value metric-tile__value--inline">
                   {clusterStats ? String(clusterStats.total_received) : "—"}
                   <span className="metric-tile__sep"> / </span>
                   {clusterStats ? String(clusterStats.total_sent) : "—"}
                 </span>
               </MetricTile>
-              <MetricTile icon="activity" label="API / 插件">
+              <MetricTile icon={Zap} label="API / 插件">
                 <span className="metric-tile__value metric-tile__value--inline">
                   {clusterTodayApiCalls == null ? "—" : String(Math.floor(clusterTodayApiCalls))}
                   <span className="metric-tile__sep"> / </span>
                   {clusterTodayPluginRuns == null ? "—" : String(Math.floor(clusterTodayPluginRuns))}
                 </span>
               </MetricTile>
-              <MetricTile icon="plugin" label="已加载插件">
+              <MetricTile icon={Puzzle} label="已加载插件">
                 <span className="metric-tile__value metric-tile__value--inline">
                   {kpiPluginLoadedDisplay}
                   <span className="metric-tile__sep"> / </span>
@@ -940,7 +953,10 @@ export default function HomePage() {
               style={{ gridArea: "sys" }}
             >
               <CardHeader className={HOME_PANEL_HD}>
-                <CardTitle className={HOME_PANEL_TITLE}>系统性能</CardTitle>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
+                  <PanelTitleIcon icon={Activity} />
+                  系统性能
+                </CardTitle>
                 <span className={HOME_PANEL_TAG}>节点采样</span>
               </CardHeader>
               <CardContent className={HOME_PANEL_BD}>
@@ -1066,7 +1082,6 @@ export default function HomePage() {
                         <div key={dev.index} className="home-sys-card home-sys-card--gpu">
                           <div className="home-sys-card__head">
                             <span className="home-sys-card__label">GPU {dev.index}</span>
-                            <span className="home-sys-card__value">{pct(dev.utilization_gpu)}</span>
                           </div>
                           <p className="home-sys-card__hint" title={dev.name || undefined}>
                             {gpuNameShort(dev.name || "", 36)}
@@ -1075,8 +1090,8 @@ export default function HomePage() {
                             <div className="home-sys-card__gpu-metric">
                               <div className="home-sys-card__row home-sys-card__row--sub">
                                 <span className="home-sys-card__label">利用率</span>
-                                <span className="home-sys-card__value home-sys-card__value--sm" aria-hidden="true">
-                                  00.0%
+                                <span className="home-sys-card__value home-sys-card__value--sm">
+                                  {pct(dev.utilization_gpu)}
                                 </span>
                               </div>
                               {utilPct != null ? (
@@ -1110,7 +1125,10 @@ export default function HomePage() {
 
             <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verL" }}>
               <CardHeader className={HOME_PANEL_HD}>
-                <CardTitle className={HOME_PANEL_TITLE}>版本</CardTitle>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
+                  <PanelTitleIcon icon={Package} />
+                  版本
+                </CardTitle>
                 {botUpdate?.has_update || webUpdate?.has_update ? (
                   <span className="badge badge--warn">有更新</span>
                 ) : null}
@@ -1206,7 +1224,10 @@ export default function HomePage() {
 
             <Card className={cn(HOME_PANEL, "home-card--ver overflow-hidden")} style={{ gridArea: "verR" }}>
               <CardHeader className={HOME_PANEL_HD}>
-                <CardTitle className={HOME_PANEL_TITLE}>环境</CardTitle>
+                <CardTitle className={cn(HOME_PANEL_TITLE, "flex items-center gap-1.5")}>
+                  <PanelTitleIcon icon={Server} />
+                  环境
+                </CardTitle>
                 {health?.ok ? (
                   <span className={cn(HOME_PANEL_TAG, "home-card__tag--ok")}>API 已连接</span>
                 ) : null}

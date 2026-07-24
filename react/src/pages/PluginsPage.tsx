@@ -8,7 +8,6 @@ import {
   fetchPlugins,
 } from "@/api/console";
 import type { OfficialExtensionRow, PluginRow } from "@/api/console";
-import { fetchPluginCapabilities } from "@/api/fullConsole";
 import {
   PLUGIN_LIST_CATEGORY_TABS,
   pluginCategory,
@@ -29,7 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 import { usePluginFavorites } from "@/hooks/usePluginFavorites";
 import {
   buildPluginIconMap,
@@ -44,7 +42,6 @@ export default function PluginsPage() {
   const { favorites } = usePluginFavorites();
   const [q, setQ] = useState("");
   const [activeCategory, setActiveCategory] = useState<PluginCategory | "all">("all");
-  const [capabilitiesOpen, setCapabilitiesOpen] = useState(false);
   const [iconByPlugin, setIconByPlugin] = useState<Record<string, string>>({});
 
   const pluginsQ = useQuery<PluginRow[]>({ queryKey: ["plugins"], queryFn: () => fetchPlugins() });
@@ -55,10 +52,6 @@ export default function PluginsPage() {
   const communityQ = useQuery({
     queryKey: ["community-store"],
     queryFn: () => fetchCommunityPluginStore().catch(() => ({ plugins: [] })),
-  });
-  const capabilitiesQ = useQuery({
-    queryKey: ["plugin-capabilities"],
-    queryFn: () => fetchPluginCapabilities().catch(() => ({ plugins: [] })),
   });
 
   const selectedPluginName = (routeName || "").trim();
@@ -111,14 +104,6 @@ export default function PluginsPage() {
   const selectedPluginRow = useMemo(
     () => (pluginsQ.data || []).find((p) => p.name === selectedPluginName) ?? null,
     [pluginsQ.data, selectedPluginName],
-  );
-
-  const capabilitiesSorted = useMemo(
-    () =>
-      [...(capabilitiesQ.data?.plugins || [])].sort((a, b) =>
-        (a.title || a.plugin).localeCompare(b.title || b.plugin, "zh-CN"),
-      ),
-    [capabilitiesQ.data],
   );
 
   const catalogProcessRole = useMemo(
@@ -177,8 +162,8 @@ export default function PluginsPage() {
             <Input
               type="search"
               className="h-8 min-h-8 w-full pl-8"
-              placeholder="搜索插件名、ID 或说明…"
-              aria-label="搜索插件名、ID 或说明"
+              placeholder="搜索插件…"
+              aria-label="搜索插件"
               autoComplete="off"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -262,88 +247,6 @@ export default function PluginsPage() {
             </div>
           )}
         </section>
-
-        {capabilitiesSorted.length ? (
-          <div className="plugins-page__capabilities-overview">
-            <div className="plugins-page__capabilities-hd">
-              <h2 className="plugins-page__capabilities-title">
-                插件能力总览
-                <button
-                  type="button"
-                  className="panel-hd-collapse-caret"
-                  aria-expanded={capabilitiesOpen}
-                  aria-label={capabilitiesOpen ? "收起插件能力总览" : "展开插件能力总览"}
-                  onClick={() => setCapabilitiesOpen((v) => !v)}
-                >
-                  {capabilitiesOpen ? "▾" : "▸"}
-                </button>
-              </h2>
-              <div className="row-actions plugins-page__capabilities-hd-actions">
-                <span className="muted plugins-page__catalog-count">{capabilitiesSorted.length} 个插件</span>
-              </div>
-            </div>
-            {capabilitiesOpen ? (
-              <div className="plugins-page__capabilities-bd">
-                <p className="muted plugins-page__capabilities-note">
-                  聚合命令权限、冷却、LLM 工具与存储键声明；热重载策略分为仅配置、配置与说明、含代码变更三档。
-                </p>
-                <div className="table-wrap plugins-page__capabilities-table-wrap">
-                  <table className="data console-data-table plugins-page__capabilities-table">
-                    <thead>
-                      <tr>
-                        <th>插件</th>
-                        <th>命令</th>
-                        <th>LLM</th>
-                        <th>存储</th>
-                        <th>热重载</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {capabilitiesSorted.map((row) => (
-                        <tr key={row.plugin}>
-                          <td>
-                            <div className="plugins-page__cap-plugin-title">{row.title || row.plugin}</div>
-                            <div className="muted plugins-page__cap-plugin-id">{row.plugin}</div>
-                          </td>
-                          <td>{row.commands.length}</td>
-                          <td>{row.llm_tools.length}</td>
-                          <td>{row.storage_keys.length}</td>
-                          <td>{reloadPolicyLabel(row.reload_policy)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <ul className="plugins-page__capabilities-cards">
-                  {capabilitiesSorted.map((row) => (
-                    <li key={`card-${row.plugin}`} className="plugins-page__capabilities-card">
-                      <div className="plugins-page__cap-plugin-title">{row.title || row.plugin}</div>
-                      <div className="muted plugins-page__cap-plugin-id">{row.plugin}</div>
-                      <dl className="plugins-page__capabilities-card-dl">
-                        <div>
-                          <dt>命令</dt>
-                          <dd>{row.commands.length}</dd>
-                        </div>
-                        <div>
-                          <dt>LLM</dt>
-                          <dd>{row.llm_tools.length}</dd>
-                        </div>
-                        <div>
-                          <dt>存储</dt>
-                          <dd>{row.storage_keys.length}</dd>
-                        </div>
-                        <div>
-                          <dt>热重载</dt>
-                          <dd>{reloadPolicyLabel(row.reload_policy)}</dd>
-                        </div>
-                      </dl>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
       </div>
 
       <PluginConfigDialog

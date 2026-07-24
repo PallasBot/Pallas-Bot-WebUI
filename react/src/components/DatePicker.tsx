@@ -21,7 +21,7 @@ type Props = {
   disabled?: boolean;
 };
 
-/** gsuid_hub 风格：Popover + Calendar，对外出参仍为 yyyy-MM-dd。 */
+/** 日期选择：Popover + Calendar，对外出参仍为 yyyy-MM-dd。 */
 export default function DatePicker({
   value,
   onValueChange,
@@ -45,12 +45,20 @@ export default function DatePicker({
             "charts-page__date-inp justify-start text-left font-normal",
             "h-[var(--ui-ctrl-height,38px)] min-w-[9.5rem] px-3",
             "border-border bg-background hover:bg-accent/10",
-            !selected && "text-muted-foreground",
+            !selected && "text-muted-foreground text-[length:var(--console-control-font-size,14px)]",
             className,
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 shrink-0 opacity-70" />
-          {selected ? format(selected, "yyyy-MM-dd") : placeholder}
+          {selected ? (
+            <span className="text-[length:var(--console-control-font-size,14px)] font-normal">
+              {format(selected, "yyyy-MM-dd")}
+            </span>
+          ) : (
+            <span className="text-[length:var(--console-control-font-size,14px)] font-normal">
+              {placeholder}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={8}>

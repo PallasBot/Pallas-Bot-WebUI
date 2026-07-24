@@ -34,7 +34,7 @@
   font-size: 13px;
 }
 
-.console-pager__size .sel {
+.console-pager__size-trigger {
   min-width: 4.5rem;
   font-size: var(--ui-ctrl-font);
 }

@@ -14,8 +14,8 @@
     --ui-card-foreground: 240 5% 96%;
     --ui-popover: 240 6% 12%;
     --ui-popover-foreground: 240 5% 96%;
-    --ui-primary: 199 89% 60%;
-    --ui-primary-foreground: 210 40% 98%;
+    --ui-primary: 258 90% 76%;
+    --ui-primary-foreground: 260 20% 10%;
     --ui-secondary: 240 5% 14%;
     --ui-secondary-foreground: 240 5% 96%;
     --ui-muted: 240 5% 14%;
@@ -26,28 +26,28 @@
     --ui-destructive-foreground: 0 0% 100%;
     --ui-border: 240 4% 18%;
     --ui-input: 240 4% 20%;
-    --ui-ring: 199 89% 60%;
+    --ui-ring: 258 90% 76%;
     --ui-sidebar-background: 240 6% 10%;
     --ui-sidebar-foreground: 240 5% 90%;
-    --ui-sidebar-primary: 199 89% 60%;
-    --ui-sidebar-primary-foreground: 210 40% 98%;
+    --ui-sidebar-primary: 258 90% 76%;
+    --ui-sidebar-primary-foreground: 260 20% 10%;
     --ui-sidebar-accent: 240 5% 16%;
     --ui-sidebar-accent-foreground: 240 5% 96%;
     --ui-sidebar-border: 240 4% 16%;
-    --ui-sidebar-ring: 199 89% 60%;
+    --ui-sidebar-ring: 258 90% 76%;
     /* 勿把 --primary/--border/--card 写成 HSL 分量：hub color-mix 需要完整色值 */
   }
 
   .light,
   html[data-theme="light"] {
-    /* 与 hub --bg-* 对齐：画布 #fcfcfc、侧栏 #fafafa（中性近白） */
+    /* 与控制台 --bg-* 一致：画布 #fcfcfc、侧栏 #fafafa（中性近白） */
     --ui-background: 0 0% 99%;
     --ui-foreground: 240 6% 10%;
     --ui-card: 0 0% 100%;
     --ui-card-foreground: 240 6% 10%;
     --ui-popover: 0 0% 100%;
     --ui-popover-foreground: 240 6% 10%;
-    --ui-primary: 199 89% 40%;
+    --ui-primary: 263 70% 58%;
     --ui-primary-foreground: 0 0% 100%;
     --ui-secondary: 240 5% 96%;
     --ui-secondary-foreground: 240 6% 10%;
@@ -59,15 +59,15 @@
     --ui-destructive-foreground: 0 0% 100%;
     --ui-border: 240 6% 86%;
     --ui-input: 240 6% 86%;
-    --ui-ring: 199 89% 40%;
+    --ui-ring: 263 70% 58%;
     --ui-sidebar-background: 0 0% 98%;
     --ui-sidebar-foreground: 240 6% 10%;
-    --ui-sidebar-primary: 199 89% 40%;
+    --ui-sidebar-primary: 263 70% 58%;
     --ui-sidebar-primary-foreground: 0 0% 100%;
     --ui-sidebar-accent: 240 4% 94%;
     --ui-sidebar-accent-foreground: 240 6% 10%;
     --ui-sidebar-border: 240 5% 90%;
-    --ui-sidebar-ring: 199 89% 40%;
+    --ui-sidebar-ring: 263 70% 58%;
   }
 
   * {
@@ -187,7 +187,7 @@
   }
 }
 
-/* ChartsDailyBarChart（对齐 Vue 柱状图容器） */
+/* ChartsDailyBarChart（
 .charts-daily-bar__plot {
   position: relative;
   width: 100%;
@@ -227,7 +227,7 @@
   min-width: 0;
 }
 
-/* FriendsGroups 表格骨架（对齐 Vue scoped） */
+/* FriendsGroups 表格骨架（
 .fg-table-skel__bar {
   height: 12px;
   border-radius: 6px;
@@ -336,7 +336,7 @@
   color: #fbbf24;
 }
 
-/* PluginIcon（对齐 Vue PluginIcon.vue scoped） */
+/* PluginIcon（
 .plugin-icon {
   display: inline-flex;
   align-items: center;
@@ -400,7 +400,7 @@ html[data-theme="light"] .plugin-icon__fallback {
   overflow: auto;
 }
 
-/* ── 下拉 / Popover：偏 gsuid——近实心底 + 轻阴影，避免 blur+shadow 脏边 ── */
+/* ── 下拉 / Popover：近实心底 + 轻阴影，避免 blur+shadow 脏边 ── */
 .ui-surface-popover {
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   box-shadow:
@@ -445,7 +445,7 @@ html[data-theme="light"][data-surface="glass"] [data-radix-select-content] {
   background: hsl(var(--ui-popover) / 0.97) !important;
 }
 
-/* Dialog / AlertDialog：配置类弹窗用实心底（对齐 gsuid DialogContent bg-background） */
+/* Dialog / AlertDialog：配置类弹窗用实心底 */
 .ui-surface-dialog {
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   background: var(--bg-card) !important;

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Radio, RefreshCw, Search } from "lucide-react";
+import { FileText, Radio, Search } from "lucide-react";
 import { fetchLogErrors, postLogErrorsCleanup } from "@/api/fullConsole";
 import type { MatcherErrorLogEntry } from "@/api/pallasTypes";
 import { axiosErrorDetail } from "@/api/http";
@@ -20,6 +20,7 @@ import ChromeTools from "@/components/ChromeTools";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
+import RefreshIconButton from "@/components/RefreshIconButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 let logErrorsCache: Awaited<ReturnType<typeof fetchLogErrors>> | null = null;
 
@@ -155,8 +155,8 @@ export default function LogErrorsPage() {
             <Input
               type="search"
               className="h-8 min-h-8 w-full pl-8"
-              placeholder="搜索消息、类型、来源…"
-              aria-label="搜索消息、类型、来源"
+              placeholder="搜索报错…"
+              aria-label="搜索报错"
               autoComplete="off"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -183,28 +183,24 @@ export default function LogErrorsPage() {
               </Select>
             </ChromeField>
           ) : null}
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <Button
               type="button"
               variant="destructive"
               size="sm"
+              className="shrink-0"
               disabled={clearing || query.isFetching || !entries.length}
               title={entries.length ? "清空 log_errors 与分片 errors 归档" : "暂无记录可清理"}
               onClick={() => void clearLogErrors()}
             >
               {clearing ? "清理中…" : "清理全部"}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-8 shrink-0"
-              disabled={query.isFetching}
-              aria-label="刷新"
+            <RefreshIconButton
+              busy={query.isFetching}
+              label="刷新"
+              showLabel
               onClick={() => void query.refetch()}
-            >
-              <RefreshCw className={cn("size-3.5", query.isFetching && "animate-spin")} />
-            </Button>
+            />
           </div>
         </ChromeTools>
       </PagePinned>

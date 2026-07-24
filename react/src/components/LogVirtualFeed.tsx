@@ -124,7 +124,7 @@ const LogVirtualFeed = forwardRef<LogVirtualFeedHandle, Props>(function LogVirtu
 
   useImperativeHandle(ref, () => ({ scrollToBottom }), [scrollToBottom]);
 
-  // 挂载时强制贴底一次（对齐 Vue onMounted）；后续跟尾由 followTail 相关 effect 负责
+  // 挂载时强制贴底一次（；后续跟尾由 followTail 相关 effect 负责
   useEffect(() => {
     void scrollToBottom(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- enter once

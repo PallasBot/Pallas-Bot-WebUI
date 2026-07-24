@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchCommunityStats,
@@ -9,24 +9,72 @@ import {
 } from "@/api/fullConsole";
 import type {
   CommunityConnectivityCheckData,
+  CommunityHotTab,
   CommunityVersionCountData,
   CorpusSourceStatusData,
 } from "@/api/pallasTypes";
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
-import CorpusWordCloud from "@/components/CorpusWordCloud";
+import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import SegTabs from "@/components/SegTabs";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Globe2,
+  Network,
+  Library,
+  Flame,
+  HardDrive,
+  Layers,
+  ExternalLink,
+  type LucideIcon,
+} from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
+
+type CommunitySectionId =
+  | "deploy"
+  | "federation"
+  | "corpus"
+  | "hot"
+  | "local-hot"
+  | "local";
+
+const COMMUNITY_SECTIONS: Array<{
+  id: CommunitySectionId;
+  label: string;
+  hash: string;
+  icon: LucideIcon;
+}> = [
+  { id: "deploy", label: "全网部署", hash: "community-deploy", icon: Globe2 },
+  { id: "federation", label: "多机协同", hash: "community-federation", icon: Network },
+  { id: "corpus", label: "共享语料", hash: "community-corpus", icon: Library },
+  { id: "hot", label: "共享语料热词", hash: "community-hot", icon: Flame },
+  { id: "local-hot", label: "本机语料热词", hash: "community-local-hot", icon: Flame },
+  { id: "local", label: "本部署语料", hash: "community-local", icon: HardDrive },
+];
+
+function communitySectionFromHash(hash: string): CommunitySectionId | null {
+  const id = hash.replace(/^#/, "").trim();
+  const hit = COMMUNITY_SECTIONS.find((s) => s.hash === id);
+  return hit?.id ?? null;
+}
 
 function formatUnixRelative(unix: number | null | undefined): string {
   if (unix == null || !Number.isFinite(unix) || unix <= 0) return "尚无成功上报记录";
@@ -120,6 +168,12 @@ function ingressEnabledLabel(raw: string | undefined): string {
 }
 
 export default function CommunityPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [section, setSection] = useState<CommunitySectionId>(
+    () => communitySectionFromHash(typeof window !== "undefined" ? window.location.hash : "") ?? "deploy",
+  );
+  const [hotTab, setHotTab] = useState<CommunityHotTab>("fleet");
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [hotReloadToken, setHotReloadToken] = useState(0);
   const [err, setErr] = useState("");
@@ -311,6 +365,20 @@ export default function CommunityPage() {
     }
   }, [corpusStatusQ, federationQ, statsQ]);
 
+  useEffect(() => {
+    const fromHash = communitySectionFromHash(location.hash);
+    if (fromHash && fromHash !== section) setSection(fromHash);
+  }, [location.hash]);
+
+  function selectSection(id: CommunitySectionId) {
+    setSection(id);
+    const meta = COMMUNITY_SECTIONS.find((s) => s.id === id) ?? COMMUNITY_SECTIONS[0];
+    const nextHash = `#${meta.hash}`;
+    if (location.hash !== nextHash) {
+      navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
+    }
+  }
+
   async function runConnectivityCheck() {
     if (connectivityBusy) return;
     setConnectivityBusy(true);
@@ -334,37 +402,49 @@ export default function CommunityPage() {
 
   return (
     <div className="community-page console-hub-page">
-      <PageMasthead
-        title="统计与语料"
-        description={
-          <>
-            <span>社区统计、语料与多机协同（只读）。</span>
-            <p className="community-page__masthead-links muted">
-              <a className="community-page__inline-link" href={communityHubUrl} target="_blank" rel="noopener noreferrer">
-                社区主站
-              </a>
-              {" · "}
-              <Link to="/plugins/pb_stats">在线统计</Link>
-              {" · "}
-              <Link to="/plugins/pb_core">共享接话库</Link>
-              {" · "}
-              <Link to="/corpus-config">语料设置</Link>
-            </p>
-          </>
-        }
-        actions={
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={refreshBusy}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw className={cn("size-3.5", refreshBusy && "animate-spin")} />
-            {refreshBusy ? "刷新中…" : "刷新"}
+      <PageMasthead title="统计与语料" description="社区统计、语料与多机协同（只读）。" />
+
+      <ChromeTools>
+        <ChromeField label="选择" icon={Layers} className="shrink-0">
+          <Select value={section} onValueChange={(v) => selectSection(v as CommunitySectionId)}>
+            <SelectTrigger className="h-8 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0 gap-1.5" aria-label="面板分类">
+              <SelectValue placeholder="选择面板" />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {COMMUNITY_SECTIONS.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  <ChromeOptionLabel icon={s.icon}>{s.label}</ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+
+        {section === "hot" ? (
+          <SegTabs
+            size="toolbar"
+            ariaLabel="热词统计范围"
+            value={hotTab}
+            onValueChange={(v) => setHotTab(v as CommunityHotTab)}
+            options={COMMUNITY_HOT_TAB_OPTIONS}
+          />
+        ) : null}
+
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 self-center">
+          <Button type="button" variant="outline" size="sm" asChild>
+            <a href={communityHubUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="size-3.5" />
+              社区主站
+            </a>
           </Button>
-        }
-      />
+          <RefreshIconButton
+            busy={refreshBusy}
+            label="刷新"
+            showLabel
+            onClick={() => void refresh()}
+          />
+        </div>
+      </ChromeTools>
 
       {err ? <p className="alert alert--err community-page__alert">{err}</p> : null}
 
@@ -386,10 +466,12 @@ export default function CommunityPage() {
         </p>
       ) : null}
 
+      {section === "deploy" ? (
       <section id="community-deploy" className="community-page__section">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd community-page__deploy-panel-hd">
-            <h2 className="panel__title community-page__section-title">
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Globe2} />
               全网部署
               <RefreshIconButton embedded className="hub-refresh-narrow-only" showLabel={false} busy={refreshBusy} label="刷新" onClick={() => void refresh()} />
             </h2>
@@ -522,11 +604,16 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "federation" ? (
       <section id="community-federation" className="community-page__section">
         <div className="panel community-page__panel community-page__federation-panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title">{federationOnboarding?.title || "多机协同"}</h2>
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Network} />
+              {federationOnboarding?.title || "多机协同"}
+            </h2>
             <div className="row-actions community-page__hd-actions">
               <Link to="/plugins/pb_core" className="btn">
                 多机协同
@@ -650,11 +737,16 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "corpus" ? (
       <section id="community-corpus" className="community-page__section">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title">共享语料</h2>
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Library} />
+              共享语料
+            </h2>
             <div className="row-actions community-page__hd-actions">
               <Link to="/corpus-config" className="btn">
                 语料设置
@@ -673,23 +765,39 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "hot" ? (
       <section id="community-hot" className="community-page__section">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title">共享语料热词</h2>
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Flame} />
+              共享语料热词
+            </h2>
           </div>
           <div className="panel__bd">
             <p className="muted community-page__hot-lead">机群：近24h叠加 · 高频池：共享累计 · 本月：近期活跃</p>
-            <CorpusWordCloud source="community" reloadToken={hotReloadToken} />
+            <CorpusWordCloud
+              source="community"
+              tab={hotTab}
+              onTabChange={setHotTab}
+              showTabs={false}
+              reloadToken={hotReloadToken}
+            />
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "local-hot" ? (
       <section id="community-local-hot" className="community-page__section">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title">本机语料热词</h2>
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Flame} />
+              本机语料热词
+            </h2>
           </div>
           <div className="panel__bd">
             <p className="muted community-page__hot-lead">本部署全部群的学习语料累计热度，与共享池独立统计。</p>
@@ -697,11 +805,16 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+      ) : null}
 
+      {section === "local" ? (
       <section id="community-local" className="community-page__section">
         <div className="panel community-page__panel">
           <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title">本部署语料</h2>
+            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={HardDrive} />
+              本部署语料
+            </h2>
             <div className="row-actions community-page__hd-actions">
               <Link to="/plugins/pb_core" className="btn">
                 语料设置
@@ -793,6 +906,7 @@ export default function CommunityPage() {
           )}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

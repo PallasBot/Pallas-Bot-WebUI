@@ -87,7 +87,7 @@ html[data-layout="hub"] .home-page .home-sys-card--gpu {
 }
 
 /*
- * Progress fills follow hub --accent (full color, e.g. #38bdf8).
+ * Progress fills follow hub --accent (full color, e.g. #a78bfa).
  * Do not hardcode sky: accent presets (indigo/rose/…) must update these bars.
  * (Older workaround used fixed #hex when Tailwind overwrote --accent with HSL components.)
  */

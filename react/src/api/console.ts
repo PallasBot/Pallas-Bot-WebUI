@@ -166,6 +166,7 @@ export type PluginConfigData = {
   plugin: string;
   module?: string;
   fields: PluginConfigField[];
+  field_groups?: import("@/api/pallasTypes").PluginConfigFieldGroup[];
   unexpected_keys?: string[];
   hot_reload?: boolean;
 };
@@ -231,24 +232,17 @@ export type LlmHistorySession = {
   last_content?: string;
 };
 
-export type LlmWizardStatus = {
-  ai_reachable?: boolean;
-  health_url?: string;
-  model?: string;
-  provider_mode?: string;
-  llm_chat_enabled?: boolean;
-  providers_configured?: number;
-  providers_reachable?: number;
-  next_step?: string;
-  checks?: Array<{ id?: string; ok?: boolean; label?: string; detail?: string }>;
-};
-
 export type AiInstallStatus = {
   detected?: boolean;
-  ai_root?: string;
+  ai_root?: string | null;
   layout?: string;
   bootstrap_ready?: boolean;
   deployment?: string;
+  can_clone?: boolean;
+  can_bootstrap?: boolean;
+  in_docker?: boolean;
+  docker_hint?: string;
+  endpoint?: { host?: string; port?: number };
 };
 
 export type AiRuntimeStatus = {
@@ -419,21 +413,35 @@ export async function fetchLlmHistorySessions(limit = 50): Promise<LlmHistorySes
   return Array.isArray(data?.items) ? data.items : [];
 }
 
-export async function fetchLlmWizardStatus(): Promise<LlmWizardStatus> {
-  const { data: body } = await http.get("/common-config/llm/wizard/status");
-  return envelopeData<LlmWizardStatus>(body) || {};
-}
+export type LlmProviderCapability = "text" | "image" | "audio" | "video";
+
+export type LlmProviderModelEffort =
+  | ""
+  | "enable"
+  | "disable"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
+export type LlmProviderRequestMethod = "chat_completions" | "responses";
 
 export type LlmProviderRow = {
   id: string;
   kind: string;
   base_url: string;
   api_key?: string;
+  api_keys?: string[];
   api_key_env: string;
   api_key_set?: boolean;
+  api_keys_count?: number;
   default_model: string;
   enabled: boolean;
   task_models: Record<string, string>;
+  capabilities?: LlmProviderCapability[];
+  model_effort?: LlmProviderModelEffort | string;
+  request_method?: LlmProviderRequestMethod | string;
 };
 
 export type LlmProvidersConfig = {
@@ -441,6 +449,8 @@ export type LlmProvidersConfig = {
   routing: {
     chain_fallback: string[];
     tasks: Record<string, string>;
+    tier_backups?: { high?: string; low?: string };
+    tier_backup_models?: { high?: string; low?: string };
   };
   providers_file?: string;
   file_exists?: boolean;
@@ -486,12 +496,36 @@ export type LlmLocalRoutingConfig = {
 export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
   const { data: body } = await http.get("/common-config/llm/providers");
   const data = envelopeData<LlmProvidersConfig>(body);
+  const routingIn = data?.routing;
+  const routing: LlmProvidersConfig["routing"] = {
+    chain_fallback: Array.isArray(routingIn?.chain_fallback) ? routingIn.chain_fallback : [],
+    tasks: routingIn?.tasks && typeof routingIn.tasks === "object" ? routingIn.tasks : {},
+  };
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "tier_backups")) {
+    const raw = routingIn.tier_backups;
+    const tier_backups: { high?: string; low?: string } = {};
+    if (raw && typeof raw === "object") {
+      const high = String((raw as { high?: string }).high || "").trim();
+      const low = String((raw as { low?: string }).low || "").trim();
+      if (high) tier_backups.high = high;
+      if (low) tier_backups.low = low;
+    }
+    routing.tier_backups = tier_backups;
+  }
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "tier_backup_models")) {
+    const raw = routingIn.tier_backup_models;
+    const tier_backup_models: { high?: string; low?: string } = {};
+    if (raw && typeof raw === "object") {
+      const high = String((raw as { high?: string }).high || "").trim();
+      const low = String((raw as { low?: string }).low || "").trim();
+      if (high) tier_backup_models.high = high;
+      if (low) tier_backup_models.low = low;
+    }
+    routing.tier_backup_models = tier_backup_models;
+  }
   return {
     providers: Array.isArray(data?.providers) ? data.providers : [],
-    routing: {
-      chain_fallback: Array.isArray(data?.routing?.chain_fallback) ? data.routing.chain_fallback : [],
-      tasks: data?.routing?.tasks && typeof data.routing.tasks === "object" ? data.routing.tasks : {},
-    },
+    routing,
     providers_file: data?.providers_file,
     file_exists: data?.file_exists,
   };
@@ -499,19 +533,62 @@ export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
 
 export async function putLlmProvidersConfig(body: LlmProvidersConfig): Promise<LlmProvidersSaveResult> {
   const payload = {
-    providers: body.providers.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      base_url: row.base_url,
-      api_key: row.api_key ?? "",
-      api_key_env: row.api_key_env,
-      default_model: row.default_model,
-      enabled: row.enabled,
-      task_models: row.task_models,
-    })),
+    providers: body.providers.map((row) => {
+      const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
+        .map((k) => String(k || "").trim())
+        .filter(Boolean);
+      const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
+      const apiKeyEnv = String(row.api_key_env ?? "").trim();
+      const item: Record<string, unknown> = {
+        id: row.id,
+        kind: row.kind,
+        base_url: row.base_url,
+        api_key_env: apiKeyEnv,
+        default_model: row.default_model,
+        enabled: row.enabled,
+        task_models: row.task_models,
+        capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
+        model_effort: row.model_effort ?? "",
+        request_method: row.request_method || "chat_completions",
+      };
+      if (apiKeys.length) item.api_keys = apiKeys;
+      if (apiKey) item.api_key = apiKey;
+      return item;
+    }),
     routing: body.routing,
   };
   const { data: res } = await http.put("/common-config/llm/providers", payload, { timeout: 60_000 });
+  return envelopeData<LlmProvidersSaveResult>(res) || {};
+}
+
+/** 只保存单个提供方，避免整表 PUT 误擦其他提供方已存密钥。 */
+export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersSaveResult> {
+  const id = String(row.id || "").trim();
+  if (!id) throw new Error("provider id is required");
+  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
+    .map((k) => String(k || "").trim())
+    .filter(Boolean);
+  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
+  const apiKeyEnv = String(row.api_key_env ?? "").trim();
+  const payload: Record<string, unknown> = {
+    id,
+    kind: row.kind,
+    base_url: row.base_url,
+    api_key_env: apiKeyEnv,
+    default_model: row.default_model,
+    enabled: row.enabled,
+    task_models: row.task_models,
+    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
+    model_effort: row.model_effort ?? "",
+    request_method: row.request_method || "chat_completions",
+  };
+  if (apiKeys.length) payload.api_keys = apiKeys;
+  if (apiKey) payload.api_key = apiKey;
+  const { data: res } = await http.put(
+    `/common-config/llm/providers/${encodeURIComponent(id)}`,
+    payload,
+    { timeout: 60_000 },
+  );
   return envelopeData<LlmProvidersSaveResult>(res) || {};
 }
 
@@ -526,7 +603,13 @@ export async function postLlmProviderTest(providerId: string): Promise<LlmProvid
 
 export async function fetchLlmProviderModels(
   providerId: string,
-  opts?: { base_url?: string; api_key?: string; api_key_env?: string; kind?: string },
+  opts?: {
+    base_url?: string;
+    api_key?: string;
+    api_key_env?: string;
+    kind?: string;
+    request_method?: string;
+  },
 ): Promise<LlmProviderModelsResult> {
   const { data: body } = await http.post(
     `/common-config/llm/providers/${encodeURIComponent(providerId)}/models`,
@@ -535,6 +618,7 @@ export async function fetchLlmProviderModels(
       api_key: opts?.api_key ?? "",
       api_key_env: opts?.api_key_env ?? "",
       kind: opts?.kind ?? "",
+      request_method: opts?.request_method ?? "",
     },
     { timeout: 60_000 },
   );
@@ -786,6 +870,7 @@ export type AiExtensionLogsData = {
   path?: string;
   source?: string;
   kind?: string;
+  error?: string | null;
 };
 
 export type AiProxyResult = {
@@ -1052,7 +1137,10 @@ export type ConversationKernelStatus = Record<string, unknown>;
 export type ConversationKernelTracesData = { items?: Array<Record<string, unknown>> };
 export type ConversationKernelMemoryData = { items?: Array<Record<string, unknown>> };
 export type ConversationKernelRelationshipNotesData = { items?: Array<Record<string, unknown>> };
-export type ConversationKernelKnowledgeSourcesData = { sources?: Array<Record<string, unknown>> };
+export type ConversationKernelKnowledgeSourcesData = {
+  items?: Array<Record<string, unknown>>;
+  count?: number;
+};
 
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {
   const { data: body } = await http.get("/llm/conversation-kernel/status");

@@ -98,7 +98,7 @@ import {
   resolveCommunityIndexSourceDisplay,
   resultNeedsRestart,
 } from "@/utils/pluginStorePageHelpers";
-import { cn } from "@/lib/utils";
+import SegTabs from "@/components/SegTabs";
 
 type DetailTab = "readme" | "changelog";
 type DetailKind = "official" | "community";
@@ -990,12 +990,8 @@ export default function PluginStorePage() {
           <Input
             type="search"
             className="h-8 min-h-8 w-full pl-8"
-            placeholder={
-              storeSection === "official" ? "搜索扩展包名或插件 ID…" : "搜索社区插件名、ID 或标签…"
-            }
-            aria-label={
-              storeSection === "official" ? "搜索扩展包名或插件 ID" : "搜索社区插件名、ID 或标签"
-            }
+            placeholder={storeSection === "official" ? "搜索扩展…" : "搜索插件…"}
+            aria-label={storeSection === "official" ? "搜索扩展" : "搜索插件"}
             autoComplete="off"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -1007,7 +1003,9 @@ export default function PluginStorePage() {
               className="h-8 w-auto min-w-[7.5rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
               aria-label="商店类型"
             >
-              <SelectValue />
+              <SelectValue placeholder="类型">
+                {sectionOptions.find((s) => s.value === storeSection)?.label ?? "类型"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[9rem]">
               {sectionOptions.map((sec) => (
@@ -1034,7 +1032,9 @@ export default function PluginStorePage() {
               className="h-8 w-auto min-w-[6.75rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
               aria-label="列表筛选"
             >
-              <SelectValue />
+              <SelectValue placeholder="筛选">
+                {tabOptions.find((t) => t.value === activeTab)?.label ?? "筛选"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="end" className="min-w-[8.5rem]">
               {tabOptions.map((tab) => (
@@ -1045,7 +1045,7 @@ export default function PluginStorePage() {
             </SelectContent>
           </Select>
         </ChromeField>
-        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
             镜像源
           </Button>
@@ -1065,7 +1065,12 @@ export default function PluginStorePage() {
               {checkingUpdate ? "检查中…" : "检查更新"}
             </Button>
           ) : (
-            <RefreshIconButton embedded busy={loading} label="刷新列表" onClick={() => void refreshStore(true)} />
+            <RefreshIconButton
+              busy={loading}
+              label="刷新列表"
+              showLabel
+              onClick={() => void refreshStore(true)}
+            />
           )}
         </div>
       </ChromeTools>
@@ -1283,7 +1288,7 @@ export default function PluginStorePage() {
           if (!next) closeDetail();
         }}
       >
-        <DialogContent className="plugin-store-page__detail-dialog flex max-h-[min(92vh,860px)] w-[min(720px,96vw)] max-w-[min(720px,96vw)] gap-0 overflow-hidden bg-card p-0">
+        <DialogContent className="plugin-store-page__detail-dialog flex max-h-[min(860px,calc(100dvh-32px))] w-[min(720px,calc(100vw-32px))] max-w-[min(720px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0">
           <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
             <DialogTitle id="plugin-store-detail-title">{detailTarget?.title}</DialogTitle>
             <DialogDescription asChild>
@@ -1311,31 +1316,20 @@ export default function PluginStorePage() {
           <div className="plugin-store-page__detail-bd min-h-0 flex-1 overflow-auto px-4 py-3">
         {detailTarget ? (
           <>
-            <div className="plugin-store-page__detail-tabs console-view-toggle" role="tablist" aria-label="详情分栏">
-              <button
-                type="button"
-                role="tab"
-                className={cn(detailTab === "readme" && "is-on")}
-                aria-selected={detailTab === "readme"}
-                onClick={() => {
-                  setDetailTab("readme");
-                }}
-              >
-                README
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={cn(detailTab === "changelog" && "is-on")}
-                aria-selected={detailTab === "changelog"}
-                onClick={() => {
-                  setDetailTab("changelog");
-                  void loadDetailChangelog(detailTarget);
-                }}
-              >
-                更新日志
-              </button>
-            </div>
+            <SegTabs
+              className="plugin-store-page__detail-tabs"
+              ariaLabel="详情分栏"
+              value={detailTab}
+              onValueChange={(v) => {
+                const next = v === "changelog" ? "changelog" : "readme";
+                setDetailTab(next);
+                if (next === "changelog" && detailTarget) void loadDetailChangelog(detailTarget);
+              }}
+              options={[
+                { value: "readme", label: "README" },
+                { value: "changelog", label: "更新日志" },
+              ]}
+            />
             {detailTab === "readme" ? (
               detailReadmeLoading ? (
                 <div className="plugin-store-page__detail-skeleton">
@@ -1372,7 +1366,7 @@ export default function PluginStorePage() {
           </div>
 
           {detailTarget ? (
-            <DialogFooter className="plugin-store-page__detail-foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end sm:space-x-2">
+            <DialogFooter className="plugin-store-page__detail-foot flex-row flex-nowrap items-center justify-end gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
               {detailTarget.kind === "official" && detailTarget.official ? (
                 <>
                   {detailTarget.official.can_install ? (
@@ -1515,7 +1509,7 @@ export default function PluginStorePage() {
         }}
       >
         <DialogContent
-          className="plugin-store-page__git-dialog flex w-[min(480px,96vw)] max-w-[min(480px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          className="plugin-store-page__git-dialog flex max-h-[min(640px,calc(100dvh-32px))] w-[min(480px,calc(100vw-32px))] max-w-[min(480px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
           onEscapeKeyDown={(e) => {
             if (gitInstallBusy) e.preventDefault();
           }}

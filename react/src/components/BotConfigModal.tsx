@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { putBotConfig } from "@/api/fullConsole";
+import IdChipsInput from "@/components/config/IdChipsInput";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { BotConfigPublic, PersonaSeedPref, PluginRow } from "@/api/pallasTypes";
 import {
@@ -117,8 +117,6 @@ export default function BotConfigModal({
 }: Props) {
   const open = account != null;
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [addAdminInput, setAddAdminInput] = useState("");
-  const [adminAddHint, setAdminAddHint] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveErr, setSaveErr] = useState("");
 
@@ -127,16 +125,12 @@ export default function BotConfigModal({
   useEffect(() => {
     if (!open) {
       setDraft(null);
-      setAddAdminInput("");
-      setAdminAddHint("");
       setSaveErr("");
       return;
     }
     if (isInit) setDraft(defaultDraft());
     else if (initialConfig) setDraft(draftFromConfig(initialConfig));
     else setDraft(defaultDraft());
-    setAddAdminInput("");
-    setAdminAddHint("");
     setSaveErr("");
   }, [open, isInit, initialConfig, account]);
 
@@ -145,28 +139,6 @@ export default function BotConfigModal({
     value: boolean,
   ) {
     setDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
-  }
-
-  function addAdminFromInput() {
-    if (!draft) return;
-    setAdminAddHint("");
-    const raw = addAdminInput.trim();
-    if (!raw) return;
-    const n = parseInt(raw, 10);
-    if (!Number.isFinite(n) || n < 1) {
-      setAdminAddHint("请输入有效的 QQ 号。");
-      return;
-    }
-    if (draft.admins.includes(n)) {
-      setAdminAddHint("该号码已在列表中。");
-      return;
-    }
-    setDraft({ ...draft, admins: [...draft.admins, n].sort((a, b) => a - b) });
-    setAddAdminInput("");
-  }
-
-  function removeAdminFromDraft(id: number) {
-    setDraft((prev) => (prev ? { ...prev, admins: prev.admins.filter((x) => x !== id) } : prev));
   }
 
   function togglePluginDisabled(name: string, checked: boolean) {
@@ -235,7 +207,7 @@ export default function BotConfigModal({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog flex max-h-[min(92vh,720px)] w-[min(640px,96vw)] max-w-[min(640px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog flex max-h-[min(720px,calc(100dvh-32px))] w-[min(640px,calc(100vw-32px))] max-w-[min(640px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (saveBusy) e.preventDefault();
         }}
@@ -297,50 +269,13 @@ export default function BotConfigModal({
 
               <div className="bot-config-edit__field">
                 <label>管理员 QQ</label>
-                <p className="bot-config-edit__hint muted">输入号码后添加；芯片右上角 × 可移除。</p>
-                <div className="bot-config-edit__admin-add row-actions">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder="QQ 号"
-                    className="bot-config-edit__admin-inp h-9"
-                    value={addAdminInput}
-                    onChange={(e) => setAddAdminInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addAdminFromInput();
-                      }
-                    }}
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={addAdminFromInput}>
-                    添加
-                  </Button>
-                </div>
-                {adminAddHint ? (
-                  <p className="alert alert--err bot-config-edit__inline-alert">{adminAddHint}</p>
-                ) : null}
-                {draft.admins.length ? (
-                  <div className="admin-chip-list">
-                    {draft.admins.map((id) => (
-                      <div key={`adm-${account}-${id}`} className="admin-chip">
-                        <span className="admin-chip__id">{id}</span>
-                        <button
-                          type="button"
-                          className="admin-chip__rm"
-                          aria-label={`移除管理员 ${id}`}
-                          title="移除"
-                          onClick={() => removeAdminFromDraft(id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="bot-config-edit__empty muted">尚未添加管理员。</p>
-                )}
+                <p className="bot-config-edit__hint muted">点「更多」添加或管理；芯片 × 可移除。</p>
+                <IdChipsInput
+                  value={draft.admins}
+                  onChange={(admins) => setDraft({ ...draft, admins })}
+                  placeholder="QQ 号"
+                  emptyText="尚未添加管理员。"
+                />
               </div>
 
               <div className="bot-config-edit__field">

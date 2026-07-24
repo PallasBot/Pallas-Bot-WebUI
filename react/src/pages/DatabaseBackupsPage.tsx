@@ -16,11 +16,18 @@ import BackupTargetTree from "@/components/BackupTargetTree";
 import ConsolePageSkeleton, { SkelValue } from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
 import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDbBackup } from "@/hooks/useDbBackup";
 import { formatBackupBytes, formatBackupElapsed } from "@/utils/dbBackupFormat";
-import { RefreshCw } from "lucide-react";
+import { HardDrive, History, RefreshCw } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 
 type DownloadState = {
@@ -444,7 +451,10 @@ export default function DatabaseBackupsPage() {
 
           <section className="panel database-backups-page__panel">
             <div className="panel__hd panel__hd--split database-backups-page__create-hd">
-              <h2 className="panel__title">创建备份</h2>
+              <h2 className="panel__title flex items-center gap-1.5">
+                <PanelTitleIcon icon={HardDrive} />
+                创建备份
+              </h2>
               <div className="row-actions database-backups-page__hd-actions">
                 <span className="friends-groups-hd-pin-wrap" />
                 <button type="button" className="btn btn--primary" disabled={anyJobBusy || !backup.toolReady} onClick={() => void startBackup()}>
@@ -494,10 +504,24 @@ export default function DatabaseBackupsPage() {
                       disabled={listBusy || deleting || backup.busy}
                       onValueChange={backup.setOutputParent}
                     />
-                    <Button type="button" variant="secondary" size="sm" disabled={listBusy || deleting || backup.busy} onClick={() => setDirPickerOpen(true)}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={listBusy || deleting || backup.busy}
+                      onClick={() => setDirPickerOpen(true)}
+                    >
                       浏览…
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" disabled={listBusy || deleting || backup.busy} onClick={() => void applyDirectoryAndRefresh()}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={listBusy || deleting || backup.busy}
+                      onClick={() => void applyDirectoryAndRefresh()}
+                    >
                       {listBusy ? "刷新中…" : "应用目录"}
                     </Button>
                   </div>
@@ -514,45 +538,62 @@ export default function DatabaseBackupsPage() {
                 </div>
                 <div className="prefs-form-field">
                   <label className="prefs-form-field__label">备份范围</label>
-                  <UiSelect
+                  <Select
                     value={backup.targetMode}
                     disabled={backup.busy}
                     onValueChange={(v) => backup.setTargetMode(v as "all" | "selected")}
                   >
-                    <option value="all">
-                      {backup.backupInfo?.backend === "mongodb" ? "整库 / 预设关键集合" : "整库"}
-                    </option>
-                    <option value="selected">指定{backup.backupInfo?.backend === "postgres" ? "表" : "集合"}</option>
-                  </UiSelect>
+                    <SelectTrigger className="h-9 w-full" aria-label="备份范围">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      <SelectItem value="all">
+                        {backup.backupInfo?.backend === "mongodb" ? "整库 / 预设关键集合" : "整库"}
+                      </SelectItem>
+                      <SelectItem value="selected">
+                        指定{backup.backupInfo?.backend === "postgres" ? "表" : "集合"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {backup.backupInfo?.backend === "mongodb" && backup.targetMode === "all" ? (
                   <div className="prefs-form-field">
                     <label className="prefs-form-field__label">MongoDB 预设</label>
-                    <UiSelect
+                    <Select
                       value={backup.scope}
                       disabled={backup.busy}
                       onValueChange={(v) => backup.setScope(v as "full" | "important")}
                     >
-                      {backup.scopeOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </UiSelect>
+                      <SelectTrigger className="h-9 w-full" aria-label="MongoDB 预设">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        {backup.scopeOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ) : null}
                 {backup.backupInfo?.backend === "postgres" ? (
                   <div className="prefs-form-field">
                     <label className="prefs-form-field__label">PostgreSQL 格式</label>
-                    <UiSelect
+                    <Select
                       value={backup.pgFormat}
                       disabled={backup.busy}
                       onValueChange={(v) => backup.setPgFormat(v as "custom" | "plain" | "directory")}
                     >
-                      <option value="custom">custom（.dump，推荐）</option>
-                      <option value="plain">plain SQL（.sql）</option>
-                      <option value="directory">directory（目录格式）</option>
-                    </UiSelect>
+                      <SelectTrigger className="h-9 w-full" aria-label="PostgreSQL 格式">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        <SelectItem value="custom">custom（.dump，推荐）</SelectItem>
+                        <SelectItem value="plain">plain SQL（.sql）</SelectItem>
+                        <SelectItem value="directory">directory（目录格式）</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 ) : null}
                 {backup.targetMode === "selected" && targetOptions.length ? (
@@ -625,7 +666,8 @@ export default function DatabaseBackupsPage() {
 
           <section className="panel database-backups-page__panel database-backups-page__panel--list">
             <div className="panel__hd panel__hd--split database-backups-page__list-hd">
-              <h2 className="panel__title">
+              <h2 className="panel__title flex items-center gap-1.5">
+                <PanelTitleIcon icon={History} />
                 历史备份
                 {runs.length ? <span className="muted database-backups-page__list-count">{runs.length} 项</span> : null}
               </h2>

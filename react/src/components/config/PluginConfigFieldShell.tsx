@@ -73,6 +73,8 @@ function FieldHelpBody({ field, title }: { field: PluginConfigField; title: stri
 function popoverPositionStyle(anchor: HTMLElement): CSSProperties {
   const rect = anchor.getBoundingClientRect();
   const maxWidth = Math.min(380, window.innerWidth - 16);
+  const gap = 10;
+  const edge = 8;
   if (window.innerWidth <= 560) {
     return {
       position: "fixed",
@@ -83,14 +85,27 @@ function popoverPositionStyle(anchor: HTMLElement): CSSProperties {
       maxHeight: "min(72vh, 640px)",
     };
   }
-  const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - maxWidth - 8));
-  const top = Math.min(rect.bottom + 10, window.innerHeight - 16);
+  const left = Math.min(Math.max(edge, rect.left), Math.max(edge, window.innerWidth - maxWidth - edge));
+  const preferredMax = Math.min(window.innerHeight * 0.72, 640);
+  const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
+  const spaceAbove = rect.top - gap - edge;
+  // 下方够用或比上方更宽裕时优先向下；否则翻到上方，并用可用高度限制 maxHeight。
+  const placeBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove;
+  if (placeBelow) {
+    return {
+      position: "fixed",
+      top: rect.bottom + gap,
+      left,
+      width: `min(${maxWidth}px, calc(100vw - 16px))`,
+      maxHeight: Math.max(96, Math.min(preferredMax, spaceBelow)),
+    };
+  }
   return {
     position: "fixed",
-    top,
+    bottom: window.innerHeight - rect.top + gap,
     left,
     width: `min(${maxWidth}px, calc(100vw - 16px))`,
-    maxHeight: "min(72vh, 640px)",
+    maxHeight: Math.max(96, Math.min(preferredMax, spaceAbove)),
   };
 }
 

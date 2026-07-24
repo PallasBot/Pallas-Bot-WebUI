@@ -3,13 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchPluginGovernance,
-  fetchPluginsGlobalDisable,
   fetchPluginsGroupFleetWhitelist,
-  fetchPluginsHelpMenuVisibility,
   putPluginGovernance,
-  putPluginsGlobalDisable,
   putPluginsGroupFleetWhitelist,
-  putPluginsHelpMenuVisibility,
 } from "@/api/fullConsole";
 import type {
   GroupFleetWhitelistEntry,
@@ -17,10 +13,17 @@ import type {
   PluginGovernanceData,
 } from "@/api/pallasTypes";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow";
+import PluginGovernanceGroup from "@/components/config/PluginGovernanceGroup";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
 import UiInput from "@/components/ui/UiInput";
-import UiSelect from "@/components/ui/UiSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
 
@@ -58,16 +61,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     queryFn: fetchPluginsGroupFleetWhitelist,
   });
 
-  const globalDisableQ = useQuery({
-    queryKey: ["plugins-global-disable"],
-    queryFn: fetchPluginsGlobalDisable,
-  });
-
-  const helpVisibilityQ = useQuery({
-    queryKey: ["plugins-help-menu-visibility"],
-    queryFn: fetchPluginsHelpMenuVisibility,
-  });
-
   useEffect(() => {
     const g = govQ.data;
     if (!g) return;
@@ -93,13 +86,19 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
   }, [fleetQ.data, pluginName]);
 
   const saveGov = useMutation({
-    mutationFn: async (patch: Partial<PluginGovernanceData["runtime"]> & { blocked?: number[] }) => {
+    mutationFn: async (
+      patch: Partial<PluginGovernanceData["runtime"]> & {
+        blocked?: number[];
+        permSelectionsOverride?: Record<string, string>;
+      },
+    ) => {
       const g = govQ.data;
       if (!g) throw new Error("治理数据未加载");
+      const effectivePerm = patch.permSelectionsOverride ?? permSelections;
       const permOverrides: Record<string, string> = {};
       for (const pg of g.perm_ui_filtered?.plugins || []) {
         for (const c of pg.commands) {
-          const sel = permSelections[c.command_id] ?? c.effective_level;
+          const sel = effectivePerm[c.command_id] ?? c.effective_level;
           if (sel !== c.default_level) permOverrides[c.command_id] = sel;
         }
       }
@@ -125,6 +124,8 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
       setMsg("治理配置已保存");
       await qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
+      await qc.invalidateQueries({ queryKey: ["plugins-global-disable"] });
+      await qc.invalidateQueries({ queryKey: ["plugins-help-menu-visibility"] });
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
@@ -142,47 +143,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
   const globalDisableProtected = Boolean(g?.runtime?.global_disable_protected);
   const helpIgnored = Boolean(g?.runtime?.help_ignored);
   const showInFlowHelpMenu = g ? !g.runtime.help_hidden : true;
-
-  const globallyDisabled = globalDisableQ.data?.disabled_plugins.includes(pluginName) ?? false;
-  const globalDisableProtectedByList = globalDisableQ.data?.protected_plugins.includes(pluginName) ?? false;
-  const helpHiddenGlobal = helpVisibilityQ.data?.hidden_plugins.includes(pluginName) ?? false;
-  const helpIgnoredGlobal = helpVisibilityQ.data?.ignored_plugins.includes(pluginName) ?? false;
-
-  const saveGlobalDisable = useMutation({
-    mutationFn: async (disabled: boolean) => {
-      const current = globalDisableQ.data?.disabled_plugins || [];
-      const protectedList = new Set(globalDisableQ.data?.protected_plugins || []);
-      if (protectedList.has(pluginName)) throw new Error("该插件为基础设施插件，不可全实例禁用");
-      const next = disabled
-        ? [...new Set([...current, pluginName])]
-        : current.filter((p) => p !== pluginName);
-      return putPluginsGlobalDisable(next);
-    },
-    onSuccess: async () => {
-      setMsg("全局禁用状态已更新");
-      await globalDisableQ.refetch();
-      await qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
-    },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
-  });
-
-  const saveHelpVisibility = useMutation({
-    mutationFn: async (hidden: boolean) => {
-      const current = helpVisibilityQ.data?.hidden_plugins || [];
-      const next = hidden
-        ? [...new Set([...current, pluginName])]
-        : current.filter((p) => p !== pluginName);
-      return putPluginsHelpMenuVisibility(next);
-    },
-    onSuccess: async () => {
-      setMsg("帮助菜单可见性已更新");
-      await helpVisibilityQ.refetch();
-      await qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] });
-      await qc.invalidateQueries({ queryKey: ["plugins"] });
-    },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
-  });
 
   async function toggleRuntime(kind: "global_disable" | "help_hidden", next: boolean) {
     if (!g) return;
@@ -308,16 +268,13 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
             </div>
           ) : null}
 
-          <section className="plugin-governance-panel__group">
-            <header className="plugin-governance-panel__group-head">
-              <h4 className="plugin-governance-panel__group-title">运行控制</h4>
-              <p className="muted plugin-governance-panel__group-desc">
-                控制插件是否参与运行，以及是否出现在帮助菜单中。
-              </p>
-            </header>
+          <PluginGovernanceGroup
+            title="运行控制"
+            description="控制插件是否运行，以及是否出现在帮助菜单；两项共用同一份全局配置。"
+          >
             <div className="plugin-governance-panel__switches">
               <PluginRuntimeSwitchRow
-                title="全实例禁用（所有牛牛、所有群）"
+                title="禁用此插件"
                 checked={Boolean(g.runtime.global_disable)}
                 variant={switchVariant}
                 disabled={saveGov.isPending || globalDisableProtected}
@@ -325,12 +282,14 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               >
                 <p>
                   {globalDisableProtected
-                    ? "基础设施插件，不可全实例禁用。"
-                    : "开启后立即拦截该插件的 Matcher，与实例级、群级禁用共同生效。"}
+                    ? "基础设施插件，不能禁用。"
+                    : Boolean(g.runtime.global_disable)
+                      ? "已禁用：所有实例、所有群都不会再跑此插件。"
+                      : "开启后全实例停用；下方白名单群仍可例外放行。"}
                 </p>
               </PluginRuntimeSwitchRow>
               <PluginRuntimeSwitchRow
-                title="在「牛牛帮助」总列表中显示该插件"
+                title="在帮助菜单中显示"
                 checked={showInFlowHelpMenu}
                 variant={switchVariant}
                 disabled={saveGov.isPending || helpIgnored}
@@ -338,50 +297,19 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               >
                 <p>
                   {helpIgnored
-                    ? "该插件被帮助系统忽略，无法出现在帮助菜单。"
-                    : "关闭后会立即从帮助菜单隐藏，但不影响实际 Matcher 运行。"}
-                </p>
-              </PluginRuntimeSwitchRow>
-              <PluginRuntimeSwitchRow
-                title="全局禁用列表（当前插件）"
-                checked={globallyDisabled}
-                variant={switchVariant}
-                disabled={saveGlobalDisable.isPending || globalDisableProtectedByList}
-                onCheckedChange={(v) => void saveGlobalDisable.mutateAsync(v)}
-              >
-                <p>
-                  {globalDisableProtectedByList
-                    ? "基础设施插件，不可加入全局禁用。"
-                    : globallyDisabled
-                      ? "已在全局禁用列表中。"
-                      : "未在全局禁用列表中。"}
-                </p>
-              </PluginRuntimeSwitchRow>
-              <PluginRuntimeSwitchRow
-                title="帮助菜单隐藏列表（当前插件可见）"
-                checked={!helpHiddenGlobal}
-                variant={switchVariant}
-                disabled={saveHelpVisibility.isPending || helpIgnoredGlobal}
-                onCheckedChange={(v) => void saveHelpVisibility.mutateAsync(!v)}
-              >
-                <p>
-                  {helpIgnoredGlobal
-                    ? "该插件被帮助系统忽略。"
-                    : helpHiddenGlobal
-                      ? "已在帮助隐藏列表中。"
-                      : "未在帮助隐藏列表中。"}
+                    ? "此插件被帮助系统忽略，无法出现在帮助菜单。"
+                    : showInFlowHelpMenu
+                      ? "会出现在「牛牛帮助」。关掉只藏帮助条目，不影响命令是否还能用。"
+                      : "已从「牛牛帮助」隐藏；插件本身是否运行看上面的禁用开关。"}
                 </p>
               </PluginRuntimeSwitchRow>
             </div>
-          </section>
+          </PluginGovernanceGroup>
 
-          <section className="plugin-governance-panel__group">
-            <header className="plugin-governance-panel__group-head">
-              <h4 className="plugin-governance-panel__group-title">群级白名单</h4>
-              <p className="muted plugin-governance-panel__group-desc">
-                全实例禁用后，白名单群仍可使用该插件。
-              </p>
-            </header>
+          <PluginGovernanceGroup
+            title="群级白名单"
+            description="全实例禁用后，白名单群仍可使用该插件。"
+          >
             <div className="plugin-governance-panel__chips">
               {whitelistedGroupIds.length ? (
                 whitelistedGroupIds.map((gid) => (
@@ -403,6 +331,7 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
             </div>
             <div className="plugin-governance-panel__add-row">
               <UiInput
+                wrapClassName="plugin-governance-panel__add-input"
                 placeholder="群号"
                 value={whitelistGroupInput}
                 onValueChange={setWhitelistGroupInput}
@@ -413,19 +342,16 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
                 disabled={saveFleet.isPending}
                 onClick={() => void addFleetGroup()}
               >
-                添加群
+                添加
               </UiButton>
             </div>
             {whitelistHint ? <p className="text-sm text-destructive">{whitelistHint}</p> : null}
-          </section>
+          </PluginGovernanceGroup>
 
-          <section className="plugin-governance-panel__group">
-            <header className="plugin-governance-panel__group-head">
-              <h4 className="plugin-governance-panel__group-title">用户禁用</h4>
-              <p className="muted plugin-governance-panel__group-desc">
-                名单中的 QQ 无法使用该插件（号主除外）。
-              </p>
-            </header>
+          <PluginGovernanceGroup
+            title="用户禁用"
+            description="名单中的 QQ 无法使用该插件（号主除外）。"
+          >
             <div className="plugin-governance-panel__chips">
               {blockedUserIds.map((uid) => (
                 <span key={uid} className="plugin-governance-panel__chip">
@@ -443,65 +369,76 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               {!blockedUserIds.length ? <span className="muted plugin-governance-panel__empty">暂无</span> : null}
             </div>
             <div className="plugin-governance-panel__add-row">
-              <UiInput placeholder="QQ 号" value={blockedInput} onValueChange={setBlockedInput} />
+              <UiInput
+                wrapClassName="plugin-governance-panel__add-input"
+                placeholder="QQ 号"
+                value={blockedInput}
+                onValueChange={setBlockedInput}
+              />
               <UiButton size="sm" variant="outline" disabled={saveGov.isPending} onClick={() => void addBlockedUser()}>
                 添加
               </UiButton>
             </div>
-          </section>
+          </PluginGovernanceGroup>
 
-          <section className="plugin-governance-panel__group">
-            <header className="plugin-governance-panel__group-head">
-              <h4 className="plugin-governance-panel__group-title">命令权限</h4>
-              <p className="muted plugin-governance-panel__group-desc">
-                展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。
-              </p>
-            </header>
+          <PluginGovernanceGroup
+            title="命令权限"
+            description="展示命令中文名与实际触发口令；帮助图中的「何人可用」会随这里的配置同步变化。"
+          >
             {permPlugin?.commands?.length ? (
               permPlugin.commands.map((cmd) => (
                 <div key={cmd.command_id} className="plugin-governance-panel__cmd-row">
-                  <div className="plugin-governance-panel__cmd-title">{cmd.label || cmd.command_id}</div>
-                  <div className="plugin-governance-panel__cmd-meta">
-                    {cmd.trigger_condition || cmd.command_id}
+                  <div className="plugin-governance-panel__cmd-text min-w-0">
+                    <div className="plugin-governance-panel__cmd-title">{cmd.label || cmd.command_id}</div>
+                    <div className="plugin-governance-panel__cmd-meta">
+                      {cmd.trigger_condition || cmd.command_id}
+                    </div>
                   </div>
-                  <UiSelect
+                  <Select
                     value={permSelections[cmd.command_id] ?? cmd.effective_level}
                     disabled={saveGov.isPending}
                     onValueChange={(v) => {
-                      setPermSelections((prev) => ({ ...prev, [cmd.command_id]: v }));
+                      const next = { ...permSelections, [cmd.command_id]: v };
+                      setPermSelections(next);
+                      void saveGov.mutateAsync({ permSelectionsOverride: next });
                     }}
-                    onBlur={() => void saveGov.mutateAsync({})}
                   >
-                    {(g.perm_ui_filtered?.levels || []).map((lv) => (
-                      <option key={lv.id} value={lv.id}>
-                        {lv.label || lv.id}
-                      </option>
-                    ))}
-                  </UiSelect>
+                    <SelectTrigger
+                      className="plugin-governance-panel__cmd-control"
+                      aria-label={`${cmd.label || cmd.command_id} 权限`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end">
+                      {(g.perm_ui_filtered?.levels || []).map((lv) => (
+                        <SelectItem key={lv.id} value={lv.id}>
+                          {lv.label || lv.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))
             ) : (
               <p className="muted plugin-governance-panel__empty">该插件暂无命令权限声明。</p>
             )}
-          </section>
+          </PluginGovernanceGroup>
 
-          <section className="plugin-governance-panel__group">
-            <header className="plugin-governance-panel__group-head">
-              <h4 className="plugin-governance-panel__group-title">命令冷却</h4>
-              <p className="muted plugin-governance-panel__group-desc">
-                输入秒数后自动保存；留空或设为默认值表示不覆盖默认冷却。
-              </p>
-            </header>
+          <PluginGovernanceGroup
+            title="命令冷却"
+            description="输入秒数后自动保存；留空或设为默认值表示不覆盖默认冷却。"
+          >
             {limitsPlugin?.commands?.length ? (
               limitsPlugin.commands.map((cmd) => (
                 <div key={cmd.command_id} className="plugin-governance-panel__cmd-row plugin-governance-panel__cmd-row--limits">
-                  <div className="min-w-0">
+                  <div className="plugin-governance-panel__cmd-text min-w-0">
                     <div className="plugin-governance-panel__cmd-title">{cmd.label || cmd.command_id}</div>
                     <div className="plugin-governance-panel__cmd-meta">
                       {cmd.trigger_condition || cmd.command_id}
                     </div>
                   </div>
                   <UiInput
+                    wrapClassName="plugin-governance-panel__cmd-control"
                     type="number"
                     value={limitSelections[cmd.command_id] ?? String(cmd.effective_cd_sec)}
                     disabled={saveGov.isPending}
@@ -513,7 +450,7 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
             ) : (
               <p className="muted plugin-governance-panel__empty">该插件暂无命令冷却声明。</p>
             )}
-          </section>
+          </PluginGovernanceGroup>
 
           {saveGov.isPending ? <p className="muted plugin-governance-panel__saving">保存中…</p> : null}
         </section>

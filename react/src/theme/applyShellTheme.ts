@@ -32,7 +32,7 @@ const DEFAULTS: PrefsSlice = {
   radius: "default",
   surfaceStyle: "glass",
   density: "comfortable",
-  accentPreset: "sky",
+  accentPreset: "violet",
   uiPreset: "shadcn",
   sidebarCollapsed: false,
   glassBlur: 12,
@@ -149,7 +149,7 @@ export function writeSidebarCollapsed(collapsed: boolean): void {
 function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
   const r = clampControlRadius(controlPx);
   const sm = Math.max(2, r - 2);
-  /* 贴合 gsuid ~8px */
+  /* 圆角基准约 8px */
   const md = r;
   const lg = r + 2;
   const shell = r;
@@ -166,7 +166,7 @@ function applyRadiusCssVars(el: HTMLElement, controlPx: number): void {
  * 勿写 hub 的 --accent / --primary / --ring：那些是完整色值，供 color-mix 使用。
  */
 function applyShadcnAccentVars(el: HTMLElement, accent: AccentPreset, theme: "dark" | "light"): void {
-  const row = ACCENT_HSL[accent] ?? ACCENT_HSL.sky;
+  const row = ACCENT_HSL[accent] ?? ACCENT_HSL.violet;
   const primary = theme === "dark" ? row.dark : row.light;
   const primaryFg = theme === "dark" ? row.fgDark : row.fgLight;
   // 清掉旧版误写的 HSL 分量，避免盖住 hub 完整色值
