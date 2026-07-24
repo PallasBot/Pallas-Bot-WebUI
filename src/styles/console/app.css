@@ -14106,6 +14106,10 @@ html[data-layout="hub"] .plugin-config-page__raw-toml.textarea {
   gap: 12px;
 }
 
+.plugin-config-page {
+  container-type: inline-size;
+}
+
 .plugin-config-group-section {
   display: grid;
   gap: 10px;
@@ -16893,6 +16897,17 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 
 .home-kpi-head > .home-kpi-bar {
   flex: 1 1 480px;
+}
+
+@media (min-width: 861px) {
+  .home-kpi-head {
+    flex-wrap: nowrap;
+  }
+
+  .home-kpi-head > .home-kpi-bar {
+    flex: 1 1 0;
+  }
+
 }
 
 @media (min-width: 900px) {
