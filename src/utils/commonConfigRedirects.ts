@@ -1,7 +1,6 @@
-import type { RouteLocationRaw } from "vue-router";
+/** 弹层定位：旧 /common-config 深链去向 */
 
-/** 已从通用配置迁往插件页的分区（含 legacy id）。 */
-export const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
+const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
   "cmd_perm",
   "command_limits",
   "pb_webui",
@@ -19,26 +18,14 @@ export const REMOVED_COMMON_CONFIG_SECTIONS = new Set([
   "corpus_federation",
 ]);
 
-export function commonConfigSectionRedirectTarget(
-  sectionId: string,
-): { name: "plugins"; params?: { name: string } } | null {
+function commonConfigSectionRedirectTarget(sectionId: string): string | null {
   const id = sectionId.trim();
   if (!id || !REMOVED_COMMON_CONFIG_SECTIONS.has(id)) return null;
-  if (id === "cmd_perm" || id === "command_limits") {
-    return { name: "plugins" };
-  }
-  if (id === "pb_webui" || id === "pallas_webui") {
-    return { name: "plugins", params: { name: "pb_webui" } };
-  }
-  if (id === "pb_protocol" || id === "pallas_protocol") {
-    return { name: "plugins", params: { name: "pb_protocol" } };
-  }
-  if (id === "community_stats") {
-    return { name: "plugins", params: { name: "pb_stats" } };
-  }
-  if (id === "repeater_learn") {
-    return { name: "plugins", params: { name: "repeater" } };
-  }
+  if (id === "cmd_perm" || id === "command_limits") return "/plugins";
+  if (id === "pb_webui" || id === "pallas_webui") return "/plugins/pb_webui";
+  if (id === "pb_protocol" || id === "pallas_protocol") return "/plugins/pb_protocol";
+  if (id === "community_stats") return "/plugins/pb_stats";
+  if (id === "repeater_learn") return "/plugins/repeater";
   if (
     id === "mail" ||
     id === "message_scrub" ||
@@ -47,26 +34,16 @@ export function commonConfigSectionRedirectTarget(
     id === "control_plane" ||
     id === "corpus_federation"
   ) {
-    return { name: "plugins", params: { name: "pb_core" } };
+    return "/plugins/pb_core";
   }
-  return { name: "plugins", params: { name: "help" } };
+  return "/plugins/help";
 }
 
-/** 旧 /common-config 链接统一重定向（含 query.section 与 path 段 id）。 */
-export function commonConfigLegacyRedirectTarget(sectionId: string): RouteLocationRaw {
+/** 旧 /common-config 链接统一重定向目标 path */
+export function commonConfigLegacyRedirectPath(sectionId: string): string {
   const id = sectionId.trim();
-  if (id === "llm") {
-    return { name: "ai-config", params: { section: "strategy" } };
-  }
-  if (id === "arknights_kb") {
-    return { name: "ai-config", params: { section: "knowledge" } };
-  }
-  if (id === "service_gateways") {
-    return { name: "ai-config", params: { section: "draw" } };
-  }
-  const pluginRedirect = commonConfigSectionRedirectTarget(id);
-  if (pluginRedirect) {
-    return pluginRedirect;
-  }
-  return { name: "plugins" };
+  if (id === "llm") return "/ai/config/dialogue?panel=form";
+  if (id === "arknights_kb") return "/ai/config/dialogue?panel=arknights";
+  if (id === "service_gateways") return "/ai/config/media?panel=draw";
+  return commonConfigSectionRedirectTarget(id) || "/plugins";
 }

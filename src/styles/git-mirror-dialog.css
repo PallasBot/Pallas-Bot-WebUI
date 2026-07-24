@@ -1,0 +1,317 @@
+/* Migrated from Vue GitMirrorDialog.vue scoped styles (P1) */
+.console-modal__dialog.git-mirror-dialog,
+.ui-dialog__panel.git-mirror-dialog {
+  width: min(920px, 100%);
+}
+.console-modal__dialog.git-mirror-switch-dialog,
+.ui-dialog__panel.git-mirror-switch-dialog {
+  width: min(420px, 100%);
+}
+
+.git-mirror-dialog__bd {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.git-mirror-dialog__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.git-mirror-dialog__err {
+  margin: 0;
+  color: var(--console-danger, #f87171);
+}
+
+.git-mirror-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.git-mirror-dialog__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.git-mirror-dialog__section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.git-mirror-dialog__section-meta {
+  font-size: 12px;
+}
+
+.git-mirror-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.git-mirror-dialog__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.git-mirror-dialog__select,
+.git-mirror-dialog__input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.git-mirror-dialog__select .ui-select,
+.git-mirror-dialog__select.ui-select,
+.git-mirror-dialog__input .ui-input,
+.git-mirror-dialog__input.ui-input {
+  border-radius: var(--radius-control, 8px);
+  min-height: 40px;
+  box-shadow: none;
+}
+
+.git-mirror-dialog__scopes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-control, var(--control-bg)) 55%, transparent);
+}
+
+.git-mirror-dialog__scope {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.git-mirror-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.git-mirror-dialog__actions-spacer {
+  flex: 1 1 8px;
+  min-width: 8px;
+}
+
+.git-mirror-dialog__table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.git-mirror-dialog__table {
+  margin: 0;
+}
+
+.git-mirror-dialog__table th,
+.git-mirror-dialog__table td {
+  vertical-align: top;
+}
+
+.git-mirror-dialog__plugin-id {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.git-mirror-dialog__plugin-path {
+  font-size: 11px;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.git-mirror-dialog__remote {
+  font-size: 12px;
+  max-width: 280px;
+  word-break: break-all;
+}
+
+.git-mirror-dialog__col-action {
+  width: 88px;
+  white-space: nowrap;
+}
+
+.git-mirror-dialog__empty {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px dashed color-mix(in srgb, var(--border) 90%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.git-mirror-dialog__cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 10px;
+}
+
+.git-mirror-dialog__card {
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-control, 8px);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: color-mix(in srgb, var(--surface-control, var(--control-bg)) 40%, transparent);
+}
+
+.git-mirror-dialog__coverage {
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.git-mirror-dialog__coverage-title {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.git-mirror-dialog__coverage-title::-webkit-details-marker {
+  display: none;
+}
+
+.git-mirror-dialog__coverage-title::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s var(--ease, ease);
+}
+
+.git-mirror-dialog__coverage[open] .git-mirror-dialog__coverage-title::before {
+  transform: rotate(90deg);
+}
+
+.git-mirror-dialog__coverage-list {
+  margin: 0;
+  padding: 0 12px 12px 1.6em;
+}
+
+.git-mirror-dialog__coverage-list code {
+  font-size: 11px;
+}
+
+.git-mirror-dialog__section-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.git-mirror-dialog__section-desc code {
+  font-size: 11px;
+}
+
+.git-mirror-dialog__scope-hint {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.git-mirror-dialog__action-muted {
+  font-size: 12px;
+}
+
+.git-mirror-dialog__card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.git-mirror-dialog__card-remote {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.git-mirror-dialog__confirm {
+  margin-top: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-control, 8px);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.git-mirror-dialog__confirm-msg {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.git-mirror-dialog__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .git-mirror-dialog__scopes {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .git-mirror-dialog__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .git-mirror-dialog__actions-spacer {
+    display: none;
+  }
+
+  .git-mirror-dialog__actions .ui-btn {
+    width: 100%;
+  }
+
+  .git-mirror-dialog__confirm-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .git-mirror-dialog__confirm-actions .ui-btn {
+    width: 100%;
+  }
+
+  .git-mirror-dialog__table-wrap {
+    display: none;
+  }
+
+  .git-mirror-dialog__cards--targets,
+  .git-mirror-dialog__cards--official,
+  .git-mirror-dialog__cards--plugins {
+    display: flex;
+    flex-direction: column;
+  }
+}

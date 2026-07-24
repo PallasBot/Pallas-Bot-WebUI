@@ -1,0 +1,108 @@
+/* Home / shell canvas: one elev layer under cards; sys meters flat on card */
+
+html[data-layout="hub"] .shell__main-inner--home {
+  background: var(--bg-elev);
+}
+
+/*
+ * shadcn Card on home (`home-panel`): keep Card API, restore former hub .home-card metrics.
+ * Header 12×16 · body 14/16/16 · hub radius / border / shadow.
+ */
+html[data-layout="hub"] .home-page .home-panel {
+  border-radius: var(--hub-radius-lg, var(--radius-lg));
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  background: var(--bg-card);
+  box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"][data-theme="light"] .home-page .home-panel {
+  background: #ffffff;
+}
+
+html[data-layout="hub"][data-surface="solid"][data-theme="light"] .home-page .home-panel {
+  border-color: rgba(15, 23, 42, 0.07);
+}
+
+html[data-layout="hub"] .home-page .home-panel > .home-panel__hd {
+  padding: 12px 16px;
+  gap: 12px;
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+html[data-layout="hub"] .home-page .home-panel > .home-panel__bd {
+  padding: 14px 16px 16px;
+}
+
+html[data-layout="hub"] .home-page .home-panel .home-panel__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+html[data-layout="hub"] .home-page .home-panel .home-panel__tag {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+html[data-layout="hub"] .home-page .home-panel .home-panel__tag.home-card__tag--ok {
+  color: color-mix(in srgb, #22c55e 80%, var(--text));
+}
+
+/* legacy .home-card + KPI bar surface (KPI still custom) */
+html[data-layout="hub"] .home-page .home-card,
+html[data-layout="hub"] .home-page .home-kpi-bar {
+  background: var(--bg-card);
+}
+
+html[data-layout="hub"][data-theme="light"] .home-page .home-card,
+html[data-layout="hub"][data-theme="light"] .home-page .home-kpi-bar {
+  background: #ffffff;
+}
+
+/* Inner KPI / sys tiles: flat on card — dividers only, no canvas-colored nests */
+html[data-layout="hub"] .home-page .home-sys-card,
+html[data-layout="hub"] .home-page .home-kpi-cell,
+html[data-layout="hub"] .home-page .metric-tile {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-layout="hub"] .home-page .home-sys-card {
+  border: none;
+  padding: 10px 4px;
+  border-radius: 0;
+}
+
+html[data-layout="hub"] .home-page .home-sys-grid > .home-sys-card + .home-sys-card {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+html[data-layout="hub"] .home-page .home-sys-card--gpu {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+/*
+ * Progress fills follow hub --accent (full color, e.g. #a78bfa).
+ * Do not hardcode sky: accent presets (indigo/rose/…) must update these bars.
+ * (Older workaround used fixed #hex when Tailwind overwrote --accent with HSL components.)
+ */
+.home-sys-card__bar > span,
+.home-sys-card__core-fill,
+.home-uptime-hours__fill {
+  background: var(--accent);
+}
+
+.home-sys-card--warn .home-sys-card__bar > span {
+  background: var(--warn, #f59e0b);
+}
+
+.home-sys-card__bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}

@@ -1,4 +1,5 @@
 import axios, { isAxiosError } from "axios";
+import { isConsoleLoginPath, redirectToConsoleLogin } from "@/api/consoleAuth";
 
 // API 基础路径
 const base = (import.meta.env.BASE_URL as string) || "/pallas/";
@@ -76,22 +77,20 @@ export const DB_BACKUP_TIMEOUT_MS = 3_600_000;
 
 let authRedirectScheduled = false;
 
-/** 会话失效：回到后端登录页（整页），避免停在 SPA 内无效状态 */
+/** 会话失效：回到 SPA 登录页（整页），避免停在壳内无效状态 */
 function redirectToLoginPage(reason: string) {
   if (typeof window === "undefined" || authRedirectScheduled) return;
-  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
-  const path = window.location.pathname || "";
-  if (path.endsWith("/login") || path.endsWith("/login/")) return;
+  if (isConsoleLoginPath()) return;
   authRedirectScheduled = true;
-  const q = new URLSearchParams({ reason });
-  window.location.assign(`${root}/login?${q.toString()}`);
+  redirectToConsoleLogin(reason);
 }
 
 http.interceptors.response.use(
   (r) => r,
   (err) => {
     const status = err?.response?.status;
-    if (status === 401) {
+    const url = String(err?.config?.url ?? "");
+    if (status === 401 && !url.includes("/auth/login")) {
       redirectToLoginPage("控制台登录已失效或口令不正确，请重新登录。");
     }
     return Promise.reject(err);

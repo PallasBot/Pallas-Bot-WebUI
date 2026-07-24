@@ -117,13 +117,13 @@ export function hasPluginLoadWhere(
 
 export function catalogProcessHint(catalog?: PluginCatalogProcessRole): string {
   if (catalog === "unified") {
-    return "当前为单进程部署：下列「加载」均为本进程；启用多进程分片后，请以主节点与各分片节点内的插件目录为准。";
+    return "单进程部署：下列加载状态均指本进程。";
   }
   if (catalog === "hub") {
-    return "目录来自主节点：标注为分片节点的插件在各分片节点运行，主节点未加载属正常。";
+    return "目录来自主节点；分片插件在各节点运行属正常。";
   }
   if (catalog === "worker") {
-    return "目录来自当前分片节点：仅反映本分片已加载的插件。";
+    return "目录来自当前分片节点。";
   }
   return "";
 }
