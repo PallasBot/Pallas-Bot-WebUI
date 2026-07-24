@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.3] - 2026-07-24
+
+### 🐛 错误修复
+
+* fix(styles): 修复分区注释被提前闭合导致样式失效 ([2a2965e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a2965ea6ab1f7edc66de3228af53d750cdf016b))
+
+**完整变更**: [`v0.7.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.2...HEAD)
+
+
 ## [0.7.2] - 2026-07-24
 
 ### 🔨 其他更改
