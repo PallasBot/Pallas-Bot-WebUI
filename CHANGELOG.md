@@ -6,6 +6,17 @@
 
 <!-- entries -->
 
+## [0.7.5] - 2026-07-24
+
+### 🐛 错误修复
+
+* fix(console): 看板中文名与布局，页头版本与主题修正 ([c388077](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c388077b9b2ee076e3f06e5fd7101c4b8d6952f0))
+* fix(console): 看板中文名与布局，移除流量编排并修正页头版本展示 ([e0c8b66](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e0c8b6659ddba8d70bee6e67c6863b87c5ef7711))
+* fix(ui): Git 镜像源弹窗窄屏留 16px 呼吸距 ([5f1983f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5f1983fb2d075d695884e2762433f31456add87d))
+
+**完整变更**: [`v0.7.4...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.4...HEAD)
+
+
 ## [0.7.4] - 2026-07-24
 
 ### 🐛 错误修复
