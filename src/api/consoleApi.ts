@@ -86,7 +86,6 @@ import type {
   ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
   LlmTaskStatsData,
-  LlmWizardStatusData,
   PersonaObserveData,
   MessageStatsData,
   CommunityStatsData,
@@ -857,20 +856,89 @@ export async function putLlmProvidersConfig(
   body: LlmProvidersConfig,
 ): Promise<LlmProvidersSaveResult> {
   const payload = {
-    providers: body.providers.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      base_url: row.base_url,
-      api_key: row.api_key ?? "",
-      api_key_env: row.api_key_env,
-      default_model: row.default_model,
-      enabled: row.enabled,
-      task_models: row.task_models,
-    })),
+    providers: body.providers.map((row) => {
+      const raw = row as {
+        id: string;
+        kind?: string;
+        base_url?: string;
+        api_key?: string;
+        api_keys?: string[];
+        api_key_env?: string;
+        default_model?: string;
+        enabled?: boolean;
+        task_models?: Record<string, string>;
+        capabilities?: string[];
+        model_effort?: string;
+        request_method?: string;
+      };
+      const apiKeys = (Array.isArray(raw.api_keys) ? raw.api_keys : [])
+        .map((k: string) => String(k || "").trim())
+        .filter(Boolean);
+      const apiKey = String(raw.api_key ?? "").trim() || apiKeys[0] || "";
+      const apiKeyEnv = String(raw.api_key_env ?? "").trim();
+      const item: Record<string, unknown> = {
+        id: raw.id,
+        kind: raw.kind,
+        base_url: raw.base_url,
+        api_key_env: apiKeyEnv,
+        default_model: raw.default_model,
+        enabled: raw.enabled,
+        task_models: raw.task_models,
+        capabilities: Array.isArray(raw.capabilities) ? raw.capabilities : [],
+        model_effort: raw.model_effort ?? "",
+        request_method: raw.request_method || "chat_completions",
+      };
+      // 空密钥不传，避免后端误清空已保存密钥
+      if (apiKeys.length) item.api_keys = apiKeys;
+      if (apiKey) item.api_key = apiKey;
+      return item;
+    }),
     routing: body.routing,
   };
   return consoleOpenapiPut(
     "/common-config/llm/providers",
+    payload,
+  ) as Promise<LlmProvidersSaveResult>;
+}
+
+/** 只保存单个提供方，避免整表 PUT 误擦其他提供方已存密钥。 */
+export async function putLlmProvider(row: {
+  id: string;
+  kind?: string;
+  base_url?: string;
+  api_key?: string;
+  api_keys?: string[];
+  api_key_env?: string;
+  default_model?: string;
+  enabled?: boolean;
+  task_models?: Record<string, string>;
+  capabilities?: string[];
+  model_effort?: string;
+  request_method?: string;
+}): Promise<LlmProvidersSaveResult> {
+  const id = String(row.id || "").trim();
+  if (!id) throw new Error("provider id is required");
+  const apiKeys = (Array.isArray(row.api_keys) ? row.api_keys : [])
+    .map((k: string) => String(k || "").trim())
+    .filter(Boolean);
+  const apiKey = String(row.api_key ?? "").trim() || apiKeys[0] || "";
+  const apiKeyEnv = String(row.api_key_env ?? "").trim();
+  const payload: Record<string, unknown> = {
+    id,
+    kind: row.kind,
+    base_url: row.base_url,
+    api_key_env: apiKeyEnv,
+    default_model: row.default_model,
+    enabled: row.enabled,
+    task_models: row.task_models,
+    capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
+    model_effort: row.model_effort ?? "",
+    request_method: row.request_method || "chat_completions",
+  };
+  if (apiKeys.length) payload.api_keys = apiKeys;
+  if (apiKey) payload.api_key = apiKey;
+  return consoleOpenapiPut(
+    `/common-config/llm/providers/${encodeURIComponent(id)}`,
     payload,
   ) as Promise<LlmProvidersSaveResult>;
 }
@@ -883,6 +951,7 @@ export async function fetchLlmProviderModels(
     api_key?: string;
     api_key_env?: string;
     kind?: string;
+    request_method?: string;
   },
 ): Promise<LlmProviderModelsResult> {
   const path = `/common-config/llm/providers/${encodeURIComponent(providerId)}/models`;
@@ -891,6 +960,7 @@ export async function fetchLlmProviderModels(
     api_key: opts?.api_key ?? "",
     api_key_env: opts?.api_key_env ?? "",
     kind: opts?.kind ?? "",
+    request_method: opts?.request_method ?? "",
   };
   const { data } = await http.post<{ ok: boolean; data: LlmProviderModelsResult }>(path, body);
   if (!data?.ok || !data.data) {
@@ -899,7 +969,7 @@ export async function fetchLlmProviderModels(
   return data.data;
 }
 
-/** 实时测试指定 Provider 的连通性（经 BFF 代理 AI 仓 ping）。 */
+/** 实时测试指定 Provider 的连通性（Bot 直连上游，不经 AI Runtime）。 */
 export async function postLlmProviderTest(
   providerId: string,
 ): Promise<LlmProviderTestResult> {
@@ -929,12 +999,6 @@ export async function fetchLlmRuntimeOverview(): Promise<LlmRuntimeOverviewData>
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>(
     "/common-config/llm/runtime-overview",
   )) as LlmRuntimeOverviewData;
-}
-
-export async function fetchLlmWizardStatus(): Promise<LlmWizardStatusData> {
-  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/wizard/status"]["get"]>(
-    "/common-config/llm/wizard/status",
-  )) as LlmWizardStatusData;
 }
 
 export async function fetchLlmHistorySessions(params?: {
@@ -1210,6 +1274,242 @@ export async function postConversationKernelMemoryDelete(body: {
   return consoleOpenapiPost<
     ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/delete"]["post"]
   >("/llm/conversation-kernel/memory/delete", { id: body.id, bot_id: body.botId });
+}
+
+export async function postConversationKernelMemory(body: {
+  botId: number;
+  groupId?: number | null;
+  content: string;
+}): Promise<{ bot_id: number; group_id: number | null }> {
+  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory"]["post"]>(
+    "/llm/conversation-kernel/memory",
+    {
+      bot_id: body.botId,
+      content: body.content,
+      ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+    },
+  );
+}
+
+export async function fetchLlmHistoryStats(params?: {
+  botId?: number | null;
+  groupId?: number | null;
+  limit?: number;
+}): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/stats"]["get"]>(
+    "/common-config/llm/history/stats",
+    {
+      params: {
+        ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+        ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+        ...(params?.limit ? { limit: params.limit } : {}),
+      },
+    },
+  )) as Record<string, unknown>;
+}
+
+export async function postLlmHistorySessionClear(body: {
+  botId: number;
+  groupId?: number | null;
+  userId?: number | null;
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/session/clear"]["post"]
+  >("/common-config/llm/history/session/clear", {
+    bot_id: body.botId,
+    ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+    ...(body.userId != null && body.userId > 0 ? { user_id: body.userId } : {}),
+  });
+}
+
+export async function postLlmHistorySessionInject(body: {
+  botId: number;
+  groupId?: number | null;
+  userId: number;
+  content: string;
+  role?: "user" | "assistant";
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/history/session/inject"]["post"]
+  >("/common-config/llm/history/session/inject", {
+    bot_id: body.botId,
+    user_id: body.userId,
+    content: body.content,
+    role: body.role ?? "user",
+    ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+  });
+}
+
+export async function fetchConversationKernelMemoryStats(params?: {
+  botId?: number | null;
+  groupId?: number | null;
+}): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/stats"]["get"]
+  >("/llm/conversation-kernel/memory/stats", {
+    params: {
+      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+      ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+    },
+  })) as Record<string, unknown>;
+}
+
+export async function postConversationKernelMemoryRetrieve(body: {
+  botId: number;
+  groupId?: number | null;
+  query: string;
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/retrieve"]["post"]
+  >("/llm/conversation-kernel/memory/retrieve", {
+    bot_id: body.botId,
+    query: body.query,
+    ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+  });
+}
+
+export async function postConversationKernelMemoryClear(body: {
+  botId: number;
+  groupId?: number | null;
+  dryRun?: boolean;
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/clear"]["post"]
+  >("/llm/conversation-kernel/memory/clear", {
+    bot_id: body.botId,
+    dry_run: Boolean(body.dryRun),
+    ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+  });
+}
+
+export async function postConversationKernelMemoryLifecycle(body: {
+  id: number;
+  action: "reinforce" | "weaken" | "freeze" | "unfreeze" | "forget";
+  entityTags?: string[];
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/lifecycle"]["post"]
+  >("/llm/conversation-kernel/memory/lifecycle", {
+    id: body.id,
+    action: body.action,
+    ...(body.entityTags ? { entity_tags: body.entityTags } : {}),
+  });
+}
+
+export async function fetchConversationKernelMemoryPreferences(params?: {
+  botId?: number | null;
+  groupId?: number | null;
+  limit?: number;
+}): Promise<{ items: Array<Record<string, unknown>>; count: number }> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/preferences"]["get"]
+  >("/llm/conversation-kernel/memory/preferences", {
+    params: {
+      ...(params?.botId != null && params.botId > 0 ? { bot_id: params.botId } : {}),
+      ...(params?.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+      ...(params?.limit ? { limit: params.limit } : {}),
+    },
+  })) as { items: Array<Record<string, unknown>>; count: number };
+}
+
+export async function postConversationKernelMemoryPreference(body: {
+  botId: number;
+  groupId?: number | null;
+  rule: string;
+  polarity?: string;
+  context?: string;
+  id?: string;
+  isActive?: boolean;
+}): Promise<Record<string, unknown>> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/memory/preferences"]["post"]
+  >("/llm/conversation-kernel/memory/preferences", {
+    bot_id: body.botId,
+    rule: body.rule,
+    polarity: body.polarity ?? "do",
+    context: body.context ?? "",
+    is_active: body.isActive ?? true,
+    ...(body.groupId != null && body.groupId >= 0 ? { group_id: body.groupId } : {}),
+    ...(body.id ? { id: body.id } : {}),
+  });
+}
+
+export async function fetchConversationKernelMidTerm(params: {
+  botId: number;
+  groupId?: number | null;
+  userId?: number | null;
+  limit?: number;
+}): Promise<{ items: Array<Record<string, unknown>>; count: number }> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/mid-term"]["get"]>(
+    "/llm/conversation-kernel/mid-term",
+    {
+      params: {
+        bot_id: params.botId,
+        ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+        ...(params.userId != null && params.userId > 0 ? { user_id: params.userId } : {}),
+        ...(params.limit ? { limit: params.limit } : {}),
+      },
+    },
+  )) as { items: Array<Record<string, unknown>>; count: number };
+}
+
+export async function fetchLlmSessionOpsConfig(): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/session"]["get"]>(
+    "/common-config/llm/session",
+  )) as Record<string, unknown>;
+}
+
+export async function putLlmSessionOpsConfig(values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/session"]["put"]>(
+    "/common-config/llm/session",
+    values,
+  );
+}
+
+export async function fetchLlmMemoryOpsConfig(): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/memory"]["get"]>(
+    "/common-config/llm/memory",
+  )) as Record<string, unknown>;
+}
+
+export async function putLlmMemoryOpsConfig(values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/common-config/llm/memory"]["put"]>(
+    "/common-config/llm/memory",
+    values,
+  );
+}
+
+export async function fetchLlmPersonaExport(params: {
+  botId: number;
+  groupId?: number | null;
+  plainText?: string;
+  purpose?: string;
+}): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/export"]["get"]>(
+    "/common-config/llm/persona/export",
+    {
+      params: {
+        bot_id: params.botId,
+        ...(params.groupId != null && params.groupId >= 0 ? { group_id: params.groupId } : {}),
+        ...(params.plainText ? { plain_text: params.plainText } : {}),
+        ...(params.purpose ? { purpose: params.purpose } : {}),
+      },
+    },
+  )) as Record<string, unknown>;
+}
+
+export async function fetchLlmPersonaGroupStyle(params: {
+  groupId: number;
+  windowHours?: number;
+}): Promise<Record<string, unknown>> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/group-style"]["get"]
+  >("/common-config/llm/persona/group-style", {
+    params: {
+      group_id: params.groupId,
+      ...(params.windowHours ? { window_hours: params.windowHours } : {}),
+    },
+  })) as Record<string, unknown>;
 }
 
 export async function fetchConversationKernelRelationshipNotes(params: {

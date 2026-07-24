@@ -174,6 +174,21 @@ export function extractReadmeAvatarUrl(markdown: string, repositoryUrl: string):
   return null;
 }
 
+function wrapReadmeTables(html: string): string {
+  if (typeof DOMParser === "undefined") {
+    return html.replace(/<table\b[\s\S]*?<\/table>/gi, (table) => `<div class="readme-table-wrap">${table}</div>`);
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const table of Array.from(doc.querySelectorAll("table"))) {
+    if (table.parentElement?.classList.contains("readme-table-wrap")) continue;
+    const wrap = doc.createElement("div");
+    wrap.className = "readme-table-wrap";
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+  }
+  return doc.body.innerHTML;
+}
+
 export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: string | null): string {
   let raw = (markdown || "").trim();
   if (!raw) return "";
@@ -184,6 +199,7 @@ export function readmeMarkdownToSafeHtml(markdown: string, repositoryUrl?: strin
   if (repositoryUrl) {
     parsed = rewriteHtmlAssetUrls(parsed, repositoryUrl);
   }
+  parsed = wrapReadmeTables(parsed);
   return DOMPurify.sanitize(parsed, {
     ALLOWED_TAGS: [...README_PURIFY.ALLOWED_TAGS],
     ALLOWED_ATTR: [...README_PURIFY.ALLOWED_ATTR],

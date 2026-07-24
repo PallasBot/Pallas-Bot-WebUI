@@ -9,11 +9,6 @@ export type InstallJobCompletePayload = {
     message?: string;
     needs_restart?: boolean;
     restart_scheduled?: boolean;
-    output_tail?: string;
-    wrote_ai_extension?: boolean;
-    wrote_ai_server?: boolean;
-    ai_root?: string;
-    exit_code?: number;
   } | null;
 };
 

@@ -1,251 +1,131 @@
-import { isSidebarPinToken, SIDEBAR_PIN_DEFINITIONS } from "./sidebarPins";
+import type { LucideIcon } from "lucide-react";
 import {
-  AI_CONFIG_SECTION_PATHS,
-  AI_CONFIG_SIDEBAR_PATH,
-  AI_TOP_LEVEL_PATHS,
-} from "./aiConfigSections";
-import { AI_SIDEBAR_NAV } from "./aiObservationNav";
-import type { ConsoleNavIconId } from "@/config/consoleNavIcons";
-import { resolveConsoleNavIcon } from "@/config/consoleNavIcons";
+  Activity,
+  Archive,
+  Blocks,
+  Database,
+  Download,
+  LayoutDashboard,
+  LineChart,
+  Palette,
+  Radio,
+  ScrollText,
+  Server,
+  Sparkles,
+  Store,
+  Users,
+  Globe2,
+} from "lucide-react";
+import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
-export interface MainNavItem {
+export type MainNavItem = {
   to: string;
   label: string;
-  icon: ConsoleNavIconId;
-  description: string;
-  /** 侧栏分组：相邻项相同则只显示一次分组标题 */
+  /**
+   * 分组名；空字符串表示顶层独立项（不套折叠分组头）。
+   */
   section: string;
-}
-
-/** 侧栏主导航默认项与顺序（「更新」固定在最后） */
-export const MAIN_NAV_ITEMS: MainNavItem[] = [
-  { to: "/", label: "仪表盘", icon: "dashboard", description: "运行概览", section: "运行与观测" },
-  { to: "/charts", label: "数据看板", icon: "charts", description: "Bot 与 LLM 趋势", section: "运行与观测" },
-  { to: "/logs", label: "运行日志", icon: "logs", description: "检索导出", section: "运行与观测" },
-  { to: "/log-errors", label: "日志报错", icon: "alert", description: "错误归档", section: "运行与观测" },
-  { to: "/instances", label: "数据库实例", icon: "server", description: "Bot 连接", section: "接入与实例" },
-  { to: "/protocol", label: "协议连接", icon: "radio", description: "Bot 在线账号", section: "接入与实例" },
-  { to: "/plugins", label: "插件列表", icon: "blocks", description: "已加载", section: "模块与配置" },
-  { to: "/plugin-store", label: "插件商店", icon: "store", description: "官方扩展与社区插件", section: "模块与配置" },
-  ...AI_SIDEBAR_NAV.map((item) => ({
-    to: item.path,
-    label: item.label,
-    icon: item.icon,
-    description: item.lead,
-    section: "AI",
-  })),
-  { to: "/friends-groups", label: "好友与群聊", icon: "users", description: "列表审批", section: "对话与对象" },
-  { to: "/database", label: "数据库", icon: "database", description: "存储明细", section: "数据与扩展" },
-  { to: "/database/backups", label: "备份管理", icon: "backup", description: "创建与清理", section: "数据与扩展" },
-  { to: "/community", label: "统计与语料", icon: "globe", description: "社区统计", section: "数据与扩展" },
-  { to: "/preferences", label: "偏好", icon: "palette", description: "外观口令", section: "本机与维护" },
-  { to: "/update", label: "更新", icon: "download", description: "版本升级", section: "本机与维护" },
-];
-
-/** 顶栏/路由与侧栏图标对齐 */
-export function mainNavIconForPath(routePath: string, routeHash?: string): ConsoleNavIconId {
-  const path = routePath || "/";
-  const hash = (routeHash || "").trim();
-  for (const pin of SIDEBAR_PIN_DEFINITIONS) {
-    if (pin.path === path && pin.hash === hash) return resolveConsoleNavIcon(pin.icon);
-  }
-  if (path.startsWith("/plugins/") && path !== "/plugins") {
-    return MAIN_NAV_ITEMS.find((i) => i.to === "/plugins")?.icon ?? "blocks";
-  }
-  if (path === "/plugin-store") {
-    return MAIN_NAV_ITEMS.find((i) => i.to === "/plugin-store")?.icon ?? "store";
-  }
-  const aiRow = MAIN_NAV_ITEMS.find((i) => path === i.to || path.startsWith(`${i.to}/`));
-  if (aiRow && path.startsWith("/ai/")) {
-    return aiRow.icon;
-  }
-  if (path === "/database/backups" || path.startsWith("/database/backups/")) {
-    return "backup";
-  }
-  const first = path.split("/").filter(Boolean)[0];
-  const key = first ? `/${first}` : "/";
-  const row = MAIN_NAV_ITEMS.find((i) => i.to === key);
-  if (row) return row.icon;
-  return "default";
-}
-
-const DEFAULT_ORDER = MAIN_NAV_ITEMS.map((i) => i.to);
-const ALLOWED_MAIN = new Set(DEFAULT_ORDER);
-
-/** 与 `normalizeMainNavOrder` 同步：新装或重置时的默认顺序 */
-export const DEFAULT_SIDEBAR_NAV_ORDER = [...DEFAULT_ORDER];
-
-/** 旧侧栏顺序中的路径归并（移除独立「控制台口令」入口后兼容本地存储） */
-function canonicalNavPath(path: string): string {
-  const p = path.trim();
-  if (p === "/security") return "/preferences";
-  if (p === "/bot-social-config") return "/friends-groups";
-  if (p === "/corpus-config" || p === "/community-stats-config" || p === "/common-config") return "";
-  if (p === "/ai") return "/ai/home";
-  if (p.startsWith("/ai/home")) return "/ai/home";
-  if (p.startsWith("/ai/runtime")) return "/ai/home";
-  if (p.startsWith("/ai/statistics")) return "/ai/statistics";
-  if (p.startsWith("/ai/history")) return "/ai/history";
-  if (p.startsWith("/ai/wizard")) return "/ai/wizard";
-  if (p.startsWith("/ai/config/")) return AI_CONFIG_SIDEBAR_PATH;
-  if (p.startsWith("/ai/")) return AI_CONFIG_SIDEBAR_PATH;
-  return p;
-}
+  icon: LucideIcon;
+};
 
 /**
- * 校验并去重侧栏 token 列表。
- * - 合法项：`/` 起主导航 path，或 `pin:` 固定子区块（见 sidebarPins）。
- * - 不再自动补全被用户隐藏的项；若结果为空则回退为默认顺序。
+ * 侧栏主导航：常用页独立置顶/置底，其余进折叠组。
  */
-export function normalizeMainNavOrder(saved: string[] | undefined | null): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  if (Array.isArray(saved)) {
-    for (const raw of saved) {
-      if (typeof raw !== "string") continue;
-      const p = canonicalNavPath(raw);
-      if (!p || seen.has(p)) continue;
-      if (ALLOWED_MAIN.has(p) || isSidebarPinToken(p)) {
-        out.push(p);
-        seen.add(p);
-      }
+export const MAIN_NAV_ITEMS: MainNavItem[] = [
+  { to: "/", label: "仪表盘", section: "", icon: LayoutDashboard },
+  { to: "/charts", label: "数据看板", section: "", icon: LineChart },
+  { to: "/logs", label: "运行日志", section: "", icon: ScrollText },
+  { to: "/log-errors", label: "日志报错", section: "", icon: Activity },
+  { to: "/instances", label: "数据库实例", section: "接入与社交", icon: Server },
+  { to: "/protocol", label: "协议连接", section: "接入与社交", icon: Radio },
+  { to: "/friends-groups", label: "好友与群聊", section: "接入与社交", icon: Users },
+  { to: "/plugins", label: "插件列表", section: "插件", icon: Blocks },
+  { to: "/plugin-store", label: "插件商店", section: "插件", icon: Store },
+  { to: AI_OBSERVATION_DEFAULT_PATH, label: "AI 观测", section: "AI", icon: LayoutDashboard },
+  { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
+  { to: "/database", label: "数据库", section: "数据", icon: Database },
+  { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
+  { to: "/community", label: "统计与语料", section: "数据", icon: Globe2 },
+  { to: "/preferences", label: "偏好", section: "", icon: Palette },
+  { to: "/update", label: "更新", section: "", icon: Download },
+];
+
+export type NavEntry =
+  | { kind: "item"; item: MainNavItem }
+  | { kind: "group"; section: string; items: MainNavItem[] };
+
+/** 按 MAIN_NAV_ITEMS 顺序折叠：连续同 section 成组，section 为空则独立 */
+export function buildNavEntries(items: MainNavItem[] = MAIN_NAV_ITEMS): NavEntry[] {
+  const entries: NavEntry[] = [];
+  for (const item of items) {
+    const section = item.section.trim();
+    if (!section) {
+      entries.push({ kind: "item", item });
+      continue;
+    }
+    const last = entries[entries.length - 1];
+    if (last?.kind === "group" && last.section === section) {
+      last.items.push(item);
+    } else {
+      entries.push({ kind: "group", section, items: [item] });
     }
   }
-  if (!out.length) return [...DEFAULT_ORDER];
-  return out;
+  return entries;
 }
 
-/** 将旧版存储中的「更新」统一挪到末尾（偏好之后） */
-export function migrateSidebarOrderUpdateToEnd(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  const rest = base.filter((t) => t !== "/update");
-  const had = base.includes("/update");
-  if (had) return [...rest, "/update"];
-  return rest.length ? rest : [...DEFAULT_ORDER];
+/** 分组头图标：取组内第一项 */
+export function sectionIcon(section: string): LucideIcon {
+  const first = MAIN_NAV_ITEMS.find((i) => i.section === section);
+  return first?.icon ?? LayoutDashboard;
 }
 
-/** WebUI 新增「插件商店」页：插入到「插件」之后 */
-export function migrateSidebarOrderPluginStore(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  if (base.includes("/plugin-store")) return base;
-  const pluginsIdx = base.indexOf("/plugins");
-  if (pluginsIdx >= 0) {
-    const out = [...base];
-    out.splice(pluginsIdx + 1, 0, "/plugin-store");
-    return out;
-  }
-  return [...base, "/plugin-store"];
+function isAiObservationPath(pathname: string): boolean {
+  const p = pathname.replace(/\/$/, "") || "/";
+  if (p === "/ai" || p === "/ai/home" || p.startsWith("/ai/home/")) return true;
+  if (p === "/ai/wizard" || p.startsWith("/ai/wizard/")) return true;
+  return (
+    p === "/ai/statistics" ||
+    p.startsWith("/ai/statistics/") ||
+    p === "/ai/session" ||
+    p.startsWith("/ai/session/") ||
+    p === "/ai/memory" ||
+    p.startsWith("/ai/memory/") ||
+    p === "/ai/persona" ||
+    p.startsWith("/ai/persona/") ||
+    p === "/ai/history" ||
+    p.startsWith("/ai/history/") ||
+    p === "/ai/logs" ||
+    p.startsWith("/ai/logs/")
+  );
 }
 
-/** WebUI 新增「数据看板」页：插入到「仪表盘」之后（已有则不动） */
-export function migrateSidebarOrderChartsPage(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  if (base.includes("/charts")) return base;
-  const homeIdx = base.indexOf("/");
-  if (homeIdx >= 0) {
-    const out = [...base];
-    out.splice(homeIdx + 1, 0, "/charts");
-    return out;
+/** 与侧栏高亮规则一致：当前 path 对应哪条主导航 */
+export function isNavActive(pathname: string, to: string): boolean {
+  if (to === "/") return pathname === "/";
+  if (to === AI_OBSERVATION_DEFAULT_PATH) {
+    return isAiObservationPath(pathname);
   }
-  return ["/", "/charts", ...base.filter((t) => t !== "/")];
+  if (to === "/ai/config/provider" || to.startsWith("/ai/config/")) {
+    return pathname.startsWith("/ai/config");
+  }
+  if (pathname === to || pathname.startsWith(`${to}/`)) {
+    const moreSpecific = MAIN_NAV_ITEMS.some(
+      (other) =>
+        other.to !== to &&
+        other.to.startsWith(`${to}/`) &&
+        (pathname === other.to || pathname.startsWith(`${other.to}/`)),
+    );
+    return !moreSpecific;
+  }
+  return false;
 }
 
-/** WebUI 新增「日志报错」页：插入到「运行日志」之后（已有则不动） */
-export function migrateSidebarOrderLogErrors(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  if (base.includes("/log-errors")) return base;
-  const logsIdx = base.indexOf("/logs");
-  if (logsIdx >= 0) {
-    const out = [...base];
-    out.splice(logsIdx + 1, 0, "/log-errors");
-    return out;
-  }
-  const chartsIdx = base.indexOf("/charts");
-  if (chartsIdx >= 0) {
-    const out = [...base];
-    out.splice(chartsIdx + 1, 0, "/log-errors");
-    return out;
-  }
-  return [...base, "/log-errors"];
+/** 当前路由命中的主导航项（图标与侧栏同源） */
+export function mainNavItemForPath(pathname: string): MainNavItem | undefined {
+  return MAIN_NAV_ITEMS.find((item) => isNavActive(pathname, item.to));
 }
 
-/** WebUI 新增「统计与语料」页：插入到「数据库」与「AI 扩展」之间（已有则不动） */
-export function migrateSidebarOrderCommunityPage(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  if (base.includes("/community")) return base;
-  const insertAfter = ["/database", "/plugin-store", "/plugins", "/friends-groups"].find((t) => base.includes(t));
-  if (insertAfter) {
-    const idx = base.indexOf(insertAfter);
-    const out = [...base];
-    out.splice(idx + 1, 0, "/community");
-    return out;
-  }
-  const aiIdx = base.indexOf("/ai/home");
-  if (aiIdx >= 0) {
-    const out = [...base];
-    out.splice(aiIdx, 0, "/community");
-    return out;
-  }
-  const updIdx = base.indexOf("/update");
-  if (updIdx >= 0) {
-    const out = [...base];
-    out.splice(updIdx, 0, "/community");
-    return out;
-  }
-  return [...base, "/community"];
-}
-
-/** WebUI 备份管理独立页：插入到「数据库」之后 */
-export function migrateSidebarOrderDatabaseBackups(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  if (base.includes("/database/backups")) return base;
-  const dbIdx = base.indexOf("/database");
-  if (dbIdx >= 0) {
-    const out = [...base];
-    out.splice(dbIdx + 1, 0, "/database/backups");
-    return out;
-  }
-  const communityIdx = base.indexOf("/community");
-  if (communityIdx >= 0) {
-    const out = [...base];
-    out.splice(communityIdx, 0, "/database/backups");
-    return out;
-  }
-  return [...base, "/database/backups"];
-}
-
-/** WebUI AI 配置：侧栏保留「观测 + 配置」双入口（历史迁移 v7–v10） */
-export function migrateSidebarOrderAiConfig(saved: string[] | undefined | null): string[] {
-  const base = normalizeMainNavOrder(saved);
-  const aiPaths = new Set<string>([
-    ...AI_SIDEBAR_NAV.map((item) => item.path),
-    ...AI_TOP_LEVEL_PATHS,
-    "/ai/runtime",
-    "/ai/statistics",
-    "/ai/history",
-  ]);
-  const without = base.filter((t) => !aiPaths.has(t) && !AI_CONFIG_SECTION_PATHS.includes(t));
-  const anchorIdx = without.findIndex((t) => t === "/plugin-store" || t === "/plugins");
-  const insertAt = anchorIdx >= 0 ? anchorIdx + 1 : without.length;
-  const slice = without.slice(0, insertAt);
-  const tail = without.slice(insertAt);
-  return [...slice, ...AI_SIDEBAR_NAV.map((item) => item.path), ...tail];
-}
-
-/** AI Hub：侧栏仅保留单入口「AI配置」（旧策略；新装默认走双入口 migrateSidebarOrderAiConfig） */
-export function migrateSidebarOrderAiHubSingle(saved: string[] | undefined | null): string[] {
-  const migrated = migrateSidebarOrderAiConfig(saved);
-  if (migrated.includes(AI_CONFIG_SIDEBAR_PATH) && migrated.includes("/ai/home")) {
-    return migrated;
-  }
-  return migrateSidebarOrderAiConfig(saved);
-}
-
-/** 移除已废弃的「通用配置」侧栏项（layout v14） */
-export function migrateSidebarOrderRemoveCommonConfig(saved: string[] | undefined | null): string[] {
-  return normalizeMainNavOrder(saved);
-}
-
-export function mainNavItemByPath(to: string): MainNavItem | undefined {
-  return MAIN_NAV_ITEMS.find((i) => i.to === to);
+/** 页头标题前缀图标：复用 MAIN_NAV_ITEMS，勿另起一套 */
+export function mainNavIconForPath(pathname: string): LucideIcon | undefined {
+  return mainNavItemForPath(pathname)?.icon;
 }
