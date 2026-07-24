@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, isAxiosError } from "axios";
+import { isConsoleLoginPath, redirectToConsoleLogin } from "@/api/consoleAuth";
 
 export type NapcatAccountRow = {
   id?: string;
@@ -27,11 +28,8 @@ function protocolHttp(mountUrl: string): AxiosInstance {
     (r) => r,
     (err) => {
       if (err?.response?.status === 401 && typeof window !== "undefined") {
-        const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
-        const path = window.location.pathname || "";
-        if (!path.endsWith("/login") && !path.endsWith("/login/")) {
-          const q = new URLSearchParams({ reason: "控制台登录已失效，请重新登录。" });
-          window.location.assign(`${root}/login?${q.toString()}`);
+        if (!isConsoleLoginPath()) {
+          redirectToConsoleLogin("控制台登录已失效，请重新登录。");
         }
       }
       return Promise.reject(err);
@@ -115,6 +113,29 @@ export type SnowlumaRuntimeRow = {
   member_count?: number;
   process_running?: boolean;
   snowluma_managed_webui_password?: string;
+  [key: string]: unknown;
+};
+
+export type ProtocolAccountConfigs = {
+  napcat?: {
+    bypass_enabled?: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+export type ProtocolAccountRuntimeSwitch = {
+  protocol_backend: "napcat" | "snowluma";
+  docker_image?: string;
+  runtime_mode: "new" | "existing";
+  runtime_id?: string;
+};
+
+export type ProtocolDockerImageRow = {
+  name?: string;
+  id?: string;
+  created_since?: string;
+  size?: string;
   [key: string]: unknown;
 };
 
@@ -243,12 +264,12 @@ export async function protocolPullDockerImage(
 export async function protocolListDockerImages(
   mountUrl: string,
   protocol?: "napcat" | "snowluma",
-): Promise<{ ok?: boolean; detail?: string; images?: string[] }> {
+): Promise<{ ok?: boolean; detail?: string; images?: ProtocolDockerImageRow[] }> {
   const params = protocol ? { protocol } : undefined;
   const { data } = await protocolHttp(mountUrl).get<{
     ok?: boolean;
     detail?: string;
-    images?: string[];
+    images?: ProtocolDockerImageRow[];
   }>("/api/runtime/docker/images", { params });
   return data ?? {};
 }
@@ -270,6 +291,40 @@ export async function protocolListSnowlumaRuntimes(mountUrl: string): Promise<Sn
     "/api/snowluma/runtimes",
   );
   return Array.isArray(data?.runtimes) ? data.runtimes : [];
+}
+
+export async function protocolFetchAccountConfigs(
+  mountUrl: string,
+  accountId: string,
+): Promise<ProtocolAccountConfigs> {
+  const { data } = await protocolHttp(mountUrl).get<ProtocolAccountConfigs>(
+    `/api/accounts/${encodeURIComponent(accountId)}/configs`,
+  );
+  return data ?? {};
+}
+
+export async function protocolUpdateAccountConfigs(
+  mountUrl: string,
+  accountId: string,
+  configs: ProtocolAccountConfigs,
+): Promise<ProtocolAccountConfigs> {
+  const { data } = await protocolHttp(mountUrl).put<ProtocolAccountConfigs>(
+    `/api/accounts/${encodeURIComponent(accountId)}/configs`,
+    configs,
+  );
+  return data ?? {};
+}
+
+export async function protocolSwitchAccountRuntime(
+  mountUrl: string,
+  accountId: string,
+  payload: ProtocolAccountRuntimeSwitch,
+): Promise<NapcatAccountRow | null> {
+  const { data } = await protocolHttp(mountUrl).post<AccountActionBody>(
+    `/api/accounts/${encodeURIComponent(accountId)}/runtime-switch`,
+    payload,
+  );
+  return data?.account ?? null;
 }
 
 export async function protocolCreateSnowlumaRuntime(

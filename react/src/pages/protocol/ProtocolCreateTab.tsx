@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   protocolApiErrorMessage,
   protocolCreateAccount,
   protocolListSnowlumaRuntimes,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
+import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UserPlus } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
@@ -41,6 +44,13 @@ export default function ProtocolCreateTab() {
   const [snowlumaRuntimeMode, setSnowlumaRuntimeMode] = useState<"new" | "existing">("new");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const chromeRefresh = useCallback(() => {
+    void reload();
+  }, [reload]);
+  useRegisterProtocolChrome(
+    useMemo(() => ({ onRefresh: chromeRefresh }), [chromeRefresh]),
+  );
 
   useEffect(() => {
     if (protocolBackend !== "snowluma" || !mountUrl) {
@@ -101,26 +111,15 @@ export default function ProtocolCreateTab() {
   }
 
   return (
-    <div className="protocol-sub-page space-y-4">
+    <div className="protocol-sub-page console-panel-stack">
       <Card className={cn(FORM_PANEL, "mb-0")}>
-        <CardHeader className={cn(FORM_PANEL_HD, "inst-db-panel__hd")}>
+        <CardHeader className={FORM_PANEL_HD}>
           <div>
-            <CardTitle className="panel__title">创建协议账号</CardTitle>
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={UserPlus} />
+              创建协议账号
+            </CardTitle>
             <CardDescription className="muted mt-1">创建协议端账号实例。</CardDescription>
-          </div>
-          <div className="row-actions inst-db-panel__hd-side">
-            <Button asChild type="button" variant="outline" size="sm">
-              <Link to="/protocol">返回实例列表</Link>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              onClick={() => void reload()}
-            >
-              刷新
-            </Button>
           </div>
         </CardHeader>
       </Card>

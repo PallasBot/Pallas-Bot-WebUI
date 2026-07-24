@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { protocolApiErrorMessage, protocolImportAccounts } from "@/api/protocol";
+import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { FolderInput, ListChecks } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
@@ -15,7 +18,7 @@ const FORM_PANEL_HD =
 const FORM_PANEL_BD = "panel__bd protocol-form-grid px-4 pb-4 pt-3";
 
 export default function ProtocolImportTab() {
-  const { mountUrl } = useOutletContext<ProtocolOutletContext>();
+  const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
   const navigate = useNavigate();
   const [sourceDir, setSourceDir] = useState("");
   const [wsUrl, setWsUrl] = useState("");
@@ -25,6 +28,13 @@ export default function ProtocolImportTab() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+
+  const chromeRefresh = useCallback(() => {
+    void reload();
+  }, [reload]);
+  useRegisterProtocolChrome(
+    useMemo(() => ({ onRefresh: chromeRefresh }), [chromeRefresh]),
+  );
 
   const counts = useMemo(() => {
     const len = (key: string) => (Array.isArray(result?.[key]) ? (result![key] as unknown[]).length : 0);
@@ -72,19 +82,17 @@ export default function ProtocolImportTab() {
   }
 
   return (
-    <div className="protocol-sub-page space-y-4">
+    <div className="protocol-sub-page console-panel-stack">
       <Card className={cn(FORM_PANEL, "mb-0")}>
         <CardHeader className={cn(FORM_PANEL_HD, "inst-db-panel__hd")}>
           <div>
-            <CardTitle className="panel__title">导入协议账号</CardTitle>
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={FolderInput} />
+              导入协议账号
+            </CardTitle>
             <CardDescription className="muted mt-1">从本地目录导入账号。</CardDescription>
           </div>
-          <div className="row-actions inst-db-panel__hd-side">
-            <Button asChild type="button" variant="outline" size="sm">
-              <Link to="/protocol">返回实例列表</Link>
-            </Button>
-          </div>
-        </CardHeader>
+          </CardHeader>
       </Card>
 
       {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
@@ -143,7 +151,10 @@ export default function ProtocolImportTab() {
       {result ? (
         <Card className={FORM_PANEL}>
           <CardHeader className={FORM_PANEL_HD}>
-            <CardTitle className="panel__title">导入结果</CardTitle>
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={ListChecks} />
+              导入结果
+            </CardTitle>
           </CardHeader>
           <CardContent className="panel__bd protocol-import-result px-4 pb-4 pt-3">
             <p>
