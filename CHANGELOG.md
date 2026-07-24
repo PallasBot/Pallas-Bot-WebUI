@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.1] - 2026-07-24
+
+### 📚 文档更新
+
+* docs: 精简 ui-conventions 表述 ([9432229](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9432229b49eeb2d3c2ef9deec4919fb0a6e5dbcb))
+
+**完整变更**: [`v0.7.0...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.0...HEAD)
+
+
 ## [0.7.0] - 2026-07-24
 
 ### 🚀 新功能
