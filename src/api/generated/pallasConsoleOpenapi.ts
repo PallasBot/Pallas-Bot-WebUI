@@ -1958,6 +1958,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/common-config/llm/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Llm Provider Upsert Put
+         * @description 只保存单个提供方，避免整表写回时误擦其他提供方密钥。
+         */
+        put: operations["_llm_provider_upsert_put_pallas_api_common_config_llm_providers__provider_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/providers/{provider_id}/models": {
         parameters: {
             query?: never;
@@ -3952,6 +3972,26 @@ export interface components {
              */
             with_media: boolean;
         };
+        /**
+         * _AiServiceHealthProbeData
+         * @description 媒体扩展（AI Runtime）探活；与聊天 Provider 健康分离。
+         */
+        _AiServiceHealthProbeData: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Url
+             * @default
+             */
+            url: string;
+            /** Status Code */
+            status_code?: number | null;
+            /**
+             * Error
+             * @default
+             */
+            error: string;
+        };
         /** _ApiOkResponse[IngressDispatchData] */
         _ApiOkResponse_IngressDispatchData_: {
             /**
@@ -4361,7 +4401,10 @@ export interface components {
         };
         /** _LlmLocalRoutingConfigBody */
         _LlmLocalRoutingConfigBody: {
-            /** Llm Model */
+            /**
+             * Llm Model
+             * @default
+             */
             llm_model: string;
             /**
              * Local Multi Model Enabled
@@ -4504,6 +4547,13 @@ export interface components {
              */
             base_url: string;
             /**
+             * Api Key
+             * @default
+             */
+            api_key: string;
+            /** Api Keys */
+            api_keys?: string[];
+            /**
              * Api Key Env
              * @default
              */
@@ -4513,6 +4563,11 @@ export interface components {
              * @default false
              */
             api_key_set: boolean;
+            /**
+             * Api Keys Count
+             * @default 0
+             */
+            api_keys_count: number;
             /**
              * Default Model
              * @default
@@ -4527,6 +4582,18 @@ export interface components {
             task_models?: {
                 [key: string]: string;
             };
+            /** Capabilities */
+            capabilities?: string[];
+            /**
+             * Model Effort
+             * @default
+             */
+            model_effort: string;
+            /**
+             * Request Method
+             * @default chat_completions
+             */
+            request_method: string;
         };
         /**
          * _LlmProviderModelsDiscoverBody
@@ -4585,6 +4652,11 @@ export interface components {
              * @default
              */
             api_key_env: string;
+            /**
+             * Clear Api Keys
+             * @default false
+             */
+            clear_api_keys: boolean;
             /**
              * Default Model
              * @default
@@ -4653,6 +4725,14 @@ export interface components {
             tasks?: {
                 [key: string]: string;
             };
+            /** Tier Backups */
+            tier_backups?: {
+                [key: string]: string;
+            };
+            /** Tier Backup Models */
+            tier_backup_models?: {
+                [key: string]: string;
+            };
         };
         /** _LlmProvidersRoutingData */
         _LlmProvidersRoutingData: {
@@ -4711,6 +4791,7 @@ export interface components {
             draw_runtime_mode?: string | null;
             tts_health?: components["schemas"]["_LlmTtsHealthData"] | null;
             media_tasks?: components["schemas"]["_LlmMediaTasksHealthData"] | null;
+            ai_service?: components["schemas"]["_AiServiceHealthProbeData"] | null;
             /** Submit Gate */
             submit_gate?: {
                 [key: string]: unknown;
@@ -9755,6 +9836,45 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["_LlmLocalRoutingConfigBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_provider_upsert_put_pallas_api_common_config_llm_providers__provider_id__put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_LlmProviderRowBody"];
             };
         };
         responses: {
