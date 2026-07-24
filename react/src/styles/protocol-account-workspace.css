@@ -177,6 +177,31 @@ html[data-theme="light"] .protocol-account-workspace__meta {
   line-height: 1.4;
 }
 
+.protocol-account-workspace__runtime-heading {
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.protocol-account-workspace__form-grid .sel {
+  width: 100%;
+}
+
+.protocol-account-workspace__form-grid .field--check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 22px;
+}
+
+.protocol-account-workspace__form-grid .field--check input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.protocol-account-workspace__form-grid .field--check .field__hint {
+  margin: 4px 0 0;
+}
+
 .protocol-account-workspace__panel-lead {
   margin: 4px 0 0;
   font-size: 0.8125rem;

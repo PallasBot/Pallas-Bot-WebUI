@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   protocolApiErrorMessage,
   protocolCleanupRuntimeDist,
@@ -10,6 +10,7 @@ import {
   protocolListDockerImages,
   protocolPullDockerImage,
   protocolUpdateRuntimeProfile,
+  type ProtocolDockerImageRow,
   type ProtocolRuntimeJob,
   type ProtocolRuntimeProfile,
 } from "@/api/protocol";
@@ -25,7 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Boxes, Download, Package, Settings2 } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
+import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 const RUNTIME_MODES = [
@@ -55,6 +59,36 @@ function jobStatusLabel(job: ProtocolRuntimeJob | null): string {
   if (!job?.status) return "空闲";
   const msg = job.message?.trim();
   return msg ? `${job.status}：${msg}` : String(job.status);
+}
+
+function normalizeDockerImages(raw: unknown): ProtocolDockerImageRow[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, index) => {
+    if (typeof item === "string") {
+      const name = item.trim();
+      return name ? { name } : { name: `<unknown-${index}>` };
+    }
+    if (item && typeof item === "object") {
+      const row = item as ProtocolDockerImageRow;
+      return {
+        name: String(row.name ?? "").trim() || undefined,
+        id: row.id != null ? String(row.id) : undefined,
+        created_since: row.created_since != null ? String(row.created_since) : undefined,
+        size: row.size != null ? String(row.size) : undefined,
+      };
+    }
+    return { name: `<unknown-${index}>` };
+  });
+}
+
+function dockerImageLabel(img: ProtocolDockerImageRow): string {
+  const name = String(img.name ?? "").trim() || "<none>:<none>";
+  const meta = [img.created_since, img.size].filter(Boolean).join(" / ");
+  return meta ? `${name} · ${meta}` : name;
+}
+
+function dockerImageKey(img: ProtocolDockerImageRow, index: number): string {
+  return [img.id, img.name, String(index)].filter(Boolean).join("|");
 }
 
 function ProfileSelect(props: {
@@ -88,7 +122,6 @@ export default function ProtocolAssetsTab() {
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
   const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
   const [profileForm, setProfileForm] = useState<ProtocolRuntimeProfile>({});
-  const [loadBusy, setLoadBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [napcatDownloadBusy, setNapcatDownloadBusy] = useState(false);
@@ -99,8 +132,8 @@ export default function ProtocolAssetsTab() {
   const [snowlumaPullBusy, setSnowlumaPullBusy] = useState(false);
   const [napcatListBusy, setNapcatListBusy] = useState(false);
   const [snowlumaListBusy, setSnowlumaListBusy] = useState(false);
-  const [napcatImages, setNapcatImages] = useState<string[]>([]);
-  const [snowlumaImages, setSnowlumaImages] = useState<string[]>([]);
+  const [napcatImages, setNapcatImages] = useState<ProtocolDockerImageRow[]>([]);
+  const [snowlumaImages, setSnowlumaImages] = useState<ProtocolDockerImageRow[]>([]);
   const [dockerPullLog, setDockerPullLog] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -120,7 +153,6 @@ export default function ProtocolAssetsTab() {
 
   async function loadAssets() {
     if (!mountUrl) return;
-    setLoadBusy(true);
     setMsg(null);
     try {
       const [ov, pf] = await Promise.all([
@@ -131,8 +163,6 @@ export default function ProtocolAssetsTab() {
       setProfileForm({ ...pf });
     } catch (e) {
       setMsg(protocolApiErrorMessage(e, "加载失败"));
-    } finally {
-      setLoadBusy(false);
     }
   }
 
@@ -143,6 +173,13 @@ export default function ProtocolAssetsTab() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load only
   }, [mountUrl]);
+
+  const chromeRefresh = useCallback(() => {
+    void loadAssets();
+  }, [mountUrl]);
+  useRegisterProtocolChrome(
+    useMemo(() => ({ onRefresh: chromeRefresh }), [chromeRefresh]),
+  );
 
   async function saveProfile() {
     if (!mountUrl) return;
@@ -238,10 +275,11 @@ export default function ProtocolAssetsTab() {
     setMsg(null);
     try {
       const res = await protocolListDockerImages(mountUrl, which);
-      const imgs = Array.isArray(res.images) ? res.images : [];
+      const imgs = normalizeDockerImages(res.images);
       if (which === "napcat") setNapcatImages(imgs);
       else setSnowlumaImages(imgs);
       if (!res.ok && res.detail) setMsg(res.detail);
+      else if (!imgs.length) setMsg("本地暂无匹配镜像");
     } catch (e) {
       setMsg(protocolApiErrorMessage(e, "查询镜像失败"));
     } finally {
@@ -255,35 +293,25 @@ export default function ProtocolAssetsTab() {
   }
 
   return (
-    <div className="protocol-sub-page space-y-4">
+    <div className="protocol-sub-page console-panel-stack">
       <Card className={cn(ASSET_PANEL, "mb-0")}>
         <CardHeader className={cn(ASSET_PANEL_HD, "inst-db-panel__hd")}>
           <div>
-            <CardTitle className="panel__title">协议资产</CardTitle>
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Package} />
+              协议资产
+            </CardTitle>
             <CardDescription className="muted mt-1">发行包、运行模式与 Docker 镜像。</CardDescription>
           </div>
-          <div className="row-actions inst-db-panel__hd-side">
-            <Button asChild type="button" variant="outline" size="sm">
-              <Link to="/protocol">返回实例列表</Link>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={loadBusy}
-              onClick={() => void loadAssets()}
-            >
-              {loadBusy ? "刷新中…" : "刷新"}
-            </Button>
-          </div>
-        </CardHeader>
+          </CardHeader>
       </Card>
 
       {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
 
       <Card className={ASSET_PANEL}>
         <CardHeader className={ASSET_PANEL_HD}>
-          <CardTitle className="panel__title protocol-assets-section-title">
+          <CardTitle className="panel__title protocol-assets-section-title flex items-center gap-1.5">
+            <PanelTitleIcon icon={Settings2} />
             全局运行配置
           </CardTitle>
         </CardHeader>
@@ -374,7 +402,8 @@ export default function ProtocolAssetsTab() {
 
       <Card className={ASSET_PANEL}>
         <CardHeader className={ASSET_PANEL_HD}>
-          <CardTitle className="panel__title protocol-assets-section-title">
+          <CardTitle className="panel__title protocol-assets-section-title flex items-center gap-1.5">
+            <PanelTitleIcon icon={Download} />
             运行时下载
           </CardTitle>
         </CardHeader>
@@ -429,7 +458,8 @@ export default function ProtocolAssetsTab() {
       {showDockerSection ? (
         <Card className={ASSET_PANEL}>
           <CardHeader className={ASSET_PANEL_HD}>
-            <CardTitle className="panel__title protocol-assets-section-title">
+            <CardTitle className="panel__title protocol-assets-section-title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Boxes} />
               Docker 镜像
             </CardTitle>
           </CardHeader>
@@ -461,8 +491,8 @@ export default function ProtocolAssetsTab() {
               </div>
               {napcatImages.length ? (
                 <ul className="protocol-assets-image-list muted">
-                  {napcatImages.map((img) => (
-                    <li key={img}>{img}</li>
+                  {napcatImages.map((img, index) => (
+                    <li key={dockerImageKey(img, index)}>{dockerImageLabel(img)}</li>
                   ))}
                 </ul>
               ) : null}
@@ -490,8 +520,8 @@ export default function ProtocolAssetsTab() {
               </div>
               {snowlumaImages.length ? (
                 <ul className="protocol-assets-image-list muted">
-                  {snowlumaImages.map((img) => (
-                    <li key={img}>{img}</li>
+                  {snowlumaImages.map((img, index) => (
+                    <li key={dockerImageKey(img, index)}>{dockerImageLabel(img)}</li>
                   ))}
                 </ul>
               ) : null}

@@ -74,7 +74,7 @@ export default function ProtocolAccountConfigDialog({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(92vh,960px)] w-[min(960px,96vw)] max-w-[min(960px,96vw)] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(960px,calc(100vw-32px))] max-w-[min(960px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (saveBusy) e.preventDefault();
         }}

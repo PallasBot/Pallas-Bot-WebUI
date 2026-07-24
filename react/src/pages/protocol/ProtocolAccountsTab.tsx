@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InstancesData, NapcatAccountRow, SystemData } from "@/api/pallasTypes";
 import {
@@ -21,24 +21,23 @@ import {
   protocolRestartAccount,
   protocolStartAccount,
   protocolStartAccountBatch,
-  protocolStartSnowlumaRuntime,
   protocolStopAccount,
-  protocolStopSnowlumaRuntime,
   type ProtocolBatchJobPayload,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
-import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
-import ChromeTools from "@/components/ChromeTools";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
-import RefreshIconButton from "@/components/RefreshIconButton";
+import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
+import SegTabs from "@/components/SegTabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Cable } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
@@ -54,8 +53,15 @@ import {
   waitForProtocolBatchJob,
 } from "@/utils/protocolBatch";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const PROTO_PANEL =
   "protocol-page__panel flex flex-col overflow-hidden shadow-none";
@@ -64,6 +70,7 @@ const PROTO_PANEL_HD =
 const PROTO_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
 type ProtocolAccountAction = "power" | "restart";
+type SelectedBatchKind = "restart" | "stop";
 
 function protocolAccountNumber(a: NapcatAccountRow): number | null {
   const q = parseInt(String(a.qq ?? a.id ?? "").replace(/\s/g, ""), 10);
@@ -139,7 +146,6 @@ export default function ProtocolAccountsTab() {
     mountUrl,
     instances,
     system,
-    protocolExtensionInstalled,
     protoActionsEnabled,
     reload,
   } = useOutletContext<ProtocolOutletContext>();
@@ -161,7 +167,7 @@ export default function ProtocolAccountsTab() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteErr, setDeleteErr] = useState("");
-  const [snowlumaRuntimeBusyId, setSnowlumaRuntimeBusyId] = useState("");
+  const [selectedBatchKind, setSelectedBatchKind] = useState<SelectedBatchKind | null>(null);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchJob, setBatchJob] = useState<ProtocolBatchJobPayload | null>(null);
@@ -405,10 +411,7 @@ export default function ProtocolAccountsTab() {
     if (restartSelectedBusy) return;
     setRestartSelectedBusy(true);
     try {
-      const job = await runBatch(
-        { action: "restart", account_ids: ids },
-        `将按间隔依次重启 ${ids.length} 个账号，以降低系统负载。继续？`,
-      );
+      const job = await runBatch({ action: "restart", account_ids: ids });
       if (job) {
         const failed = (job.results ?? []).filter((r) => !r.ok).length;
         pushConsoleToast(
@@ -433,10 +436,7 @@ export default function ProtocolAccountsTab() {
     if (stopSelectedBusy) return;
     setStopSelectedBusy(true);
     try {
-      const job = await runBatch(
-        { action: "stop", account_ids: ids },
-        `将按间隔依次停止 ${ids.length} 个账号。继续？`,
-      );
+      const job = await runBatch({ action: "stop", account_ids: ids });
       if (job) {
         const failed = (job.results ?? []).filter((r) => !r.ok).length;
         pushConsoleToast(
@@ -484,6 +484,30 @@ export default function ProtocolAccountsTab() {
     setDeleteModalOpen(true);
   }
 
+  function openSelectedBatchConfirm(kind: SelectedBatchKind) {
+    if (selected.size === 0) {
+      pushConsoleToast("请先勾选账号", "warn");
+      return;
+    }
+    setSelectedBatchKind(kind);
+  }
+
+  function closeSelectedBatchConfirm() {
+    if (restartSelectedBusy || stopSelectedBusy || batchBusy) return;
+    setSelectedBatchKind(null);
+  }
+
+  async function confirmSelectedBatch() {
+    const kind = selectedBatchKind;
+    if (!kind) return;
+    try {
+      if (kind === "restart") await restartSelectedAccounts();
+      else await stopSelectedAccounts();
+    } finally {
+      setSelectedBatchKind(null);
+    }
+  }
+
   function closeDeleteModal() {
     if (deleteBusy) return;
     setDeleteModalOpen(false);
@@ -510,34 +534,6 @@ export default function ProtocolAccountsTab() {
       await refreshLists();
     } finally {
       setDeleteBusy(false);
-    }
-  }
-
-  async function startSnowlumaRuntime(runtimeId: string) {
-    if (!mountUrl) return;
-    setSnowlumaRuntimeBusyId(runtimeId);
-    try {
-      await protocolStartSnowlumaRuntime(mountUrl, runtimeId);
-      pushConsoleToast("已启动 SnowLuma Runtime", "ok");
-      await refreshLists();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "启动 Runtime 失败"), "err");
-    } finally {
-      setSnowlumaRuntimeBusyId("");
-    }
-  }
-
-  async function stopSnowlumaRuntime(runtimeId: string) {
-    if (!mountUrl) return;
-    setSnowlumaRuntimeBusyId(runtimeId);
-    try {
-      await protocolStopSnowlumaRuntime(mountUrl, runtimeId);
-      pushConsoleToast("已停止 SnowLuma Runtime", "ok");
-      await refreshLists();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "停止 Runtime 失败"), "err");
-    } finally {
-      setSnowlumaRuntimeBusyId("");
     }
   }
 
@@ -576,16 +572,155 @@ export default function ProtocolAccountsTab() {
     });
   }
 
+  const chromeRefresh = useCallback(() => {
+    void refreshLists();
+  }, [mountUrl, qc, reload]);
+
+  const chromeMiddle = useMemo(
+    () => (
+      <>
+        <div className="protocol-accounts-search relative min-w-[calc(13ch+2.75rem)] flex-1 basis-[calc(13ch+2.75rem)]">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <Input
+            type="search"
+            className="h-8 min-h-8 w-full pl-8"
+            placeholder="搜索账号…"
+            aria-label="搜索账号"
+            autoComplete="off"
+            value={protoSearchQ}
+            onChange={(e) => setProtoSearchQ(e.target.value)}
+          />
+        </div>
+        <SegTabs
+          size="toolbar"
+          className="shrink-0"
+          ariaLabel="实例表格或卡片视图"
+          value={prefs.protocolAccountsView}
+          onValueChange={(v) => prefs.setProtocolAccountsView(v === "cards" ? "cards" : "table")}
+          options={[
+            { value: "table", label: "表格" },
+            { value: "cards", label: "卡片" },
+          ]}
+        />
+        {protoActionsEnabled ? (
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={
+                restartAllBusy ||
+                stopSelectedBusy ||
+                restartSelectedBusy ||
+                batchBusy ||
+                protocolAccountsTotalCount === 0 ||
+                actionBusy.size > 0
+              }
+              onClick={() => void restartAllAccounts()}
+            >
+              {restartAllBusy ? "重启全部中…" : "重启全部"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1"
+                  disabled={
+                    restartSelectedBusy ||
+                    stopSelectedBusy ||
+                    deleteBusy ||
+                    batchBusy ||
+                    actionBusy.size > 0
+                  }
+                  aria-label="选项"
+                >
+                  {restartSelectedBusy || stopSelectedBusy
+                    ? "处理中…"
+                    : `选项${selected.size > 0 ? `（${selected.size}）` : ""}`}
+                  <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-0 w-max">
+                <DropdownMenuItem
+                  disabled={pagedProtocolIds.length === 0}
+                  onSelect={() => toggleSelectAllOnPage()}
+                >
+                  {protoCardsPageAllSelected ? "取消全选" : "全选本页"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={selected.size === 0}
+                  onSelect={() => setSelected(new Set())}
+                >
+                  清除选择
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={selected.size === 0 || restartSelectedBusy || batchBusy}
+                  onSelect={() => openSelectedBatchConfirm("restart")}
+                >
+                  重启所选
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={selected.size === 0 || stopSelectedBusy || batchBusy}
+                  onSelect={() => openSelectedBatchConfirm("stop")}
+                >
+                  停止所选
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={selected.size === 0 || deleteBusy}
+                  onSelect={() => openDeleteModal()}
+                >
+                  删除选中
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : null}
+      </>
+    ),
+    [
+      protoSearchQ,
+      prefs.protocolAccountsView,
+      prefs.setProtocolAccountsView,
+      protoActionsEnabled,
+      restartAllBusy,
+      restartSelectedBusy,
+      stopSelectedBusy,
+      deleteBusy,
+      batchBusy,
+      protocolAccountsTotalCount,
+      selected.size,
+      actionBusy.size,
+      pagedProtocolIds.length,
+      protoCardsPageAllSelected,
+    ],
+  );
+
+  useRegisterProtocolChrome(
+    useMemo(
+      () => ({ middle: chromeMiddle, onRefresh: chromeRefresh }),
+      [chromeMiddle, chromeRefresh],
+    ),
+  );
+
   const batchPhase = batchBusy
     ? protocolBatchPhaseLabel(batchJob) || "批量任务进行中…"
     : protocolBatchPhaseLabel(batchJob);
 
   return (
     <div className="protocol-accounts-tab">
-      {!mountUrl ? <p className="muted text-sm mb-4">协议 API 未挂载，无法加载账号列表。</p> : null}
+      {!mountUrl ? <p className="muted text-sm">协议 API 未挂载，无法加载账号列表。</p> : null}
 
       {batchOpen ? (
-        <Card className="protocol-page__batch mb-4 shadow-none" role="status" aria-live="polite">
+        <Card className="protocol-page__batch shadow-none" role="status" aria-live="polite">
           <CardContent className="space-y-2 p-4">
             <div className="protocol-page__batch-track">
               <div
@@ -598,110 +733,16 @@ export default function ProtocolAccountsTab() {
         </Card>
       ) : null}
 
-      <ChromeTools>
-        <div className="relative min-w-[10rem] flex-1">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <Input
-            type="search"
-            className="h-8 min-h-8 w-full pl-8"
-            placeholder="搜索账号 / 昵称 / 协议 / ID"
-            aria-label="搜索账号 / 昵称 / 协议 / ID"
-            autoComplete="off"
-            value={protoSearchQ}
-            onChange={(e) => setProtoSearchQ(e.target.value)}
-          />
-        </div>
-        <div
-          className="console-view-toggle console-view-toggle--toolbar-seg"
-          role="group"
-          aria-label="实例表格或卡片视图"
-        >
-          <button
-            type="button"
-            className={prefs.protocolAccountsView === "table" ? "is-on" : undefined}
-            onClick={() => prefs.setProtocolAccountsView("table")}
-          >
-            表格
-          </button>
-          <button
-            type="button"
-            className={prefs.protocolAccountsView === "cards" ? "is-on" : undefined}
-            onClick={() => prefs.setProtocolAccountsView("cards")}
-          >
-            卡片
-          </button>
-        </div>
-        {protoActionsEnabled ? (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={
-                restartAllBusy ||
-                stopSelectedBusy ||
-                batchBusy ||
-                protocolAccountsTotalCount === 0 ||
-                actionBusy.size > 0
-              }
-              onClick={() => void restartAllAccounts()}
-            >
-              {restartAllBusy ? "重启全部中…" : "重启全部"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={
-                restartSelectedBusy ||
-                stopSelectedBusy ||
-                batchBusy ||
-                selected.size === 0 ||
-                actionBusy.size > 0
-              }
-              onClick={() => void restartSelectedAccounts()}
-            >
-              {restartSelectedBusy ? "重启中…" : "重启所选"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={
-                stopSelectedBusy ||
-                restartSelectedBusy ||
-                restartAllBusy ||
-                batchBusy ||
-                selected.size === 0 ||
-                actionBusy.size > 0
-              }
-              onClick={() => void stopSelectedAccounts()}
-            >
-              {stopSelectedBusy ? "停止中…" : "停止所选"}
-            </Button>
-          </div>
-        ) : null}
-      </ChromeTools>
 
       <Card className={cn(PROTO_PANEL, "mb-0")}>
         <CardHeader className={PROTO_PANEL_HD}>
           <CardTitle className="panel__title flex items-center gap-1.5">
+            <PanelTitleIcon icon={Cable} />
             已连接账号
             <PanelHdCollapseCaret
               expanded={expProtocolAccounts}
               label="已连接账号"
               onToggle={() => setExpProtocolAccounts((v) => !v)}
-            />
-            <RefreshIconButton
-              embedded
-              showLabel={false}
-              busy={accountsQ.isFetching}
-              label="刷新实例数据"
-              onClick={() => void refreshLists()}
             />
           </CardTitle>
           <div className="inst-db-panel__hd-side">
@@ -748,7 +789,7 @@ export default function ProtocolAccountsTab() {
                       const href = webUiHref(a);
                       return (
                         <tr key={`tbl-${cardKey(a, i)}`}>
-                          <td style={{ fontWeight: 600 }}>{primaryTitle(a, instances)}</td>
+                          <td className="inst-account-nick">{primaryTitle(a, instances)}</td>
                           <td>{a.qq ?? a.id ?? "—"}</td>
                           <td>{protocolBackendDisplayName(a)}</td>
                           <td
@@ -1025,120 +1066,9 @@ export default function ProtocolAccountsTab() {
                 onPageSizeChange={prefs.setTablePageSize}
               />
             ) : null}
-
-            {protoActionsEnabled && prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
-              <ConsoleCardBulkBar
-                pageAllSelected={protoCardsPageAllSelected}
-                selectedCount={selected.size}
-                deleteBusy={deleteBusy}
-                deleteDisabled={!protoActionsEnabled}
-                onToggleSelectAll={toggleSelectAllOnPage}
-                onClearSelection={() => setSelected(new Set())}
-                onDelete={openDeleteModal}
-              />
-            ) : null}
           </CardContent>
         ) : null}
       </Card>
-
-      {protocolExtensionInstalled ? (
-        <Card className={cn(PROTO_PANEL, "mt-6")}>
-          <CardHeader className={PROTO_PANEL_HD}>
-            <CardTitle className="panel__title flex items-center gap-1.5">
-              协议端入口
-              <RefreshIconButton
-                embedded
-                showLabel={false}
-                busy={accountsQ.isFetching || runtimesQ.isFetching}
-                label="刷新协议端数据"
-                onClick={() => void refreshLists()}
-              />
-            </CardTitle>
-            <div className="inst-db-panel__hd-side" />
-          </CardHeader>
-          <CardContent className={PROTO_PANEL_BD}>
-            <p className="muted protocol-page__entry-hint">
-              运行时下载、Docker 镜像与全局运行模式请到{" "}
-              <Link className="link-quiet" to="/protocol/assets">
-                协议资产
-              </Link>
-              ；下方可创建或导入账号。
-            </p>
-            <div className="row-actions protocol-page__actions protocol-page__entry-actions">
-              <Button asChild variant="outline" size="sm">
-                <Link to="/protocol/create">创建账号</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/protocol/import">导入账号</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/protocol/assets">协议资产</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* Vue: only when snowlumaRuntimes.length；顺序在「协议端入口」之后 */}
-      {snowlumaRuntimes.length ? (
-        <Card className={cn(PROTO_PANEL, "mt-6")}>
-          <CardHeader className={cn(PROTO_PANEL_HD, "border-b")}>
-            <CardTitle className="panel__title">
-              SnowLuma Runtime
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={PROTO_PANEL_BD}>
-            <p className="muted">
-              一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
-            </p>
-            <div className="protocol-runtime-list">
-              {snowlumaRuntimes.map((rt) => (
-                <div key={rt.id} className="protocol-runtime-row">
-                  <div className="protocol-runtime-row__main">
-                    <strong>{rt.display_name || rt.id}</strong>
-                    <span className="muted">{rt.id}</span>
-                    <span className={rt.process_running ? "pill pill--ok" : "pill"}>
-                      {rt.process_running ? "运行中" : "已停止"}
-                    </span>
-                    <span className="muted">{rt.member_count ?? 0} 个 QQ</span>
-                    {rt.webui_port != null && String(rt.webui_port).trim() ? (
-                      <span className="muted">WebUI :{rt.webui_port}</span>
-                    ) : null}
-                    {(rt.member_account_ids ?? []).length ? (
-                      <span
-                        className="muted protocol-runtime-row__members"
-                        title={(rt.member_account_ids ?? []).join(", ")}
-                      >
-                        成员 {(rt.member_account_ids ?? []).join(", ")}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="row-actions protocol-runtime-row__actions">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={snowlumaRuntimeBusyId === rt.id}
-                      onClick={() => void startSnowlumaRuntime(rt.id)}
-                    >
-                      {snowlumaRuntimeBusyId === rt.id ? "启动中…" : "启 Runtime"}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={snowlumaRuntimeBusyId === rt.id}
-                      onClick={() => void stopSnowlumaRuntime(rt.id)}
-                    >
-                      {snowlumaRuntimeBusyId === rt.id ? "停止中…" : "停 Runtime"}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <ProtocolAccountConfigDialog
         open={Boolean(configAccountId)}
@@ -1167,6 +1097,23 @@ export default function ProtocolAccountsTab() {
         titleId="proto-delete-modal-title"
         onClose={closeDeleteModal}
         onConfirm={() => void confirmDeleteSelected()}
+      />
+      <ConsoleDeleteConfirmModal
+        open={selectedBatchKind != null}
+        title={selectedBatchKind === "stop" ? "停止所选账号" : "重启所选账号"}
+        subtitle={
+          selectedBatchKind === "stop"
+            ? `将按间隔依次停止 ${selected.size} 个账号。请确认后再继续。`
+            : `将按间隔依次重启 ${selected.size} 个账号，以降低系统负载。请确认后再继续。`
+        }
+        items={deleteModalItems}
+        busy={restartSelectedBusy || stopSelectedBusy || batchBusy}
+        confirmVariant="default"
+        confirmLabel={selectedBatchKind === "stop" ? "确认停止" : "确认重启"}
+        busyLabel={selectedBatchKind === "stop" ? "停止中…" : "重启中…"}
+        titleId="proto-selected-batch-modal-title"
+        onClose={closeSelectedBatchConfirm}
+        onConfirm={() => void confirmSelectedBatch()}
       />
     </div>
   );
