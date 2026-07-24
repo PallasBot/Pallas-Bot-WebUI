@@ -6,6 +6,85 @@
 
 <!-- entries -->
 
+## [0.6.51] - 2026-07-22
+
+### 🚀 新功能
+
+* feat(protocol): 增加账号运行时切换设置 ([a682490](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a6824907a3d761ce418b4459148a9ccfac287d8e))
+
+### 🐛 错误修复
+
+* fix(protocol): 修复控制台接口基址 ([baeebb3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/baeebb351286b81d6c2f2d4157e7c1922ca35bb7))
+
+### 🔨 其他更改
+
+* chore(worktree): 忽略本地工作树 ([865a348](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/865a34811b11c20d02f6c853677d11ccf36eea47))
+
+**完整变更**: [`v0.6.50...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.50...HEAD)
+
+
+## [0.6.50] - 2026-07-22
+
+### 🐛 错误修复
+
+* fix(ai-config): 修复响应式分区与模型操作布局 ([08b7be8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/08b7be8d0fbcf1674e63fa415174321141a893da))
+* fix(home): 恢复 KPI 右侧入口宽度 ([2a81fae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a81fae6e164821a2d460d7e018952e375f8642e))
+* fix(home): 保持 KPI 右侧入口同行 ([264fcf0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/264fcf09e74919e5cb6c9ec90da8180ee2b05ff0))
+* fix(webui): 修复控制台布局与构建版本标识 ([437b088](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/437b088fb282cab2737f489ffb0e3b324f398f5f))
+
+**完整变更**: [`v0.6.49...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.49...HEAD)
+
+
+## [0.6.49] - 2026-07-22
+
+### 🐛 错误修复
+
+* fix(webui): 优化 AI 配置窄屏布局 ([647161a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/647161ae689c92e3e3dc11adbd0ca73df6df8952))
+
+**完整变更**: [`v0.6.48...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.48...HEAD)
+
+
+## [0.6.48] - 2026-07-22
+
+### 🚀 新功能
+
+* feat(ai): 配置页搜索、专家模式切换与模型管理紧凑操作 ([cac5039](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cac50399a724c02e4ec107048ecd0d369bd2ec2d))
+* feat(ai): AI 首页卡片顺序与显隐偏好 ([02ce58f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02ce58f11811073a82728e5bd706613f6d1ed284))
+* feat(ai): 拆分历史会话工作区并按 workspace 同步路由 ([7fe6466](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7fe64669d483336c2cb712fef504c89d5e058803))
+* feat(ai): 侧栏按 AI 可达性收成 essentials 导航 ([2053028](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20530282dd1471130453b5abe3d7aadd1cf61d03))
+* feat(protocol): 协议账号日志按二维码行分段渲染 ([c7b9e51](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c7b9e5105cd40b5761e0eaea5f08aec8d4fe1704))
+* feat(protocol): SnowLuma Runtime 管理与创建流 ([d3ee813](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3ee8130346ae7956a6365d7be3728b71e46fbb8))
+
+### 🐛 错误修复
+
+* fix(ai): AI 体检向导接入 PagePinned 钉顶布局 ([bc3b7e6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bc3b7e62c6ad208e24c78f65da36dc29a8764ffc))
+* fix(ui): 插件商店非本地分区隐藏空工具条 actions ([956d99d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/956d99d25f395efccf9b9b5ec3d27ed8688ab4a4))
+* fix(ui): 运行日志搜索筛选同行并移除刷新按钮 ([4598890](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/459889061e1a22715fbdda468556ac12076f090a))
+* fix(ui): 实例与协议面板标题栏统计位与搜索全宽 ([ef44ece](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef44ecea33dadb0e15aa3d24f59bdd3d0480a495))
+* fix(ui): Hub 工具条窄屏保持单行并截断来源 select ([c12ab38](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c12ab38bddf5bc4dc3652650cbb94d96583ffd99))
+* fix(ui): Safari 日期控件与统计筛选窄屏布局 ([50a26ce](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/50a26cea8d78d598efaee3ac74572fc95971e28c))
+
+### 🔨 其他更改
+
+* style(ui): 侧栏滚动条默认隐藏、悬停显现 ([89d6e29](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/89d6e293ba6715e1f58f7353c7bf950cbb02a6ca))
+
+**完整变更**: [`v0.6.47...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.47...HEAD)
+
+
+## [0.6.47] - 2026-07-21
+
+### 🐛 错误修复
+
+* fix(ui): 高流量页与 AiHistory 双栏窄屏收口 ([fa4aa26](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fa4aa26e2a9853f67881cbbb67729d172bfa0afc))
+
+### ♻️ 重构
+
+* refactor(ui): 外迁 AiHistory 页面共享样式到 ai-history.css ([9ab8baa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9ab8baa5b3667f352df930eef6b03de1faac55f2))
+* refactor(ui): 拆分 AiHistory 判定轨迹与孤立行为块 ([882516a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/882516acb6bbb035022514699623d9392ad2195a))
+
+**完整变更**: [`v0.6.46...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.6.46...HEAD)
+
+
 ## [0.6.46] - 2026-07-21
 
 ### 🚀 新功能
