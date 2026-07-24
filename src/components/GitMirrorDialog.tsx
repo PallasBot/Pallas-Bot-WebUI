@@ -430,7 +430,7 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
         }}
       >
         <DialogContent
-          className="git-mirror-dialog flex max-h-[min(92vh,860px)] w-[min(720px,96vw)] max-w-[min(720px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          className="git-mirror-dialog flex max-h-[min(860px,calc(100dvh-32px))] w-[min(720px,calc(100vw-32px))] max-w-[min(720px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
           onEscapeKeyDown={(e) => {
             if (dialogBusy) e.preventDefault();
           }}
@@ -616,7 +616,7 @@ export default function GitMirrorDialog({ open, onClose }: Props) {
         }}
       >
         <DialogContent
-          className="git-mirror-switch-dialog flex w-[min(420px,96vw)] max-w-[min(420px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          className="git-mirror-switch-dialog flex max-h-[min(480px,calc(100dvh-32px))] w-[min(420px,calc(100vw-32px))] max-w-[min(420px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
           onEscapeKeyDown={(e) => {
             if (applyBusyKey) e.preventDefault();
           }}

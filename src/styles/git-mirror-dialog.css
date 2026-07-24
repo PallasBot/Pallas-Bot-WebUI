@@ -1,11 +1,18 @@
-/* Migrated from Vue GitMirrorDialog.vue scoped styles (P1) */
+/* Migrated from Vue GitMirrorDialog.vue scoped styles (P1)
+ * 窄屏左右/上下各留 16px（同 plugin-config-dialog） */
 .console-modal__dialog.git-mirror-dialog,
-.ui-dialog__panel.git-mirror-dialog {
-  width: min(920px, 100%);
+.ui-dialog__panel.git-mirror-dialog,
+.ui-surface-dialog.git-mirror-dialog {
+  width: min(720px, calc(100vw - 32px));
+  max-width: min(720px, calc(100vw - 32px));
+  max-height: min(860px, calc(100dvh - 32px));
 }
 .console-modal__dialog.git-mirror-switch-dialog,
-.ui-dialog__panel.git-mirror-switch-dialog {
-  width: min(420px, 100%);
+.ui-dialog__panel.git-mirror-switch-dialog,
+.ui-surface-dialog.git-mirror-switch-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
+  max-height: min(480px, calc(100dvh - 32px));
 }
 
 .git-mirror-dialog__bd {
