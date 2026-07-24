@@ -1,70 +1,60 @@
-/**
- * WebUI 配置展示映射。
- *
- * - 通用配置 enum：优先使用后端 API 返回的 choice_labels（见 Pallas-Bot enum_labels.py）
- * - FALLBACK_ENUM_LABELS：后端未附带时的本地兜底（插件配置等）
- * - LLM_*：AI 控制台专用，非通用配置 API 字段
- */
+/** 弹层定位：Bot 对话策略表单分组。 */
 
-/** 后端未返回 choice_labels 时的通用枚举兜底（与 enum_labels.GLOBAL_CHOICE_LABELS 对齐） */
-export const FALLBACK_ENUM_LABELS: Record<string, string> = {
-  auto: "自动",
-  true: "开启",
-  false: "关闭",
-  keyword: "仅关键词（默认）",
-  hybrid: "关键词 + 向量（推荐）",
-  embedding: "纯向量",
-  vector: "纯向量（同 embedding）",
-  prefetch: "后台预取（推荐）",
-  sync: "当场联网查询",
-  "local,community": "先本机，再共享池",
-  local: "只用本机",
-  local_first: "本地优先",
-  merge_counts: "合并使用次数",
-  local_only: "仅使用本机语料",
-  session: "本 worker 连接",
-  fleet: "协议实例名册",
-  connected: "全集群曾连 WS",
-  off: "关闭 AI 接话",
-  select: "命中语料时 AI 选句（推荐）",
-  select_polish_lite: "选句为主，少数回复轻润色",
-  select_fallback: "选句，语料缺失时现编",
-  fallback: "仅语料缺失时 AI 现编",
-  "": "自动推断（推荐）",
-  legacy_repeater: "仅语料规则（legacy）",
-  repeater_plus_decision: "语料 + 统一决策",
-  full_conversation_kernel: "决策 + 生成 + 反馈全链路",
-  "60": "1 分钟",
-  "120": "2 分钟",
-  "300": "5 分钟",
-  "600": "10 分钟",
-  "900": "15 分钟",
-  "1800": "30 分钟",
-  "3600": "1 小时",
-};
-
-export const LLM_TASK_ROUTE_LABELS: Record<string, string> = {
-  llm_chat: "@ 对话",
-  drunk: "醉聊",
-  repeater_select: "接话选句",
-  repeater_polish_lite: "接话轻润色",
-  repeater_fallback: "接话兜底",
-  repeater_polish: "接话完整润色",
-  other: "其他",
-};
-
-export function llmTaskRouteLabel(task: string): string {
-  return LLM_TASK_ROUTE_LABELS[task] ?? task;
-}
-
-export const LLM_CLASSIFY_METRIC_LABELS: Record<string, string> = {
-  tier_simple: "简单",
-  tier_medium: "中等",
-  tier_complex: "复杂",
-  tools_on: "工具开",
-  tools_off: "工具关",
-  vision_on: "含图",
-  vision_off: "纯文本",
+/** 后端未返回 label 时的字段标题兜底（与 Pallas-Bot field_labels.py 对齐）。 */
+export const FALLBACK_FIELD_LABELS: Record<string, string> = {
+  llm_chat_enabled: "启用智能对话",
+  chat_enable: "启用酒后 RWKV（独立通道）",
+  chat_tts_enable: "酒后对话附带语音",
+  llm_repeater_mode: "接话时如何用智能对话",
+  llm_polish_lite_sample_rate: "轻润色抽样比例",
+  llm_session_enabled: "记住多轮上下文",
+  llm_session_user_window: "用户上下文条数",
+  llm_session_group_window: "群旁听上下文条数",
+  llm_session_group_ambient_enabled: "注入群旁听上下文",
+  llm_session_user_ttl_sec: "用户会话过期（秒）",
+  llm_session_private_ttl_sec: "私聊会话过期（秒）",
+  llm_session_max_content_len: "单条会话字数上限",
+  llm_session_strip_vision_enabled: "写入会话时去掉图片",
+  llm_session_summary_enabled: "会话过长时生成摘要",
+  llm_session_summary_threshold: "触发摘要的消息条数",
+  llm_session_summary_keep_messages: "摘要后保留近期条数",
+  llm_chat_char_budget: "闲聊上下文字符预算",
+  llm_tools_enabled: "允许调用资料工具",
+  llm_governance_enabled: "限制闲聊频率与字数",
+  conversation_feature_level: "对话能力档位",
+  llm_repeater_feedback_enabled: "收集闲聊反哺",
+  llm_repeater_bias_enabled: "反哺参与接话打分",
+  llm_repeater_writeback_enabled: "反哺写回接话语料",
+  llm_memory_rag_enabled: "群记忆检索",
+  llm_vector_retrieve: "记忆/知识检索模式",
+  llm_embedding_model: "Embedding 模型",
+  llm_memory_rag_top_k: "记忆检索条数",
+  llm_memory_max_per_group: "每群记忆上限",
+  llm_memory_content_max_len: "单条记忆字数上限",
+  llm_memory_auto_episode_enabled: "自动沉淀会话为记忆",
+  llm_memory_auto_episode_cooldown_sec: "自动沉淀冷却（秒）",
+  llm_memory_graph_extract_enabled: "记忆图谱抽取",
+  llm_memory_graph_extract_on_write: "写入后自动抽取图谱",
+  llm_memory_hiergraph_max_layers: "分层图谱最大层数",
+  llm_relationship_notes_enabled: "关系备注",
+  llm_output_filter_enabled: "回复输出过滤",
+  llm_output_filter_chat_hard_phrases: "闲聊硬拦截词",
+  llm_output_filter_chat_soft_phrases: "闲聊软拦截词",
+  llm_output_filter_polish_lite_hard_phrases: "轻润色硬拦截词",
+  llm_output_filter_polish_lite_soft_phrases: "轻润色软拦截词",
+  llm_chat_max_concurrency: "闲聊并发上限",
+  llm_repeater_group_cooldown_sec: "接话群冷却（秒）",
+  llm_repeater_max_inflight: "接话并发上限",
+  llm_repeater_global_rpm: "接话全局限流（次/分）",
+  llm_reply_gate_enabled: "过滤无意义 @",
+  llm_chat_queue_merge: "冷却期合并多条 @",
+  llm_reply_postprocess_enabled: "回复后处理",
+  llm_reply_typo_enabled: "偶发近音错别字",
+  llm_reply_typo_rate: "单字错别字概率",
+  llm_reply_split_enabled: "按句拆成多条",
+  llm_reply_split_max_chars: "拆条单段字数上限",
+  llm_sticker_fit_enabled: "表情适配与反馈",
+  llm_reply_effect_eval_enabled: "记录回复效果评分",
 };
 
 export type LlmBotFieldGroupTier = "essential" | "advanced";
@@ -77,6 +67,7 @@ export interface LlmBotFieldGroupDef {
   anchorId?: string;
 }
 
+/** 策略表单：会话/记忆细项已拆到对话子面板，此处只留总开关级入口。 */
 export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
   {
     title: "功能开关",
@@ -91,7 +82,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_governance_enabled",
       "conversation_feature_level",
     ],
-    hint: "总闸、接话方式与对话相关能力；各开关说明见字段旁帮助。会话 / 记忆见「对话」子分区。",
+    hint: "总开关、接话方式与相关能力。会话与记忆见同页其它分区。",
   },
   {
     title: "学习闭环",
@@ -102,7 +93,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_repeater_bias_enabled",
       "llm_repeater_writeback_enabled",
     ],
-    hint: "开启加权后，在 AI 历史里排除坏回复或填写期望回复；写回晋升为可选进阶。",
+    hint: "在会话页排除坏回复或填期望回复；写回语料为进阶选项。",
   },
   {
     title: "输出过滤",
@@ -141,6 +132,65 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     ],
   },
 ];
+
+export const LLM_SESSION_DETAIL_KEYS = [
+  "llm_session_user_window",
+  "llm_session_group_window",
+  "llm_session_group_ambient_enabled",
+  "llm_session_user_ttl_sec",
+  "llm_session_private_ttl_sec",
+  "llm_session_max_content_len",
+  "llm_session_strip_vision_enabled",
+  "llm_session_summary_enabled",
+  "llm_session_summary_threshold",
+  "llm_session_summary_keep_messages",
+] as const;
+
+export const LLM_MEMORY_DETAIL_KEYS = [
+  "llm_vector_retrieve",
+  "llm_embedding_model",
+  "llm_memory_rag_top_k",
+  "llm_memory_max_per_group",
+  "llm_memory_content_max_len",
+  "llm_memory_auto_episode_enabled",
+  "llm_memory_auto_episode_cooldown_sec",
+  "llm_memory_graph_extract_enabled",
+  "llm_memory_graph_extract_on_write",
+  "llm_memory_hiergraph_max_layers",
+  "llm_relationship_notes_enabled",
+] as const;
+
+export const LLM_BUDGET_DETAIL_KEYS = ["llm_chat_char_budget"] as const;
+
+/** 媒体地址已迁到「媒体」分段；会话/记忆/预算细项在专面，策略表单隐藏避免重复。 */
+export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
+  "ai_server_host",
+  "ai_server_port",
+  "llm_session_enabled",
+  "llm_session_user_window",
+  "llm_session_group_window",
+  "llm_session_group_ambient_enabled",
+  "llm_session_user_ttl_sec",
+  "llm_session_private_ttl_sec",
+  "llm_session_max_content_len",
+  "llm_session_strip_vision_enabled",
+  "llm_session_summary_enabled",
+  "llm_session_summary_threshold",
+  "llm_session_summary_keep_messages",
+  "llm_chat_char_budget",
+  "llm_memory_rag_enabled",
+  "llm_vector_retrieve",
+  "llm_embedding_model",
+  "llm_memory_rag_top_k",
+  "llm_memory_max_per_group",
+  "llm_memory_content_max_len",
+  "llm_memory_auto_episode_enabled",
+  "llm_memory_auto_episode_cooldown_sec",
+  "llm_memory_graph_extract_enabled",
+  "llm_memory_graph_extract_on_write",
+  "llm_memory_hiergraph_max_layers",
+  "llm_relationship_notes_enabled",
+]);
 
 export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {
   if (!isSimpleMode) return LLM_BOT_FIELD_GROUPS;

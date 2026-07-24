@@ -1,27 +1,26 @@
-import type { PluginConfigField } from "@/api/pallasTypes";
+/** 弹层定位（React 侧自包含） */
+
+import type { PluginConfigField } from "@/api/console";
 import { isBinaryBoolEnum } from "@/utils/configFieldDisplay";
 
-/** 配置字段在列表/grid 中的行型：紧凑开关、标准单行、高块（JSON/多行）。 */
 export type ConfigFieldLayout = "compact" | "standard" | "tall";
 
 export function resolveConfigFieldLayout(field: PluginConfigField): ConfigFieldLayout {
   if (field.kind === "bool") return "compact";
   if (field.kind === "enum" && isBinaryBoolEnum(field)) return "compact";
-  if (field.kind === "json" && isStringListField(field)) return "compact";
+  if (field.kind === "json" && (isStringListField(field) || isIdListField(field))) return "compact";
   if (field.kind === "json") return "tall";
   if (field.kind === "string" && field.multiline) return "tall";
   return "standard";
 }
 
 /**
- * 字段在分组内的「类型聚类」序号，用于把同类控件排在一起：
- * 开关(0) → 下拉选项(1) → 数字(2) → 文本(3) → JSON(4)。
- * 二元布尔枚举按开关处理，与 resolveConfigFieldLayout 对齐。
+ * 字段在分组内的「类型聚类」序号：开关 → 下拉 → 数字 → 文本 → JSON。
  */
 export function fieldTypeClusterRank(field: PluginConfigField): number {
   if (field.kind === "bool") return 0;
   if (field.kind === "enum") return isBinaryBoolEnum(field) ? 0 : 1;
-  if (field.kind === "int" || field.kind === "float") return 2;
+  if (field.kind === "int" || field.kind === "float" || field.kind === "number") return 2;
   if (field.kind === "json") return 4;
   return 3;
 }
@@ -42,6 +41,12 @@ function isNumericEnumChoices(choices: string[] | undefined): boolean {
   return choices.every((c) => /^-?\d+$/.test(String(c).trim()));
 }
 
+function fieldChoices(f: PluginConfigField): string[] | undefined {
+  if (f.choices?.length) return f.choices;
+  if (!f.options?.length) return undefined;
+  return f.options.map((o) => (typeof o === "string" ? o : o.value));
+}
+
 export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unknown {
   const text = String(raw ?? "");
   if (f.kind === "bool") return text === "true" || text === "1";
@@ -52,7 +57,7 @@ export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unkn
     if (!Number.isFinite(n)) throw new Error(`${f.name}: 请输入整数`);
     return n;
   }
-  if (f.kind === "float") {
+  if (f.kind === "float" || f.kind === "number") {
     const t = text.trim();
     if (!t) return f.default ?? 0;
     const n = parseFloat(t);
@@ -62,8 +67,8 @@ export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unkn
   if (f.kind === "enum") {
     const t = text.trim();
     if (!t) return f.default ?? "";
-    // Literal[int, ...] 下拉：choices 为数字字符串，须提交 number，否则 Pydantic 校验失败
-    if (isNumericEnumChoices(f.choices)) {
+    const choices = fieldChoices(f);
+    if (isNumericEnumChoices(choices)) {
       const n = parseInt(t, 10);
       if (!Number.isFinite(n)) throw new Error(`${f.name}: 请选择有效选项`);
       return n;
@@ -104,23 +109,6 @@ export function collectFieldValues(
   return values;
 }
 
-/** 与 collectFieldValues 同一套解析规则，用于判断表单是否相对服务端有改动。 */
-export function configValuesFingerprint(
-  fields: PluginConfigField[],
-  fieldValues: Record<string, string>,
-): string {
-  return JSON.stringify(collectFieldValues(fields, fieldValues));
-}
-
-export function savedConfigFingerprint(fields: PluginConfigField[]): string {
-  return configValuesFingerprint(fields, fieldValuesFromConfig(fields));
-}
-
-/**
- * 判断一个 json 字段是否适合用「标签输入」编辑：
- * 其 default 与 current 若有值，必须是「字符串数组」（如群号列表、前缀列表）。
- * 空数组也视为标签场景；含对象/嵌套/数字数组的结构化 json 走 textarea。
- */
 export function isStringListField(field: PluginConfigField): boolean {
   if (field.kind !== "json") return false;
   const samples = [field.current, field.default];
@@ -134,24 +122,81 @@ export function isStringListField(field: PluginConfigField): boolean {
   return sawArray;
 }
 
-/** 把 json 字段的字符串值（JSON 文本）解析为字符串数组；失败回退空数组。 */
+/** QQ / 群号等数字 ID 列表（插件 config 里常见 list[int]）。 */
+export function isIdListField(field: PluginConfigField): boolean {
+  if (field.kind !== "json") return false;
+  const samples = [field.current, field.default];
+  let sawArray = false;
+  for (const sample of samples) {
+    if (sample === null || sample === undefined) continue;
+    if (!Array.isArray(sample)) return false;
+    sawArray = true;
+    if (sample.length === 0) continue;
+    if (!sample.every((item) => typeof item === "number" && Number.isFinite(item))) return false;
+  }
+  return sawArray;
+}
+
+export function isChipListField(field: PluginConfigField): boolean {
+  return isStringListField(field) || isIdListField(field);
+}
+
 export function tagsFromJsonText(raw: string): string[] {
   const text = String(raw ?? "").trim();
   if (!text) return [];
   try {
     const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed.map((x) => (x == null ? "" : String(x)));
+    if (Array.isArray(parsed)) return parsed.map((x) => (x == null ? "" : String(x))).filter(Boolean);
   } catch {
-    // 非合法 JSON（如用户手输），按换行/逗号兜底切分
     return text
-      .split(/[\n,]/)
+      .split(/[\n,，\s]+/)
       .map((s) => s.trim())
       .filter(Boolean);
   }
   return [];
 }
 
-/** 把字符串数组序列化回 json 字段所需的 JSON 文本。 */
 export function tagsToJsonText(tags: string[]): string {
   return JSON.stringify(tags);
+}
+
+/** 数字 ID 芯片：展示为字符串，落盘为 number[] JSON。 */
+export function idTagsFromJsonText(raw: string): string[] {
+  const text = String(raw ?? "").trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const item of parsed) {
+        const n = typeof item === "number" ? item : parseInt(String(item).trim(), 10);
+        if (!Number.isFinite(n) || n < 1) continue;
+        const key = String(Math.trunc(n));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(key);
+      }
+      return out;
+    }
+  } catch {
+    // fall through
+  }
+  return text
+    .split(/[\n,，\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s) && Number(s) >= 1)
+    .filter((s, i, arr) => arr.indexOf(s) === i);
+}
+
+export function idTagsToJsonText(tags: string[]): string {
+  const nums: number[] = [];
+  const seen = new Set<number>();
+  for (const tag of tags) {
+    const n = parseInt(String(tag).trim(), 10);
+    if (!Number.isFinite(n) || n < 1 || seen.has(n)) continue;
+    seen.add(n);
+    nums.push(n);
+  }
+  return JSON.stringify(nums);
 }

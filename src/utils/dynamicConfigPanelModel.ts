@@ -1,10 +1,14 @@
-import type { PluginConfigField, PluginConfigFieldGroup } from "@/api/pallasTypes";
+/** 弹层定位 */
+
+import type { PluginConfigField } from "@/api/console";
+import type { PluginConfigFieldGroup } from "@/api/pallasTypes";
 import { fieldTypeClusterRank } from "@/utils/pluginConfigFieldModel";
 
 export interface DynamicConfigGroup {
   id: string;
   title: string;
   fields: PluginConfigField[];
+  subtitle?: string;
   advanced?: boolean;
 }
 
@@ -18,7 +22,6 @@ function fieldsForGroup(group: PluginConfigFieldGroup, fields: PluginConfigField
   return out;
 }
 
-/** 在已有排序基础上把同类控件聚到一起；同类内保持原有先后（稳定）。 */
 function clusterByType(fields: PluginConfigField[]): PluginConfigField[] {
   return fields
     .map((field, index) => ({ field, index }))

@@ -1,8 +1,18 @@
-import { ref } from "vue";
+/** React 侧替代 Vue catalogSync：无 vue.ref，仅保留通知钩子。 */
 
-/** /instances 内存缓存更新时递增，供 keep-alive 页面同步本地 ref */
-export const instancesCatalogEpoch = ref(0);
+let epoch = 0;
+const listeners = new Set<() => void>();
+
+export function getInstancesCatalogEpoch(): number {
+  return epoch;
+}
+
+export function subscribeInstancesCatalog(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 export function notifyInstancesCatalogUpdated(): void {
-  instancesCatalogEpoch.value += 1;
+  epoch += 1;
+  for (const fn of listeners) fn();
 }

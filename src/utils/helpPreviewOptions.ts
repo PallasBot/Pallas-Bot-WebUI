@@ -1,9 +1,29 @@
-import type { PluginRow } from "@/api/pallasTypes";
-import { pluginDisplaySubtitle, pluginDisplayTitle } from "@/utils/pluginDisplayMeta";
-
 export interface HelpPreviewSelectOption {
   value: string;
   label: string;
+}
+
+type HelpPreviewPluginRow = {
+  name: string;
+  resolved_plugin_id?: string;
+  nb_plugin_name?: string;
+  metadata?: {
+    name?: string;
+    extra?: Record<string, unknown> & { menu_data?: unknown[] };
+  } | null;
+};
+
+function pluginDisplayTitle(plugin: HelpPreviewPluginRow): string {
+  const metaName = (plugin.metadata?.name || "").trim();
+  if (metaName) return metaName;
+  return (plugin.nb_plugin_name || plugin.name || "").trim();
+}
+
+function pluginDisplaySubtitle(plugin: HelpPreviewPluginRow): string {
+  const id = (plugin.resolved_plugin_id || plugin.name || "").trim();
+  const title = pluginDisplayTitle(plugin);
+  if (!id || id === title) return "";
+  return id;
 }
 
 function isUserHelpAudience(audience: unknown): boolean {
@@ -11,7 +31,7 @@ function isUserHelpAudience(audience: unknown): boolean {
   return normalized !== "maintainer" && normalized !== "superuser";
 }
 
-export function listHelpPreviewPluginOptions(rows: PluginRow[]): HelpPreviewSelectOption[] {
+export function listHelpPreviewPluginOptions(rows: HelpPreviewPluginRow[]): HelpPreviewSelectOption[] {
   return rows
     .filter((row) => {
       const extra = row.metadata?.extra;
@@ -28,7 +48,7 @@ export function listHelpPreviewPluginOptions(rows: PluginRow[]): HelpPreviewSele
 }
 
 export function listHelpPreviewFunctionOptions(
-  row: PluginRow | null | undefined,
+  row: HelpPreviewPluginRow | null | undefined,
 ): HelpPreviewSelectOption[] {
   const menu = row?.metadata?.extra?.menu_data;
   if (!Array.isArray(menu)) return [];
