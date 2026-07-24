@@ -12,16 +12,27 @@ import {
   putSingDefaults,
   putTtsDefaults,
 } from "@/api/console";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+type Panel = "media" | "sing" | "tts";
+
+const PANEL_OPTIONS = [
+  { value: "media", label: "媒体资产" },
+  { value: "sing", label: "唱歌" },
+  { value: "tts", label: "TTS" },
+];
+
 export default function AiConfigCapabilitiesSection() {
   const qc = useQueryClient();
+  const [panel, setPanel] = useState<Panel>("media");
   const [msg, setMsg] = useState<string | null>(null);
   const [jobLines, setJobLines] = useState<string[]>([]);
   const pollRef = useRef<number | null>(null);
@@ -108,7 +119,7 @@ export default function AiConfigCapabilitiesSection() {
 
   const singMut = useMutation({
     mutationFn: () => putSingDefaults({ default_speaker: defaultSpeaker, preferred_backend: preferredBackend }),
-    onSuccess: () => setMsg("唱歌默认已保存"),
+    onSuccess: () => setMsg("唱歌默认配置已保存"),
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
@@ -120,31 +131,42 @@ export default function AiConfigCapabilitiesSection() {
         prompt_lang: ttsPromptLang,
         text_lang: ttsTextLang,
       }),
-    onSuccess: () => setMsg("TTS 默认已保存"),
+    onSuccess: () => setMsg("TTS 默认配置已保存"),
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
   const busy = downloadMut.isPending || deleteMut.isPending || singMut.isPending || ttsMut.isPending;
 
-  return (
-    <div className="space-y-4">
-      {msg ? (
-        <p className={cn("text-sm", /成功|已保存|已删除|任务/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-          {msg}
-        </p>
-      ) : null}
+  const chromeMiddle = useMemo(
+    () => (
+      <SegTabs
+        size="toolbar"
+        ariaLabel="能力包分区"
+        value={panel}
+        onValueChange={(v) => setPanel(v as Panel)}
+        options={PANEL_OPTIONS}
+      />
+    ),
+    [panel],
+  );
 
-      <Card>
-        <CardHeader>
-          <CardTitle>媒体资产</CardTitle>
-          <CardDescription>下载、删除与就绪状态。</CardDescription>
-        </CardHeader>
-        <CardContent>
+  useRegisterAiConfigChrome({ middle: chromeMiddle });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        {msg ? (
+          <p className={cn("text-sm", /成功|已保存|已删除|任务/.test(msg) ? "text-emerald-400" : "text-destructive")}>
+            {msg}
+          </p>
+        ) : null}
+
+        {panel === "media" ? (
           <StateBlock loading={mediaQ.isLoading} error={mediaQ.error}>
             <div className="flex flex-wrap gap-2">
               <Badge variant={mediaQ.data?.all_media_assets_ready ? "success" : "warn"}>
-                {mediaQ.data?.all_media_assets_ready ? "全部就绪" : "未就绪"}
+                {mediaQ.data?.all_media_assets_ready ? "全部就绪" : "部分缺失"}
               </Badge>
               <Badge variant="outline">{mediaQ.data?.deploy_mode || "—"}</Badge>
             </div>
@@ -194,30 +216,25 @@ export default function AiConfigCapabilitiesSection() {
               </pre>
             ) : null}
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>唱歌</CardTitle>
-          <CardDescription>
-            后端 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "—"} · 说话人{" "}
-            {singQ.data?.speakers.speakers?.length ?? 0} 个
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        {panel === "sing" ? (
           <StateBlock loading={singQ.isLoading} error={singQ.error}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AiConfigField label="默认说话人" description="未指定时使用的唱歌音色。">
+            <p className="mb-3 text-xs text-muted-foreground">
+              后端 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "—"} · Speaker{" "}
+              {singQ.data?.speakers.speakers?.length ?? 0} 个
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <AiConfigField label="默认 Speaker" description="未指定音色时使用的默认唱歌音色。">
                 <AiModelSelect
                   value={defaultSpeaker}
                   options={speakerOptions}
-                  placeholder="选择说话人"
+                  placeholder="选择 Speaker"
                   emptyLabel="（未指定）"
                   onValueChange={setDefaultSpeaker}
                 />
               </AiConfigField>
-              <AiConfigField label="优先后端" description="首选推理后端。">
+              <AiConfigField label="优先后端" description="首选的媒体推理后端。">
                 <AiModelSelect
                   value={preferredBackend}
                   options={backendOptions}
@@ -236,21 +253,16 @@ export default function AiConfigCapabilitiesSection() {
                 void singMut.mutateAsync();
               }}
             >
-              保存唱歌默认
+              保存唱歌默认配置
             </Button>
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>TTS</CardTitle>
-          <CardDescription>音色 {ttsQ.data?.voices?.length ?? 0} 个</CardDescription>
-        </CardHeader>
-        <CardContent>
+        {panel === "tts" ? (
           <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AiConfigField label="参考音频" description="ref_audio_path">
+            <p className="mb-3 text-xs text-muted-foreground">音色 {ttsQ.data?.voices?.length ?? 0} 个</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <AiConfigField label="参考音频" description="参考音频的存储路径。">
                 <AiModelSelect
                   value={ttsRef}
                   options={voicePathOptions}
@@ -259,13 +271,13 @@ export default function AiConfigCapabilitiesSection() {
                   onValueChange={setTtsRef}
                 />
               </AiConfigField>
-              <AiConfigField label="提示文本" description="prompt_text">
+              <AiConfigField label="提示文本">
                 <Input value={ttsPrompt} onChange={(e) => setTtsPrompt(e.target.value)} />
               </AiConfigField>
-              <AiConfigField label="提示语种" description="prompt_lang">
+              <AiConfigField label="提示语种">
                 <Input value={ttsPromptLang} onChange={(e) => setTtsPromptLang(e.target.value)} />
               </AiConfigField>
-              <AiConfigField label="合成语种" description="text_lang">
+              <AiConfigField label="合成语种">
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
               </AiConfigField>
             </div>
@@ -278,11 +290,11 @@ export default function AiConfigCapabilitiesSection() {
                 void ttsMut.mutateAsync();
               }}
             >
-              保存 TTS 默认
+              保存 TTS 默认配置
             </Button>
           </StateBlock>
-        </CardContent>
-      </Card>
-    </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,28 +1,31 @@
-import { Layers, RefreshCw } from "lucide-react";
+import { Layers, Server, Sparkles, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import {
-  aiConfigSectionsByGroup,
+  AI_CONFIG_SECTIONS,
   type AiConfigSectionId,
 } from "@/config/aiConfigSections";
 import { useAiConfigChromeSlots } from "@/components/ai/AiConfigChromeContext";
-import ChromeField from "@/components/ChromeField";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools from "@/components/ChromeTools";
-import { Button } from "@/components/ui/button";
+import RefreshIconButton from "@/components/RefreshIconButton";
 import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+
+const SECTION_ICONS: Record<AiConfigSectionId, LucideIcon> = {
+  provider: Server,
+  dialogue: Sparkles,
+  media: Layers,
+};
 
 /**
- * AI 配置单行工具条：分段 Select | 段内分栏(middle) | 搜索? | trailing | 刷新。
- * 换分段时 middle/trailing 由段内 register 切换。
+ * AI 配置工具条：选择分段 Select | 段内 middle | 搜索? | trailing | 刷新。
+ * 整行共用 ChromeTools 横向滚动，勿再给 middle 单独 overflow。
  */
 export default function AiConfigChromeTools({
   section,
@@ -45,72 +48,56 @@ export default function AiConfigChromeTools({
   className?: string;
   trailing?: ReactNode;
 }) {
-  const groups = aiConfigSectionsByGroup();
   const slots = useAiConfigChromeSlots();
   const middle = slots.middle;
   const slotTrailing = slots.trailing;
   const refresh = slots.onRefresh ?? onRefresh;
+  const currentMeta = AI_CONFIG_SECTIONS.find((s) => s.id === section);
+  const currentLabel = currentMeta?.label ?? "分段";
+  const SectionIcon = SECTION_ICONS[section] ?? Layers;
 
   return (
     <ChromeTools className={className}>
-      <ChromeField label="分段" icon={Layers}>
+      <ChromeField label="选择" icon={SectionIcon} className="shrink-0">
         <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
-          <SelectTrigger className="h-8 w-auto min-w-[6.5rem] max-w-[9rem] shrink-0 gap-1.5">
-            <SelectValue placeholder="分段" />
+          <SelectTrigger className="h-9 w-auto min-w-[10rem] max-w-[16rem] shrink-0 gap-1.5">
+            <SelectValue placeholder="选择">{currentLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
-            {groups.map(({ group, sections }) => (
-              <SelectGroup key={group.id}>
-                <SelectLabel>{group.label}</SelectLabel>
-                {sections.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+            {AI_CONFIG_SECTIONS.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                <ChromeOptionLabel icon={SECTION_ICONS[s.id] ?? Layers}>{s.label}</ChromeOptionLabel>
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </ChromeField>
 
       {middle ? (
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">{middle}</div>
-      ) : search ? (
+        <div className="flex shrink-0 items-center gap-1.5">{middle}</div>
+      ) : null}
+
+      {search ? (
         <Input
           value={search.value}
           onChange={(e) => search.onChange(e.target.value)}
           placeholder={search.placeholder ?? "搜索…"}
-          className="h-8 min-w-[8rem] flex-1"
-        />
-      ) : (
-        <div className="min-w-0 flex-1" aria-hidden />
-      )}
-
-      {search && middle ? (
-        <Input
-          value={search.value}
-          onChange={(e) => search.onChange(e.target.value)}
-          placeholder={search.placeholder ?? "搜索…"}
-          className="h-8 min-w-[8rem] max-w-[16rem] flex-1"
+          className="h-8 min-w-[8rem] w-[min(16rem,100%)] shrink-0"
         />
       ) : null}
 
-      {slotTrailing}
-      {trailing}
-
-      {refresh ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0 gap-1.5"
-          disabled={refreshing}
-          onClick={() => refresh()}
-        >
-          <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
-          刷新
-        </Button>
-      ) : null}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {slotTrailing}
+        {trailing}
+        {refresh ? (
+          <RefreshIconButton
+            busy={refreshing}
+            label="刷新"
+            showLabel
+            onClick={() => refresh()}
+          />
+        ) : null}
+      </div>
     </ChromeTools>
   );
 }

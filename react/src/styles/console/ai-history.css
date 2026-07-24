@@ -6,7 +6,7 @@
 }
 
 .ai-history-page--chrome {
-  gap: var(--hub-page-gap, 16px);
+  gap: var(--hub-page-gap, 18px);
   flex: 1 1 auto;
   min-height: 0;
   /* 会话双栏：在 PageFill 内滚；群维护等长页：见 --page-scroll */
@@ -1420,7 +1420,8 @@
 }
 
 .ai-history-page__correction-textarea::placeholder {
-  color: color-mix(in srgb, var(--text-muted) 88%, var(--text) 12%);
+  color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
+  font-weight: 400;
 }
 
 .ai-history-page__correction-preview {

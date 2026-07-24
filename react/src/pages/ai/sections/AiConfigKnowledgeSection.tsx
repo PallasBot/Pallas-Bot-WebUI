@@ -1,40 +1,59 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchConversationKernelKnowledgeSources } from "@/api/console";
+import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
 import CommonConfigForm from "@/components/CommonConfigForm";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+
+type Panel = "arknights" | "sources";
+
+const PANEL_OPTIONS = [
+  { value: "arknights", label: "方舟知识库" },
+  { value: "sources", label: "语料源" },
+];
 
 export default function AiConfigKnowledgeSection() {
+  const [panel, setPanel] = useState<Panel>("arknights");
   const sourcesQ = useQuery({
     queryKey: ["conversation-kernel-knowledge-sources"],
     queryFn: fetchConversationKernelKnowledgeSources,
+    enabled: panel === "sources",
   });
 
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>方舟知识库</CardTitle>
-          <CardDescription>common-config · arknights_kb</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CommonConfigForm sectionId="arknights_kb" savedMessage="方舟知识库配置已保存" />
-        </CardContent>
-      </Card>
+  const chromeMiddle = useMemo(
+    () => (
+      <SegTabs
+        size="toolbar"
+        ariaLabel="知识库分区"
+        value={panel}
+        onValueChange={(v) => setPanel(v as Panel)}
+        options={PANEL_OPTIONS}
+      />
+    ),
+    [panel],
+  );
 
-      <Card>
-        <CardHeader>
-          <CardTitle>会话内核 · 语料源</CardTitle>
-          <CardDescription>只读列表，供排查知识检索来源；用顶部工具条刷新。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <StateBlock loading={sourcesQ.isLoading} error={sourcesQ.error} empty={!sourcesQ.data?.sources?.length}>
-            <pre className="max-h-80 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-3 text-xs">
-              {JSON.stringify(sourcesQ.data?.sources || [], null, 2)}
-            </pre>
+  useRegisterAiConfigChrome({ middle: chromeMiddle });
+
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        {panel === "arknights" ? (
+          <CommonConfigForm sectionId="arknights_kb" savedMessage="方舟知识库配置已保存" />
+        ) : (
+          <StateBlock
+            loading={sourcesQ.isLoading}
+            error={sourcesQ.error}
+            empty={!sourcesQ.data?.items?.length}
+            emptyText="暂无已配置的语料源。"
+          >
+            <KnowledgeSourcesTable items={sourcesQ.data?.items || []} />
           </StateBlock>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

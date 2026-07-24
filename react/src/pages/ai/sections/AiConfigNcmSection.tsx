@@ -7,7 +7,7 @@ import { AI_NCM_DEFAULTS } from "@/config/aiConstants";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export default function AiConfigNcmSection() {
   const sendMut = useMutation({
     mutationFn: () => postAiNcmSendSms({ phone: phone.trim(), ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode }),
     onSuccess: async (r) => {
-      setMsg(r.ok ? "验证码已发送" : r.error || "发送失败");
+      setMsg(r.ok ? "验证码已发送" : r.error || "验证码发送失败");
       await statusQ.refetch();
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -39,7 +39,7 @@ export default function AiConfigNcmSection() {
         ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode,
       }),
     onSuccess: async (r) => {
-      setMsg(r.ok ? "登录成功" : r.error || "验证失败");
+      setMsg(r.ok ? "登录成功" : r.error || "登录验证失败");
       await statusQ.refetch();
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -57,42 +57,34 @@ export default function AiConfigNcmSection() {
   const busy = sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
 
   return (
-    <div className="space-y-4">
-      {msg ? (
-        <p className={cn("text-sm", /成功|已发送|已登出/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-          {msg}
-        </p>
-      ) : null}
+    <Card>
+      <CardContent className="space-y-5 pt-5">
+        {msg ? (
+          <p className={cn("text-sm", /成功|已发送|已登出/.test(msg) ? "text-emerald-400" : "text-destructive")}>
+            {msg}
+          </p>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>登录状态</CardTitle>
-          <CardDescription>当前网易云会话；用顶部工具条刷新。</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <section className="space-y-3">
+          <h3 className="text-sm font-medium">登录状态</h3>
           <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
             <Badge variant={loggedIn ? "success" : "secondary"}>{loggedIn ? "已登录" : "未登录"}</Badge>
             <pre className="mt-3 max-h-48 overflow-auto rounded-[var(--radius-control,8px)] border bg-muted/30 p-2 text-xs">
               {JSON.stringify(statusQ.data, null, 2)}
             </pre>
           </StateBlock>
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>短信登录</CardTitle>
-          <CardDescription>短信验证码登录，用于点歌等能力。</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <section className="space-y-3 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-4">
+          <h3 className="text-sm font-medium">短信登录</h3>
+          <div className="grid gap-3 md:grid-cols-2">
             <AiConfigField label="手机号">
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
             </AiConfigField>
-            <AiConfigField label="国家码" description="默认 86">
+            <AiConfigField label="国家码" description="默认国家码（86）">
               <Input value={ctcode} onChange={(e) => setCtcode(e.target.value)} type="number" />
             </AiConfigField>
-            <AiConfigField label="验证码" className="sm:col-span-2">
+            <AiConfigField label="验证码" className="md:col-span-2">
               <Input value={captcha} onChange={(e) => setCaptcha(e.target.value)} />
             </AiConfigField>
           </div>
@@ -130,8 +122,8 @@ export default function AiConfigNcmSection() {
               登出
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -7,16 +7,23 @@ import {
   fetchLlmProvidersConfig,
   postLlmProviderTest,
   putLlmLocalRoutingConfig,
+  putLlmProvider,
   putLlmProvidersConfig,
   type LlmLocalRoutingConfig,
+  type LlmProviderCapability,
   type LlmProviderRow,
   type LlmProvidersConfig,
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
+import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
+import AiSectionHeader from "@/components/ai/AiSectionHeader";
+import TierPairCards, { TierCard } from "@/components/ai/TierPairCards";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import TagsInput, { type TagsInputHandle } from "@/components/config/TagsInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,23 +34,41 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import {
-  DEFAULT_LLM_TASKS,
+  LLM_BASE_URL_SUGGESTIONS,
+  LLM_LOCAL_BASE_URL_SUGGESTIONS,
+  LLM_PROVIDER_CAPABILITIES,
+  LLM_PROVIDER_MODEL_EFFORTS,
+  LLM_PROVIDER_REQUEST_METHODS,
   LLM_PROVIDER_PRESETS,
   applyPresetToDraft,
+  baseUrlHasTrailingSlash,
   blankProvider,
   findPresetByBaseUrl,
-  llmTaskRouteLabel,
   pruneRoutingForProvider,
   type LlmProviderPresetId,
 } from "@/config/llmProviderPresets";
+import AiModelAdminPanel from "@/pages/ai/sections/AiModelAdminPanel";
+import {
+  applyLocalTiers,
+  applyTaskTiers,
+  foldLocalTiers,
+  foldTaskTiers,
+  type LocalTierState,
+  type TaskTierState,
+  type TierProviderSlot,
+} from "@/utils/llmTierRouting";
 
-type Tab = "upstream" | "tasks" | "local";
+type Tab = "upstream" | "tasks" | "runtime" | "routing";
 
-const PROVIDER_TABS: Array<{ id: Tab; label: string }> = [
-  { id: "upstream", label: "上游 Provider" },
-  { id: "tasks", label: "任务编排" },
-  { id: "local", label: "本地路由" },
+const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: string }> = [
+  { id: "upstream", label: "提供方", icon: Cloud, lead: "云端服务商或本机 Ollama。" },
+  { id: "tasks", label: "任务编排", icon: ListTree, lead: "高低两档各选主备提供方与模型。" },
+  { id: "runtime", label: "Ollama 运行", icon: Cpu, lead: "切换本机模型与 GPU 层数。" },
+  { id: "routing", label: "Ollama 分档", icon: GitBranch, lead: "本机多模型分档。" },
 ];
 
 function cloneDoc(doc: LlmProvidersConfig): LlmProvidersConfig {
@@ -62,14 +87,15 @@ export default function LlmProvidersForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const [okMsg, setOkMsg] = useState("");
   const [testBusy, setTestBusy] = useState<string>("");
   const [testHint, setTestHint] = useState<Record<string, string>>({});
 
   const [editing, setEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [draft, setDraft] = useState<LlmProviderRow>(blankProvider());
-  const [draftApiKey, setDraftApiKey] = useState("");
+  const [draftApiKeys, setDraftApiKeys] = useState<string[]>([]);
+  const [keepStoredApiKey, setKeepStoredApiKey] = useState(false);
+  const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
   const [models, setModels] = useState<string[]>([]);
@@ -79,6 +105,13 @@ export default function LlmProvidersForm() {
   const [localDoc, setLocalDoc] = useState<LlmLocalRoutingConfig>({});
   const [localBaseline, setLocalBaseline] = useState("");
   const [localSaving, setLocalSaving] = useState(false);
+  // chrome 保存按钮包在 useMemo 里，用 ref 避免 localDirty 已为 true 后改模型仍闭包到旧 localDoc
+  const localDocRef = useRef(localDoc);
+  localDocRef.current = localDoc;
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
 
   const dirty = useMemo(() => JSON.stringify(doc) !== baseline, [doc, baseline]);
   const localDirty = useMemo(() => JSON.stringify(localDoc) !== localBaseline, [localDoc, localBaseline]);
@@ -96,17 +129,30 @@ export default function LlmProvidersForm() {
     return [...values];
   }, [doc.providers, localDoc, providerModels]);
 
-  const taskKeys = useMemo(() => {
-    const set = new Set<string>([...DEFAULT_LLM_TASKS, ...Object.keys(doc.routing.tasks || {})]);
+  const ollamaModels = useMemo(() => {
+    const values = new Set<string>();
     for (const p of doc.providers) {
-      for (const k of Object.keys(p.task_models || {})) set.add(k);
+      if (p.kind !== "local" && p.id !== "local") continue;
+      if (p.default_model?.trim()) values.add(p.default_model.trim());
+      for (const model of Object.values(p.task_models || {})) {
+        const t = String(model || "").trim();
+        if (t) values.add(t);
+      }
+      for (const model of providerModels[p.id] || []) {
+        const t = String(model || "").trim();
+        if (t) values.add(t);
+      }
     }
-    return [...set];
-  }, [doc]);
+    return [...values];
+  }, [doc.providers, providerModels]);
 
-  async function load() {
-    setLoading(true);
-    setErr("");
+  const taskTiers = useMemo(() => foldTaskTiers(doc), [doc]);
+  const localTiers = useMemo(() => foldLocalTiers(localDoc), [localDoc]);
+
+  async function load(opts?: { quiet?: boolean }) {
+    const quiet = Boolean(opts?.quiet);
+    if (!quiet) setLoading(true);
+    if (!quiet) setErr("");
     try {
       const [providers, local] = await Promise.all([
         fetchLlmProvidersConfig(),
@@ -118,9 +164,11 @@ export default function LlmProvidersForm() {
       setLocalDoc(local);
       setLocalBaseline(JSON.stringify(local));
     } catch (e) {
-      setErr(axiosErrorDetail(e));
+      const detail = axiosErrorDetail(e);
+      setErr(detail);
+      if (quiet) pushConsoleToast(detail || "刷新失败", "err");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
 
@@ -129,29 +177,53 @@ export default function LlmProvidersForm() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "local") return;
-    const provider = doc.providers.find((p) => p.kind === "local") || doc.providers.find((p) => p.id === "local");
-    if (!provider || providerModels[provider.id]) return;
-    void fetchLlmProviderModels(provider.id, {
-      base_url: provider.base_url,
-      api_key_env: provider.api_key_env,
-      kind: "local",
-    }).then((result) => {
-      if (result.ok) setProviderModels((prev) => ({ ...prev, [provider.id]: result.models || [] }));
-    }).catch(() => undefined);
+    if (tab !== "routing" && tab !== "tasks") return;
+    const targets =
+      tab === "routing"
+        ? doc.providers.filter((p) => p.kind === "local" || p.id === "local")
+        : doc.providers;
+    for (const provider of targets) {
+      if (providerModels[provider.id]) continue;
+      void fetchLlmProviderModels(provider.id, {
+        base_url: provider.base_url,
+        api_key_env: provider.api_key_env,
+        kind: provider.kind === "local" || provider.id === "local" ? "local" : "openai-compatible",
+        request_method: provider.request_method || "",
+      })
+        .then((result) => {
+          if (result.ok) {
+            setProviderModels((prev) => ({ ...prev, [provider.id]: result.models || [] }));
+          }
+        })
+        .catch(() => undefined);
+    }
   }, [tab, doc.providers, providerModels]);
 
   async function saveProviders() {
     if (!dirty || saving) return;
     setSaving(true);
     setErr("");
-    setOkMsg("");
     try {
-      const result = await putLlmProvidersConfig(cloneDoc(doc));
-      setOkMsg(result.providers_file ? `已保存 → ${result.providers_file}` : "已保存提供方配置");
-      await load();
+      const result = await putLlmProvidersConfig(cloneDoc(docRef.current));
+      const fileHint = result.providers_file
+        ? result.providers_file.replace(/\\/g, "/").split("/").pop() || ""
+        : "";
+      const label =
+        tabRef.current === "tasks"
+          ? "已保存任务编排"
+          : fileHint
+            ? `已保存提供方（${fileHint}）`
+            : "已保存提供方配置";
+      pushConsoleToast(label, "ok");
+      // 只静默拉回提供方文档，避免整页 loading，也不误伤 Ollama 分档未保存草稿
+      const providers = await fetchLlmProvidersConfig();
+      const next = cloneDoc(providers);
+      setDoc(next);
+      setBaseline(JSON.stringify(next));
     } catch (e) {
-      setErr(axiosErrorDetail(e));
+      const detail = axiosErrorDetail(e);
+      setErr(detail);
+      pushConsoleToast(detail || "保存失败", "err");
     } finally {
       setSaving(false);
     }
@@ -161,14 +233,29 @@ export default function LlmProvidersForm() {
     if (!localDirty || localSaving) return;
     setLocalSaving(true);
     setErr("");
-    setOkMsg("");
     try {
-      const saved = await putLlmLocalRoutingConfig(localDoc);
+      const current = localDocRef.current;
+      // 保存前再折叠一轮：补齐空备用档，并用档位主模型兜底 llm_model
+      const normalized = applyLocalTiers(current, foldLocalTiers(current));
+      const llmModel =
+        String(normalized.llm_model || "").trim() ||
+        String(normalized.moe_models?.medium || "").trim() ||
+        String(normalized.moe_models?.complex || "").trim();
+      const payload = { ...normalized, llm_model: llmModel };
+      if (!payload.llm_model && !payload.local_multi_model_enabled) {
+        throw new Error("请先选择默认 Ollama 模型");
+      }
+      if (!payload.llm_model && payload.local_multi_model_enabled) {
+        throw new Error("请先为「复杂」或「中等」档选择模型");
+      }
+      const saved = await putLlmLocalRoutingConfig(payload);
       setLocalDoc(saved);
       setLocalBaseline(JSON.stringify(saved));
-      setOkMsg("已保存本地路由");
+      pushConsoleToast("已保存 Ollama 分档", "ok");
     } catch (e) {
-      setErr(axiosErrorDetail(e));
+      const detail = axiosErrorDetail(e);
+      setErr(detail);
+      pushConsoleToast(detail || "保存失败", "err");
     } finally {
       setLocalSaving(false);
     }
@@ -177,7 +264,8 @@ export default function LlmProvidersForm() {
   function openAdd() {
     setEditIndex(null);
     setDraft(blankProvider());
-    setDraftApiKey("");
+    setDraftApiKeys([]);
+    setKeepStoredApiKey(false);
     setUseEnvVar(false);
     setEditErr("");
     setModels([]);
@@ -188,45 +276,65 @@ export default function LlmProvidersForm() {
     const row = doc.providers[index];
     if (!row) return;
     setEditIndex(index);
-    setDraft(JSON.parse(JSON.stringify(row)) as LlmProviderRow);
-    setDraftApiKey("");
-    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set);
+    const next = JSON.parse(JSON.stringify(row)) as LlmProviderRow;
+    if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
+    if (typeof next.model_effort !== "string") next.model_effort = "";
+    if (!next.request_method) next.request_method = "chat_completions";
+    setDraft(next);
+    const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
+    if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
+    setDraftApiKeys(keys);
+    setKeepStoredApiKey(Boolean(row.api_key_set) && keys.length === 0);
+    setUseEnvVar(Boolean(row.api_key_env?.trim()) && !row.api_key_set && keys.length === 0);
     setEditErr("");
     setModels([]);
     setEditing(true);
   }
 
+  function toggleCapability(cap: LlmProviderCapability) {
+    setDraft((prev) => {
+      const current = new Set(prev.capabilities || []);
+      if (current.has(cap)) current.delete(cap);
+      else current.add(cap);
+      return { ...prev, capabilities: [...current] as LlmProviderCapability[] };
+    });
+  }
+
   function applyPreset(id: LlmProviderPresetId) {
     setDraft((prev) => {
       const next = applyPresetToDraft(id, prev);
-      if (editIndex === null && !prev.id.trim() && id !== "custom") {
-        next.id = id;
+      // 新建时：切换预设同步配置名称；编辑已有提供方时 ID 不可改
+      if (editIndex === null) {
+        next.id = id === "custom" ? "" : id;
       }
       return next;
     });
   }
 
-  function submitEdit() {
+  async function submitEdit() {
     const id = draft.id.trim();
     if (!id) {
-      setEditErr("请填写 Provider ID");
+      setEditErr("请填写提供方 ID");
       return;
     }
     if (editIndex === null && providerIds.includes(id)) {
-      setEditErr(`Provider ID「${id}」已存在`);
+      setEditErr(`提供方 ID「${id}」已存在`);
       return;
     }
     const kind = draft.kind === "local" ? "local" : draft.kind || "remote";
     if (kind !== "local" && !draft.base_url.trim()) {
-      setEditErr("远程 Provider 需要填写 Base URL");
+      setEditErr("远程提供方需要填写 Base URL");
       return;
     }
-    const apiKey = draftApiKey.trim();
+    // 保存前把 TagsInput 未回车的草稿一并提交，避免密钥只在输入框里却未入库
+    const flushedKeys = (apiKeysInputRef.current?.flush() ?? draftApiKeys)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    const apiKeys = flushedKeys;
     const apiKeyEnv = useEnvVar ? draft.api_key_env.trim() : "";
     if (kind !== "local") {
-      const hasStored = Boolean(editIndex !== null && draft.api_key_set);
-      if (!apiKey && !apiKeyEnv && !hasStored) {
-        setEditErr("请填写 API Key，或改用环境变量");
+      if (!apiKeys.length && !apiKeyEnv && !keepStoredApiKey) {
+        setEditErr("请填写至少一个 API Key，或改用环境变量");
         return;
       }
     }
@@ -235,43 +343,68 @@ export default function LlmProvidersForm() {
       id,
       kind,
       base_url: draft.base_url.trim(),
-      api_key: apiKey,
+      api_key: apiKeys[0] || "",
+      api_keys: apiKeys,
       api_key_env: apiKeyEnv,
+      api_key_set: apiKeys.length > 0 || Boolean(apiKeyEnv) || keepStoredApiKey,
+      api_keys_count: apiKeys.length || (keepStoredApiKey ? draft.api_keys_count || 1 : 0),
       default_model: draft.default_model.trim(),
       task_models: { ...(draft.task_models || {}) },
+      capabilities: [...(draft.capabilities || [])],
+      model_effort: draft.model_effort || "",
+      request_method:
+        draft.kind === "local" ? "chat_completions" : draft.request_method || "chat_completions",
     };
-    const nextDoc = cloneDoc(doc);
-    if (editIndex === null) nextDoc.providers = [...nextDoc.providers, row];
-    else {
-      nextDoc.providers = [...nextDoc.providers];
-      nextDoc.providers[editIndex] = row;
-    }
-    const nextIndex = editIndex === null ? nextDoc.providers.length - 1 : editIndex;
-    setDoc(nextDoc);
+    const nextIndex = editIndex === null ? doc.providers.length : editIndex;
     setEditIndex(nextIndex);
+    setDraft(row);
+    setDraftApiKeys(apiKeys);
+    setKeepStoredApiKey(apiKeys.length === 0 && (keepStoredApiKey || Boolean(apiKeyEnv)));
     setEditing(true);
-    // 有密钥变更时立即落盘，避免「应用」但未保存
-    if (apiKey || apiKeyEnv) {
-      void (async () => {
-        setSaving(true);
-        setErr("");
-        try {
-          await putLlmProvidersConfig(nextDoc);
-          setOkMsg("已保存提供方（含密钥）");
-          await load();
-        } catch (e) {
-          setErr(axiosErrorDetail(e));
-        } finally {
-          setSaving(false);
-        }
-      })();
+    setSaving(true);
+    setErr("");
+    setEditErr("");
+    try {
+      // 单条 upsert：不整表回写，避免把其他提供方的脱敏空密钥写盘擦掉
+      await putLlmProvider(row);
+      const providers = await fetchLlmProvidersConfig();
+      const next = cloneDoc(providers);
+      setDoc(next);
+      setBaseline(JSON.stringify(next));
+      const savedRow = next.providers.find((p) => p.id === id);
+      if (savedRow) {
+        const savedKeys = Array.isArray(savedRow.api_keys)
+          ? savedRow.api_keys.map((k) => String(k || "").trim()).filter(Boolean)
+          : [];
+        if (!savedKeys.length && savedRow.api_key?.trim()) savedKeys.push(savedRow.api_key.trim());
+        setDraft({
+          ...row,
+          ...savedRow,
+          api_key: savedKeys[0] || "",
+          api_keys: savedKeys,
+          api_key_set: Boolean(savedRow.api_key_set) || savedKeys.length > 0,
+          api_keys_count: savedKeys.length || savedRow.api_keys_count || 0,
+        });
+        setDraftApiKeys(savedKeys);
+        setKeepStoredApiKey(Boolean(savedRow.api_key_set) && savedKeys.length === 0);
+        setUseEnvVar(Boolean(String(savedRow.api_key_env || "").trim()) && savedKeys.length === 0);
+        const idx = next.providers.findIndex((p) => p.id === id);
+        if (idx >= 0) setEditIndex(idx);
+      }
+      pushConsoleToast(`已保存提供方「${id}」`, "ok");
+    } catch (e) {
+      const detail = axiosErrorDetail(e);
+      setErr(detail);
+      pushConsoleToast(detail || "保存失败", "err");
+    } finally {
+      setSaving(false);
     }
   }
 
   function removeProvider(index: number) {
     const row = doc.providers[index];
     if (!row) return;
-    if (!window.confirm(`删除 Provider「${row.id}」？`)) return;
+    if (!window.confirm(`删除提供方「${row.id}」？`)) return;
     setDoc((prev) => {
       const next = cloneDoc(prev);
       next.providers = next.providers.filter((_, i) => i !== index);
@@ -281,36 +414,94 @@ export default function LlmProvidersForm() {
     setEditing(false);
     setEditIndex(null);
     setDraft(blankProvider());
-    setDraftApiKey("");
+    setDraftApiKeys([]);
+    setKeepStoredApiKey(false);
     setModels([]);
   }
 
-  async function testProvider(id: string) {
-    setTestBusy(id);
+  function toggleProviderEnabled(index: number, enabled: boolean) {
+    setDoc((prev) => {
+      const next = cloneDoc(prev);
+      const row = next.providers[index];
+      if (!row) return prev;
+      next.providers[index] = { ...row, enabled };
+      return next;
+    });
+    if (editing && editIndex === index) {
+      setDraft((d) => ({ ...d, enabled }));
+    }
+  }
+
+  async function testProvider(id: string, opts?: { quiet?: boolean }) {
+    const quiet = Boolean(opts?.quiet);
+    if (!quiet) setTestBusy(id);
     setTestHint((h) => ({ ...h, [id]: "测试中…" }));
     try {
       const r = await postLlmProviderTest(id);
-      setTestHint((h) => ({
-        ...h,
-        [id]: r.reachable
-          ? `可达${r.latency_ms != null ? ` ${Math.round(r.latency_ms)}ms` : ""}`
-          : r.error || "不可达",
-      }));
+      if (r.reachable) {
+        const latency =
+          r.latency_ms != null ? `，延迟 ${Math.round(r.latency_ms)}ms` : "";
+        const hint = `可达${r.latency_ms != null ? ` ${Math.round(r.latency_ms)}ms` : ""}`;
+        setTestHint((h) => ({ ...h, [id]: hint }));
+        if (!quiet) pushConsoleToast(`「${id}」连通正常${latency}`, "ok");
+        return true;
+      }
+      const detail = r.error || "不可达";
+      setTestHint((h) => ({ ...h, [id]: detail }));
+      if (!quiet) pushConsoleToast(`「${id}」连通失败：${detail}`, "err");
+      return false;
     } catch (e) {
-      setTestHint((h) => ({ ...h, [id]: axiosErrorDetail(e) }));
+      const detail = axiosErrorDetail(e);
+      setTestHint((h) => ({ ...h, [id]: detail }));
+      if (!quiet) pushConsoleToast(`「${id}」测试失败：${detail}`, "err");
+      return false;
+    } finally {
+      if (!quiet) setTestBusy("");
+    }
+  }
+
+  async function testAllProviders() {
+    const targets = doc.providers.filter((p) => {
+      const id = p.id.trim();
+      if (!id) return false;
+      if (p.kind === "local") return true;
+      return Boolean(p.base_url.trim());
+    });
+    if (!targets.length) {
+      pushConsoleToast("暂无已配置的提供方可测", "warn");
+      return;
+    }
+    setTestBusy("__all__");
+    let okCount = 0;
+    try {
+      for (const provider of targets) {
+        const ok = await testProvider(provider.id, { quiet: true });
+        if (ok) okCount += 1;
+      }
     } finally {
       setTestBusy("");
+    }
+    const total = targets.length;
+    const failed = total - okCount;
+    if (failed === 0) {
+      pushConsoleToast(`全部连通正常（${okCount}/${total}）`, "ok");
+    } else if (okCount === 0) {
+      pushConsoleToast(`全部连通失败（0/${total}）`, "err");
+    } else {
+      pushConsoleToast(`连通完成：${okCount} 成功，${failed} 失败`, "warn");
     }
   }
 
   async function refreshModels() {
     const id = draft.id.trim();
     if (!id) {
-      setEditErr("请先填写 Provider ID");
+      setEditErr("请先填写提供方 ID");
+      pushConsoleToast("请先填写提供方 ID", "warn");
       return;
     }
     if (draft.kind !== "local" && !draft.base_url.trim()) {
-      setEditErr("远程 Provider 需要填写 Base URL");
+      setEditErr("远程提供方需要填写 Base URL");
+      pushConsoleToast("远程提供方需要填写 Base URL", "warn");
       return;
     }
     setModelsBusy(true);
@@ -318,19 +509,29 @@ export default function LlmProvidersForm() {
     try {
       const r = await fetchLlmProviderModels(id, {
         base_url: draft.base_url,
-        api_key: draftApiKey,
+        api_key: draftApiKeys.map((k) => k.trim()).find(Boolean) || "",
         api_key_env: useEnvVar ? draft.api_key_env : "",
         kind: draft.kind === "local" ? "local" : "openai-compatible",
+        request_method: draft.request_method || "",
       });
       if (!r.ok) {
-        setEditErr(r.error || "模型发现失败");
+        const detail = r.error || "模型发现失败";
+        setEditErr(detail);
         setModels([]);
+        pushConsoleToast(`刷新模型列表失败：${detail}`, "err");
       } else {
-        setModels(r.models || []);
-        setProviderModels((prev) => ({ ...prev, [id]: r.models || [] }));
+        const list = r.models || [];
+        setModels(list);
+        setProviderModels((prev) => ({ ...prev, [id]: list }));
+        pushConsoleToast(
+          list.length ? `已发现 ${list.length} 个模型` : "未发现可用模型",
+          list.length ? "ok" : "warn",
+        );
       }
     } catch (e) {
-      setEditErr(axiosErrorDetail(e));
+      const detail = axiosErrorDetail(e);
+      setEditErr(detail);
+      pushConsoleToast(`刷新模型列表失败：${detail}`, "err");
     } finally {
       setModelsBusy(false);
     }
@@ -342,76 +543,84 @@ export default function LlmProvidersForm() {
       base_url: provider.base_url,
       api_key_env: provider.api_key_env,
       kind: provider.kind === "local" ? "local" : "openai-compatible",
+      request_method: provider.request_method || "",
     }).then((result) => {
       if (result.ok) setProviderModels((prev) => ({ ...prev, [provider.id]: result.models || [] }));
     }).catch(() => undefined);
   }
 
-  function setTaskRoute(task: string, providerId: string) {
-    setDoc((prev) => {
-      const next = cloneDoc(prev);
-      const tasks = { ...next.routing.tasks };
-      if (providerId) tasks[task] = providerId;
-      else delete tasks[task];
-      next.routing.tasks = tasks;
-      return next;
+  function patchTaskTiers(patch: (prev: TaskTierState) => TaskTierState) {
+    setDoc((prev) => applyTaskTiers(cloneDoc(prev), patch(foldTaskTiers(prev))));
+  }
+
+  function updateTaskSlot(
+    tier: "high" | "low",
+    role: "primary" | "backup",
+    patch: Partial<TierProviderSlot>,
+  ) {
+    patchTaskTiers((prev) => {
+      const current = prev[tier][role];
+      const nextSlot = { ...current, ...patch };
+      if (
+        Object.prototype.hasOwnProperty.call(patch, "providerId") &&
+        patch.providerId !== current.providerId &&
+        !Object.prototype.hasOwnProperty.call(patch, "model")
+      ) {
+        // 换提供方时清空模型，避免沿用上一提供方的模型名
+        nextSlot.model = "";
+      }
+      return {
+        ...prev,
+        [tier]: {
+          ...prev[tier],
+          [role]: nextSlot,
+        },
+      };
     });
   }
 
-  function setTaskModel(task: string, providerId: string, model: string) {
-    if (!providerId) return;
-    setDoc((prev) => {
-      const next = cloneDoc(prev);
-      if (!next.routing.tasks[task]) next.routing.tasks[task] = providerId;
-      const idx = next.providers.findIndex((p) => p.id === providerId);
-      if (idx < 0) return next;
-      const row = next.providers[idx];
-      const task_models = { ...(row.task_models || {}) };
-      const trimmed = model.trim();
-      if (trimmed) task_models[task] = trimmed;
-      else delete task_models[task];
-      next.providers[idx] = { ...row, task_models };
-      return next;
-    });
+  function patchLocalTiers(patch: (prev: LocalTierState) => LocalTierState) {
+    setLocalDoc((prev) => applyLocalTiers(prev, patch(foldLocalTiers(prev))));
   }
 
-  function toggleChain(id: string) {
-    setDoc((prev) => {
-      const next = cloneDoc(prev);
-      const cur = next.routing.chain_fallback || [];
-      next.routing.chain_fallback = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-      return next;
-    });
+  function modelOptionsForProvider(providerId: string): string[] {
+    const provider = doc.providers.find((p) => p.id === providerId);
+    return [
+      ...(provider?.default_model ? [provider.default_model] : []),
+      ...Object.values(provider?.task_models || {}),
+      ...(provider ? providerModels[provider.id] || [] : []),
+      ...knownModels,
+    ];
   }
 
   const selectedPreset =
     draft.kind === "local" ? "custom" : findPresetByBaseUrl(draft.base_url)?.id ?? "custom";
 
+  const activeTabMeta = PROVIDER_TABS.find((t) => t.id === tab) || PROVIDER_TABS[0];
+
   const chromeMiddle = useMemo(
     () => (
-      <div
-        className="console-view-toggle console-view-toggle--toolbar-seg shrink-0"
-        role="group"
-        aria-label="接入分区"
-      >
-        {PROVIDER_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={tab === t.id ? "is-on" : undefined}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <ChromeField label="接入分区" icon={activeTabMeta.icon}>
+        <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
+          <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            {PROVIDER_TABS.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                <ChromeOptionLabel icon={t.icon}>{t.label}</ChromeOptionLabel>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </ChromeField>
     ),
-    [tab],
+    [activeTabMeta.icon, tab],
   );
 
   const chromeTrailing = useMemo(
     () =>
-      tab === "local" ? (
+      tab === "routing" ? (
         <Button
           type="button"
           size="sm"
@@ -419,9 +628,9 @@ export default function LlmProvidersForm() {
           disabled={!localDirty || localSaving}
           onClick={() => void saveLocal()}
         >
-          {localSaving ? "保存中…" : "保存本地路由"}
+          {localSaving ? "保存中…" : "保存"}
         </Button>
-      ) : (
+      ) : tab === "runtime" ? null : tab === "tasks" || dirty || saving ? (
         <Button
           type="button"
           size="sm"
@@ -429,10 +638,20 @@ export default function LlmProvidersForm() {
           disabled={!dirty || saving}
           onClick={() => void saveProviders()}
         >
-          {saving ? "保存中…" : dirty ? "保存提供方" : "已是最新"}
+          {saving ? "保存中…" : "保存"}
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={Boolean(testBusy) || doc.providers.length === 0}
+          onClick={() => void testAllProviders()}
+        >
+          {testBusy === "__all__" ? "测试中…" : "测试"}
         </Button>
       ),
-    [tab, localDirty, localSaving, dirty, saving],
+    [tab, localDirty, localSaving, dirty, saving, testBusy, doc.providers.length],
   );
 
   const chromeRefresh = useCallback(() => {
@@ -449,7 +668,7 @@ export default function LlmProvidersForm() {
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-8 text-sm text-muted-foreground">加载 LLM 配置…</CardContent>
+        <CardContent className="py-8 text-sm text-muted-foreground">正在加载配置...</CardContent>
       </Card>
     );
   }
@@ -459,424 +678,736 @@ export default function LlmProvidersForm() {
     : "";
 
   return (
-    <>
-      <Card>
-        <CardHeader className="space-y-2 pb-3">
-          {okMsg ? <p className="text-sm text-emerald-600 dark:text-emerald-400">{okMsg}</p> : null}
-          {err ? <p className="text-sm text-destructive">{err}</p> : null}
-          <CardDescription>
-            {tab === "upstream"
-              ? "上游模型提供方"
-              : tab === "tasks"
-                ? "任务编排与 Fallback"
-                : "本地模型路由"}
-          </CardDescription>
-        </CardHeader>
+    <div className="console-panel-stack">
+      {err ? <p className="text-sm text-destructive">{err}</p> : null}
 
-        <CardContent className="space-y-4">
-          {tab === "upstream" ? (
-            <div className="grid gap-4 lg:grid-cols-[minmax(14rem,0.8fr)_minmax(0,1.5fr)]">
-              <Card className="h-fit">
-                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Button size="sm" onClick={openAdd}>
-                      添加 Provider
-                    </Button>
-                    <Badge variant="outline">{doc.providers.length} 个</Badge>
-                    {dirty ? <Badge variant="warn">未保存</Badge> : null}
+      {tab === "upstream" ? (
+        <>
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-2">
+                <AiSectionHeader
+                  icon={Cloud}
+                  title="模型提供方"
+                  lead="管理云端服务商与本地 Ollama 接入。"
+                />
+                <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                  <Badge variant="outline">{doc.providers.length} 个</Badge>
+                  {dirty ? <Badge variant="warn">未保存</Badge> : null}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {doc.providers.map((p, index) => (
+                <div
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    "min-w-0 cursor-pointer overflow-hidden rounded-lg border-2 p-4 text-left transition-all",
+                    editIndex === index && editing
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50",
+                  )}
+                  onClick={() => openEdit(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openEdit(index);
+                    }
+                  }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    {p.kind === "local" ? <HardDrive className="size-5" /> : <Cloud className="size-5" />}
+                    <Switch
+                      checked={p.enabled}
+                      aria-label={`${p.id} 启用`}
+                      onCheckedChange={(checked) => toggleProviderEnabled(index, checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="truncate font-medium">{p.id}</div>
+                  <div className="mt-1 truncate text-xs text-muted-foreground">
+                    {p.base_url || "本地推理端点"}
+                  </div>
+                  <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+                    <Badge variant="outline" className="max-w-full truncate">
+                      {p.default_model || "无默认模型"}
+                    </Badge>
+                    {(p.capabilities || []).map((cap) => (
+                      <Badge key={cap} variant="secondary">
+                        {LLM_PROVIDER_CAPABILITIES.find((c) => c.id === cap)?.label ?? cap}
+                      </Badge>
+                    ))}
+                    {p.kind !== "local" && !p.api_key_set && !String(p.api_key_env || "").trim() ? (
+                      <Badge variant="warn">未配置密钥</Badge>
+                    ) : null}
+                    {testHint[p.id] ? (
+                      <Badge
+                        variant="outline"
+                        title={testHint[p.id]}
+                        className="max-w-full min-w-0 whitespace-normal break-all text-left font-normal leading-snug"
+                      >
+                        {testHint[p.id]}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                className={cn(
+                  "p-4 rounded-lg border-2 border-dashed transition-all text-left",
+                  editing && editIndex === null
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50",
+                )}
+                onClick={openAdd}
+              >
+                <Plus className="mb-3 size-5" />
+                <div className="font-medium">添加提供方</div>
+                <div className="mt-1 text-xs text-muted-foreground">新增配置</div>
+              </button>
+              {!doc.providers.length ? (
+                <p className="col-span-full text-sm text-muted-foreground">暂无已配置的提供方。</p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            {!editing ? (
+              <CardContent className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">
+                请选择提供方或点击添加。
+              </CardContent>
+            ) : (
+              <>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="size-5 shrink-0" />
+                        {editIndex === null ? "新增提供方" : `编辑 ${draft.id}`}
+                      </CardTitle>
+                      <CardDescription>
+                        {draft.kind === "local"
+                          ? "配置本地 Ollama 接口地址。"
+                          : "配置云端大模型接口与密钥。"}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={draft.enabled ? "success" : "secondary"}>
+                      {draft.enabled ? "启用" : "停用"}
+                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-1">
-                  {doc.providers.map((p, index) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`w-full rounded-[var(--radius-control,8px)] border-l-2 px-3 py-2 text-left transition-colors ${
-                        editIndex === index && editing
-                          ? "border-l-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
-                          : "border-l-transparent hover:bg-[color-mix(in_srgb,var(--text)_5%,transparent)]"
-                      }`}
-                      onClick={() => openEdit(index)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">{p.id}</div>
-                          <div className="truncate font-mono text-xs text-muted-foreground">
-                            {p.kind} · {p.base_url || "(local)"}
-                          </div>
-                        </div>
-                        <Badge variant={p.enabled ? "success" : "secondary"}>
-                          {p.enabled ? "启用" : "停用"}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
-                        <Badge variant="outline">{p.default_model || "无默认模型"}</Badge>
-                        <Badge variant={p.api_key_set || p.api_key_env ? "secondary" : "warn"}>
-                          {p.api_key_set ? "密钥已配置" : p.api_key_env ? `env:${p.api_key_env}` : "无密钥"}
-                        </Badge>
-                        {testHint[p.id] ? <Badge variant="outline">{testHint[p.id]}</Badge> : null}
-                      </div>
-                    </button>
-                  ))}
-                  {!doc.providers.length ? <p className="py-2 text-sm text-muted-foreground">还没有 Provider</p> : null}
-                </CardContent>
-              </Card>
+                <CardContent className="space-y-4 text-sm">
+                  {editErr ? <p className="text-destructive">{editErr}</p> : null}
 
-              <Card>
-                {!editing ? (
-                  <CardContent className="flex min-h-60 items-center justify-center text-sm text-muted-foreground">
-                    选择左侧 Provider，或点添加
-                  </CardContent>
-                ) : (
-                  <>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 space-y-1">
-                          <div className="text-base font-medium">
-                            {editIndex === null ? "添加 Provider" : `编辑 ${draft.id}`}
-                          </div>
-                          <CardDescription>
-                            {draft.kind === "local"
-                              ? "本地推理端点，一般不需要 API Key。"
-                              : "云端或 OpenAI 兼容网关；填好后点「应用」写入草稿，再保存提供方。"}
-                          </CardDescription>
-                        </div>
-                        {editIndex !== null ? (
-                          <Badge variant={draft.enabled ? "success" : "secondary"}>
-                            {draft.enabled ? "启用" : "停用"}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                      {editErr ? <p className="text-destructive">{editErr}</p> : null}
-                      <div className="space-y-1.5">
-                        <Label>快捷预设</Label>
-                        <p className="text-xs text-muted-foreground">
-                          一键填入常见厂商的 Base URL 与类型；选「本地」则走本机端点。
-                        </p>
-                        <div className="flex flex-wrap gap-2 pt-0.5">
-                          {LLM_PROVIDER_PRESETS.map((p) => (
-                            <Button
-                              key={p.id}
-                              size="sm"
-                              variant={selectedPreset === p.id ? "default" : "outline"}
-                              onClick={() => applyPreset(p.id)}
-                            >
-                              {p.label}
-                            </Button>
-                          ))}
+                  <div className="space-y-2">
+                    <Label className="font-semibold">提供方类型</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="flex-1 gap-2"
+                        variant={draft.kind !== "local" ? "default" : "outline"}
+                        onClick={() =>
+                          setDraft((d) =>
+                            d.kind === "local"
+                              ? { ...d, kind: "remote", base_url: d.base_url || "https://api.openai.com/v1" }
+                              : d,
+                          )
+                        }
+                      >
+                        <Cloud className="size-4" />
+                        服务商
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="flex-1 gap-2"
+                        variant={draft.kind === "local" ? "default" : "outline"}
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            kind: "local",
+                            // 切到本地时丢掉云端预设地址，避免误连；已有本机地址则保留
+                            base_url: findPresetByBaseUrl(d.base_url) ? "" : d.base_url,
+                          }))
+                        }
+                      >
+                        <HardDrive className="size-4" />
+                        本地
+                      </Button>
+                    </div>
+                    {draft.kind !== "local" ? (
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        {LLM_PROVIDER_PRESETS.filter((p) => p.id !== "custom").map((p) => (
                           <Button
+                            key={p.id}
+                            type="button"
                             size="sm"
-                            variant={draft.kind === "local" ? "default" : "outline"}
-                            onClick={() => setDraft((d) => ({ ...d, kind: "local", base_url: "" }))}
+                            className="h-8 rounded-full px-3 text-xs"
+                            variant={selectedPreset === p.id ? "default" : "outline"}
+                            onClick={() => applyPreset(p.id)}
                           >
-                            本地
+                            {p.label}
                           </Button>
+                        ))}
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 rounded-full px-3 text-xs"
+                          variant={selectedPreset === "custom" ? "default" : "outline"}
+                          onClick={() => applyPreset("custom")}
+                        >
+                          自定义
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold" htmlFor="llm-provider-id">
+                      配置名称
+                    </Label>
+                    <Input
+                      id="llm-provider-id"
+                      value={draft.id}
+                      disabled={editIndex !== null}
+                      placeholder={draft.kind === "local" ? "例如 local / ollama" : "例如 deepseek / openai"}
+                      onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold" htmlFor="llm-provider-base">
+                      {draft.kind === "local" ? "Ollama 地址" : "API 基础 URL"}
+                    </Label>
+                    <Input
+                      id="llm-provider-base"
+                      list="llm-provider-base-suggestions"
+                      value={draft.base_url}
+                      placeholder={
+                        draft.kind === "local"
+                          ? "http://127.0.0.1:11434"
+                          : "https://api.openai.com/v1"
+                      }
+                      className={
+                        draft.kind !== "local" && baseUrlHasTrailingSlash(draft.base_url)
+                          ? "border-destructive text-destructive focus-visible:ring-destructive/30"
+                          : undefined
+                      }
+                      onChange={(e) => setDraft((d) => ({ ...d, base_url: e.target.value }))}
+                    />
+                    <datalist id="llm-provider-base-suggestions">
+                      {(draft.kind === "local"
+                        ? LLM_LOCAL_BASE_URL_SUGGESTIONS
+                        : LLM_BASE_URL_SUGGESTIONS
+                      ).map((url) => (
+                        <option key={url} value={url} />
+                      ))}
+                    </datalist>
+                    {draft.kind === "local" ? (
+                      <p className="text-xs text-muted-foreground">直连本地 Ollama 服务。</p>
+                    ) : null}
+                    {draft.kind !== "local" && baseUrlHasTrailingSlash(draft.base_url) ? (
+                      <p className="flex items-center gap-1 text-xs text-destructive">
+                        <AlertTriangle className="size-3.5 shrink-0" />
+                        Base URL 末尾带有斜杠「/」，可能导致请求失败，建议移除。
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {draft.kind !== "local" ? (
+                    <>
+                      {!useEnvVar ? (
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-2 font-semibold">
+                            <Key className="size-4" />
+                            API 密钥
+                          </Label>
+                          <TagsInput
+                            ref={apiKeysInputRef}
+                            variant="embedded"
+                            value={draftApiKeys}
+                            onChange={(keys) => {
+                              setDraftApiKeys(keys);
+                              if (keys.some((k) => k.trim())) setKeepStoredApiKey(false);
+                            }}
+                            placeholder={
+                              keepStoredApiKey
+                                ? "已保存密钥，留空则保留；输入新密钥后回车替换"
+                                : "输入 API 密钥后回车添加"
+                            }
+                          />
+                          {keepStoredApiKey ? (
+                            <p className="text-xs text-muted-foreground">已保存密钥，留空保存不会清空。</p>
+                          ) : null}
                         </div>
+                      ) : null}
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="llm-provider-env" className="text-muted-foreground">
+                          使用环境变量存放密钥
+                        </Label>
+                        <Switch id="llm-provider-env" checked={useEnvVar} onCheckedChange={setUseEnvVar} />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="llm-provider-id">Provider ID</Label>
-                        <p className="text-xs text-muted-foreground">
-                          配置内唯一标识，创建后不可改；任务编排与 Fallback 会引用此 ID。
-                        </p>
-                        <Input
-                          id="llm-provider-id"
-                          value={draft.id}
-                          disabled={editIndex !== null}
-                          placeholder="例如 deepseek / local"
-                          onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
-                        />
-                      </div>
-                      {draft.kind !== "local" ? (
-                        <div className="space-y-1.5">
-                          <Label htmlFor="llm-provider-base">Base URL</Label>
-                          <p className="text-xs text-muted-foreground">
-                            OpenAI 兼容 API 根地址，通常以 /v1 结尾（按厂商文档填写）。
-                          </p>
+                      {useEnvVar ? (
+                        <div className="space-y-2">
+                          <Label className="font-semibold" htmlFor="llm-provider-env-name">
+                            环境变量名
+                          </Label>
                           <Input
-                            id="llm-provider-base"
-                            value={draft.base_url}
-                            placeholder="https://api.example.com/v1"
-                            onChange={(e) => setDraft((d) => ({ ...d, base_url: e.target.value }))}
+                            id="llm-provider-env-name"
+                            value={draft.api_key_env}
+                            placeholder="OPENAI_API_KEY"
+                            onChange={(e) => setDraft((d) => ({ ...d, api_key_env: e.target.value }))}
                           />
                         </div>
                       ) : null}
-                      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-3 py-2.5">
-                        <div className="min-w-0 space-y-0.5">
-                          <Label htmlFor="llm-provider-enabled">启用</Label>
-                          <p className="text-xs text-muted-foreground">关闭后不会参与任务路由与探测。</p>
-                        </div>
-                        <Switch
-                          id="llm-provider-enabled"
-                          checked={draft.enabled}
-                          onCheckedChange={(checked) => setDraft((d) => ({ ...d, enabled: checked }))}
-                        />
-                      </div>
-                      {draft.kind !== "local" ? (
-                        <>
-                          <div className="flex items-center justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-3 py-2.5">
-                            <div className="min-w-0 space-y-0.5">
-                              <Label htmlFor="llm-provider-env">使用环境变量存放密钥</Label>
-                              <p className="text-xs text-muted-foreground">
-                                打开后只存变量名，密钥从运行环境读取，避免写入配置文件。
-                              </p>
-                            </div>
-                            <Switch id="llm-provider-env" checked={useEnvVar} onCheckedChange={setUseEnvVar} />
-                          </div>
-                          {useEnvVar ? (
-                            <div className="space-y-1.5">
-                              <Label htmlFor="llm-provider-env-name">环境变量名</Label>
-                              <p className="text-xs text-muted-foreground">
-                                例如 OPENAI_API_KEY；需在进程环境中事先设置该变量。
-                              </p>
-                              <Input
-                                id="llm-provider-env-name"
-                                value={draft.api_key_env}
-                                placeholder="OPENAI_API_KEY"
-                                onChange={(e) => setDraft((d) => ({ ...d, api_key_env: e.target.value }))}
-                              />
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              <Label htmlFor="llm-provider-key">API Key</Label>
-                              <p className="text-xs text-muted-foreground">
-                                {draft.api_key_set
-                                  ? "已保存过密钥；留空表示保持不变，填写则覆盖。"
-                                  : "调用上游所需的密钥；应用时若填写会立即落盘。"}
-                              </p>
-                              <Input
-                                id="llm-provider-key"
-                                type="password"
-                                autoComplete="new-password"
-                                value={draftApiKey}
-                                placeholder="sk-…"
-                                onChange={(e) => setDraftApiKey(e.target.value)}
-                              />
-                            </div>
-                          )}
-                        </>
-                      ) : null}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0 space-y-0.5">
-                            <Label htmlFor="llm-provider-model">默认模型</Label>
-                            <p className="text-xs text-muted-foreground">
-                              未为任务单独指定模型时使用；可「刷新模型列表」后下拉选择。
-                            </p>
-                          </div>
-                          <Button size="sm" variant="outline" disabled={modelsBusy} onClick={() => void refreshModels()}>
-                            {modelsBusy ? "发现中…" : "刷新模型列表"}
+                    </>
+                  ) : null}
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 font-semibold" htmlFor="llm-provider-model">
+                      <Server className="size-4" />
+                      调用模型
+                    </Label>
+                    <AiModelSelect
+                      id="llm-provider-model"
+                      value={draft.default_model}
+                      options={models}
+                      isFetching={modelsBusy}
+                      onDiscover={() => void refreshModels()}
+                      placeholder="选择或输入模型名称"
+                      onValueChange={(value) => setDraft((d) => ({ ...d, default_model: value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 font-semibold">
+                      <span className="inline-flex size-4 items-center justify-center text-xs font-semibold">✦</span>
+                      模型支持能力
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {LLM_PROVIDER_CAPABILITIES.map((cap) => {
+                        const active = (draft.capabilities || []).includes(cap.id);
+                        return (
+                          <Button
+                            key={cap.id}
+                            type="button"
+                            size="sm"
+                            className="h-8 rounded-full px-3 text-xs"
+                            variant={active ? "default" : "outline"}
+                            onClick={() => toggleCapability(cap.id)}
+                          >
+                            {cap.label}
                           </Button>
-                        </div>
-                        <AiModelSelect
-                          id="llm-provider-model"
-                          value={draft.default_model}
-                          options={models}
-                          placeholder="从列表选择默认模型"
-                          onValueChange={(value) => setDraft((d) => ({ ...d, default_model: value }))}
-                        />
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-3">
-                        {editIndex !== null ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={testBusy === draft.id}
-                              onClick={() => void testProvider(draft.id)}
-                            >
-                              测试
-                            </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => removeProvider(editIndex)}>
-                              删除
-                            </Button>
-                          </>
-                        ) : null}
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      「图像」表示可直接看图；未勾选时含图消息会改文字描述。
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-semibold" htmlFor="llm-provider-effort">
+                      模型思考强度
+                    </Label>
+                    <Select
+                      value={draft.model_effort || "default"}
+                      onValueChange={(value) =>
+                        setDraft((d) => ({
+                          ...d,
+                          model_effort: value === "default" ? "" : value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="llm-provider-effort">
+                        <SelectValue placeholder="默认" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LLM_PROVIDER_MODEL_EFFORTS.map((item) => (
+                          <SelectItem key={item.id || "default"} value={item.id || "default"}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {draft.kind !== "local" ? (
+                    <div className="space-y-2">
+                      <Label className="font-semibold" htmlFor="llm-provider-request-method">
+                        请求方式
+                      </Label>
+                      <Select
+                        value={draft.request_method || "chat_completions"}
+                        onValueChange={(value) => setDraft((d) => ({ ...d, request_method: value }))}
+                      >
+                        <SelectTrigger id="llm-provider-request-method">
+                          <SelectValue placeholder="Chat Completions" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LLM_PROVIDER_REQUEST_METHODS.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-3">
+                    {editIndex !== null ? (
+                      <>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setEditing(false);
-                            setEditIndex(null);
-                            setEditErr("");
-                          }}
+                          disabled={Boolean(testBusy)}
+                          onClick={() => void testProvider(draft.id)}
                         >
-                          取消
+                          {testBusy ? "测试中…" : "测试"}
                         </Button>
-                        <Button type="button" size="sm" onClick={submitEdit}>
-                          应用
+                        <Button type="button" variant="destructive" size="sm" onClick={() => removeProvider(editIndex)}>
+                          删除
                         </Button>
-                      </div>
-                    </CardContent>
+                      </>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditing(false);
+                        setEditIndex(null);
+                        setEditErr("");
+                      }}
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => void submitEdit()}
+                    >
+                      {saving ? "保存中…" : "保存"}
+                    </Button>
+                  </div>
+                </CardContent>
                   </>
                 )}
-              </Card>
-            </div>
+            {doc.providers_file ? (
+              <CardFooter className="justify-start gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-5 py-2.5 text-xs text-muted-foreground">
+                <span className="shrink-0">配置文件路径</span>
+                <code className="min-w-0 truncate font-mono text-[11px]" title={doc.providers_file}>
+                  {providersFileName || "llm_providers.json"}
+                </code>
+              </CardFooter>
+            ) : null}
+          </Card>
+        </>
           ) : null}
 
+      {tab !== "upstream" ? (
+        <AiConfigSectionCard contentClassName="space-y-5">
+          <AiSectionHeader
+            icon={activeTabMeta.icon}
+            title={activeTabMeta.label}
+            lead={
+              tab === "tasks"
+                ? "高低两档主备模型；失败时自动切备用。"
+                : tab === "runtime"
+                  ? "切换本机 Ollama 模型与 GPU 层数。"
+                  : activeTabMeta.lead
+            }
+            action={
+              tab === "routing" ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="llm-local-multi-model" className="text-xs font-normal text-muted-foreground">
+                    启用 Ollama 多模型
+                  </Label>
+                  <Switch
+                    id="llm-local-multi-model"
+                    checked={Boolean(localDoc.local_multi_model_enabled)}
+                    onCheckedChange={(checked) =>
+                      setLocalDoc((d) => ({ ...d, local_multi_model_enabled: checked }))
+                    }
+                  />
+                </div>
+              ) : tab === "tasks" ? (
+                <Button type="button" size="sm" variant="outline" onClick={() => setTab("upstream")}>
+                  管理提供方
+                </Button>
+              ) : undefined
+            }
+          />
           {tab === "tasks" ? (
-            <div className="space-y-5">
-              <div className="space-y-3">
-                <div>
-                  <h3 className="text-sm font-medium">任务 → Provider</h3>
-                  <p className="text-xs text-muted-foreground">
-                    可同时指定该 Provider 上的任务模型（写入 task_models）
-                  </p>
+            <div className="space-y-4">
+              {providerIds.length === 0 ? (
+                <div className="flex items-start gap-3 rounded-[var(--radius-control,8px)] border border-destructive/40 bg-destructive/5 p-4">
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                  <div className="min-w-0 space-y-2">
+                    <p className="text-sm font-medium text-destructive">暂无可用提供方</p>
+                    <p className="text-xs text-destructive/80">请先添加模型提供方，再进行任务编排。</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setTab("upstream")}>
+                      <Plus className="size-3.5" />
+                      前往提供方
+                    </Button>
+                  </div>
                 </div>
-                {taskKeys.map((task) => {
-                  const pid = doc.routing.tasks[task] || "";
-                  const provider = doc.providers.find((p) => p.id === pid);
-                  const model = provider?.task_models?.[task] || "";
-                  return (
-                    <div
-                      key={task}
-                      className="grid gap-2 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] p-3 sm:grid-cols-[8rem_1fr_1fr] sm:items-center"
-                    >
-                      <AiConfigField label={llmTaskRouteLabel(task)} description="选择承载此任务的 Provider。">
-                        <Select
-                        value={pid || "__empty__"}
-                        onValueChange={(value) => {
-                          const nextPid = value === "__empty__" ? "" : value;
-                          setTaskRoute(task, nextPid);
-                          loadTaskProviderModels(doc.providers.find((p) => p.id === nextPid));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择 Provider" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__empty__">（未指定）</SelectItem>
-                          {doc.providers.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.id}{!p.enabled ? " (停用)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                        </Select>
-                      </AiConfigField>
-                      <AiConfigField label="任务模型" description="可选；留空时使用 Provider 默认模型。">
-                        <AiModelSelect
-                          value={model}
-                          disabled={!pid}
-                          options={[
-                            ...(provider?.default_model ? [provider.default_model] : []),
-                            ...Object.values(provider?.task_models || {}),
-                            ...(provider ? providerModels[provider.id] || [] : []),
-                          ]}
-                          placeholder="选择任务模型"
-                          onValueChange={(value) => setTaskModel(task, pid, value)}
-                        />
-                      </AiConfigField>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-3 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-4">
-                <div>
-                  <h3 className="text-sm font-medium">Chain Fallback</h3>
-                  <p className="text-xs text-muted-foreground">失败时按顺序尝试的 Provider</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {providerIds.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">先添加 Provider</p>
-                  ) : (
-                    providerIds.map((id) => {
-                      const on = doc.routing.chain_fallback.includes(id);
-                      return (
-                        <Button
-                          key={id}
-                          size="sm"
-                          variant={on ? "default" : "outline"}
-                          onClick={() => toggleChain(id)}
-                        >
-                          {id}
-                        </Button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {tab === "local" ? (
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-medium">本地模型路由</h3>
-                <p className="text-xs text-muted-foreground">
-                  {localDoc.env_file || "/common-config/llm/local-routing"}
-                </p>
-              </div>
-              <AiConfigField label="默认 llm_model" description="本地路由未单独指定时使用的模型。">
-                <AiModelSelect
-                  value={localDoc.llm_model || ""}
-                  options={knownModels}
-                  onValueChange={(value) => setLocalDoc((d) => ({ ...d, llm_model: value }))}
-                />
-              </AiConfigField>
-              <div className="flex items-center justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-3 py-2.5">
-                <div className="min-w-0 space-y-0.5">
-                  <Label htmlFor="llm-local-multi-model">启用本地多模型</Label>
-                  <p className="text-xs text-muted-foreground">允许不同任务使用不同本地模型。</p>
-                </div>
-                <Switch
-                  id="llm-local-multi-model"
-                  checked={Boolean(localDoc.local_multi_model_enabled)}
-                  onCheckedChange={(checked) =>
-                    setLocalDoc((d) => ({ ...d, local_multi_model_enabled: checked }))
+              ) : (
+                <TierPairCards
+                  high={
+                    <TierCard
+                      kind="high"
+                      title="高级任务"
+                      description="对话、醉聊、完整润色"
+                      primaryInvalid={!taskTiers.high.primary.providerId}
+                      primary={
+                        <div className="grid gap-2">
+                          <Select
+                            value={taskTiers.high.primary.providerId || "__empty__"}
+                            onValueChange={(value) => {
+                              const providerId = value === "__empty__" ? "" : value;
+                              updateTaskSlot("high", "primary", { providerId });
+                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
+                            }}
+                          >
+                            <SelectTrigger aria-label="高级任务主提供方">
+                              <SelectValue placeholder="选择提供方" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__empty__">（未指定）</SelectItem>
+                              {doc.providers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.id}
+                                  {!p.enabled ? " (停用)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <AiModelSelect
+                            value={taskTiers.high.primary.model}
+                            disabled={!taskTiers.high.primary.providerId}
+                            options={modelOptionsForProvider(taskTiers.high.primary.providerId)}
+                            placeholder="任务模型（可空）"
+                            onValueChange={(model) => updateTaskSlot("high", "primary", { model })}
+                          />
+                        </div>
+                      }
+                      backup={
+                        <div className="grid gap-2">
+                          <Select
+                            value={taskTiers.high.backup.providerId || "__empty__"}
+                            onValueChange={(value) => {
+                              const providerId = value === "__empty__" ? "" : value;
+                              updateTaskSlot("high", "backup", { providerId });
+                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
+                            }}
+                          >
+                            <SelectTrigger aria-label="高级任务备用提供方">
+                              <SelectValue placeholder="选择备用提供方" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__empty__">（未指定）</SelectItem>
+                              {doc.providers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.id}
+                                  {!p.enabled ? " (停用)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <AiModelSelect
+                            value={taskTiers.high.backup.model}
+                            disabled={!taskTiers.high.backup.providerId}
+                            options={modelOptionsForProvider(taskTiers.high.backup.providerId)}
+                            placeholder="备用模型（可空）"
+                            onValueChange={(model) => updateTaskSlot("high", "backup", { model })}
+                          />
+                        </div>
+                      }
+                    />
+                  }
+                  low={
+                    <TierCard
+                      kind="low"
+                      title="低级任务"
+                      description="接话选句、轻润色、兜底"
+                      primaryInvalid={!taskTiers.low.primary.providerId}
+                      primary={
+                        <div className="grid gap-2">
+                          <Select
+                            value={taskTiers.low.primary.providerId || "__empty__"}
+                            onValueChange={(value) => {
+                              const providerId = value === "__empty__" ? "" : value;
+                              updateTaskSlot("low", "primary", { providerId });
+                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
+                            }}
+                          >
+                            <SelectTrigger aria-label="低级任务主提供方">
+                              <SelectValue placeholder="选择提供方" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__empty__">（未指定）</SelectItem>
+                              {doc.providers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.id}
+                                  {!p.enabled ? " (停用)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <AiModelSelect
+                            value={taskTiers.low.primary.model}
+                            disabled={!taskTiers.low.primary.providerId}
+                            options={modelOptionsForProvider(taskTiers.low.primary.providerId)}
+                            placeholder="任务模型（可空）"
+                            onValueChange={(model) => updateTaskSlot("low", "primary", { model })}
+                          />
+                        </div>
+                      }
+                      backup={
+                        <div className="grid gap-2">
+                          <Select
+                            value={taskTiers.low.backup.providerId || "__empty__"}
+                            onValueChange={(value) => {
+                              const providerId = value === "__empty__" ? "" : value;
+                              updateTaskSlot("low", "backup", { providerId });
+                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
+                            }}
+                          >
+                            <SelectTrigger aria-label="低级任务备用提供方">
+                              <SelectValue placeholder="选择备用提供方" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__empty__">（未指定）</SelectItem>
+                              {doc.providers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.id}
+                                  {!p.enabled ? " (停用)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <AiModelSelect
+                            value={taskTiers.low.backup.model}
+                            disabled={!taskTiers.low.backup.providerId}
+                            options={modelOptionsForProvider(taskTiers.low.backup.providerId)}
+                            placeholder="备用模型（可空）"
+                            onValueChange={(model) => updateTaskSlot("low", "backup", { model })}
+                          />
+                        </div>
+                      }
+                    />
                   }
                 />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {["simple", "medium", "complex", "vision"].map((k) => (
-                  <AiConfigField key={k} label={`moe · ${k}`}>
-                    <AiModelSelect
-                      value={localDoc.moe_models?.[k] || ""}
-                      options={knownModels}
-                      onValueChange={(value) =>
-                        setLocalDoc((d) => ({
-                          ...d,
-                          moe_models: { ...(d.moe_models || {}), [k]: value },
-                        }))
-                      }
-                    />
-                  </AiConfigField>
-                ))}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[...DEFAULT_LLM_TASKS].map((k) => (
-                  <AiConfigField key={k} label={`task · ${llmTaskRouteLabel(k)}`}>
-                    <AiModelSelect
-                      value={localDoc.task_models?.[k] || ""}
-                      options={knownModels}
-                      onValueChange={(value) =>
-                        setLocalDoc((d) => ({
-                          ...d,
-                          task_models: { ...(d.task_models || {}), [k]: value },
-                        }))
-                      }
-                    />
-                  </AiConfigField>
-                ))}
-              </div>
-              {localDirty ? <Badge variant="warn">本地路由未保存</Badge> : null}
+              )}
             </div>
           ) : null}
-        </CardContent>
-        {doc.providers_file ? (
-          <CardFooter className="justify-start gap-2 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-5 py-2.5 text-xs text-muted-foreground">
-            <span className="shrink-0">配置文件</span>
-            <code className="min-w-0 truncate font-mono text-[11px]" title={doc.providers_file}>
-              {providersFileName}
-            </code>
-          </CardFooter>
-        ) : null}
-      </Card>
 
-    </>
+          {tab === "runtime" ? <AiModelAdminPanel embedded /> : null}
+
+          {tab === "routing" ? (
+            <div className="space-y-4">
+              {!localDoc.local_multi_model_enabled ? (
+                <AiConfigField label="默认 Ollama 模型">
+                  <AiModelSelect
+                    value={localDoc.llm_model || ""}
+                    options={ollamaModels}
+                    onValueChange={(value) => setLocalDoc((d) => ({ ...d, llm_model: value }))}
+                  />
+                </AiConfigField>
+              ) : (
+                <TierPairCards
+                  high={
+                    <TierCard
+                      kind="high"
+                      title="重负载模型（Ollama）"
+                      description="本机复杂推理与看图"
+                      primaryLabel="复杂档"
+                      primaryDescription="处理偏重文本推理"
+                      backupLabel="视觉档"
+                      backupDescription="处理识图请求，留空则共用复杂档"
+                      primaryInvalid={!localTiers.high.primary}
+                      primary={
+                        <AiModelSelect
+                          value={localTiers.high.primary}
+                          options={ollamaModels}
+                          placeholder="选择复杂档模型"
+                          onValueChange={(primary) =>
+                            patchLocalTiers((prev) => ({
+                              ...prev,
+                              high: { ...prev.high, primary },
+                            }))
+                          }
+                        />
+                      }
+                      backup={
+                        <AiModelSelect
+                          value={localTiers.high.backup}
+                          options={ollamaModels}
+                          placeholder="可选，默认与复杂相同"
+                          onValueChange={(backup) =>
+                            patchLocalTiers((prev) => ({
+                              ...prev,
+                              high: { ...prev.high, backup },
+                            }))
+                          }
+                        />
+                      }
+                    />
+                  }
+                  low={
+                    <TierCard
+                      kind="low"
+                      title="轻负载模型（Ollama）"
+                      description="本机日常问答与快速响应"
+                      primaryLabel="中等档"
+                      primaryDescription="处理普通聊天与中等难度请求"
+                      backupLabel="简单档"
+                      backupDescription="处理最轻量请求，留空则共用中等档"
+                      primaryInvalid={!localTiers.low.primary}
+                      primary={
+                        <AiModelSelect
+                          value={localTiers.low.primary}
+                          options={ollamaModels}
+                          placeholder="选择中等档模型"
+                          onValueChange={(primary) =>
+                            patchLocalTiers((prev) => ({
+                              ...prev,
+                              low: { ...prev.low, primary },
+                            }))
+                          }
+                        />
+                      }
+                      backup={
+                        <AiModelSelect
+                          value={localTiers.low.backup}
+                          options={ollamaModels}
+                          placeholder="可选，默认与中等相同"
+                          onValueChange={(backup) =>
+                            patchLocalTiers((prev) => ({
+                              ...prev,
+                              low: { ...prev.low, backup },
+                            }))
+                          }
+                        />
+                      }
+                    />
+                  }
+                />
+              )}
+              {localDirty ? <Badge variant="warn">Ollama 分档未保存</Badge> : null}
+            </div>
+          ) : null}
+        </AiConfigSectionCard>
+      ) : null}
+    </div>
   );
 }
