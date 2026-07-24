@@ -30,66 +30,31 @@ export interface AiTopLevelNavDef {
 }
 
 export const AI_CONFIG_NAV_GROUPS: AiConfigNavGroupDef[] = [
-  { id: "dialogue", label: "对话链路" },
-  { id: "observe", label: "观测与内容" },
-  { id: "extension", label: "媒体与扩展" },
+  { id: "dialogue", label: "对话" },
+  { id: "extension", label: "媒体" },
 ];
 
+/** 顶栏仅 3 段；旧 id 经 LEGACY_SECTION_ALIASES 归一。日志已迁至 AI 观测 /ai/logs。 */
 export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "provider",
     label: "接入",
-    lead: "云端或本地模型接入。",
+    lead: "云端 / Ollama 提供方、任务编排与本机模型。",
     icon: "server",
     groupId: "dialogue",
   },
   {
-    id: "strategy",
+    id: "dialogue",
     label: "对话",
-    lead: "接话、限流与热载。",
+    lead: "接话策略、会话、记忆、预算与知识库。",
     icon: "sparkles",
     groupId: "dialogue",
   },
   {
-    id: "knowledge",
-    label: "知识库",
-    lead: "方舟数据与接话语料。",
-    icon: "database",
-    groupId: "observe",
-  },
-  {
-    id: "connection",
-    label: "媒体服务",
-    lead: "唱歌 / TTS 等媒体任务。",
-    icon: "radio",
-    groupId: "extension",
-  },
-  {
-    id: "capabilities",
-    label: "能力包",
-    lead: "对话 LLM 与媒体权重。",
+    id: "media",
+    label: "媒体",
+    lead: "媒体服务、唱歌、TTS、画画与网易云。",
     icon: "layers",
-    groupId: "extension",
-  },
-  {
-    id: "draw",
-    label: "画画",
-    lead: "画画服务网关。",
-    icon: "palette",
-    groupId: "extension",
-  },
-  {
-    id: "ncm",
-    label: "网易云",
-    lead: "网易云登录与状态。",
-    icon: "globe",
-    groupId: "extension",
-  },
-  {
-    id: "logs",
-    label: "扩展日志",
-    lead: "扩展侧日志。",
-    icon: "logs",
     groupId: "extension",
   },
 ];
@@ -98,24 +63,39 @@ export type AiConfigSectionId = (typeof AI_CONFIG_SECTIONS)[number]["id"];
 
 export const SIMPLE_AI_CONFIG_NAV_SECTION_IDS: AiConfigSectionId[] = [
   "provider",
-  "strategy",
-  "capabilities",
-  "knowledge",
+  "dialogue",
+  "media",
 ];
 
 export const AI_CONFIG_MORE_NAV_ITEM: AiConfigMoreNavItemDef = {
   id: "more",
   label: "更多",
-  lead: "媒体服务、画画、网易云与扩展日志",
+  lead: "媒体相关",
   icon: "blocks",
-  targetSectionId: "connection",
+  targetSectionId: "media",
 };
 
-/** 旧分区 id → 现行分区 */
+/** 旧分区 id → 现行分区（logs 不在此表，由配置页单独重定向到观测） */
 const LEGACY_SECTION_ALIASES: Record<string, AiConfigSectionId> = {
   model: "provider",
   runtime: "provider",
   routing: "provider",
+  strategy: "dialogue",
+  knowledge: "dialogue",
+  connection: "media",
+  capabilities: "media",
+  draw: "media",
+  ncm: "media",
+};
+
+/** 旧分区 → 合并段内默认子面板（供深链） */
+export const LEGACY_SECTION_DEFAULT_PANEL: Record<string, string> = {
+  strategy: "form",
+  knowledge: "arknights",
+  connection: "service",
+  capabilities: "assets",
+  draw: "draw",
+  ncm: "ncm",
 };
 
 /** @deprecated 侧栏已收口为 AI_SIDEBAR_NAV；保留供旧链接与迁移识别 */
@@ -123,14 +103,14 @@ export const AI_TOP_LEVEL_NAV: AiTopLevelNavDef[] = [
   {
     id: "home",
     label: "AI 观测",
-    lead: "总览、统计与会话。",
+    lead: "统计、会话、记忆、牛格与日志。",
     icon: "dashboard",
-    path: "/ai/home",
+    path: "/ai/statistics",
   },
   {
     id: "config",
     label: "AI 配置",
-    lead: "模型、策略与扩展配置。",
+    lead: "接入、对话与媒体。",
     icon: "sparkles",
     path: "/ai/config/provider",
   },
@@ -143,13 +123,18 @@ const GROUP_BY_ID = new Map(AI_CONFIG_NAV_GROUPS.map((g) => [g.id, g]));
 export const AI_CONFIG_SECTION_PATHS = AI_CONFIG_SECTIONS.map((s) => aiConfigSectionPath(s.id));
 export const AI_TOP_LEVEL_PATHS = AI_TOP_LEVEL_NAV.map((s) => s.path);
 
-/** AI 配置主入口（默认落在「模型与 Provider」） */
+/** AI 配置主入口（默认落在「接入」） */
 export const AI_CONFIG_SIDEBAR_PATH = "/ai/config/provider";
 
-export const AI_CONFIG_HUB_LEAD = "切换左侧分区配置。";
+export const AI_CONFIG_HUB_LEAD = "选择要配置的分段。";
 
-export function aiConfigSectionPath(id: AiConfigSectionId): string {
-  return `/ai/config/${id}`;
+/** 扩展日志已迁入 AI 观测 */
+export const AI_CONFIG_LOGS_REDIRECT = "/ai/logs";
+
+export function aiConfigSectionPath(id: AiConfigSectionId, panel?: string): string {
+  const base = `/ai/config/${id}`;
+  if (!panel) return base;
+  return `${base}?panel=${encodeURIComponent(panel)}`;
 }
 
 export const AI_CONFIG_MAIN_NAV_ITEM =
@@ -167,11 +152,17 @@ export function normalizeAiConfigSection(raw: unknown): AiConfigSectionId {
   return "provider";
 }
 
-/** 旧运行态分区已并入 AI 观测总览。 */
-export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/home?panel=runtime";
+/** 从旧路径段解析合并后的默认子面板。 */
+export function legacyAiConfigPanel(raw: unknown): string | undefined {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  return s ? LEGACY_SECTION_DEFAULT_PANEL[s] : undefined;
+}
+
+/** 旧运行态分区已并入 AI 观测 · 统计（媒体启停见 AI 配置 · 媒体服务）。 */
+export const AI_CONFIG_LEGACY_RUNTIME_REDIRECT = "/ai/statistics";
 
 /** 牛格观测已迁入 AI 历史 · 群维护工作区。 */
-export const AI_PERSONA_OBSERVE_REDIRECT = "/ai/history?workspace=maintain";
+export const AI_PERSONA_OBSERVE_REDIRECT = "/ai/session";
 
 export function aiConfigSectionMeta(id: AiConfigSectionId): AiConfigSectionDef {
   return SECTION_BY_ID.get(id) ?? AI_CONFIG_SECTIONS[0];

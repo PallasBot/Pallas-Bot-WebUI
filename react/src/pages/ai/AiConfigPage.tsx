@@ -1,35 +1,27 @@
+import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AI_CONFIG_SECTIONS,
+  AI_CONFIG_LOGS_REDIRECT,
   aiConfigSectionPath,
+  legacyAiConfigPanel,
   normalizeAiConfigSection,
-  type AiConfigSectionId,
 } from "@/config/aiConfigSections";
 import { AiConfigChromeProvider } from "@/components/ai/AiConfigChromeContext";
 import AiConfigChromeTools from "@/components/ai/AiConfigChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import AiConfigBehaviorSection from "@/pages/ai/sections/AiConfigBehaviorSection";
-import AiConfigCapabilitiesSection from "@/pages/ai/sections/AiConfigCapabilitiesSection";
-import AiConfigConnectionSection from "@/pages/ai/sections/AiConfigConnectionSection";
-import AiConfigDrawSection from "@/pages/ai/sections/AiConfigDrawSection";
+import AiConfigDialogueSection from "@/pages/ai/sections/AiConfigDialogueSection";
 import AiConfigKernelSection from "@/pages/ai/sections/AiConfigKernelSection";
-import AiConfigKnowledgeSection from "@/pages/ai/sections/AiConfigKnowledgeSection";
-import AiConfigLogsSection from "@/pages/ai/sections/AiConfigLogsSection";
-import AiConfigNcmSection from "@/pages/ai/sections/AiConfigNcmSection";
+import AiConfigMediaSection from "@/pages/ai/sections/AiConfigMediaSection";
 import AiConfigProviderSection from "@/pages/ai/sections/AiConfigProviderSection";
-import AiConfigStrategySection from "@/pages/ai/sections/AiConfigStrategySection";
 
-const SECTION_BODY: Record<string, () => JSX.Element> = {
+const SECTION_BODY: Record<string, ComponentType> = {
   provider: AiConfigProviderSection,
-  strategy: AiConfigStrategySection,
-  knowledge: AiConfigKnowledgeSection,
-  connection: AiConfigConnectionSection,
-  capabilities: AiConfigCapabilitiesSection,
-  draw: AiConfigDrawSection,
-  ncm: AiConfigNcmSection,
-  logs: AiConfigLogsSection,
+  dialogue: AiConfigDialogueSection,
+  media: AiConfigMediaSection,
   kernel: AiConfigKernelSection,
   behavior: AiConfigBehaviorSection,
 };
@@ -37,19 +29,18 @@ const SECTION_BODY: Record<string, () => JSX.Element> = {
 /** 工具条刷新：按段 invalidate 相关 query（前缀匹配） */
 const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
   provider: [["llm-model-admin"]],
-  strategy: [
+  dialogue: [
     ["common-config", "llm"],
     ["common-config-raw", "llm"],
+    ["conversation-kernel-knowledge-sources"],
   ],
-  knowledge: [["conversation-kernel-knowledge-sources"]],
-  connection: [["ai-extension-config"], ["ai-runtime"], ["ai-install"]],
-  capabilities: [["media-assets"], ["sing-models"], ["tts-voices"]],
-  draw: [
-    ["common-config", "draw"],
-    ["common-config-raw", "draw"],
+  media: [
+    ["ai-extension-config"], ["ai-runtime"], ["ai-install"],
+    ["media-assets"], ["sing-models"], ["tts-voices"],
+    ["plugin-config", "draw"],
+    ["plugin-config-raw", "draw"],
+    ["ai-ncm"],
   ],
-  ncm: [["ai-ncm"]],
-  logs: [["ai-extension-logs"]],
   kernel: [
     ["conversation-kernel-status"],
     ["conversation-kernel-traces"],
@@ -66,20 +57,17 @@ const SECTION_REFRESH_KEYS: Record<string, string[][]> = {
   ],
 };
 
-/** 工具条展示搜索的分段（段内通过 useAiConfigChromeSearch 消费） */
-const SEARCHABLE_SECTIONS = new Set<AiConfigSectionId | string>(["logs"]);
-
 export default function AiConfigPage() {
   const { section: rawSection } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const section = normalizeAiConfigSection(rawSection);
+  const legacyPanel = legacyAiConfigPanel(rawSection);
   const meta = AI_CONFIG_SECTIONS.find((s) => s.id === section) || AI_CONFIG_SECTIONS[0];
   const Body = SECTION_BODY[section] ?? AiConfigProviderSection;
 
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const showSearch = SEARCHABLE_SECTIONS.has(section);
 
   const onRefresh = useCallback(async () => {
     const keys = SECTION_REFRESH_KEYS[section] || [];
@@ -94,10 +82,16 @@ export default function AiConfigPage() {
   if (!rawSection) {
     return <Navigate to={aiConfigSectionPath("provider")} replace />;
   }
+  if (rawSection === "logs") {
+    return <Navigate to={AI_CONFIG_LOGS_REDIRECT} replace />;
+  }
+  if (section !== rawSection) {
+    return <Navigate to={aiConfigSectionPath(section, legacyPanel)} replace />;
+  }
 
   return (
     <AiConfigChromeProvider search={search} setSearch={setSearch}>
-      <div>
+      <div className="console-hub-page">
         <PageMasthead title="AI 配置" description={meta.lead} />
 
         <AiConfigChromeTools
@@ -108,15 +102,6 @@ export default function AiConfigPage() {
           }}
           onRefresh={() => void onRefresh()}
           refreshing={refreshing}
-          search={
-            showSearch
-              ? {
-                  value: search,
-                  onChange: setSearch,
-                  placeholder: "过滤日志…",
-                }
-              : undefined
-          }
         />
 
         <Body />

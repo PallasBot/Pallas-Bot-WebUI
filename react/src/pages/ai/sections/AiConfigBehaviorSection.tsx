@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -15,14 +15,28 @@ import {
   postLlmRepeaterFeedbackManage,
   postLlmRuntimeReplayRun,
 } from "@/api/console";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
+import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+type Panel = "samples" | "patterns" | "repeater" | "promotion" | "persona" | "debug";
+
+const PANEL_OPTIONS = [
+  { value: "samples", label: "样本" },
+  { value: "patterns", label: "模式" },
+  { value: "repeater", label: "复读" },
+  { value: "promotion", label: "升格" },
+  { value: "persona", label: "牛格" },
+  { value: "debug", label: "调试" },
+];
+
 export default function AiConfigBehaviorSection() {
   const qc = useQueryClient();
+  const [panel, setPanel] = useState<Panel>("samples");
   const [groupId, setGroupId] = useState("0");
   const [requestId, setRequestId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -61,7 +75,7 @@ export default function AiConfigBehaviorSection() {
   const delPatternMut = useMutation({
     mutationFn: (patternId: string) => postLlmBehaviorPatternDelete(patternId),
     onSuccess: async () => {
-      setMsg("模式已删除");
+      setMsg("行为模式已删除");
       await qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -90,55 +104,55 @@ export default function AiConfigBehaviorSection() {
   const debugMut = useMutation({
     mutationFn: async (mode: "fetch" | "replay" | "run") => {
       const id = requestId.trim();
-      if (!id) throw new Error("请填写 request_id");
+      if (!id) throw new Error("请填写请求 ID。");
       if (mode === "fetch") return fetchLlmRuntimeDebug(id);
       if (mode === "replay") return fetchLlmRuntimeReplay(id);
       return postLlmRuntimeReplayRun(id);
     },
     onSuccess: (data) => {
       setDebugOut(data);
-      setMsg("调试请求完成");
+      setMsg("调试请求已完成");
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
+  const chromeMiddle = useMemo(
+    () => (
+      <SegTabs
+        size="toolbar"
+        ariaLabel="行为与调试分区"
+        value={panel}
+        onValueChange={(v) => setPanel(v as Panel)}
+        options={PANEL_OPTIONS}
+      />
+    ),
+    [panel],
+  );
+
+  useRegisterAiConfigChrome({ middle: chromeMiddle });
+
+  const panelMeta = PANEL_OPTIONS.find((p) => p.value === panel) || PANEL_OPTIONS[0];
+
   return (
-    <div className="space-y-4">
+    <AiConfigSectionCard title={panelMeta.label} contentClassName="space-y-3">
       {msg ? (
         <p className={cn("text-sm", /完成|已/.test(msg) ? "text-emerald-400" : "text-destructive")}>{msg}</p>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>行为与调试</CardTitle>
-          <CardDescription>patterns / runs / repeater / persona / runtime-debug；用顶部工具条刷新。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <label className="block max-w-xs space-y-1 text-sm">
-            <span className="text-muted-foreground">group_id</span>
-            <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} />
-          </label>
-        </CardContent>
-      </Card>
+        <label className="block max-w-xs space-y-1 text-sm">
+          <span className="text-muted-foreground">群号</span>
+          <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} />
+        </label>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>行为样本 runs</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {panel === "samples" ? (
           <StateBlock loading={runsQ.isLoading} error={runsQ.error} empty={!runsQ.data?.items?.length}>
             <pre className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
               {JSON.stringify(runsQ.data?.items || [], null, 2)}
             </pre>
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>行为模式 patterns</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+        {panel === "patterns" ? (
           <StateBlock loading={patternsQ.isLoading} error={patternsQ.error} empty={!patternsQ.data?.items?.length}>
             {(patternsQ.data?.items || []).map((row, i) => {
               const pid = String(row.pattern_id || row.id || "");
@@ -161,16 +175,11 @@ export default function AiConfigBehaviorSection() {
               );
             })}
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>复读反馈</CardTitle>
-          <CardDescription>summary + manage</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <StateBlock loading={summaryQ.isLoading} error={summaryQ.error} empty={group <= 0} emptyText="请填写 group_id">
+        {panel === "repeater" ? (
+          <>
+          <StateBlock loading={summaryQ.isLoading} error={summaryQ.error} empty={group <= 0} emptyText="请在上方填写群号。">
             <pre className="max-h-24 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
               {JSON.stringify(summaryQ.data, null, 2)}
             </pre>
@@ -201,14 +210,10 @@ export default function AiConfigBehaviorSection() {
               );
             })}
           </StateBlock>
-        </CardContent>
-      </Card>
+          </>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>升格候选</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+        {panel === "promotion" ? (
           <StateBlock loading={promoQ.isLoading} error={promoQ.error} empty={!promoQ.data?.items?.length}>
             {(promoQ.data?.items || []).map((row, i) => {
               const cid = String(row.candidate_id || row.id || "");
@@ -233,33 +238,24 @@ export default function AiConfigBehaviorSection() {
               );
             })}
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>牛格观测 persona-observe</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {panel === "persona" ? (
           <StateBlock loading={personaQ.isLoading} error={personaQ.error}>
             <pre className="max-h-48 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
               {JSON.stringify(personaQ.data, null, 2)}
             </pre>
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>运行时调试 replay</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        {panel === "debug" ? (
+          <>
           <div className="flex flex-wrap gap-2">
             <Input
               className="max-w-md"
               value={requestId}
               onChange={(e) => setRequestId(e.target.value)}
-              placeholder="request_id"
+              placeholder="输入请求 ID"
             />
             <Button size="sm" variant="outline" disabled={debugMut.isPending} onClick={() => void debugMut.mutateAsync("fetch")}>
               拉取
@@ -276,8 +272,8 @@ export default function AiConfigBehaviorSection() {
               {JSON.stringify(debugOut, null, 2)}
             </pre>
           ) : null}
-        </CardContent>
-      </Card>
-    </div>
+          </>
+        ) : null}
+    </AiConfigSectionCard>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -12,20 +12,29 @@ import {
   postAiRuntimeStop,
   putAiExtensionConfig,
 } from "@/api/console";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField from "@/components/ai/AiConfigField";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
 
+type Panel = "connection" | "runtime";
+
+const PANEL_OPTIONS = [
+  { value: "connection", label: "扩展连接" },
+  { value: "runtime", label: "运行时" },
+];
+
 export default function AiConfigConnectionSection() {
   const qc = useQueryClient();
+  const [panel, setPanel] = useState<Panel>("connection");
   const [baseUrl, setBaseUrl] = useState("");
-  const [apiPrefix, setApiPrefix] = useState("");
   const [timeoutSec, setTimeoutSec] = useState("30");
   const [msg, setMsg] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState("");
@@ -41,7 +50,6 @@ export default function AiConfigConnectionSection() {
   useEffect(() => {
     if (!aiCfgQ.data) return;
     setBaseUrl(aiCfgQ.data.base_url || "");
-    setApiPrefix(aiCfgQ.data.api_prefix || "");
     setTimeoutSec(String(aiCfgQ.data.timeout_sec ?? 30));
   }, [aiCfgQ.data]);
 
@@ -57,11 +65,11 @@ export default function AiConfigConnectionSection() {
     mutationFn: () =>
       putAiExtensionConfig({
         base_url: baseUrl.trim(),
-        api_prefix: apiPrefix.trim(),
+        api_prefix: (aiCfgQ.data?.api_prefix || "/api").trim() || "/api",
         timeout_sec: Number(timeoutSec) || 30,
       }),
     onSuccess: async () => {
-      setMsg("AI 扩展连接已保存");
+      setMsg("扩展连接已保存");
       await invalidate();
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -76,7 +84,7 @@ export default function AiConfigConnectionSection() {
   const startMut = useMutation({
     mutationFn: () => postAiRuntimeStart({ with_media: withMedia }),
     onSuccess: async () => {
-      setMsg("AI Runtime 已启动");
+      setMsg("运行时已启动");
       await invalidate();
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -85,7 +93,7 @@ export default function AiConfigConnectionSection() {
   const stopMut = useMutation({
     mutationFn: () => postAiRuntimeStop(),
     onSuccess: async () => {
-      setMsg("AI Runtime 已停止");
+      setMsg("运行时已停止");
       await invalidate();
     },
     onError: (e) => setMsg(axiosErrorDetail(e)),
@@ -103,7 +111,7 @@ export default function AiConfigConnectionSection() {
       return waitForInstallJob(job.job_id, openAiInstallJobEventSource, setInstallProgress);
     },
     onSuccess: async () => {
-      setMsg("安装任务完成");
+      setMsg("安装任务已完成");
       setInstallProgress("");
       await invalidate();
     },
@@ -116,30 +124,38 @@ export default function AiConfigConnectionSection() {
   const busy =
     saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending;
 
-  return (
-    <div className="space-y-4">
-      {msg ? (
-        <p className={cn("text-sm", /成功|OK|完成|已保存|已启动|已停止/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-          {msg}
-        </p>
-      ) : null}
-      {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
+  const chromeMiddle = useMemo(
+    () => (
+      <SegTabs
+        size="toolbar"
+        ariaLabel="媒体服务分区"
+        value={panel}
+        onValueChange={(v) => setPanel(v as Panel)}
+        options={PANEL_OPTIONS}
+      />
+    ),
+    [panel],
+  );
 
-      <Card>
-        <CardHeader>
-          <CardTitle>扩展连接</CardTitle>
-          <CardDescription>Bot 访问 AI 扩展的地址与超时。</CardDescription>
-        </CardHeader>
-        <CardContent>
+  useRegisterAiConfigChrome({ middle: chromeMiddle });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        {msg ? (
+          <p className={cn("text-sm", /成功|OK|完成|已保存|已启动|已停止/.test(msg) ? "text-emerald-400" : "text-destructive")}>
+            {msg}
+          </p>
+        ) : null}
+        {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
+
+        {panel === "connection" ? (
           <StateBlock loading={aiCfgQ.isLoading} error={aiCfgQ.error}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AiConfigField label="服务地址" description="base_url，例如 http://127.0.0.1:9099">
+            <div className="grid gap-3 md:grid-cols-2">
+              <AiConfigField label="服务地址" description="例如 http://127.0.0.1:9099">
                 <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
               </AiConfigField>
-              <AiConfigField label="API 前缀" description="api_prefix，通常为 /api">
-                <Input value={apiPrefix} onChange={(e) => setApiPrefix(e.target.value)} />
-              </AiConfigField>
-              <AiConfigField label="超时（秒）" description="请求超时上限">
+              <AiConfigField label="超时（秒）" description="请求超时限制">
                 <Input type="number" value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
               </AiConfigField>
             </div>
@@ -167,15 +183,7 @@ export default function AiConfigConnectionSection() {
               </Button>
             </div>
           </StateBlock>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>运行时</CardTitle>
-          <CardDescription>启动 / 停止 / 安装 AI 扩展进程。</CardDescription>
-        </CardHeader>
-        <CardContent>
+        ) : (
           <StateBlock loading={runtimeQ.isLoading || installQ.isLoading} error={runtimeQ.error || installQ.error}>
             <div className="flex flex-wrap gap-2">
               <Badge variant={runtimeQ.data?.running ? "success" : "secondary"}>
@@ -189,11 +197,11 @@ export default function AiConfigConnectionSection() {
             <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
               {runtimeQ.data?.ai_root || installQ.data?.ai_root || "—"}
             </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
               {(
                 [
-                  ["含媒体依赖", withMedia, setWithMedia],
-                  ["仅远程拉取", remoteOnly, setRemoteOnly],
+                  ["包含媒体依赖", withMedia, setWithMedia],
+                  ["仅从远程拉取", remoteOnly, setRemoteOnly],
                   ["使用 GPU", useGpu, setUseGpu],
                   ["安装后不启动", noStart, setNoStart],
                 ] as const
@@ -233,28 +241,30 @@ export default function AiConfigConnectionSection() {
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                onClick={() => {
-                  setMsg(null);
-                  void installMut.mutateAsync("bootstrap");
-                }}
-              >
-                Bootstrap
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
+                title="首次使用：下载媒体服务源码并安装依赖"
                 onClick={() => {
                   setMsg(null);
                   void installMut.mutateAsync("clone_and_bootstrap");
                 }}
               >
-                Clone+Bootstrap
+                下载并安装
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                title="已有源码目录时：仅重新安装依赖"
+                onClick={() => {
+                  setMsg(null);
+                  void installMut.mutateAsync("bootstrap");
+                }}
+              >
+                安装依赖
               </Button>
             </div>
           </StateBlock>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

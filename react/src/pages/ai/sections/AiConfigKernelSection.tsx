@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -9,14 +9,26 @@ import {
   postConversationKernelMemoryDelete,
   postConversationKernelRelationshipNoteDelete,
 } from "@/api/console";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
+import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+type Panel = "status" | "traces" | "memory" | "notes";
+
+const PANEL_OPTIONS = [
+  { value: "status", label: "状态" },
+  { value: "traces", label: "轨迹" },
+  { value: "memory", label: "记忆" },
+  { value: "notes", label: "关系笔记" },
+];
+
 export default function AiConfigKernelSection() {
   const qc = useQueryClient();
+  const [panel, setPanel] = useState<Panel>("status");
   const [botId, setBotId] = useState("0");
   const [groupId, setGroupId] = useState("");
   const [query, setQuery] = useState("");
@@ -59,58 +71,60 @@ export default function AiConfigKernelSection() {
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
-  return (
-    <div className="space-y-4">
-      {msg ? <p className={cn("text-sm", msg.includes("已删除") ? "text-emerald-400" : "text-destructive")}>{msg}</p> : null}
+  const chromeMiddle = useMemo(
+    () => (
+      <SegTabs
+        size="toolbar"
+        ariaLabel="会话状态分区"
+        value={panel}
+        onValueChange={(v) => setPanel(v as Panel)}
+        options={PANEL_OPTIONS}
+      />
+    ),
+    [panel],
+  );
 
-      <Card>
-        <CardHeader>
-          <CardTitle>会话内核</CardTitle>
-          <CardDescription>status / traces / memory / relationship-notes；用顶部工具条刷新。</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block space-y-1 text-sm">
-              <span className="text-muted-foreground">bot_id</span>
-              <Input value={botId} onChange={(e) => setBotId(e.target.value)} />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-muted-foreground">group_id（可选）</span>
-              <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-muted-foreground">搜索</span>
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="memory / notes" />
-            </label>
-          </div>
+  useRegisterAiConfigChrome({ middle: chromeMiddle });
+
+  const panelMeta = PANEL_OPTIONS.find((p) => p.value === panel) || PANEL_OPTIONS[0];
+
+  return (
+    <AiConfigSectionCard title={panelMeta.label} contentClassName="space-y-3">
+        {msg ? <p className={cn("text-sm", msg.includes("已删除") ? "text-emerald-400" : "text-destructive")}>{msg}</p> : null}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">bot_id</span>
+            <Input value={botId} onChange={(e) => setBotId(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">group_id（可选）</span>
+            <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">搜索</span>
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="memory / notes" />
+          </label>
+        </div>
+
+        {panel === "status" ? (
           <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
             <pre className="max-h-32 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
               {JSON.stringify(statusQ.data, null, 2)}
             </pre>
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>决策轨迹</CardTitle>
-          <CardDescription>traces</CardDescription>
-        </CardHeader>
-        <CardContent>
+        {panel === "traces" ? (
           <StateBlock loading={tracesQ.isLoading} error={tracesQ.error} empty={!tracesQ.data?.items?.length}>
             <pre className="max-h-64 overflow-auto rounded-md border bg-muted/30 p-2 text-xs">
               {JSON.stringify(tracesQ.data?.items || [], null, 2)}
             </pre>
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>记忆</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <StateBlock loading={memoryQ.isLoading} error={memoryQ.error} empty={bot <= 0} emptyText="请填写 bot_id">
+        {panel === "memory" ? (
+          <StateBlock loading={memoryQ.isLoading} error={memoryQ.error} empty={bot <= 0} emptyText="请填写 Bot QQ。">
             {(memoryQ.data?.items || []).map((row, i) => {
               const id = Number(row.id);
               return (
@@ -133,15 +147,10 @@ export default function AiConfigKernelSection() {
               );
             })}
           </StateBlock>
-        </CardContent>
-      </Card>
+        ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>关系笔记</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <StateBlock loading={notesQ.isLoading} error={notesQ.error} empty={bot <= 0} emptyText="请填写 bot_id">
+        {panel === "notes" ? (
+          <StateBlock loading={notesQ.isLoading} error={notesQ.error} empty={bot <= 0} emptyText="请填写 Bot QQ。">
             {(notesQ.data?.items || []).map((row, i) => {
               const id = Number(row.id);
               return (
@@ -164,8 +173,7 @@ export default function AiConfigKernelSection() {
               );
             })}
           </StateBlock>
-        </CardContent>
-      </Card>
-    </div>
+        ) : null}
+    </AiConfigSectionCard>
   );
 }
