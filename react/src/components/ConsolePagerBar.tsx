@@ -1,4 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { totalPages } from "@/utils/paginate";
 
 export default function ConsolePagerBar({
@@ -48,20 +55,24 @@ export default function ConsolePagerBar({
           </span>
           <label className="muted console-pager__size">
             每页
-            <select
-              className="sel"
-              value={pageSize}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                if (Number.isFinite(v)) onPageSizeChange(v);
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                const n = parseInt(v, 10);
+                if (Number.isFinite(n)) onPageSizeChange(n);
               }}
             >
-              {sizeOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="console-pager__size-trigger h-8 w-auto min-w-[4.5rem]" aria-label="每页条数">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {sizeOptions.map((s) => (
+                  <SelectItem key={s} value={String(s)}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         </div>
         <div className="console-pager__nav">

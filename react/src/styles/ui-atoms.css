@@ -1,5 +1,5 @@
 /*
- * React Ui* 原子样式：对齐 Vue UiField / UiInput / UiSelect / UiButton，
+ * React Ui* 原子样式：
  * 故意不用 Vue ui.css 的 :root { --background: var(--bg-deep) }，以免打坏 Tailwind hsl(var(--background))。
  * 语义色走 Vue shell token（--text / --border / --accent / --bg-card）。
  */
@@ -389,7 +389,7 @@ html[data-layout="hub"] .ui-btn--sm {
   white-space: pre-wrap;
 }
 
-/* 对齐 Vue `.plugin-config-field-popover`（Teleport 到 body） */
+/* 弹层定位（Teleport 到 body） */
 .plugin-config-field-popover {
   z-index: 400;
   display: grid;
@@ -706,17 +706,37 @@ html[data-layout="hub"] .ui-btn--sm {
   border-bottom: 1px solid color-mix(in srgb, var(--border, rgba(255, 255, 255, 0.08)) 72%, transparent);
 }
 
+.plugin-governance-panel__group-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plugin-governance-panel__group-collapse {
+  flex-shrink: 0;
+}
+
+.plugin-governance-panel__group-body {
+  display: grid;
+  gap: 10px;
+}
+
 .plugin-governance-panel__group-title {
   margin: 0;
-  font-size: var(--console-panel-title-size, 1.0625rem);
+  font-size: 1.125rem;
   line-height: 1.35;
-  font-weight: var(--console-panel-title-weight, 600);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .plugin-governance-panel__group-desc {
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
+  font-weight: 400;
 }
 
 .plugin-governance-panel__switches {
@@ -768,21 +788,32 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .plugin-governance-panel__add-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
 .plugin-governance-panel__add-row .inp,
-.plugin-governance-panel__add-row .ui-input-wrap {
-  flex: 1 1 160px;
+.plugin-governance-panel__add-row .ui-input-wrap,
+.plugin-governance-panel__add-row .plugin-governance-panel__add-input {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 280px;
+  max-width: none;
+}
+
+.plugin-governance-panel__add-row .ui-btn,
+.plugin-governance-panel__add-row button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .plugin-governance-panel__cmd-row {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 10rem);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 0;
   padding: 10px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
@@ -792,22 +823,36 @@ html[data-layout="hub"] .ui-btn--sm {
   padding-bottom: 0;
 }
 
+.plugin-governance-panel__cmd-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
 .plugin-governance-panel__cmd-title {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .plugin-governance-panel__cmd-meta {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.plugin-governance-panel__cmd-control,
+.plugin-governance-panel__cmd-row .ui-input-wrap,
+.plugin-governance-panel__cmd-row button.plugin-governance-panel__cmd-control {
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
 }
 
 .plugin-governance-panel__cmd-row--limits {
   grid-template-columns: minmax(0, 1fr) 7rem;
-  align-items: center;
-  column-gap: 12px;
 }
 
 @media (max-width: 560px) {
@@ -826,8 +871,33 @@ html[data-layout="hub"] .ui-btn--sm {
     border-radius: 16px;
   }
 
+  .plugin-governance-panel__cmd-row,
   .plugin-governance-panel__cmd-row--limits {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(6.75rem, 8.5rem);
+  }
+
+  .plugin-governance-panel__cmd-row--limits {
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
+  }
+
+  .plugin-governance-panel__add-row {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .plugin-governance-panel__add-row .inp,
+  .plugin-governance-panel__add-row .ui-input-wrap,
+  .plugin-governance-panel__add-row .plugin-governance-panel__add-input {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .plugin-governance-panel__add-row .ui-btn,
+  .plugin-governance-panel__add-row button {
+    flex: 0 0 auto;
+    width: auto;
+    padding-inline: 12px;
   }
 }
 
@@ -872,15 +942,23 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .plugin-runtime-switch__row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .plugin-runtime-switch__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.45;
   font-weight: 600;
+}
+
+.plugin-runtime-switch__row .console-bool-switch {
+  flex: 0 0 auto;
 }
 
 .plugin-runtime-switch__desc {
@@ -895,11 +973,16 @@ html[data-layout="hub"] .ui-btn--sm {
 
 @media (max-width: 560px) {
   .plugin-runtime-switch__row {
-    align-items: flex-start;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .plugin-runtime-switch__title {
+    font-size: 13px;
   }
 }
 
-/* ── UiBadge（壳层 token，不对齐 Vue --primary HSL） ── */
+/* ── UiBadge（壳层 token，不
 .ui-badge {
   display: inline-flex;
   align-items: center;
@@ -955,7 +1038,7 @@ html[data-layout="hub"] .ui-btn--sm {
   border-color: color-mix(in srgb, var(--console-danger, #f87171) 40%, transparent);
 }
 
-/* ── Ui dialog shell（对齐 Vue UiDialog / console-modal） ── */
+/* ── Ui dialog shell（
 .ui-dialog.console-modal {
   position: fixed;
   inset: 0;
@@ -992,7 +1075,7 @@ html[data-theme="light"] .ui-dialog__backdrop {
   max-height: min(90vh, 920px);
   display: flex;
   flex-direction: column;
-  /* 配置弹窗对齐 gsuid：实心底，不随 glass 主题半透 */
+  /* 配置弹窗：实心底，不随 glass 主题半透 */
   background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   border-radius: var(--radius-md, 12px);
@@ -1237,20 +1320,20 @@ html[data-theme="dark"] .ui-dialog__panel {
   box-shadow: none;
 }
 
-/* 治理弹窗：body 由 workspace 内边距负责，避免双层挤窄 */
+/* 治理弹窗：body 由 workspace 内边距负责，避免双层挤窄；窄屏留 16px 呼吸距 */
 .ui-dialog__panel.plugin-config-dialog,
 .console-modal__dialog.plugin-config-dialog,
 .console-modal.ui-dialog .console-modal__dialog.plugin-config-dialog {
-  width: min(960px, 96vw);
-  max-width: min(960px, 96vw);
-  max-height: min(92vh, 960px);
+  width: min(960px, calc(100vw - 32px));
+  max-width: min(960px, calc(100vw - 32px));
+  max-height: min(92vh, calc(100dvh - 32px), 960px);
 }
 
 .ui-dialog__panel.protocol-account-config-dialog,
 .console-modal__dialog.protocol-account-config-dialog {
-  width: min(920px, 96vw);
-  max-width: min(920px, 96vw);
-  max-height: min(92vh, 940px);
+  width: min(920px, calc(100vw - 32px));
+  max-width: min(920px, calc(100vw - 32px));
+  max-height: min(92vh, calc(100dvh - 32px), 940px);
 }
 
 .ui-dialog__bd.plugin-config-dialog__bd,
@@ -1264,8 +1347,9 @@ html[data-theme="dark"] .ui-dialog__panel {
 
 .ui-dialog__panel.plugin-store-page__detail-dialog,
 .console-modal__dialog.plugin-store-page__detail-dialog {
-  width: min(920px, 94vw);
-  max-height: min(88vh, 900px);
+  width: min(920px, calc(100vw - 32px));
+  max-width: min(920px, calc(100vw - 32px));
+  max-height: min(88vh, calc(100dvh - 32px), 900px);
 }
 
 .ui-dialog__bd.plugin-store-page__detail-bd,
@@ -1315,7 +1399,7 @@ html[data-theme="dark"] .ui-dialog__panel {
   border-radius: 0;
 }
 
-/* 字段卡壳由 react-parity-pass 接管；此处只保留 common-config 非分区字段兜底 */
+/* 字段卡壳由视觉收口样式接管；此处只保留 common-config 非分区字段兜底 */
 .common-config-page .ui-field:not(.plugin-config-form-item) {
   padding: 10px 12px;
   border-radius: calc(var(--radius-control, 10px) - 2px);
@@ -1336,7 +1420,7 @@ html[data-theme="light"] .plugin-governance-panel__group {
   background: var(--bg-card);
 }
 
-/* 分栏轨道：白/卡片底（对齐 gsuid）；选中段仍走 accent */
+/* 分栏轨道：白/卡片底；选中段仍走 accent */
 .console-view-toggle {
   background: var(--bg-card);
   border-color: color-mix(in srgb, var(--border) 85%, transparent);
@@ -1405,7 +1489,7 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   justify-content: center;
 }
 
-/* 侧栏滚动条：与 app.css 一致（gsuid 细圆角；勿再加粗） */
+/* 侧栏滚动条：与 app.css 一致（细圆角；勿再加粗） */
 .shell__nav {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-dim) 32%, transparent) transparent;
@@ -1450,7 +1534,7 @@ html[data-layout="hub"] .inst-card-actions > .ui-btn:not(.btn-refresh-action--em
   background: transparent;
 }
 
-/* 彩色(gs) / 黑白(shadcn) 主按钮质感（学 gsuid「更新全部」） */
+/* 彩色 / 黑白主题：主按钮扁实心质感 */
 html[data-ui-preset="gs"] .btn--primary,
 html[data-ui-preset="gs"] .ui-btn--primary {
   background: var(--accent);
@@ -1498,5 +1582,5 @@ html[data-ui-preset="shadcn"] .ui-btn--destructive {
   box-shadow: none;
 }
 
-/* 插件配置字段：标签行与控件由 react-parity-pass 接管 */
+/* 插件配置字段：标签行与控件由视觉收口样式接管 */
 

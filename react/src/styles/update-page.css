@@ -2,7 +2,7 @@
 .update-page__overview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--hub-page-gap, 14px);
+  gap: var(--hub-page-gap, 18px);
 }
 
 .update-page__overview-card {

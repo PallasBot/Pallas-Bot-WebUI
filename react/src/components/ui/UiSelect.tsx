@@ -1,6 +1,6 @@
 /**
- * @deprecated 新代码优先用原生 `<select className={cn(nativeSelectClassName)}>` 或 Radix `Select`。
- * 保留 `<option>` children API，样式对齐 shadcn Input 密度。
+ * @deprecated 新代码用 Radix `Select`（`@/components/ui/select`）。
+ * 原生 `<select>` 无法玻璃化，勿再新增调用。
  */
 import type { SelectHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";

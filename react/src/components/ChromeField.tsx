@@ -30,7 +30,7 @@ export default function ChromeField({
   );
 }
 
-/** SelectItem / 触发器内选项文案：单色 Lucide + 文字。 */
+/** SelectItem / 触发器内选项文案：单色 Lucide + 文字（须 flex 对齐，勿靠文字基线） */
 export function ChromeOptionLabel({
   icon: Icon,
   children,
@@ -39,9 +39,9 @@ export function ChromeOptionLabel({
   children: ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <Icon className={FIELD_ICO} strokeWidth={2} aria-hidden />
-      {children}
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 leading-none">
+      <Icon className={cn(FIELD_ICO, "block")} strokeWidth={2} aria-hidden />
+      <span className="min-w-0 truncate leading-none">{children}</span>
     </span>
   );
 }

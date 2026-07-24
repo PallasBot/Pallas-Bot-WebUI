@@ -11,6 +11,7 @@ import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
+import SegTabs from "@/components/SegTabs";
 import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
@@ -21,8 +22,9 @@ import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { Search, Database, Cable } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
 
 const INST_PANEL = "instances-page__panel flex flex-col overflow-hidden shadow-none";
 const INST_PANEL_HD =
@@ -306,8 +308,8 @@ export default function InstancesPage() {
               <Input
                 type="search"
                 className="h-8 min-h-8 w-full pl-8"
-                placeholder="搜索账号 / 昵称 / 管理员 / 插件"
-                aria-label="搜索账号 / 昵称 / 管理员 / 插件"
+                placeholder="搜索账号…"
+                aria-label="搜索账号"
                 autoComplete="off"
                 value={dbBotSearchQ}
                 onChange={(e) => {
@@ -316,31 +318,22 @@ export default function InstancesPage() {
                 }}
               />
             </div>
-            <div
-              className="console-view-toggle console-view-toggle--toolbar-seg"
-              role="group"
-              aria-label="实例表格或卡片视图"
-            >
-              <button
-                type="button"
-                className={prefs.instancesBotView === "table" ? "is-on" : undefined}
-                onClick={() => prefs.setInstancesBotView("table")}
-              >
-                表格
-              </button>
-              <button
-                type="button"
-                className={prefs.instancesBotView === "cards" ? "is-on" : undefined}
-                onClick={() => prefs.setInstancesBotView("cards")}
-              >
-                卡片
-              </button>
-            </div>
+            <SegTabs
+              size="toolbar"
+              ariaLabel="实例表格或卡片视图"
+              value={prefs.instancesBotView}
+              onValueChange={(v) => prefs.setInstancesBotView(v === "cards" ? "cards" : "table")}
+              options={[
+                { value: "table", label: "表格" },
+                { value: "cards", label: "卡片" },
+              ]}
+            />
           </ChromeTools>
 
           <Card className={cn(INST_PANEL, "inst-db-panel")}>
             <CardHeader className={INST_PANEL_HD}>
               <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Database} />
                 数据库中的实例
                 <PanelHdCollapseCaret
                   expanded={expDbBots}
@@ -399,7 +392,7 @@ export default function InstancesPage() {
                       <tbody>
                         {pagedDbBotConfigs.map((c) => (
                           <tr key={c.account}>
-                            <td style={{ fontWeight: 600 }}>{botNickname(c.account) || "BOT"}</td>
+                            <td className="inst-account-nick">{botNickname(c.account) || "BOT"}</td>
                             <td>{c.account}</td>
                             <td>
                               <span
@@ -590,6 +583,7 @@ export default function InstancesPage() {
           <Card className={INST_PANEL}>
             <CardHeader className={INST_PANEL_HD_SIMPLE}>
               <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Cable} />
                 消息框架
                 <PanelHdCollapseCaret
                   expanded={expNonebot}
@@ -625,7 +619,7 @@ export default function InstancesPage() {
                         const acc = parseSelfId(b.self_id);
                         return (
                           <tr key={b.connection_key || `${b.self_id}-${i}`}>
-                            <td style={{ fontWeight: 600 }}>{nonebotRowNick(b.self_id) || "—"}</td>
+                            <td className="inst-account-nick">{nonebotRowNick(b.self_id) || "—"}</td>
                             <td>{b.self_id}</td>
                             <td className="muted">{b.adapter}</td>
                             <td className="muted">{b.connection_key}</td>

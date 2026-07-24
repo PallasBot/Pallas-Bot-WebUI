@@ -23,17 +23,77 @@ import {
 } from "@/api/fullConsole";
 import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
+import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import DrawProviderGatewayPanel, {
+  DRAW_GATEWAY_PANEL_FIELD_NAMES,
+} from "@/components/draw/DrawProviderGatewayPanel";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 import { normalizeBundledReadmeMarkdown, readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
 import { cn } from "@/lib/utils";
-import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
+import { collectFieldValues, fieldValuesFromConfig, parsePluginConfigField } from "@/utils/pluginConfigFieldModel";
+import { pushConsoleToast } from "@/utils/consoleToast";
+import type { PluginConfigField } from "@/api/console";
 
+const DRAW_GATEWAY_FIELD_SET = new Set<string>(DRAW_GATEWAY_PANEL_FIELD_NAMES);
+
+/** 画画配置提交体：表单字段 + 网关面板键（schema 尚未热载到新键时也写入）。 */
+function collectDrawPluginValues(
+  fields: PluginConfigField[],
+  fieldValues: Record<string, string>,
+): Record<string, unknown> {
+  const values = collectFieldValues(fields, fieldValues);
+  const byName = new Map(fields.map((f) => [f.name, f]));
+  for (const key of DRAW_GATEWAY_PANEL_FIELD_NAMES) {
+    if (!(key in fieldValues)) continue;
+    const field = byName.get(key);
+    if (field) {
+      values[key] = parsePluginConfigField(field, fieldValues[key] ?? "");
+      continue;
+    }
+    const raw = fieldValues[key] ?? "";
+    if (key === "pallas_image_cost_per_image") {
+      const n = Number(raw);
+      values[key] = Number.isFinite(n) && n > 0 ? n : 0;
+      continue;
+    }
+    if (key === "pallas_image_stats_cost_currency") {
+      values[key] = String(raw || "").trim().toUpperCase();
+      continue;
+    }
+    if (key === "pallas_image_api_backends") {
+      try {
+        values[key] = JSON.parse(raw || "[]");
+      } catch {
+        values[key] = [];
+      }
+      continue;
+    }
+    if (
+      key === "pallas_image_ai_runtime_fallback_to_plugin" ||
+      key.endsWith("_enabled")
+    ) {
+      values[key] = ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
+      continue;
+    }
+    if (
+      key === "pallas_image_ai_runtime_open_circuit_failures" ||
+      key === "pallas_image_ai_runtime_circuit_cooldown_sec"
+    ) {
+      const n = Number(raw);
+      values[key] = Number.isFinite(n) ? n : 0;
+      continue;
+    }
+    values[key] = raw;
+  }
+  return values;
+}
 type ConfigTab = "governance" | "config" | "readme";
 
 export type PluginConfigWorkspaceHandle = {
@@ -150,10 +210,15 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     if (!cfgQ.data?.fields) return;
     setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
     setMode("form");
-    setMsg(null);
     setCheckErr("");
     setCheckLines([]);
   }, [cfgQ.data, name]);
+
+  useEffect(() => {
+    setMsg(null);
+    setCheckErr("");
+    setCheckLines([]);
+  }, [name]);
 
   useEffect(() => {
     if (rawQ.data != null) setRaw(rawQ.data);
@@ -172,33 +237,71 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saveForm = useMutation({
     mutationFn: () => {
       const fields = cfgQ.data?.fields || [];
-      return putPluginConfig(name, collectFieldValues(fields, fieldValues));
+      const payload =
+        name === "draw"
+          ? collectDrawPluginValues(fields, fieldValues)
+          : collectFieldValues(fields, fieldValues);
+      return putPluginConfig(name, payload);
     },
     onSuccess: async () => {
       setMsg("配置已保存");
+      pushConsoleToast("配置已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => {
+      const detail = axiosErrorDetail(e);
+      setMsg(detail);
+      pushConsoleToast(detail, "err");
+    },
+  });
+
+  const saveGatewayPatch = useMutation({
+    mutationFn: async (patch: Record<string, string>) => {
+      const fields = cfgQ.data?.fields || [];
+      const merged = { ...fieldValues, ...patch };
+      setFieldValues(merged);
+      return putPluginConfig(name, collectDrawPluginValues(fields, merged));
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
+      await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
+      await qc.invalidateQueries({ queryKey: ["plugins"] });
+    },
+    onError: (e) => {
+      pushConsoleToast(axiosErrorDetail(e) || "网关保存失败", "err");
+    },
   });
 
   const saveRaw = useMutation({
     mutationFn: () => putPluginConfigRaw(name, raw),
     onSuccess: async () => {
       setMsg("原始 TOML 已保存");
+      pushConsoleToast("原始 TOML 已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => {
+      const detail = axiosErrorDetail(e);
+      setMsg(detail);
+      pushConsoleToast(detail, "err");
+    },
   });
 
-  const saving = saveForm.isPending || saveRaw.isPending;
+  const saving = saveForm.isPending || saveRaw.isPending || saveGatewayPatch.isPending;
   const loading = cfgQ.isLoading;
   const hasData = Boolean(cfgQ.data);
   const fields = cfgQ.data?.fields || [];
+  const usesDrawGatewayPanel = name === "draw";
+  const formFields = usesDrawGatewayPanel
+    ? fields.filter((f) => !DRAW_GATEWAY_FIELD_SET.has(f.name))
+    : fields;
 
+  async function patchFieldValuesAndPersist(patch: Record<string, string>) {
+    await saveGatewayPatch.mutateAsync(patch);
+  }
   async function runConfigCheck() {
     if (!cfgQ.data || !supportsConfigCheck || checking) return;
     setChecking(true);
@@ -206,7 +309,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     setCheckLines([]);
     try {
       const fields = cfgQ.data?.fields || [];
-      const values = collectFieldValues(fields, fieldValues);
+      const values =
+        name === "draw"
+          ? collectDrawPluginValues(fields, fieldValues)
+          : collectFieldValues(fields, fieldValues);
       const r = await postPluginConfigCheck(name, values);
       setCheckLines(r.lines || []);
     } catch (e) {
@@ -243,60 +349,37 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     { id: "readme", label: "README", show: showReadmeTab },
   ];
 
+  const workspaceTabOptions = tabButtons
+    .filter((t) => t.show)
+    .map((t) => ({ value: t.id, label: t.label }));
+
   const configBody = (
     <>
       <div className="plugin-config-page__toolbar">
-        <div
-          className="console-view-toggle plugin-config-page__tabs"
-          role="tablist"
-          aria-label="插件工作区"
-        >
-          {tabButtons
-            .filter((t) => t.show)
-            .map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                className={cn(detailTab === t.id && "is-on")}
-                aria-selected={detailTab === t.id}
-                onClick={() => setDetailTab(t.id)}
-              >
-                <span>{t.label}</span>
-              </button>
-            ))}
-        </div>
+        <SegTabs
+          className="plugin-config-page__tabs"
+          ariaLabel="插件工作区"
+          value={detailTab}
+          onValueChange={(v) => setDetailTab(v as ConfigTab)}
+          options={workspaceTabOptions}
+        />
         {detailTab === "config" && (hasConfigFields || isHelpPlugin) ? (
-          <div
-            className="plugin-config-page__mode-toggle console-view-toggle"
-            role="tablist"
-            aria-label="配置编辑模式"
-          >
-            <button
-              type="button"
-              role="tab"
-              className={cn(mode === "form" && "is-on")}
-              aria-selected={mode === "form"}
-              onClick={() => setMode("form")}
-            >
-              表单
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={cn(mode === "raw" && "is-on")}
-              aria-selected={mode === "raw"}
-              onClick={() => setMode("raw")}
-            >
-              Raw TOML
-            </button>
-          </div>
+          <SegTabs
+            className="plugin-config-page__mode-toggle"
+            ariaLabel="配置编辑模式"
+            value={mode}
+            onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
+            options={[
+              { value: "form", label: "表单" },
+              { value: "raw", label: "Raw TOML" },
+            ]}
+          />
         ) : null}
       </div>
 
       {showDrawAiConfigHint && !isDialog ? (
         <p className="muted plugin-config-dialog__ai-hint">
-          推荐在 <Link to={aiConfigSectionPath("draw")}>AI 配置 · 画画</Link>
+          推荐在 <Link to={aiConfigSectionPath("media", "draw")}>AI 配置 · 画画</Link>
           管理网关；本页为兼容入口，配置键相同。
         </p>
       ) : null}
@@ -346,18 +429,37 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
               empty={!fields.length && !isHelpPlugin}
               emptyText="该插件无可编辑配置字段"
             >
-              <PluginConfigFormSection
-                subtitle={`共 ${fields.length} 项参数，保存后按插件热重载策略生效`}
-              >
-                {fields.map((f) => (
-                  <PluginConfigFieldShell
-                    key={f.name}
-                    field={f}
-                    modelValue={fieldValues[f.name] ?? ""}
-                    onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
-                  />
-                ))}
-              </PluginConfigFormSection>
+              {usesDrawGatewayPanel ? (
+                <DrawProviderGatewayPanel
+                  className="mb-4"
+                  fieldValues={fieldValues}
+                  onFieldsPatch={patchFieldValuesAndPersist}
+                  busy={saveGatewayPatch.isPending}
+                />
+              ) : null}
+              {cfgQ.data?.field_groups?.length ? (
+                <DynamicConfigPanel
+                  fields={formFields}
+                  fieldGroups={cfgQ.data.field_groups}
+                  fieldValues={fieldValues}
+                  onFieldChange={(name, value) =>
+                    setFieldValues((prev) => ({ ...prev, [name]: value }))
+                  }
+                />
+              ) : (
+                <PluginConfigFormSection
+                  subtitle={`共 ${formFields.length} 项参数，保存后按插件热重载策略生效`}
+                >
+                  {formFields.map((f) => (
+                    <PluginConfigFieldShell
+                      key={f.name}
+                      field={f}
+                      modelValue={fieldValues[f.name] ?? ""}
+                      onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
+                    />
+                  ))}
+                </PluginConfigFormSection>
+              )}
               {!isDialog ? (
                 <div className="mt-4">
                   <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>

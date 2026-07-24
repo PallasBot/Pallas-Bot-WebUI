@@ -11,7 +11,10 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
   version: string;
 };
 
-/** 与 Vue 根仓、pb_webui 的 pallas_webui_http_base 一致 */
+/** 发版 CI 会注入 CONSOLE_VERSION（如 v0.7.0）；本地开发回退 package.json */
+const webuiVersion = (process.env.CONSOLE_VERSION || "").trim() || pkg.version;
+
+/** 与现有控件一致 */
 const BASE = "/pallas/";
 
 function resolveDevProxyTarget(env: Record<string, string>): string {
@@ -37,7 +40,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: BASE,
     define: {
-      __WEBUI_VERSION__: JSON.stringify(pkg.version),
+      __WEBUI_VERSION__: JSON.stringify(webuiVersion),
     },
     plugins: [react()],
     resolve: {
@@ -52,7 +55,9 @@ export default defineConfig(({ mode }) => {
         "/pallas/store-assets": { target: devProxyTarget, changeOrigin: true },
         "/pallas/plugin-assets": { target: devProxyTarget, changeOrigin: true },
         "/pallas/assets": { target: devProxyTarget, changeOrigin: true },
-        "/pallas/login": { target: devProxyTarget, changeOrigin: true },
+        "/pallas/_pallas_ui": { target: devProxyTarget, changeOrigin: true },
+        "/pallas/favicon.png": { target: devProxyTarget, changeOrigin: true },
+        // /pallas/login 由 Vite SPA 承接；仅 logout / API 走 Bot
         "/pallas/logout": { target: devProxyTarget, changeOrigin: true },
         "/protocol": { target: devProxyTarget, changeOrigin: true },
       },

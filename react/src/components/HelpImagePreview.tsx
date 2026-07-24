@@ -10,9 +10,22 @@ import {
 } from "@/utils/helpPreviewOptions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import SegTabs from "@/components/SegTabs";
 
 type Level = "menu" | "plugin" | "function";
+
+const LEVEL_OPTIONS = [
+  { value: "menu", label: "菜单" },
+  { value: "plugin", label: "插件" },
+  { value: "function", label: "功能" },
+] as const;
 
 type Props = {
   embedded?: boolean;
@@ -113,26 +126,12 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
       aria-label="帮助图预览"
     >
       <div className="flex flex-wrap items-end gap-2">
-        <div className="console-view-toggle shrink-0" role="tablist" aria-label="帮助图预览级别">
-          {(
-            [
-              ["menu", "菜单"],
-              ["plugin", "插件"],
-              ["function", "功能"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              className={cn(level === id && "is-on")}
-              aria-selected={level === id}
-              onClick={() => setLevel(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegTabs
+          ariaLabel="帮助图预览级别"
+          value={level}
+          onValueChange={(v) => setLevel(v as Level)}
+          options={[...LEVEL_OPTIONS]}
+        />
 
         {level === "menu" ? (
           <label className="inline-flex shrink-0 items-center gap-1 text-sm">
@@ -150,42 +149,59 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
         {level === "plugin" || level === "function" ? (
           <label className="grid min-w-[10rem] flex-1 gap-1 text-sm">
             <span className="text-muted-foreground">插件</span>
-            <select
-              className="h-9 rounded-md border bg-background px-3"
-              value={plugin}
+            <Select
+              value={pluginsQ.isLoading ? "__loading__" : plugin}
               disabled={pluginsQ.isLoading || !pluginOptions.length}
-              onChange={(e) => setPlugin(e.target.value)}
+              onValueChange={setPlugin}
             >
-              {pluginsQ.isLoading ? <option value="">加载插件列表…</option> : null}
-              {pluginOptions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full" aria-label="插件">
+                <SelectValue placeholder="选择插件" />
+              </SelectTrigger>
+              <SelectContent>
+                {pluginsQ.isLoading ? (
+                  <SelectItem value="__loading__" disabled>
+                    加载插件列表…
+                  </SelectItem>
+                ) : null}
+                {!pluginsQ.isLoading &&
+                plugin &&
+                !pluginOptions.some((item) => item.value === plugin) ? (
+                  <SelectItem value={plugin}>{plugin}</SelectItem>
+                ) : null}
+                {pluginOptions.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         ) : null}
 
         {level === "function" ? (
           <label className="grid min-w-[10rem] flex-1 gap-1 text-sm">
             <span className="text-muted-foreground">功能</span>
-            <select
-              className="h-9 rounded-md border bg-background px-3"
-              value={functionName}
+            <Select
+              value={functionOptions.length ? functionName : "__empty__"}
               disabled={!functionOptions.length}
-              onChange={(e) => setFunctionName(e.target.value)}
+              onValueChange={setFunctionName}
             >
-              {!functionOptions.length ? (
-                <option value="1" disabled>
-                  该插件暂无功能项
-                </option>
-              ) : null}
-              {functionOptions.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full" aria-label="功能">
+                <SelectValue placeholder="选择功能" />
+              </SelectTrigger>
+              <SelectContent>
+                {!functionOptions.length ? (
+                  <SelectItem value="__empty__" disabled>
+                    该插件暂无功能项
+                  </SelectItem>
+                ) : null}
+                {functionOptions.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         ) : null}
 

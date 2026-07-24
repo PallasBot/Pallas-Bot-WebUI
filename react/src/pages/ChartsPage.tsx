@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Bot, LineChart } from "lucide-react";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchConsoleDailyStats,
   fetchInstances,
@@ -9,7 +11,7 @@ import type { BotConfigPublic, ConsoleDailyStatRow } from "@/api/pallasTypes";
 import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools from "@/components/ChromeTools";
-import DatePicker from "@/components/DatePicker";
+import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import HomePluginRunCharts, { type ChartPanelId } from "@/components/HomePluginRunCharts";
 import IngressDispatchPanel from "@/components/IngressDispatchPanel";
 import PageMasthead from "@/components/PageMasthead";
@@ -41,7 +43,7 @@ const CHART_PANEL_HD =
   "panel__hd panel__hd--split home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
 const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
 const ACCOUNT_SEL =
-  "charts-page__account-sel h-8 w-auto min-w-[10rem] max-w-[16rem] shrink-0 [&>span]:truncate";
+  "charts-page__account-sel h-8 w-[7rem] min-w-[5rem] max-w-[7rem] shrink-0 overflow-hidden";
 
 function MetricTile({
   label,
@@ -68,6 +70,7 @@ function MetricTile({
 export default function ChartsPage() {
   const [rangeStart, setRangeStart] = useState(() => monthBounds(currentMonthIso()).start);
   const [rangeEnd, setRangeEnd] = useState(todayIso);
+  const [dateMode, setDateMode] = useState<DateMode>("range");
   const [selectedAccount, setSelectedAccount] = useState<number | null>(() => readSavedHomeAccount());
 
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
@@ -215,12 +218,12 @@ export default function ChartsPage() {
       {sortedBots.length ? (
         <ChromeTools>
           {sortedBots.length > 1 ? (
-            <ChromeField label="账号">
+            <ChromeField label="账号" icon={Bot} className="shrink-0">
               <Select
                 value={selectedAccount != null ? String(selectedAccount) : undefined}
                 onValueChange={(v) => setSelectedAccount(Number(v) || null)}
               >
-                <SelectTrigger className={ACCOUNT_SEL} aria-label="选择 Bot 账号">
+                <SelectTrigger className={ACCOUNT_SEL} aria-label="选择 Bot 账号" title={selectedAccount != null ? botLabel(selectedAccount) : undefined}>
                   <SelectValue placeholder="选择账号" />
                 </SelectTrigger>
                 <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
@@ -233,25 +236,17 @@ export default function ChartsPage() {
               </Select>
             </ChromeField>
           ) : null}
-          <ChromeField label="起始">
-            <DatePicker
-              className="charts-page__date-inp h-8 min-h-8 min-w-[9.5rem]"
-              ariaLabel="起始日期"
-              value={rangeStart}
-              onValueChange={setRangeStart}
-            />
-          </ChromeField>
-          <ChromeField label="结束">
-            <DatePicker
-              className="charts-page__date-inp h-8 min-h-8 min-w-[9.5rem]"
-              ariaLabel="结束日期"
-              value={rangeEnd}
-              onValueChange={setRangeEnd}
-            />
-          </ChromeField>
+          <DateModeFilter
+            size="toolbar"
+            mode={dateMode}
+            onModeChange={setDateMode}
+            start={rangeStart}
+            end={rangeEnd}
+            onStartChange={setRangeStart}
+            onEndChange={setRangeEnd}
+          />
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <RefreshIconButton
-              embedded
               busy={refreshing}
               label="刷新"
               showLabel
@@ -290,7 +285,10 @@ export default function ChartsPage() {
           <section id="charts-trend" className="charts-page__section charts-page__section--hero">
             <Card className={cn(CHART_PANEL, "charts-page__panel--hero")}>
               <CardHeader className={CHART_PANEL_HD}>
-                <CardTitle className="panel__title">区间趋势</CardTitle>
+                <CardTitle className="panel__title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={LineChart} />
+                  区间趋势
+                </CardTitle>
               </CardHeader>
               <CardContent className={CHART_PANEL_BD}>
                 <p className="muted charts-page__section-lead">

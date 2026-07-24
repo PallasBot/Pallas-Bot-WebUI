@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-/** shadcn Table —— 对齐 GSUID hub 数据表形态（caption-bottom / 细边框 / 悬停行） */
+/** shadcn Table：caption-bottom / 细边框 / 悬停行 */
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
     <div className="relative w-full overflow-auto rounded-[var(--radius-shell,12px)] border border-[var(--border)]">

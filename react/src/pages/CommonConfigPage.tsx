@@ -1,14 +1,15 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { PenLine, Search } from "lucide-react";
 import { fetchCommonConfigSections } from "@/api/fullConsole";
 import CommonConfigForm from "@/components/CommonConfigForm";
 import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
+import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 
 export default function CommonConfigPage() {
@@ -43,8 +44,8 @@ export default function CommonConfigPage() {
             <Input
               type="search"
               className="h-8 min-h-8 w-full pl-8"
-              placeholder="搜索段…"
-              aria-label="搜索段"
+              placeholder="搜索配置…"
+              aria-label="搜索配置"
               autoComplete="off"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -80,19 +81,23 @@ export default function CommonConfigPage() {
           </Button>
         }
       />
-      <section className="panel common-config-page__card mb-4">
+      <section className="panel common-config-page__card">
         <div className="panel__hd panel__hd--split">
-          <h2 className="panel__title">编辑模式</h2>
+          <h2 className="panel__title flex items-center gap-1.5">
+            <PanelTitleIcon icon={PenLine} />
+            编辑模式
+          </h2>
         </div>
         <div className="panel__bd">
-          <div className="console-view-toggle">
-            <button type="button" className={cn(mode === "form" && "is-on")} onClick={() => setMode("form")}>
-              表单
-            </button>
-            <button type="button" className={cn(mode === "raw" && "is-on")} onClick={() => setMode("raw")}>
-              Raw TOML
-            </button>
-          </div>
+          <SegTabs
+            ariaLabel="编辑模式"
+            value={mode}
+            onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
+            options={[
+              { value: "form", label: "表单" },
+              { value: "raw", label: "Raw TOML" },
+            ]}
+          />
         </div>
       </section>
       <section className="panel common-config-page__card">

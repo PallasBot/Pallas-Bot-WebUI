@@ -1,10 +1,10 @@
 const CHART_PALETTE_FALLBACK = [
-  "#38bdf8",
-  "#7dd3fc",
+  "#a78bfa",
+  "#c4b5fd",
   "#34d399",
   "#fbbf24",
   "#fb7185",
-  "#a78bfa",
+  "#38bdf8",
   "#94a3b8",
   "#fcd34d",
 ];

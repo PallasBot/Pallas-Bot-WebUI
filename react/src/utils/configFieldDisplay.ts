@@ -1,6 +1,7 @@
-/** 对齐 Vue `src/utils/configFieldDisplay.ts`（React 侧自包含，避免 tsc 跨仓 @/） */
+/** 弹层定位（React 侧自包含，避免 tsc 跨仓 @/） */
 
 import type { PluginConfigField } from "@/api/console";
+import { FALLBACK_FIELD_LABELS } from "@/config/configFieldLabels";
 
 const FALLBACK_ENUM_LABELS: Record<string, string> = {
   auto: "自动",
@@ -20,13 +21,35 @@ const FALLBACK_ENUM_LABELS: Record<string, string> = {
   session: "本 worker 连接",
   fleet: "协议实例名册",
   connected: "全集群曾连 WS",
+  off: "关闭 AI 接话",
+  select: "命中语料时 AI 选句（推荐）",
+  select_polish_lite: "选句为主，少数回复轻润色",
+  select_fallback: "选句，语料缺失时现编",
+  fallback: "仅语料缺失时 AI 现编",
+  "": "自动推断（推荐）",
+  legacy_repeater: "仅语料规则（legacy）",
+  repeater_plus_decision: "语料 + 统一决策",
+  full_conversation_kernel: "决策 + 生成 + 反馈全链路",
+  "60": "1 分钟",
+  "120": "2 分钟",
+  "300": "5 分钟",
+  "600": "10 分钟",
+  "900": "15 分钟",
+  "1800": "30 分钟",
+  "3600": "1 小时",
 };
 
 export function fieldDisplayTitle(f: PluginConfigField): string {
-  return (f.label || "").trim() || f.name;
+  const fromApi = (f.label || "").trim();
+  if (fromApi) return fromApi;
+  return FALLBACK_FIELD_LABELS[f.name] || f.name;
 }
 
-/** 对齐 Vue `fieldTypeLabel`（插件配置帮助浮层） */
+export function fieldHasLocalizedTitle(f: PluginConfigField): boolean {
+  return fieldDisplayTitle(f) !== f.name;
+}
+
+/** 弹层定位（插件配置帮助浮层） */
 export function fieldTypeLabel(field: PluginConfigField): string {
   switch (field.kind) {
     case "bool":
@@ -43,7 +66,7 @@ export function fieldTypeLabel(field: PluginConfigField): string {
   }
 }
 
-/** 对齐 Vue `fieldHelpDefaultValue` */
+/** 弹层定位 */
 export function fieldHelpDefaultValue(field: PluginConfigField): string {
   const value = field.default;
   if (value == null || value === "") return "无";

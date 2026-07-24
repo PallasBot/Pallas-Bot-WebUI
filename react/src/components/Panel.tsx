@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** 对齐 Vue `.panel` / `.panel__hd--split` */
+/** 弹层定位 / `.panel__hd--split` */
 export default function Panel({
   title,
   actions,

@@ -107,7 +107,7 @@ function downsampleBucketTimeline(
 
 export function chartSeriesColor(index: number): string {
   const palette = readChartPalette();
-  return palette[index % palette.length] ?? palette[0] ?? "#38bdf8";
+  return palette[index % palette.length] ?? palette[0] ?? "#a78bfa";
 }
 
 export function aggregateLocalToday(points: { at: number; total: number }[]): number[] {

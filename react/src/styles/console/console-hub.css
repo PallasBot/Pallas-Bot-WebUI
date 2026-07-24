@@ -1,5 +1,5 @@
 /*
- * Gsuid-aligned console layout — enabled via html[data-layout="hub"]
+ * Console hub layout — enabled via html[data-layout="hub"]
  *
  * Surface contract (Canvas / Card / Flat):
  * - Canvas: page shell (.console-hub-page) — PageChrome + filters + content blocks, no card chrome
@@ -10,7 +10,10 @@
 html[data-layout="hub"] {
   --hub-page-gap: 18px;
   --console-page-masthead-gap: var(--hub-page-gap);
-  /* 主内容边距：page-top 对齐 gsuid 标题页呼吸距 */
+  /* 工具条 → 面板：与页头 / 面板间距同值 */
+  --console-chrome-tools-gap: var(--hub-page-gap);
+  --console-panel-gap: var(--hub-page-gap);
+  /* 主内容边距：page-top 给标题页呼吸距 */
   --layout-gutter: 40px;
   --layout-page-top: 2.75rem;
   --layout-page-bottom: 20px;
@@ -22,41 +25,40 @@ html[data-layout="hub"] {
   --hub-radius-lg: var(--radius-lg);
   /* chip / switch 用 --radius-pill；分段与按钮/输入同 --radius-control */
   --hub-radius-control: var(--radius-control, 10px);
-  /* ConsoleChromeTools → 下方面板：全站同一底边距；父级已有 flex/space-y gap 时归零以免叠距 */
-  --console-chrome-tools-gap: 10px;
   --shell-sidebar-w: 252px;
   --shell-brand-mark-wrap-size: 56px;
   --shell-brand-mark-size: 44px;
   --shell-brand-mark-wrap-radius: 10px;
-  --ui-btn-pad-y: 7px;
-  --ui-btn-pad-x: 16px;
-  --ui-btn-font: 14px;
+  --ui-btn-pad-y: 6px;
+  --ui-btn-pad-x: 14px;
+  --ui-btn-font: 13px;
   --ui-btn-weight: 500;
-  --ui-ctrl-height: 40px;
+  /* 工具条高度 h-9（36px） */
+  --ui-ctrl-height: 36px;
   --ui-ctrl-font: 14px;
-  --ui-ctrl-pad-y: 8px;
-  --ui-ctrl-pad-x: 16px;
-  --ui-sel-arrow-pad: 38px;
+  --ui-ctrl-pad-y: 6px;
+  --ui-ctrl-pad-x: 14px;
+  --ui-sel-arrow-pad: 36px;
   --ui-field-label-weight: 500;
-  /* gsuid：text-3xl font-bold */
+  /* 页标题：text-3xl font-bold */
   --console-page-title-size: 1.875rem;
   --console-page-title-weight: 700;
   --console-page-lead-size: 0.875rem;
   --console-panel-title-size: 1.0625rem;
-  /* 对齐 gsuid CardTitle（font-semibold） */
+  /* 卡片标题：font-semibold */
   --console-panel-title-weight: 600;
   --console-card-title-size: 0.875rem;
   --console-card-title-weight: 500;
 }
 
 html[data-layout="hub"][data-theme="light"] {
-  /* 与 tokens light 一致：gsuid 近白画布 / 侧栏灰 */
+  /* 与 tokens light 一致：近白画布 / 侧栏灰 */
   --bg-deep: #fcfcfc;
   --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
   --shell-sidebar-surface: #fafafa;
-  /* 轻描边 + 阴影分层（gsuid）；保留可见度但不「铁框」 */
+  /* 轻描边 + 阴影分层；保留可见度但不「铁框」 */
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
   --control-bg: #ffffff;
@@ -257,7 +259,7 @@ html[data-layout="hub"] .console-hub-page__title .btn-refresh-action--icon-only:
   align-self: center;
 }
 
-/* 按钮：gsuid 扁控（control 圆角 + 轻边/分层阴影，勿胶囊） */
+/* 按钮：扁控（control 圆角 + 轻边/分层阴影，勿胶囊） */
 html[data-layout="hub"] .btn:not(.panel-hd-collapse-btn) {
   min-height: var(--ui-ctrl-height, 36px);
   padding: 6px 12px;
@@ -352,13 +354,17 @@ html[data-layout="hub"] .inst-db-search.console-hub-page__search-wrap .console-h
 html[data-layout="hub"] .inst-db-search.console-hub-page__search-wrap .console-hub-page__search-input .inp,
 html[data-layout="hub"] .friends-groups-list-hd-actions > input[type="search"].inp,
 html[data-layout="hub"] .friends-groups-list-hd-actions > .friends-groups-list-search.ui-input-wrap .inp {
-  min-height: 40px;
+  min-height: var(--ui-ctrl-height, 36px);
+  height: var(--ui-ctrl-height, 36px);
   border-radius: 999px;
 }
 
 html[data-layout="hub"] .inp::placeholder,
-html[data-layout="hub"] .textarea::placeholder {
-  color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+html[data-layout="hub"] .textarea::placeholder,
+html[data-layout="hub"] input::placeholder,
+html[data-layout="hub"] textarea::placeholder {
+  color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
+  font-weight: 400;
 }
 
 /* 开关：flex 对齐，避免 thumb 偏移 */
@@ -571,6 +577,20 @@ html[data-layout="hub"] .shell__main-inner--plugin-store {
   gap: var(--hub-page-gap, 18px);
 }
 
+/* 面板纵列 / 网格：与页壳 gap 同值，勿再用 space-y-4 / gap-4 各写一套 */
+.console-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--console-panel-gap, var(--hub-page-gap, 18px));
+  min-width: 0;
+}
+
+.console-panel-grid {
+  display: grid;
+  gap: var(--console-panel-gap, var(--hub-page-gap, 18px));
+  min-width: 0;
+}
+
 .console-hub-page__masthead,
 .console-hub-page__hero,
 .plugin-store-page__masthead,
@@ -610,7 +630,7 @@ html[data-layout="hub"] .database-page__hero .panel__title {
   min-height: 2rem;
 }
 
-/* gsuid：页头图标 w-8 h-8 */
+/* 页头图标 w-8 h-8 */
 .console-hub-page__title .panel__title-ico,
 .console-hub-page__title .console-nav-icon,
 html[data-layout="hub"] .plugins-page__hero .panel__title-ico,
@@ -791,7 +811,7 @@ html[data-layout="hub"] .console-hub-toolbar-strip {
   box-shadow: none;
 }
 
-/* 图标在框外，输入框单独描边（对齐 gsuid 轻量搜索） */
+/* 图标在框外，输入框单独描边（轻量搜索） */
 .console-hub-page__search,
 .plugin-store-page__search {
   display: flex;
@@ -842,10 +862,10 @@ html[data-layout="hub"] .plugins-page__search-input,
 html[data-layout="hub"] .plugins-page__search-input.inp,
 html[data-layout="hub"] .plugins-page__search-input .inp {
   width: 100%;
-  min-height: 40px;
-  height: auto;
-  padding-left: 14px;
-  padding-right: 14px;
+  min-height: var(--ui-ctrl-height, 36px);
+  height: var(--ui-ctrl-height, 36px);
+  padding-left: 12px;
+  padding-right: 12px;
   border-radius: var(--radius-control, 16px);
   border: 1px solid var(--control-edge, var(--control-border, var(--border)));
   background: var(--control-bg, var(--bg-elev));
@@ -879,12 +899,15 @@ html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
   --tw-ring-width: 0px;
 }
 
-/* 页头下方工具条：表面由 ChromeTools（Tailwind）负责；底边距统一 token */
+/* 页头下方工具条：Card + p-4 + 行内 h-9 */
 .console-hub-page__chrome-tools,
 .chrome-tools {
-  margin: 0 0 var(--console-chrome-tools-gap, 10px);
+  margin: 0 0 var(--console-chrome-tools-gap, var(--hub-page-gap, 18px));
   overflow: visible;
-  --chrome-ctrl-h: 32px;
+  /* 筛选/表单控件 h-9；工具条内 TabsList 同高，勿用 h-10 撑高整行 */
+  --chrome-field-h: 36px;
+  --chrome-ctrl-h: 36px;
+  --chrome-tabs-h: 36px;
 }
 
 /* 父级已用 flex gap / space-y 排版时去掉底边距，避免叠距 */
@@ -913,7 +936,7 @@ html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
 .protocol-accounts-tab {
   display: flex;
   flex-direction: column;
-  gap: var(--console-chrome-tools-gap, 10px);
+  gap: var(--console-chrome-tools-gap, var(--hub-page-gap, 18px));
   min-width: 0;
 }
 
@@ -952,6 +975,73 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   overflow-x: auto;
   /* 窄屏溢出时横向滚动，避免按钮换行 */
   -webkit-overflow-scrolling: touch;
+  /* 默认隐藏滚动条，悬停 / 聚焦时再显示 */
+  scrollbar-width: none;
+}
+
+.console-hub-page__chrome-row:hover,
+.console-hub-page__chrome-row:focus-within {
+  scrollbar-width: thin;
+}
+
+.console-hub-page__chrome-row::-webkit-scrollbar {
+  height: 0;
+}
+
+.console-hub-page__chrome-row:hover::-webkit-scrollbar,
+.console-hub-page__chrome-row:focus-within::-webkit-scrollbar {
+  height: 4px;
+}
+
+.console-hub-page__chrome-row::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dim) 32%, transparent);
+}
+
+.console-hub-page__chrome-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 记忆页 Tabs：横向溢出可滚；滚动条默认隐藏，悬停 / 聚焦显示（ai-hub.css 未再引入） */
+.ai-memory-page__tabs-scroll {
+  overflow-x: auto;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.ai-memory-page__tabs-scroll:hover,
+.ai-memory-page__tabs-scroll:focus-within {
+  scrollbar-width: thin;
+}
+
+.ai-memory-page__tabs-scroll::-webkit-scrollbar {
+  height: 0;
+}
+
+.ai-memory-page__tabs-scroll:hover::-webkit-scrollbar,
+.ai-memory-page__tabs-scroll:focus-within::-webkit-scrollbar {
+  height: 4px;
+}
+
+.ai-memory-page__tabs-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-dim) 32%, transparent);
+}
+
+.ai-memory-page__tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 触控无悬停：保留可滚，并常显细滚动条以免误以为不能滑 */
+@media (hover: none) {
+  .ai-memory-page__tabs-scroll {
+    scrollbar-width: thin;
+  }
+
+  .ai-memory-page__tabs-scroll::-webkit-scrollbar {
+    height: 4px;
+  }
 }
 
 .console-hub-page__chrome-advanced {
@@ -980,8 +1070,8 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
 
 .console-hub-page__chrome-field-label {
   flex-shrink: 0;
-  /* 与 Select/Input text-sm 同级 */
-  font-size: 0.875rem;
+  /* 与 Select/Input 同级（14px text-sm，避开 ui-scale） */
+  font-size: var(--console-control-font-size, 14px);
   font-weight: 500;
   color: var(--text-muted);
   letter-spacing: 0;
@@ -998,8 +1088,8 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
 .console-hub-page__chrome-search .console-hub-page__search-input .inp,
 html[data-layout="hub"] .console-hub-page__chrome-tools .console-hub-page__chrome-search .console-hub-page__search-input,
 html[data-layout="hub"] .console-hub-page__chrome-tools .console-hub-page__chrome-search .console-hub-page__search-input.inp {
-  height: var(--chrome-ctrl-h, 32px);
-  min-height: var(--chrome-ctrl-h, 32px) !important;
+  height: var(--chrome-field-h, 36px);
+  min-height: var(--chrome-field-h, 36px) !important;
   border-radius: var(--radius-control, 8px);
   padding-left: 10px;
   padding-right: 10px;
@@ -1044,11 +1134,11 @@ html[data-layout="hub"] .console-hub-page__chrome-tools .console-view-toggle--to
   width: auto;
   max-width: none;
   min-width: 0;
-  height: var(--chrome-ctrl-h, 32px) !important;
-  min-height: var(--chrome-ctrl-h, 32px) !important;
+  height: var(--chrome-field-h, 36px) !important;
+  min-height: var(--chrome-field-h, 36px) !important;
   padding-left: 10px;
   padding-right: 8px;
-  font-size: 0.875rem;
+  font-size: var(--console-control-font-size, 14px);
   border-color: var(--control-edge);
   box-shadow: var(--control-shadow);
   white-space: nowrap;
@@ -1086,12 +1176,98 @@ html[data-layout="hub"] .console-hub-page__chrome-tools .console-view-toggle--to
   min-width: 0;
 }
 
+html[data-layout="hub"] .console-hub-page__chrome-tools .btn:not(.panel-hd-collapse-btn),
+html[data-layout="hub"] .console-hub-page__chrome-tools .ui-btn,
+html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-flex"]:not([role="tab"]),
 .console-hub-page__chrome-tools .btn,
 .console-hub-page__chrome-tools .ui-btn,
-html[data-layout="hub"] .console-hub-page__chrome-tools .btn:not(.panel-hd-collapse-btn),
-html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-flex"] {
-  height: var(--chrome-ctrl-h, 32px);
-  min-height: var(--chrome-ctrl-h, 32px);
+.chrome-tools .btn,
+.chrome-tools .ui-btn {
+  height: var(--chrome-field-h, 36px) !important;
+  min-height: var(--chrome-field-h, 36px) !important;
+}
+
+/* SelectTrigger 同 h-9；固定上限，勿用 width%（父级被挤缩时会把触发器压没） */
+.chrome-tools button[role="combobox"],
+.console-hub-page__chrome-tools button[role="combobox"] {
+  height: var(--chrome-field-h, 36px) !important;
+  min-height: var(--chrome-field-h, 36px) !important;
+  max-width: 12rem;
+  min-width: 5rem;
+  overflow: hidden;
+}
+
+/* SelectValue：grid 垂直居中 + 省略；勿用 block（会让图标/文字偏基线） */
+.chrome-tools button[role="combobox"] > span,
+.console-hub-page__chrome-tools button[role="combobox"] > span {
+  display: grid;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-align: left;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chrome-tools button[role="combobox"] > span > *,
+.console-hub-page__chrome-tools button[role="combobox"] > span > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 工具条内搜索 / 数字等 Input（h-9 + text-sm=14px，避开 ui-scale） */
+.chrome-tools input:not([type="checkbox"]):not([type="radio"]),
+.console-hub-page__chrome-tools input:not([type="checkbox"]):not([type="radio"]),
+.chrome-tools .inp,
+.console-hub-page__chrome-tools .inp {
+  height: var(--chrome-field-h, 36px) !important;
+  min-height: var(--chrome-field-h, 36px) !important;
+  box-sizing: border-box;
+  font-size: var(--console-control-font-size, 14px) !important;
+  line-height: 1.25;
+}
+
+.chrome-tools input::placeholder,
+.console-hub-page__chrome-tools input::placeholder,
+.chrome-tools .inp::placeholder,
+.console-hub-page__chrome-tools .inp::placeholder,
+.chrome-tools textarea::placeholder,
+.console-hub-page__chrome-tools textarea::placeholder {
+  font-size: inherit;
+  font-weight: 400;
+  color: var(--console-placeholder-color, color-mix(in srgb, var(--text-muted) 60%, transparent));
+  opacity: 1;
+}
+
+/* SelectTrigger / 按钮：与输入同 14px（压过 Button 默认 13px） */
+.chrome-tools button[role="combobox"],
+.console-hub-page__chrome-tools button[role="combobox"],
+html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-flex"]:not([role="tab"]),
+.chrome-tools .btn,
+.chrome-tools .ui-btn,
+.console-hub-page__chrome-tools .btn,
+.console-hub-page__chrome-tools .ui-btn {
+  font-size: var(--console-control-font-size, 14px) !important;
+}
+
+/* SegTabs / 工具条 TabsList：与 h-9 控件同高（--chrome-tabs-h） */
+.chrome-tools [role="tablist"],
+.console-hub-page__chrome-tools [role="tablist"] {
+  height: var(--chrome-tabs-h, var(--chrome-field-h, 36px)) !important;
+  min-height: var(--chrome-tabs-h, var(--chrome-field-h, 36px)) !important;
+  padding: 2px !important;
+  box-sizing: border-box;
+}
+
+.chrome-tools [role="tablist"] button[role="tab"],
+.console-hub-page__chrome-tools [role="tablist"] button[role="tab"] {
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 .console-hub-page__chrome-toggle {
@@ -1108,7 +1284,7 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   .console-hub-page__chrome-tools,
   .chrome-tools {
     gap: 6px;
-    margin-bottom: var(--console-chrome-tools-gap, 10px);
+    margin-bottom: var(--console-chrome-tools-gap, var(--hub-page-gap, 18px));
     padding: 8px 10px;
   }
 
@@ -1555,7 +1731,8 @@ html[data-layout="hub"] .stat-card {
 html[data-layout="hub"] .log-errors-page__filter-row .inp[type="search"] {
   min-width: min(100%, 16rem);
   border-radius: 999px;
-  min-height: 40px;
+  min-height: var(--ui-ctrl-height, 36px);
+  height: var(--ui-ctrl-height, 36px);
 }
 
 html[data-layout="hub"] .bot-config-edit,
@@ -1814,7 +1991,7 @@ html[data-layout="hub"] .logs-page__search .inp {
   }
 }
 
-/* gshub 式满屏：日志/报错页在 panel 内滚动（.page-fill / .console-hub-page--fill 见上） */
+/* 满屏：日志/报错页在 panel 内滚动（.page-fill / .console-hub-page--fill 见上） */
 
 html[data-layout="hub"] .log-errors-page__panel,
 html[data-layout="hub"] .log-errors-page > .ui-card.log-errors-page__panel,
@@ -2050,7 +2227,7 @@ input.inp[type="range"]:focus-visible {
   border-radius: 4px;
 }
 
-/* 选项组：GsHub SelectTile — 独立圆角砖块横排，选中淡底+描边 */
+/* 选项组：独立圆角砖块横排，选中淡底+描边 */
 .prefs-segment,
 .prefs-segment--fill {
   display: grid;
@@ -2356,8 +2533,13 @@ html[data-layout="hub"] .shell__sidebar-top::after {
 
 html[data-layout="hub"] .shell__brand {
   align-items: center;
-  padding: 10px 0 10px 2px;
+  padding: 10px 4px 10px 2px;
   min-height: 68px;
+  gap: 12px;
+}
+
+html[data-layout="hub"] .shell__brand-collapse--edge {
+  margin-left: 2px;
 }
 
 html[data-layout="hub"] .shell__brand-main {
@@ -2375,10 +2557,12 @@ html[data-layout="hub"] .shell__brand-badge--bot {
   flex-shrink: 1;
 }
 
-html[data-layout="hub"] .shell__brand-title {
-  font-size: var(--shell-brand-title-size);
-  font-weight: 600;
-  letter-spacing: 0;
+html[data-layout="hub"] .shell__brand-title,
+html[data-layout="hub"] .shell__title,
+html[data-layout="hub"] .shell-mobile-nav__brand {
+  font-size: var(--shell-brand-title-size, 1.125rem);
+  font-weight: var(--shell-brand-title-weight, 700);
+  letter-spacing: -0.01em;
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;

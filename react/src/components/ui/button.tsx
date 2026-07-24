@@ -4,8 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * 密度跟 hub（--radius-control / h-9）；
- * 主色跟 hub --accent；手法跟 gsuid：
+ * 密度跟控制台 token（--radius-control / h-9）；主色 --accent。
  * - default：扁实心 accent + accent-contrast 字（shadcn 黑白下为深底浅字 / 浅底深字）
  * - secondary / outline：control 实心底 + 浅边 + 正文色（常见操作，勿灰板）
  * hover 略压暗、active 更明确；勿胶囊 / 厚渐变 glow。

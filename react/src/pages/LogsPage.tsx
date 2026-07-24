@@ -535,8 +535,8 @@ export default function LogsPage() {
             <Input
               type="search"
               className="h-8 min-h-8 pl-8"
-              placeholder="搜索消息、scope、级别…"
-              aria-label="按消息、scope、级别等过滤"
+              placeholder="搜索日志…"
+              aria-label="搜索日志"
               autoComplete="off"
               value={q}
               onChange={(e) => setQ(e.target.value)}

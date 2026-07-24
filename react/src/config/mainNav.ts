@@ -15,8 +15,8 @@ import {
   Store,
   Users,
   Globe2,
-  Stethoscope,
 } from "lucide-react";
+import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
 export type MainNavItem = {
   to: string;
@@ -39,11 +39,10 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/instances", label: "数据库实例", section: "接入与社交", icon: Server },
   { to: "/protocol", label: "协议连接", section: "接入与社交", icon: Radio },
   { to: "/friends-groups", label: "好友与群聊", section: "接入与社交", icon: Users },
-  { to: "/plugins", label: "插件列表", section: "插件与 AI", icon: Blocks },
-  { to: "/plugin-store", label: "插件商店", section: "插件与 AI", icon: Store },
-  { to: "/ai/home", label: "AI 观测", section: "插件与 AI", icon: LayoutDashboard },
-  { to: "/ai/wizard", label: "AI 体检", section: "插件与 AI", icon: Stethoscope },
-  { to: "/ai/config/provider", label: "AI 配置", section: "插件与 AI", icon: Sparkles },
+  { to: "/plugins", label: "插件列表", section: "插件", icon: Blocks },
+  { to: "/plugin-store", label: "插件商店", section: "插件", icon: Store },
+  { to: AI_OBSERVATION_DEFAULT_PATH, label: "AI 观测", section: "AI", icon: LayoutDashboard },
+  { to: "/ai/config/provider", label: "AI 配置", section: "AI", icon: Sparkles },
   { to: "/database", label: "数据库", section: "数据", icon: Database },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
   { to: "/community", label: "统计与语料", section: "数据", icon: Globe2 },
@@ -80,22 +79,31 @@ export function sectionIcon(section: string): LucideIcon {
   return first?.icon ?? LayoutDashboard;
 }
 
+function isAiObservationPath(pathname: string): boolean {
+  const p = pathname.replace(/\/$/, "") || "/";
+  if (p === "/ai" || p === "/ai/home" || p.startsWith("/ai/home/")) return true;
+  if (p === "/ai/wizard" || p.startsWith("/ai/wizard/")) return true;
+  return (
+    p === "/ai/statistics" ||
+    p.startsWith("/ai/statistics/") ||
+    p === "/ai/session" ||
+    p.startsWith("/ai/session/") ||
+    p === "/ai/memory" ||
+    p.startsWith("/ai/memory/") ||
+    p === "/ai/persona" ||
+    p.startsWith("/ai/persona/") ||
+    p === "/ai/history" ||
+    p.startsWith("/ai/history/") ||
+    p === "/ai/logs" ||
+    p.startsWith("/ai/logs/")
+  );
+}
+
 /** 与侧栏高亮规则一致：当前 path 对应哪条主导航 */
 export function isNavActive(pathname: string, to: string): boolean {
   if (to === "/") return pathname === "/";
-  if (to === "/ai/home") {
-    return (
-      pathname === "/ai" ||
-      pathname === "/ai/home" ||
-      pathname.startsWith("/ai/home/") ||
-      pathname === "/ai/statistics" ||
-      pathname.startsWith("/ai/statistics/") ||
-      pathname === "/ai/history" ||
-      pathname.startsWith("/ai/history/")
-    );
-  }
-  if (to === "/ai/wizard") {
-    return pathname === "/ai/wizard" || pathname.startsWith("/ai/wizard/");
+  if (to === AI_OBSERVATION_DEFAULT_PATH) {
+    return isAiObservationPath(pathname);
   }
   if (to === "/ai/config/provider" || to.startsWith("/ai/config/")) {
     return pathname.startsWith("/ai/config");

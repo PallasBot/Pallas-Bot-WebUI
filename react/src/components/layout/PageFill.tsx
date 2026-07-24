@@ -1,7 +1,7 @@
 import type { ElementType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** 满高画布：占满 shell__main-inner--fill，子内容在内部滚动（对齐 Vue PageFill） */
+/** 满高画布：占满 shell__main-inner--fill，子内容在内部滚动（
 export default function PageFill({
   as: Tag = "div",
   className,

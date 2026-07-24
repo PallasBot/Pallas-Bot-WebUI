@@ -13,7 +13,8 @@ export default function ConsoleCardBulkBar({
   deleteDisabled?: boolean;
   onToggleSelectAll: () => void;
   onClearSelection: () => void;
-  onDelete: () => void;
+  /** 不传则不显示删除按钮（删除已收到工具条「所选操作」时） */
+  onDelete?: () => void;
 }) {
   return (
     <div className="inst-db-bulk-bar">
@@ -23,14 +24,16 @@ export default function ConsoleCardBulkBar({
       <button type="button" className="btn btn--sm" disabled={selectedCount === 0} onClick={onClearSelection}>
         清除选择
       </button>
-      <button
-        type="button"
-        className="btn btn--sm btn--danger"
-        disabled={selectedCount === 0 || deleteBusy || deleteDisabled}
-        onClick={onDelete}
-      >
-        {deleteBusy ? "删除中…" : `删除选中${selectedCount > 0 ? `（${selectedCount}）` : ""}`}
-      </button>
+      {onDelete ? (
+        <button
+          type="button"
+          className="btn btn--sm btn--danger"
+          disabled={selectedCount === 0 || deleteBusy || deleteDisabled}
+          onClick={onDelete}
+        >
+          {deleteBusy ? "删除中…" : `删除选中${selectedCount > 0 ? `（${selectedCount}）` : ""}`}
+        </button>
+      ) : null}
     </div>
   );
 }

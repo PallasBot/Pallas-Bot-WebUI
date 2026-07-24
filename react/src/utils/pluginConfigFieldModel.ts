@@ -1,4 +1,4 @@
-/** 对齐 Vue `src/utils/pluginConfigFieldModel.ts`（React 侧自包含） */
+/** 弹层定位（React 侧自包含） */
 
 import type { PluginConfigField } from "@/api/console";
 import { isBinaryBoolEnum } from "@/utils/configFieldDisplay";
@@ -8,10 +8,21 @@ export type ConfigFieldLayout = "compact" | "standard" | "tall";
 export function resolveConfigFieldLayout(field: PluginConfigField): ConfigFieldLayout {
   if (field.kind === "bool") return "compact";
   if (field.kind === "enum" && isBinaryBoolEnum(field)) return "compact";
-  if (field.kind === "json" && isStringListField(field)) return "compact";
+  if (field.kind === "json" && (isStringListField(field) || isIdListField(field))) return "compact";
   if (field.kind === "json") return "tall";
   if (field.kind === "string" && field.multiline) return "tall";
   return "standard";
+}
+
+/**
+ * 字段在分组内的「类型聚类」序号：开关 → 下拉 → 数字 → 文本 → JSON。
+ */
+export function fieldTypeClusterRank(field: PluginConfigField): number {
+  if (field.kind === "bool") return 0;
+  if (field.kind === "enum") return isBinaryBoolEnum(field) ? 0 : 1;
+  if (field.kind === "int" || field.kind === "float" || field.kind === "number") return 2;
+  if (field.kind === "json") return 4;
+  return 3;
 }
 
 export function fieldModel(f: PluginConfigField): string {
@@ -111,15 +122,34 @@ export function isStringListField(field: PluginConfigField): boolean {
   return sawArray;
 }
 
+/** QQ / 群号等数字 ID 列表（插件 config 里常见 list[int]）。 */
+export function isIdListField(field: PluginConfigField): boolean {
+  if (field.kind !== "json") return false;
+  const samples = [field.current, field.default];
+  let sawArray = false;
+  for (const sample of samples) {
+    if (sample === null || sample === undefined) continue;
+    if (!Array.isArray(sample)) return false;
+    sawArray = true;
+    if (sample.length === 0) continue;
+    if (!sample.every((item) => typeof item === "number" && Number.isFinite(item))) return false;
+  }
+  return sawArray;
+}
+
+export function isChipListField(field: PluginConfigField): boolean {
+  return isStringListField(field) || isIdListField(field);
+}
+
 export function tagsFromJsonText(raw: string): string[] {
   const text = String(raw ?? "").trim();
   if (!text) return [];
   try {
     const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed.map((x) => (x == null ? "" : String(x)));
+    if (Array.isArray(parsed)) return parsed.map((x) => (x == null ? "" : String(x))).filter(Boolean);
   } catch {
     return text
-      .split(/[\n,]/)
+      .split(/[\n,，\s]+/)
       .map((s) => s.trim())
       .filter(Boolean);
   }
@@ -128,4 +158,45 @@ export function tagsFromJsonText(raw: string): string[] {
 
 export function tagsToJsonText(tags: string[]): string {
   return JSON.stringify(tags);
+}
+
+/** 数字 ID 芯片：展示为字符串，落盘为 number[] JSON。 */
+export function idTagsFromJsonText(raw: string): string[] {
+  const text = String(raw ?? "").trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const item of parsed) {
+        const n = typeof item === "number" ? item : parseInt(String(item).trim(), 10);
+        if (!Number.isFinite(n) || n < 1) continue;
+        const key = String(Math.trunc(n));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(key);
+      }
+      return out;
+    }
+  } catch {
+    // fall through
+  }
+  return text
+    .split(/[\n,，\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s) && Number(s) >= 1)
+    .filter((s, i, arr) => arr.indexOf(s) === i);
+}
+
+export function idTagsToJsonText(tags: string[]): string {
+  const nums: number[] = [];
+  const seen = new Set<number>();
+  for (const tag of tags) {
+    const n = parseInt(String(tag).trim(), 10);
+    if (!Number.isFinite(n) || n < 1 || seen.has(n)) continue;
+    seen.add(n);
+    nums.push(n);
+  }
+  return JSON.stringify(nums);
 }

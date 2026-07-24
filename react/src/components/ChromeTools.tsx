@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** 全站工具条壳：与 shadcn Card 同色同边（bg-card / border / shadow-none）。
- * 与下方面板间距由 `--console-chrome-tools-gap`（CSS）统一；勿再叠 Tailwind mb-*。
+/** 全站工具条壳：Card + p-4 + 行内 gap-4 / h-9。
+ * 与下方面板间距 = `--hub-page-gap`（via `--console-chrome-tools-gap`）；勿再叠 Tailwind mb-*。
+ * 主行 nowrap + 横向滚动（同 `.console-hub-page__chrome-row`），宽度不够时不换行。
  */
 export const CHROME_TOOLS_SURFACE =
   "rounded-lg border bg-card text-card-foreground shadow-none";
@@ -19,14 +20,16 @@ export default function ChromeTools({
   return (
     <div
       className={cn(
-        "chrome-tools console-hub-page__chrome-tools flex min-w-0 flex-col gap-2 px-2.5 py-2",
+        "chrome-tools console-hub-page__chrome-tools flex min-w-0 flex-col gap-3 p-4",
         CHROME_TOOLS_SURFACE,
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">{children}</div>
+      <div className="console-hub-page__chrome-row gap-4">
+        {children}
+      </div>
       {advanced ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-border pt-2">
+        <div className="console-hub-page__chrome-row gap-2 border-t border-border pt-3">
           {advanced}
         </div>
       ) : null}

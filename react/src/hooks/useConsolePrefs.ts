@@ -46,6 +46,31 @@ export function useConsolePrefs() {
     [patch],
   );
 
+  const setDatabasePageGroupConfigsOpen = useCallback(
+    (open: boolean) => patch({ databasePageGroupConfigsOpen: open }),
+    [patch],
+  );
+  const setDatabasePageUserConfigsOpen = useCallback(
+    (open: boolean) => patch({ databasePageUserConfigsOpen: open }),
+    [patch],
+  );
+  const setFriendsPageFriendsListOpen = useCallback(
+    (open: boolean) => patch({ friendsPageFriendsListOpen: open }),
+    [patch],
+  );
+  const setFriendsPageGroupsListOpen = useCallback(
+    (open: boolean) => patch({ friendsPageGroupsListOpen: open }),
+    [patch],
+  );
+  const setInstancesBotView = useCallback(
+    (mode: DataViewMode) => patch({ instancesBotView: mode }),
+    [patch],
+  );
+  const setProtocolAccountsView = useCallback(
+    (mode: DataViewMode) => patch({ protocolAccountsView: mode }),
+    [patch],
+  );
+
   return {
     tablePageSize,
     setTablePageSize,
@@ -53,13 +78,13 @@ export function useConsolePrefs() {
     friendsPageGroupsListOpen: stored.friendsPageGroupsListOpen ?? true,
     databasePageGroupConfigsOpen: stored.databasePageGroupConfigsOpen ?? true,
     databasePageUserConfigsOpen: stored.databasePageUserConfigsOpen ?? true,
-    setDatabasePageGroupConfigsOpen: (open: boolean) => patch({ databasePageGroupConfigsOpen: open }),
-    setDatabasePageUserConfigsOpen: (open: boolean) => patch({ databasePageUserConfigsOpen: open }),
+    setDatabasePageGroupConfigsOpen,
+    setDatabasePageUserConfigsOpen,
     instancesBotView: stored.instancesBotView === "table" ? "table" : "cards",
     protocolAccountsView: stored.protocolAccountsView === "table" ? "table" : "cards",
-    setFriendsPageFriendsListOpen: (open: boolean) => patch({ friendsPageFriendsListOpen: open }),
-    setFriendsPageGroupsListOpen: (open: boolean) => patch({ friendsPageGroupsListOpen: open }),
-    setInstancesBotView: (mode: DataViewMode) => patch({ instancesBotView: mode }),
-    setProtocolAccountsView: (mode: DataViewMode) => patch({ protocolAccountsView: mode }),
+    setFriendsPageFriendsListOpen,
+    setFriendsPageGroupsListOpen,
+    setInstancesBotView,
+    setProtocolAccountsView,
   };
 }

@@ -17,7 +17,7 @@
   --text: #f4f4f5;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
-  --accent: #38bdf8;
+  --accent: #a78bfa;
   /* 实心 accent 按钮上的字色；shadcn 黑白预设会覆写为 --background */
   --accent-contrast: #ffffff;
   /*
@@ -48,12 +48,12 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / calc(0.18 * var(--shadow-intensity)));
   --shadow-md: 0 2px 8px rgb(0 0 0 / calc(0.22 * var(--shadow-intensity))),
     0 1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-intensity)));
-  --accent-soft: rgba(56, 189, 248, 0.14);
-  --accent-glow: rgba(56, 189, 248, 0.35);
+  --accent-soft: rgba(167, 139, 250, 0.16);
+  --accent-glow: rgba(167, 139, 250, 0.38);
   --success: #4ade80;
   --warn: #fbbf24;
   --danger: #f87171;
-  /* 圆角靠拢 gsuid（~8px 基准）；胶囊仅 Switch/Chip（--radius-pill） */
+  /* 圆角约 8px 基准；胶囊仅 Switch/Chip（--radius-pill） */
   --radius-lg: 12px;
   --radius-md: 10px;
   --radius-sm: 8px;
@@ -64,12 +64,15 @@
   --radius-textarea: var(--radius-sm);
   --surface-blur: 10px;
   --card-glass-opacity: 0.25;
-  /* 主内容边距；page-top 对齐 gsuid 标题页呼吸距 */
+  /* 主内容边距；page-top 给标题页呼吸距 */
   --layout-gutter: 40px;
   --layout-page-top: 2.75rem;
   --layout-page-bottom: 48px;
-  /* 页标题 → 下一块（工具条 / 正文）；与 hub --hub-page-gap 同值 */
-  --console-page-masthead-gap: 18px;
+  /* 全站纵向节奏：页头 → 工具条 → 面板 → 面板（同一值） */
+  --hub-page-gap: 18px;
+  --console-page-masthead-gap: var(--hub-page-gap);
+  --console-chrome-tools-gap: var(--hub-page-gap);
+  --console-panel-gap: var(--hub-page-gap);
   /* 略降饱和，减轻玻璃上文字发糊 */
   --glass-saturate: 1.05;
   --glass-elev-shadow: 0 8px 32px rgb(0 0 0 / calc(0.15 * var(--shadow-intensity)));
@@ -96,17 +99,17 @@
   --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Consolas", monospace;
-  /* gsuid H1 text-3xl */
+  /* H1 text-3xl */
   --console-page-title-size: 1.875rem;
   --console-page-title-weight: 700;
   --console-panel-title-size: 1.0625rem;
-  /* 对齐 gsuid CardTitle（font-semibold） */
+  /* 卡片标题：font-semibold */
   --console-panel-title-weight: 600;
   /* 勿再叠 1px ring：panel 已有 border，双描边会发「铁框」 */
   --shadow-card: 0 2px 8px rgb(0 0 0 / calc(0.22 * var(--shadow-intensity))),
     0 8px 24px -4px rgb(0 0 0 / calc(0.18 * var(--shadow-intensity)));
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #ddd6fe 42%, #a78bfa 100%);
   /* 顶栏与侧栏共用 */
   --shell-chrome-h: 52px;
   --shell-chrome-bg: linear-gradient(180deg, rgba(14, 14, 18, 0.92) 0%, rgba(10, 10, 12, 0.98) 100%);
@@ -143,23 +146,28 @@
   --chart-bar-mix: color-mix(in srgb, var(--accent) 72%, #fff 28%);
   --chart-bar-alt: color-mix(in srgb, var(--accent) 52%, var(--warn) 48%);
   /* 按钮 / 下拉 / 勾选统一基准 */
-  --ui-btn-pad-y: 8px;
-  --ui-btn-pad-x: 18px;
+  --ui-btn-pad-y: 6px;
+  --ui-btn-pad-x: 14px;
   --ui-btn-font: 13px;
   --ui-btn-weight: 500;
   --ui-ctrl-font: 14px;
-  --ui-ctrl-height: 38px;
-  --ui-ctrl-pad-y: 8px;
-  --ui-ctrl-pad-x: 16px;
+  /* 控件高度 h-9 */
+  --ui-ctrl-height: 36px;
+  --ui-ctrl-pad-y: 6px;
+  --ui-ctrl-pad-x: 14px;
   --ui-sel-min-h: var(--ui-ctrl-height);
-  --ui-sel-arrow-pad: 38px;
+  --ui-sel-arrow-pad: 36px;
   --ui-field-gap: 6px;
   --ui-field-label-size: 12px;
   --ui-field-label-weight: 500;
   --ui-check-size: 14px;
-  /* 标题层级：顶栏（当前页）> 面板分区 > 卡片主标题；贴近已加载字重 400/500/600/700 */
+  /* 字重对比：正文/说明/placeholder 400 · 标签/按钮/导航 500 · 面板/卡片/弹窗标题 600 · 页 H1/品牌 700 */
   --console-card-title-size: 14px;
-  --console-card-title-weight: 500;
+  --console-card-title-weight: 600;
+  /* 控件字号：text-sm @ 16px root = 14px；用 px 避开 --ui-scale 把 rem 放大 */
+  --console-control-font-size: 14px;
+  /* placeholder：字重 400，颜色 ≈ muted @ 60% */
+  --console-placeholder-color: color-mix(in srgb, var(--text-muted) 60%, transparent);
   /* StatCard 注释行（格栅密集布局用 compact） */
   --stat-hint-size: 13px;
   --stat-hint-size-dense: 13px;
@@ -170,8 +178,9 @@
   --stat-card-body-pad-x: 18px;
   --stat-card-body-pad-y-dense: 14px;
   --stat-card-body-pad-x-dense: 16px;
-  /* 侧栏导航标题（略收，贴近 gsuid 密度；清晰度仍靠实色 active，非字号） */
-  --shell-brand-title-size: 1.02rem;
+  /* 侧栏品牌：font-bold text-lg */
+  --shell-brand-title-size: 1.125rem;
+  --shell-brand-title-weight: 700;
   --shell-nav-label-size: 13px;
   --shell-nav-section-size: 10.5px;
   /* 主内容区最大宽度（仪表盘双列等） */
@@ -323,7 +332,7 @@ html[data-theme="light"][data-surface="glass"] {
     color-mix(in srgb, #fff 52%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 38%, transparent) 100%
   );
-  /* gsuid：侧栏近白中性灰，勿用偏紫 #f4f4f7；玻璃态也保持近实底 */
+  /* 侧栏近白中性灰，勿用偏紫 #f4f4f7；玻璃态也保持近实底 */
   --shell-sidebar-surface: #fafafa;
   --shell-sidebar-glass-mix: 3.5;
   --shell-sidebar-glass-floor: 0.94;
@@ -357,7 +366,13 @@ html[data-theme="light"][data-surface="glass"] .shell__topbar {
   box-shadow: var(--shell-chrome-shadow-y), var(--glass-inset-highlight);
 }
 
-/* 强调色预设（默认 sky 与 :root 一致，可不设 data-accent） */
+/* 强调色预设（默认 violet 与 :root 一致） */
+html[data-accent="sky"] {
+  --accent: #38bdf8;
+  --accent-soft: rgba(56, 189, 248, 0.14);
+  --accent-glow: rgba(56, 189, 248, 0.35);
+  --shell-title-gradient: linear-gradient(135deg, #fff 0%, #a5b4fc 45%, #38bdf8 100%);
+}
 html[data-accent="indigo"] {
   --accent: #818cf8;
   --accent-soft: rgba(129, 140, 248, 0.16);
@@ -389,6 +404,12 @@ html[data-accent="violet"] {
   --shell-title-gradient: linear-gradient(135deg, #fff 0%, #ddd6fe 42%, #a78bfa 100%);
 }
 
+html[data-theme="light"][data-accent="sky"] {
+  --accent: #0284c7;
+  --accent-soft: rgba(2, 132, 199, 0.12);
+  --accent-glow: rgba(2, 132, 199, 0.2);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
+}
 html[data-theme="light"][data-accent="indigo"] {
   --accent: #4f46e5;
   --accent-soft: rgba(79, 70, 229, 0.12);
@@ -496,21 +517,21 @@ html[data-theme="light"] {
   --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --ui-btn-font: 14px;
-  /* gsuid：近白画布 + 白卡片；侧栏略沉于画布 */
+  /* 近白画布 + 白卡片；侧栏略沉于画布 */
   --bg-deep: #fcfcfc;
   --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
-  /* 浅色描边对齐 gsuid：约 border/40 观感，避免「铁框」 */
+  /* 浅色描边：约 border/40 观感，避免「铁框」 */
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
   --text: #0f172a;
   /* 略加深 muted，减轻灰底上灰字发糊 */
   --text-muted: #526277;
   --text-dim: #7b8a9e;
-  --accent: #0284c7;
-  --accent-soft: rgba(2, 132, 199, 0.12);
-  --accent-glow: rgba(2, 132, 199, 0.2);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --accent-glow: rgba(124, 58, 237, 0.22);
   --success: #15803d;
   --warn: #b45309;
   --danger: #b91c1c;
@@ -523,7 +544,7 @@ html[data-theme="light"] {
   --secondary: rgba(15, 23, 42, 0.05);
   --destructive: #b91c1c;
   --ring: color-mix(in srgb, var(--accent) 42%, transparent);
-  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #0284c7 100%);
+  --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #6d28d9 55%, #7c3aed 100%);
   /* 侧栏 chrome：近白中性灰 */
   --shell-chrome-bg: linear-gradient(180deg, #fbfbfb 0%, #fafafa 100%);
   --shell-chrome-edge: color-mix(in srgb, var(--border) 70%, transparent);
