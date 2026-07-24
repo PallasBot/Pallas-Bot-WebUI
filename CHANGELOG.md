@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.2] - 2026-07-24
+
+### 🔨 其他更改
+
+* chore(openapi): 同步 Bot 控制台 OpenAPI 类型 ([e51315e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e51315e00053490e6a879b0acbd218249ce7b778))
+
+**完整变更**: [`v0.7.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.1...HEAD)
+
+
 ## [0.7.1] - 2026-07-24
 
 ### 📚 文档更新
