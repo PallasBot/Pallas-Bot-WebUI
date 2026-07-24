@@ -1,6 +1,6 @@
 # React UI 约定
 
-> 控件内核为 React + shadcn；色板保持 Pallas（天蓝 accent），手法参考 gsuid。  
+> 控件内核为 React + shadcn；色板保持 Pallas（天蓝 accent）。  
 > **方向：逐步抛弃 hub 页级壳（`PageChrome` / `.console-hub-page__*` / `.panel` 等），新功能与重构优先 shadcn + Tailwind。**
 
 ## 迁移：hub → shadcn
@@ -26,7 +26,7 @@
 
 `Ui*` 已标 `@deprecated`，内部转发到 shadcn。**禁止新增 Ui* 文件或扩大其 API。**
 
-### 按钮层级（gsuid 手法 × hub 主色）
+### 按钮层级（控制台主色）
 
 | variant | 用途 |
 | --- | --- |
@@ -38,25 +38,25 @@
 
 遗留 `.btn` / `.btn--primary` 与 `Button` 同高、主色同系；新代码优先 `Button`。
 
-### 下拉 / Dialog 弹层（gsuid 手法）
+### 下拉 / Dialog 弹层
 
-- 组件：`Select` / `Popover` / `DropdownMenu` Content → `ui-surface-popover`；`Dialog` / `AlertDialog` → `ui-surface-dialog`（居中实心底，对齐 gsuid EditConfig）
+- 组件：`Select` / `Popover` / `DropdownMenu` Content → `ui-surface-popover`；`Dialog` / `AlertDialog` → `ui-surface-dialog`（居中实心底）
 - **标题 / 副标题一律左对齐**（`DialogHeader` / `AlertDialogHeader` / Title / Description 默认 `text-left`；勿用居中标题）
 - **配置类弹窗**用 shadcn `Dialog`，勿再用 `ConsoleModal` / 右侧 `Sheet`
 - 存量 `ConsoleModal` 仅兼容未迁移弹窗；新配置类弹窗一律 shadcn `Dialog`
-- 菜单偏 gsuid：**近实心底** + 轻阴影；glass 模式只轻 blur（高不透明），避免半透 + 强阴影叠出脏边
+- 菜单：**近实心底** + 轻阴影；glass 模式只轻 blur（高不透明），避免半透 + 强阴影叠出脏边
 - `SelectItem`：悬停用弱灰底，勾选色走 `--accent`（勿用重 accent 铺底）
 - **配置弹窗一律实心底**（`--bg-card`），不随「毛玻璃」半透
 - `data-surface="glass"` 主要影响页面卡片与壳层；原生 `<select>` 无法玻璃化，新表单用 Radix `Select`
 
-### 输入框描边（gsuid 手法）
+### 输入框描边
 
 - 默认边：Select / Input / 搜索走 `--control-edge`（浅色约 `rgba(15,23,42,0.13)`）+ `--control-shadow`；日期选择保持 Button outline，不跟这套
 - 卡片/壳层阴影：`--shadow-intensity`（偏好「阴影强度」），与控件描边无关
 - 聚焦：轻边色（accent ≈16%）+ `0 0 0 2px` 淡 soft（accent ≈8%）；**不要** `ring-1`/`ring-2` + `ring-offset` 叠出厚色圈
 - 搜索条已有同款覆写；新 `Input` / `Textarea` / `SelectTrigger` 跟同一套
 
-### 按钮（gsuid 手法）
+### 按钮
 
 - 圆角用 `--radius-control`，**不要** `999px` 胶囊次要按钮
 - 次要：轻边（foreground ≈8–10%）+ `0 1px 2px` 分层小阴影
@@ -69,7 +69,7 @@
 - Badge：去胶囊，用 control 圆角
 - 工具条内 `SelectTrigger` / 原生 select：显式 `w-auto` / 定宽 + `shrink-0`，避免基类 `w-full` 盖住旁路按钮
 - 刷新：`RefreshIconButton` → 内部 `Button`（outline/ghost），不要再叠 `.ui-btn` 太鼓胶囊
-- 面板标题：`CardTitle` 默认 `font-semibold`（600，对齐 gsuid）；字号走 `--console-panel-title-size`。勿再在页面上写死 `text-[0.9375rem] font-semibold` / `font-medium` 覆盖字重
+- 面板标题：`CardTitle` 默认 `font-semibold`（600）；字号走 `--console-panel-title-size`。勿再在页面上写死 `text-[0.9375rem] font-semibold` / `font-medium` 覆盖字重
 
 ## 表面类
 
@@ -96,7 +96,7 @@
 
 | 用 | 不要用 |
 | --- | --- |
-| `PageMasthead`（标题密度可贴近 gsuid / tokens，勿再放大号独立体系；`AiPageHeader` 为兼容别名） | hub `PageHeader` / `PageChrome` / `.console-hub-page__*` |
+| `PageMasthead`（标题密度跟 tokens，勿再放大号独立体系；`AiPageHeader` 为兼容别名） | hub `PageHeader` / `PageChrome` / `.console-hub-page__*` |
 | 单行工具条：`Select`（分段）+ `Input` + `Button`，白底/`bg-card` + 轻阴影（对齐控制台 chrome 观感） | 依赖 `ConsoleChromeTools` / `.console-hub-page__chrome-tools` |
 | `Card` / `Button` / `Input` / `Badge` / `Sheet` / `Tabs` | `.panel`、`.btn`、`.inp`、`.ui-btn` |
 | Tailwind + shadcn token（`bg-card`、`text-muted-foreground`…） | `ai-hub.css` / `ai-history.css` 专用 class；新建 hub 专用 CSS |
