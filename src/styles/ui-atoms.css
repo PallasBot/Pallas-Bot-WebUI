@@ -1209,28 +1209,19 @@ html[data-theme="dark"] .ui-dialog__panel {
   gap: 8px;
 }
 
-.social-config-dialog__add-row {
+/* 窄屏也保持取消/保存同一行（覆盖 DialogFooter 默认 flex-col-reverse） */
+.social-config-dialog__foot {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  margin-bottom: 8px;
 }
 
-.social-config-dialog__qq-inp {
-  width: 10rem;
-  max-width: 100%;
-}
-
-.social-config-dialog__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.social-config-dialog__chip {
-  padding: 2px 8px;
-  font-size: 12px;
-  min-height: 0;
+.social-config-dialog__foot > button {
+  flex: 0 0 auto;
+  width: auto;
 }
 
 /* ── UiCard（不用 Vue ui.css，避免 --card HSL 分量破坏 background） ── */

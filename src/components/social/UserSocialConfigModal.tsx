@@ -142,7 +142,7 @@ export default function UserSocialConfigModal({
         </div>
 
         {!loadBusy && !loadErr && loadedId != null ? (
-          <DialogFooter className="border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+          <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 flex-row flex-nowrap items-center justify-end gap-2">
             <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
               取消
             </Button>

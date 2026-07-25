@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/fullConsole";
+import IdChipsInput from "@/components/config/IdChipsInput";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -55,8 +55,6 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
   const [saveBusy, setSaveBusy] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [saveErr, setSaveErr] = useState("");
-  const [addBlocked, setAddBlocked] = useState("");
-  const [blockedHint, setBlockedHint] = useState("");
 
   const rouletteOpts = useMemo(
     () => rouletteModeSelectOptions(draft?.roulette_mode),
@@ -69,8 +67,6 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
       setLoadedId(null);
       setLoadErr("");
       setSaveErr("");
-      setAddBlocked("");
-      setBlockedHint("");
       return;
     }
     const gid = groupId;
@@ -113,25 +109,6 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
       else set.delete(name);
       return { ...prev, disabled_plugins: [...set].sort((a, b) => a.localeCompare(b)) };
     });
-  }
-
-  function addBlockedUser() {
-    if (!draft) return;
-    setBlockedHint("");
-    const n = parseInt(addBlocked.trim(), 10);
-    if (!Number.isFinite(n) || n < 1) {
-      setBlockedHint("请输入有效的 QQ 号。");
-      return;
-    }
-    if (draft.blocked_user_ids.includes(n)) {
-      setBlockedHint("该号码已在列表中。");
-      return;
-    }
-    setDraft({
-      ...draft,
-      blocked_user_ids: [...draft.blocked_user_ids, n].sort((a, b) => a - b),
-    });
-    setAddBlocked("");
   }
 
   async function save() {
@@ -245,45 +222,19 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
               </div>
               <div className="social-config-dialog__block">
                 <div className="social-config-dialog__block-hd">屏蔽用户 QQ</div>
-                <div className="social-config-dialog__add-row">
-                  <Input
-                    className="social-config-dialog__qq-inp h-9"
-                    placeholder="QQ 号"
-                    value={addBlocked}
-                    onChange={(e) => setAddBlocked(e.target.value)}
-                  />
-                  <Button type="button" size="sm" variant="outline" onClick={addBlockedUser}>
-                    添加
-                  </Button>
-                </div>
-                {blockedHint ? <p className="alert alert--err">{blockedHint}</p> : null}
-                <div className="social-config-dialog__chips">
-                  {draft.blocked_user_ids.map((id) => (
-                    <Button
-                      key={id}
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="social-config-dialog__chip"
-                      onClick={() =>
-                        setDraft({
-                          ...draft,
-                          blocked_user_ids: draft.blocked_user_ids.filter((x) => x !== id),
-                        })
-                      }
-                    >
-                      {id} ×
-                    </Button>
-                  ))}
-                  {!draft.blocked_user_ids.length ? <span className="muted">无</span> : null}
-                </div>
+                <IdChipsInput
+                  value={draft.blocked_user_ids}
+                  onChange={(ids) => setDraft({ ...draft, blocked_user_ids: normalizeBlocked(ids) })}
+                  placeholder="QQ 号"
+                  emptyText="尚未屏蔽用户。"
+                />
               </div>
             </div>
           ) : null}
         </div>
 
         {!loadBusy && !loadErr && draft ? (
-          <DialogFooter className="border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:justify-end">
+          <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 flex-row flex-nowrap items-center justify-end gap-2">
             <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
               取消
             </Button>

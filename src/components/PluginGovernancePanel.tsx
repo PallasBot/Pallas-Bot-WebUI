@@ -12,10 +12,10 @@ import type {
   PluginGovernanceBody,
   PluginGovernanceData,
 } from "@/api/pallasTypes";
+import IdChipsInput from "@/components/config/IdChipsInput";
 import PluginRuntimeSwitchRow from "@/components/config/PluginRuntimeSwitchRow";
 import PluginGovernanceGroup from "@/components/config/PluginGovernanceGroup";
 import StateBlock from "@/components/StateBlock";
-import UiButton from "@/components/ui/UiButton";
 import UiInput from "@/components/ui/UiInput";
 import {
   Select,
@@ -47,8 +47,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
   const [permSelections, setPermSelections] = useState<Record<string, string>>({});
   const [limitSelections, setLimitSelections] = useState<Record<string, string>>({});
   const [blockedUserIds, setBlockedUserIds] = useState<number[]>([]);
-  const [blockedInput, setBlockedInput] = useState("");
-  const [whitelistGroupInput, setWhitelistGroupInput] = useState("");
   const [whitelistHint, setWhitelistHint] = useState("");
 
   const govQ = useQuery({
@@ -161,22 +159,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     await saveGov.mutateAsync({ blocked: next });
   }
 
-  async function addBlockedUser() {
-    const raw = blockedInput.trim();
-    if (!raw) return;
-    const uid = Number.parseInt(raw, 10);
-    if (!Number.isFinite(uid) || uid < 1) {
-      setMsg("请输入有效 QQ 号");
-      return;
-    }
-    if (blockedUserIds.includes(uid)) {
-      setBlockedInput("");
-      return;
-    }
-    setBlockedInput("");
-    await persistBlocked([...blockedUserIds, uid].sort((a, b) => a - b));
-  }
-
   function cloneFleetEntries(): GroupFleetWhitelistEntry[] {
     return (fleetQ.data?.entries || []).map((e) => ({
       group_id: e.group_id,
@@ -184,41 +166,37 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     }));
   }
 
-  async function addFleetGroup() {
-    const raw = whitelistGroupInput.trim();
-    if (!raw) return;
-    const groupId = Number.parseInt(raw, 10);
-    if (!Number.isFinite(groupId) || groupId < 1) {
-      setWhitelistHint("请输入有效群号");
-      return;
-    }
-    const entries = cloneFleetEntries();
-    const idx = entries.findIndex((e) => e.group_id === groupId);
-    if (idx >= 0) {
-      if (!entries[idx].plugins.includes(pluginName)) {
-        entries[idx] = {
-          group_id: groupId,
-          plugins: [...entries[idx].plugins, pluginName].sort((a, b) => a.localeCompare(b)),
-        };
-      }
-    } else {
-      entries.push({ group_id: groupId, plugins: [pluginName] });
-    }
-    entries.sort((a, b) => a.group_id - b.group_id);
-    setWhitelistGroupInput("");
-    await saveFleet.mutateAsync(entries);
-  }
+  async function syncFleetGroups(nextIds: number[]) {
+    const nextSet = new Set(nextIds.filter((n) => Number.isFinite(n) && n >= 1));
+    const prev = whitelistedGroupIds;
+    if (prev.length === nextSet.size && prev.every((id) => nextSet.has(id))) return;
 
-  async function removeFleetGroup(groupId: number) {
-    const entries = cloneFleetEntries()
+    let entries = cloneFleetEntries()
       .map((entry) => {
-        if (entry.group_id !== groupId) return entry;
+        if (!entry.plugins.includes(pluginName)) return entry;
+        if (nextSet.has(entry.group_id)) return entry;
         return {
           group_id: entry.group_id,
           plugins: entry.plugins.filter((p: string) => p !== pluginName),
         };
       })
       .filter((entry) => entry.plugins.length > 0);
+
+    for (const groupId of nextSet) {
+      const idx = entries.findIndex((e) => e.group_id === groupId);
+      if (idx >= 0) {
+        if (!entries[idx].plugins.includes(pluginName)) {
+          entries[idx] = {
+            group_id: groupId,
+            plugins: [...entries[idx].plugins, pluginName].sort((a, b) => a.localeCompare(b)),
+          };
+        }
+      } else {
+        entries.push({ group_id: groupId, plugins: [pluginName] });
+      }
+    }
+    entries.sort((a, b) => a.group_id - b.group_id);
+    setWhitelistHint("");
     await saveFleet.mutateAsync(entries);
   }
 
@@ -310,75 +288,27 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
             title="群级白名单"
             description="全实例禁用后，白名单群仍可使用该插件。"
           >
-            <div className="plugin-governance-panel__chips">
-              {whitelistedGroupIds.length ? (
-                whitelistedGroupIds.map((gid) => (
-                  <span key={gid} className="plugin-governance-panel__chip">
-                    群 {gid}
-                    <button
-                      type="button"
-                      className="plugin-governance-panel__chip-remove"
-                      disabled={saveFleet.isPending}
-                      onClick={() => void removeFleetGroup(gid)}
-                    >
-                      移除
-                    </button>
-                  </span>
-                ))
-              ) : (
-                <span className="muted plugin-governance-panel__empty">暂无白名单群</span>
-              )}
-            </div>
-            <div className="plugin-governance-panel__add-row">
-              <UiInput
-                wrapClassName="plugin-governance-panel__add-input"
-                placeholder="群号"
-                value={whitelistGroupInput}
-                onValueChange={setWhitelistGroupInput}
-              />
-              <UiButton
-                size="sm"
-                variant="outline"
-                disabled={saveFleet.isPending}
-                onClick={() => void addFleetGroup()}
-              >
-                添加
-              </UiButton>
-            </div>
-            {whitelistHint ? <p className="text-sm text-destructive">{whitelistHint}</p> : null}
+            <IdChipsInput
+              value={whitelistedGroupIds}
+              onChange={(ids) => void syncFleetGroups(ids)}
+              placeholder="群号"
+              emptyText="暂无白名单群"
+              disabled={saveFleet.isPending}
+              errorText={whitelistHint || undefined}
+            />
           </PluginGovernanceGroup>
 
           <PluginGovernanceGroup
             title="用户禁用"
             description="名单中的 QQ 无法使用该插件（号主除外）。"
           >
-            <div className="plugin-governance-panel__chips">
-              {blockedUserIds.map((uid) => (
-                <span key={uid} className="plugin-governance-panel__chip">
-                  {uid}
-                  <button
-                    type="button"
-                    className="plugin-governance-panel__chip-remove"
-                    disabled={saveGov.isPending}
-                    onClick={() => void persistBlocked(blockedUserIds.filter((x) => x !== uid))}
-                  >
-                    移除
-                  </button>
-                </span>
-              ))}
-              {!blockedUserIds.length ? <span className="muted plugin-governance-panel__empty">暂无</span> : null}
-            </div>
-            <div className="plugin-governance-panel__add-row">
-              <UiInput
-                wrapClassName="plugin-governance-panel__add-input"
-                placeholder="QQ 号"
-                value={blockedInput}
-                onValueChange={setBlockedInput}
-              />
-              <UiButton size="sm" variant="outline" disabled={saveGov.isPending} onClick={() => void addBlockedUser()}>
-                添加
-              </UiButton>
-            </div>
+            <IdChipsInput
+              value={blockedUserIds}
+              onChange={(ids) => void persistBlocked(ids)}
+              placeholder="QQ 号"
+              emptyText="暂无"
+              disabled={saveGov.isPending}
+            />
           </PluginGovernanceGroup>
 
           <PluginGovernanceGroup
