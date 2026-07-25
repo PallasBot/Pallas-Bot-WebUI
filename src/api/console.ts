@@ -160,6 +160,8 @@ export type PluginConfigField = {
   ui_group?: string;
   ui_order?: number;
   ui_hidden?: boolean;
+  ui_widget?: string;
+  ui_gateway?: Record<string, unknown>;
 };
 
 export type PluginConfigData = {
@@ -427,6 +429,13 @@ export type LlmProviderModelEffort =
 
 export type LlmProviderRequestMethod = "chat_completions" | "responses";
 
+export type LlmModelPricingRow = {
+  price_in?: number;
+  price_out?: number;
+  cache_price_in?: number;
+  cache_price_out?: number;
+};
+
 export type LlmProviderRow = {
   id: string;
   kind: string;
@@ -442,6 +451,8 @@ export type LlmProviderRow = {
   capabilities?: LlmProviderCapability[];
   model_effort?: LlmProviderModelEffort | string;
   request_method?: LlmProviderRequestMethod | string;
+  /** 模型单价（每百万 tokens）；币种见 routing.cost_currency */
+  model_pricing?: Record<string, LlmModelPricingRow>;
 };
 
 export type LlmProvidersConfig = {
@@ -451,6 +462,12 @@ export type LlmProvidersConfig = {
     tasks: Record<string, string>;
     tier_backups?: { high?: string; low?: string };
     tier_backup_models?: { high?: string; low?: string };
+    task_backups?: Record<string, string>;
+    task_backup_models?: Record<string, string>;
+    /** 任务编排权威来源：tasks=全任务优先，tiers=高低档 */
+    route_source?: "tiers" | "tasks";
+    /** 与画画统计共用语义：费用币种（如 CNY） */
+    cost_currency?: string;
   };
   providers_file?: string;
   file_exists?: boolean;
@@ -523,6 +540,37 @@ export async function fetchLlmProvidersConfig(): Promise<LlmProvidersConfig> {
     }
     routing.tier_backup_models = tier_backup_models;
   }
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "task_backups")) {
+    const raw = routingIn.task_backups;
+    const task_backups: Record<string, string> = {};
+    if (raw && typeof raw === "object") {
+      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+        const task = String(key || "").trim();
+        const providerId = String(value || "").trim();
+        if (task && providerId) task_backups[task] = providerId;
+      }
+    }
+    routing.task_backups = task_backups;
+  }
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "task_backup_models")) {
+    const raw = routingIn.task_backup_models;
+    const task_backup_models: Record<string, string> = {};
+    if (raw && typeof raw === "object") {
+      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+        const task = String(key || "").trim();
+        const model = String(value || "").trim();
+        if (task && model) task_backup_models[task] = model;
+      }
+    }
+    routing.task_backup_models = task_backup_models;
+  }
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "route_source")) {
+    const raw = String(routingIn.route_source || "").trim();
+    if (raw === "tiers" || raw === "tasks") routing.route_source = raw;
+  }
+  if (routingIn && Object.prototype.hasOwnProperty.call(routingIn, "cost_currency")) {
+    routing.cost_currency = String(routingIn.cost_currency || "").trim().toUpperCase();
+  }
   return {
     providers: Array.isArray(data?.providers) ? data.providers : [],
     routing,
@@ -550,6 +598,7 @@ export async function putLlmProvidersConfig(body: LlmProvidersConfig): Promise<L
         capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
         model_effort: row.model_effort ?? "",
         request_method: row.request_method || "chat_completions",
+        model_pricing: row.model_pricing && typeof row.model_pricing === "object" ? row.model_pricing : {},
       };
       if (apiKeys.length) item.api_keys = apiKeys;
       if (apiKey) item.api_key = apiKey;
@@ -581,6 +630,7 @@ export async function putLlmProvider(row: LlmProviderRow): Promise<LlmProvidersS
     capabilities: Array.isArray(row.capabilities) ? row.capabilities : [],
     model_effort: row.model_effort ?? "",
     request_method: row.request_method || "chat_completions",
+    model_pricing: row.model_pricing && typeof row.model_pricing === "object" ? row.model_pricing : {},
   };
   if (apiKeys.length) payload.api_keys = apiKeys;
   if (apiKey) payload.api_key = apiKey;

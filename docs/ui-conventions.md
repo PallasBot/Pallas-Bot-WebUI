@@ -1,16 +1,18 @@
 # React UI 约定
 
 > 控件内核为 React + shadcn；色板保持 Pallas（天蓝 accent）。  
-> **方向：逐步抛弃 hub 页级壳（`PageChrome` / `.console-hub-page__*` / `.panel` 等），新功能与重构优先 shadcn + Tailwind。**
+> **标准：新功能与模块重构默认 shadcn + Tailwind。** hub 页级壳（`PageChrome` / `.console-hub-page__*` / `.panel` 等）为存量，按模块迁出，禁止扩大。
 
 ## 迁移：hub → shadcn
 
 | 阶段 | 做法 |
 | --- | --- |
-| **现在（AI 区）** | `/ai/*` 为试点：页头 `PageMasthead`，工具条/正文用 shadcn（`Card` / `Button` / `Input` / `Select`…），**不要**再引入 hub 页级 class | */
-| **观感对齐** | 可对齐控制台密度与白底工具条「样子」（圆角、阴影、单行 chrome），但用 **Tailwind / shadcn 组件实现**，禁止把 AI 页绑死到 `.console-hub-page__chrome-tools` |
-| **非 AI 存量** | 暂留 `PageChrome` / `.panel`；页头迁 `PageMasthead`；工具条统一 `ChromeTools` + `ChromeField`（`AiPageHeader` / `ConsoleChromeTools` / `ConsoleChromeField` 为兼容别名） |
+| **默认（新功能 / 重构）** | 页头 `PageMasthead`，工具条/正文用 shadcn（`Card` / `Button` / `Input` / `Select`…），**不要**再引入 hub 页级 class |
+| **观感对齐** | 可对齐控制台密度与白底工具条「样子」（圆角、阴影、单行 chrome），但用 **Tailwind / shadcn 组件实现**，禁止绑死到 `.console-hub-page__chrome-tools` |
+| **存量页** | 暂留 `PageChrome` / `.panel`；页头迁 `PageMasthead`；工具条统一 `ChromeTools` + `ChromeField`（`AiPageHeader` / `ConsoleChromeTools` / `ConsoleChromeField` 为兼容别名） |
 | **禁止** | 新页或大重构再新增 hub 专用 CSS 文件、扩大 `Ui*`、新写 `.btn` / `.inp` 调用 |
+
+`/ai/*` 是已落地的参考实现，不是试点；其它模块按同样标准迁移。
 
 共享工具条：`components/ChromeTools.tsx` + `ChromeField.tsx`（可选 Lucide 图标、`ChromeOptionLabel`）；样式走 token + Tailwind。页标题 → 下一块间距统一为 `--console-page-masthead-gap`（默认 18px，与 `--hub-page-gap` 同步）；工具条 → 面板为 `--console-chrome-tools-gap`（默认 10px）。父级已有 `gap` / `space-y` 时页头与工具条不再叠底边距。
 
@@ -86,29 +88,26 @@
 - Tailwind / shadcn 只用 `--ui-*` **HSL 分量**（如 `--ui-primary`）；`applyShellTheme` 只同步这些
 - **禁止**把 HSL 分量写进 `--border` / `--primary` / `--foreground` / `--card`（会导致边框与选中态消失、界面发「飘」）
 - Tailwind 色名 `accent` → `--ui-accent`（soft hover），**不要**覆盖 hub `--accent`
-- 非 AI 页仍用 hub `.panel`：描边约 `border`×40–55% + 阴影分层；勿再叠 `0 0 0 1px` 与实线边双重描边
+- 存量 hub `.panel`：描边约 `border`×40–55% + 阴影分层；勿再叠 `0 0 0 1px` 与实线边双重描边
 
-## `/ai/*` 试点（shadcn 原生） */
+## 页内布局（shadcn 原生）
 
-**范围**：`/ai/*` 子树为全面迁移试点；其它控制台页仍用 hub 存量，**按模块重构时迁到 shadcn**（见上文「迁移」）。 */
-
-**壳**：外层仍走 `AppShell`（侧栏/顶栏）；**页内**不再用 hub 页级 class。
+**壳**：外层仍走 `AppShell`（侧栏/顶栏）；**页内**用 shadcn，不再新写 hub 页级 class。
 
 | 用 | 不要用 |
 | --- | --- |
-| `PageMasthead`（标题密度跟 tokens，勿再放大号独立体系；`AiPageHeader` 为兼容别名） | hub `PageHeader` / `PageChrome` / `.console-hub-page__*` |
-| 单行工具条：`Select`（分段）+ `Input` + `Button`，白底/`bg-card` + 轻阴影（对齐控制台 chrome 观感） | 依赖 `ConsoleChromeTools` / `.console-hub-page__chrome-tools` |
-| `Card` / `Button` / `Input` / `Badge` / `Sheet` / `Tabs` | `.panel`、`.btn`、`.inp`、`.ui-btn` |
-| Tailwind + shadcn token（`bg-card`、`text-muted-foreground`…） | `ai-hub.css` / `ai-history.css` 专用 class；新建 hub 专用 CSS |
-| `AiLayout` 上 `data-ui-zone="ai-native"` | 把 AI 页改回 hub 布局 |
+| `PageMasthead`（标题密度跟 tokens；`AiPageHeader` 为兼容别名） | hub `PageHeader` / `PageChrome` / `.console-hub-page__*`（新页） |
+| 单行工具条：`Select` + `Input` + `Button`，白底/`bg-card` + 轻阴影；或 `ChromeTools` + `ChromeField` | 扩大 `.console-hub-page__chrome-tools` 专用依赖 |
+| `Card` / `Button` / `Input` / `Badge` / `Sheet` / `Tabs` | `.panel`、`.btn`、`.inp`、`.ui-btn`（新代码） |
+| Tailwind + shadcn token（`bg-card`、`text-muted-foreground`…） | 新建 hub 专用 CSS；扩大 `ai-hub.css` / `ai-history.css` |
 
-**配置区布局**：页头 + **单层工具条**（分段 Select | 段内分栏插槽 | 搜索?/操作 | 刷新）+ 正文；**不要** AI 区顶部分区栏（观测/配置/…走侧栏）。换配置分段时工具条 middle/trailing 由段内 `useRegisterAiConfigChrome` 切换。
+**AI 配置区布局**：页头 + **单层工具条**（分段 Select | 段内分栏插槽 | 搜索?/操作 | 刷新）+ 正文；观测/配置等顶层分区走侧栏。换配置分段时工具条 middle/trailing 由段内 `useRegisterAiConfigChrome` 切换。
 
-**Token**：页内优先 Tailwind → `--ui-*`；需要 accent 实色时可用 hub 完整色 `--accent`（与主仓一致），勿把 HSL 分量写进 hub 色槽。
+**Token**：页内优先 Tailwind → `--ui-*`；需要 accent 实色时可用 hub 完整色 `--accent`，勿把 HSL 分量写进 hub 色槽。
 
 **窄屏**：工具条单行可横向滚动；改动标题栏/表格时仍自检 ≤560px。
 
-## 页面骨架（非 AI 区 · 存量）
+## 存量页骨架
 
 | 组件 | 用途 | 迁移 |
 | --- | --- | --- |
@@ -117,7 +116,7 @@
 | `PageFill` / `PagePinned` | 满高 / 钉顶 | 可暂留 |
 | `PageHeader` | deprecated → `PageChrome` | 勿新用 |
 
-`/ai/*` 与控制台共用 shadcn 原语；页内布局见上文 AI 试点。 */
+全控制台共用 shadcn 原语；页内布局见上文。
 
 ## 侧栏钉住
 

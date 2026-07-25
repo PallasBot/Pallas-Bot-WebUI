@@ -9,6 +9,7 @@ import type {
   LlmTokenMetricBreakdownRow,
   LlmTokenMetricsSlice,
   LlmRagMetricsSlice,
+  LlmGatesSlice,
 } from "@/api/pallasTypes";
 
 export function todayIso(d = new Date()): string {
@@ -39,6 +40,41 @@ export function metricSum(slice: LlmTaskMetricsSlice | undefined, key: keyof Llm
 
 export function stateCount(slice: LlmTaskMetricsSlice | undefined, key: string): number {
   return Number(slice?.state_counts?.[key] ?? 0);
+}
+
+/** AI 成功/失败：优先 by_task，其次 state_counts，再回退 provider_stats。 */
+export function aiOutcomesFromSlice(ai: LlmTaskMetricsSlice | undefined | null): {
+  ok: number;
+  fail: number;
+} {
+  let ok = metricSum(ai ?? undefined, "task_ok");
+  let fail = metricSum(ai ?? undefined, "task_fail");
+  if (ok + fail > 0) return { ok, fail };
+  ok = stateCount(ai ?? undefined, "succeeded");
+  fail = stateCount(ai ?? undefined, "failed");
+  if (ok + fail > 0) return { ok, fail };
+  for (const row of Object.values(ai?.provider_stats ?? {})) {
+    ok += Number(row.succeeded ?? (row as { ok?: number }).ok ?? 0) || 0;
+    fail += Number(row.failed ?? (row as { fail?: number }).fail ?? 0) || 0;
+  }
+  return { ok, fail };
+}
+
+export function aggregateHistoryAiOutcomes(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): { ok: number; fail: number } {
+  let ok = 0;
+  let fail = 0;
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const day = aiOutcomesFromSlice(row.ai ?? null);
+    ok += day.ok;
+    fail += day.fail;
+  }
+  return { ok, fail };
 }
 
 export type DimensionRow = {
@@ -107,6 +143,8 @@ export type TokenBucket = {
   cacheReadTokens: number;
   cacheWriteTokens: number;
   totalTokens: number;
+  costTotal: number;
+  costCurrency: string;
 };
 
 export function emptyTokenBucket(): TokenBucket {
@@ -116,6 +154,8 @@ export function emptyTokenBucket(): TokenBucket {
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
     totalTokens: 0,
+    costTotal: 0,
+    costCurrency: "",
   };
 }
 
@@ -129,6 +169,8 @@ export function tokensFromSlice(tokens: LlmTokenMetricsSlice | undefined | null)
     cacheReadTokens: Number(tokens.cache_read_tokens ?? 0),
     cacheWriteTokens: Number(tokens.cache_write_tokens ?? 0),
     totalTokens: Number(tokens.total_tokens ?? 0) || promptTokens + completionTokens,
+    costTotal: Number(tokens.cost_total ?? 0),
+    costCurrency: String(tokens.cost_currency || "").trim(),
   };
 }
 
@@ -139,6 +181,8 @@ export function addTokenBuckets(a: TokenBucket, b: TokenBucket): TokenBucket {
     cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
     cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
     totalTokens: a.totalTokens + b.totalTokens,
+    costTotal: a.costTotal + b.costTotal,
+    costCurrency: a.costCurrency || b.costCurrency,
   };
 }
 
@@ -280,12 +324,13 @@ export function aggregateHistoryRag(
   rows: LlmTaskStatsHistoryRow[] | undefined,
   start: string,
   end: string,
+  pick: "rag" | "memory_rag" = "rag",
 ): RagBucket {
   let total = emptyRagBucket();
   for (const row of rows ?? []) {
     const date = String(row.date || "").slice(0, 10);
     if (!date || date < start || date > end) continue;
-    total = addRagBuckets(total, ragFromSlice(row.ai?.rag ?? null));
+    total = addRagBuckets(total, ragFromSlice(row.ai?.[pick] ?? null));
   }
   return total;
 }
@@ -302,26 +347,172 @@ export function ragDocumentRows(byDocument: Record<string, number> | undefined):
     .sort((a, b) => b.hitCount - a.hitCount || a.key.localeCompare(b.key));
 }
 
+export type GatesBucket = { skip: number; defer: number; proceed: number };
+
+export function emptyGatesBucket(): GatesBucket {
+  return { skip: 0, defer: 0, proceed: 0 };
+}
+
+export function gatesFromSlice(gates: LlmGatesSlice | undefined | null): GatesBucket {
+  if (!gates) return emptyGatesBucket();
+  return {
+    skip: Number(gates.skip ?? 0),
+    defer: Number(gates.defer ?? 0),
+    proceed: Number(gates.proceed ?? 0),
+  };
+}
+
+export function aggregateHistoryGates(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): GatesBucket {
+  const total = emptyGatesBucket();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const g = gatesFromSlice(row.ai?.gates ?? null);
+    total.skip += g.skip;
+    total.defer += g.defer;
+    total.proceed += g.proceed;
+  }
+  return total;
+}
+
+export type DailyTokenPoint = { date: string; totalTokens: number; cacheHitRate: number };
+
+export function dailyTokenTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyTokenPoint[] {
+  const out: DailyTokenPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const bucket = tokensFromSlice(row.ai?.tokens ?? null);
+    const denom = bucket.promptTokens + bucket.cacheReadTokens;
+    const cacheHitRate = denom > 0 ? Math.round((1000 * bucket.cacheReadTokens) / denom) / 10 : 0;
+    out.push({ date, totalTokens: bucket.totalTokens, cacheHitRate });
+  }
+  return out;
+}
+
+export type DailyRagPoint = { date: string; hitRate: number; queries: number };
+
+export function dailyRagTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  pick: "rag" | "memory_rag" = "rag",
+): DailyRagPoint[] {
+  const out: DailyRagPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const rag = ragFromSlice(row.ai?.[pick] ?? null);
+    out.push({
+      date,
+      hitRate: rag.hitRate,
+      queries: rag.hitCount + rag.missCount,
+    });
+  }
+  return out;
+}
+
+export function aggregateHistoryRoutes(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): Record<string, number> {
+  const routes: Record<string, number> = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const byTask = row.bot?.by_task ?? {};
+    for (const taskRow of Object.values(byTask)) {
+      const rc = taskRow?.route_counts;
+      if (!rc) continue;
+      for (const [route, count] of Object.entries(rc)) {
+        const key = String(route || "").trim();
+        if (!key) continue;
+        routes[key] = (routes[key] || 0) + (Number(count) || 0);
+      }
+    }
+  }
+  return routes;
+}
+
+export function hourTokenRows(
+  byHour: Record<string, LlmTokenMetricBreakdownRow> | undefined,
+): TokenRow[] {
+  return Object.entries(byHour ?? {})
+    .map(([key, row]) => {
+      const promptTokens = Number(row.prompt_tokens ?? 0);
+      const completionTokens = Number(row.completion_tokens ?? 0);
+      return {
+        key,
+        promptTokens,
+        completionTokens,
+        cacheReadTokens: Number(row.cache_read_tokens ?? 0),
+        cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
+        totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+      };
+    })
+    .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0)
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** 把 by_hour 桶转成趋势点；hourKey 支持 "0"/"00"/"0:00" 等。 */
+export function hourlyTokenTrendPoints(
+  byHour: Record<string, LlmTokenMetricBreakdownRow> | undefined,
+  dayIso: string,
+): Array<{ at: number; total: number }> {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  return hourTokenRows(byHour).map((row) => {
+    const raw = String(row.key || "").trim();
+    const hour = Math.min(23, Math.max(0, parseInt(raw.replace(/:.*/, ""), 10) || 0));
+    const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
+    return { at, total: row.totalTokens };
+  });
+}
+
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
   const bot = stats?.bot;
   const ai = stats?.ai;
   const rag = ragFromSlice(ai?.rag);
+  const memoryRag = ragFromSlice(ai?.memory_rag);
+  const gates = gatesFromSlice(ai?.gates);
+  const cacheDenom = Number(ai?.tokens?.prompt_tokens ?? 0) + Number(ai?.tokens?.cache_read_tokens ?? 0);
+  const cacheHitRate =
+    cacheDenom > 0
+      ? Math.round((1000 * Number(ai?.tokens?.cache_read_tokens ?? 0)) / cacheDenom) / 10
+      : 0;
+  const tokens = tokensFromSlice(ai?.tokens);
+  const outcomes = aiOutcomesFromSlice(ai);
   return {
     reachable: stats?.ai_reachable,
     botOk: metricSum(bot, "submit_ok") + metricSum(bot, "callback_ok"),
-    aiOk: metricSum(ai, "task_ok"),
-    aiFail: metricSum(ai, "task_fail"),
+    aiOk: outcomes.ok,
+    aiFail: outcomes.fail,
     aiQueued: stateCount(ai, "queued"),
     aiRunning: stateCount(ai, "running"),
-    tokens: tokensFromSlice(ai?.tokens),
+    tokens,
     tokenModelRows: tokenRows(ai?.tokens?.by_model),
     tokenProviderRows: tokenRows(ai?.tokens?.by_provider),
+    tokenTaskRows: tokenRows(ai?.tokens?.by_task),
+    tokenHourRows: hourTokenRows(ai?.tokens?.by_hour),
+    cacheHitRate,
     images: imagesFromSlice(ai?.images),
     imageGatewayRows: imageRows(ai?.images?.by_gateway),
     imageProviderRows: imageRows(ai?.images?.by_provider),
     imageModelRows: imageRows(ai?.images?.by_model),
     rag,
+    memoryRag,
+
     ragDocumentRows: ragDocumentRows(rag.byDocument),
+    gates,
     providerRows: dimensionRows(ai?.provider_stats),
     modelRows: dimensionRows(ai?.model_stats),
   };

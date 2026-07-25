@@ -6,6 +6,7 @@ import {
   pickTickIndices,
 } from "@/utils/gsTrendChart";
 import { fixedChartPalette } from "@/utils/chartTheme";
+import { softBucketAxisMax } from "@/utils/homePluginChartPack";
 
 export type NamedSeriesPoint = { at: number; total: number };
 
@@ -78,10 +79,18 @@ function downsample(
 /** 多条命名时序 → 与区间趋势同构的单轴折线 pack */
 export function buildNamedSeriesTrendPack(
   rows: NamedSeriesInput[],
-  opts?: { maxSeries?: number; maxSlots?: number },
+  opts?: {
+    maxSeries?: number;
+    maxSlots?: number;
+    axisUnit?: string;
+    /** 半栏卡片：更接近 2:1，避免宽 viewBox 在窄容器里缩得看不清 */
+    compact?: boolean;
+  },
 ): NamedSeriesTrendPack | null {
-  const maxSeries = opts?.maxSeries ?? 6;
+  const maxSeries = opts?.maxSeries ?? 12;
   const maxSlots = opts?.maxSlots ?? 56;
+  const axisUnit = opts?.axisUnit ?? "次";
+  const compact = Boolean(opts?.compact);
   const ranked = [...rows]
     .map((r) => ({
       ...r,
@@ -111,13 +120,16 @@ export function buildNamedSeriesTrendPack(
   const { timesSec, seriesVals } = downsample(timesRaw, seriesValsRaw, maxSlots);
   if (timesSec.length < 2) return null;
 
-  const yMax = Math.max(1, ...seriesVals.flat());
-  const W = 960;
-  const H = 260;
-  const padL = 48;
-  const padR = 20;
-  const padT = 28;
-  const padB = 44;
+  const flat = seriesVals.flat();
+  const { rawMax, scaleMax } = softBucketAxisMax(flat);
+  const yMax = Math.max(1, scaleMax);
+  const axisTopPlus = rawMax > yMax;
+  const W = compact ? 640 : 960;
+  const H = compact ? 320 : 260;
+  const padL = compact ? 48 : 56;
+  const padR = 16;
+  const padT = 16;
+  const padB = compact ? 40 : 36;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const left = padL;
@@ -126,7 +138,7 @@ export function buildNamedSeriesTrendPack(
   const gridYs = [0, 0.25, 0.5, 0.75, 1].map((t) => bottom - t * innerH);
   const n = timesSec.length;
   const xAt = (i: number) => left + (i / (n - 1)) * innerW;
-  const yAt = (v: number) => bottom - (v / yMax) * innerH;
+  const yAt = (v: number) => bottom - (Math.min(v, yMax) / yMax) * innerH;
 
   const series = ranked.map((r, si) => {
     const def: NamedSeriesTrendDef = {
@@ -147,12 +159,12 @@ export function buildNamedSeriesTrendPack(
 
   const yTicks = [
     { y: bottom, t: "0" },
-    { y: bottom - innerH * 0.25, t: fmtAxisTick(yMax * 0.25, "次") },
-    { y: bottom - innerH / 2, t: fmtAxisTick(yMax / 2, "次") },
-    { y: bottom - innerH * 0.75, t: fmtAxisTick(yMax * 0.75, "次") },
-    { y: top, t: fmtAxisTick(yMax, "次") },
+    { y: bottom - innerH * 0.25, t: fmtAxisTick(yMax * 0.25, axisUnit) },
+    { y: bottom - innerH / 2, t: fmtAxisTick(yMax / 2, axisUnit) },
+    { y: bottom - innerH * 0.75, t: fmtAxisTick(yMax * 0.75, axisUnit) },
+    { y: top, t: axisTopPlus ? `${fmtAxisTick(yMax, axisUnit)}+` : fmtAxisTick(yMax, axisUnit) },
   ];
-  const xTicks = pickTickIndices(n, 12).map((i) => ({
+  const xTicks = pickTickIndices(n, compact ? 6 : 12).map((i) => ({
     x: xAt(i),
     t: fmtBucketTime(timesSec[i]!),
   }));

@@ -80,6 +80,8 @@ function softBucketAxisMax(vals: number[]): { rawMax: number; scaleMax: number }
   return { rawMax, scaleMax };
 }
 
+export { softBucketAxisMax };
+
 function downsampleBucketTimeline(
   timesSec: number[],
   series: BucketBarSeries[],

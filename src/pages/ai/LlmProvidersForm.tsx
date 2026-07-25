@@ -16,6 +16,7 @@ import {
 } from "@/api/console";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import AiConfigField, { AiModelSelect } from "@/components/ai/AiConfigField";
+import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import TierPairCards, { TierCard } from "@/components/ai/TierPairCards";
@@ -34,9 +35,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
 import {
   LLM_BASE_URL_SUGGESTIONS,
   LLM_LOCAL_BASE_URL_SUGGESTIONS,
@@ -53,20 +56,28 @@ import {
 } from "@/config/llmProviderPresets";
 import AiModelAdminPanel from "@/pages/ai/sections/AiModelAdminPanel";
 import {
+  ALL_ROUTABLE_TASKS,
   applyLocalTiers,
+  applyTaskRoutes,
   applyTaskTiers,
   foldLocalTiers,
+  foldTaskRoutes,
   foldTaskTiers,
+  hasTaskRouteAuthority,
+  TASK_ROUTE_META,
   type LocalTierState,
+  type RoutableTask,
+  type TaskRoutesState,
   type TaskTierState,
   type TierProviderSlot,
 } from "@/utils/llmTierRouting";
 
 type Tab = "upstream" | "tasks" | "runtime" | "routing";
+type TasksViewMode = "tiers" | "all";
 
 const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: string }> = [
   { id: "upstream", label: "提供方", icon: Cloud, lead: "云端服务商或本机 Ollama。" },
-  { id: "tasks", label: "任务编排", icon: ListTree, lead: "高低两档各选主备提供方与模型。" },
+  { id: "tasks", label: "任务编排", icon: ListTree, lead: "高低两档或按任务细调主备提供方与模型。" },
   { id: "runtime", label: "Ollama 运行", icon: Cpu, lead: "切换本机模型与 GPU 层数。" },
   { id: "routing", label: "Ollama 分档", icon: GitBranch, lead: "本机多模型分档。" },
 ];
@@ -76,12 +87,75 @@ function cloneDoc(doc: LlmProvidersConfig): LlmProvidersConfig {
 }
 
 function emptyDoc(): LlmProvidersConfig {
-  return { providers: [], routing: { chain_fallback: [], tasks: {} }, providers_file: "", file_exists: false };
+  return {
+    providers: [],
+    routing: { chain_fallback: [], tasks: {}, cost_currency: "" },
+    providers_file: "",
+    file_exists: false,
+  };
+}
+
+const COST_CURRENCY_OPTIONS = [
+  { value: "CNY", label: "CNY · 人民币" },
+  { value: "USD", label: "USD · 美元" },
+  { value: "EUR", label: "EUR · 欧元" },
+  { value: "JPY", label: "JPY · 日元" },
+];
+
+function parseModelPrice(raw: string): number {
+  const text = String(raw ?? "").trim();
+  if (!text || text === ".") return 0;
+  const n = Number(text);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
+/** 编辑中允许临时字符串（如 0.），避免 number 受控吞掉小数点。 */
+type PriceField = "price_in" | "price_out" | "cache_price_in" | "cache_price_out";
+
+function isPriceInputText(raw: string): boolean {
+  return raw === "" || /^\d*\.?\d*$/.test(raw);
+}
+
+function pricingModelKeys(draft: LlmProviderRow): string[] {
+  return Object.keys(draft.model_pricing || {})
+    .map((model) => String(model || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function ModelPriceField({
+  label,
+  textValue,
+  onTextChange,
+}: {
+  label: string;
+  textValue: string;
+  onTextChange: (raw: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input
+        className="h-8 font-mono text-xs"
+        type="text"
+        inputMode="decimal"
+        value={textValue}
+        placeholder="0"
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (!isPriceInputText(raw)) return;
+          onTextChange(raw);
+        }}
+      />
+    </div>
+  );
 }
 
 export default function LlmProvidersForm() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("upstream");
+  const [tasksViewMode, setTasksViewMode] = useState<TasksViewMode>("tiers");
   const [doc, setDoc] = useState<LlmProvidersConfig>(emptyDoc());
   const [baseline, setBaseline] = useState("");
   const [loading, setLoading] = useState(true);
@@ -98,6 +172,11 @@ export default function LlmProvidersForm() {
   const apiKeysInputRef = useRef<TagsInputHandle>(null);
   const [useEnvVar, setUseEnvVar] = useState(false);
   const [editErr, setEditErr] = useState("");
+  const [pricingModelDraft, setPricingModelDraft] = useState("");
+  /** model -> field -> 正在输入的原文（含 0.） */
+  const [pricingTexts, setPricingTexts] = useState<
+    Record<string, Partial<Record<PriceField, string>>>
+  >({});
   const [models, setModels] = useState<string[]>([]);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
@@ -147,6 +226,8 @@ export default function LlmProvidersForm() {
   }, [doc.providers, providerModels]);
 
   const taskTiers = useMemo(() => foldTaskTiers(doc), [doc]);
+  const taskRoutes = useMemo(() => foldTaskRoutes(doc), [doc]);
+  const taskRouteAuthoritative = useMemo(() => hasTaskRouteAuthority(doc), [doc]);
   const localTiers = useMemo(() => foldLocalTiers(localDoc), [localDoc]);
 
   async function load(opts?: { quiet?: boolean }) {
@@ -268,6 +349,8 @@ export default function LlmProvidersForm() {
     setKeepStoredApiKey(false);
     setUseEnvVar(false);
     setEditErr("");
+    setPricingModelDraft("");
+    setPricingTexts({});
     setModels([]);
     setEditing(true);
   }
@@ -280,7 +363,10 @@ export default function LlmProvidersForm() {
     if (!Array.isArray(next.capabilities)) next.capabilities = ["text"];
     if (typeof next.model_effort !== "string") next.model_effort = "";
     if (!next.request_method) next.request_method = "chat_completions";
+    if (!next.model_pricing || typeof next.model_pricing !== "object") next.model_pricing = {};
     setDraft(next);
+    setPricingModelDraft("");
+    setPricingTexts({});
     const keys = Array.isArray(row.api_keys) ? row.api_keys.map((k) => String(k || "").trim()).filter(Boolean) : [];
     if (!keys.length && row.api_key?.trim()) keys.push(row.api_key.trim());
     setDraftApiKeys(keys);
@@ -289,6 +375,58 @@ export default function LlmProvidersForm() {
     setEditErr("");
     setModels([]);
     setEditing(true);
+  }
+
+  function priceFieldText(modelName: string, field: PriceField, num: number | undefined): string {
+    const typed = pricingTexts[modelName]?.[field];
+    if (typed !== undefined) return typed;
+    if (typeof num === "number" && Number.isFinite(num) && num > 0) return String(num);
+    return "";
+  }
+
+  function setPriceField(modelName: string, field: PriceField, raw: string) {
+    setPricingTexts((prev) => ({
+      ...prev,
+      [modelName]: { ...(prev[modelName] || {}), [field]: raw },
+    }));
+    const value = parseModelPrice(raw);
+    setDraft((d) => ({
+      ...d,
+      model_pricing: {
+        ...(d.model_pricing || {}),
+        [modelName]: {
+          ...(d.model_pricing?.[modelName] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  }
+
+  function addPricingModel(nameRaw: string) {
+    const name = nameRaw.trim();
+    if (!name) return;
+    setDraft((d) => ({
+      ...d,
+      model_pricing: {
+        ...(d.model_pricing || {}),
+        [name]: { ...(d.model_pricing?.[name] || {}) },
+      },
+    }));
+    setPricingModelDraft("");
+  }
+
+  function removePricingModel(modelName: string) {
+    setDraft((d) => {
+      const next = { ...(d.model_pricing || {}) };
+      delete next[modelName];
+      return { ...d, model_pricing: next };
+    });
+    setPricingTexts((prev) => {
+      if (!(modelName in prev)) return prev;
+      const next = { ...prev };
+      delete next[modelName];
+      return next;
+    });
   }
 
   function toggleCapability(cap: LlmProviderCapability) {
@@ -352,6 +490,7 @@ export default function LlmProvidersForm() {
       task_models: { ...(draft.task_models || {}) },
       capabilities: [...(draft.capabilities || [])],
       model_effort: draft.model_effort || "",
+      model_pricing: { ...(draft.model_pricing || {}) },
       request_method:
         draft.kind === "local" ? "chat_completions" : draft.request_method || "chat_completions",
     };
@@ -553,6 +692,10 @@ export default function LlmProvidersForm() {
     setDoc((prev) => applyTaskTiers(cloneDoc(prev), patch(foldTaskTiers(prev))));
   }
 
+  function patchTaskRoutes(patch: (prev: TaskRoutesState) => TaskRoutesState) {
+    setDoc((prev) => applyTaskRoutes(cloneDoc(prev), patch(foldTaskRoutes(prev))));
+  }
+
   function updateTaskSlot(
     tier: "high" | "low",
     role: "primary" | "backup",
@@ -579,6 +722,73 @@ export default function LlmProvidersForm() {
     });
   }
 
+  function updateRoutableTaskSlot(
+    task: RoutableTask,
+    role: "primary" | "backup",
+    patch: Partial<TierProviderSlot>,
+  ) {
+    patchTaskRoutes((prev) => {
+      const current = prev[task][role];
+      const nextSlot = { ...current, ...patch };
+      if (
+        Object.prototype.hasOwnProperty.call(patch, "providerId") &&
+        patch.providerId !== current.providerId &&
+        !Object.prototype.hasOwnProperty.call(patch, "model")
+      ) {
+        nextSlot.model = "";
+      }
+      return {
+        ...prev,
+        [task]: {
+          ...prev[task],
+          [role]: nextSlot,
+        },
+      };
+    });
+  }
+
+  function renderProviderModelSlot(opts: {
+    providerId: string;
+    model: string;
+    providerAria: string;
+    modelPlaceholder: string;
+    onProviderChange: (providerId: string) => void;
+    onModelChange: (model: string) => void;
+  }) {
+    return (
+      <div className="grid gap-2">
+        <Select
+          value={opts.providerId || "__empty__"}
+          onValueChange={(value) => {
+            const providerId = value === "__empty__" ? "" : value;
+            opts.onProviderChange(providerId);
+            loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
+          }}
+        >
+          <SelectTrigger aria-label={opts.providerAria}>
+            <SelectValue placeholder="选择提供方" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__empty__">（未指定）</SelectItem>
+            {doc.providers.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.id}
+                {!p.enabled ? " (停用)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <AiModelSelect
+          value={opts.model}
+          disabled={!opts.providerId}
+          options={modelOptionsForProvider(opts.providerId)}
+          placeholder={opts.modelPlaceholder}
+          onValueChange={opts.onModelChange}
+        />
+      </div>
+    );
+  }
+
   function patchLocalTiers(patch: (prev: LocalTierState) => LocalTierState) {
     setLocalDoc((prev) => applyLocalTiers(prev, patch(foldLocalTiers(prev))));
   }
@@ -600,22 +810,63 @@ export default function LlmProvidersForm() {
 
   const chromeMiddle = useMemo(
     () => (
-      <ChromeField label="接入分区" icon={activeTabMeta.icon}>
-        <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="start">
-            {PROVIDER_TABS.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                <ChromeOptionLabel icon={t.icon}>{t.label}</ChromeOptionLabel>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </ChromeField>
+      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+        <ChromeField label="接入分区" icon={activeTabMeta.icon}>
+          <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
+            <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {PROVIDER_TABS.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  <ChromeOptionLabel icon={t.icon}>{t.label}</ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+        {tab === "upstream" ? (
+          <ChromeField label="费用币种">
+            <AiOptionSelect
+              className="h-9 min-h-9 w-[7.5rem] shrink-0 sm:w-[8.5rem]"
+              value={normalizeDrawCostCurrency(doc.routing.cost_currency)}
+              onValueChange={(v) => {
+                setDoc((prev) => {
+                  const next = cloneDoc(prev);
+                  next.routing = {
+                    ...next.routing,
+                    cost_currency: normalizeDrawCostCurrency(v),
+                  };
+                  return next;
+                });
+              }}
+              options={COST_CURRENCY_OPTIONS}
+              placeholder="币种"
+              allowEmpty
+              emptyLabel="未设置"
+            />
+          </ChromeField>
+        ) : null}
+        {tab === "tasks" ? (
+          <ChromeField label="编排视图">
+            <Tabs
+              value={tasksViewMode}
+              onValueChange={(value) => setTasksViewMode(value === "all" ? "all" : "tiers")}
+            >
+              <TabsList aria-label="任务编排视图" className="h-9">
+                <TabsTrigger value="tiers" className="px-2.5 text-xs sm:px-3 sm:text-sm">
+                  高低档
+                </TabsTrigger>
+                <TabsTrigger value="all" className="px-2.5 text-xs sm:px-3 sm:text-sm">
+                  全任务
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </ChromeField>
+        ) : null}
+      </div>
     ),
-    [activeTabMeta.icon, tab],
+    [activeTabMeta.icon, tab, doc.routing.cost_currency, tasksViewMode],
   );
 
   const chromeTrailing = useMemo(
@@ -718,7 +969,14 @@ export default function LlmProvidersForm() {
                   }}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    {p.kind === "local" ? <HardDrive className="size-5" /> : <Cloud className="size-5" />}
+                    <div className="flex min-w-0 items-center gap-2">
+                      {p.kind === "local" ? (
+                        <HardDrive className="size-5 shrink-0" />
+                      ) : (
+                        <Cloud className="size-5 shrink-0" />
+                      )}
+                      <span className="min-w-0 truncate font-medium">{p.id}</span>
+                    </div>
                     <Switch
                       checked={p.enabled}
                       aria-label={`${p.id} 启用`}
@@ -727,8 +985,7 @@ export default function LlmProvidersForm() {
                       onKeyDown={(e) => e.stopPropagation()}
                     />
                   </div>
-                  <div className="truncate font-medium">{p.id}</div>
-                  <div className="mt-1 truncate text-xs text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     {p.base_url || "本地推理端点"}
                   </div>
                   <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
@@ -985,6 +1242,93 @@ export default function LlmProvidersForm() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label className="font-semibold">模型单价（可选）</Label>
+                    <p className="text-xs text-muted-foreground">
+                      每百万 tokens 单价；0 表示不计费。币种见工具条「费用币种」。
+                    </p>
+                    <div className="space-y-2">
+                      {pricingModelKeys(draft).map((modelName) => {
+                        const row = draft.model_pricing?.[modelName] || {};
+                        return (
+                          <div
+                            key={modelName}
+                            className="space-y-2 rounded-lg border border-border/70 bg-muted/10 p-2.5 sm:p-3"
+                          >
+                            <div className="flex min-w-0 items-center justify-between gap-2">
+                              <span className="min-w-0 truncate font-mono text-xs sm:text-sm">{modelName}</span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 shrink-0 px-2 text-xs text-muted-foreground"
+                                onClick={() => removePricingModel(modelName)}
+                              >
+                                删除
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                              <ModelPriceField
+                                label="输入"
+                                textValue={priceFieldText(modelName, "price_in", row.price_in)}
+                                onTextChange={(raw) => setPriceField(modelName, "price_in", raw)}
+                              />
+                              <ModelPriceField
+                                label="输出"
+                                textValue={priceFieldText(modelName, "price_out", row.price_out)}
+                                onTextChange={(raw) => setPriceField(modelName, "price_out", raw)}
+                              />
+                              <ModelPriceField
+                                label="缓存读"
+                                textValue={priceFieldText(modelName, "cache_price_in", row.cache_price_in)}
+                                onTextChange={(raw) => setPriceField(modelName, "cache_price_in", raw)}
+                              />
+                              <ModelPriceField
+                                label="缓存写"
+                                textValue={priceFieldText(modelName, "cache_price_out", row.cache_price_out)}
+                                onTextChange={(raw) => setPriceField(modelName, "cache_price_out", raw)}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        className="h-8 min-w-0 flex-1 font-mono text-xs sm:max-w-xs"
+                        value={pricingModelDraft}
+                        placeholder="添加模型名后定价"
+                        onChange={(e) => setPricingModelDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          e.preventDefault();
+                          addPricingModel(pricingModelDraft);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => addPricingModel(pricingModelDraft)}
+                      >
+                        添加
+                      </Button>
+                      {draft.default_model.trim() &&
+                      !(draft.model_pricing || {})[draft.default_model.trim()] ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => addPricingModel(draft.default_model)}
+                        >
+                          添加调用模型
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label className="flex items-center gap-2 font-semibold">
                       <span className="inline-flex size-4 items-center justify-center text-xs font-semibold">✦</span>
                       模型支持能力
@@ -1120,7 +1464,9 @@ export default function LlmProvidersForm() {
             title={activeTabMeta.label}
             lead={
               tab === "tasks"
-                ? "高低两档主备模型；失败时自动切备用。"
+                ? taskRouteAuthoritative
+                  ? "当前以全任务配置为准；高低档仅更新档位兜底，不覆盖各任务主备。"
+                  : "高低两档主备模型；失败时自动切备用。也可用全任务逐项细调。"
                 : tab === "runtime"
                   ? "切换本机 Ollama 模型与 GPU 层数。"
                   : activeTabMeta.lead
@@ -1160,7 +1506,7 @@ export default function LlmProvidersForm() {
                     </Button>
                   </div>
                 </div>
-              ) : (
+              ) : tasksViewMode === "tiers" ? (
                 <TierPairCards
                   high={
                     <TierCard
@@ -1168,145 +1514,83 @@ export default function LlmProvidersForm() {
                       title="高级任务"
                       description="对话、醉聊、完整润色"
                       primaryInvalid={!taskTiers.high.primary.providerId}
-                      primary={
-                        <div className="grid gap-2">
-                          <Select
-                            value={taskTiers.high.primary.providerId || "__empty__"}
-                            onValueChange={(value) => {
-                              const providerId = value === "__empty__" ? "" : value;
-                              updateTaskSlot("high", "primary", { providerId });
-                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
-                            }}
-                          >
-                            <SelectTrigger aria-label="高级任务主提供方">
-                              <SelectValue placeholder="选择提供方" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__empty__">（未指定）</SelectItem>
-                              {doc.providers.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.id}
-                                  {!p.enabled ? " (停用)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <AiModelSelect
-                            value={taskTiers.high.primary.model}
-                            disabled={!taskTiers.high.primary.providerId}
-                            options={modelOptionsForProvider(taskTiers.high.primary.providerId)}
-                            placeholder="任务模型（可空）"
-                            onValueChange={(model) => updateTaskSlot("high", "primary", { model })}
-                          />
-                        </div>
-                      }
-                      backup={
-                        <div className="grid gap-2">
-                          <Select
-                            value={taskTiers.high.backup.providerId || "__empty__"}
-                            onValueChange={(value) => {
-                              const providerId = value === "__empty__" ? "" : value;
-                              updateTaskSlot("high", "backup", { providerId });
-                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
-                            }}
-                          >
-                            <SelectTrigger aria-label="高级任务备用提供方">
-                              <SelectValue placeholder="选择备用提供方" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__empty__">（未指定）</SelectItem>
-                              {doc.providers.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.id}
-                                  {!p.enabled ? " (停用)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <AiModelSelect
-                            value={taskTiers.high.backup.model}
-                            disabled={!taskTiers.high.backup.providerId}
-                            options={modelOptionsForProvider(taskTiers.high.backup.providerId)}
-                            placeholder="备用模型（可空）"
-                            onValueChange={(model) => updateTaskSlot("high", "backup", { model })}
-                          />
-                        </div>
-                      }
+                      primary={renderProviderModelSlot({
+                        providerId: taskTiers.high.primary.providerId,
+                        model: taskTiers.high.primary.model,
+                        providerAria: "高级任务主提供方",
+                        modelPlaceholder: "任务模型（可空）",
+                        onProviderChange: (providerId) => updateTaskSlot("high", "primary", { providerId }),
+                        onModelChange: (model) => updateTaskSlot("high", "primary", { model }),
+                      })}
+                      backup={renderProviderModelSlot({
+                        providerId: taskTiers.high.backup.providerId,
+                        model: taskTiers.high.backup.model,
+                        providerAria: "高级任务备用提供方",
+                        modelPlaceholder: "备用模型（可空）",
+                        onProviderChange: (providerId) => updateTaskSlot("high", "backup", { providerId }),
+                        onModelChange: (model) => updateTaskSlot("high", "backup", { model }),
+                      })}
                     />
                   }
                   low={
                     <TierCard
                       kind="low"
                       title="低级任务"
-                      description="接话选句、轻润色、兜底"
+                      description="选句、轻润色、兜底、群情感 refine"
                       primaryInvalid={!taskTiers.low.primary.providerId}
-                      primary={
-                        <div className="grid gap-2">
-                          <Select
-                            value={taskTiers.low.primary.providerId || "__empty__"}
-                            onValueChange={(value) => {
-                              const providerId = value === "__empty__" ? "" : value;
-                              updateTaskSlot("low", "primary", { providerId });
-                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
-                            }}
-                          >
-                            <SelectTrigger aria-label="低级任务主提供方">
-                              <SelectValue placeholder="选择提供方" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__empty__">（未指定）</SelectItem>
-                              {doc.providers.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.id}
-                                  {!p.enabled ? " (停用)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <AiModelSelect
-                            value={taskTiers.low.primary.model}
-                            disabled={!taskTiers.low.primary.providerId}
-                            options={modelOptionsForProvider(taskTiers.low.primary.providerId)}
-                            placeholder="任务模型（可空）"
-                            onValueChange={(model) => updateTaskSlot("low", "primary", { model })}
-                          />
-                        </div>
-                      }
-                      backup={
-                        <div className="grid gap-2">
-                          <Select
-                            value={taskTiers.low.backup.providerId || "__empty__"}
-                            onValueChange={(value) => {
-                              const providerId = value === "__empty__" ? "" : value;
-                              updateTaskSlot("low", "backup", { providerId });
-                              loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
-                            }}
-                          >
-                            <SelectTrigger aria-label="低级任务备用提供方">
-                              <SelectValue placeholder="选择备用提供方" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__empty__">（未指定）</SelectItem>
-                              {doc.providers.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.id}
-                                  {!p.enabled ? " (停用)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <AiModelSelect
-                            value={taskTiers.low.backup.model}
-                            disabled={!taskTiers.low.backup.providerId}
-                            options={modelOptionsForProvider(taskTiers.low.backup.providerId)}
-                            placeholder="备用模型（可空）"
-                            onValueChange={(model) => updateTaskSlot("low", "backup", { model })}
-                          />
-                        </div>
-                      }
+                      primary={renderProviderModelSlot({
+                        providerId: taskTiers.low.primary.providerId,
+                        model: taskTiers.low.primary.model,
+                        providerAria: "低级任务主提供方",
+                        modelPlaceholder: "任务模型（可空）",
+                        onProviderChange: (providerId) => updateTaskSlot("low", "primary", { providerId }),
+                        onModelChange: (model) => updateTaskSlot("low", "primary", { model }),
+                      })}
+                      backup={renderProviderModelSlot({
+                        providerId: taskTiers.low.backup.providerId,
+                        model: taskTiers.low.backup.model,
+                        providerAria: "低级任务备用提供方",
+                        modelPlaceholder: "备用模型（可空）",
+                        onProviderChange: (providerId) => updateTaskSlot("low", "backup", { providerId }),
+                        onModelChange: (model) => updateTaskSlot("low", "backup", { model }),
+                      })}
                     />
                   }
                 />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {ALL_ROUTABLE_TASKS.map((task) => {
+                    const meta = TASK_ROUTE_META[task];
+                    const slot = taskRoutes[task];
+                    return (
+                      <TierCard
+                        key={task}
+                        kind={meta.kind}
+                        title={meta.title}
+                        description={`${meta.description} · ${task}`}
+                        primaryInvalid={!slot.primary.providerId}
+                        primary={renderProviderModelSlot({
+                          providerId: slot.primary.providerId,
+                          model: slot.primary.model,
+                          providerAria: `${meta.title}主提供方`,
+                          modelPlaceholder: "任务模型（可空）",
+                          onProviderChange: (providerId) =>
+                            updateRoutableTaskSlot(task, "primary", { providerId }),
+                          onModelChange: (model) => updateRoutableTaskSlot(task, "primary", { model }),
+                        })}
+                        backup={renderProviderModelSlot({
+                          providerId: slot.backup.providerId,
+                          model: slot.backup.model,
+                          providerAria: `${meta.title}备用提供方`,
+                          modelPlaceholder: "备用模型（可空）",
+                          onProviderChange: (providerId) =>
+                            updateRoutableTaskSlot(task, "backup", { providerId }),
+                          onModelChange: (model) => updateRoutableTaskSlot(task, "backup", { model }),
+                        })}
+                      />
+                    );
+                  })}
+                </div>
               )}
             </div>
           ) : null}

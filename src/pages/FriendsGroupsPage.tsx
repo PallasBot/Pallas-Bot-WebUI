@@ -13,7 +13,7 @@ import {
 } from "@/api/fullConsole";
 import type { BotRow, FriendListData, GroupListData } from "@/api/pallasTypes";
 import { accountHasNonebotBot } from "@/utils/botConnection";
-import { botPickerRowsFromInstances } from "@/utils/botDisplay";
+import { botPickerRowsFromInstances, botSelectDropdownLabel } from "@/utils/botDisplay";
 import { requestOverviewToFriendOverview } from "@/utils/consoleSocialCache";
 import { slicePage } from "@/utils/paginate";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
@@ -21,6 +21,7 @@ import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
+import BotSelectLabel from "@/components/BotSelectLabel";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ const FG_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 const FG_ACCOUNT_SEL =
-  "friends-groups-account-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
+  "bot-acct-sel friends-groups-account-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
 const FG_SECTION_SEL =
   "h-8 w-[6.5rem] min-w-[5.5rem] max-w-[6.5rem] shrink-0 overflow-hidden";
 
@@ -167,10 +168,8 @@ export default function FriendsGroupsPage() {
     return instances?.bot_profiles?.[selfId]?.nickname?.trim() || "";
   }
 
-  function botOptionLabel(b: BotRow): string {
-    const nick = profileNick(b.self_id);
-    if (nick) return `${nick}（${b.self_id}）`;
-    return b.self_id;
+  function botOptionTitle(b: BotRow): string {
+    return botSelectDropdownLabel(profileNick(b.self_id), b.self_id);
   }
 
   const filteredFriends = useMemo(() => {
@@ -478,7 +477,7 @@ export default function FriendsGroupsPage() {
                 (() => {
                   if (!selfIdStr) return undefined;
                   const cur = botsVisible.find((b) => b.self_id === selfIdStr);
-                  return cur ? botOptionLabel(cur) : selfIdStr;
+                  return cur ? botOptionTitle(cur) : selfIdStr;
                 })()
               }
             >
@@ -488,7 +487,7 @@ export default function FriendsGroupsPage() {
               <SelectItem value="__none__">请选择 Bot…</SelectItem>
               {botsVisible.map((b) => (
                 <SelectItem key={b.self_id} value={b.self_id}>
-                  {botOptionLabel(b)}
+                  <BotSelectLabel nickname={profileNick(b.self_id)} account={b.self_id} />
                 </SelectItem>
               ))}
             </SelectContent>

@@ -79,6 +79,7 @@ export function fillDailyRows(
       sent: 0,
       matcher_runs: 0,
       api_calls: 0,
+      active_groups: 0,
     };
   });
 }

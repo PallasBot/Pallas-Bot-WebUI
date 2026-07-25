@@ -16,7 +16,7 @@ describe("resolvePluginReadmeTarget", () => {
     {
       package: "pallas-plugin-draw",
       plugin_ids: ["draw"],
-      repository_url: "https://github.com/PallasBot/pallas-plugin-draw",
+      repository_url: "https://github.com/PallasBot/Plugin-Draw",
     } as OfficialExtensionRow,
   ];
 
@@ -31,7 +31,7 @@ describe("resolvePluginReadmeTarget", () => {
     expect(resolvePluginReadmeTarget(pluginRow({ name: "draw" }), official, community)).toEqual({
       kind: "official",
       id: "pallas-plugin-draw",
-      repositoryUrl: "https://github.com/PallasBot/pallas-plugin-draw",
+      repositoryUrl: "https://github.com/PallasBot/Plugin-Draw",
     });
   });
 

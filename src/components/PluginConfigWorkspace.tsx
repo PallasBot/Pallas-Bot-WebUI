@@ -26,9 +26,14 @@ import HelpImagePreview from "@/components/HelpImagePreview";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
-import DrawProviderGatewayPanel, {
+import {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
 } from "@/components/draw/DrawProviderGatewayPanel";
+import ProviderGatewayPanel from "@/components/provider/ProviderGatewayPanel";
+import HelpTagOverridesPanel, {
+  HELP_TAG_OVERRIDES_FIELD,
+} from "@/components/help/HelpTagOverridesPanel";
+import PluginHelpTagField from "@/components/help/PluginHelpTagField";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
@@ -40,8 +45,14 @@ import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig, parsePluginConfigField } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import type { PluginConfigField } from "@/api/console";
+import {
+  DRAW_PROVIDER_GATEWAY_BINDING,
+  normalizeProviderGatewayBinding,
+  providerGatewayBoundFieldNames,
+  type ProviderGatewayBinding,
+} from "@/utils/providerGateways";
 
-const DRAW_GATEWAY_FIELD_SET = new Set<string>(DRAW_GATEWAY_PANEL_FIELD_NAMES);
+const HELP_TAG_OVERRIDE_FIELD_SET = new Set<string>([HELP_TAG_OVERRIDES_FIELD]);
 
 /** 画画配置提交体：表单字段 + 网关面板键（schema 尚未热载到新键时也写入）。 */
 function collectDrawPluginValues(
@@ -206,6 +217,36 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const hasGovernanceTab = Boolean(pluginResolvedId);
   const showReadmeTab = isDialog;
 
+  const fields = cfgQ.data?.fields || [];
+  const gatewayWidgets = useMemo(() => {
+    const fromSchema: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
+    for (const field of fields) {
+      if (field.ui_widget !== "provider_gateway") continue;
+      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
+        anchorField: field.name,
+      });
+      if (binding) fromSchema.push({ anchor: field.name, binding });
+    }
+    if (fromSchema.length) return fromSchema;
+    if (name === "draw") {
+      return [{ anchor: "pallas_image_api_backends", binding: DRAW_PROVIDER_GATEWAY_BINDING }];
+    }
+    return [];
+  }, [fields, name]);
+
+  const gatewayHiddenFieldSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const widget of gatewayWidgets) {
+      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
+        set.add(key);
+      }
+    }
+    if (name === "draw") {
+      for (const key of DRAW_GATEWAY_PANEL_FIELD_NAMES) set.add(key);
+    }
+    return set;
+  }, [gatewayWidgets, name]);
+
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
     setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
@@ -225,14 +266,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }, [rawQ.data]);
 
   useEffect(() => {
-    if (detailTab === "governance" && !hasGovernanceTab) setDetailTab(hasConfigFields ? "config" : "readme");
-    if (detailTab === "config" && !hasConfigFields && !isHelpPlugin) {
-      setDetailTab(hasGovernanceTab ? "governance" : showReadmeTab ? "readme" : "config");
-    }
+    if (detailTab === "governance" && !hasGovernanceTab) setDetailTab("config");
     if (detailTab === "readme" && !showReadmeTab) {
       setDetailTab(hasGovernanceTab ? "governance" : "config");
     }
-  }, [detailTab, hasGovernanceTab, hasConfigFields, isHelpPlugin, showReadmeTab]);
+  }, [detailTab, hasGovernanceTab, showReadmeTab]);
 
   const saveForm = useMutation({
     mutationFn: () => {
@@ -262,7 +300,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       const fields = cfgQ.data?.fields || [];
       const merged = { ...fieldValues, ...patch };
       setFieldValues(merged);
-      return putPluginConfig(name, collectDrawPluginValues(fields, merged));
+      const payload =
+        name === "draw"
+          ? collectDrawPluginValues(fields, merged)
+          : collectFieldValues(fields, merged);
+      return putPluginConfig(name, payload);
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
@@ -293,11 +335,15 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saving = saveForm.isPending || saveRaw.isPending || saveGatewayPatch.isPending;
   const loading = cfgQ.isLoading;
   const hasData = Boolean(cfgQ.data);
-  const fields = cfgQ.data?.fields || [];
-  const usesDrawGatewayPanel = name === "draw";
-  const formFields = usesDrawGatewayPanel
-    ? fields.filter((f) => !DRAW_GATEWAY_FIELD_SET.has(f.name))
-    : fields;
+  const usesHelpTagOverridesPanel = isHelpPlugin;
+  const formFields = (() => {
+    let list = fields;
+    if (gatewayHiddenFieldSet.size) {
+      list = list.filter((f) => !gatewayHiddenFieldSet.has(f.name));
+    }
+    if (usesHelpTagOverridesPanel) list = list.filter((f) => !HELP_TAG_OVERRIDE_FIELD_SET.has(f.name));
+    return list;
+  })();
 
   async function patchFieldValuesAndPersist(patch: Record<string, string>) {
     await saveGatewayPatch.mutateAsync(patch);
@@ -363,7 +409,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           onValueChange={(v) => setDetailTab(v as ConfigTab)}
           options={workspaceTabOptions}
         />
-        {detailTab === "config" && (hasConfigFields || isHelpPlugin) ? (
+        {detailTab === "config" && hasConfigFields ? (
           <SegTabs
             className="plugin-config-page__mode-toggle"
             ariaLabel="配置编辑模式"
@@ -423,51 +469,92 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
             <p className={cn("text-sm", msg.includes("已保存") ? "text-emerald-400" : "text-destructive")}>{msg}</p>
           ) : null}
           {mode === "form" ? (
-            <StateBlock
-              loading={loading}
-              error={cfgQ.error}
-              empty={!fields.length && !isHelpPlugin}
-              emptyText="该插件无可编辑配置字段"
-            >
-              {usesDrawGatewayPanel ? (
-                <DrawProviderGatewayPanel
+            <>
+              {pluginResolvedId ? (
+                <PluginHelpTagField
                   className="mb-4"
-                  fieldValues={fieldValues}
-                  onFieldsPatch={patchFieldValuesAndPersist}
-                  busy={saveGatewayPatch.isPending}
-                />
-              ) : null}
-              {cfgQ.data?.field_groups?.length ? (
-                <DynamicConfigPanel
-                  fields={formFields}
-                  fieldGroups={cfgQ.data.field_groups}
-                  fieldValues={fieldValues}
-                  onFieldChange={(name, value) =>
-                    setFieldValues((prev) => ({ ...prev, [name]: value }))
+                  pluginId={pluginResolvedId}
+                  aliasIds={[
+                    name,
+                    pluginRow?.name,
+                    pluginRow?.nb_plugin_name,
+                    pluginRow?.resolved_plugin_id,
+                  ].filter((x): x is string => Boolean(x && String(x).trim()))}
+                  metadataExtra={
+                    (pluginRow?.metadata?.extra as Record<string, unknown> | null | undefined) ?? null
+                  }
+                  onOverridesSynced={
+                    isHelpPlugin
+                      ? (serialized) =>
+                          setFieldValues((prev) => ({
+                            ...prev,
+                            [HELP_TAG_OVERRIDES_FIELD]: serialized,
+                          }))
+                      : undefined
                   }
                 />
-              ) : (
-                <PluginConfigFormSection
-                  subtitle={`共 ${formFields.length} 项参数，保存后按插件热重载策略生效`}
+              ) : null}
+              {hasConfigFields ? (
+                <StateBlock
+                  loading={loading}
+                  error={cfgQ.error}
+                  empty={false}
+                  emptyText="该插件无可编辑配置字段"
                 >
-                  {formFields.map((f) => (
-                    <PluginConfigFieldShell
-                      key={f.name}
-                      field={f}
-                      modelValue={fieldValues[f.name] ?? ""}
-                      onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
+                  {gatewayWidgets.map((widget) => (
+                    <ProviderGatewayPanel
+                      key={widget.anchor}
+                      className="mb-4"
+                      fieldValues={fieldValues}
+                      onFieldsPatch={patchFieldValuesAndPersist}
+                      busy={saveGatewayPatch.isPending}
+                      binding={widget.binding}
                     />
                   ))}
-                </PluginConfigFormSection>
+                  {usesHelpTagOverridesPanel ? (
+                    <HelpTagOverridesPanel
+                      className="mb-4"
+                      fieldValues={fieldValues}
+                      onFieldChange={(fieldName, value) =>
+                        setFieldValues((prev) => ({ ...prev, [fieldName]: value }))
+                      }
+                    />
+                  ) : null}
+                  {cfgQ.data?.field_groups?.length ? (
+                    <DynamicConfigPanel
+                      fields={formFields}
+                      fieldGroups={cfgQ.data.field_groups}
+                      fieldValues={fieldValues}
+                      onFieldChange={(name, value) =>
+                        setFieldValues((prev) => ({ ...prev, [name]: value }))
+                      }
+                    />
+                  ) : formFields.length ? (
+                    <PluginConfigFormSection
+                      subtitle={`共 ${formFields.length} 项参数，保存后按插件热重载策略生效`}
+                    >
+                      {formFields.map((f) => (
+                        <PluginConfigFieldShell
+                          key={f.name}
+                          field={f}
+                          modelValue={fieldValues[f.name] ?? ""}
+                          onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
+                        />
+                      ))}
+                    </PluginConfigFormSection>
+                  ) : null}
+                  {!isDialog ? (
+                    <div className="mt-4">
+                      <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+                        {saving ? "保存中…" : "保存配置"}
+                      </UiButton>
+                    </div>
+                  ) : null}
+                </StateBlock>
+              ) : isHelpPlugin ? null : (
+                <p className="muted plugin-config-page__fields-lead">该插件无可编辑配置字段</p>
               )}
-              {!isDialog ? (
-                <div className="mt-4">
-                  <UiButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
-                    {saving ? "保存中…" : "保存配置"}
-                  </UiButton>
-                </div>
-              ) : null}
-            </StateBlock>
+            </>
           ) : (
             <StateBlock loading={rawQ.isLoading} error={rawQ.error}>
               <textarea
