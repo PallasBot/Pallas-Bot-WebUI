@@ -1136,6 +1136,7 @@ export interface LlmHistoryBehaviorAutoFeedbackPayload {
 export interface LlmHistoryBehaviorAgentTraceRound {
   round?: number;
   tool_calls?: string[];
+  calls?: LlmHistoryBehaviorAgentTraceToolCall[];
   used_prefetch?: boolean;
 }
 
@@ -1164,6 +1165,7 @@ export interface LlmHistoryBehaviorAgentTrace {
   tool_loop_enabled?: boolean;
   tool_schema_count?: number;
   tool_call_count?: number;
+  tool_names?: string[];
   request_snapshot_id?: string | null;
   tool_catalog_version?: string | null;
   rounds?: LlmHistoryBehaviorAgentTraceRound[];
@@ -1171,6 +1173,16 @@ export interface LlmHistoryBehaviorAgentTrace {
   prefetched_tool?: string | null;
   final_stage?: string | null;
   status?: string | null;
+}
+
+export interface LlmToolTraceUi {
+  tools_enabled?: boolean;
+  tool_schema_count?: number;
+  tool_names?: string[];
+  selection?: Record<string, unknown>;
+  tool_call_count?: number;
+  status?: string | null;
+  agent_trace?: LlmHistoryBehaviorAgentTrace | null;
 }
 
 export interface LlmRuntimeReplayResult {
@@ -1200,6 +1212,7 @@ export interface LlmRuntimeDebugData {
   snapshot?: Record<string, unknown> | null;
   trace?: LlmHistoryBehaviorAgentTrace | null;
   persona_shaping?: LlmPersonaShapingSummary | null;
+  tool_trace?: LlmToolTraceUi | null;
 }
 
 export interface LlmBehaviorPattern {
@@ -1402,6 +1415,79 @@ export interface ConversationKernelRelationshipNotesData {
 export interface ConversationKernelKnowledgeSourcesData {
   items: ConversationKernelKnowledgeSource[];
   count: number;
+}
+
+export interface KnowledgeSourceChunkPreview {
+  index?: number;
+  title?: string;
+  keywords?: string;
+  content_preview?: string;
+  content_len?: number;
+}
+
+export interface KnowledgeSourceDetail {
+  source_id: string;
+  title?: string;
+  description?: string;
+  scope?: string;
+  retrieval_mode?: string;
+  origin?: string;
+  plugin_name?: string;
+  plugin_title?: string;
+  default?: boolean;
+  top_k?: number;
+  max_chunk_len?: number;
+  chunk_count?: number;
+  chunks_preview?: KnowledgeSourceChunkPreview[];
+  chunks_preview_truncated?: boolean;
+  preview_content_len?: number;
+}
+
+export interface KnowledgeSourceRetrieveHit {
+  source_id?: string;
+  title?: string;
+  content?: string;
+  score?: number;
+  retrieval_mode?: string;
+}
+
+export interface KnowledgeSourceRetrieveData {
+  query?: string;
+  source_id?: string | null;
+  min_score?: number;
+  items?: KnowledgeSourceRetrieveHit[];
+  count?: number;
+  enabled?: boolean;
+}
+
+export interface LlmToolCatalogPolicy {
+  tools_enabled?: boolean;
+  selective_enabled?: boolean;
+  max_rounds?: number;
+  blacklist?: string[];
+  arknights_kb_enabled?: boolean;
+  desc_max_len?: number;
+}
+
+export interface LlmToolCatalogItem {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+  source?: string;
+  domains?: string[];
+  capabilities?: string[];
+  command_id?: string | null;
+  plugin_name?: string | null;
+  provider_name?: string | null;
+  mcp_server_id?: string | null;
+  eligible?: boolean;
+  disabled_reason?: string | null;
+}
+
+export interface LlmToolCatalogData {
+  items: LlmToolCatalogItem[];
+  count: number;
+  policy?: LlmToolCatalogPolicy;
 }
 
 export interface PersonaAxisSnapshot {
@@ -1689,6 +1775,8 @@ export interface NapcatAccountRow {
   native_webui_url?: string;
   /** 兼容字段 */
   napcat_native_webui_url?: string;
+  /** 原生 WebUI 鉴权/口令提示（列表或详情旁注） */
+  native_webui_auth_note?: string;
   /** SnowLuma Docker noVNC 元数据（协议插件 compose） */
   snowluma_docker_novnc?: {
     url?: string;

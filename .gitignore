@@ -12,3 +12,5 @@ dist
 docs/superpowers/
 .cursor/
 .worktrees/
+.superpowers/
+docs/superpowers/

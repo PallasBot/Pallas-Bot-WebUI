@@ -255,15 +255,66 @@ export async function protocolDownloadSnowlumaRuntime(
 export async function protocolPullDockerImage(
   mountUrl: string,
   image?: string,
-): Promise<{ ok?: boolean; image?: string; output?: string; code?: number }> {
-  const body = image?.trim() ? { image: image.trim() } : {};
+  protocol?: "napcat" | "snowluma",
+): Promise<{
+  job_id?: string;
+  job?: ProtocolDockerPullJob;
+  ok?: boolean;
+  image?: string;
+  output?: string;
+  code?: number;
+  rebuild_image?: string;
+  rebuild_ok?: boolean;
+}> {
+  const body: Record<string, string> = {};
+  const img = image?.trim();
+  if (img) body.image = img;
+  if (protocol) body.protocol = protocol;
   const { data } = await protocolHttp(mountUrl).post<{
+    job_id?: string;
+    job?: ProtocolDockerPullJob;
     ok?: boolean;
     image?: string;
     output?: string;
     code?: number;
+    rebuild_image?: string;
+    rebuild_ok?: boolean;
   }>("/api/runtime/docker/pull", body);
   return data ?? {};
+}
+
+export type ProtocolDockerPullJob = {
+  job_id: string;
+  protocol?: string;
+  image?: string;
+  phase?: string;
+  status?: string;
+  message?: string;
+  output?: string;
+  rebuild_image?: string | null;
+  rebuild_ok?: boolean | null;
+  progress_percent?: number;
+  code?: number | null;
+  started_at?: string;
+  finished_at?: string | null;
+};
+
+export async function protocolFetchDockerPullJob(
+  mountUrl: string,
+  jobId: string,
+): Promise<ProtocolDockerPullJob> {
+  const { data } = await protocolHttp(mountUrl).get<{ job?: ProtocolDockerPullJob }>(
+    `/api/runtime/docker/pull/${encodeURIComponent(jobId)}`,
+  );
+  if (!data?.job) throw new Error("拉取任务不存在");
+  return data.job;
+}
+
+export function protocolStreamDockerPullJob(mountUrl: string, jobId: string): EventSource {
+  const base = protocolApiBase(mountUrl);
+  return new EventSource(`${base}/api/runtime/docker/pull/${encodeURIComponent(jobId)}/stream`, {
+    withCredentials: true,
+  });
 }
 
 export async function protocolListDockerImages(

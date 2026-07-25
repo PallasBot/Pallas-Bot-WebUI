@@ -4,10 +4,18 @@ import type {
   CommunityPluginRow,
   OfficialExtensionRow,
   PluginRow,
+  KnowledgeSourceDetail,
+  KnowledgeSourceRetrieveData,
 } from "@/api/pallasTypes";
 import { http } from "./http";
 
-export type { CommunityPluginRow, OfficialExtensionRow, PluginRow };
+export type {
+  CommunityPluginRow,
+  OfficialExtensionRow,
+  PluginRow,
+  KnowledgeSourceDetail,
+  KnowledgeSourceRetrieveData,
+};
 
 export type SystemData = {
   plugin_count: number;
@@ -1192,6 +1200,19 @@ export type ConversationKernelKnowledgeSourcesData = {
   count?: number;
 };
 
+export type LlmToolCatalogData = {
+  items?: Array<Record<string, unknown>>;
+  count?: number;
+  policy?: {
+    tools_enabled?: boolean;
+    selective_enabled?: boolean;
+    max_rounds?: number;
+    blacklist?: string[];
+    arknights_kb_enabled?: boolean;
+    desc_max_len?: number;
+  };
+};
+
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {
   const { data: body } = await http.get("/llm/conversation-kernel/status");
   return envelopeData<ConversationKernelStatus>(body) || {};
@@ -1273,6 +1294,40 @@ export async function postConversationKernelRelationshipNoteDelete(body: {
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
   const { data: body } = await http.get("/llm/conversation-kernel/knowledge-sources");
   return envelopeData<ConversationKernelKnowledgeSourcesData>(body) || {};
+}
+
+export async function fetchConversationKernelKnowledgeSourceDetail(
+  sourceId: string,
+  params?: { previewLimit?: number; previewContentLen?: number },
+): Promise<KnowledgeSourceDetail> {
+  const { data: body } = await http.get(
+    `/llm/conversation-kernel/knowledge-sources/${encodeURIComponent(sourceId)}`,
+    {
+      params: {
+        ...(params?.previewLimit ? { preview_limit: params.previewLimit } : {}),
+        ...(params?.previewContentLen ? { preview_content_len: params.previewContentLen } : {}),
+      },
+    },
+  );
+  return envelopeData<KnowledgeSourceDetail>(body) || { source_id: sourceId };
+}
+
+export async function postConversationKernelKnowledgeSourceRetrieve(body: {
+  query: string;
+  sourceId?: string | null;
+  topK?: number | null;
+}): Promise<KnowledgeSourceRetrieveData> {
+  const { data: res } = await http.post("/llm/conversation-kernel/knowledge-sources/retrieve", {
+    query: body.query,
+    ...(body.sourceId ? { source_id: body.sourceId } : {}),
+    ...(body.topK != null && body.topK > 0 ? { top_k: body.topK } : {}),
+  });
+  return envelopeData<KnowledgeSourceRetrieveData>(res) || res || {};
+}
+
+export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
+  const { data: body } = await http.get("/llm/tools");
+  return envelopeData<LlmToolCatalogData>(body) || {};
 }
 
 export async function fetchLlmBehaviorRuns(params?: {

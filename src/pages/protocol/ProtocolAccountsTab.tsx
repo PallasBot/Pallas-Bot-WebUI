@@ -171,6 +171,7 @@ export default function ProtocolAccountsTab() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchJob, setBatchJob] = useState<ProtocolBatchJobPayload | null>(null);
+  const [listRefreshBusy, setListRefreshBusy] = useState(false);
 
   const accountsQ = useQuery({
     queryKey: ["protocol-accounts", mountUrl],
@@ -188,8 +189,12 @@ export default function ProtocolAccountsTab() {
 
   const pluginAccounts = accountsQ.data ?? [];
   const snowlumaRuntimes = runtimesQ.data ?? [];
+  /** 首屏或手动刷新：勿用 nonebot 在线连接冒充账号卡片 */
+  const showAccountsSkeleton = Boolean(mountUrl) && (accountsQ.isLoading || listRefreshBusy);
 
   const protocolAccountsSorted = useMemo(() => {
+    // 协议账号列表未拉到前不合并 nonebot，否则会短暂只显示「已连接」外部卡片
+    if (!accountsQ.isFetched) return [];
     const list = mergeProtocolDisplayAccounts(instances, pluginAccounts);
     list.sort((a, b) => {
       const fa = protocolAccountNumber(a);
@@ -207,7 +212,7 @@ export default function ProtocolAccountsTab() {
       return String(a.qq ?? a.id ?? "").localeCompare(String(b.qq ?? b.id ?? ""), "zh-CN", { numeric: true });
     });
     return list;
-  }, [instances, pluginAccounts, favorites]);
+  }, [accountsQ.isFetched, instances, pluginAccounts, favorites]);
 
   const filteredProtocolAccounts = useMemo(() => {
     const q = protoSearchQ.trim().toLowerCase();
@@ -306,13 +311,18 @@ export default function ProtocolAccountsTab() {
     });
   }, [protocolAccountsSorted]);
 
-  async function refreshLists() {
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
-      qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
-      reload(),
-    ]);
-  }
+  const refreshLists = useCallback(async () => {
+    setListRefreshBusy(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+        qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
+        reload(),
+      ]);
+    } finally {
+      setListRefreshBusy(false);
+    }
+  }, [mountUrl, qc, reload]);
 
   function setAccountActionBusy(accountId: string, action: ProtocolAccountAction, busy: boolean) {
     const key = actionBusyKey(accountId, action);
@@ -574,7 +584,7 @@ export default function ProtocolAccountsTab() {
 
   const chromeRefresh = useCallback(() => {
     void refreshLists();
-  }, [mountUrl, qc, reload]);
+  }, [refreshLists]);
 
   const chromeMiddle = useMemo(
     () => (
@@ -706,8 +716,8 @@ export default function ProtocolAccountsTab() {
 
   useRegisterProtocolChrome(
     useMemo(
-      () => ({ middle: chromeMiddle, onRefresh: chromeRefresh }),
-      [chromeMiddle, chromeRefresh],
+      () => ({ middle: chromeMiddle, onRefresh: chromeRefresh, refreshing: listRefreshBusy }),
+      [chromeMiddle, chromeRefresh, listRefreshBusy],
     ),
   );
 
@@ -747,24 +757,27 @@ export default function ProtocolAccountsTab() {
           </CardTitle>
           <div className="inst-db-panel__hd-side">
             <span className="inst-db-stat muted">
-              当前已连接 <strong className="inst-db-stat__num">{protocolConnectedCount}</strong> /{" "}
-              {protocolAccountsTotalCount} 账号
+              当前已连接{" "}
+              <strong className="inst-db-stat__num">
+                {showAccountsSkeleton ? "…" : protocolConnectedCount}
+              </strong>{" "}
+              / {showAccountsSkeleton ? "…" : protocolAccountsTotalCount} 账号
             </span>
           </div>
         </CardHeader>
 
         {expProtocolAccounts ? (
           <CardContent className={PROTO_PANEL_BD}>
-            {accountsQ.isLoading ? <ConsoleBlockSkeleton lines={4} label="账号列表加载中" /> : null}
-            {accountsQ.error ? (
+            {showAccountsSkeleton ? <ConsoleBlockSkeleton lines={4} label="账号列表加载中" /> : null}
+            {!showAccountsSkeleton && accountsQ.error ? (
               <p className="alert alert--err">{protocolApiErrorMessage(accountsQ.error, "加载失败")}</p>
             ) : null}
 
-            {!accountsQ.isLoading && !filteredProtocolAccounts.length ? (
+            {!showAccountsSkeleton && !filteredProtocolAccounts.length ? (
               <p className="muted">没有匹配的协议账号</p>
             ) : null}
 
-            {prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
               <div className="table-wrap">
                 <table className="data console-data-table">
                   <thead>
@@ -891,7 +904,7 @@ export default function ProtocolAccountsTab() {
               </div>
             ) : null}
 
-            {prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
               <ConsolePagerBar
                 page={protoAccPage}
                 pageSize={prefs.tablePageSize}
@@ -901,7 +914,7 @@ export default function ProtocolAccountsTab() {
               />
             ) : null}
 
-            {prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
               <div className="data-card-grid data-card-grid--bots">
                 {pagedProtocolAccounts.map((a, i) => {
                   const id = accountProtocolId(a);
@@ -1057,7 +1070,7 @@ export default function ProtocolAccountsTab() {
               </div>
             ) : null}
 
-            {prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
               <ConsolePagerBar
                 page={protoAccPage}
                 pageSize={prefs.tablePageSize}

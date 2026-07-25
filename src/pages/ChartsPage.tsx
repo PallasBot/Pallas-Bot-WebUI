@@ -27,8 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { cn } from "@/lib/utils";
-import { botSelectDropdownLabel } from "@/utils/botDisplay";
+import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
 import {
   currentMonthIso,
   fillDailyRows,
@@ -92,6 +93,7 @@ export default function ChartsPage() {
     readChartsPluginFilter(readSavedHomeAccount(), "matcher"),
   );
 
+  const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const pluginRunGlobalQ = useQuery({ queryKey: ["plugin-run-stats-global"], queryFn: () => fetchPluginRunStats() });
 
@@ -140,11 +142,14 @@ export default function ChartsPage() {
     const nick = (account: number) =>
       instQ.data?.bot_profiles?.[String(account)]?.nickname?.trim() || "";
     rows.sort((a, b) => {
+      const fa = botAccountFavoriteRank(favorites, a.account);
+      const fb = botAccountFavoriteRank(favorites, b.account);
+      if (fa !== fb) return fb - fa;
       const cmp = nick(a.account).localeCompare(nick(b.account), "zh-CN");
       return cmp !== 0 ? cmp : a.account - b.account;
     });
     return rows;
-  }, [instQ.data]);
+  }, [favorites, instQ.data]);
 
   useEffect(() => {
     if (!sortedBots.length) {

@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { botSelectDropdownLabel } from "@/utils/botDisplay";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
+import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
 
 const ALL_BOTS = "__all__";
 
@@ -31,6 +32,7 @@ export default function AiObservationScopeFields({
   showGroup?: boolean;
 }) {
   const { botId, groupId, setBotId, setGroupId } = useAiObservationScope();
+  const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
 
   const botOptions = useMemo(() => {
@@ -50,8 +52,16 @@ export default function AiObservationScopeFields({
       seen.add(id);
       out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
     }
+    out.sort((a, b) => {
+      const fa = botAccountFavoriteRank(favorites, a.id);
+      const fb = botAccountFavoriteRank(favorites, b.id);
+      if (fa !== fb) return fb - fa;
+      const cmp = a.nickname.localeCompare(b.nickname, "zh-CN");
+      if (cmp !== 0) return cmp;
+      return a.id.localeCompare(b.id, "zh-CN", { numeric: true });
+    });
     return out;
-  }, [instQ.data]);
+  }, [favorites, instQ.data]);
 
   const useSelect = botOptions.length > 0;
   const selected = botOptions.find((b) => b.id === botId.trim());

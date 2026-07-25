@@ -41,6 +41,7 @@ export default function ProtocolChromeTools({
   const middle = slots.middle;
   const slotTrailing = slots.trailing;
   const refresh = slots.onRefresh ?? onRefresh;
+  const busy = slots.refreshing ?? refreshing;
   const options = protocolSectionsForSelect(extensionInstalled);
 
   return (
@@ -71,7 +72,7 @@ export default function ProtocolChromeTools({
         {trailing}
         {refresh ? (
           <RefreshIconButton
-            busy={refreshing}
+            busy={busy}
             label="刷新"
             showLabel
             onClick={() => refresh()}

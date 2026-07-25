@@ -22,6 +22,7 @@ import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import BotSelectLabel from "@/components/BotSelectLabel";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Button } from "@/components/ui/button";
@@ -125,9 +126,13 @@ export default function FriendsGroupsPage() {
   const [groupModal, setGroupModal] = useState<{ id: number; name: string } | null>(null);
   const [userModal, setUserModal] = useState<{ id: number; nickname: string } | null>(null);
 
+  const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const instances = instQ.data ?? null;
-  const botsVisible = useMemo(() => botPickerRowsFromInstances(instances), [instances]);
+  const botsVisible = useMemo(
+    () => botPickerRowsFromInstances(instances, favorites),
+    [instances, favorites],
+  );
 
 
   const selfIdNum = useMemo(() => {

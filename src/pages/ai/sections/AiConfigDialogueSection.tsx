@@ -2,9 +2,9 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
-  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Library, MessagesSquare, type LucideIcon,
+  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Library, MessagesSquare, Wrench, type LucideIcon,
 } from "lucide-react";
-import { fetchConversationKernelKnowledgeSources } from "@/api/console";
+import { fetchConversationKernelKnowledgeSources, fetchLlmToolsCatalog } from "@/api/console";
 import type { AiConfigSaveState } from "@/components/ai/aiConfigSaveState";
 import CommonConfigForm from "@/components/CommonConfigForm";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
@@ -13,6 +13,7 @@ import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import SegTabs from "@/components/SegTabs";
 import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
+import LlmToolsTable from "@/components/ai/LlmToolsTable";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,7 @@ import {
 } from "@/config/configFieldLabels";
 import AiLlmFieldPanel from "@/pages/ai/sections/AiLlmFieldPanel";
 
-type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources";
+type ContentPanel = "form" | "session" | "memory" | "budget" | "arknights" | "sources" | "tools";
 type EditMode = "form" | "raw";
 /** URL panel：兼容旧 raw；内容分区不含 TOML */
 type Panel = ContentPanel | "raw";
@@ -41,6 +42,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次闲聊可注入的上下文字符上限。" },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
+  { value: "tools", label: "工具", icon: Wrench, lead: "已注册 LLM 工具与当前可调用状态。" },
 ];
 
 const MODE_OPTIONS = [
@@ -77,6 +79,12 @@ export default function AiConfigDialogueSection() {
     queryKey: ["conversation-kernel-knowledge-sources"],
     queryFn: fetchConversationKernelKnowledgeSources,
     enabled: contentPanel === "sources",
+  });
+
+  const toolsQ = useQuery({
+    queryKey: ["llm-tools-catalog"],
+    queryFn: fetchLlmToolsCatalog,
+    enabled: contentPanel === "tools",
   });
 
   const activeSelectIcon =
@@ -119,7 +127,7 @@ export default function AiConfigDialogueSection() {
   );
 
   const chromeTrailing = useMemo(() => {
-    if (contentPanel === "sources") return null;
+    if (contentPanel === "sources" || contentPanel === "tools") return null;
     return (
       <Button
         type="button"
@@ -223,6 +231,16 @@ export default function AiConfigDialogueSection() {
           emptyText="暂无已配置的语料源。"
         >
           <KnowledgeSourcesTable items={sourcesQ.data?.items || []} />
+        </StateBlock>
+      ) : null}
+      {contentPanel === "tools" ? (
+        <StateBlock
+          loading={toolsQ.isLoading}
+          error={toolsQ.error}
+          empty={!toolsQ.data?.items?.length}
+          emptyText="暂无已注册的 LLM 工具。"
+        >
+          <LlmToolsTable items={toolsQ.data?.items || []} policy={toolsQ.data?.policy} />
         </StateBlock>
       ) : null}
     </AiConfigSectionCard>

@@ -82,6 +82,9 @@ import type {
   LlmPromotionCandidatesData,
   ConversationKernelStatus,
   ConversationKernelKnowledgeSourcesData,
+  KnowledgeSourceDetail,
+  KnowledgeSourceRetrieveData,
+  LlmToolCatalogData,
   ConversationKernelMemoryData,
   ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
@@ -1542,6 +1545,40 @@ export async function fetchConversationKernelKnowledgeSources(): Promise<Convers
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources"]["get"]
   >("/llm/conversation-kernel/knowledge-sources")) as ConversationKernelKnowledgeSourcesData;
+}
+
+export async function fetchConversationKernelKnowledgeSourceDetail(
+  sourceId: string,
+  params?: { previewLimit?: number; previewContentLen?: number },
+): Promise<KnowledgeSourceDetail> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources/{source_id}"]["get"]
+  >(`/llm/conversation-kernel/knowledge-sources/${encodeURIComponent(sourceId)}`, {
+    params: {
+      ...(params?.previewLimit ? { preview_limit: params.previewLimit } : {}),
+      ...(params?.previewContentLen ? { preview_content_len: params.previewContentLen } : {}),
+    },
+  })) as KnowledgeSourceDetail;
+}
+
+export async function postConversationKernelKnowledgeSourceRetrieve(body: {
+  query: string;
+  sourceId?: string | null;
+  topK?: number | null;
+}): Promise<KnowledgeSourceRetrieveData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources/retrieve"]["post"]
+  >("/llm/conversation-kernel/knowledge-sources/retrieve", {
+    query: body.query,
+    ...(body.sourceId ? { source_id: body.sourceId } : {}),
+    ...(body.topK != null && body.topK > 0 ? { top_k: body.topK } : {}),
+  })) as KnowledgeSourceRetrieveData;
+}
+
+export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/tools"]["get"]>(
+    "/llm/tools",
+  )) as LlmToolCatalogData;
 }
 
 export async function fetchLlmPersonaObserve(params?: {
