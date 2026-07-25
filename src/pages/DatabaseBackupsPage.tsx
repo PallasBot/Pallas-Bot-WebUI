@@ -456,7 +456,6 @@ export default function DatabaseBackupsPage() {
                 创建备份
               </h2>
               <div className="row-actions database-backups-page__hd-actions">
-                <span className="friends-groups-hd-pin-wrap" />
                 <button type="button" className="btn btn--primary" disabled={anyJobBusy || !backup.toolReady} onClick={() => void startBackup()}>
                   {backup.busy ? "备份中…" : "开始备份"}
                 </button>
@@ -672,7 +671,6 @@ export default function DatabaseBackupsPage() {
                 {runs.length ? <span className="muted database-backups-page__list-count">{runs.length} 项</span> : null}
               </h2>
               <div className="row-actions database-backups-page__hd-actions">
-                <span className="friends-groups-hd-pin-wrap" />
                 <button
                   type="button"
                   className="btn btn--danger database-backups-page__delete-btn"

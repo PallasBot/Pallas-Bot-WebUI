@@ -8640,7 +8640,7 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     font-weight: 500;
   }
 
-  /* 备份管理：窄屏「添加到侧栏」与标题同行右上，主操作按钮次行全宽 */
+  /* 备份管理：窄屏标题与主操作横排；删除按钮文案较长时次行全宽 */
   .database-backups-page .panel__hd.panel__hd--split,
   .database-backups-page .database-backups-page__list-hd.panel__hd--split {
     display: grid;
@@ -8664,15 +8664,19 @@ html[data-ui-preset="gs"] .panel__title .console-nav-icon {
     display: contents;
   }
 
-  .database-backups-page .database-backups-page__hd-actions > .friends-groups-hd-pin-wrap {
+  /* 「开始备份」与标题同行（勿漏匹配 .btn，否则会掉进错误网格格） */
+  .database-backups-page .database-backups-page__create-hd .database-backups-page__hd-actions > .btn,
+  .database-backups-page .database-backups-page__create-hd .database-backups-page__hd-actions > .ui-btn {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
     align-self: center;
+    width: auto;
+    max-width: none;
+    flex: 0 0 auto;
   }
 
-  .database-backups-page .database-backups-page__hd-actions > .database-backups-page__delete-btn,
-  .database-backups-page .database-backups-page__hd-actions > .ui-btn {
+  .database-backups-page .database-backups-page__hd-actions > .database-backups-page__delete-btn {
     grid-column: 1 / -1;
     grid-row: 2;
     width: 100%;
