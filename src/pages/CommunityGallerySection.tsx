@@ -1,11 +1,10 @@
-import { useCallback, useMemo, useState, type ClipboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type ClipboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   createCommunityGalleryPost,
   deleteCommunityGalleryPost,
   fetchCommunityGallery,
   fetchInstances,
-  fetchLocalCorpusHot,
 } from "@/api/fullConsole";
 import { axiosErrorDetail } from "@/api/http";
 import type { BotRow } from "@/api/pallasTypes";
@@ -27,8 +26,30 @@ import { cn } from "@/lib/utils";
 import { botPickerRowsFromInstances, botSelectDropdownLabel, qqAvatarUrl } from "@/utils/botDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { Images, List, Trash2 } from "lucide-react";
+import type { CommunityGalleryPost } from "@/api/consoleApi";
 
 const GALLERY_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function shortPostTime(unix: number): string {
+  if (!unix) return "";
+  try {
+    return new Date(unix * 1000).toLocaleString("zh-CN", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+/** 是否绑定了 Bot 身份（社区主站带图会直接放图，无 Bot 的本机列表也用截图瓦片） */
+function galleryPostHasBot(post: CommunityGalleryPost): boolean {
+  const qq = post.qq;
+  if (qq != null && Number(qq) > 0) return true;
+  return Boolean((post.avatar_url || "").trim());
+}
 
 function pickClipboardImage(dt: DataTransfer | null): File | null {
   if (!dt) return null;
@@ -49,19 +70,19 @@ export default function CommunityGallerySection() {
     queryKey: ["community-gallery-mine"],
     queryFn: () => fetchCommunityGallery({ mine: true, limit: 30 }),
   });
-  const localHotQ = useQuery({
-    queryKey: ["local-corpus-hot-gallery"],
-    queryFn: () => fetchLocalCorpusHot({ limit: 40 }),
-  });
 
   const botsVisible = useMemo(() => botPickerRowsFromInstances(instQ.data), [instQ.data]);
   const [selfIdStr, setSelfIdStr] = useState("");
   const [text, setText] = useState("");
   const [nickname, setNickname] = useState("");
   const [image, setImage] = useState<File | null>(null);
-  const [source, setSource] = useState<"manual" | "local_corpus">("manual");
-  const [keywords, setKeywords] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const imagePreviewUrl = useMemo(() => (image ? URL.createObjectURL(image) : null), [image]);
+  useEffect(() => {
+    if (!imagePreviewUrl) return;
+    return () => URL.revokeObjectURL(imagePreviewUrl);
+  }, [imagePreviewUrl]);
 
   function profileNick(selfId: string): string {
     return instQ.data?.bot_profiles?.[selfId]?.nickname?.trim() || "";
@@ -81,12 +102,6 @@ export default function CommunityGallerySection() {
     if (!selfIdStr) return "牛牛";
     return profileNick(selfIdStr) || `牛牛${selfIdStr}`;
   }, [nickname, selfIdStr, instQ.data?.bot_profiles]);
-
-  const onPickLocalAnswer = useCallback((message: string, kw: string) => {
-    setText(message);
-    setKeywords(kw);
-    setSource("local_corpus");
-  }, []);
 
   const applyImageFile = useCallback((file: File | null | undefined) => {
     if (!file) return;
@@ -119,15 +134,12 @@ export default function CommunityGallerySection() {
         nickname: effectiveNick,
         avatarUrl: selfIdNum != null ? qqAvatarUrl(selfIdNum) : "",
         botQq: selfIdNum,
-        source,
-        keywords,
+        source: "manual",
         image,
       });
       pushConsoleToast("已投稿到社区中心", "ok");
       setText("");
       setImage(null);
-      setKeywords("");
-      setSource("manual");
       await mineQ.refetch();
     } catch (e) {
       pushConsoleToast(axiosErrorDetail(e), "err");
@@ -149,20 +161,6 @@ export default function CommunityGallerySection() {
     }
   }
 
-  const localAnswers = useMemo(() => {
-    const items = localHotQ.data?.items ?? [];
-    const rows: Array<{ keywords: string; message: string }> = [];
-    for (const item of items) {
-      for (const ans of item.answers || []) {
-        const msg = (ans.message || ans.answer_keywords || "").trim();
-        if (!msg) continue;
-        rows.push({ keywords: item.keywords, message: msg });
-        if (rows.length >= 24) return rows;
-      }
-    }
-    return rows;
-  }, [localHotQ.data]);
-
   const selectedBotTitle = useMemo(() => {
     if (!selfIdStr) return undefined;
     const cur = botsVisible.find((b) => b.self_id === selfIdStr);
@@ -178,7 +176,7 @@ export default function CommunityGallerySection() {
             社区投稿
           </CardTitle>
           <CardDescription>
-            可选 Bot 账号以带上头像昵称；也可只拖入/粘贴截图或填正文投稿。纯文字在社区主站以模拟发言卡展示，带图投稿直接展示截图。截图可能含群名或
+            可选 Bot 账号以带上头像昵称（社区主站渲染发言卡）；不指定账号的带图投稿在社区主站直接展示截图。截图可能含群名或
             QQ，提交即公开展示。
           </CardDescription>
         </CardHeader>
@@ -237,11 +235,12 @@ export default function CommunityGallerySection() {
             <label
               tabIndex={0}
               className={cn(
-                "flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-1",
+                "flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-2",
                 "rounded-[var(--radius-control,8px)] border border-dashed border-[var(--control-edge)]",
                 "bg-muted/40 px-3 py-4 text-sm text-muted-foreground",
                 "outline-none focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))]",
                 "focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)]",
+                imagePreviewUrl && "items-stretch",
               )}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
@@ -256,10 +255,17 @@ export default function CommunityGallerySection() {
                 className="hidden"
                 onChange={(e) => applyImageFile(e.target.files?.[0])}
               />
-              {image ? (
-                <span className="text-foreground">
-                  已选 {image.name}（{(image.size / 1024).toFixed(0)} KB）
-                </span>
+              {image && imagePreviewUrl ? (
+                <>
+                  <img
+                    src={imagePreviewUrl}
+                    alt="投稿预览"
+                    className="mx-auto max-h-56 w-auto max-w-full rounded-[var(--radius-control,8px)] object-contain"
+                  />
+                  <span className="truncate text-center text-xs text-muted-foreground">
+                    {image.name}（{(image.size / 1024).toFixed(0)} KB）· 点击可更换
+                  </span>
+                </>
               ) : (
                 <span>点击、拖入或粘贴截图（≤3MB）</span>
               )}
@@ -270,33 +276,6 @@ export default function CommunityGallerySection() {
               </Button>
             ) : null}
           </div>
-
-          {localAnswers.length ? (
-            <div className="space-y-2">
-              <Label>从本机热词选取</Label>
-              <div className="max-h-40 space-y-1 overflow-auto rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] p-1.5">
-                {localAnswers.map((row) => {
-                  const active = text === row.message && keywords === row.keywords;
-                  return (
-                    <button
-                      key={`${row.keywords}-${row.message}`}
-                      type="button"
-                      className={cn(
-                        "flex w-full items-start gap-2 rounded-[var(--radius-control,8px)] px-2.5 py-1.5 text-left text-xs",
-                        "hover:bg-muted/60",
-                        active && "bg-muted text-foreground",
-                      )}
-                      title={row.message}
-                      onClick={() => onPickLocalAnswer(row.message, row.keywords)}
-                    >
-                      <span className="min-w-0 flex-1 truncate text-foreground">{row.message}</span>
-                      <span className="shrink-0 text-muted-foreground">{row.keywords}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
         </CardContent>
         <CardFooter className="justify-end">
           <Button type="button" disabled={busy} onClick={() => void onSubmit()}>
@@ -316,26 +295,117 @@ export default function CommunityGallerySection() {
           {!mineQ.data?.posts?.length ? (
             <p className="text-sm text-muted-foreground">暂无记录</p>
           ) : (
-            <ul className="divide-y divide-border rounded-[var(--radius-control,8px)] border border-[var(--control-edge)]">
-              {mineQ.data.posts.map((post) => (
-                <li key={post.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{post.nickname}</div>
-                    <div className="truncate text-xs text-muted-foreground">{post.text || "（仅图片）"}</div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    disabled={busy}
-                    aria-label="撤下"
-                    onClick={() => void onDelete(post.id)}
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {mineQ.data.posts.map((post) => {
+                const asShot = Boolean(post.image_url) && !galleryPostHasBot(post);
+                if (asShot) {
+                  return (
+                    <li
+                      key={post.id}
+                      className="relative overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/30"
+                    >
+                      <a
+                        href={post.image_url!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                        title="查看原图"
+                      >
+                        <img
+                          src={post.image_url!}
+                          alt=""
+                          className="mx-auto max-h-48 w-full object-contain"
+                          loading="lazy"
+                        />
+                      </a>
+                      <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-black/45 to-transparent p-2">
+                        <span className="rounded px-1.5 py-0.5 text-[11px] text-white/90">
+                          {shortPostTime(post.created_unix) || "截图"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="size-8 shrink-0 bg-background/90"
+                          disabled={busy}
+                          aria-label="撤下"
+                          onClick={() => void onDelete(post.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                      {post.text ? (
+                        <p className="border-t border-[var(--control-edge)] px-2.5 py-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                          {post.text}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                }
+
+                return (
+                  <li
+                    key={post.id}
+                    className="flex flex-col gap-2 rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/20 p-3"
                   >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
+                    <div className="flex items-start gap-2">
+                      {post.avatar_url ? (
+                        <img
+                          src={post.avatar_url}
+                          alt=""
+                          className="size-7 shrink-0 rounded-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div
+                          className="size-7 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--accent)_25%,transparent)]"
+                          aria-hidden
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium leading-tight">
+                          {post.nickname || "牛牛"}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {shortPostTime(post.created_unix)}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0"
+                        disabled={busy}
+                        aria-label="撤下"
+                        onClick={() => void onDelete(post.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                    {post.text ? (
+                      <p className="rounded-[4px_10px_10px_10px] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2.5 py-1.5 text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+                        {post.text}
+                      </p>
+                    ) : null}
+                    {post.image_url ? (
+                      <a
+                        href={post.image_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block overflow-hidden rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-muted/40"
+                        title="查看原图"
+                      >
+                        <img
+                          src={post.image_url}
+                          alt=""
+                          className="mx-auto max-h-40 w-full object-contain"
+                          loading="lazy"
+                        />
+                      </a>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
