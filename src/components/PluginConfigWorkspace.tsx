@@ -29,13 +29,11 @@ import PluginConfigFormSection from "@/components/config/PluginConfigFormSection
 import DrawProviderGatewayPanel, {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
 } from "@/components/draw/DrawProviderGatewayPanel";
+import ProviderGatewayPanel from "@/components/provider/ProviderGatewayPanel";
 import HelpTagOverridesPanel, {
   HELP_TAG_OVERRIDES_FIELD,
 } from "@/components/help/HelpTagOverridesPanel";
 import PluginHelpTagField from "@/components/help/PluginHelpTagField";
-import MemesAiProviderPanel, {
-  MEMES_AI_PANEL_FIELD_NAMES,
-} from "@/components/memes/MemesAiProviderPanel";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
@@ -47,10 +45,15 @@ import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig, parsePluginConfigField } from "@/utils/pluginConfigFieldModel";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import type { PluginConfigField } from "@/api/console";
+import {
+  DRAW_PROVIDER_GATEWAY_BINDING,
+  normalizeProviderGatewayBinding,
+  providerGatewayBoundFieldNames,
+  type ProviderGatewayBinding,
+} from "@/utils/providerGateways";
 
 const DRAW_GATEWAY_FIELD_SET = new Set<string>(DRAW_GATEWAY_PANEL_FIELD_NAMES);
 const HELP_TAG_OVERRIDE_FIELD_SET = new Set<string>([HELP_TAG_OVERRIDES_FIELD]);
-const MEMES_AI_FIELD_SET = new Set<string>(MEMES_AI_PANEL_FIELD_NAMES);
 
 /** 画画配置提交体：表单字段 + 网关面板键（schema 尚未热载到新键时也写入）。 */
 function collectDrawPluginValues(
@@ -180,7 +183,36 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const isHelpPlugin = name === "help";
   const pluginResolvedId = (initialPluginRow?.resolved_plugin_id || name).trim();
   const showDrawAiConfigHint = pluginResolvedId === "draw";
-  const showMemesAiConfigHint = pluginResolvedId === "memes";
+  const fields = cfgQ.data?.fields || [];
+
+  const gatewayWidgets = useMemo(() => {
+    const fromSchema: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
+    for (const field of fields) {
+      if (field.ui_widget !== "provider_gateway") continue;
+      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
+        anchorField: field.name,
+      });
+      if (binding) fromSchema.push({ anchor: field.name, binding });
+    }
+    if (fromSchema.length) return fromSchema;
+    if (name === "draw") {
+      return [{ anchor: "pallas_image_api_backends", binding: DRAW_PROVIDER_GATEWAY_BINDING }];
+    }
+    return [];
+  }, [fields, name]);
+
+  const gatewayHiddenFieldSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const widget of gatewayWidgets) {
+      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
+        set.add(key);
+      }
+    }
+    if (name === "draw") {
+      for (const key of DRAW_GATEWAY_PANEL_FIELD_NAMES) set.add(key);
+    }
+    return set;
+  }, [gatewayWidgets, name]);
 
   const [mode, setMode] = useState<"form" | "raw">("form");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -302,12 +334,10 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const hasData = Boolean(cfgQ.data);
   const fields = cfgQ.data?.fields || [];
   const usesDrawGatewayPanel = name === "draw";
-  const usesMemesAiPanel = name === "memes";
   const usesHelpTagOverridesPanel = isHelpPlugin;
   const formFields = (() => {
     let list = fields;
     if (usesDrawGatewayPanel) list = list.filter((f) => !DRAW_GATEWAY_FIELD_SET.has(f.name));
-    if (usesMemesAiPanel) list = list.filter((f) => !MEMES_AI_FIELD_SET.has(f.name));
     if (usesHelpTagOverridesPanel) list = list.filter((f) => !HELP_TAG_OVERRIDE_FIELD_SET.has(f.name));
     return list;
   })();
@@ -396,12 +426,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           管理网关；本页为兼容入口，配置键相同。
         </p>
       ) : null}
-      {showMemesAiConfigHint && !isDialog ? (
-        <p className="muted plugin-config-dialog__ai-hint">
-          AI 推荐沿用 <Link to={aiConfigSectionPath("provider")}>AI 配置 · 接入</Link>{" "}
-          的 Provider；下方面板选择即可，无需重复填写密钥。
-        </p>
-      ) : null}
 
       {detailTab === "governance" && hasGovernanceTab ? (
         <section className={isDialog ? "plugin-config-page__governance-dialog" : "plugin-config-page__tab-panel"}>
@@ -482,16 +506,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                       fieldValues={fieldValues}
                       onFieldsPatch={patchFieldValuesAndPersist}
                       busy={saveGatewayPatch.isPending}
-                    />
-                  ) : null}
-                  {usesMemesAiPanel ? (
-                    <MemesAiProviderPanel
-                      className="mb-4"
-                      fieldValues={fieldValues}
-                      onFieldChange={(fieldName, value) =>
-                        setFieldValues((prev) => ({ ...prev, [fieldName]: value }))
-                      }
-                      busy={saving}
                     />
                   ) : null}
                   {usesHelpTagOverridesPanel ? (
