@@ -13,6 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+const ACCOUNT_TABS = [
+  { id: "overview" as const, label: "概览" },
+  { id: "settings" as const, label: "设置" },
+];
 
 /** 协议账号配置弹窗：shadcn Dialog（居中实心底，对齐插件配置弹窗）。 */
 export default function ProtocolAccountConfigDialog({
@@ -74,7 +80,7 @@ export default function ProtocolAccountConfigDialog({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(960px,calc(100vw-32px))] max-w-[min(960px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(920px,calc(100vw-32px))] max-w-[min(920px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (saveBusy) e.preventDefault();
         }}
@@ -82,16 +88,44 @@ export default function ProtocolAccountConfigDialog({
           if (saveBusy) e.preventDefault();
         }}
       >
-        <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
-          <div className="plugin-config-dialog__head-text protocol-account-config-dialog__head w-full space-y-1 pr-6 text-left">
-            <DialogTitle id="protocol-account-config-dialog-title" className="text-left">
-              {title || (accountId ? `账号 ${accountId}` : "协议账号")}
-            </DialogTitle>
-            {statusLine ? (
-              <DialogDescription className="muted">{statusLine}</DialogDescription>
-            ) : (
-              <DialogDescription className="sr-only">协议账号配置</DialogDescription>
-            )}
+        <DialogHeader className="plugin-config-dialog__head protocol-account-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
+          <div className="protocol-account-config-dialog__head-row flex flex-wrap items-start justify-between gap-3 pr-6">
+            <div className="plugin-config-dialog__head-text min-w-0 flex-1 space-y-1 text-left">
+              <DialogTitle id="protocol-account-config-dialog-title" className="text-left">
+                {title || (accountId ? `账号 ${accountId}` : "协议账号")}
+              </DialogTitle>
+              {statusLine ? (
+                <DialogDescription className="muted">{statusLine}</DialogDescription>
+              ) : (
+                <DialogDescription className="sr-only">协议账号配置</DialogDescription>
+              )}
+            </div>
+            <div
+              className="protocol-account-workspace__portal-tabs shrink-0"
+              role="tablist"
+              aria-label="账号分区"
+            >
+              {ACCOUNT_TABS.map((tab) => {
+                const on = activeTab === tab.id;
+                return (
+                  <Button
+                    key={tab.id}
+                    type="button"
+                    size="sm"
+                    role="tab"
+                    aria-selected={on}
+                    variant={on ? "secondary" : "ghost"}
+                    className={cn(
+                      "h-8 min-w-[4.5rem] px-3 text-xs",
+                      on ? "font-medium" : "text-muted-foreground",
+                    )}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {tab.label}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </DialogHeader>
 
@@ -101,6 +135,7 @@ export default function ProtocolAccountConfigDialog({
               key={accountId}
               ref={workspaceRef}
               presentation="dialog"
+              hideTabNav
               accountId={accountId}
               mountUrl={mountUrl}
               system={system}

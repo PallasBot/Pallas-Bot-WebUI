@@ -31,6 +31,34 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
+import {
+  dockerPullPercent,
+  dockerPullPhaseLabel,
+  waitForDockerPullJob,
+} from "@/utils/protocolDockerPull";
+import type { ProtocolDockerPullJob } from "@/api/protocol";
+
+function DockerPullProgress({ job }: { job: ProtocolDockerPullJob }) {
+  const pct = dockerPullPercent(job);
+  return (
+    <div className="protocol-assets-pull-progress" aria-live="polite">
+      <div className="protocol-assets-pull-progress__meta muted">
+        <span className="protocol-assets-pull-progress__label">{dockerPullPhaseLabel(job)}</span>
+        <span className="protocol-assets-pull-progress__pct mono">{pct}%</span>
+      </div>
+      <div
+        className="protocol-assets-pull-progress__bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label="Docker 镜像拉取进度"
+      >
+        <div className="protocol-assets-pull-progress__fill" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
 
 const RUNTIME_MODES = [
   { value: "docker", label: "Docker" },
@@ -81,14 +109,57 @@ function normalizeDockerImages(raw: unknown): ProtocolDockerImageRow[] {
   });
 }
 
-function dockerImageLabel(img: ProtocolDockerImageRow): string {
-  const name = String(img.name ?? "").trim() || "<none>:<none>";
-  const meta = [img.created_since, img.size].filter(Boolean).join(" / ");
-  return meta ? `${name} · ${meta}` : name;
-}
-
 function dockerImageKey(img: ProtocolDockerImageRow, index: number): string {
   return [img.id, img.name, String(index)].filter(Boolean).join("|");
+}
+
+function DockerImageTable({
+  images,
+  listed,
+}: {
+  images: ProtocolDockerImageRow[];
+  listed: boolean;
+}) {
+  if (!listed) return null;
+  if (!images.length) {
+    return <p className="muted protocol-assets-image-empty">本地暂无匹配镜像</p>;
+  }
+  return (
+    <div className="protocol-assets-image-table-wrap">
+      <table className="protocol-assets-image-table">
+        <thead>
+          <tr>
+            <th scope="col">镜像</th>
+            <th scope="col">创建</th>
+            <th scope="col">大小</th>
+          </tr>
+        </thead>
+        <tbody>
+          {images.map((img, index) => (
+            <tr key={dockerImageKey(img, index)}>
+              <td className="protocol-assets-image-table__name mono" title={String(img.name ?? "")}>
+                {String(img.name ?? "").trim() || "<none>:<none>"}
+              </td>
+              <td className="muted">{img.created_since?.trim() || "—"}</td>
+              <td className="muted">{img.size?.trim() || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ul className="protocol-assets-image-cards">
+        {images.map((img, index) => (
+          <li key={dockerImageKey(img, index)} className="protocol-assets-image-card">
+            <code className="mono protocol-assets-image-card__name">
+              {String(img.name ?? "").trim() || "<none>:<none>"}
+            </code>
+            <span className="muted protocol-assets-image-card__meta">
+              {[img.created_since, img.size].filter(Boolean).join(" · ") || "—"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function ProfileSelect(props: {
@@ -134,7 +205,12 @@ export default function ProtocolAssetsTab() {
   const [snowlumaListBusy, setSnowlumaListBusy] = useState(false);
   const [napcatImages, setNapcatImages] = useState<ProtocolDockerImageRow[]>([]);
   const [snowlumaImages, setSnowlumaImages] = useState<ProtocolDockerImageRow[]>([]);
+  const [napcatListed, setNapcatListed] = useState(false);
+  const [snowlumaListed, setSnowlumaListed] = useState(false);
   const [dockerPullLog, setDockerPullLog] = useState("");
+  const [dockerPullLogOpen, setDockerPullLogOpen] = useState(false);
+  const [dockerPullJob, setDockerPullJob] = useState<ProtocolDockerPullJob | null>(null);
+  const [dockerPullWhich, setDockerPullWhich] = useState<"napcat" | "snowluma" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const napcatJob = useMemo(() => jobFromOverview(overview, "job"), [overview]);
@@ -146,10 +222,14 @@ export default function ProtocolAssetsTab() {
     return null;
   }, [overview]);
 
-  const showDockerSection = useMemo(() => {
-    const p = profileForm;
-    return p.napcat_runtime_mode === "docker" || p.snowluma_runtime_mode === "docker";
-  }, [profileForm]);
+  const showNapcatDocker = profileForm.napcat_runtime_mode === "docker";
+  const showSnowlumaDocker = profileForm.snowluma_runtime_mode === "docker";
+  const showDockerSection = showNapcatDocker || showSnowlumaDocker;
+
+  const napcatImageTarget =
+    String(profileForm.docker_image ?? "").trim() || "mlikiowa/napcat-docker:latest";
+  const snowlumaImageTarget =
+    String(profileForm.snowluma_docker_image ?? "").trim() || "motricseven7/snowluma:latest";
 
   async function loadAssets() {
     if (!mountUrl) return;
@@ -249,39 +329,141 @@ export default function ProtocolAssetsTab() {
 
   async function pullDocker(which: "napcat" | "snowluma") {
     if (!mountUrl) return;
-    const image =
-      which === "napcat"
-        ? String(profileForm.docker_image ?? "").trim()
-        : String(profileForm.snowluma_docker_image ?? "").trim();
+    const image = which === "napcat" ? napcatImageTarget : snowlumaImageTarget;
     if (which === "napcat") setNapcatPullBusy(true);
     else setSnowlumaPullBusy(true);
     setMsg(null);
+    setDockerPullWhich(which);
+    setDockerPullJob({
+      job_id: "",
+      protocol: which,
+      image,
+      phase: "pending",
+      status: "running",
+      message: "正在启动拉取…",
+      progress_percent: 1,
+      output: "",
+    });
+    setDockerPullLog("");
+    setDockerPullLogOpen(true);
+    // 旧版插件 POST 会同步阻塞整次 pull：占位进度缓慢爬升，避免一直停在 1%
+    let softTimer: number | null = window.setInterval(() => {
+      setDockerPullJob((prev) => {
+        if (!prev || prev.status !== "running" || prev.job_id) return prev;
+        const next = Math.min(12, (Number(prev.progress_percent) || 1) + 1);
+        if (next === prev.progress_percent) return prev;
+        return {
+          ...prev,
+          progress_percent: next,
+          message: prev.message || "正在拉取（等待服务端响应）…",
+        };
+      });
+    }, 2500);
     try {
-      const res = await protocolPullDockerImage(mountUrl, image || undefined);
-      setDockerPullLog(res.output?.trim() || (res.ok ? "拉取完成" : "拉取失败"));
-      setMsg(res.ok ? "Docker 镜像拉取完成" : "Docker 镜像拉取失败");
+      const started = await protocolPullDockerImage(mountUrl, image, which);
+      if (softTimer != null) {
+        window.clearInterval(softTimer);
+        softTimer = null;
+      }
+      const jobId = String(started.job_id ?? started.job?.job_id ?? "").trim();
+      if (!jobId) {
+        // 兼容旧插件：同步返回 ok/output
+        setDockerPullLog(
+          `${started.image ? `[${started.image}]\n` : ""}${
+            started.output?.trim() || (started.ok ? "拉取完成" : "拉取失败")
+          }`,
+        );
+        setDockerPullJob({
+          job_id: "",
+          protocol: which,
+          image: started.image || image,
+          phase: started.ok ? "completed" : "failed",
+          status: started.ok ? "completed" : "failed",
+          message: started.ok ? "拉取完成" : "拉取失败",
+          progress_percent: 100,
+          output: started.output ?? "",
+          rebuild_ok: started.rebuild_ok,
+          rebuild_image: started.rebuild_image,
+        });
+        if (started.ok) {
+          setMsg(
+            which === "napcat"
+              ? "NapCat 镜像拉取完成"
+              : "SnowLuma 镜像拉取并重建派生镜像完成",
+          );
+          await listDocker(which, { quiet: true });
+        } else if (which === "snowluma" && started.rebuild_ok === false) {
+          setMsg("SnowLuma 上游已拉取，但派生镜像重建失败");
+        } else {
+          setMsg("Docker 镜像拉取失败");
+        }
+        return;
+      }
+      if (started.job) {
+        setDockerPullJob(started.job);
+        if (started.job.output) setDockerPullLog(started.job.output);
+      }
+      const job = await waitForDockerPullJob(mountUrl, jobId, {
+        onProgress: (next) => {
+          setDockerPullJob(next);
+          if (next.output) setDockerPullLog(next.output);
+        },
+      });
+      setDockerPullJob(job);
+      if (job.output) setDockerPullLog(job.output);
+      if (job.status === "completed") {
+        setMsg(
+          which === "napcat"
+            ? "NapCat 镜像拉取完成"
+            : "SnowLuma 镜像拉取并重建派生镜像完成",
+        );
+        await listDocker(which, { quiet: true });
+      } else if (which === "snowluma" && job.rebuild_ok === false) {
+        setMsg("SnowLuma 上游已拉取，但派生镜像重建失败");
+      } else {
+        setMsg(job.message?.trim() || "Docker 镜像拉取失败");
+      }
     } catch (e) {
       setMsg(protocolApiErrorMessage(e, "拉取失败"));
+      setDockerPullJob((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "failed",
+              phase: "failed",
+              message: protocolApiErrorMessage(e, "拉取失败"),
+              progress_percent: 100,
+            }
+          : prev,
+      );
     } finally {
+      if (softTimer != null) window.clearInterval(softTimer);
       if (which === "napcat") setNapcatPullBusy(false);
       else setSnowlumaPullBusy(false);
     }
   }
 
-  async function listDocker(which: "napcat" | "snowluma") {
+  async function listDocker(which: "napcat" | "snowluma", opts?: { quiet?: boolean }) {
     if (!mountUrl) return;
     if (which === "napcat") setNapcatListBusy(true);
     else setSnowlumaListBusy(true);
-    setMsg(null);
+    if (!opts?.quiet) setMsg(null);
     try {
       const res = await protocolListDockerImages(mountUrl, which);
       const imgs = normalizeDockerImages(res.images);
-      if (which === "napcat") setNapcatImages(imgs);
-      else setSnowlumaImages(imgs);
-      if (!res.ok && res.detail) setMsg(res.detail);
-      else if (!imgs.length) setMsg("本地暂无匹配镜像");
+      if (which === "napcat") {
+        setNapcatImages(imgs);
+        setNapcatListed(true);
+      } else {
+        setSnowlumaImages(imgs);
+        setSnowlumaListed(true);
+      }
+      if (!opts?.quiet) {
+        if (!res.ok && res.detail) setMsg(res.detail);
+        else if (!imgs.length) setMsg("本地暂无匹配镜像");
+      }
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "查询镜像失败"));
+      if (!opts?.quiet) setMsg(protocolApiErrorMessage(e, "查询镜像失败"));
     } finally {
       if (which === "napcat") setNapcatListBusy(false);
       else setSnowlumaListBusy(false);
@@ -464,69 +646,93 @@ export default function ProtocolAssetsTab() {
             </CardTitle>
           </CardHeader>
           <CardContent className={ASSET_PANEL_BD}>
-            <p className="muted">
-              需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时会提示在宿主机手动
-              pull。
+            <p className="muted protocol-assets-docker-hint">
+              需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时请在宿主机手动
+              pull。SnowLuma 拉取成功后会自动重建派生镜像{" "}
+              <code className="mono">pallas/snowluma-auto-login:latest</code>。
             </p>
-            <div className="protocol-assets-docker-row">
-              <div className="row-actions protocol-assets-download">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!mountUrl || napcatPullBusy}
-                  onClick={() => void pullDocker("napcat")}
-                >
-                  {napcatPullBusy ? "拉取中…" : "拉取 NapCat 镜像"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!mountUrl || napcatListBusy}
-                  onClick={() => void listDocker("napcat")}
-                >
-                  {napcatListBusy ? "查询中…" : "查看 NapCat 本地镜像"}
-                </Button>
+
+            {showNapcatDocker ? (
+              <div className="protocol-assets-runtime-block">
+                <div className="protocol-assets-runtime-block__hd">
+                  <strong>NapCat</strong>
+                  <code className="mono protocol-assets-docker-target" title={napcatImageTarget}>
+                    {napcatImageTarget}
+                  </code>
+                </div>
+                <div className="row-actions protocol-assets-download">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!mountUrl || napcatPullBusy || snowlumaPullBusy}
+                    onClick={() => void pullDocker("napcat")}
+                  >
+                    {napcatPullBusy ? "拉取中…" : "拉取镜像"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={!mountUrl || napcatListBusy}
+                    onClick={() => void listDocker("napcat")}
+                  >
+                    {napcatListBusy ? "查询中…" : "查看本地"}
+                  </Button>
+                </div>
+                {dockerPullWhich === "napcat" && dockerPullJob ? (
+                  <DockerPullProgress job={dockerPullJob} />
+                ) : null}
+                <DockerImageTable images={napcatImages} listed={napcatListed} />
               </div>
-              {napcatImages.length ? (
-                <ul className="protocol-assets-image-list muted">
-                  {napcatImages.map((img, index) => (
-                    <li key={dockerImageKey(img, index)}>{dockerImageLabel(img)}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            <div className="protocol-assets-docker-row">
-              <div className="row-actions protocol-assets-download">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!mountUrl || snowlumaPullBusy}
-                  onClick={() => void pullDocker("snowluma")}
-                >
-                  {snowlumaPullBusy ? "拉取中…" : "拉取 SnowLuma 镜像"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!mountUrl || snowlumaListBusy}
-                  onClick={() => void listDocker("snowluma")}
-                >
-                  {snowlumaListBusy ? "查询中…" : "查看 SnowLuma 本地镜像"}
-                </Button>
+            ) : null}
+
+            {showSnowlumaDocker ? (
+              <div className="protocol-assets-runtime-block">
+                <div className="protocol-assets-runtime-block__hd">
+                  <strong>SnowLuma</strong>
+                  <code className="mono protocol-assets-docker-target" title={snowlumaImageTarget}>
+                    {snowlumaImageTarget}
+                  </code>
+                </div>
+                <p className="muted protocol-assets-docker-note">
+                  拉取目标为上游基础镜像；「查看本地」列出插件实际使用的派生镜像。
+                </p>
+                <div className="row-actions protocol-assets-download">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!mountUrl || snowlumaPullBusy || napcatPullBusy}
+                    onClick={() => void pullDocker("snowluma")}
+                  >
+                    {snowlumaPullBusy ? "拉取中…" : "拉取并重建"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={!mountUrl || snowlumaListBusy}
+                    onClick={() => void listDocker("snowluma")}
+                  >
+                    {snowlumaListBusy ? "查询中…" : "查看本地"}
+                  </Button>
+                </div>
+                {dockerPullWhich === "snowluma" && dockerPullJob ? (
+                  <DockerPullProgress job={dockerPullJob} />
+                ) : null}
+                <DockerImageTable images={snowlumaImages} listed={snowlumaListed} />
               </div>
-              {snowlumaImages.length ? (
-                <ul className="protocol-assets-image-list muted">
-                  {snowlumaImages.map((img, index) => (
-                    <li key={dockerImageKey(img, index)}>{dockerImageLabel(img)}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            {dockerPullLog ? <pre className="protocol-assets-pre">{dockerPullLog}</pre> : null}
+            ) : null}
+
+            {dockerPullLog ? (
+              <details
+                className="protocol-assets-pull-log"
+                open={dockerPullLogOpen}
+                onToggle={(e) => setDockerPullLogOpen((e.target as HTMLDetailsElement).open)}
+              >
+                <summary>拉取日志</summary>
+                <pre className="protocol-assets-pre">{dockerPullLog}</pre>
+              </details>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

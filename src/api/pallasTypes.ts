@@ -1775,6 +1775,8 @@ export interface NapcatAccountRow {
   native_webui_url?: string;
   /** 兼容字段 */
   napcat_native_webui_url?: string;
+  /** 原生 WebUI 鉴权/口令提示（列表或详情旁注） */
+  native_webui_auth_note?: string;
   /** SnowLuma Docker noVNC 元数据（协议插件 compose） */
   snowluma_docker_novnc?: {
     url?: string;

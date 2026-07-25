@@ -16,11 +16,25 @@ export function visibleBots<T extends { adapter: string }>(rows: T[] | undefined
   return (rows ?? []).filter((b) => !isOb11LikeAdapter(b.adapter));
 }
 
+/** 收藏账号排在前：返回 1 表示收藏，0 表示否。 */
+export function botAccountFavoriteRank(
+  favorites: ReadonlySet<number> | undefined | null,
+  account: string | number,
+): number {
+  if (!favorites?.size) return 0;
+  const n = typeof account === "number" ? account : parseInt(String(account).trim(), 10);
+  return Number.isFinite(n) && n > 0 && favorites.has(Math.floor(n)) ? 1 : 0;
+}
+
 /**
  * 好友/群等按账号维度选择：合并消息框架当前连接与数据库中的 Bot 配置。
  * 不过滤 OneBot V11（NapCat 等仍使用该适配器名）；未在线的账号用占位行展示。
+ * 排序：收藏 → 在线 → 昵称 → 账号。
  */
-export function botPickerRowsFromInstances(inst: InstancesData | null | undefined): BotRow[] {
+export function botPickerRowsFromInstances(
+  inst: InstancesData | null | undefined,
+  favorites?: ReadonlySet<number> | null,
+): BotRow[] {
   const onlineSelfIds = new Set<string>();
   const bySelf = new Map<string, BotRow>();
   for (const b of inst?.nonebot_bots ?? []) {
@@ -41,6 +55,9 @@ export function botPickerRowsFromInstances(inst: InstancesData | null | undefine
   const profiles = inst?.bot_profiles ?? {};
   const rows = [...bySelf.values()];
   rows.sort((a, b) => {
+    const fa = botAccountFavoriteRank(favorites, a.self_id);
+    const fb = botAccountFavoriteRank(favorites, b.self_id);
+    if (fa !== fb) return fb - fa;
     const oa = onlineSelfIds.has(a.self_id) ? 1 : 0;
     const ob = onlineSelfIds.has(b.self_id) ? 1 : 0;
     if (oa !== ob) return ob - oa;

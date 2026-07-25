@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { botPickerRowsFromInstances, botSelectDropdownLabel, qqAvatarUrl } from "@/utils/botDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { Images, List, Trash2 } from "lucide-react";
@@ -65,13 +66,17 @@ function pickClipboardImage(dt: DataTransfer | null): File | null {
 }
 
 export default function CommunityGallerySection() {
+  const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
   const mineQ = useQuery({
     queryKey: ["community-gallery-mine"],
     queryFn: () => fetchCommunityGallery({ mine: true, limit: 30 }),
   });
 
-  const botsVisible = useMemo(() => botPickerRowsFromInstances(instQ.data), [instQ.data]);
+  const botsVisible = useMemo(
+    () => botPickerRowsFromInstances(instQ.data, favorites),
+    [instQ.data, favorites],
+  );
   const [selfIdStr, setSelfIdStr] = useState("");
   const [text, setText] = useState("");
   const [nickname, setNickname] = useState("");

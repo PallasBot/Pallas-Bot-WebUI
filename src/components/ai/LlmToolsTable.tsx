@@ -18,6 +18,7 @@ const DISABLED_REASON_LABEL: Record<string, string> = {
   tools_disabled: "总开关关闭",
   blacklisted: "黑名单",
   arknights_kb_disabled: "方舟知识库关闭",
+  plugin_not_in_process: "本进程未加载（Worker 侧可用）",
 };
 
 function labelOf(map: Record<string, string>, raw: string | undefined, fallback = "—") {

@@ -12,6 +12,8 @@ export type ProtocolChromeSlots = {
   middle?: ReactNode;
   trailing?: ReactNode;
   onRefresh?: () => void;
+  /** 段内刷新进行中；优先于页面级 refreshing */
+  refreshing?: boolean;
 };
 
 type ProtocolChromeCtx = {
@@ -37,17 +39,17 @@ export function useProtocolChromeSlots(): ProtocolChromeSlots {
 }
 
 /**
- * 段内注册工具条 middle / trailing / onRefresh。
+ * 段内注册工具条 middle / trailing / onRefresh / refreshing。
  * 调用方须对 middle / trailing / onRefresh 做 useMemo / useCallback。
  * 仅卸载时清空，避免依赖更新时先清后写触发多余渲染。
  */
 export function useRegisterProtocolChrome(slots: ProtocolChromeSlots) {
   const setSlots = useContext(ProtocolChromeContext)?.setSlots;
-  const { middle, trailing, onRefresh } = slots;
+  const { middle, trailing, onRefresh, refreshing } = slots;
   useLayoutEffect(() => {
     if (!setSlots) return;
-    setSlots({ middle, trailing, onRefresh });
-  }, [setSlots, middle, trailing, onRefresh]);
+    setSlots({ middle, trailing, onRefresh, refreshing });
+  }, [setSlots, middle, trailing, onRefresh, refreshing]);
 
   useLayoutEffect(() => {
     return () => setSlots?.({});
