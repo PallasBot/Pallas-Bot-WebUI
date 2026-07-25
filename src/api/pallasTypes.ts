@@ -1404,6 +1404,36 @@ export interface ConversationKernelKnowledgeSourcesData {
   count: number;
 }
 
+export interface LlmToolCatalogPolicy {
+  tools_enabled?: boolean;
+  selective_enabled?: boolean;
+  max_rounds?: number;
+  blacklist?: string[];
+  arknights_kb_enabled?: boolean;
+  desc_max_len?: number;
+}
+
+export interface LlmToolCatalogItem {
+  name: string;
+  description?: string;
+  parameters?: Record<string, unknown>;
+  source?: string;
+  domains?: string[];
+  capabilities?: string[];
+  command_id?: string | null;
+  plugin_name?: string | null;
+  provider_name?: string | null;
+  mcp_server_id?: string | null;
+  eligible?: boolean;
+  disabled_reason?: string | null;
+}
+
+export interface LlmToolCatalogData {
+  items: LlmToolCatalogItem[];
+  count: number;
+  policy?: LlmToolCatalogPolicy;
+}
+
 export interface PersonaAxisSnapshot {
   source?: string;
   preset_label?: string;

@@ -1192,6 +1192,19 @@ export type ConversationKernelKnowledgeSourcesData = {
   count?: number;
 };
 
+export type LlmToolCatalogData = {
+  items?: Array<Record<string, unknown>>;
+  count?: number;
+  policy?: {
+    tools_enabled?: boolean;
+    selective_enabled?: boolean;
+    max_rounds?: number;
+    blacklist?: string[];
+    arknights_kb_enabled?: boolean;
+    desc_max_len?: number;
+  };
+};
+
 export async function fetchConversationKernelStatus(): Promise<ConversationKernelStatus> {
   const { data: body } = await http.get("/llm/conversation-kernel/status");
   return envelopeData<ConversationKernelStatus>(body) || {};
@@ -1273,6 +1286,11 @@ export async function postConversationKernelRelationshipNoteDelete(body: {
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
   const { data: body } = await http.get("/llm/conversation-kernel/knowledge-sources");
   return envelopeData<ConversationKernelKnowledgeSourcesData>(body) || {};
+}
+
+export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
+  const { data: body } = await http.get("/llm/tools");
+  return envelopeData<LlmToolCatalogData>(body) || {};
 }
 
 export async function fetchLlmBehaviorRuns(params?: {

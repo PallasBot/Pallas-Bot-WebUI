@@ -82,6 +82,7 @@ import type {
   LlmPromotionCandidatesData,
   ConversationKernelStatus,
   ConversationKernelKnowledgeSourcesData,
+  LlmToolCatalogData,
   ConversationKernelMemoryData,
   ConversationKernelRelationshipNotesData,
   ConversationKernelTracesData,
@@ -1542,6 +1543,12 @@ export async function fetchConversationKernelKnowledgeSources(): Promise<Convers
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources"]["get"]
   >("/llm/conversation-kernel/knowledge-sources")) as ConversationKernelKnowledgeSourcesData;
+}
+
+export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/tools"]["get"]>(
+    "/llm/tools",
+  )) as LlmToolCatalogData;
 }
 
 export async function fetchLlmPersonaObserve(params?: {
