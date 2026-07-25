@@ -47,6 +47,7 @@ import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import { SessionFeedbackCard, SessionTurnFeedbackControls } from "@/components/ai/SessionFeedbackControls";
 import SessionLearningStrip from "@/components/ai/SessionLearningStrip";
 import SessionPromotionCard from "@/components/ai/SessionPromotionCard";
+import LlmToolTracePanel from "@/components/ai/LlmToolTracePanel";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -294,6 +295,7 @@ export default function AiHistoryPage() {
   const [injectDraft, setInjectDraft] = useState("");
   const [opsMsg, setOpsMsg] = useState<string | null>(null);
   const [expandedMaintain, setExpandedMaintain] = useState<Record<string, boolean>>({});
+  const [expandedToolTrace, setExpandedToolTrace] = useState<Record<string, boolean>>({});
   const [correctionDrafts, setCorrectionDrafts] = useState<Record<string, string>>({});
   const [feedbackBusy, setFeedbackBusy] = useState<Record<string, boolean>>({});
   const [promoIncludeResolved, setPromoIncludeResolved] = useState(false);
@@ -689,7 +691,17 @@ export default function AiHistoryPage() {
             const isBot = t.role === "assistant";
             const maintKey = turnMaintKey(row);
             const expanded = Boolean(expandedMaintain[maintKey]);
+            const toolExpanded = Boolean(expandedToolTrace[maintKey]);
             const busyKey = feedbackEntryKey(row.feedbackEntry) || maintKey;
+            const agentTrace = row.behaviorRun?.auto_feedback_payload?.agent_trace || null;
+            const requestId = row.behaviorRun?.request_id || row.feedbackEntry?.request_id || "";
+            const hasToolHint = Boolean(
+              requestId ||
+                (agentTrace &&
+                  ((agentTrace.tool_call_count ?? 0) > 0 ||
+                    (agentTrace.tool_schema_count ?? 0) > 0 ||
+                    (agentTrace.rounds || []).length > 0)),
+            );
             return (
               <div
                 key={maintKey}
@@ -711,6 +723,11 @@ export default function AiHistoryPage() {
                       className="h-5 px-1.5 text-[10px] font-normal"
                     >
                       {row.feedbackEntry.eligible_for_bias ? "参与学习" : "已排除"}
+                    </Badge>
+                  ) : null}
+                  {isBot && (agentTrace?.tool_call_count ?? 0) > 0 ? (
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal">
+                      工具 {agentTrace?.tool_call_count}
                     </Badge>
                   ) : null}
                 </div>
@@ -748,6 +765,18 @@ export default function AiHistoryPage() {
                           恢复
                         </Button>
                       ) : null}
+                      {hasToolHint ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() =>
+                            setExpandedToolTrace((prev) => ({ ...prev, [maintKey]: !prev[maintKey] }))
+                          }
+                        >
+                          {toolExpanded ? "收起工具" : "工具轨迹"}
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -759,6 +788,15 @@ export default function AiHistoryPage() {
                         {expanded ? "收起" : "反哺详情"}
                       </Button>
                     </div>
+                    {toolExpanded ? (
+                      <div className="mt-2 rounded-lg border bg-muted/20 p-2.5 text-left">
+                        <LlmToolTracePanel
+                          agentTrace={agentTrace}
+                          requestId={requestId || null}
+                          fetchDebug={Boolean(requestId)}
+                        />
+                      </div>
+                    ) : null}
                     {expanded ? (
                       <SessionTurnFeedbackControls
                         entry={row.feedbackEntry}

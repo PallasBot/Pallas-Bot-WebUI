@@ -1136,6 +1136,7 @@ export interface LlmHistoryBehaviorAutoFeedbackPayload {
 export interface LlmHistoryBehaviorAgentTraceRound {
   round?: number;
   tool_calls?: string[];
+  calls?: LlmHistoryBehaviorAgentTraceToolCall[];
   used_prefetch?: boolean;
 }
 
@@ -1164,6 +1165,7 @@ export interface LlmHistoryBehaviorAgentTrace {
   tool_loop_enabled?: boolean;
   tool_schema_count?: number;
   tool_call_count?: number;
+  tool_names?: string[];
   request_snapshot_id?: string | null;
   tool_catalog_version?: string | null;
   rounds?: LlmHistoryBehaviorAgentTraceRound[];
@@ -1171,6 +1173,16 @@ export interface LlmHistoryBehaviorAgentTrace {
   prefetched_tool?: string | null;
   final_stage?: string | null;
   status?: string | null;
+}
+
+export interface LlmToolTraceUi {
+  tools_enabled?: boolean;
+  tool_schema_count?: number;
+  tool_names?: string[];
+  selection?: Record<string, unknown>;
+  tool_call_count?: number;
+  status?: string | null;
+  agent_trace?: LlmHistoryBehaviorAgentTrace | null;
 }
 
 export interface LlmRuntimeReplayResult {
@@ -1200,6 +1212,7 @@ export interface LlmRuntimeDebugData {
   snapshot?: Record<string, unknown> | null;
   trace?: LlmHistoryBehaviorAgentTrace | null;
   persona_shaping?: LlmPersonaShapingSummary | null;
+  tool_trace?: LlmToolTraceUi | null;
 }
 
 export interface LlmBehaviorPattern {
