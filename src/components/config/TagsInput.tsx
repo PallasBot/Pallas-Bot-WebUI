@@ -308,6 +308,9 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
             e.preventDefault();
             popoverInputRef.current?.focus();
           }}
+          // Dialog 的 RemoveScroll 在 document 上拦 wheel；Portal 在锁外会被 preventDefault，导致列表滚不动
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <div className="tags-input__popover-search">
             <Input
@@ -329,79 +332,81 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
               }}
             />
           </div>
-          <div className="tags-input__popover-section">
-            <div className="tags-input__popover-hd">
-              已添加（{filteredAdded.length}/{list.length}）
-            </div>
-            {!filteredAdded.length ? (
-              <div className="tags-input__popover-empty">{searchQuery.trim() ? "无匹配项" : "暂无标签"}</div>
-            ) : (
-              <ul className="tags-input__popover-list">
-                {filteredAdded.map((tag) => {
-                  const originalIndex = list.indexOf(tag);
-                  return (
-                    <li key={tag} className="tags-input__popover-row group">
-                      <span className="tags-input__popover-row-text" title={tag}>
-                        {tag}
-                      </span>
-                      <button
-                        type="button"
-                        className="tags-input__popover-icon-btn"
-                        disabled={disabled}
-                        title="复制"
-                        aria-label={`复制 ${tag}`}
-                        onClick={() => void handleCopy(tag, originalIndex)}
-                      >
-                        {copiedIndex === originalIndex ? (
-                          <Check className="size-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className="tags-input__popover-icon-btn tags-input__popover-icon-btn--danger"
-                        disabled={disabled}
-                        title="删除"
-                        aria-label={`移除 ${tag}`}
-                        onClick={() => removeTag(tag)}
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-          {(options?.length ?? 0) > 0 ? (
+          <div className="tags-input__popover-body">
             <div className="tags-input__popover-section">
-              <div className="tags-input__popover-hd">可选</div>
-              {!filteredOptions.length ? (
-                <div className="tags-input__popover-empty">
-                  {searchQuery.trim() ? "无匹配选项" : "已全部添加"}
-                </div>
+              <div className="tags-input__popover-hd">
+                已添加（{filteredAdded.length}/{list.length}）
+              </div>
+              {!filteredAdded.length ? (
+                <div className="tags-input__popover-empty">{searchQuery.trim() ? "无匹配项" : "暂无标签"}</div>
               ) : (
                 <ul className="tags-input__popover-list">
-                  {filteredOptions.map((opt) => (
-                    <li key={opt}>
-                      <button
-                        type="button"
-                        className="tags-input__popover-opt"
-                        disabled={disabled}
-                        onClick={() => {
-                          commitTag(opt);
-                          setSearchQuery("");
-                        }}
-                      >
-                        {opt}
-                      </button>
-                    </li>
-                  ))}
+                  {filteredAdded.map((tag) => {
+                    const originalIndex = list.indexOf(tag);
+                    return (
+                      <li key={tag} className="tags-input__popover-row group">
+                        <span className="tags-input__popover-row-text" title={tag}>
+                          {tag}
+                        </span>
+                        <button
+                          type="button"
+                          className="tags-input__popover-icon-btn"
+                          disabled={disabled}
+                          title="复制"
+                          aria-label={`复制 ${tag}`}
+                          onClick={() => void handleCopy(tag, originalIndex)}
+                        >
+                          {copiedIndex === originalIndex ? (
+                            <Check className="size-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="tags-input__popover-icon-btn tags-input__popover-icon-btn--danger"
+                          disabled={disabled}
+                          title="删除"
+                          aria-label={`移除 ${tag}`}
+                          onClick={() => removeTag(tag)}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
-          ) : null}
+            {(options?.length ?? 0) > 0 ? (
+              <div className="tags-input__popover-section">
+                <div className="tags-input__popover-hd">可选</div>
+                {!filteredOptions.length ? (
+                  <div className="tags-input__popover-empty">
+                    {searchQuery.trim() ? "无匹配选项" : "已全部添加"}
+                  </div>
+                ) : (
+                  <ul className="tags-input__popover-list">
+                    {filteredOptions.map((opt) => (
+                      <li key={opt}>
+                        <button
+                          type="button"
+                          className="tags-input__popover-opt"
+                          disabled={disabled}
+                          onClick={() => {
+                            commitTag(opt);
+                            setSearchQuery("");
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+          </div>
         </PopoverContent>
       </Popover>
     </div>

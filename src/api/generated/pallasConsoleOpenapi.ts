@@ -1022,6 +1022,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/community-gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Community Gallery List */
+        get: operations["_community_gallery_list_pallas_api_community_gallery_get"];
+        put?: never;
+        /** Community Gallery Create */
+        post: operations["_community_gallery_create_pallas_api_community_gallery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/community-gallery/{post_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Community Gallery Delete */
+        delete: operations["_community_gallery_delete_pallas_api_community_gallery__post_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/local-corpus-hot": {
         parameters: {
             query?: never;
@@ -2321,6 +2356,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/expression-bank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Expression Bank Get */
+        get: operations["_llm_expression_bank_get_pallas_api_llm_expression_bank_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/expression-bank/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Expression Bank Resolve */
+        post: operations["_llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/conversation-kernel/status": {
         parameters: {
             query?: never;
@@ -3529,6 +3598,38 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body__community_gallery_create_pallas_api_community_gallery_post */
+        Body__community_gallery_create_pallas_api_community_gallery_post: {
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Nickname
+             * @default
+             */
+            nickname: string;
+            /**
+             * Avatar Url
+             * @default
+             */
+            avatar_url: string;
+            /** Bot Qq */
+            bot_qq?: number | null;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+            /**
+             * Keywords
+             * @default
+             */
+            keywords: string;
+            /** Image */
+            image?: string | null;
+        };
         /** GitMirrorApplyPluginBody */
         GitMirrorApplyPluginBody: {
             /** Preferred Id */
@@ -4525,6 +4626,55 @@ export interface components {
             /** Num Gpu */
             num_gpu: number;
         };
+        /** _LlmModelPricingRowBody */
+        _LlmModelPricingRowBody: {
+            /**
+             * Price In
+             * @default 0
+             */
+            price_in: number;
+            /**
+             * Price Out
+             * @default 0
+             */
+            price_out: number;
+            /**
+             * Cache Price In
+             * @default 0
+             */
+            cache_price_in: number;
+            /**
+             * Cache Price Out
+             * @default 0
+             */
+            cache_price_out: number;
+        };
+        /**
+         * _LlmModelPricingRowData
+         * @description 模型单价：币种见 routing.cost_currency；单位为「每百万 tokens」。
+         */
+        _LlmModelPricingRowData: {
+            /**
+             * Price In
+             * @default 0
+             */
+            price_in: number;
+            /**
+             * Price Out
+             * @default 0
+             */
+            price_out: number;
+            /**
+             * Cache Price In
+             * @default 0
+             */
+            cache_price_in: number;
+            /**
+             * Cache Price Out
+             * @default 0
+             */
+            cache_price_out: number;
+        };
         /** _LlmModelSwitchBody */
         _LlmModelSwitchBody: {
             /** Model */
@@ -4594,6 +4744,10 @@ export interface components {
              * @default chat_completions
              */
             request_method: string;
+            /** Model Pricing */
+            model_pricing?: {
+                [key: string]: components["schemas"]["_LlmModelPricingRowData"];
+            };
         };
         /**
          * _LlmProviderModelsDiscoverBody
@@ -4683,6 +4837,10 @@ export interface components {
              * @default chat_completions
              */
             request_method: string;
+            /** Model Pricing */
+            model_pricing?: {
+                [key: string]: components["schemas"]["_LlmModelPricingRowBody"];
+            };
         };
         /** _LlmProviderTestData */
         _LlmProviderTestData: {
@@ -4733,6 +4891,24 @@ export interface components {
             tier_backup_models?: {
                 [key: string]: string;
             };
+            /** Task Backups */
+            task_backups?: {
+                [key: string]: string;
+            };
+            /** Task Backup Models */
+            task_backup_models?: {
+                [key: string]: string;
+            };
+            /**
+             * Route Source
+             * @default
+             */
+            route_source: string;
+            /**
+             * Cost Currency
+             * @default
+             */
+            cost_currency: string;
         };
         /** _LlmProvidersRoutingData */
         _LlmProvidersRoutingData: {
@@ -4742,6 +4918,32 @@ export interface components {
             tasks?: {
                 [key: string]: string;
             };
+            /** Tier Backups */
+            tier_backups?: {
+                [key: string]: string;
+            };
+            /** Tier Backup Models */
+            tier_backup_models?: {
+                [key: string]: string;
+            };
+            /** Task Backups */
+            task_backups?: {
+                [key: string]: string;
+            };
+            /** Task Backup Models */
+            task_backup_models?: {
+                [key: string]: string;
+            };
+            /**
+             * Route Source
+             * @default
+             */
+            route_source: string;
+            /**
+             * Cost Currency
+             * @default
+             */
+            cost_currency: string;
         };
         /** _LlmRuntimeOverviewData */
         _LlmRuntimeOverviewData: {
@@ -7464,6 +7666,113 @@ export interface operations {
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _community_gallery_list_pallas_api_community_gallery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                mine?: boolean;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _community_gallery_create_pallas_api_community_gallery_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body__community_gallery_create_pallas_api_community_gallery_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _community_gallery_delete_pallas_api_community_gallery__post_id__delete: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                post_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -10696,6 +11005,83 @@ export interface operations {
         };
     };
     _llm_repeater_feedback_promotion_candidates_resolve_pallas_api_llm_repeater_feedback_promotion_candidates_resolve_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_expression_bank_get_pallas_api_llm_expression_bank_get: {
+        parameters: {
+            query: {
+                /** @description 群号 */
+                group_id: number;
+                /** @description 状态筛选 */
+                status?: ("shadow" | "active" | "rejected") | null;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post: {
         parameters: {
             query?: {
                 token?: string | null;
