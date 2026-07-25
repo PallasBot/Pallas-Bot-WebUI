@@ -100,7 +100,11 @@ export function buildNamedSeriesTrendPack(
     }
   }
   const timesRaw = [...timeSet].sort((a, b) => a - b);
-  if (timesRaw.length < 2) return null;
+  if (!timesRaw.length) return null;
+  // 单日/单点：补前一桶零值，避免 (n-1) 除零且仍能看见当日点
+  if (timesRaw.length === 1) {
+    timesRaw.unshift(timesRaw[0] - 86400);
+  }
 
   const palette = fixedChartPalette(ranked.length);
   const valAt = (points: NamedSeriesPoint[], t: number) => {

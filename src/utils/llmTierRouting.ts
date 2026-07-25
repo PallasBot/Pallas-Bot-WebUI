@@ -22,12 +22,37 @@ export const LOW_TIER_TASKS = [
   "repeater_select",
   "repeater_polish_lite",
   "repeater_fallback",
+  "affect_refine",
 ] as const;
+
+export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS] as const;
+
+export type RoutableTask = (typeof ALL_ROUTABLE_TASKS)[number];
 
 export const TIER_TASKS: Record<RoutingTier, readonly string[]> = {
   high: HIGH_TIER_TASKS,
   low: LOW_TIER_TASKS,
 };
+
+export const TASK_ROUTE_META: Record<
+  RoutableTask,
+  { title: string; description: string; kind: RoutingTier }
+> = {
+  llm_chat: { title: "@ 闲聊", description: "群内 @ 牛牛对话", kind: "high" },
+  drunk: { title: "醉聊", description: "酒后对话路径", kind: "high" },
+  repeater_polish: { title: "接话润色", description: "强场景完整润色", kind: "high" },
+  repeater_select: { title: "接话选句", description: "从语料池挑选出口", kind: "low" },
+  repeater_polish_lite: { title: "轻润色", description: "语料命中后轻顺口气", kind: "low" },
+  repeater_fallback: { title: "接话兜底", description: "语料不足时现编", kind: "low" },
+  affect_refine: { title: "群情感 refine", description: "后台刷群情感偏移", kind: "low" },
+};
+
+export type TaskRouteSlotState = {
+  primary: TierProviderSlot;
+  backup: TierProviderSlot;
+};
+
+export type TaskRoutesState = Record<RoutableTask, TaskRouteSlotState>;
 
 type ProviderLike = {
   id: string;
@@ -44,6 +69,15 @@ type ProvidersDocLike<P extends ProviderLike = ProviderLike> = {
     tier_backups?: { high?: string; low?: string };
     /** 高低档备用模型；同提供方时必须靠此字段，避免覆盖主配置 task_models */
     tier_backup_models?: { high?: string; low?: string };
+    /** 全任务编排：按任务覆盖备用提供方 */
+    task_backups?: Record<string, string>;
+    /** 全任务编排：按任务覆盖备用模型 */
+    task_backup_models?: Record<string, string>;
+    /**
+     * 最近一次权威写入来源。
+     * 为 tasks 时，高低档只更新 tier_* 兜底，不覆盖 tasks / task_backups。
+     */
+    route_source?: "tiers" | "tasks";
   };
 };
 
@@ -118,6 +152,31 @@ function uniquePreserve(ids: string[]): string[] {
     out.push(id);
   }
   return out;
+}
+
+/** 是否已有全任务权威配置（与高低档并存时以它为准） */
+export function hasTaskRouteAuthority(doc: {
+  routing?: {
+    route_source?: string;
+    task_backups?: Record<string, string>;
+    task_backup_models?: Record<string, string>;
+  };
+}): boolean {
+  const routing = doc.routing || {};
+  if (String(routing.route_source || "").trim() === "tasks") return true;
+  const backups = routing.task_backups;
+  if (backups && typeof backups === "object") {
+    for (const value of Object.values(backups)) {
+      if (String(value || "").trim()) return true;
+    }
+  }
+  const backupModels = routing.task_backup_models;
+  if (backupModels && typeof backupModels === "object") {
+    for (const value of Object.values(backupModels)) {
+      if (String(value || "").trim()) return true;
+    }
+  }
+  return false;
 }
 
 /** 从现有 routing / providers 折叠为高低主备 */
@@ -220,15 +279,53 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
   doc: D,
   tiers: TaskTierState,
 ): D {
+  const highBackupId = tiers.high.backup.providerId.trim();
+  const lowBackupId = tiers.low.backup.providerId.trim();
+  const highPrimaryId = tiers.high.primary.providerId.trim();
+  const lowPrimaryId = tiers.low.primary.providerId.trim();
+
+  const tier_backups: { high?: string; low?: string } = {};
+  const tier_backup_models: { high?: string; low?: string } = {};
+  if (highBackupId) {
+    tier_backups.high = highBackupId;
+    const model = tiers.high.backup.model.trim();
+    if (model) tier_backup_models.high = model;
+  }
+  if (lowBackupId) {
+    tier_backups.low = lowBackupId;
+    const model = tiers.low.backup.model.trim();
+    if (model) tier_backup_models.low = model;
+  }
+
+  // 已有全任务配置时：高低档只更新档位兜底，不覆盖 tasks / task_backups / 模型
+  if (hasTaskRouteAuthority(doc)) {
+    const chain_fallback = uniquePreserve([
+      ...Object.values(doc.routing.tasks || {}),
+      ...Object.values(doc.routing.task_backups || {}),
+      highPrimaryId,
+      highBackupId,
+      lowPrimaryId,
+      lowBackupId,
+    ]);
+    return {
+      ...doc,
+      routing: {
+        ...doc.routing,
+        chain_fallback,
+        tier_backups,
+        tier_backup_models,
+        route_source: "tasks",
+      },
+    };
+  }
+
   const tasks: Record<string, string> = { ...(doc.routing.tasks || {}) };
   for (const task of HIGH_TIER_TASKS) {
-    const pid = tiers.high.primary.providerId.trim();
-    if (pid) tasks[task] = pid;
+    if (highPrimaryId) tasks[task] = highPrimaryId;
     else delete tasks[task];
   }
   for (const task of LOW_TIER_TASKS) {
-    const pid = tiers.low.primary.providerId.trim();
-    if (pid) tasks[task] = pid;
+    if (lowPrimaryId) tasks[task] = lowPrimaryId;
     else delete tasks[task];
   }
 
@@ -250,10 +347,6 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
     LOW_TIER_TASKS,
     tiers.low.primary.model,
   );
-  const highBackupId = tiers.high.backup.providerId.trim();
-  const lowBackupId = tiers.low.backup.providerId.trim();
-  const highPrimaryId = tiers.high.primary.providerId.trim();
-  const lowPrimaryId = tiers.low.primary.providerId.trim();
   if (highBackupId && highBackupId !== highPrimaryId) {
     providers = setProviderTaskModels(
       providers,
@@ -278,23 +371,153 @@ export function applyTaskTiers<P extends ProviderLike, D extends ProvidersDocLik
     tiers.low.backup.providerId,
   ]);
 
+  return {
+    ...doc,
+    providers,
+    routing: {
+      ...doc.routing,
+      tasks,
+      chain_fallback,
+      tier_backups,
+      tier_backup_models,
+      task_backups: {},
+      task_backup_models: {},
+      route_source: "tiers",
+    },
+  };
+}
+
+function emptyTaskRouteSlot(): TaskRouteSlotState {
+  return { primary: emptySlot(), backup: emptySlot() };
+}
+
+export function emptyTaskRoutesState(): TaskRoutesState {
+  const out = {} as TaskRoutesState;
+  for (const task of ALL_ROUTABLE_TASKS) {
+    out[task] = emptyTaskRouteSlot();
+  }
+  return out;
+}
+
+/** 从 routing / providers 展开为逐任务主备 */
+export function foldTaskRoutes<P extends ProviderLike>(doc: ProvidersDocLike<P>): TaskRoutesState {
+  const tasks = doc.routing.tasks || {};
+  const taskBackups = doc.routing.task_backups || {};
+  const taskBackupModels = doc.routing.task_backup_models || {};
+  const hasTaskBackups = Object.prototype.hasOwnProperty.call(doc.routing, "task_backups");
+  const out = emptyTaskRoutesState();
+
+  for (const task of ALL_ROUTABLE_TASKS) {
+    const kind = TASK_ROUTE_META[task].kind;
+    const primaryId = String(tasks[task] || "").trim();
+    let backupId = "";
+    let backupModel = "";
+    if (hasTaskBackups) {
+      backupId = String(taskBackups[task] || "").trim();
+      backupModel = String(taskBackupModels[task] || "").trim();
+    } else {
+      backupId = String(doc.routing.tier_backups?.[kind] || "").trim();
+      backupModel = String(doc.routing.tier_backup_models?.[kind] || "").trim();
+    }
+    out[task] = {
+      primary: {
+        providerId: primaryId,
+        model: providerTaskModel(doc.providers, primaryId, [task]),
+      },
+      backup: {
+        providerId: backupId,
+        model: (() => {
+          if (!backupId) return "";
+          if (backupModel) return backupModel;
+          if (backupId === primaryId) return "";
+          return providerTaskModel(doc.providers, backupId, [task], { fallbackDefault: false });
+        })(),
+      },
+    };
+  }
+  return out;
+}
+
+/** 将逐任务主备写回 tasks / task_backups / provider.task_models，并同步高低档摘要 */
+export function applyTaskRoutes<P extends ProviderLike, D extends ProvidersDocLike<P>>(
+  doc: D,
+  routes: TaskRoutesState,
+): D {
+  const tasks: Record<string, string> = { ...(doc.routing.tasks || {}) };
+  const task_backups: Record<string, string> = {};
+  const task_backup_models: Record<string, string> = {};
+
+  let providers = doc.providers.map((p) => ({
+    ...p,
+    task_models: { ...(p.task_models || {}) },
+  })) as P[];
+
+  for (const task of ALL_ROUTABLE_TASKS) {
+    const slot = routes[task] || emptyTaskRouteSlot();
+    const primaryId = slot.primary.providerId.trim();
+    const backupId = slot.backup.providerId.trim();
+    const primaryModel = slot.primary.model.trim();
+    const backupModel = slot.backup.model.trim();
+
+    if (primaryId) tasks[task] = primaryId;
+    else delete tasks[task];
+
+    if (backupId) {
+      task_backups[task] = backupId;
+      if (backupModel) task_backup_models[task] = backupModel;
+    }
+
+    providers = setProviderTaskModels(providers, primaryId, [task], primaryModel);
+    if (backupId && backupId !== primaryId) {
+      providers = setProviderTaskModels(providers, backupId, [task], backupModel);
+    }
+  }
+
+  const chain_fallback = uniquePreserve(
+    ALL_ROUTABLE_TASKS.flatMap((task) => {
+      const slot = routes[task] || emptyTaskRouteSlot();
+      return [slot.primary.providerId, slot.backup.providerId];
+    }),
+  );
+
+  const highBackup = majorityProvider(task_backups, HIGH_TIER_TASKS);
+  const lowBackup = majorityProvider(task_backups, LOW_TIER_TASKS);
   const tier_backups: { high?: string; low?: string } = {};
   const tier_backup_models: { high?: string; low?: string } = {};
-  if (highBackupId) {
-    tier_backups.high = highBackupId;
-    const model = tiers.high.backup.model.trim();
-    if (model) tier_backup_models.high = model;
+  if (highBackup) {
+    tier_backups.high = highBackup;
+    for (const task of HIGH_TIER_TASKS) {
+      const model = String(task_backup_models[task] || "").trim();
+      if (model) {
+        tier_backup_models.high = model;
+        break;
+      }
+    }
   }
-  if (lowBackupId) {
-    tier_backups.low = lowBackupId;
-    const model = tiers.low.backup.model.trim();
-    if (model) tier_backup_models.low = model;
+  if (lowBackup) {
+    tier_backups.low = lowBackup;
+    for (const task of LOW_TIER_TASKS) {
+      const model = String(task_backup_models[task] || "").trim();
+      if (model) {
+        tier_backup_models.low = model;
+        break;
+      }
+    }
   }
 
   return {
     ...doc,
     providers,
-    routing: { tasks, chain_fallback, tier_backups, tier_backup_models },
+    routing: {
+      ...doc.routing,
+      tasks,
+      chain_fallback,
+      tier_backups,
+      tier_backup_models,
+      task_backups,
+      task_backup_models,
+      route_source: "tasks",
+    },
   };
 }
 
