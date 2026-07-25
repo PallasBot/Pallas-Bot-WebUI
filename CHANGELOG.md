@@ -6,6 +6,24 @@
 
 <!-- entries -->
 
+## [0.7.8] - 2026-07-25
+
+### 🚀 新功能
+
+* feat(protocol): 账号工作区与镜像拉取，选择器支持收藏排序 ([33bcb8a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/33bcb8a7e178eed29f1cc4f5fd1aed7490021100))
+* feat(ai): 历史会话展示工具轨迹 ([6c39e0a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6c39e0a40ad71da586f99212a7a3e5b498a1661b))
+* feat(ai): 语料源详情支持检索试探 ([ff14de8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ff14de8e9023b28dc635da5bb0149e5f580310d5))
+* feat(ai): 语料源支持点击查看条目预览 ([f6383b4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f6383b45c4cc2c3e14da9378f5193e3bb0d5c82a))
+* feat(ai): 对话配置增加工具清单面板 ([f1b55d5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f1b55d54467f41204e70603f6f08cdf4258a7dd9))
+* feat(api): 同步 OpenAPI ([2cad149](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2cad149ff466966e2b6429e6531ad44a3cb4886d))
+
+### 🔨 其他更改
+
+* chore(ci): 重触 PR 检查 ([9c0a903](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9c0a903e1da1ae4632851eb689b173eaacca0469))
+
+**完整变更**: [`v0.7.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.7...HEAD)
+
+
 ## [0.7.7] - 2026-07-25
 
 ### 🔨 其他更改
