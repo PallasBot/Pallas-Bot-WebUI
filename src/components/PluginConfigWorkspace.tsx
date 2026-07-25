@@ -299,7 +299,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       return putPluginConfig(name, payload);
     },
     onSuccess: async () => {
-      setMsg("配置已保存");
+      setMsg(null);
       pushConsoleToast("配置已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
@@ -336,7 +336,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saveRaw = useMutation({
     mutationFn: () => putPluginConfigRaw(name, raw),
     onSuccess: async () => {
-      setMsg("原始 TOML 已保存");
+      setMsg(null);
       pushConsoleToast("原始 TOML 已保存", "ok");
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
       await qc.invalidateQueries({ queryKey: ["plugin-config-raw", name] });
@@ -505,9 +505,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           {checkLines.length ? (
             <pre className="plugin-config-page__check-output">{checkLines.join("\n")}</pre>
           ) : null}
-          {msg ? (
-            <p className={cn("text-sm", msg.includes("已保存") ? "text-emerald-400" : "text-destructive")}>{msg}</p>
-          ) : null}
+          {msg ? <p className="text-sm text-destructive">{msg}</p> : null}
           {mode === "form" ? (
             <>
               {pluginResolvedId ? (

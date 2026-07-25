@@ -378,7 +378,7 @@ export default function DatabaseBackupsPage() {
         title="备份管理"
         description="创建、下载与清理数据库备份。"
         actions={
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-nowrap items-center gap-1.5">
             <Button asChild variant="secondary" size="sm">
               <Link to="/database">返回数据库</Link>
             </Button>

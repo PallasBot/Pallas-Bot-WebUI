@@ -40,7 +40,7 @@ import {
   withPluginStoreQueueSuffix,
 } from "@/utils/pluginStoreActionQueue";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import { cn } from "@/lib/utils";
@@ -976,9 +976,35 @@ export default function PluginStorePage() {
     );
   }
 
+  const mastheadActions = (
+    <div className="flex flex-nowrap items-center gap-1.5">
+      <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
+        镜像源
+      </Button>
+      {storeSection === "community" && communityWebuiInstallEnabled ? (
+        <Button type="button" variant="secondary" size="sm" onClick={() => setGitInstallOpen(true)}>
+          Git 安装
+        </Button>
+      ) : null}
+      {storeSection !== "local" ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={checkingUpdate || loading}
+          onClick={() => void checkUpdates()}
+        >
+          {checkingUpdate ? "检查中…" : "检查更新"}
+        </Button>
+      ) : (
+        <RefreshIconButton busy={loading} label="刷新列表" showLabel onClick={() => void refreshStore(true)} />
+      )}
+    </div>
+  );
+
   return (
     <div className="console-hub-page plugin-store-page plugin-store-page--hub">
-      <PageMasthead title="插件商店" description={pageLead} />
+      <PageMasthead title="插件商店" description={pageLead} actions={mastheadActions} />
 
       <ChromeTools>
         {/* 搜索 flex 铺满；类型/筛选 Select shrink-0 + nowrap，避免挤换行 */}
@@ -1046,34 +1072,6 @@ export default function PluginStorePage() {
             </SelectContent>
           </Select>
         </ChromeField>
-        <div className={CHROME_TOOLS_TRAILING}>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
-            镜像源
-          </Button>
-          {storeSection === "community" && communityWebuiInstallEnabled ? (
-            <Button type="button" variant="secondary" size="sm" onClick={() => setGitInstallOpen(true)}>
-              Git 安装
-            </Button>
-          ) : null}
-          {storeSection !== "local" ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={checkingUpdate || loading}
-              onClick={() => void checkUpdates()}
-            >
-              {checkingUpdate ? "检查中…" : "检查更新"}
-            </Button>
-          ) : (
-            <RefreshIconButton
-              busy={loading}
-              label="刷新列表"
-              showLabel
-              onClick={() => void refreshStore(true)}
-            />
-          )}
-        </div>
       </ChromeTools>
 
       <p className="muted text-sm">共 {resultCount} 项</p>

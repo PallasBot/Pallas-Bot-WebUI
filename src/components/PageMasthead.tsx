@@ -26,12 +26,13 @@ export default function PageMasthead({
   return (
     <header
       className={cn(
-        /* 底边距由 --console-page-masthead-gap（.page-masthead）；父级有 gap 时 CSS 归零 */
-        "page-masthead flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
+        /* 底边距由 --console-page-masthead-gap（.page-masthead）；父级有 gap 时 CSS 归零。
+         * 有 actions 时窄屏也保持「标题左 · 操作右」，勿再叠到标题下方。 */
+        "page-masthead flex flex-row items-center justify-between gap-2 sm:items-start sm:gap-3",
         className,
       )}
     >
-      <div className="min-w-0 space-y-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <h1 className="flex items-center gap-1.5 text-[length:var(--console-page-title-size,1.15rem)] font-semibold tracking-tight text-foreground">
           {NavIcon ? (
             <NavIcon className="panel__title-ico size-[1.15em] shrink-0 opacity-80" aria-hidden strokeWidth={2} />
@@ -49,7 +50,9 @@ export default function PageMasthead({
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">{actions}</div>
+      ) : null}
     </header>
   );
 }

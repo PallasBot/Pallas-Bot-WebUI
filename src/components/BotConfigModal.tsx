@@ -238,7 +238,7 @@ export default function BotConfigModal({
 
         <div className="plugin-config-dialog__bd min-h-0 flex-1 overflow-auto px-4 py-3">
           {draft ? (
-            <div className="bot-config-edit bot-config-edit--modal">
+            <div className="bot-config-edit--modal">
               {saveErr ? <p className="alert alert--err mb-3">{saveErr}</p> : null}
               <div className="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches">
                 <BoolSwitchField
