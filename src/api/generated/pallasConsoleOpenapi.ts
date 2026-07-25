@@ -1615,6 +1615,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/expression-bank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Expression Bank Get */
+        get: operations["_llm_expression_bank_get_pallas_api_llm_expression_bank_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/llm/expression-bank/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Expression Bank Resolve */
+        post: operations["_llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/llm/conversation-kernel/status": {
         parameters: {
             query?: never;
@@ -8190,6 +8224,83 @@ export interface operations {
         };
     };
     _llm_repeater_feedback_promotion_candidates_resolve_pallas_api_llm_repeater_feedback_promotion_candidates_resolve_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_expression_bank_get_pallas_api_llm_expression_bank_get: {
+        parameters: {
+            query: {
+                /** @description 群号 */
+                group_id: number;
+                /** @description 状态筛选 */
+                status?: ("shadow" | "active" | "rejected") | null;
+                limit?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_expression_bank_resolve_pallas_api_llm_expression_bank_resolve_post: {
         parameters: {
             query?: {
                 token?: string | null;
