@@ -163,43 +163,45 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
           {!loadBusy && !loadErr && draft ? (
             <div className="social-config-dialog__body">
               {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
-              <div className="social-config-dialog__row">
-                <span>封禁本群</span>
-                <Select
-                  value={draft.banned ? "1" : "0"}
-                  onValueChange={(v) => setDraft({ ...draft, banned: v === "1" })}
-                >
-                  <SelectTrigger className="h-9 w-auto min-w-[5rem]" aria-label="封禁本群">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">是</SelectItem>
-                    <SelectItem value="0">否</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="social-config-dialog__row">
-                <span>轮盘模式</span>
-                <Select
-                  value={rouletteModeSelectValue(draft.roulette_mode)}
-                  onValueChange={(v) =>
-                    setDraft({
-                      ...draft,
-                      roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-9 w-auto min-w-[8rem]" aria-label="轮盘模式">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rouletteOpts.map((o) => (
-                      <SelectItem key={o.value} value={String(o.value)}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="social-config-dialog__row-pair">
+                <div className="social-config-dialog__row">
+                  <span>封禁本群</span>
+                  <Select
+                    value={draft.banned ? "1" : "0"}
+                    onValueChange={(v) => setDraft({ ...draft, banned: v === "1" })}
+                  >
+                    <SelectTrigger className="h-9 w-auto min-w-0 shrink" aria-label="封禁本群">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">是</SelectItem>
+                      <SelectItem value="0">否</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="social-config-dialog__row">
+                  <span>轮盘模式</span>
+                  <Select
+                    value={rouletteModeSelectValue(draft.roulette_mode)}
+                    onValueChange={(v) =>
+                      setDraft({
+                        ...draft,
+                        roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-9 w-auto min-w-0 shrink" aria-label="轮盘模式">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rouletteOpts.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="social-config-dialog__block">
                 <div className="social-config-dialog__block-hd">禁用插件</div>
