@@ -5,7 +5,6 @@ on:
     types: [closed]
     branches: [main, master]
   push:
-    branches: [main, master]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -33,14 +32,13 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # 正式版：合并进 main/master 的同仓库 PR，或直推 main/master（均默认 patch + v* tag）
-    # 直推时排除：机器人发版提交 chore(release):、GitHub PR 合并/squash 类提交（避免与 pull_request 重复发版）
+    # 正式版：合并进 main/master 的同仓库 PR（默认 patch + v* tag）
     # 手动：workflow_dispatch；或推送不含 -dev. 的 v* tag
+    # 注意：直推 main 不发版（避免改文档/工作流误触发）
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master') && github.event.pull_request.head.repo.full_name == github.repository) ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.')) ||
-      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master') && github.event.head_commit != null && !startsWith(github.event.head_commit.message, 'chore(release):') && !startsWith(github.event.head_commit.message, 'Merge pull request') && !startsWith(github.event.head_commit.message, 'Merge branch') && !contains(github.event.head_commit.message, '(#'))
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-dev.'))
 
     steps:
       - name: Checkout
@@ -57,11 +55,10 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Bump version and push tag（合并 PR / 直推 main / Actions 手动发版）
+      - name: Bump version and push tag（合并 PR / Actions 手动发版）
         if: >-
           github.event_name == 'workflow_dispatch' ||
-          github.event_name == 'pull_request' ||
-          (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master'))
+          github.event_name == 'pull_request'
         env:
           # workflow_dispatch 用输入；PR 合并可读 bump:minor / bump:major 标签；否则 patch
           BUMP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.bump || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:major') && 'major') || (github.event_name == 'pull_request' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:minor') && 'minor') || 'patch' }}
@@ -106,7 +103,7 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "pull_request" ] || [[ "$REF" == refs/heads/main || "$REF" == refs/heads/master ]]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$EVENT_NAME" = "pull_request" ]; then
             T="v$(node -p "require('./package.json').version")"
           elif [[ "$REF" == refs/tags/* ]]; then
             T="${REF#refs/tags/}"
