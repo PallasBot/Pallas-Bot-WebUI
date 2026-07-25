@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.9] - 2026-07-25
+
+### 📚 文档更新
+
+* docs(release): 重写 v0.7.8 说明（含自 v0.7.2 累计） ([65e359c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/65e359cdc6c86e002cfbbe5f0a48c299c2ce279f))
+
+**完整变更**: [`v0.7.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.8...HEAD)
+
+
 ## [0.7.8] - 2026-07-25
 
 相对 **0.7.2**（Bot **v4.1.1** 捆绑）至本版的累计说明；中间 0.7.3～0.7.7 的逐条提交见下文各节。
