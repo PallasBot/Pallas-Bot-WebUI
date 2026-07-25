@@ -51,6 +51,7 @@ import {
   type MemoryCategory,
 } from "@/api/memoryGraphApi";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
+import AiScopeHint from "@/components/ai/AiScopeHint";
 import {
   parseScopeBotId,
   parseScopeGroupId,
@@ -443,13 +444,9 @@ export default function AiMemoryPage() {
   return (
     <div className="space-y-3">
       {msg ? <p className="text-sm text-muted-foreground">{msg}</p> : null}
-      {!botReady ? (
-        <p className="text-sm text-muted-foreground">请在顶栏指定 Bot QQ。</p>
-      ) : null}
+      {!botReady ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
       {botReady && group == null ? (
-        <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-          未指定群号时默认使用全局作用域。
-        </div>
+        <AiScopeHint>未指定群号时默认使用全局作用域。</AiScopeHint>
       ) : null}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="space-y-3">

@@ -15,6 +15,7 @@ import type {
   PersonaObserveData,
 } from "@/api/pallasTypes";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
+import AiScopeHint from "@/components/ai/AiScopeHint";
 import {
   parseScopeBotId,
   parseScopeGroupId,
@@ -68,14 +69,17 @@ function AxisMeter({ label, value }: { label: string; value: number }) {
         <span className="text-sm font-medium tabular-nums tracking-tight">{value.toFixed(2)}</span>
       </div>
       <div className="relative h-1 overflow-hidden rounded-full bg-muted">
-        <div className="absolute inset-y-0 left-1/2 w-px bg-border" aria-hidden />
+        <div
+          className="absolute inset-y-0 left-1/2 z-[1] w-0.5 -translate-x-1/2 bg-foreground/45"
+          aria-hidden
+        />
         <div
           className="absolute inset-y-0 left-0 rounded-full bg-primary/25"
           style={{ width: `${pct}%` }}
           aria-hidden
         />
         <div
-          className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-2 ring-background"
+          className="absolute top-1/2 z-[2] size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-2 ring-background"
           style={{ left: `${pct}%` }}
           aria-hidden
         />
@@ -427,7 +431,7 @@ function ExportCard({
           </Button>
         </div>
         {!botReady ? (
-          <p className="text-sm text-muted-foreground">请在顶栏指定 Bot QQ。</p>
+          <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint>
         ) : !bundle ? (
           <p className="text-sm text-muted-foreground">暂无导出数据。</p>
         ) : (
@@ -565,7 +569,7 @@ export default function AiPersonaPage() {
               {groupReady ? (
                 <AffectBlock refine={observe?.affect_refine} triggers={observe?.affect_triggers ?? []} />
               ) : (
-                <p className="text-sm text-muted-foreground">请在顶栏指定群号以查看群情感微调与触发词。</p>
+                <AiScopeHint>请在顶栏指定群号以查看群情感微调与触发词。</AiScopeHint>
               )}
               {groupReady ? (
                 <div className="space-y-2">
@@ -586,7 +590,7 @@ export default function AiPersonaPage() {
         <CardContent>
           <StateBlock loading={styleQ.isLoading} error={styleQ.error}>
             {!groupReady ? (
-              <p className="text-sm text-muted-foreground">请在顶栏指定群号。</p>
+              <AiScopeHint>请在顶栏指定群号。</AiScopeHint>
             ) : styleLive ? (
               <GroupStyleLiveCard data={styleLive} />
             ) : (
