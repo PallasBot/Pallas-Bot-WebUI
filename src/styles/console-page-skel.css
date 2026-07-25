@@ -1,0 +1,89 @@
+/* Vue ConsolePageSkeleton.vue scoped → React 全局（首页 / 协议等加载占位） */
+.console-page-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 120px;
+  margin-bottom: 28px;
+}
+
+.console-page-skel__panel {
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.console-page-skel__hd {
+  height: 22px;
+  margin: 12px 16px 0;
+  border-radius: var(--radius-control, 8px);
+  max-width: 180px;
+  background: var(--border-strong);
+}
+
+.console-page-skel__bd {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.console-page-skel__line {
+  height: 11px;
+  border-radius: var(--radius-control, 8px);
+  background: var(--border-strong);
+  max-width: 100%;
+}
+
+.console-page-skel__line--mid {
+  width: 72%;
+}
+
+.console-page-skel__line--short {
+  width: 44%;
+}
+
+/* 面板内联骨架 */
+.console-block-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+  min-height: 48px;
+}
+
+.console-block-skel__line {
+  height: 12px;
+  border-radius: var(--radius-control, 8px);
+  background: var(--border-strong);
+  max-width: 100%;
+}
+
+.console-block-skel__line--mid {
+  width: 68%;
+}
+
+.console-block-skel__line--short {
+  width: 42%;
+}
+
+/* 数值位脉冲（替代「…」） */
+.skel-value {
+  display: inline-block;
+  height: 0.85em;
+  width: 2.4em;
+  max-width: 100%;
+  border-radius: var(--radius-control, 8px);
+  background: var(--border-strong);
+  vertical-align: -0.12em;
+}
+
+.skel-value--wide {
+  width: 4.5em;
+}
+
+.skel-value--narrow {
+  width: 1.6em;
+}

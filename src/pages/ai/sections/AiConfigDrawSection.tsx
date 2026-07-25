@@ -1,0 +1,70 @@
+import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
+import PluginConfigWorkspace, {
+  type PluginConfigWorkspaceHandle,
+} from "@/components/PluginConfigWorkspace";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
+import { aiConfigSectionPath } from "@/config/aiConfigSections";
+
+/** 旧独立画画段；现行入口为媒体 · 画画。 */
+export default function AiConfigDrawSection() {
+  const workspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
+  const [status, setStatus] = useState<
+    Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">
+  >({
+    saving: false,
+    checking: false,
+    loading: true,
+    hasData: false,
+    supportsConfigCheck: false,
+  });
+
+  useRegisterAiConfigChrome({});
+
+  const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        <p className="text-xs text-muted-foreground">
+          画画配置已并入{" "}
+          <Link
+            to={aiConfigSectionPath("media", "draw")}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            AI 配置 · 媒体 · 画画
+          </Link>
+          ；此处与插件配置共享。
+        </p>
+        <PluginConfigWorkspace
+          ref={workspaceRef}
+          pluginName="draw"
+          presentation="dialog"
+          onStatusChange={setStatus}
+        />
+        <div className="flex flex-wrap gap-2">
+          {status.supportsConfigCheck ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!canSave}
+              onClick={() => void workspaceRef.current?.runConfigCheck()}
+            >
+              {status.checking ? "检测中…" : AI_ENTRY_PLUGIN_CONFIG_CHECK.label}
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            disabled={!canSave}
+            onClick={() => void workspaceRef.current?.save()}
+          >
+            {status.saving ? "保存中…" : "保存"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

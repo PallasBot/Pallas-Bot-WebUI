@@ -1,52 +1,73 @@
-import { computed, ref } from "vue";
 import {
   botRestartPhaseLabel,
   type BotRestartPhase,
 } from "@/utils/botRestartProgress";
 
-export const botRestartDialogOpen = ref(false);
-export const botRestartBusy = ref(false);
-export const botRestartPhase = ref<BotRestartPhase>("idle");
-export const botRestartMsg = ref("");
-export const botRestartErr = ref("");
-export const botRestartProgressPercent = ref(0);
+export type { BotRestartPhase };
 
-export const botRestartInProgress = computed(
-  () =>
-    botRestartBusy.value
-    || (botRestartDialogOpen.value && botRestartPhase.value !== "online")
-    || (botRestartPhase.value !== "idle"
-      && botRestartPhase.value !== "online"
-      && botRestartPhase.value !== "timeout"
-      && botRestartPhase.value !== "failed"),
-);
+type Listener = () => void;
 
-export const botRestartProgressLabel = computed(() => {
-  const fromPhase = botRestartPhaseLabel(botRestartPhase.value);
-  return fromPhase || botRestartMsg.value;
-});
+type Session = {
+  open: boolean;
+  busy: boolean;
+  phase: BotRestartPhase;
+  msg: string;
+  err: string;
+  progressPercent: number;
+};
 
-export function patchBotRestartSession(patch: {
-  open?: boolean;
-  busy?: boolean;
-  phase?: BotRestartPhase;
-  msg?: string;
-  err?: string;
-  progressPercent?: number;
-}): void {
-  if (patch.open !== undefined) botRestartDialogOpen.value = patch.open;
-  if (patch.busy !== undefined) botRestartBusy.value = patch.busy;
-  if (patch.phase !== undefined) botRestartPhase.value = patch.phase;
-  if (patch.msg !== undefined) botRestartMsg.value = patch.msg;
-  if (patch.err !== undefined) botRestartErr.value = patch.err;
-  if (patch.progressPercent !== undefined) botRestartProgressPercent.value = patch.progressPercent;
+let session: Session = {
+  open: false,
+  busy: false,
+  phase: "idle",
+  msg: "",
+  err: "",
+  progressPercent: 0,
+};
+
+const listeners = new Set<Listener>();
+
+function emit() {
+  for (const fn of listeners) fn();
 }
 
-export function resetBotRestartSession(): void {
-  botRestartDialogOpen.value = false;
-  botRestartBusy.value = false;
-  botRestartPhase.value = "idle";
-  botRestartMsg.value = "";
-  botRestartErr.value = "";
-  botRestartProgressPercent.value = 0;
+export function getBotRestartSession(): Session {
+  return session;
+}
+
+export function subscribeBotRestartSession(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function syncRestartSession(patch: Partial<Session>) {
+  session = { ...session, ...patch };
+  emit();
+}
+
+export function resetBotRestartSession() {
+  session = {
+    open: false,
+    busy: false,
+    phase: "idle",
+    msg: "",
+    err: "",
+    progressPercent: 0,
+  };
+  emit();
+}
+
+export function botRestartInProgress(s: Session = session): boolean {
+  return (
+    s.busy
+    || (s.open && s.phase !== "online")
+    || (s.phase !== "idle"
+      && s.phase !== "online"
+      && s.phase !== "timeout"
+      && s.phase !== "failed")
+  );
+}
+
+export function botRestartProgressLabel(s: Session = session): string {
+  return botRestartPhaseLabel(s.phase) || s.msg;
 }

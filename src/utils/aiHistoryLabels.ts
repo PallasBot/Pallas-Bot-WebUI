@@ -71,6 +71,14 @@ export function labelOutcome(raw?: string | null): string {
   return OUTCOME_LABELS[key] || key;
 }
 
+export function labelRole(raw?: string | null): string {
+  const key = String(raw || "").trim().toLowerCase();
+  if (key === "assistant") return "牛牛";
+  if (key === "user") return "用户";
+  if (key === "system") return "系统";
+  return key ? String(raw) : "—";
+}
+
 export function labelFeatureLevel(raw?: string | null): string {
   const key = String(raw || "").trim().toLowerCase();
   if (!key) return "—";
@@ -96,4 +104,56 @@ export function labelRepeaterMode(raw?: string | null): string {
   if (key === "llm_first") return "优先大模型";
   if (key === "corpus_first") return "优先语料";
   return String(raw);
+}
+
+/** 反哺 / 统计里的 llm_route、任务类型展示名（按实际效果，不直译内部代号）。 */
+const LLM_ROUTE_LABELS: Record<string, string> = {
+  plain_llm_chat: "模型直出",
+  corpus_select: "语料选句",
+  corpus_polish_lite: "轻润色",
+  corpus_polish: "完整润色",
+  corpus_fallback: "兜底现编",
+  // repeater 管线阶段：选句 → 轻改 → 候选拼接 → 语料不足时现编
+  pipeline_select: "接话选句",
+  pipeline_rewrite: "接话轻润色",
+  pipeline_stitch: "候选拼接",
+  pipeline_generate: "接话现编",
+  llm_chat: "@ 对话",
+  drunk: "醉聊",
+  repeater_select: "接话选句",
+  repeater_polish_lite: "接话轻润色",
+  repeater_fallback: "接话现编",
+  repeater_polish: "接话完整润色",
+};
+
+export function labelLlmRoute(raw?: string | null): string {
+  const key = String(raw || "").trim();
+  if (!key) return "未知路由";
+  return LLM_ROUTE_LABELS[key.toLowerCase()] || key;
+}
+
+const WRITEBACK_STATUS_LABELS: Record<string, string> = {
+  written: "已写回",
+  failed: "写回失败",
+  pending: "待写回",
+  skipped: "已跳过",
+};
+
+const WRITEBACK_MESSAGE_LABELS: Record<string, string> = {
+  context_repository: "已写入接话语料库",
+  auto_promoted: "已自动升格写回",
+  "empty trigger or reply": "触发句或回复为空",
+  "corpus contamination guard": "被语料污染防护拦截",
+};
+
+export function labelWritebackStatus(raw?: string | null): string {
+  const key = String(raw || "").trim().toLowerCase();
+  if (!key) return "";
+  return WRITEBACK_STATUS_LABELS[key] || key;
+}
+
+export function labelWritebackMessage(raw?: string | null): string {
+  const key = String(raw || "").trim();
+  if (!key) return "";
+  return WRITEBACK_MESSAGE_LABELS[key] || WRITEBACK_MESSAGE_LABELS[key.toLowerCase()] || key;
 }

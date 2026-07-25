@@ -1,0 +1,70 @@
+/* Ported from Vue HomeHourlyChartSvg.vue scoped */
+.home-plugin-hourly-chart {
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-plugin-hourly-chart--interactive {
+  position: relative;
+  touch-action: none;
+}
+
+.home-plugin-hourly-chart__svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.home-plugin-hourly-chart__svg .home-plugin-bucket__grid {
+  stroke: color-mix(in srgb, var(--border) 88%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-hourly-chart__svg .home-plugin-bucket__axis {
+  stroke: color-mix(in srgb, var(--border-strong) 92%, var(--border) 8%);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-hourly-chart__svg .home-plugin-bucket__ytick {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+
+.home-plugin-hourly-chart__svg .home-plugin-chart-line {
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-plugin-hour-ticks {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 0 1px;
+  font-size: 10px;
+  margin: 4px 0 0;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.home-plugin-hour-ticks span {
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-plugin-hour-ticks__unit {
+  font-size: 10px;
+  opacity: 0.72;
+}

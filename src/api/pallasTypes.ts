@@ -348,6 +348,15 @@ export interface ConsoleDailyStatRow {
   sent: number;
   matcher_runs: number;
   api_calls?: number;
+  /** 当日收到过群消息的去重群数 */
+  active_groups?: number;
+}
+
+export interface ConsoleGroupMetrics {
+  dag: number;
+  mag: number;
+  dag_mag_ratio: number | null;
+  mag_days: number;
 }
 
 export interface ConsoleDailyStatsData {
@@ -358,6 +367,7 @@ export interface ConsoleDailyStatsData {
   rows: ConsoleDailyStatRow[];
   live_today: Record<string, { received: number; sent: number; matcher_runs: number }>;
   server_date: string;
+  group_metrics?: ConsoleGroupMetrics;
 }
 
 export interface PluginRunStatsData {
@@ -690,6 +700,10 @@ export interface PluginConfigField {
   ui_order?: number;
   /** 进阶项，默认折叠 */
   ui_hidden?: boolean;
+  /** 专用控件，如 provider_gateway */
+  ui_widget?: string;
+  /** provider_gateway 绑定声明 */
+  ui_gateway?: Record<string, unknown>;
 }
 
 export interface PluginConfigUnexpectedKey {
@@ -820,6 +834,12 @@ export interface LlmProviderConfigRow {
   default_model: string;
   enabled: boolean;
   task_models: Record<string, string>;
+  /** chat_completions | responses | anthropic_messages */
+  request_method?: string;
+  model_pricing?: Record<
+    string,
+    { price_in?: number; price_out?: number; cache_price_in?: number; cache_price_out?: number }
+  >;
 }
 
 export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
@@ -827,6 +847,7 @@ export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" |
   routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
     chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
     tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
+    cost_currency?: string;
   };
 };
 
@@ -845,7 +866,7 @@ export interface LlmProviderModelsResult {
   error?: string;
 }
 
-/** Provider 实时连通性测试结果（经 BFF 代理 AI 仓 ping）。 */
+/** Provider 实时连通性测试结果（Bot 直连上游）。 */
 export type LlmProviderTestResult =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/providers/{provider_id}/test"]["post"]>;
 
@@ -921,7 +942,10 @@ export interface LlmTaskMetricRow {
 export interface LlmTokenMetricBreakdownRow {
   prompt_tokens?: number;
   completion_tokens?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
   total_tokens?: number;
+  cost_total?: number;
 }
 
 export interface LlmTokenMetricsSlice {
@@ -930,10 +954,36 @@ export interface LlmTokenMetricsSlice {
   updated_at?: number;
   prompt_tokens: number;
   completion_tokens: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
   total_tokens: number;
+  cost_total?: number;
+  cost_currency?: string;
   by_task: Record<string, LlmTokenMetricBreakdownRow>;
   by_provider?: Record<string, LlmTokenMetricBreakdownRow>;
   by_model?: Record<string, LlmTokenMetricBreakdownRow>;
+  by_hour?: Record<string, LlmTokenMetricBreakdownRow>;
+}
+
+export interface LlmImageMetricBreakdownRow {
+  ok_count?: number;
+  fail_count?: number;
+  image_count?: number;
+  cost_total?: number;
+}
+
+export interface LlmImageMetricsSlice {
+  source?: string;
+  day_key?: string;
+  updated_at?: number;
+  ok_count?: number;
+  fail_count?: number;
+  image_count?: number;
+  cost_total?: number;
+  cost_currency?: string;
+  by_gateway?: Record<string, LlmImageMetricBreakdownRow>;
+  by_provider?: Record<string, LlmImageMetricBreakdownRow>;
+  by_model?: Record<string, LlmImageMetricBreakdownRow>;
 }
 
 export interface LlmClassificationTotals {
@@ -944,6 +994,23 @@ export interface LlmClassificationTotals {
   tools_off?: number;
   vision_on?: number;
   vision_off?: number;
+}
+
+export interface LlmRagMetricsSlice {
+  source?: string;
+  day_key?: string;
+  updated_at?: number;
+  hit_count?: number;
+  miss_count?: number;
+  hit_rate?: number;
+  by_document?: Record<string, number>;
+  by_source?: Record<string, number>;
+}
+
+export interface LlmGatesSlice {
+  skip?: number;
+  defer?: number;
+  proceed?: number;
 }
 
 export interface LlmTaskMetricsSlice {
@@ -957,6 +1024,10 @@ export interface LlmTaskMetricsSlice {
   provider_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
   model_stats?: Record<string, LlmRuntimeDimensionStatsRow>;
   tokens?: LlmTokenMetricsSlice;
+  images?: LlmImageMetricsSlice;
+  rag?: LlmRagMetricsSlice;
+  memory_rag?: LlmRagMetricsSlice;
+  gates?: LlmGatesSlice;
   classification?: {
     totals: LlmClassificationTotals;
   };
@@ -1000,15 +1071,6 @@ export interface LlmTaskStatsData {
     server_date: string;
   };
 }
-
-type GeneratedLlmWizardStatusData =
-  OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/wizard/status"]["get"]>;
-
-export type LlmWizardCheckRow = NonNullable<GeneratedLlmWizardStatusData["checks"]>[number];
-
-export type LlmWizardStatusData = Omit<GeneratedLlmWizardStatusData, "checks"> & {
-  checks: LlmWizardCheckRow[];
-};
 
 type GeneratedLlmRuntimeOverviewData =
   OpenapiOkData<ConsoleOpenapiPaths["/pallas/api/common-config/llm/runtime-overview"]["get"]>;

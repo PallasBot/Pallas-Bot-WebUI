@@ -9,7 +9,7 @@ export const OFFICIAL_EXTENSION_TITLES: Record<string, string> = {
   "pallas-plugin-maa": "MAA 远控",
   "pallas-plugin-protocol": "协议端管理",
   "pallas-plugin-who-is-spy": "谁是卧底",
-  "pallas-plugin-ai-media": "唱歌 / 酒后聊天",
+  "pallas-plugin-ai-media": "牛牛唱歌",
   "pallas-plugin-bot-status": "牛牛状态",
 };
 
@@ -20,8 +20,23 @@ export const OFFICIAL_EXTENSION_DESCRIPTIONS: Record<string, string> = {
   "pallas-plugin-maa": "MAA 远控（含 worker 插件 pallas_plugin_maa 与分片 hub 入口 pallas_plugin_maa_hub）。",
   "pallas-plugin-protocol": "协议端管理（NapCat / SnowLuma）与 牛牛重新上号（含分片 worker 转发）。",
   "pallas-plugin-who-is-spy": "谁是卧底。",
-  "pallas-plugin-ai-media": "唱歌（sing）与 酒后聊天（chat）。",
+  "pallas-plugin-ai-media": "牛牛唱歌（翻唱 / 点歌）。",
   "pallas-plugin-bot-status": "牛牛状态（在吗、报数、离线邮件）。",
+};
+
+/** Matcher / 运行统计里的模块名 → 官方扩展包名（与 Bot EXTRA_PACKAGE_MODULES 对齐） */
+export const OFFICIAL_EXTENSION_MODULE_PACKAGES: Record<string, string> = {
+  pallas_plugin_protocol: "pallas-plugin-protocol",
+  pallas_plugin_relogin_bot: "pallas-plugin-protocol",
+  pallas_plugin_relogin_forward: "pallas-plugin-protocol",
+  pallas_plugin_duel: "pallas-plugin-duel",
+  pallas_plugin_maa: "pallas-plugin-maa",
+  pallas_plugin_maa_hub: "pallas-plugin-maa",
+  pallas_plugin_who_is_spy: "pallas-plugin-who-is-spy",
+  pallas_plugin_dream: "pallas-plugin-dream",
+  pallas_plugin_draw: "pallas-plugin-draw",
+  pallas_plugin_sing: "pallas-plugin-ai-media",
+  pallas_plugin_bot_status: "pallas-plugin-bot-status",
 };
 
 const BOT_README_COVER = "/pallas/official-extensions/covers/pallas-readme-cover.webp";
@@ -42,6 +57,21 @@ export function officialExtensionDescription(packageName: string): string {
 
 export function officialExtensionTitle(packageName: string): string {
   return OFFICIAL_EXTENSION_TITLES[(packageName || "").trim()] || "";
+}
+
+/** Matcher 统计键（模块名 / 包名）→ 官方中文标题；无映射返回空串 */
+export function officialExtensionTitleForMatcherKey(key: string): string {
+  const raw = (key || "").trim();
+  if (!raw) return "";
+  if (OFFICIAL_EXTENSION_TITLES[raw]) return OFFICIAL_EXTENSION_TITLES[raw];
+  const pkg = OFFICIAL_EXTENSION_MODULE_PACKAGES[raw];
+  if (pkg) return officialExtensionTitle(pkg);
+  // pallas_plugin_foo_bar → pallas-plugin-foo-bar
+  if (raw.startsWith("pallas_plugin_")) {
+    const guessed = `pallas-plugin-${raw.slice("pallas_plugin_".length).replace(/_/g, "-")}`;
+    return officialExtensionTitle(guessed);
+  }
+  return "";
 }
 
 export function officialExtensionPackageShortName(packageName: string): string {

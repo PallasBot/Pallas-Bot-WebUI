@@ -31,8 +31,8 @@ export const AI_LOG_DEFAULTS = {
   lineOptions: [100, 200, 500, 1000] as number[],
 } as const;
 
-/** AI 扩展日志 SSE kind（与 BFF `/ai-extension/logs` 对齐）。 */
-export type AiExtensionLogKind = "uvicorn" | "celery" | "celery-media";
+/** AI 扩展日志 SSE kind（与 BFF `/ai-extension/logs` 对齐；LLM default 队列已下线）。 */
+export type AiExtensionLogKind = "uvicorn" | "celery-media";
 
 export const AI_EXTENSION_LOG_KINDS: {
   id: AiExtensionLogKind;
@@ -40,12 +40,27 @@ export const AI_EXTENSION_LOG_KINDS: {
   shortLabel: string;
 }[] = [
   { id: "uvicorn", label: "Web 服务（uvicorn / api）", shortLabel: "Web 服务" },
-  { id: "celery", label: "任务队列 · LLM（default）", shortLabel: "Celery · LLM" },
   { id: "celery-media", label: "任务队列 · 媒体（media）", shortLabel: "Celery · 媒体" },
 ];
 
 /** Docker 全栈 compose 下 Bot 容器内 AI 日志挂载点（只读）。 */
 export const AI_EXTENSION_DOCKER_LOG_MOUNT = "/ai-logs";
+
+/** Runtime layout 徽章文案（后端返回英文键）。 */
+export const AI_RUNTIME_LAYOUT_LABELS: Record<string, string> = {
+  sibling: "同级源码",
+  managed: "托管安装",
+  env: "环境变量路径",
+  docker: "Docker",
+  remote: "远端服务",
+  missing: "未检测到",
+};
+
+export function aiRuntimeLayoutLabel(layout: string | null | undefined): string {
+  const key = (layout || "").trim();
+  if (!key) return "—";
+  return AI_RUNTIME_LAYOUT_LABELS[key] || key;
+}
 
 /** 统计 / 历史页榜单的展示上限。 */
 export const AI_STATS_LIMITS = {

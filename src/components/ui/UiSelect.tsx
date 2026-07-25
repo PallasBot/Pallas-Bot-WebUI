@@ -1,0 +1,39 @@
+/**
+ * @deprecated 新代码用 Radix `Select`（`@/components/ui/select`）。
+ * 原生 `<select>` 无法玻璃化，勿再新增调用。
+ */
+import type { SelectHTMLAttributes, ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+export const nativeSelectClassName =
+  "flex h-9 min-h-[var(--ui-ctrl-height,36px)] w-full appearance-none rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] bg-[var(--control-bg,hsl(var(--ui-background)))] px-3 py-1.5 text-sm text-[var(--text)] shadow-[var(--control-shadow)] focus-visible:outline-none focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)] disabled:cursor-not-allowed disabled:opacity-50 max-w-full";
+
+type Props = Omit<SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange"> & {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  invalid?: boolean;
+  children: ReactNode;
+};
+
+export default function UiSelect({
+  value = "",
+  onValueChange,
+  invalid = false,
+  disabled,
+  className,
+  children,
+  ...rest
+}: Props) {
+  return (
+    <select
+      {...rest}
+      className={cn(nativeSelectClassName, invalid && "border-destructive focus-visible:ring-destructive", className)}
+      value={value}
+      disabled={disabled}
+      aria-invalid={invalid || undefined}
+      onChange={(e) => onValueChange?.(e.target.value)}
+    >
+      {children}
+    </select>
+  );
+}

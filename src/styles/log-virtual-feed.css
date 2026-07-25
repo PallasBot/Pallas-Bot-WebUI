@@ -1,0 +1,93 @@
+/* Ported from Vue LogVirtualFeed.vue scoped — virtual row layout */
+.log-virtual-feed-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+.log-virtual-feed {
+  position: relative;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  /* 覆盖全局 .log-feed 的 padding，避免估高贴底后视觉上仍「差一截」 */
+  padding: 0;
+}
+.log-virtual-feed__spacer {
+  position: relative;
+  width: 100%;
+}
+.log-virtual-feed__window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.log-line--virtual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 10px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.log-line--virtual:hover,
+.log-line--virtual-active {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.log-line--virtual .log-line__lv-tag {
+  flex-shrink: 0;
+}
+.log-line--virtual .log-line__scope {
+  flex: 0 1 7rem;
+  max-width: 7rem;
+}
+.log-line--virtual .log-line__msg--clip {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.log-virtual-feed__detail {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+}
+.log-virtual-feed__detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.log-virtual-feed__detail-close {
+  margin-left: auto;
+  padding: 4px 10px;
+  min-height: 0;
+  font-size: 12px;
+}
+.log-virtual-feed__detail-body {
+  margin: 0;
+  max-height: min(220px, 28vh);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text);
+}
