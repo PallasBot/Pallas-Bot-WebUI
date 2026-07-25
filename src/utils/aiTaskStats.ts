@@ -108,6 +108,8 @@ export type TokenBucket = {
   cacheReadTokens: number;
   cacheWriteTokens: number;
   totalTokens: number;
+  costTotal: number;
+  costCurrency: string;
 };
 
 export function emptyTokenBucket(): TokenBucket {
@@ -117,6 +119,8 @@ export function emptyTokenBucket(): TokenBucket {
     cacheReadTokens: 0,
     cacheWriteTokens: 0,
     totalTokens: 0,
+    costTotal: 0,
+    costCurrency: "",
   };
 }
 
@@ -130,6 +134,8 @@ export function tokensFromSlice(tokens: LlmTokenMetricsSlice | undefined | null)
     cacheReadTokens: Number(tokens.cache_read_tokens ?? 0),
     cacheWriteTokens: Number(tokens.cache_write_tokens ?? 0),
     totalTokens: Number(tokens.total_tokens ?? 0) || promptTokens + completionTokens,
+    costTotal: Number(tokens.cost_total ?? 0),
+    costCurrency: String(tokens.cost_currency || "").trim(),
   };
 }
 
@@ -140,6 +146,8 @@ export function addTokenBuckets(a: TokenBucket, b: TokenBucket): TokenBucket {
     cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
     cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
     totalTokens: a.totalTokens + b.totalTokens,
+    costTotal: a.costTotal + b.costTotal,
+    costCurrency: a.costCurrency || b.costCurrency,
   };
 }
 
@@ -420,31 +428,6 @@ export function hourTokenRows(
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
-/** 粗估费用（USD/1M tokens）；无单价时返回 null。 */
-export function estimateTokenCostUsd(
-  byModel: Record<string, LlmTokenMetricBreakdownRow> | undefined,
-  rates: Record<string, { inputPerM: number; outputPerM: number }> = DEFAULT_MODEL_RATES_USD,
-): number | null {
-  let total = 0;
-  let used = false;
-  for (const [model, row] of Object.entries(byModel ?? {})) {
-    const rate = rates[model] ?? rates[model.toLowerCase()];
-    if (!rate) continue;
-    used = true;
-    const prompt = Number(row.prompt_tokens ?? 0);
-    const completion = Number(row.completion_tokens ?? 0);
-    total += (prompt / 1_000_000) * rate.inputPerM + (completion / 1_000_000) * rate.outputPerM;
-  }
-  return used ? total : null;
-}
-
-export const DEFAULT_MODEL_RATES_USD: Record<string, { inputPerM: number; outputPerM: number }> = {
-  "deepseek-chat": { inputPerM: 0.27, outputPerM: 1.1 },
-  "deepseek-reasoner": { inputPerM: 0.55, outputPerM: 2.19 },
-  "gpt-4.1-mini": { inputPerM: 0.4, outputPerM: 1.6 },
-  "gpt-4o-mini": { inputPerM: 0.15, outputPerM: 0.6 },
-};
-
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
   const bot = stats?.bot;
   const ai = stats?.ai;
@@ -456,7 +439,7 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
     cacheDenom > 0
       ? Math.round((1000 * Number(ai?.tokens?.cache_read_tokens ?? 0)) / cacheDenom) / 10
       : 0;
-  const estimatedCostUsd = estimateTokenCostUsd(ai?.tokens?.by_model);
+  const tokens = tokensFromSlice(ai?.tokens);
   return {
     reachable: stats?.ai_reachable,
     botOk: metricSum(bot, "submit_ok") + metricSum(bot, "callback_ok"),
@@ -464,19 +447,19 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
     aiFail: metricSum(ai, "task_fail"),
     aiQueued: stateCount(ai, "queued"),
     aiRunning: stateCount(ai, "running"),
-    tokens: tokensFromSlice(ai?.tokens),
+    tokens,
     tokenModelRows: tokenRows(ai?.tokens?.by_model),
     tokenProviderRows: tokenRows(ai?.tokens?.by_provider),
     tokenTaskRows: tokenRows(ai?.tokens?.by_task),
     tokenHourRows: hourTokenRows(ai?.tokens?.by_hour),
     cacheHitRate,
-    estimatedCostUsd,
     images: imagesFromSlice(ai?.images),
     imageGatewayRows: imageRows(ai?.images?.by_gateway),
     imageProviderRows: imageRows(ai?.images?.by_provider),
     imageModelRows: imageRows(ai?.images?.by_model),
     rag,
     memoryRag,
+
     ragDocumentRows: ragDocumentRows(rag.byDocument),
     gates,
     providerRows: dimensionRows(ai?.provider_stats),

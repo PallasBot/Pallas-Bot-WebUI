@@ -822,6 +822,10 @@ export interface LlmProviderConfigRow {
   task_models: Record<string, string>;
   /** chat_completions | responses | anthropic_messages */
   request_method?: string;
+  model_pricing?: Record<
+    string,
+    { price_in?: number; price_out?: number; cache_price_in?: number; cache_price_out?: number }
+  >;
 }
 
 export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" | "routing"> & {
@@ -829,6 +833,7 @@ export type LlmProvidersConfig = Omit<GeneratedLlmProvidersConfig, "providers" |
   routing: Omit<GeneratedLlmProvidersRouting, "chain_fallback" | "tasks"> & {
     chain_fallback: NonNullable<GeneratedLlmProvidersRouting["chain_fallback"]>;
     tasks: NonNullable<GeneratedLlmProvidersRouting["tasks"]>;
+    cost_currency?: string;
   };
 };
 
@@ -926,6 +931,7 @@ export interface LlmTokenMetricBreakdownRow {
   cache_read_tokens?: number;
   cache_write_tokens?: number;
   total_tokens?: number;
+  cost_total?: number;
 }
 
 export interface LlmTokenMetricsSlice {
@@ -937,6 +943,8 @@ export interface LlmTokenMetricsSlice {
   cache_read_tokens?: number;
   cache_write_tokens?: number;
   total_tokens: number;
+  cost_total?: number;
+  cost_currency?: string;
   by_task: Record<string, LlmTokenMetricBreakdownRow>;
   by_provider?: Record<string, LlmTokenMetricBreakdownRow>;
   by_model?: Record<string, LlmTokenMetricBreakdownRow>;

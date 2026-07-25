@@ -264,15 +264,19 @@ export default function AiStatisticsPage() {
             </Card>
             <Card>
               <CardContent className="space-y-1 p-3 sm:p-4">
-                <div className="text-xs text-muted-foreground">估算费用 (USD)</div>
+                <div className="text-xs text-muted-foreground">
+                  费用{summary.tokens.costCurrency ? ` (${summary.tokens.costCurrency})` : ""}
+                </div>
                 <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                   {loading
                     ? "…"
-                    : summary.estimatedCostUsd != null
-                      ? summary.estimatedCostUsd.toFixed(4)
+                    : summary.tokens.costTotal > 0
+                      ? summary.tokens.costTotal.toFixed(4)
                       : "—"}
                 </div>
-                <div className="text-[11px] text-muted-foreground">按内置单价粗估，未知模型不计</div>
+                <div className="text-[11px] text-muted-foreground">
+                  按提供方模型单价记账；未配置单价不计
+                </div>
               </CardContent>
             </Card>
             <Card>

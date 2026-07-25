@@ -181,6 +181,7 @@ export function blankProvider(): LlmProviderRow {
     capabilities: ["text"],
     model_effort: "",
     request_method: "chat_completions",
+    model_pricing: {},
   };
 }
 

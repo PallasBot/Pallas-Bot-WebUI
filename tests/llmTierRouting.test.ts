@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   applyLocalTiers,
+  applyTaskRoutes,
   applyTaskTiers,
   foldLocalTiers,
+  foldTaskRoutes,
   foldTaskTiers,
-} from "../react/src/utils/llmTierRouting";
+} from "../src/utils/llmTierRouting";
 
 describe("llmTierRouting task tiers", () => {
   it("expands high/low primary into task routes and chain", () => {
@@ -27,13 +29,18 @@ describe("llmTierRouting task tiers", () => {
     });
     expect(next.routing.tasks.llm_chat).toBe("cloud");
     expect(next.routing.tasks.repeater_select).toBe("local");
+    expect(next.routing.tasks.affect_refine).toBe("local");
     expect(next.routing.chain_fallback).toEqual(["cloud", "local"]);
     expect(next.providers.find((p) => p.id === "cloud")?.task_models.llm_chat).toBe("gpt-4o");
     expect(next.providers.find((p) => p.id === "local")?.task_models.repeater_select).toBe("qwen7");
+    expect(next.providers.find((p) => p.id === "local")?.task_models.affect_refine).toBe("qwen7");
     expect(next.providers.find((p) => p.id === "local")?.task_models.llm_chat).toBe("qwen14");
     expect(next.providers.find((p) => p.id === "cloud")?.task_models.repeater_select).toBe(
       "gpt-mini",
     );
+    expect(next.routing.route_source).toBe("tiers");
+    expect(next.routing.task_backups).toEqual({});
+    expect(next.routing.tier_backups).toEqual({ high: "local", low: "cloud" });
   });
 
   it("keeps distinct high-backup and low-primary models on shared provider", () => {
@@ -255,5 +262,73 @@ describe("llmTierRouting local tiers", () => {
     });
     expect(folded.high.backup).toBe("");
     expect(folded.low.backup).toBe("");
+  });
+});
+
+describe("llmTierRouting per-task routes", () => {
+  it("applies and folds per-task primary/backup including affect_refine", () => {
+    const doc = {
+      providers: [
+        { id: "cloud", default_model: "gpt-4o", task_models: {} },
+        { id: "local", default_model: "qwen", task_models: {} },
+      ],
+      routing: { chain_fallback: [], tasks: {} },
+    };
+    const routes = foldTaskRoutes(doc);
+    routes.llm_chat = {
+      primary: { providerId: "cloud", model: "gpt-4o" },
+      backup: { providerId: "local", model: "qwen14" },
+    };
+    routes.affect_refine = {
+      primary: { providerId: "local", model: "qwen05" },
+      backup: { providerId: "cloud", model: "gpt-mini" },
+    };
+    const next = applyTaskRoutes(doc, routes);
+    expect(next.routing.route_source).toBe("tasks");
+    expect(next.routing.tasks.affect_refine).toBe("local");
+    expect(next.routing.task_backups?.affect_refine).toBe("cloud");
+    expect(next.routing.task_backup_models?.affect_refine).toBe("gpt-mini");
+    expect(next.providers.find((p) => p.id === "local")?.task_models.affect_refine).toBe("qwen05");
+    const folded = foldTaskRoutes(next);
+    expect(folded.affect_refine.primary).toEqual({ providerId: "local", model: "qwen05" });
+    expect(folded.affect_refine.backup).toEqual({ providerId: "cloud", model: "gpt-mini" });
+  });
+
+  it("keeps per-task routes when tiers are saved after full-task config", () => {
+    const base = {
+      providers: [
+        { id: "cloud", default_model: "gpt-4o", task_models: {} },
+        { id: "local", default_model: "qwen", task_models: {} },
+      ],
+      routing: { chain_fallback: [], tasks: {} },
+    };
+    const routes = foldTaskRoutes(base);
+    routes.affect_refine = {
+      primary: { providerId: "local", model: "qwen05" },
+      backup: { providerId: "cloud", model: "gpt-mini" },
+    };
+    routes.llm_chat = {
+      primary: { providerId: "cloud", model: "gpt-4o" },
+      backup: { providerId: "local", model: "qwen14" },
+    };
+    const withTasks = applyTaskRoutes(base, routes);
+    const afterTiers = applyTaskTiers(withTasks, {
+      high: {
+        primary: { providerId: "local", model: "qwen14" },
+        backup: { providerId: "cloud", model: "gpt-4o" },
+      },
+      low: {
+        primary: { providerId: "cloud", model: "gpt-mini" },
+        backup: { providerId: "local", model: "qwen05" },
+      },
+    });
+    expect(afterTiers.routing.route_source).toBe("tasks");
+    expect(afterTiers.routing.tasks.affect_refine).toBe("local");
+    expect(afterTiers.routing.tasks.llm_chat).toBe("cloud");
+    expect(afterTiers.routing.task_backups?.affect_refine).toBe("cloud");
+    expect(afterTiers.providers.find((p) => p.id === "local")?.task_models.affect_refine).toBe(
+      "qwen05",
+    );
+    expect(afterTiers.routing.tier_backups).toEqual({ high: "cloud", low: "local" });
   });
 });
