@@ -7,7 +7,7 @@ const FIELD_LABEL =
   "inline-flex shrink-0 items-center gap-1 text-sm font-medium leading-none text-muted-foreground";
 const FIELD_ICO = "size-3.5 shrink-0 opacity-80";
 
-/** 工具条字段：可选 Lucide 图标 + 文案 + 控件。 */
+/** 工具条字段：可选 Lucide 图标 + 文案 + 控件（簇距与 chrome-tools 统一）。 */
 export default function ChromeField({
   label,
   icon: Icon,
@@ -20,7 +20,7 @@ export default function ChromeField({
   className?: string;
 }) {
   return (
-    <div className={cn("flex shrink-0 items-center gap-1.5", className)}>
+    <div className={cn("chrome-tools__field flex shrink-0 items-center", className)}>
       <Label className={FIELD_LABEL}>
         {Icon ? <Icon className={FIELD_ICO} strokeWidth={2} aria-hidden /> : null}
         {label}

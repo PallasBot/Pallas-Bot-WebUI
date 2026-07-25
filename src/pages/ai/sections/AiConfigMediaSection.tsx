@@ -19,6 +19,7 @@ import AiOptionSelect from "@/components/ai/AiOptionSelect";
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
@@ -298,7 +299,7 @@ export default function AiConfigMediaSection() {
         value={contentPanel}
         onValueChange={(value) => setPanel(value as SelectPanel)}
       >
-        <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5"><SelectValue /></SelectTrigger>
+        <SelectTrigger className={CHROME_SELECT_TRIGGER}><SelectValue /></SelectTrigger>
         <SelectContent align="start">{SELECT_OPTIONS.map((item) => (
           <SelectItem key={item.value} value={item.value}>
             <ChromeOptionLabel icon={item.icon}>{item.label}</ChromeOptionLabel>

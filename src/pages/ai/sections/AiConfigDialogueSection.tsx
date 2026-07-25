@@ -11,6 +11,7 @@ import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import SegTabs from "@/components/SegTabs";
 import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
 import LlmToolsTable from "@/components/ai/LlmToolsTable";
@@ -100,7 +101,7 @@ export default function AiConfigDialogueSection() {
               setPanel(v as ContentPanel);
             }}
           >
-            <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
+            <SelectTrigger className={CHROME_SELECT_TRIGGER}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">

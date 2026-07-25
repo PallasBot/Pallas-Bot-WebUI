@@ -13,7 +13,7 @@ import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -414,7 +414,7 @@ export default function ChartsPage() {
             onStartChange={setRangeStart}
             onEndChange={setRangeEnd}
           />
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div className={CHROME_TOOLS_TRAILING}>
             <RefreshIconButton
               busy={refreshing}
               label="刷新"

@@ -12,7 +12,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import SegTabs from "@/components/SegTabs";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -307,7 +307,7 @@ export default function InstancesPage() {
               />
               <Input
                 type="search"
-                className="h-8 min-h-8 w-full pl-8"
+                className={CHROME_SEARCH_INPUT}
                 placeholder="搜索账号…"
                 aria-label="搜索账号"
                 autoComplete="off"

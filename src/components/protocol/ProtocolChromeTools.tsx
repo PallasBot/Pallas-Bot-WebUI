@@ -6,7 +6,10 @@ import {
 } from "@/config/protocolSections";
 import { useProtocolChromeSlots } from "@/components/protocol/ProtocolChromeContext";
 import ChromeField from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_SELECT_TRIGGER,
+  CHROME_TOOLS_TRAILING,
+} from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import {
   Select,
@@ -18,7 +21,7 @@ import {
 
 /**
  * 协议连接工具条：分段 Select | 段内 middle | trailing | 刷新。
- * 整行共用 ChromeTools 横向滚动，勿再给 middle 单独 overflow。
+ * middle 直接进 chrome-row（Fragment 展平），勿再包 CLUSTER / flex-1。
  */
 export default function ProtocolChromeTools({
   section,
@@ -51,7 +54,7 @@ export default function ProtocolChromeTools({
           value={section}
           onValueChange={(v) => onSectionChange(v as ProtocolSectionId)}
         >
-          <SelectTrigger className="h-8 w-auto min-w-[7.5rem] max-w-[11rem] shrink-0 gap-1.5">
+          <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue placeholder="选择" />
           </SelectTrigger>
           <SelectContent align="start">
@@ -64,10 +67,9 @@ export default function ProtocolChromeTools({
         </Select>
       </ChromeField>
 
-      {/* middle 子项直接进 chrome-row（Fragment 展平），勿再包 flex-1，否则窄屏会溢出盖住右侧刷新 */}
       {middle}
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 self-center">
+      <div className={CHROME_TOOLS_TRAILING}>
         {slotTrailing}
         {trailing}
         {refresh ? (

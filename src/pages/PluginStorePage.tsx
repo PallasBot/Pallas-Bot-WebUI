@@ -40,9 +40,10 @@ import {
   withPluginStoreQueueSuffix,
 } from "@/utils/pluginStoreActionQueue";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
+import { cn } from "@/lib/utils";
 import PluginStoreCard, { type PluginStoreMenuItem } from "@/components/PluginStoreCard";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -989,7 +990,7 @@ export default function PluginStorePage() {
           />
           <Input
             type="search"
-            className="h-8 min-h-8 w-full pl-8"
+            className={CHROME_SEARCH_INPUT}
             placeholder={storeSection === "official" ? "搜索扩展…" : "搜索插件…"}
             aria-label={storeSection === "official" ? "搜索扩展" : "搜索插件"}
             autoComplete="off"
@@ -1000,7 +1001,7 @@ export default function PluginStorePage() {
         <ChromeField label="类型" icon={Package}>
           <Select value={storeSection} onValueChange={(v) => setStoreSection(v as StoreSection)}>
             <SelectTrigger
-              className="h-8 w-auto min-w-[7.5rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+              className={cn(CHROME_SELECT_TRIGGER, "whitespace-nowrap [&>span]:whitespace-nowrap")}
               aria-label="商店类型"
             >
               <SelectValue placeholder="类型">
@@ -1029,7 +1030,7 @@ export default function PluginStorePage() {
         <ChromeField label="筛选" icon={Filter}>
           <Select value={activeTab} onValueChange={(v) => setActiveTab(v as StoreTab)}>
             <SelectTrigger
-              className="h-8 w-auto min-w-[6.75rem] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+              className={cn(CHROME_SELECT_TRIGGER, "min-w-[6.75rem] whitespace-nowrap [&>span]:whitespace-nowrap")}
               aria-label="列表筛选"
             >
               <SelectValue placeholder="筛选">
@@ -1045,7 +1046,7 @@ export default function PluginStorePage() {
             </SelectContent>
           </Select>
         </ChromeField>
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className={CHROME_TOOLS_TRAILING}>
           <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
             镜像源
           </Button>

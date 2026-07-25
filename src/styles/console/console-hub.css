@@ -915,6 +915,10 @@ html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
   --chrome-field-h: 36px;
   --chrome-ctrl-h: 36px;
   --chrome-tabs-h: 36px;
+  /* 行内主组间距 / 组内簇距（ChromeField、trailing、middle） */
+  --chrome-tools-row-gap: 1rem;
+  --chrome-tools-cluster-gap: 0.375rem;
+  --chrome-tools-advanced-gap: 0.5rem;
 }
 
 /* 父级已用 flex gap / space-y 排版时去掉底边距，避免叠距 */
@@ -976,7 +980,7 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--chrome-tools-row-gap, 1rem);
   width: 100%;
   min-width: 0;
   overflow-x: auto;
@@ -984,6 +988,17 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   -webkit-overflow-scrolling: touch;
   /* 默认隐藏滚动条，悬停 / 聚焦时再显示 */
   scrollbar-width: none;
+}
+
+.console-hub-page__chrome-row--advanced {
+  gap: var(--chrome-tools-advanced-gap, 0.5rem);
+}
+
+.chrome-tools__field,
+.chrome-tools__cluster,
+.chrome-tools__trailing,
+.console-hub-page__chrome-field {
+  gap: var(--chrome-tools-cluster-gap, 0.375rem);
 }
 
 .console-hub-page__chrome-row:hover,
@@ -1069,7 +1084,6 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
 .console-hub-page__chrome-field {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   flex: 0 0 auto;
   min-width: 0;
   margin: 0;
@@ -1298,6 +1312,7 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
     gap: 6px;
     margin-bottom: var(--console-chrome-tools-gap, var(--hub-page-gap, 18px));
     padding: 8px 10px;
+    --chrome-tools-row-gap: 0.5rem;
   }
 
   .console-hub-page > .console-hub-page__chrome-tools,
@@ -1322,7 +1337,7 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   }
 
   .console-hub-page__chrome-row {
-    gap: 6px;
+    gap: var(--chrome-tools-row-gap, 0.5rem);
     flex-wrap: nowrap;
   }
 

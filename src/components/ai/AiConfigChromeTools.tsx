@@ -6,7 +6,10 @@ import {
 } from "@/config/aiConfigSections";
 import { useAiConfigChromeSlots } from "@/components/ai/AiConfigChromeContext";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_SELECT_TRIGGER,
+  CHROME_TOOLS_TRAILING,
+} from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,7 +28,7 @@ const SECTION_ICONS: Record<AiConfigSectionId, LucideIcon> = {
 
 /**
  * AI 配置工具条：选择分段 Select | 段内 middle | 搜索? | trailing | 刷新。
- * 整行共用 ChromeTools 横向滚动，勿再给 middle 单独 overflow。
+ * middle 直接进 chrome-row（与协议页一致），勿再包 CLUSTER。
  */
 export default function AiConfigChromeTools({
   section,
@@ -60,7 +63,7 @@ export default function AiConfigChromeTools({
     <ChromeTools className={className}>
       <ChromeField label="选择" icon={SectionIcon} className="shrink-0">
         <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
-          <SelectTrigger className="h-9 w-auto min-w-[10rem] max-w-[16rem] shrink-0 gap-1.5">
+          <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue placeholder="选择">{currentLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
@@ -73,20 +76,18 @@ export default function AiConfigChromeTools({
         </Select>
       </ChromeField>
 
-      {middle ? (
-        <div className="flex shrink-0 items-center gap-1.5">{middle}</div>
-      ) : null}
+      {middle}
 
       {search ? (
         <Input
           value={search.value}
           onChange={(e) => search.onChange(e.target.value)}
           placeholder={search.placeholder ?? "搜索…"}
-          className="h-8 min-w-[8rem] w-[min(16rem,100%)] shrink-0"
+          className="h-9 min-w-[8rem] w-[min(16rem,100%)] shrink-0"
         />
       ) : null}
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+      <div className={CHROME_TOOLS_TRAILING}>
         {slotTrailing}
         {trailing}
         {refresh ? (

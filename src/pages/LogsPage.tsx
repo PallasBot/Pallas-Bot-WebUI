@@ -10,8 +10,12 @@ import { fetchLogs, openLogsEventSource } from "@/api/fullConsole";
 import type { LogEntry, LogEntryLevel, LogScope, LogsData } from "@/api/pallasTypes";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_SEARCH_INPUT,
+  CHROME_SELECT_TRIGGER,
+} from "@/components/ChromeTools";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
+import { cn } from "@/lib/utils";
 import LogVirtualFeed, { type LogVirtualFeedHandle } from "@/components/LogVirtualFeed";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
@@ -39,7 +43,6 @@ import {
   loadLogsLastEventId,
   persistLogsLastEventId,
 } from "@/utils/logStreamResume";
-import { cn } from "@/lib/utils";
 
 type LogsSnapshot = {
   scope: LogScope;
@@ -477,7 +480,7 @@ export default function LogsPage() {
               <>
                 <ChromeField label="范围" icon={FolderOpen}>
                   <Select value={scope} onValueChange={(v) => setScope(v as LogScope)}>
-                    <SelectTrigger className="h-8 w-auto min-w-[6.5rem]" aria-label="日志范围">
+                    <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="日志范围">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -496,7 +499,7 @@ export default function LogsPage() {
                 {payload?.sharded_logs ? (
                   <ChromeField label="来源" icon={Radio}>
                     <Select value={logSource} onValueChange={setLogSource}>
-                      <SelectTrigger className="h-8 w-auto min-w-[7rem]" aria-label="日志来源">
+                      <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="日志来源">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -513,7 +516,7 @@ export default function LogsPage() {
                 ) : null}
                 <ChromeField label="条数" icon={Hash}>
                   <Input
-                    className="h-8 min-h-8 w-[4.5rem]"
+                    className="h-9 min-h-9 w-[4.5rem]"
                     type="number"
                     min={20}
                     max={2000}
@@ -534,7 +537,7 @@ export default function LogsPage() {
             />
             <Input
               type="search"
-              className="h-8 min-h-8 pl-8"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索日志…"
               aria-label="搜索日志"
               autoComplete="off"
@@ -545,7 +548,7 @@ export default function LogsPage() {
           <ChromeField label="视图" icon={Eye}>
             <Select value={view} onValueChange={(v) => setView(v === "raw" ? "raw" : "feed")}>
               <SelectTrigger
-                className="h-8 w-auto min-w-[6.5rem] max-w-[9rem] shrink-0"
+                className={cn(CHROME_SELECT_TRIGGER, "min-w-[6.5rem] max-w-[9rem]")}
                 aria-label="日志视图"
               >
                 <SelectValue />

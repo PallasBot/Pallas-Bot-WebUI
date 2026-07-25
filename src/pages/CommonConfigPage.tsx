@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PenLine, Search } from "lucide-react";
 import { fetchCommonConfigSections } from "@/api/fullConsole";
 import CommonConfigForm from "@/components/CommonConfigForm";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import SegTabs from "@/components/SegTabs";
@@ -43,7 +43,7 @@ export default function CommonConfigPage() {
             />
             <Input
               type="search"
-              className="h-8 min-h-8 w-full pl-8"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索配置…"
               aria-label="搜索配置"
               autoComplete="off"

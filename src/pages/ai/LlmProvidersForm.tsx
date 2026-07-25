@@ -21,6 +21,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import TierPairCards, { TierCard } from "@/components/ai/TierPairCards";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import TagsInput, { type TagsInputHandle } from "@/components/config/TagsInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -810,10 +811,10 @@ export default function LlmProvidersForm() {
 
   const chromeMiddle = useMemo(
     () => (
-      <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+      <>
         <ChromeField label="接入分区" icon={activeTabMeta.icon}>
           <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
-            <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
+            <SelectTrigger className={CHROME_SELECT_TRIGGER}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
@@ -864,7 +865,7 @@ export default function LlmProvidersForm() {
             </Tabs>
           </ChromeField>
         ) : null}
-      </div>
+      </>
     ),
     [activeTabMeta.icon, tab, doc.routing.cost_currency, tasksViewMode],
   );

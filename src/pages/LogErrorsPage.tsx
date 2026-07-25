@@ -16,8 +16,9 @@ import { formatLogDisplayTime } from "@/utils/logDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import { cn } from "@/lib/utils";
 import PageFill from "@/components/layout/PageFill";
 import PagePinned from "@/components/layout/PagePinned";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -154,7 +155,7 @@ export default function LogErrorsPage() {
             />
             <Input
               type="search"
-              className="h-8 min-h-8 w-full pl-8"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索报错…"
               aria-label="搜索报错"
               autoComplete="off"
@@ -166,7 +167,7 @@ export default function LogErrorsPage() {
             <ChromeField label="来源" icon={Radio}>
               <Select value={logSource} onValueChange={setLogSource}>
                 <SelectTrigger
-                  className="h-8 w-auto min-w-[9rem] shrink-0 whitespace-nowrap"
+                  className={cn(CHROME_SELECT_TRIGGER, "min-w-[9rem] whitespace-nowrap")}
                   aria-label="报错来源"
                 >
                   <SelectValue />
@@ -183,7 +184,7 @@ export default function LogErrorsPage() {
               </Select>
             </ChromeField>
           ) : null}
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div className={CHROME_TOOLS_TRAILING}>
             <Button
               type="button"
               variant="destructive"

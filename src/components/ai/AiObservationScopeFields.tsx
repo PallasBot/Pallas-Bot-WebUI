@@ -7,6 +7,7 @@ import {
 } from "@/components/ai/AiObservationScopeContext";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -68,7 +69,7 @@ export default function AiObservationScopeFields({
 
   /* 须 shrink-0 + nowrap：顶栏 chrome-row 横向滚动依赖子项不被压窄换行 */
   return (
-    <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+    <div className={CHROME_TOOLS_CLUSTER}>
       {showBot ? (
         <ChromeField label="Bot" icon={Bot} className="shrink-0">
           {useSelect ? (

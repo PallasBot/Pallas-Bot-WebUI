@@ -19,7 +19,7 @@ import { slicePage } from "@/utils/paginate";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -522,7 +522,7 @@ export default function FriendsGroupsPage() {
           />
           <Input
             type="search"
-            className="h-8 min-h-8 w-full pl-8"
+            className={CHROME_SEARCH_INPUT}
             placeholder={listSearch.placeholder}
             title={listSearch.title}
             aria-label={listSearch.placeholder}
@@ -533,7 +533,7 @@ export default function FriendsGroupsPage() {
           />
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 self-center">
+        <div className={CHROME_TOOLS_TRAILING}>
           <RefreshIconButton
             busy={pageRefreshBusy}
             label="刷新"

@@ -20,7 +20,7 @@ import CommunityGallerySection from "@/pages/CommunityGallerySection";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import SegTabs from "@/components/SegTabs";
 import UiBadge from "@/components/ui/UiBadge";
@@ -411,7 +411,7 @@ export default function CommunityPage() {
       <ChromeTools>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
           <Select value={section} onValueChange={(v) => selectSection(v as CommunitySectionId)}>
-            <SelectTrigger className="h-8 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0 gap-1.5" aria-label="面板分类">
+            <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="面板分类">
               <SelectValue placeholder="选择面板" />
             </SelectTrigger>
             <SelectContent align="start">
@@ -434,7 +434,7 @@ export default function CommunityPage() {
           />
         ) : null}
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 self-center">
+        <div className={CHROME_TOOLS_TRAILING}>
           <Button type="button" variant="outline" size="sm" asChild>
             <a href={communityHubUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="size-3.5" />

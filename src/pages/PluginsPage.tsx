@@ -14,7 +14,7 @@ import {
   type PluginCategory,
 } from "@/utils/pluginCategory";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import PluginCatalogCard from "@/components/PluginCatalogCard";
 import PluginConfigDialog from "@/components/PluginConfigDialog";
 import PageMasthead from "@/components/PageMasthead";
@@ -161,7 +161,7 @@ export default function PluginsPage() {
             />
             <Input
               type="search"
-              className="h-8 min-h-8 w-full pl-8"
+              className={CHROME_SEARCH_INPUT}
               placeholder="搜索插件…"
               aria-label="搜索插件"
               autoComplete="off"
@@ -175,7 +175,7 @@ export default function PluginsPage() {
               onValueChange={(v) => setActiveCategory(v as PluginCategory | "all")}
             >
               <SelectTrigger
-                className="h-8 w-auto shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap"
+                className={cn(CHROME_SELECT_TRIGGER, "whitespace-nowrap [&>span]:whitespace-nowrap")}
                 aria-label="插件分类"
               >
                 <SelectValue />
@@ -201,7 +201,7 @@ export default function PluginsPage() {
               </SelectContent>
             </Select>
           </ChromeField>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div className={CHROME_TOOLS_TRAILING}>
             <Button
               type="button"
               variant="secondary"

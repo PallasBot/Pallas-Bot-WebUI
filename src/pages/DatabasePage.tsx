@@ -14,7 +14,7 @@ import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { rouletteModeLabel } from "@/utils/rouletteMode";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
@@ -368,7 +368,7 @@ export default function DatabasePage() {
       <ChromeTools>
         <ChromeField label="选择" icon={activeMeta.icon} className="shrink-0">
           <Select value={activeSection} onValueChange={(v) => selectSection(v as DbSectionId)}>
-            <SelectTrigger className="h-8 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0 gap-1.5" aria-label="数据库分段">
+            <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="数据库分段">
               <SelectValue placeholder="选择" />
             </SelectTrigger>
             <SelectContent align="start">
@@ -390,7 +390,7 @@ export default function DatabasePage() {
             />
             <Input
               type="search"
-              className="h-8 min-h-8 w-full pl-8"
+              className={CHROME_SEARCH_INPUT}
               placeholder={listSearch.placeholder}
               title={listSearch.title}
               aria-label={listSearch.placeholder}
@@ -402,7 +402,7 @@ export default function DatabasePage() {
           </div>
         ) : null}
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className={CHROME_TOOLS_TRAILING}>
           {activeSection === "aggregate" ? (
             <Button
               type="button"

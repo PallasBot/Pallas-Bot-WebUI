@@ -8,7 +8,10 @@ import {
 import { useAiObservationChromeSlots } from "@/components/ai/AiObservationChromeContext";
 import AiObservationScopeFields from "@/components/ai/AiObservationScopeFields";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_SELECT_TRIGGER,
+  CHROME_TOOLS_TRAILING,
+} from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import {
   Select,
@@ -20,7 +23,7 @@ import {
 
 /**
  * AI 观测工具条：选择分段 | 段内 scope（按需 Bot/群）| middle | trailing | 刷新。
- * 对齐 AI 配置 / 协议连接 ChromeTools。
+ * middle 直接进 chrome-row；ScopeFields 自身包 CLUSTER。
  */
 export default function AiObservationChromeTools({
   section,
@@ -54,7 +57,7 @@ export default function AiObservationChromeTools({
           value={section}
           onValueChange={(v) => onSectionChange(v as AiObservationSectionId)}
         >
-          <SelectTrigger className="h-9 w-auto min-w-[10rem] max-w-[16rem] shrink-0 gap-1.5">
+          <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue placeholder="选择">{currentLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
@@ -67,11 +70,10 @@ export default function AiObservationChromeTools({
         </Select>
       </ChromeField>
 
-      {/* middle 直接进 chrome-row；包 shrink-0 避免窄屏被压窄换行导致无法横向滚动 */}
       {showScope ? <AiObservationScopeFields showBot={showBot} showGroup={showGroup} /> : null}
-      {middle ? <div className="flex shrink-0 flex-nowrap items-center gap-1.5">{middle}</div> : null}
+      {middle}
 
-      <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1.5 self-center">
+      <div className={CHROME_TOOLS_TRAILING}>
         {slotTrailing}
         {trailing}
         {refresh ? (

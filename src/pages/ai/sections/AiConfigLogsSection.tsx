@@ -10,6 +10,7 @@ import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChr
 import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,7 +118,7 @@ export default function AiConfigLogsSection({
     () => (
       <ChromeField label="日志种类" icon={kindMeta.icon}>
         <Select value={kind} onValueChange={(v) => setKind(v as AiExtensionLogKind)}>
-          <SelectTrigger className="h-9 w-auto min-w-[8rem] max-w-[12rem] shrink-0 gap-1.5">
+          <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">

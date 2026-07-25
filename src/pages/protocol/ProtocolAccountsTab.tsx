@@ -33,6 +33,7 @@ import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialo
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import SegTabs from "@/components/SegTabs";
+import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -597,7 +598,7 @@ export default function ProtocolAccountsTab() {
           />
           <Input
             type="search"
-            className="h-8 min-h-8 w-full pl-8"
+            className={CHROME_SEARCH_INPUT}
             placeholder="搜索账号…"
             aria-label="搜索账号"
             autoComplete="off"
@@ -617,11 +618,12 @@ export default function ProtocolAccountsTab() {
           ]}
         />
         {protoActionsEnabled ? (
-          <div className="flex shrink-0 items-center gap-1.5">
+          <>
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              className="shrink-0"
               disabled={
                 restartAllBusy ||
                 stopSelectedBusy ||
@@ -640,7 +642,7 @@ export default function ProtocolAccountsTab() {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="gap-1"
+                  className="shrink-0 gap-1"
                   disabled={
                     restartSelectedBusy ||
                     stopSelectedBusy ||
@@ -692,7 +694,7 @@ export default function ProtocolAccountsTab() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </>
         ) : null}
       </>
     ),
