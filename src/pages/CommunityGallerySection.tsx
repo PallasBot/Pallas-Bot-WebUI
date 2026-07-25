@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ClipboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   createCommunityGalleryPost,
@@ -9,10 +9,12 @@ import {
 } from "@/api/fullConsole";
 import { axiosErrorDetail } from "@/api/http";
 import type { BotRow } from "@/api/pallasTypes";
-import ChromeField from "@/components/ChromeField";
+import BotSelectLabel from "@/components/BotSelectLabel";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
-import UiButton from "@/components/ui/UiButton";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,13 +22,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { botPickerRowsFromInstances, botSelectDropdownLabel, qqAvatarUrl } from "@/utils/botDisplay";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { Bot, Images, Trash2 } from "lucide-react";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import { Images, List, Trash2 } from "lucide-react";
 
-const ACCOUNT_SEL =
-  "bot-acct-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
+const GALLERY_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function pickClipboardImage(dt: DataTransfer | null): File | null {
+  if (!dt) return null;
+  for (const file of Array.from(dt.files || [])) {
+    if (GALLERY_IMAGE_TYPES.has(file.type)) return file;
+  }
+  for (const item of Array.from(dt.items || [])) {
+    if (item.kind !== "file" || !GALLERY_IMAGE_TYPES.has(item.type)) continue;
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+  return null;
+}
 
 export default function CommunityGallerySection() {
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
@@ -63,7 +78,7 @@ export default function CommunityGallerySection() {
 
   const effectiveNick = useMemo(() => {
     if (nickname.trim()) return nickname.trim();
-    if (!selfIdStr) return "";
+    if (!selfIdStr) return "牛牛";
     return profileNick(selfIdStr) || `牛牛${selfIdStr}`;
   }, [nickname, selfIdStr, instQ.data?.bot_profiles]);
 
@@ -73,17 +88,28 @@ export default function CommunityGallerySection() {
     setSource("local_corpus");
   }, []);
 
+  const applyImageFile = useCallback((file: File | null | undefined) => {
+    if (!file) return;
+    if (!GALLERY_IMAGE_TYPES.has(file.type)) {
+      pushConsoleToast("仅支持 JPEG / PNG / WebP / GIF", "warn");
+      return;
+    }
+    setImage(file);
+  }, []);
+
+  const onPasteImage = useCallback(
+    (e: ClipboardEvent) => {
+      const file = pickClipboardImage(e.clipboardData);
+      if (!file) return;
+      e.preventDefault();
+      applyImageFile(file);
+    },
+    [applyImageFile],
+  );
+
   async function onSubmit() {
-    if (selfIdNum == null) {
-      pushConsoleToast("请先选择 Bot", "warn");
-      return;
-    }
-    if (!effectiveNick) {
-      pushConsoleToast("请填写昵称", "warn");
-      return;
-    }
     if (!text.trim() && !image) {
-      pushConsoleToast("请填写正文或拖入图片", "warn");
+      pushConsoleToast("请填写正文或拖入/粘贴图片", "warn");
       return;
     }
     setBusy(true);
@@ -91,7 +117,7 @@ export default function CommunityGallerySection() {
       await createCommunityGalleryPost({
         text: text.trim(),
         nickname: effectiveNick,
-        avatarUrl: qqAvatarUrl(selfIdNum),
+        avatarUrl: selfIdNum != null ? qqAvatarUrl(selfIdNum) : "",
         botQq: selfIdNum,
         source,
         keywords,
@@ -137,22 +163,29 @@ export default function CommunityGallerySection() {
     return rows;
   }, [localHotQ.data]);
 
+  const selectedBotTitle = useMemo(() => {
+    if (!selfIdStr) return undefined;
+    const cur = botsVisible.find((b) => b.self_id === selfIdStr);
+    return cur ? botOptionTitle(cur) : selfIdStr;
+  }, [botsVisible, selfIdStr, instQ.data?.bot_profiles]);
+
   return (
-    <section id="community-gallery" className="community-page__section">
-      <div className="panel community-page__panel">
-        <div className="panel__hd panel__hd--split community-page__panel-hd">
-          <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+    <section id="community-gallery" className="community-page__section flex flex-col gap-4">
+      <Card onPaste={onPasteImage}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
             <PanelTitleIcon icon={Images} />
             社区投稿
-          </h2>
-        </div>
-        <div className="panel__bd space-y-4">
-          <p className="muted text-sm">
-            选择本部署 Bot，填写金句或拖入截图后提交；社区主站会以该 Bot 头像/昵称渲染模拟发言卡。截图可能含群名或 QQ，提交即公开展示。
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ChromeField label="账号" icon={Bot} className="shrink-0">
+          </CardTitle>
+          <CardDescription>
+            可选 Bot 账号以带上头像昵称；也可只拖入/粘贴截图或填正文投稿。纯文字在社区主站以模拟发言卡展示，带图投稿直接展示截图。截图可能含群名或
+            QQ，提交即公开展示。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="gallery-bot">账号</Label>
               <Select
                 value={selfIdStr || "__none__"}
                 onValueChange={(v) => {
@@ -163,22 +196,11 @@ export default function CommunityGallerySection() {
                   }
                 }}
               >
-                <SelectTrigger
-                  className={ACCOUNT_SEL}
-                  aria-label="当前 Bot 账号"
-                  title={
-                    selfIdStr
-                      ? (() => {
-                          const cur = botsVisible.find((b) => b.self_id === selfIdStr);
-                          return cur ? botOptionTitle(cur) : selfIdStr;
-                        })()
-                      : undefined
-                  }
-                >
-                  <SelectValue placeholder="请选择 Bot…" />
+                <SelectTrigger id="gallery-bot" className="w-full" aria-label="当前 Bot 账号" title={selectedBotTitle}>
+                  <SelectValue placeholder="可选 Bot…" />
                 </SelectTrigger>
                 <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
-                  <SelectItem value="__none__">请选择 Bot…</SelectItem>
+                  <SelectItem value="__none__">不指定账号</SelectItem>
                   {botsVisible.map((b) => (
                     <SelectItem key={b.self_id} value={b.self_id}>
                       <BotSelectLabel nickname={profileNick(b.self_id)} account={b.self_id} />
@@ -186,115 +208,138 @@ export default function CommunityGallerySection() {
                   ))}
                 </SelectContent>
               </Select>
-            </ChromeField>
-            <ChromeField label="展示昵称">
-              <input
-                className="h-9 w-full rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[var(--control-bg,#fff)] px-3 text-sm"
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gallery-nick">展示昵称</Label>
+              <Input
+                id="gallery-nick"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="默认资料昵称或 牛牛 + QQ"
+                placeholder="可选；默认 牛牛 / 资料昵称"
               />
-            </ChromeField>
+            </div>
           </div>
 
-          <ChromeField label="正文">
-            <textarea
-              className="min-h-[96px] w-full rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--text)_12%,transparent)] bg-[var(--control-bg,#fff)] px-3 py-2 text-sm"
+          <div className="space-y-2">
+            <Label htmlFor="gallery-text">正文</Label>
+            <Textarea
+              id="gallery-text"
+              className="min-h-[96px]"
               value={text}
               maxLength={500}
               onChange={(e) => setText(e.target.value)}
               placeholder="输入有趣的牛牛发言…"
             />
-          </ChromeField>
+          </div>
 
-          <ChromeField label="图片（可选）">
+          <div className="space-y-2">
+            <Label>图片（可选）</Label>
             <label
-              className="flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-1 rounded-[var(--radius-control,8px)] border border-dashed border-[color-mix(in_srgb,var(--text)_18%,transparent)] bg-[color-mix(in_srgb,var(--text)_3%,transparent)] px-3 py-4 text-sm text-[var(--text-muted)]"
+              tabIndex={0}
+              className={cn(
+                "flex min-h-[96px] cursor-pointer flex-col items-center justify-center gap-1",
+                "rounded-[var(--radius-control,8px)] border border-dashed border-[var(--control-edge)]",
+                "bg-muted/40 px-3 py-4 text-sm text-muted-foreground",
+                "outline-none focus-visible:border-[color-mix(in_srgb,var(--accent)_16%,var(--control-border))]",
+                "focus-visible:shadow-[0_0_0_2px_color-mix(in_srgb,var(--accent)_8%,transparent)]",
+              )}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                const file = e.dataTransfer.files?.[0];
-                if (file) setImage(file);
+                applyImageFile(e.dataTransfer.files?.[0]);
               }}
+              onPaste={onPasteImage}
             >
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 className="hidden"
-                onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+                onChange={(e) => applyImageFile(e.target.files?.[0])}
               />
               {image ? (
-                <span className="text-[var(--text)]">
+                <span className="text-foreground">
                   已选 {image.name}（{(image.size / 1024).toFixed(0)} KB）
                 </span>
               ) : (
-                <span>点击或拖入截图（≤3MB）</span>
+                <span>点击、拖入或粘贴截图（≤3MB）</span>
               )}
             </label>
             {image ? (
-              <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => setImage(null)}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setImage(null)}>
                 清除图片
               </Button>
             ) : null}
-          </ChromeField>
+          </div>
 
           {localAnswers.length ? (
-            <div>
-              <div className="mb-2 text-xs font-medium text-[var(--text-muted)]">从本机热词选取</div>
-              <div className="flex max-h-40 flex-wrap gap-2 overflow-auto">
-                {localAnswers.map((row) => (
-                  <button
-                    key={`${row.keywords}-${row.message}`}
-                    type="button"
-                    className="max-w-full truncate rounded-full border border-[var(--border)] bg-[var(--bg-card,var(--card))] px-2.5 py-1 text-left text-xs hover:border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
-                    title={row.message}
-                    onClick={() => onPickLocalAnswer(row.message, row.keywords)}
-                  >
-                    {row.message}
-                  </button>
-                ))}
+            <div className="space-y-2">
+              <Label>从本机热词选取</Label>
+              <div className="max-h-40 space-y-1 overflow-auto rounded-[var(--radius-control,8px)] border border-[var(--control-edge)] p-1.5">
+                {localAnswers.map((row) => {
+                  const active = text === row.message && keywords === row.keywords;
+                  return (
+                    <button
+                      key={`${row.keywords}-${row.message}`}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-start gap-2 rounded-[var(--radius-control,8px)] px-2.5 py-1.5 text-left text-xs",
+                        "hover:bg-muted/60",
+                        active && "bg-muted text-foreground",
+                      )}
+                      title={row.message}
+                      onClick={() => onPickLocalAnswer(row.message, row.keywords)}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-foreground">{row.message}</span>
+                      <span className="shrink-0 text-muted-foreground">{row.keywords}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : null}
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button type="button" disabled={busy} onClick={() => void onSubmit()}>
+            {busy ? "提交中…" : "投稿到社区中心"}
+          </Button>
+        </CardFooter>
+      </Card>
 
-          <div className="flex justify-end">
-            <UiButton type="button" disabled={busy} onClick={() => void onSubmit()}>
-              {busy ? "提交中…" : "投稿到社区中心"}
-            </UiButton>
-          </div>
-
-          <div>
-            <div className="mb-2 text-sm font-medium">本部署已投稿</div>
-            {!mineQ.data?.posts?.length ? (
-              <p className="muted text-sm">暂无记录</p>
-            ) : (
-              <ul className="space-y-2">
-                {mineQ.data.posts.map((post) => (
-                  <li
-                    key={post.id}
-                    className="flex items-start justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[var(--border)] px-3 py-2"
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
+            <PanelTitleIcon icon={List} />
+            本部署已投稿
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!mineQ.data?.posts?.length ? (
+            <p className="text-sm text-muted-foreground">暂无记录</p>
+          ) : (
+            <ul className="divide-y divide-border rounded-[var(--radius-control,8px)] border border-[var(--control-edge)]">
+              {mineQ.data.posts.map((post) => (
+                <li key={post.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{post.nickname}</div>
+                    <div className="truncate text-xs text-muted-foreground">{post.text || "（仅图片）"}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    disabled={busy}
+                    aria-label="撤下"
+                    onClick={() => void onDelete(post.id)}
                   >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{post.nickname}</div>
-                      <div className="truncate text-xs text-[var(--text-muted)]">{post.text || "（仅图片）"}</div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={busy}
-                      aria-label="撤下"
-                      onClick={() => void onDelete(post.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      </div>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </section>
   );
 }
