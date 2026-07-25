@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileText, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchPluginConfig,
@@ -23,6 +24,8 @@ import {
 } from "@/api/fullConsole";
 import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
+import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
@@ -38,6 +41,13 @@ import PluginGovernancePanel from "@/components/PluginGovernancePanel";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { aiConfigSectionPath } from "@/config/aiConfigSections";
 import type { PluginReadmeTarget } from "@/utils/pluginReadmeTarget";
 import { normalizeBundledReadmeMarkdown, readmeMarkdownToSafeHtml } from "@/utils/pluginReadme";
@@ -53,6 +63,14 @@ import {
 } from "@/utils/providerGateways";
 
 const HELP_TAG_OVERRIDE_FIELD_SET = new Set<string>([HELP_TAG_OVERRIDES_FIELD]);
+
+type ConfigTab = "governance" | "config" | "readme";
+
+const WORKSPACE_TAB_ICONS: Record<ConfigTab, LucideIcon> = {
+  governance: Shield,
+  config: SlidersHorizontal,
+  readme: FileText,
+};
 
 /** 画画配置提交体：表单字段 + 网关面板键（schema 尚未热载到新键时也写入）。 */
 function collectDrawPluginValues(
@@ -105,7 +123,6 @@ function collectDrawPluginValues(
   }
   return values;
 }
-type ConfigTab = "governance" | "config" | "readme";
 
 export type PluginConfigWorkspaceHandle = {
   save: () => Promise<void>;
@@ -399,29 +416,52 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     .filter((t) => t.show)
     .map((t) => ({ value: t.id, label: t.label }));
 
+  const currentWorkspaceLabel =
+    workspaceTabOptions.find((t) => t.value === detailTab)?.label ?? "插件配置";
+  const WorkspaceTabIcon = WORKSPACE_TAB_ICONS[detailTab] ?? SlidersHorizontal;
+
   const configBody = (
     <>
-      <div className="plugin-config-page__toolbar">
-        <SegTabs
-          className="plugin-config-page__tabs"
-          ariaLabel="插件工作区"
-          value={detailTab}
-          onValueChange={(v) => setDetailTab(v as ConfigTab)}
-          options={workspaceTabOptions}
-        />
+      <ChromeTools className="plugin-config-workspace__chrome">
+        <ChromeField label="工作区" icon={WorkspaceTabIcon} className="shrink-0">
+          <Select
+            value={detailTab}
+            onValueChange={(v) => setDetailTab(v as ConfigTab)}
+          >
+            <SelectTrigger
+              className={CHROME_SELECT_TRIGGER}
+              aria-label="工作区"
+            >
+              <SelectValue placeholder="工作区">{currentWorkspaceLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="start">
+              {workspaceTabOptions.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  <ChromeOptionLabel icon={WORKSPACE_TAB_ICONS[t.value]}>
+                    {t.label}
+                  </ChromeOptionLabel>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ChromeField>
+
         {detailTab === "config" && hasConfigFields ? (
-          <SegTabs
-            className="plugin-config-page__mode-toggle"
-            ariaLabel="配置编辑模式"
-            value={mode}
-            onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
-            options={[
-              { value: "form", label: "表单" },
-              { value: "raw", label: "Raw TOML" },
-            ]}
-          />
+          <div className={CHROME_TOOLS_TRAILING}>
+            <SegTabs
+              className="plugin-config-page__mode-toggle"
+              size="toolbar"
+              ariaLabel="配置编辑模式"
+              value={mode}
+              onValueChange={(v) => setMode(v === "raw" ? "raw" : "form")}
+              options={[
+                { value: "form", label: "表单" },
+                { value: "raw", label: "Raw TOML", className: "plugin-config-page__mode-tab--raw" },
+              ]}
+            />
+          </div>
         ) : null}
-      </div>
+      </ChromeTools>
 
       {showDrawAiConfigHint && !isDialog ? (
         <p className="muted plugin-config-dialog__ai-hint">

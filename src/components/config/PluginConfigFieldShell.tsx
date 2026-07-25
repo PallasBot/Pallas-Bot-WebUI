@@ -15,11 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { resolveConfigFieldLayout } from "@/utils/pluginConfigFieldModel";
-import {
-  fieldDisplayTitle,
-  fieldHelpDefaultValue,
-  fieldTypeLabel,
-} from "@/utils/configFieldDisplay";
+import { fieldDisplayTitle, fieldHelpDefaultValue } from "@/utils/configFieldDisplay";
 
 function fieldKindIcon(kind: string): LucideIcon {
   if (kind === "bool") return ToggleLeft;
@@ -49,10 +45,6 @@ function FieldHelpBody({ field, title }: { field: PluginConfigField; title: stri
         )}
       </div>
       <dl className="plugin-config-field-popover__meta">
-        <div>
-          <dt>类型</dt>
-          <dd>{fieldTypeLabel(field)}</dd>
-        </div>
         <div>
           <dt>默认值</dt>
           <dd>
@@ -248,7 +240,6 @@ export default function PluginConfigFieldShell({
           ?
         </button>
       }
-      meta={<span className="plugin-config-form-item__meta-pill">{field.kind}</span>}
     >
       <ConfigFieldRenderer
         field={field}

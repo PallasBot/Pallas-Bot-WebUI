@@ -522,41 +522,23 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   border-color: color-mix(in srgb, var(--foreground, #0f172a) 8%, transparent);
 }
 
-/* ── 插件弹窗分栏：tab 行与下方内容拉开间距（Vue scoped 未迁到 React） ── */
-.plugin-config-page__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
-  margin-bottom: 18px;
-}
-
-.plugin-config-workspace--dialog .plugin-config-page__toolbar {
-  margin-bottom: 20px;
-  padding-bottom: 2px;
-  background: transparent;
-}
-
-/* 弹窗标题 / 副标题：标题 semibold，说明 400 */
-.plugin-config-dialog .console-modal__title,
-.plugin-config-dialog .ui-dialog__title {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.plugin-config-dialog .console-modal__subtitle {
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.plugin-config-page__tabs {
-  margin-bottom: 0;
-}
-
 .plugin-config-page__mode-toggle {
   margin-bottom: 0;
-  margin-inline-start: auto;
   flex-shrink: 0;
+}
+
+/* 「表单 / Raw TOML」加长，避免 Raw TOML 文案溢出按钮 */
+.plugin-config-page__mode-toggle [role="tablist"] button[role="tab"] {
+  padding-inline: 0.85rem;
+  min-width: 4.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.plugin-config-page__mode-toggle [role="tablist"] button[role="tab"].plugin-config-page__mode-tab--raw {
+  min-width: 5.75rem;
+  padding-inline: 1rem;
 }
 
 .plugin-config-page__tab-panel {
@@ -571,40 +553,16 @@ html[data-theme="light"] .plugin-config-form-item .config-field-renderer__step {
   margin-bottom: 4px;
 }
 
-@media (max-width: 560px) {
-  .plugin-config-page__toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
+/* 弹窗标题 / 副标题：标题 semibold，说明 400 */
+.plugin-config-dialog .console-modal__title,
+.plugin-config-dialog .ui-dialog__title {
+  font-weight: 600;
+  color: var(--text);
+}
 
-  .plugin-config-page__tabs {
-    width: 100%;
-  }
-
-  .plugin-config-page__tabs [role="tablist"] {
-    width: 100%;
-  }
-
-  .plugin-config-page__tabs [role="tab"] {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .plugin-config-page__mode-toggle {
-    width: 100%;
-    margin-inline-start: 0;
-  }
-
-  .plugin-config-page__mode-toggle [role="tablist"] {
-    width: 100%;
-  }
-
-  .plugin-config-page__mode-toggle [role="tab"] {
-    flex: 1 1 0;
-    min-width: 0;
-  }
+.plugin-config-dialog .console-modal__subtitle {
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 /* ── 治理面板：与 plugin-config-group-card 层次 / 间距 / 轻控件一致 ── */

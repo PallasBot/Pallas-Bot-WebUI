@@ -18,7 +18,6 @@ import {
   boolChoiceLabel,
   enumChoiceLabel,
   fieldDisplayTitle,
-  fieldHasLocalizedTitle,
   isBinaryBoolEnum,
 } from "@/utils/configFieldDisplay";
 import {
@@ -94,9 +93,6 @@ export default function ConfigFieldRenderer({
         <div className="config-field-renderer__bool-head">
           <div className="config-field-renderer__title form-field__label form-field__label--title">
             {fieldDisplayTitle(field)}
-            {!fieldHasLocalizedTitle(field) ? (
-              <span className="muted config-field-renderer__kind">（{field.kind}）</span>
-            ) : null}
           </div>
           <ConsoleSwitch
             checked={boolOn}
@@ -119,9 +115,6 @@ export default function ConfigFieldRenderer({
       {!usesBoolSwitch && showLabel ? (
         <div className="form-field__label form-field__label--title config-field-renderer__title">
           {fieldDisplayTitle(field)}
-          {!fieldHasLocalizedTitle(field) ? (
-            <span className="muted config-field-renderer__kind">（{field.kind}）</span>
-          ) : null}
         </div>
       ) : null}
 

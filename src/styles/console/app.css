@@ -12692,6 +12692,11 @@ html[data-theme="light"] .plugins-page__plugin-tab-group .plugins-page__plugin-t
     min-width: 0;
   }
 
+
+  .plugin-config-page__mode-toggle [role="tab"].plugin-config-page__mode-tab--raw {
+    min-width: 5.5rem;
+  }
+
   .common-config-page__runtime-summary {
     overflow-x: auto;
   }
