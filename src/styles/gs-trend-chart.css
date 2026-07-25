@@ -24,15 +24,24 @@
   position: relative;
   width: 100%;
   min-width: 0;
+  /* 与默认 SVG viewBox 960×260 同比例 */
+  aspect-ratio: 960 / 260;
+  max-height: 280px;
   touch-action: none;
+}
+
+/* 半栏：跟 compact viewBox 640×320 对齐，避免固定矮高 + meet 左右留白显得缩成一条 */
+.gs-trend-chart--compact .gs-trend-chart__plot {
+  aspect-ratio: 640 / 320;
+  height: auto;
+  min-height: 260px;
+  max-height: 320px;
 }
 
 .gs-trend-chart__svg {
   display: block;
   width: 100%;
-  height: auto;
-  min-height: 220px;
-  max-height: 320px;
+  height: 100%;
 }
 
 .gs-trend-chart__grid {
@@ -44,7 +53,7 @@
 
 .gs-trend-chart__axis {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--font-sans, system-ui);
 }

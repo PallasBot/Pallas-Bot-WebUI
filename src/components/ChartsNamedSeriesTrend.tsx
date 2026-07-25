@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import {
   buildNamedSeriesTrendPack,
@@ -14,6 +14,12 @@ type Props = {
   chartUid?: string;
   className?: string;
   showSummary?: boolean;
+  /** Y 轴单位后缀；Token 用量传 ""，命中率传 "%" */
+  axisUnit?: string;
+  /** 半栏并排：更高 viewBox + 与 CSS 同比例，避免矮框里 meet 留白 */
+  compact?: boolean;
+  /** 图例与折线最多条数；默认跟 pack 一致（12） */
+  maxSeries?: number;
 };
 
 /** 多序列折线趋势：视觉跟 GsDualAxisTrendChart / 区间趋势一致。 */
@@ -24,15 +30,22 @@ export default function ChartsNamedSeriesTrend({
   chartUid = "",
   className,
   showSummary = true,
+  axisUnit = "次",
+  compact = false,
+  maxSeries = 12,
 }: Props) {
-  const uid = chartUid || `named-trend-${Math.random().toString(36).slice(2, 9)}`;
+  const autoId = useId().replace(/:/g, "");
+  const uid = chartUid || `named-trend-${autoId}`;
   const plotRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [tooltipX, setTooltipX] = useState(0);
   const [animKey, setAnimKey] = useState(0);
 
-  const pack = useMemo(() => buildNamedSeriesTrendPack(series), [series]);
+  const pack = useMemo(
+    () => buildNamedSeriesTrendPack(series, { axisUnit, compact, maxSeries }),
+    [axisUnit, compact, maxSeries, series],
+  );
 
   useEffect(() => {
     setAnimKey((k) => k + 1);
@@ -60,17 +73,29 @@ export default function ChartsNamedSeriesTrend({
       pt.y = ev.clientY;
       const svgPt = pt.matrixTransform(ctm.inverse());
       const ratio = (svgPt.x - p.left) / p.innerW;
-      const idx = Math.round(ratio * (p.timesSec.length - 1));
-      setHoverIndex(Math.max(0, Math.min(p.timesSec.length - 1, idx)));
+      const idx = Math.max(
+        0,
+        Math.min(p.timesSec.length - 1, Math.round(ratio * (p.timesSec.length - 1))),
+      );
+      setHoverIndex((prev) => (prev === idx ? prev : idx));
       const rect = wrap.getBoundingClientRect();
       const pad = 12;
-      setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
+      const nextX = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
+      setTooltipX((prev) => (Math.abs(prev - nextX) < 0.5 ? prev : nextX));
     },
     [pack],
   );
 
   return (
-    <div className={["gs-trend-chart", className].filter(Boolean).join(" ")}>
+    <div
+      className={[
+        "gs-trend-chart",
+        compact ? "gs-trend-chart--compact" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {showSummary && summaryTotal > 0 ? (
         <div className="gs-trend-chart__summary muted">
           <span>合计 {summaryTotal.toLocaleString()} 次</span>
@@ -212,7 +237,10 @@ export default function ChartsNamedSeriesTrend({
                     <div key={`tip-${r.id}`} className="gs-trend-chart__tooltip-row">
                       <i className="gs-trend-chart__tooltip-dot" style={{ background: r.color }} aria-hidden="true" />
                       <span className="gs-trend-chart__tooltip-label">{r.label}</span>
-                      <span className="gs-trend-chart__tooltip-val">{fmtAxisCount(r.value)}次</span>
+                      <span className="gs-trend-chart__tooltip-val">
+                        {fmtAxisCount(r.value)}
+                        {axisUnit}
+                      </span>
                     </div>
                   ))}
               </div>

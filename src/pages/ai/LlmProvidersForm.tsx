@@ -1244,7 +1244,7 @@ export default function LlmProvidersForm() {
                   <div className="space-y-2">
                     <Label className="font-semibold">模型单价（可选）</Label>
                     <p className="text-xs text-muted-foreground">
-                      单位：每百万 tokens；0 或留空表示不计费。币种见工具条「费用币种」。缓存价留空则不计缓存费用。
+                      每百万 tokens 单价；0 表示不计费。币种见工具条「费用币种」。
                     </p>
                     <div className="space-y-2">
                       {pricingModelKeys(draft).map((modelName) => {

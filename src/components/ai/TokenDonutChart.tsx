@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import TruncatedText from "@/components/TruncatedText";
 import { formatCompactNumber, type TokenRow } from "@/utils/aiTaskStats";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { cn } from "@/lib/utils";
@@ -103,8 +102,8 @@ export default function TokenDonutChart({
   const activeSlice = slices.find((s) => s.key === active) ?? null;
 
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center", className)}>
-      <div className="relative mx-auto h-[11.5rem] w-[11.5rem] shrink-0 sm:mx-0">
+    <div className={cn("flex min-h-[240px] flex-col gap-4 sm:flex-row sm:items-center", className)}>
+      <div className="relative mx-auto size-[13rem] shrink-0 sm:mx-0">
         <svg viewBox="0 0 200 200" className="h-full w-full" role="img" aria-label="token 分布">
           {slices.map((s) => {
             const isActive = active === s.key;
@@ -129,15 +128,15 @@ export default function TokenDonutChart({
             );
           })}
         </svg>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-7 text-center">
           {activeSlice ? (
             <>
-              <TruncatedText
-                text={activeSlice.key}
-                lines={2}
-                className="pointer-events-auto text-xs font-medium leading-tight"
-                contentClassName="font-mono"
-              />
+              <div
+                className="line-clamp-2 w-full text-xs font-medium leading-tight"
+                title={activeSlice.key}
+              >
+                {activeSlice.key}
+              </div>
               <div className="mt-0.5 text-sm font-semibold tabular-nums">
                 {formatCompactNumber(activeSlice.value)}
               </div>
@@ -177,7 +176,9 @@ export default function TokenDonutChart({
                   style={{ backgroundColor: s.color }}
                   aria-hidden
                 />
-                <TruncatedText text={s.key} className="flex-1 font-mono" contentClassName="font-mono" />
+                <span className="min-w-0 flex-1 truncate" title={s.key}>
+                  {s.key}
+                </span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {formatCompactNumber(s.value)}
                 </span>

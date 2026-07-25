@@ -30,7 +30,11 @@ export default function IconStatCard({
       </CardHeader>
       <CardContent className="min-w-0 p-3 pt-0 sm:p-6 sm:pt-0">
         <div className="flex min-w-0 items-baseline gap-2 text-xl font-bold tabular-nums leading-none sm:text-2xl">
-          <TruncatedText text={valueText} className={cn("max-w-full", valueClassName)} />
+          <TruncatedText
+            text={valueText}
+            className="max-w-full"
+            contentClassName={valueClassName}
+          />
           {inlineSuffix ? (
             <span className="shrink-0 text-xs font-normal text-muted-foreground">{inlineSuffix}</span>
           ) : null}
