@@ -8,20 +8,49 @@
 
 ## [0.7.8] - 2026-07-25
 
-### 🚀 新功能
+相对 **0.7.2**（Bot **v4.1.1** 捆绑）至本版的累计说明；中间 0.7.3～0.7.7 的逐条提交见下文各节。
 
-* feat(protocol): 账号工作区与镜像拉取，选择器支持收藏排序 ([33bcb8a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/33bcb8a7e178eed29f1cc4f5fd1aed7490021100))
-* feat(ai): 历史会话展示工具轨迹 ([6c39e0a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6c39e0a40ad71da586f99212a7a3e5b498a1661b))
-* feat(ai): 语料源详情支持检索试探 ([ff14de8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ff14de8e9023b28dc635da5bb0149e5f580310d5))
-* feat(ai): 语料源支持点击查看条目预览 ([f6383b4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f6383b45c4cc2c3e14da9378f5193e3bb0d5c82a))
-* feat(ai): 对话配置增加工具清单面板 ([f1b55d5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f1b55d54467f41204e70603f6f08cdf4258a7dd9))
-* feat(api): 同步 OpenAPI ([2cad149](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2cad149ff466966e2b6429e6531ad44a3cb4886d))
+### 亮点
 
-### 🔨 其他更改
+- AI：工具清单、语料预览/检索试探、历史工具轨迹；统计趋势与记忆/门控；任务编排高低档/全任务
+- Provider：通用主备线路面板；帮助图分组与芯片 portal
+- 社区投稿：面板、可不选 Bot、粘贴截图；数据看板插件筛选
+- 协议：账号工作区与 Docker 镜像拉取；账号选择器收藏排序
+- 修复：样式失效、Tailwind content、看板中文名/页头版本、窄屏弹窗边距
 
-* chore(ci): 重触 PR 检查 ([9c0a903](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9c0a903e1da1ae4632851eb689b173eaacca0469))
+### Added
 
-**完整变更**: [`v0.7.7...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.7...HEAD)
+#### AI / 对话
+
+- 对话配置：LLM 工具清单面板；「本进程未加载」等禁用原因文案
+- 语料源：条目预览、检索试探
+- 历史会话：工具轨迹展示
+- 任务编排：高低档 / 全任务切换（全任务优先）
+- AI 统计：趋势图、记忆 / 门控面板
+
+#### Provider / 帮助
+
+- 通用主备 Provider 线路面板（`provider_gateway`）
+- 插件配置帮助图分组与芯片 portal 滚动
+
+#### 社区与看板
+
+- 社区投稿面板；可不选 Bot；支持粘贴截图；无 Bot 截图瓦片展示
+- 数据看板：插件筛选与 AI 统计展示优化
+- 多处账号选择器：收藏账号优先排序
+
+#### 协议
+
+- 账号工作区体验与 Docker 镜像拉取进度
+- 原生 WebUI 鉴权旁注等字段展示
+
+### Fixed
+
+- 分区注释被提前闭合导致样式失效；Tailwind `content` glob 被误删
+- 看板中文名与布局；页头版本 / 主题展示；移除流量编排
+- Git 镜像源弹窗窄屏留白
+
+**完整变更**: [`v0.7.2...v0.7.8`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.2...v0.7.8)
 
 
 ## [0.7.7] - 2026-07-25
