@@ -151,7 +151,7 @@ export default function AiConfigConnectionSection() {
 
         {panel === "connection" ? (
           <StateBlock loading={aiCfgQ.isLoading} error={aiCfgQ.error}>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="服务地址" description="例如 http://127.0.0.1:9099">
                 <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
               </AiConfigField>
@@ -197,7 +197,7 @@ export default function AiConfigConnectionSection() {
             <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
               {runtimeQ.data?.ai_root || installQ.data?.ai_root || "—"}
             </p>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {(
                 [
                   ["包含媒体依赖", withMedia, setWithMedia],

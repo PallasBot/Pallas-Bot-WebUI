@@ -90,7 +90,7 @@ export default function AiModelAdminPanel({ embedded = false }: Props) {
           <Badge variant="outline">当前 {statusQ.data?.model || "—"}</Badge>
           <Badge variant="secondary">GPU 层数 {statusQ.data?.num_gpu ?? "—"}</Badge>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <AiConfigField label="模型名" description="本机 Ollama 已发现的模型。">
             <AiModelSelect
               value={model}

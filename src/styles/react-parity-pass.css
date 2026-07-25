@@ -262,10 +262,6 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .pl
 }
 
 @media (max-width: 560px) {
-  .plugin-config-form-grid {
-    grid-template-columns: 1fr;
-  }
-
   .plugin-config-group-card {
     padding: 14px 12px 14px;
   }

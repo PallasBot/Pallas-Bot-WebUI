@@ -407,7 +407,7 @@ export default function AiConfigMediaSection() {
             </p>
             {localInstallUi ? (
               <>
-                <div className="grid gap-2 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2">
                   {INSTALL_SWITCHES.map((item) => {
                     const state = installSwitchState[item.key];
                     return (
@@ -467,7 +467,7 @@ export default function AiConfigMediaSection() {
             }
             bodyClassName="!grid-cols-1 gap-3"
           >
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="服务地址" description="例如 http://127.0.0.1:9099">
                 <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
               </AiConfigField>
@@ -601,7 +601,7 @@ export default function AiConfigMediaSection() {
             subtitle="未在命令中指定时使用。"
             bodyClassName="!grid-cols-1 gap-3"
           >
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="默认 Speaker" description="未指定时使用的唱歌音色。">
                 <AiOptionSelect
                   value={defaultSpeaker}
@@ -649,7 +649,7 @@ export default function AiConfigMediaSection() {
             subtitle="参考音频、提示文本与语种默认值。"
             bodyClassName="!grid-cols-1 gap-3"
           >
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="参考音频" description="参考音频路径" className="md:col-span-2">
                 <AiOptionSelect
                   value={ttsRef}
@@ -729,7 +729,7 @@ export default function AiConfigMediaSection() {
           subtitle="手机号验证码登录；已登录可登出。"
           bodyClassName="!grid-cols-1 gap-3"
         >
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <AiConfigField label="手机号" description="接收验证码的手机号。">
               <Input
                 value={phone}

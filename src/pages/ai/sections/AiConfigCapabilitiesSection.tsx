@@ -224,7 +224,7 @@ export default function AiConfigCapabilitiesSection() {
               后端 {(singQ.data?.backends.backends || []).map((b) => b.id).join(", ") || "—"} · Speaker{" "}
               {singQ.data?.speakers.speakers?.length ?? 0} 个
             </p>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="默认 Speaker" description="未指定音色时使用的默认唱歌音色。">
                 <AiModelSelect
                   value={defaultSpeaker}
@@ -261,7 +261,7 @@ export default function AiConfigCapabilitiesSection() {
         {panel === "tts" ? (
           <StateBlock loading={ttsQ.isLoading} error={ttsQ.error}>
             <p className="mb-3 text-xs text-muted-foreground">音色 {ttsQ.data?.voices?.length ?? 0} 个</p>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <AiConfigField label="参考音频" description="参考音频的存储路径。">
                 <AiModelSelect
                   value={ttsRef}

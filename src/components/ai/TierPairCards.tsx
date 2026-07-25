@@ -104,7 +104,7 @@ type TierPairCardsProps = {
 /** 高低双卡并排；窄屏单列 */
 export default function TierPairCards({ high, low, className }: TierPairCardsProps) {
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2", className)}>
+    <div className={cn("grid grid-cols-2 gap-4", className)}>
       {high}
       {low}
     </div>

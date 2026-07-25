@@ -1559,7 +1559,7 @@ export default function LlmProvidersForm() {
                   }
                 />
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-4">
                   {ALL_ROUTABLE_TASKS.map((task) => {
                     const meta = TASK_ROUTE_META[task];
                     const slot = taskRoutes[task];

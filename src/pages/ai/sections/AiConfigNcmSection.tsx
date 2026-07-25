@@ -77,7 +77,7 @@ export default function AiConfigNcmSection() {
 
         <section className="space-y-3 border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] pt-4">
           <h3 className="text-sm font-medium">短信登录</h3>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <AiConfigField label="手机号">
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
             </AiConfigField>
