@@ -160,6 +160,8 @@ export type PluginConfigField = {
   ui_group?: string;
   ui_order?: number;
   ui_hidden?: boolean;
+  ui_widget?: string;
+  ui_gateway?: Record<string, unknown>;
 };
 
 export type PluginConfigData = {

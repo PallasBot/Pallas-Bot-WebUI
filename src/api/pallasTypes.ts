@@ -700,6 +700,10 @@ export interface PluginConfigField {
   ui_order?: number;
   /** 进阶项，默认折叠 */
   ui_hidden?: boolean;
+  /** 专用控件，如 provider_gateway */
+  ui_widget?: string;
+  /** provider_gateway 绑定声明 */
+  ui_gateway?: Record<string, unknown>;
 }
 
 export interface PluginConfigUnexpectedKey {

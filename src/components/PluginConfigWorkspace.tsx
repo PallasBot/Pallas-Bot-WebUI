@@ -26,7 +26,7 @@ import HelpImagePreview from "@/components/HelpImagePreview";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
-import DrawProviderGatewayPanel, {
+import {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
 } from "@/components/draw/DrawProviderGatewayPanel";
 import ProviderGatewayPanel from "@/components/provider/ProviderGatewayPanel";
@@ -52,7 +52,6 @@ import {
   type ProviderGatewayBinding,
 } from "@/utils/providerGateways";
 
-const DRAW_GATEWAY_FIELD_SET = new Set<string>(DRAW_GATEWAY_PANEL_FIELD_NAMES);
 const HELP_TAG_OVERRIDE_FIELD_SET = new Set<string>([HELP_TAG_OVERRIDES_FIELD]);
 
 /** 画画配置提交体：表单字段 + 网关面板键（schema 尚未热载到新键时也写入）。 */
@@ -183,36 +182,6 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const isHelpPlugin = name === "help";
   const pluginResolvedId = (initialPluginRow?.resolved_plugin_id || name).trim();
   const showDrawAiConfigHint = pluginResolvedId === "draw";
-  const fields = cfgQ.data?.fields || [];
-
-  const gatewayWidgets = useMemo(() => {
-    const fromSchema: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
-    for (const field of fields) {
-      if (field.ui_widget !== "provider_gateway") continue;
-      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
-        anchorField: field.name,
-      });
-      if (binding) fromSchema.push({ anchor: field.name, binding });
-    }
-    if (fromSchema.length) return fromSchema;
-    if (name === "draw") {
-      return [{ anchor: "pallas_image_api_backends", binding: DRAW_PROVIDER_GATEWAY_BINDING }];
-    }
-    return [];
-  }, [fields, name]);
-
-  const gatewayHiddenFieldSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const widget of gatewayWidgets) {
-      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
-        set.add(key);
-      }
-    }
-    if (name === "draw") {
-      for (const key of DRAW_GATEWAY_PANEL_FIELD_NAMES) set.add(key);
-    }
-    return set;
-  }, [gatewayWidgets, name]);
 
   const [mode, setMode] = useState<"form" | "raw">("form");
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -247,6 +216,36 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const hasConfigFields = Boolean(cfgQ.data?.fields.length);
   const hasGovernanceTab = Boolean(pluginResolvedId);
   const showReadmeTab = isDialog;
+
+  const fields = cfgQ.data?.fields || [];
+  const gatewayWidgets = useMemo(() => {
+    const fromSchema: Array<{ anchor: string; binding: ProviderGatewayBinding }> = [];
+    for (const field of fields) {
+      if (field.ui_widget !== "provider_gateway") continue;
+      const binding = normalizeProviderGatewayBinding(field.ui_gateway, {
+        anchorField: field.name,
+      });
+      if (binding) fromSchema.push({ anchor: field.name, binding });
+    }
+    if (fromSchema.length) return fromSchema;
+    if (name === "draw") {
+      return [{ anchor: "pallas_image_api_backends", binding: DRAW_PROVIDER_GATEWAY_BINDING }];
+    }
+    return [];
+  }, [fields, name]);
+
+  const gatewayHiddenFieldSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const widget of gatewayWidgets) {
+      for (const key of providerGatewayBoundFieldNames(widget.binding, widget.anchor)) {
+        set.add(key);
+      }
+    }
+    if (name === "draw") {
+      for (const key of DRAW_GATEWAY_PANEL_FIELD_NAMES) set.add(key);
+    }
+    return set;
+  }, [gatewayWidgets, name]);
 
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
@@ -301,7 +300,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       const fields = cfgQ.data?.fields || [];
       const merged = { ...fieldValues, ...patch };
       setFieldValues(merged);
-      return putPluginConfig(name, collectDrawPluginValues(fields, merged));
+      const payload =
+        name === "draw"
+          ? collectDrawPluginValues(fields, merged)
+          : collectFieldValues(fields, merged);
+      return putPluginConfig(name, payload);
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["plugin-config", name] });
@@ -332,12 +335,12 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   const saving = saveForm.isPending || saveRaw.isPending || saveGatewayPatch.isPending;
   const loading = cfgQ.isLoading;
   const hasData = Boolean(cfgQ.data);
-  const fields = cfgQ.data?.fields || [];
-  const usesDrawGatewayPanel = name === "draw";
   const usesHelpTagOverridesPanel = isHelpPlugin;
   const formFields = (() => {
     let list = fields;
-    if (usesDrawGatewayPanel) list = list.filter((f) => !DRAW_GATEWAY_FIELD_SET.has(f.name));
+    if (gatewayHiddenFieldSet.size) {
+      list = list.filter((f) => !gatewayHiddenFieldSet.has(f.name));
+    }
     if (usesHelpTagOverridesPanel) list = list.filter((f) => !HELP_TAG_OVERRIDE_FIELD_SET.has(f.name));
     return list;
   })();
@@ -455,10 +458,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
           {isHelpPlugin && mode === "form" ? (
             <HelpImagePreview embedded={isDialog} defaultPlugin={name} />
           ) : null}
-          {!hasConfigFields ? (
-            <p className="muted plugin-config-page__fields-lead">
-              该插件未暴露可调参数或未注册 schema；仍可设置下方帮助图分组。
-            </p>
+          {!hasConfigFields && !isHelpPlugin ? (
+            <p className="muted plugin-config-page__fields-lead">该插件未暴露可调参数或未注册 schema。</p>
           ) : null}
           {checkErr ? <p className="text-sm text-destructive">{checkErr}</p> : null}
           {checkLines.length ? (
@@ -500,14 +501,16 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                   empty={false}
                   emptyText="该插件无可编辑配置字段"
                 >
-                  {usesDrawGatewayPanel ? (
-                    <DrawProviderGatewayPanel
+                  {gatewayWidgets.map((widget) => (
+                    <ProviderGatewayPanel
+                      key={widget.anchor}
                       className="mb-4"
                       fieldValues={fieldValues}
                       onFieldsPatch={patchFieldValuesAndPersist}
                       busy={saveGatewayPatch.isPending}
+                      binding={widget.binding}
                     />
-                  ) : null}
+                  ))}
                   {usesHelpTagOverridesPanel ? (
                     <HelpTagOverridesPanel
                       className="mb-4"
@@ -548,9 +551,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                     </div>
                   ) : null}
                 </StateBlock>
-              ) : null}
+              ) : isHelpPlugin ? null : (
+                <p className="muted plugin-config-page__fields-lead">该插件无可编辑配置字段</p>
+              )}
             </>
-          ) : hasConfigFields ? (
+          ) : (
             <StateBlock loading={rawQ.isLoading} error={rawQ.error}>
               <textarea
                 className="inp textarea plugin-config-page__raw-toml min-h-[22rem] w-full font-mono text-xs leading-relaxed"
@@ -566,7 +571,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                 </div>
               ) : null}
             </StateBlock>
-          ) : null}
+          )}
         </>
       ) : null}
     </>
@@ -576,18 +581,23 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
     ? cn("plugin-config-workspace__body", loading && "plugin-config-workspace__body--loading")
     : cn("plugin-config-page__card", loading && "plugin-config-page__card--loading");
 
-  // 无 schema 的插件 GET config 可能失败；仍展示帮助图分组
   let body: ReactNode;
-  if (!name) {
-    body = null;
-  } else if (loading && !cfgQ.data && !pluginResolvedId) {
+  if (loading) {
     body = (
       <div className="plugin-config-page__loading" aria-busy="true" aria-live="polite">
         <span className="plugin-config-page__loading-text">加载配置…</span>
       </div>
     );
-  } else {
+  } else if (cfgQ.error && !cfgQ.data) {
+    body = (
+      <div className="plugin-config-page__card-bd">
+        <div className="alert alert--err">{axiosErrorDetail(cfgQ.error)}</div>
+      </div>
+    );
+  } else if (cfgQ.data || detailTab === "governance" || detailTab === "readme") {
     body = <div className="plugin-config-page__card-bd">{configBody}</div>;
+  } else {
+    body = null;
   }
 
   return (
