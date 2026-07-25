@@ -5,10 +5,17 @@ import type {
   OfficialExtensionRow,
   PluginRow,
   KnowledgeSourceDetail,
+  KnowledgeSourceRetrieveData,
 } from "@/api/pallasTypes";
 import { http } from "./http";
 
-export type { CommunityPluginRow, OfficialExtensionRow, PluginRow, KnowledgeSourceDetail };
+export type {
+  CommunityPluginRow,
+  OfficialExtensionRow,
+  PluginRow,
+  KnowledgeSourceDetail,
+  KnowledgeSourceRetrieveData,
+};
 
 export type SystemData = {
   plugin_count: number;
@@ -1303,6 +1310,19 @@ export async function fetchConversationKernelKnowledgeSourceDetail(
     },
   );
   return envelopeData<KnowledgeSourceDetail>(body) || { source_id: sourceId };
+}
+
+export async function postConversationKernelKnowledgeSourceRetrieve(body: {
+  query: string;
+  sourceId?: string | null;
+  topK?: number | null;
+}): Promise<KnowledgeSourceRetrieveData> {
+  const { data: res } = await http.post("/llm/conversation-kernel/knowledge-sources/retrieve", {
+    query: body.query,
+    ...(body.sourceId ? { source_id: body.sourceId } : {}),
+    ...(body.topK != null && body.topK > 0 ? { top_k: body.topK } : {}),
+  });
+  return envelopeData<KnowledgeSourceRetrieveData>(res) || res || {};
 }
 
 export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {

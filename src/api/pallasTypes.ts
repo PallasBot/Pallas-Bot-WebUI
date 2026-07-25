@@ -1430,6 +1430,23 @@ export interface KnowledgeSourceDetail {
   preview_content_len?: number;
 }
 
+export interface KnowledgeSourceRetrieveHit {
+  source_id?: string;
+  title?: string;
+  content?: string;
+  score?: number;
+  retrieval_mode?: string;
+}
+
+export interface KnowledgeSourceRetrieveData {
+  query?: string;
+  source_id?: string | null;
+  min_score?: number;
+  items?: KnowledgeSourceRetrieveHit[];
+  count?: number;
+  enabled?: boolean;
+}
+
 export interface LlmToolCatalogPolicy {
   tools_enabled?: boolean;
   selective_enabled?: boolean;

@@ -2561,6 +2561,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/conversation-kernel/knowledge-sources/retrieve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Llm Conversation Kernel Knowledge Sources Retrieve Post */
+        post: operations["_llm_conversation_kernel_knowledge_sources_retrieve_post_pallas_api_llm_conversation_kernel_knowledge_sources_retrieve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/history/behavior/annotate": {
         parameters: {
             query?: never;
@@ -11539,6 +11556,45 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_conversation_kernel_knowledge_sources_retrieve_post_pallas_api_llm_conversation_kernel_knowledge_sources_retrieve_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
