@@ -15559,9 +15559,9 @@ html[data-theme="light"] .corpus-hot__pill-score {
 }
 
 .charts-page__account-sel {
-  width: 7rem;
-  min-width: 5rem;
-  max-width: 7rem;
+  width: 9rem;
+  min-width: 7.5rem;
+  max-width: 9rem;
   padding-left: 12px;
   padding-right: var(--ui-sel-arrow-pad);
   overflow: hidden;
@@ -16128,9 +16128,9 @@ html[data-theme="light"] .charts-page .home-plugin-daily__bar--mat {
 }
 
 .charts-page__account-sel {
-  width: 7rem;
-  min-width: 5rem;
-  max-width: 7rem;
+  width: 9rem;
+  min-width: 7.5rem;
+  max-width: 9rem;
   overflow: hidden;
   flex: 0 0 auto;
 }

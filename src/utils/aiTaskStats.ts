@@ -42,6 +42,41 @@ export function stateCount(slice: LlmTaskMetricsSlice | undefined, key: string):
   return Number(slice?.state_counts?.[key] ?? 0);
 }
 
+/** AI 成功/失败：优先 by_task，其次 state_counts，再回退 provider_stats。 */
+export function aiOutcomesFromSlice(ai: LlmTaskMetricsSlice | undefined | null): {
+  ok: number;
+  fail: number;
+} {
+  let ok = metricSum(ai ?? undefined, "task_ok");
+  let fail = metricSum(ai ?? undefined, "task_fail");
+  if (ok + fail > 0) return { ok, fail };
+  ok = stateCount(ai ?? undefined, "succeeded");
+  fail = stateCount(ai ?? undefined, "failed");
+  if (ok + fail > 0) return { ok, fail };
+  for (const row of Object.values(ai?.provider_stats ?? {})) {
+    ok += Number(row.succeeded ?? (row as { ok?: number }).ok ?? 0) || 0;
+    fail += Number(row.failed ?? (row as { fail?: number }).fail ?? 0) || 0;
+  }
+  return { ok, fail };
+}
+
+export function aggregateHistoryAiOutcomes(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): { ok: number; fail: number } {
+  let ok = 0;
+  let fail = 0;
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const day = aiOutcomesFromSlice(row.ai ?? null);
+    ok += day.ok;
+    fail += day.fail;
+  }
+  return { ok, fail };
+}
+
 export type DimensionRow = {
   key: string;
   requests: number;
@@ -428,6 +463,21 @@ export function hourTokenRows(
     .sort((a, b) => a.key.localeCompare(b.key));
 }
 
+/** 把 by_hour 桶转成趋势点；hourKey 支持 "0"/"00"/"0:00" 等。 */
+export function hourlyTokenTrendPoints(
+  byHour: Record<string, LlmTokenMetricBreakdownRow> | undefined,
+  dayIso: string,
+): Array<{ at: number; total: number }> {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  return hourTokenRows(byHour).map((row) => {
+    const raw = String(row.key || "").trim();
+    const hour = Math.min(23, Math.max(0, parseInt(raw.replace(/:.*/, ""), 10) || 0));
+    const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
+    return { at, total: row.totalTokens };
+  });
+}
+
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
   const bot = stats?.bot;
   const ai = stats?.ai;
@@ -440,11 +490,12 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
       ? Math.round((1000 * Number(ai?.tokens?.cache_read_tokens ?? 0)) / cacheDenom) / 10
       : 0;
   const tokens = tokensFromSlice(ai?.tokens);
+  const outcomes = aiOutcomesFromSlice(ai);
   return {
     reachable: stats?.ai_reachable,
     botOk: metricSum(bot, "submit_ok") + metricSum(bot, "callback_ok"),
-    aiOk: metricSum(ai, "task_ok"),
-    aiFail: metricSum(ai, "task_fail"),
+    aiOk: outcomes.ok,
+    aiFail: outcomes.fail,
     aiQueued: stateCount(ai, "queued"),
     aiRunning: stateCount(ai, "running"),
     tokens,

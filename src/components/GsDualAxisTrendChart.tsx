@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ConsoleDailyStatRow } from "@/api/pallasTypes";
 import {
   buildGsTrendChartPack,
@@ -36,7 +36,8 @@ export default function GsDualAxisTrendChart({
   chartUid = "",
   className,
 }: Props) {
-  const uid = chartUid || `gs-trend-${Math.random().toString(36).slice(2, 9)}`;
+  const autoId = useId().replace(/:/g, "");
+  const uid = chartUid || `gs-trend-${autoId}`;
   const plotRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -80,11 +81,12 @@ export default function GsDualAxisTrendChart({
       pt.y = ev.clientY;
       const svgPt = pt.matrixTransform(ctm.inverse());
       const ratio = (svgPt.x - p.left) / p.innerW;
-      const idx = Math.round(ratio * (p.rows.length - 1));
-      setHoverIndex(Math.max(0, Math.min(p.rows.length - 1, idx)));
+      const idx = Math.max(0, Math.min(p.rows.length - 1, Math.round(ratio * (p.rows.length - 1))));
+      setHoverIndex((prev) => (prev === idx ? prev : idx));
       const rect = wrap.getBoundingClientRect();
       const pad = 12;
-      setTooltipX(Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left)));
+      const nextX = Math.max(pad, Math.min(rect.width - pad, ev.clientX - rect.left));
+      setTooltipX((prev) => (Math.abs(prev - nextX) < 0.5 ? prev : nextX));
     },
     [pack],
   );

@@ -348,6 +348,15 @@ export interface ConsoleDailyStatRow {
   sent: number;
   matcher_runs: number;
   api_calls?: number;
+  /** 当日收到过群消息的去重群数 */
+  active_groups?: number;
+}
+
+export interface ConsoleGroupMetrics {
+  dag: number;
+  mag: number;
+  dag_mag_ratio: number | null;
+  mag_days: number;
 }
 
 export interface ConsoleDailyStatsData {
@@ -358,6 +367,7 @@ export interface ConsoleDailyStatsData {
   rows: ConsoleDailyStatRow[];
   live_today: Record<string, { received: number; sent: number; matcher_runs: number }>;
   server_date: string;
+  group_metrics?: ConsoleGroupMetrics;
 }
 
 export interface PluginRunStatsData {

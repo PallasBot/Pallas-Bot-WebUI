@@ -106,22 +106,23 @@ export function labelRepeaterMode(raw?: string | null): string {
   return String(raw);
 }
 
-/** 反哺 / 统计里的 llm_route、任务类型展示名 */
+/** 反哺 / 统计里的 llm_route、任务类型展示名（按实际效果，不直译内部代号）。 */
 const LLM_ROUTE_LABELS: Record<string, string> = {
-  plain_llm_chat: "闲聊现编",
+  plain_llm_chat: "模型直出",
   corpus_select: "语料选句",
-  corpus_polish_lite: "语料轻润色",
-  corpus_polish: "语料完整润色",
-  corpus_fallback: "语料兜底",
-  pipeline_select: "流水线选句",
-  pipeline_rewrite: "流水线改写",
-  pipeline_stitch: "流水线拼接",
-  pipeline_generate: "流水线生成",
+  corpus_polish_lite: "轻润色",
+  corpus_polish: "完整润色",
+  corpus_fallback: "兜底现编",
+  // repeater 管线阶段：选句 → 轻改 → 候选拼接 → 语料不足时现编
+  pipeline_select: "接话选句",
+  pipeline_rewrite: "接话轻润色",
+  pipeline_stitch: "候选拼接",
+  pipeline_generate: "接话现编",
   llm_chat: "@ 对话",
   drunk: "醉聊",
   repeater_select: "接话选句",
   repeater_polish_lite: "接话轻润色",
-  repeater_fallback: "接话兜底",
+  repeater_fallback: "接话现编",
   repeater_polish: "接话完整润色",
 };
 
