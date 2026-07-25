@@ -3008,6 +3008,19 @@ html[data-layout="hub"] .shell--sidebar-collapsed .shell__brand-slot--avatar .sh
   html[data-layout="hub"] .shell-mobile-nav__link {
     border-radius: 999px;
     min-height: 44px;
+    align-items: center;
+  }
+
+  html[data-layout="hub"] .shell-mobile-nav__link .shell__nav-ico {
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  html[data-layout="hub"] .shell-mobile-nav__link .shell__nav-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 1.25em;
   }
 
   html[data-layout="hub"] .shell-mobile-nav__link.is-router-active {
