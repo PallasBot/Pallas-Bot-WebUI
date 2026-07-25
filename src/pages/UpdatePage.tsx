@@ -5,10 +5,13 @@ import { axiosErrorDetail } from "@/api/http";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
   fetchUpdateCheckAll,
+  openUpdateApplyJobEventSource,
   postBotUpdateApply,
   postUpdateApply,
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
+import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
+import { InstallJobFailedError } from "@/utils/installJobStream";
 import { pallasBotVersionLabel, updateCheckCurrentTagLabel } from "@/utils/versionDisplay";
 import {
   PALLAS_BOT_DOC,
@@ -51,6 +54,39 @@ function UpdateFoldSummary({ children }: { children: ReactNode }) {
   );
 }
 
+function UpdateApplyProgress({
+  label,
+  percent,
+}: {
+  label: string;
+  percent: number;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(percent)));
+  return (
+    <div className="update-page__apply-progress" role="status" aria-live="polite">
+      <div className="update-page__apply-progress-head">
+        <span className="update-page__apply-progress-label">{label}</span>
+        <span className="update-page__apply-progress-pct muted">{pct}%</span>
+      </div>
+      <div
+        className="update-page__apply-progress-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        aria-label={label}
+      >
+        <span
+          className={`update-page__apply-progress-fill${pct >= 100 ? " update-page__apply-progress-fill--done" : ""}`}
+          style={{ width: `${Math.max(pct, pct > 0 ? 4 : 0)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+type ApplyKind = "web" | "bot";
+
 function formatCheckedAt(ts?: number | null): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
   try {
@@ -88,7 +124,10 @@ function releaseNotesFoldSummary(
 export default function UpdatePage() {
   const qc = useQueryClient();
   const location = useLocation();
-  const [busy, setBusy] = useState(false);
+  const [applyKind, setApplyKind] = useState<ApplyKind | null>(null);
+  const [applyPercent, setApplyPercent] = useState(0);
+  const [applyHint, setApplyHint] = useState("");
+  const busy = applyKind != null;
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [gitMirrorOpen, setGitMirrorOpen] = useState(false);
@@ -96,7 +135,6 @@ export default function UpdatePage() {
   const [ghTokenHadValue, setGhTokenHadValue] = useState(false);
   const [ghTokenBusy, setGhTokenBusy] = useState(false);
   const [ghTokenErr, setGhTokenErr] = useState("");
-  const [ghTokenOk, setGhTokenOk] = useState("");
 
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
   const web = q.data?.webui;
@@ -201,7 +239,6 @@ export default function UpdatePage() {
 
   async function loadGithubTokenHint() {
     setGhTokenErr("");
-    setGhTokenOk("");
     try {
       const data = await fetchPluginConfig(PB_PROTOCOL_PLUGIN);
       const f = data.fields.find((x) => x.name === GITHUB_TOKEN_FIELD);
@@ -223,13 +260,11 @@ export default function UpdatePage() {
     }
     setGhTokenBusy(true);
     setGhTokenErr("");
-    setGhTokenOk("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: next });
       setGhTokenHadValue(true);
       setGhTokenInput("");
-      setGhTokenOk("配置已保存；若未立即生效可重启 Bot。");
-      pushConsoleToast("GitHub 令牌已保存", "ok");
+      pushConsoleToast("GitHub 令牌已保存；若未立即生效可重启 Bot", "ok");
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       setGhTokenErr(detail);
@@ -243,13 +278,11 @@ export default function UpdatePage() {
     if (!window.confirm("确定清除已保存的 GitHub 令牌？")) return;
     setGhTokenBusy(true);
     setGhTokenErr("");
-    setGhTokenOk("");
     try {
       await putPluginConfig(PB_PROTOCOL_PLUGIN, { [GITHUB_TOKEN_FIELD]: "" });
       setGhTokenHadValue(false);
       setGhTokenInput("");
-      setGhTokenOk("已清除；重启 Bot 后生效。");
-      pushConsoleToast("GitHub 令牌已清除", "ok");
+      pushConsoleToast("GitHub 令牌已清除；重启 Bot 后生效", "ok");
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       setGhTokenErr(detail);
@@ -262,17 +295,33 @@ export default function UpdatePage() {
   async function applyWeb() {
     if (!web?.latest_tag) return;
     if (!window.confirm(`将 WebUI 更新到 ${web.latest_tag}？`)) return;
-    setBusy(true);
+    setApplyKind("web");
+    setApplyPercent(1);
+    setApplyHint("排队中…");
     setErr("");
     setMsg("");
     try {
-      const r = await postUpdateApply();
-      setMsg(r.message ? `${r.message} · 正在刷新页面以载入新版本…` : "WebUI 已更新，正在刷新页面…");
+      const started = await postUpdateApply();
+      if (!started.job_id) throw new Error("未返回更新任务 ID");
+      const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        setApplyPercent(p.percent);
+        if (p.message) setApplyHint(p.message);
+      });
+      setApplyPercent(100);
+      const resultMsg = done.result?.message || done.message || "更新成功";
+      setMsg(`${resultMsg} · 正在刷新页面以载入新版本…`);
       window.setTimeout(() => window.location.reload(), 800);
     } catch (e) {
-      setErr(axiosErrorDetail(e));
-    } finally {
-      setBusy(false);
+      const detail =
+        e instanceof InstallJobFailedError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : axiosErrorDetail(e);
+      setErr(detail);
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
     }
   }
 
@@ -282,17 +331,35 @@ export default function UpdatePage() {
       ? `将 Bot 更新到 ${bot.latest_tag} 并重启进程？`
       : `将 Bot 更新到 ${bot.latest_tag}？`;
     if (!window.confirm(prompt)) return;
-    setBusy(true);
+    setApplyKind("bot");
+    setApplyPercent(1);
+    setApplyHint("排队中…");
     setErr("");
     setMsg("");
     try {
-      const r = await postBotUpdateApply({ restart });
-      setMsg(r.message || (restart ? "已触发更新与重启。" : "已触发。"));
+      const started = await postBotUpdateApply({ restart });
+      if (!started.job_id) throw new Error("未返回更新任务 ID");
+      const done = await waitForUpdateApplyJob(started.job_id, openUpdateApplyJobEventSource, (p) => {
+        setApplyPercent(p.percent);
+        if (p.message) setApplyHint(p.message);
+      });
+      setApplyPercent(100);
+      setMsg(done.result?.message || done.message || (restart ? "已触发更新与重启。" : "已触发。"));
       if (!restart) await qc.invalidateQueries({ queryKey: ["update-check-all"] });
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
     } catch (e) {
-      setErr(axiosErrorDetail(e));
-    } finally {
-      setBusy(false);
+      const detail =
+        e instanceof InstallJobFailedError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : axiosErrorDetail(e);
+      setErr(detail);
+      setApplyKind(null);
+      setApplyPercent(0);
+      setApplyHint("");
     }
   }
 
@@ -320,7 +387,7 @@ export default function UpdatePage() {
           </>
         }
         actions={
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-nowrap items-center gap-1.5">
             <Button type="button" variant="secondary" size="sm" onClick={() => setGitMirrorOpen(true)}>
               镜像源
             </Button>
@@ -400,18 +467,23 @@ export default function UpdatePage() {
             </div>
           </div>
 
-          <div className="update-page__release-primary">
-            <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
-              {busy ? "处理中…" : "应用 WebUI 更新"}
-            </Button>
-            <a
-              className="update-page__link update-page__release-ext-link"
-              href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Release
-            </a>
+          <div className="update-page__release-actions">
+            <div className="update-page__release-primary">
+              <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
+                {applyKind === "web" ? "处理中…" : "应用 WebUI 更新"}
+              </Button>
+              <a
+                className="update-page__link update-page__release-ext-link"
+                href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub Release
+              </a>
+            </div>
+            {applyKind === "web" ? (
+              <UpdateApplyProgress label={applyHint || "正在下载并应用 WebUI 更新…"} percent={applyPercent} />
+            ) : null}
           </div>
 
           {web?.error ? (
@@ -516,25 +588,30 @@ export default function UpdatePage() {
             <p className="update-page__release-meta muted">{botMetaParts.join(" · ")}</p>
           ) : null}
 
-          <div className="update-page__release-primary">
-            {bot?.deployment_mode !== "docker" ? (
-              <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
-                应用 Bot 更新
-              </Button>
+          <div className="update-page__release-actions">
+            <div className="update-page__release-primary">
+              {bot?.deployment_mode !== "docker" ? (
+                <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
+                  {applyKind === "bot" ? "处理中…" : "应用 Bot 更新"}
+                </Button>
+              ) : null}
+              {bot?.deployment_mode !== "docker" && bot?.restart_available ? (
+                <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
+                  更新并重启
+                </Button>
+              ) : null}
+              <a
+                className="update-page__link update-page__release-ext-link"
+                href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub Release
+              </a>
+            </div>
+            {applyKind === "bot" ? (
+              <UpdateApplyProgress label={applyHint || "正在拉取并应用 Bot 更新…"} percent={applyPercent} />
             ) : null}
-            {bot?.deployment_mode !== "docker" && bot?.restart_available ? (
-              <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
-                更新并重启
-              </Button>
-            ) : null}
-            <a
-              className="update-page__link update-page__release-ext-link"
-              href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Release
-            </a>
           </div>
 
           {bot?.error ? (
@@ -695,7 +772,6 @@ export default function UpdatePage() {
             ) : null}
           </div>
           {ghTokenErr ? <div className="alert alert--err update-page__gh-alert">{ghTokenErr}</div> : null}
-          {ghTokenOk ? <div className="alert alert--ok update-page__gh-alert">{ghTokenOk}</div> : null}
         </div>
       </details>
 

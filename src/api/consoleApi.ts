@@ -13,9 +13,9 @@ import type { AiExtensionLogKind } from "@/config/aiConstants";
 import type {
   UpdateCheckData,
   UpdateCheckAllData,
-  UpdateApplyData,
+  UpdateApplyJobStartData,
+  UpdateApplyJobSnapshot,
   BotUpdateCheckData,
-  BotUpdateApplyData,
   SystemRestartData,
   BotConfigMigrationCheckData,
   BotConfigMigrationApplyData,
@@ -3044,8 +3044,8 @@ export async function fetchUpdateCheck(): Promise<UpdateCheckData> {
   return updateCheckInflight;
 }
 
-export async function postUpdateApply(): Promise<UpdateApplyData> {
-  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/update/apply"]["post"]>("/update/apply", {});
+export async function postUpdateApply(): Promise<UpdateApplyJobStartData> {
+  return (await consoleOpenapiPost("/update/apply", {})) as UpdateApplyJobStartData;
 }
 
 let botUpdateCheckInflight: Promise<BotUpdateCheckData> | null = null;
@@ -3076,12 +3076,24 @@ export async function fetchBotUpdateCheck(): Promise<BotUpdateCheckData> {
   return botUpdateCheckInflight;
 }
 
-export async function postBotUpdateApply(options?: { restart?: boolean }): Promise<BotUpdateApplyData> {
-  return consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/update/bot/apply"]["post"]>(
+export async function postBotUpdateApply(options?: { restart?: boolean }): Promise<UpdateApplyJobStartData> {
+  return (await consoleOpenapiPost(
     "/update/bot/apply",
     null,
     { params: { restart: options?.restart ? "true" : "false" } },
-  );
+  )) as UpdateApplyJobStartData;
+}
+
+export function openUpdateApplyJobEventSource(jobId: string): EventSource {
+  const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
+  const apiBase = `${root}/api`;
+  return new EventSource(`${apiBase}/update/jobs/${encodeURIComponent(jobId)}/stream`, {
+    withCredentials: true,
+  });
+}
+
+export async function fetchUpdateApplyJob(jobId: string): Promise<UpdateApplyJobSnapshot> {
+  return (await consoleOpenapiGet(`/update/jobs/${encodeURIComponent(jobId)}`)) as UpdateApplyJobSnapshot;
 }
 
 export async function postSystemRestart(options?: {

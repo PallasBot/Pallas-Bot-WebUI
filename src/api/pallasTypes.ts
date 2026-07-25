@@ -1926,12 +1926,35 @@ export interface UpdateCheckData {
   checked_at: number;
 }
 
-export interface UpdateApplyData {
+export interface UpdateApplyJobStartData {
+  job_id: string;
+  kind: "webui" | "bot";
+  restart?: boolean;
+}
+
+export interface UpdateApplyJobSnapshot {
+  job_id: string;
+  kind: "webui" | "bot";
+  phase: "queued" | "running" | "done" | "failed";
+  message: string;
+  progress_percent: number;
+  result?: {
+    tag?: string;
+    version?: string;
+    message?: string;
+    restart_scheduled?: boolean;
+  } | null;
+  error?: string;
+  restart?: boolean;
+}
+
+/** @deprecated POST /update/apply 现返回 job_id；保留兼容字段 */
+export interface UpdateApplyData extends Partial<UpdateApplyJobStartData> {
   /** GitHub 发布 tag（与检查接口一致） */
-  tag: string;
+  tag?: string;
   /** dist 内 console-version.json 的展示版本，可能与 tag 不同 */
   version?: string;
-  message: string;
+  message?: string;
 }
 
 export interface UpdateCheckAllData {
@@ -1965,9 +1988,9 @@ export interface BotUpdateCheckData {
   activation_policy?: ExtensionActivationPolicy | null;
 }
 
-export interface BotUpdateApplyData {
-  tag: string;
-  message: string;
+export interface BotUpdateApplyData extends Partial<UpdateApplyJobStartData> {
+  tag?: string;
+  message?: string;
   restart_scheduled?: boolean;
 }
 
