@@ -6,6 +6,25 @@
 
 <!-- entries -->
 
+## [0.7.6] - 2026-07-25
+
+### 🚀 新功能
+
+* feat(provider): 通用主备 Provider 线路面板 ([a13f736](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a13f7361445eb300efe18a94d63c425af6bf7f00))
+* feat(help): 插件配置帮助图分组与芯片 portal 滚动 ([0abc877](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0abc877ca2086979cbff8af30099ef49b556cddc))
+* feat(community): 投稿可不选 Bot，支持粘贴截图 ([2362613](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2362613721eb21132c0ac1fd6a394c3a4c00a0e6))
+* feat(charts): 数据看板插件筛选与 AI 统计展示优化 ([7331050](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/7331050954a614678902824af3d1a7ec4aad9a6d))
+* feat(community): 社区投稿面板，并统一 Bot Select 展示 ([c6e2349](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c6e23499c8c780de57f09d02f9e06b1d52f5dece))
+* feat(ai): 任务编排支持高低档/全任务切换且全任务优先 ([6d5ab1e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6d5ab1e3bb972ffb28f172a8f66ac386913e608b))
+* feat(ai-stats): 统计页增加趋势图与记忆/门控面板 ([dacd4ad](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dacd4ad6e07187bf8fbdfd44c3871bfc64d807d1))
+
+### ♻️ 重构
+
+* refactor(community): 投稿页迁 shadcn Card，无 Bot 截图用瓦片展示 ([2b4dafa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b4dafa31d8236ba0c97df8eed9e825f3ace0073))
+
+**完整变更**: [`v0.7.5...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.5...HEAD)
+
+
 ## [0.7.5] - 2026-07-24
 
 ### 🐛 错误修复
