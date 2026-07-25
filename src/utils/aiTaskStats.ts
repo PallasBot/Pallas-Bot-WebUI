@@ -9,6 +9,7 @@ import type {
   LlmTokenMetricBreakdownRow,
   LlmTokenMetricsSlice,
   LlmRagMetricsSlice,
+  LlmGatesSlice,
 } from "@/api/pallasTypes";
 
 export function todayIso(d = new Date()): string {
@@ -280,12 +281,13 @@ export function aggregateHistoryRag(
   rows: LlmTaskStatsHistoryRow[] | undefined,
   start: string,
   end: string,
+  pick: "rag" | "memory_rag" = "rag",
 ): RagBucket {
   let total = emptyRagBucket();
   for (const row of rows ?? []) {
     const date = String(row.date || "").slice(0, 10);
     if (!date || date < start || date > end) continue;
-    total = addRagBuckets(total, ragFromSlice(row.ai?.rag ?? null));
+    total = addRagBuckets(total, ragFromSlice(row.ai?.[pick] ?? null));
   }
   return total;
 }
@@ -302,10 +304,159 @@ export function ragDocumentRows(byDocument: Record<string, number> | undefined):
     .sort((a, b) => b.hitCount - a.hitCount || a.key.localeCompare(b.key));
 }
 
+export type GatesBucket = { skip: number; defer: number; proceed: number };
+
+export function emptyGatesBucket(): GatesBucket {
+  return { skip: 0, defer: 0, proceed: 0 };
+}
+
+export function gatesFromSlice(gates: LlmGatesSlice | undefined | null): GatesBucket {
+  if (!gates) return emptyGatesBucket();
+  return {
+    skip: Number(gates.skip ?? 0),
+    defer: Number(gates.defer ?? 0),
+    proceed: Number(gates.proceed ?? 0),
+  };
+}
+
+export function aggregateHistoryGates(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): GatesBucket {
+  const total = emptyGatesBucket();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const g = gatesFromSlice(row.ai?.gates ?? null);
+    total.skip += g.skip;
+    total.defer += g.defer;
+    total.proceed += g.proceed;
+  }
+  return total;
+}
+
+export type DailyTokenPoint = { date: string; totalTokens: number; cacheHitRate: number };
+
+export function dailyTokenTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyTokenPoint[] {
+  const out: DailyTokenPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const bucket = tokensFromSlice(row.ai?.tokens ?? null);
+    const denom = bucket.promptTokens + bucket.cacheReadTokens;
+    const cacheHitRate = denom > 0 ? Math.round((1000 * bucket.cacheReadTokens) / denom) / 10 : 0;
+    out.push({ date, totalTokens: bucket.totalTokens, cacheHitRate });
+  }
+  return out;
+}
+
+export type DailyRagPoint = { date: string; hitRate: number; queries: number };
+
+export function dailyRagTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  pick: "rag" | "memory_rag" = "rag",
+): DailyRagPoint[] {
+  const out: DailyRagPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const rag = ragFromSlice(row.ai?.[pick] ?? null);
+    out.push({
+      date,
+      hitRate: rag.hitRate,
+      queries: rag.hitCount + rag.missCount,
+    });
+  }
+  return out;
+}
+
+export function aggregateHistoryRoutes(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): Record<string, number> {
+  const routes: Record<string, number> = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const byTask = row.bot?.by_task ?? {};
+    for (const taskRow of Object.values(byTask)) {
+      const rc = taskRow?.route_counts;
+      if (!rc) continue;
+      for (const [route, count] of Object.entries(rc)) {
+        const key = String(route || "").trim();
+        if (!key) continue;
+        routes[key] = (routes[key] || 0) + (Number(count) || 0);
+      }
+    }
+  }
+  return routes;
+}
+
+export function hourTokenRows(
+  byHour: Record<string, LlmTokenMetricBreakdownRow> | undefined,
+): TokenRow[] {
+  return Object.entries(byHour ?? {})
+    .map(([key, row]) => {
+      const promptTokens = Number(row.prompt_tokens ?? 0);
+      const completionTokens = Number(row.completion_tokens ?? 0);
+      return {
+        key,
+        promptTokens,
+        completionTokens,
+        cacheReadTokens: Number(row.cache_read_tokens ?? 0),
+        cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
+        totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+      };
+    })
+    .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0)
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+/** 粗估费用（USD/1M tokens）；无单价时返回 null。 */
+export function estimateTokenCostUsd(
+  byModel: Record<string, LlmTokenMetricBreakdownRow> | undefined,
+  rates: Record<string, { inputPerM: number; outputPerM: number }> = DEFAULT_MODEL_RATES_USD,
+): number | null {
+  let total = 0;
+  let used = false;
+  for (const [model, row] of Object.entries(byModel ?? {})) {
+    const rate = rates[model] ?? rates[model.toLowerCase()];
+    if (!rate) continue;
+    used = true;
+    const prompt = Number(row.prompt_tokens ?? 0);
+    const completion = Number(row.completion_tokens ?? 0);
+    total += (prompt / 1_000_000) * rate.inputPerM + (completion / 1_000_000) * rate.outputPerM;
+  }
+  return used ? total : null;
+}
+
+export const DEFAULT_MODEL_RATES_USD: Record<string, { inputPerM: number; outputPerM: number }> = {
+  "deepseek-chat": { inputPerM: 0.27, outputPerM: 1.1 },
+  "deepseek-reasoner": { inputPerM: 0.55, outputPerM: 2.19 },
+  "gpt-4.1-mini": { inputPerM: 0.4, outputPerM: 1.6 },
+  "gpt-4o-mini": { inputPerM: 0.15, outputPerM: 0.6 },
+};
+
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
   const bot = stats?.bot;
   const ai = stats?.ai;
   const rag = ragFromSlice(ai?.rag);
+  const memoryRag = ragFromSlice(ai?.memory_rag);
+  const gates = gatesFromSlice(ai?.gates);
+  const cacheDenom = Number(ai?.tokens?.prompt_tokens ?? 0) + Number(ai?.tokens?.cache_read_tokens ?? 0);
+  const cacheHitRate =
+    cacheDenom > 0
+      ? Math.round((1000 * Number(ai?.tokens?.cache_read_tokens ?? 0)) / cacheDenom) / 10
+      : 0;
+  const estimatedCostUsd = estimateTokenCostUsd(ai?.tokens?.by_model);
   return {
     reachable: stats?.ai_reachable,
     botOk: metricSum(bot, "submit_ok") + metricSum(bot, "callback_ok"),
@@ -316,12 +467,18 @@ export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {
     tokens: tokensFromSlice(ai?.tokens),
     tokenModelRows: tokenRows(ai?.tokens?.by_model),
     tokenProviderRows: tokenRows(ai?.tokens?.by_provider),
+    tokenTaskRows: tokenRows(ai?.tokens?.by_task),
+    tokenHourRows: hourTokenRows(ai?.tokens?.by_hour),
+    cacheHitRate,
+    estimatedCostUsd,
     images: imagesFromSlice(ai?.images),
     imageGatewayRows: imageRows(ai?.images?.by_gateway),
     imageProviderRows: imageRows(ai?.images?.by_provider),
     imageModelRows: imageRows(ai?.images?.by_model),
     rag,
+    memoryRag,
     ragDocumentRows: ragDocumentRows(rag.byDocument),
+    gates,
     providerRows: dimensionRows(ai?.provider_stats),
     modelRows: dimensionRows(ai?.model_stats),
   };

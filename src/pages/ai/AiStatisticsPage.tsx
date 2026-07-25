@@ -6,7 +6,9 @@ import {
   Cloud,
   Coins,
   Database,
+  Filter,
   Library,
+  LineChart,
   Send,
   Wifi,
   WifiOff,
@@ -16,22 +18,28 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { fetchLlmTaskStats } from "@/api/fullConsole";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import TokenDonutChart from "@/components/ai/TokenDonutChart";
+import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import IconStatCard from "@/components/IconStatCard";
 import StateBlock from "@/components/StateBlock";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   addDaysIso,
+  aggregateHistoryGates,
   aggregateHistoryImages,
   aggregateHistoryRag,
+  aggregateHistoryRoutes,
   aggregateHistoryTokens,
   buildPersistenceHint,
+  dailyRagTrend,
+  dailyTokenTrend,
   formatCompactNumber,
   ragDocumentRows,
   summarizeTaskStats,
   todayIso,
   type TokenBucket,
 } from "@/utils/aiTaskStats";
+import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
 
 function RangeMetricCard({
   label,
@@ -96,9 +104,60 @@ export default function AiStatisticsPage() {
     () => aggregateHistoryRag(historyRows, start, end),
     [end, historyRows, start],
   );
+  const selectedMemoryRag = useMemo(
+    () => aggregateHistoryRag(historyRows, start, end, "memory_rag"),
+    [end, historyRows, start],
+  );
+  const selectedGates = useMemo(
+    () => aggregateHistoryGates(historyRows, start, end),
+    [end, historyRows, start],
+  );
+  const selectedRoutes = useMemo(
+    () => aggregateHistoryRoutes(historyRows, start, end),
+    [end, historyRows, start],
+  );
   const selectedRagDocs = useMemo(
     () => ragDocumentRows(selectedRag.byDocument),
     [selectedRag.byDocument],
+  );
+
+  const tokenTrendSeries = useMemo((): NamedSeriesInput[] => {
+    const points = dailyTokenTrend(historyRows, start, end).map((p) => ({
+      at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
+      total: p.totalTokens,
+    }));
+    return [{ id: "tokens", label: "Token", points }];
+  }, [end, historyRows, start]);
+
+  const ragTrendSeries = useMemo((): NamedSeriesInput[] => {
+    const knowledge = dailyRagTrend(historyRows, start, end, "rag").map((p) => ({
+      at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
+      total: p.hitRate,
+    }));
+    const memory = dailyRagTrend(historyRows, start, end, "memory_rag").map((p) => ({
+      at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
+      total: p.hitRate,
+    }));
+    return [
+      { id: "knowledge", label: "知识库命中率%", points: knowledge },
+      { id: "memory", label: "记忆命中率%", points: memory },
+    ];
+  }, [end, historyRows, start]);
+
+  const routeDonutRows = useMemo(
+    () =>
+      Object.entries(selectedRoutes)
+        .map(([key, totalTokens]) => ({
+          key,
+          totalTokens,
+          promptTokens: 0,
+          completionTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        }))
+        .filter((r) => r.totalTokens > 0)
+        .sort((a, b) => b.totalTokens - a.totalTokens),
+    [selectedRoutes],
   );
 
   const range7 = useMemo(() => {
@@ -194,6 +253,87 @@ export default function AiStatisticsPage() {
             <RangeMetricCard label="近 30 天" data={range30} loading={loading} />
           </div>
 
+          <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="space-y-1 p-3 sm:p-4">
+                <div className="text-xs text-muted-foreground">缓存命中率</div>
+                <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                  {loading ? "…" : `${summary.cacheHitRate.toFixed(1)}%`}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-1 p-3 sm:p-4">
+                <div className="text-xs text-muted-foreground">估算费用 (USD)</div>
+                <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                  {loading
+                    ? "…"
+                    : summary.estimatedCostUsd != null
+                      ? summary.estimatedCostUsd.toFixed(4)
+                      : "—"}
+                </div>
+                <div className="text-[11px] text-muted-foreground">按内置单价粗估，未知模型不计</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-1 p-3 sm:p-4">
+                <div className="text-xs text-muted-foreground">门控放行</div>
+                <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                  {loading ? "…" : formatCompactNumber(selectedGates.proceed)}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  skip {selectedGates.skip} · defer {selectedGates.defer}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="space-y-1 p-3 sm:p-4">
+                <div className="text-xs text-muted-foreground">记忆命中</div>
+                <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                  {loading ? "…" : formatCompactNumber(selectedMemoryRag.hitCount)}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  命中率 {selectedMemoryRag.hitRate.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="console-panel-grid grid-cols-1 sm:grid-cols-2">
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={LineChart} />
+                  Token 日趋势
+                </CardTitle>
+                <CardDescription>当前区间按日总量</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={tokenTrendSeries}
+                  emptyText="暂无 token 日趋势"
+                  showSummary={false}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Library} />
+                  RAG 命中率趋势
+                </CardTitle>
+                <CardDescription>知识库与记忆检索</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={ragTrendSeries}
+                  emptyText="暂无 RAG 趋势"
+                  showSummary={false}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="console-panel-grid grid-cols-1 sm:grid-cols-2">
             <Card>
               <CardHeader className="p-3 sm:p-6">
@@ -220,6 +360,69 @@ export default function AiStatisticsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <div className="console-panel-grid grid-cols-1 sm:grid-cols-2">
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Boxes} />
+                  按任务
+                </CardTitle>
+                <CardDescription>chat / select / polish 等 token 占比</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <TokenDonutChart rows={summary.tokenTaskRows} emptyText="暂无按任务数据" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Filter} />
+                  回复路径
+                </CardTitle>
+                <CardDescription>语料选句 / 润色 / 现编等路由次数</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <TokenDonutChart rows={routeDonutRows} emptyText="暂无路径数据" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {summary.tokenHourRows.length ? (
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={LineChart} />
+                  今日按小时 Token
+                </CardTitle>
+                <CardDescription>当日实时桶（非历史区间）</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[20rem] text-left text-sm">
+                    <thead className="text-xs text-muted-foreground">
+                      <tr>
+                        <th className="py-2 pr-3 font-medium">小时</th>
+                        <th className="py-2 pr-3 font-medium">总量</th>
+                        <th className="py-2 pr-3 font-medium">输入</th>
+                        <th className="py-2 font-medium">输出</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.tokenHourRows.map((row) => (
+                        <tr key={row.key} className="border-t border-border/60">
+                          <td className="py-2 pr-3 font-mono text-xs">{row.key}:00</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.totalTokens}</td>
+                          <td className="py-2 pr-3 tabular-nums">{row.promptTokens}</td>
+                          <td className="py-2 tabular-nums">{row.completionTokens}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader className="p-3 sm:p-6">
@@ -316,7 +519,7 @@ export default function AiStatisticsPage() {
                 <PanelTitleIcon icon={Library} />
                 RAG 效果
               </CardTitle>
-              <CardDescription>知识库检索：有结果为 hit，空结果为 miss；下表为文档命中次数。</CardDescription>
+              <CardDescription>知识库检索：有结果为 hit，空结果为 miss；下表为文档命中次数。记忆检索见上方「记忆命中」。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-3 pt-0 sm:p-6 sm:pt-0">
               <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">

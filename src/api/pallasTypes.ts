@@ -940,6 +940,7 @@ export interface LlmTokenMetricsSlice {
   by_task: Record<string, LlmTokenMetricBreakdownRow>;
   by_provider?: Record<string, LlmTokenMetricBreakdownRow>;
   by_model?: Record<string, LlmTokenMetricBreakdownRow>;
+  by_hour?: Record<string, LlmTokenMetricBreakdownRow>;
 }
 
 export interface LlmImageMetricBreakdownRow {
@@ -984,6 +985,12 @@ export interface LlmRagMetricsSlice {
   by_source?: Record<string, number>;
 }
 
+export interface LlmGatesSlice {
+  skip?: number;
+  defer?: number;
+  proceed?: number;
+}
+
 export interface LlmTaskMetricsSlice {
   source: string;
   day_key: string;
@@ -997,6 +1004,8 @@ export interface LlmTaskMetricsSlice {
   tokens?: LlmTokenMetricsSlice;
   images?: LlmImageMetricsSlice;
   rag?: LlmRagMetricsSlice;
+  memory_rag?: LlmRagMetricsSlice;
+  gates?: LlmGatesSlice;
   classification?: {
     totals: LlmClassificationTotals;
   };
