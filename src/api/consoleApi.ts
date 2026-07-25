@@ -1876,6 +1876,69 @@ export async function fetchLocalCorpusHot(
   return inflight;
 }
 
+export type CommunityGalleryPost = {
+  id: string;
+  text: string;
+  source: string;
+  keywords: string;
+  nickname: string;
+  avatar_url: string;
+  qq?: number | null;
+  image_url?: string | null;
+  created_at: string;
+  created_unix: number;
+};
+
+export type CommunityGalleryListData = {
+  as_of: string;
+  posts: CommunityGalleryPost[];
+  next_cursor: string | null;
+};
+
+export async function fetchCommunityGallery(options?: {
+  mine?: boolean;
+  limit?: number;
+}): Promise<CommunityGalleryListData> {
+  const { data } = await http.get("/community-gallery", {
+    params: {
+      limit: options?.limit ?? 48,
+      mine: options?.mine ? "true" : "false",
+    },
+  });
+  const body = data as { ok?: boolean; data?: CommunityGalleryListData };
+  return body.data || { as_of: "", posts: [], next_cursor: null };
+}
+
+export async function createCommunityGalleryPost(input: {
+  text: string;
+  nickname: string;
+  avatarUrl?: string;
+  botQq?: number | null;
+  source?: string;
+  keywords?: string;
+  image?: File | null;
+}): Promise<{ id: string; created_at: string }> {
+  const form = new FormData();
+  form.append("text", input.text || "");
+  form.append("nickname", input.nickname || "");
+  form.append("avatar_url", input.avatarUrl || "");
+  form.append("source", input.source || "manual");
+  form.append("keywords", input.keywords || "");
+  if (input.botQq != null) form.append("bot_qq", String(input.botQq));
+  if (input.image) form.append("image", input.image);
+  const { data } = await http.post("/community-gallery", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 60_000,
+  });
+  const body = data as { ok?: boolean; data?: { id: string; created_at: string } };
+  if (!body.data?.id) throw new Error("投稿响应无效");
+  return body.data;
+}
+
+export async function deleteCommunityGalleryPost(postId: string): Promise<void> {
+  await http.delete(`/community-gallery/${encodeURIComponent(postId)}`);
+}
+
 let shardObsInflight: Promise<ShardObservabilityData> | null = null;
 
 export async function fetchShardObservability(): Promise<ShardObservabilityData> {

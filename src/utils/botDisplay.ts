@@ -59,3 +59,31 @@ export function qqAvatarUrl(uin: number | string): string {
   if (!Number.isFinite(n) || n < 1) return "";
   return `https://q1.qlogo.cn/g?b=qq&nk=${n}&s=160`;
 }
+
+/** 触发器短文案：有昵称只显示昵称，无昵称才回退账号。 */
+export function botSelectTriggerLabel(
+  nickname: string | undefined | null,
+  account: string | number,
+): string {
+  const nick = String(nickname ?? "").trim();
+  if (nick) return nick;
+  return String(account).trim() || "Bot";
+}
+
+/** 下拉完整文案：昵称（账号）；无昵称则仅账号。 */
+export function botSelectDropdownLabel(
+  nickname: string | undefined | null,
+  account: string | number,
+): string {
+  const id = String(account).trim();
+  const nick = String(nickname ?? "").trim();
+  if (nick) return `${nick}（${id}）`;
+  return id || "Bot";
+}
+
+export function botProfileNick(
+  profiles: InstancesData["bot_profiles"] | undefined | null,
+  account: string | number,
+): string {
+  return profiles?.[String(account)]?.nickname?.trim() || "";
+}

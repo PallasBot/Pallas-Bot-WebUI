@@ -5,6 +5,7 @@ import { fetchInstances } from "@/api/fullConsole";
 import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
+import BotSelectLabel from "@/components/BotSelectLabel";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { botSelectDropdownLabel } from "@/utils/botDisplay";
 
 const ALL_BOTS = "__all__";
 
@@ -35,24 +37,24 @@ export default function AiObservationScopeFields({
     const data = instQ.data;
     if (!data) return [];
     const seen = new Set<string>();
-    const out: Array<{ id: string; label: string }> = [];
+    const out: Array<{ id: string; nickname: string }> = [];
     for (const b of data.nonebot_bots ?? []) {
       const id = String(b.self_id || "").trim();
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      const nick = data.bot_profiles?.[id]?.nickname;
-      out.push({ id, label: nick ? `${nick} (${id})` : id });
+      out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
     }
     for (const cfg of data.db_bot_configs ?? []) {
       const id = String(cfg.account ?? "").trim();
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      out.push({ id, label: id });
+      out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
     }
     return out;
   }, [instQ.data]);
 
   const useSelect = botOptions.length > 0;
+  const selected = botOptions.find((b) => b.id === botId.trim());
 
   /* 须 shrink-0 + nowrap：顶栏 chrome-row 横向滚动依赖子项不被压窄换行 */
   return (
@@ -64,7 +66,16 @@ export default function AiObservationScopeFields({
               value={botId.trim() || ALL_BOTS}
               onValueChange={(v) => setBotId(v === ALL_BOTS ? "" : v)}
             >
-              <SelectTrigger className="h-9 w-[9rem] shrink-0">
+              <SelectTrigger
+                className="bot-acct-sel h-9 w-[9rem] shrink-0"
+                title={
+                  selected
+                    ? botSelectDropdownLabel(selected.nickname, selected.id)
+                    : botId.trim()
+                      ? botId
+                      : undefined
+                }
+              >
                 <SelectValue placeholder="全部 Bot" />
               </SelectTrigger>
               <SelectContent align="start">
@@ -73,7 +84,9 @@ export default function AiObservationScopeFields({
                 </SelectItem>
                 {botOptions.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
-                    <ChromeOptionLabel icon={Bot}>{b.label}</ChromeOptionLabel>
+                    <ChromeOptionLabel icon={Bot}>
+                      <BotSelectLabel nickname={b.nickname} account={b.id} />
+                    </ChromeOptionLabel>
                   </SelectItem>
                 ))}
               </SelectContent>
