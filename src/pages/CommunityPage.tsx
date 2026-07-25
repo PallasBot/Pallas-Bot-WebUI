@@ -50,14 +50,7 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
 
-type CommunitySectionId =
-  | "deploy"
-  | "federation"
-  | "corpus"
-  | "hot"
-  | "local-hot"
-  | "local"
-  | "gallery";
+type CommunitySectionId = "deploy" | "federation" | "corpus" | "hot" | "gallery";
 
 const COMMUNITY_SECTIONS: Array<{
   id: CommunitySectionId;
@@ -67,17 +60,22 @@ const COMMUNITY_SECTIONS: Array<{
 }> = [
   { id: "deploy", label: "全网部署", hash: "community-deploy", icon: Globe2 },
   { id: "federation", label: "多机协同", hash: "community-federation", icon: Network },
-  { id: "corpus", label: "共享语料", hash: "community-corpus", icon: Library },
-  { id: "hot", label: "共享语料热词", hash: "community-hot", icon: Flame },
-  { id: "local-hot", label: "本机语料热词", hash: "community-local-hot", icon: Flame },
-  { id: "local", label: "本部署语料", hash: "community-local", icon: HardDrive },
+  { id: "corpus", label: "语料", hash: "community-corpus", icon: Library },
+  { id: "hot", label: "热词", hash: "community-hot", icon: Flame },
   { id: "gallery", label: "社区投稿", hash: "community-gallery", icon: Images },
 ];
+
+/** 旧 hash（本机语料 / 本机热词独立页）仍落到合并后的面板 */
+const LEGACY_HASH_TO_SECTION: Record<string, CommunitySectionId> = {
+  "community-local": "corpus",
+  "community-local-hot": "hot",
+};
 
 function communitySectionFromHash(hash: string): CommunitySectionId | null {
   const id = hash.replace(/^#/, "").trim();
   const hit = COMMUNITY_SECTIONS.find((s) => s.hash === id);
-  return hit?.id ?? null;
+  if (hit) return hit.id;
+  return LEGACY_HASH_TO_SECTION[id] ?? null;
 }
 
 function formatUnixRelative(unix: number | null | undefined): string {
@@ -427,7 +425,7 @@ export default function CommunityPage() {
         {section === "hot" ? (
           <SegTabs
             size="toolbar"
-            ariaLabel="热词统计范围"
+            ariaLabel="共享热词统计范围"
             value={hotTab}
             onValueChange={(v) => setHotTab(v as CommunityHotTab)}
             options={COMMUNITY_HOT_TAB_OPTIONS}
@@ -744,175 +742,175 @@ export default function CommunityPage() {
       ) : null}
 
       {section === "corpus" ? (
-      <section id="community-corpus" className="community-page__section">
-        <div className="panel community-page__panel">
-          <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Library} />
-              共享语料
-            </h2>
-            <div className="row-actions community-page__hd-actions">
-              <Link to="/corpus-config" className="btn">
-                语料设置
-              </Link>
-            </div>
-          </div>
-          <div className="panel__bd">
-            <div className="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
-              <MetricTile icon="list" label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
-              <MetricTile icon="globe" label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
-              <MetricTile icon="users" label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
-              <MetricTile icon="activity" label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
-              <MetricTile icon="sparkles" label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
-              <MetricTile icon="database" label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
-            </div>
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {section === "hot" ? (
-      <section id="community-hot" className="community-page__section">
-        <div className="panel community-page__panel">
-          <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Flame} />
-              共享语料热词
-            </h2>
-          </div>
-          <div className="panel__bd">
-            <p className="muted community-page__hot-lead">机群：近24h叠加 · 高频池：共享累计 · 本月：近期活跃</p>
-            <CorpusWordCloud
-              source="community"
-              tab={hotTab}
-              onTabChange={setHotTab}
-              showTabs={false}
-              reloadToken={hotReloadToken}
-            />
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {section === "local-hot" ? (
-      <section id="community-local-hot" className="community-page__section">
-        <div className="panel community-page__panel">
-          <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Flame} />
-              本机语料热词
-            </h2>
-          </div>
-          <div className="panel__bd">
-            <p className="muted community-page__hot-lead">本部署全部群的学习语料累计热度，与共享池独立统计。</p>
-            <CorpusWordCloud source="local" reloadToken={hotReloadToken} />
-          </div>
-        </div>
-      </section>
-      ) : null}
-
-      {section === "gallery" ? <CommunityGallerySection /> : null}
-
-      {section === "local" ? (
-      <section id="community-local" className="community-page__section">
-        <div className="panel community-page__panel">
-          <div className="panel__hd panel__hd--split community-page__panel-hd">
-            <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
-              <PanelTitleIcon icon={HardDrive} />
-              本部署语料
-            </h2>
-            <div className="row-actions community-page__hd-actions">
-              <Link to="/plugins/pb_core" className="btn">
-                语料设置
-              </Link>
-            </div>
-          </div>
-          {corpusStatus ? (
-            <div className="panel__bd community-page__local-bd">
-              <div className="community-page__corpus-board">
-                <div className="community-page__corpus-summary">
-                  <div className="community-page__corpus-summary-main">
-                    <span className={`badge community-page__status-badge ${corpusMultiSourceBadge.ok ? "badge--ok" : ""}`}>
-                      {corpusMultiSourceBadge.label}
-                    </span>
-                    {corpusSummaryFlow ? <span className="community-page__corpus-summary-flow">查找顺序：{corpusSummaryFlow}</span> : null}
-                  </div>
-                  <div className="community-page__corpus-summary-meta">
-                    <span>{mergeStrategyLabel(corpusStatus.merge_strategy)}</span>
-                    <span className="community-page__corpus-summary-sep">·</span>
-                    <span>远端失败时 {remoteFailureLabel(corpusStatus.on_remote_failure)}</span>
-                    <span className="community-page__corpus-summary-sep">·</span>
-                    <span>快照 {formatUnixSec(corpusStatus.as_of)}</span>
-                  </div>
+        <>
+          <section id="community-corpus" className="community-page__section">
+            <div className="panel community-page__panel">
+              <div className="panel__hd panel__hd--split community-page__panel-hd">
+                <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={Library} />
+                  共享语料
+                </h2>
+                <div className="row-actions community-page__hd-actions">
+                  <Link to="/corpus-config" className="btn">
+                    语料设置
+                  </Link>
                 </div>
-
-                <div className="table-wrap community-page__matrix-wrap">
-                  <table className="tbl community-page__source-matrix">
-                    <thead>
-                      <tr>
-                        <th scope="col">能力</th>
-                        {visibleSourceKeys.map((key) => (
-                          <th key={key} scope="col" className="community-page__matrix-src-th">
-                            <span className={`community-page__matrix-src ${corpusStatus.sources?.[key]?.enabled ? "is-on" : "is-off"}`}>
-                              {sourceLabel(key)}
-                            </span>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sourceMatrixRows.map((row) => (
-                        <tr key={row.key}>
-                          <th scope="row">{row.label}</th>
-                          {visibleSourceKeys.map((key) => {
-                            const state = matrixCellState(key, corpusStatus.sources?.[key], row.key);
-                            return (
-                              <td key={`${row.key}-${key}`}>
-                                <span className={`community-page__matrix-cell community-page__matrix-cell--${state}`}>
-                                  {matrixCellText(state)}
-                                </span>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {sourceApiEntries.length ? (
-                  <ul className="community-page__api-list">
-                    {sourceApiEntries.map((entry) => (
-                      <li key={entry.key} className="community-page__api-list-item">
-                        <span className="community-page__api-list-k">{sourceLabel(entry.key)}</span>
-                        <code className="community-page__api-list-v">{entry.url}</code>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-
-                <div className="community-page__corpus-meta-bar">
-                  <span className="community-page__corpus-meta-item">
-                    <span className="community-page__corpus-meta-k">多机协同</span>
-                    <span className={`community-page__corpus-meta-v ${controlPlane?.enabled ? "is-ok" : "is-off"}`}>
-                      {controlPlane?.enabled ? "已开启" : "已关闭"}
-                    </span>
-                  </span>
-                  <span className="community-page__corpus-meta-item">
-                    <span className="community-page__corpus-meta-k">在线统计</span>
-                    <span className={`community-page__corpus-meta-v ${corpusStatus.deployment?.community_stats_enabled ? "is-ok" : "is-off"}`}>
-                      {corpusStatus.deployment?.community_stats_enabled ? "已开启" : "已关闭"}
-                    </span>
-                  </span>
+              </div>
+              <div className="panel__bd">
+                <div className="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
+                  <MetricTile icon="list" label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
+                  <MetricTile icon="globe" label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
+                  <MetricTile icon="users" label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
+                  <MetricTile icon="activity" label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
+                  <MetricTile icon="sparkles" label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
+                  <MetricTile icon="database" label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="panel__bd muted community-page__empty">无法读取本部署语料状态。</div>
-          )}
-        </div>
-      </section>
+          </section>
+
+          <section id="community-local" className="community-page__section">
+            <div className="panel community-page__panel">
+              <div className="panel__hd panel__hd--split community-page__panel-hd">
+                <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={HardDrive} />
+                  本机语料
+                </h2>
+                <div className="row-actions community-page__hd-actions">
+                  <Link to="/plugins/pb_core" className="btn">
+                    语料设置
+                  </Link>
+                </div>
+              </div>
+              {corpusStatus ? (
+                <div className="panel__bd community-page__local-bd">
+                  <div className="community-page__corpus-board">
+                    <div className="community-page__corpus-summary">
+                      <div className="community-page__corpus-summary-main">
+                        <span className={`badge community-page__status-badge ${corpusMultiSourceBadge.ok ? "badge--ok" : ""}`}>
+                          {corpusMultiSourceBadge.label}
+                        </span>
+                        {corpusSummaryFlow ? <span className="community-page__corpus-summary-flow">查找顺序：{corpusSummaryFlow}</span> : null}
+                      </div>
+                      <div className="community-page__corpus-summary-meta">
+                        <span>{mergeStrategyLabel(corpusStatus.merge_strategy)}</span>
+                        <span className="community-page__corpus-summary-sep">·</span>
+                        <span>远端失败时 {remoteFailureLabel(corpusStatus.on_remote_failure)}</span>
+                        <span className="community-page__corpus-summary-sep">·</span>
+                        <span>快照 {formatUnixSec(corpusStatus.as_of)}</span>
+                      </div>
+                    </div>
+
+                    <div className="table-wrap community-page__matrix-wrap">
+                      <table className="tbl community-page__source-matrix">
+                        <thead>
+                          <tr>
+                            <th scope="col">能力</th>
+                            {visibleSourceKeys.map((key) => (
+                              <th key={key} scope="col" className="community-page__matrix-src-th">
+                                <span className={`community-page__matrix-src ${corpusStatus.sources?.[key]?.enabled ? "is-on" : "is-off"}`}>
+                                  {sourceLabel(key)}
+                                </span>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sourceMatrixRows.map((row) => (
+                            <tr key={row.key}>
+                              <th scope="row">{row.label}</th>
+                              {visibleSourceKeys.map((key) => {
+                                const state = matrixCellState(key, corpusStatus.sources?.[key], row.key);
+                                return (
+                                  <td key={`${row.key}-${key}`}>
+                                    <span className={`community-page__matrix-cell community-page__matrix-cell--${state}`}>
+                                      {matrixCellText(state)}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {sourceApiEntries.length ? (
+                      <ul className="community-page__api-list">
+                        {sourceApiEntries.map((entry) => (
+                          <li key={entry.key} className="community-page__api-list-item">
+                            <span className="community-page__api-list-k">{sourceLabel(entry.key)}</span>
+                            <code className="community-page__api-list-v">{entry.url}</code>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    <div className="community-page__corpus-meta-bar">
+                      <span className="community-page__corpus-meta-item">
+                        <span className="community-page__corpus-meta-k">多机协同</span>
+                        <span className={`community-page__corpus-meta-v ${controlPlane?.enabled ? "is-ok" : "is-off"}`}>
+                          {controlPlane?.enabled ? "已开启" : "已关闭"}
+                        </span>
+                      </span>
+                      <span className="community-page__corpus-meta-item">
+                        <span className="community-page__corpus-meta-k">在线统计</span>
+                        <span className={`community-page__corpus-meta-v ${corpusStatus.deployment?.community_stats_enabled ? "is-ok" : "is-off"}`}>
+                          {corpusStatus.deployment?.community_stats_enabled ? "已开启" : "已关闭"}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="panel__bd muted community-page__empty">无法读取本机语料状态。</div>
+              )}
+            </div>
+          </section>
+        </>
       ) : null}
+
+      {section === "hot" ? (
+        <>
+          <section id="community-hot" className="community-page__section">
+            <div className="panel community-page__panel">
+              <div className="panel__hd panel__hd--split community-page__panel-hd">
+                <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={Flame} />
+                  共享热词
+                </h2>
+              </div>
+              <div className="panel__bd">
+                <p className="muted community-page__hot-lead">机群：近24h叠加 · 高频池：共享累计 · 本月：近期活跃</p>
+                <CorpusWordCloud
+                  source="community"
+                  tab={hotTab}
+                  onTabChange={setHotTab}
+                  showTabs={false}
+                  reloadToken={hotReloadToken}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section id="community-local-hot" className="community-page__section">
+            <div className="panel community-page__panel">
+              <div className="panel__hd panel__hd--split community-page__panel-hd">
+                <h2 className="panel__title community-page__section-title flex items-center gap-1.5">
+                  <PanelTitleIcon icon={Flame} />
+                  本机热词
+                </h2>
+              </div>
+              <div className="panel__bd">
+                <p className="muted community-page__hot-lead">本机全部群的学习语料累计热度，与共享池独立统计。</p>
+                <CorpusWordCloud source="local" reloadToken={hotReloadToken} />
+              </div>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {section === "gallery" ? <CommunityGallerySection /> : null}
     </div>
   );
 }
