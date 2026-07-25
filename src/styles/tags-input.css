@@ -145,9 +145,13 @@
 .tags-input__popover-panel.tags-input__popover-panel {
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(22rem, calc(100dvh - 4rem));
 }
 
 .tags-input__popover-search {
+  flex-shrink: 0;
   padding: 10px;
   border-bottom: 1px solid var(--border, rgba(15, 23, 42, 0.06));
 }
@@ -155,6 +159,15 @@
 .tags-input__popover-input {
   width: 100%;
   min-height: 34px;
+}
+
+.tags-input__popover-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tags-input__popover-section {
@@ -183,9 +196,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 160px;
-  overflow: auto;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
 }
 
