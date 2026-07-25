@@ -1204,6 +1204,11 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   overflow: hidden;
 }
 
+/* Bot 账号 Select：触发器隐藏账号后缀，下拉仍显示完整「昵称（账号）」 */
+button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
+  display: none;
+}
+
 /* SelectValue：grid 垂直居中 + 省略；勿用 block（会让图标/文字偏基线） */
 .chrome-tools button[role="combobox"] > span,
 .console-hub-page__chrome-tools button[role="combobox"] > span {

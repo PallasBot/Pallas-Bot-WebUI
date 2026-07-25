@@ -16,6 +16,7 @@ import type {
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
+import CommunityGallerySection from "@/pages/CommunityGallerySection";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
@@ -40,6 +41,7 @@ import {
   Flame,
   HardDrive,
   Layers,
+  Images,
   ExternalLink,
   type LucideIcon,
 } from "lucide-react";
@@ -54,7 +56,8 @@ type CommunitySectionId =
   | "corpus"
   | "hot"
   | "local-hot"
-  | "local";
+  | "local"
+  | "gallery";
 
 const COMMUNITY_SECTIONS: Array<{
   id: CommunitySectionId;
@@ -68,6 +71,7 @@ const COMMUNITY_SECTIONS: Array<{
   { id: "hot", label: "共享语料热词", hash: "community-hot", icon: Flame },
   { id: "local-hot", label: "本机语料热词", hash: "community-local-hot", icon: Flame },
   { id: "local", label: "本部署语料", hash: "community-local", icon: HardDrive },
+  { id: "gallery", label: "社区投稿", hash: "community-gallery", icon: Images },
 ];
 
 function communitySectionFromHash(hash: string): CommunitySectionId | null {
@@ -806,6 +810,8 @@ export default function CommunityPage() {
         </div>
       </section>
       ) : null}
+
+      {section === "gallery" ? <CommunityGallerySection /> : null}
 
       {section === "local" ? (
       <section id="community-local" className="community-page__section">
