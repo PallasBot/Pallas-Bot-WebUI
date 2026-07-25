@@ -75,10 +75,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-page min-h-dvh bg-[var(--bg,#fcfcfc)] text-[var(--text,#18181b)]">
+    <div className="login-page min-h-dvh bg-[var(--bg-deep)] text-[var(--text)]">
       <button
         type="button"
-        className="login-page__theme-btn fixed right-4 top-4 z-10 rounded-full border border-[var(--border,#e4e4e7)] bg-[var(--bg-card,#fff)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted,#526277)] shadow-sm hover:text-[var(--text)]"
+        className="login-page__theme-btn fixed right-4 top-4 z-10 rounded-full border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] shadow-sm hover:text-[var(--text)]"
         title="切换浅色/深色"
         onClick={toggleTheme}
       >
@@ -87,12 +87,12 @@ export default function LoginPage() {
 
       <div className="flex min-h-dvh items-center justify-center p-6">
         <section
-          className="w-full max-w-[22rem] rounded-[var(--radius-lg,14px)] border border-[var(--border,#e4e4e7)] bg-[var(--bg-card,#fff)] p-6 shadow-sm"
+          className="w-full max-w-[22rem] rounded-[var(--radius-lg,14px)] border border-[var(--border)] bg-[var(--bg-card)] p-6 shadow-sm"
           aria-labelledby="loginTitle"
         >
           <header className="flex items-center gap-3">
             <div
-              className="size-11 shrink-0 overflow-hidden rounded-full border border-[var(--border,#e4e4e7)] bg-[var(--bg,#fcfcfc)]"
+              className="size-11 shrink-0 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--bg-deep)]"
               aria-hidden
             >
               <img
@@ -107,11 +107,11 @@ export default function LoginPage() {
                 <span className="text-[1.15rem] font-bold tracking-tight text-[var(--text)]" id="loginTitle">
                   Pallas-Bot
                 </span>
-                <span className="text-[0.75rem] font-semibold tracking-wide text-[var(--text-muted,#526277)]">
+                <span className="text-[0.75rem] font-semibold tracking-wide text-[var(--text-muted)]">
                   控制台
                 </span>
               </div>
-              <p className="m-0 mt-0.5 text-[0.8125rem] leading-snug text-[var(--text-muted,#526277)]">
+              <p className="m-0 mt-0.5 text-[0.8125rem] leading-snug text-[var(--text-muted)]">
                 输入控制台密码以继续。
               </p>
             </div>
@@ -139,7 +139,7 @@ export default function LoginPage() {
               />
               <button
                 type="button"
-                className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--text-muted,#526277)] hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)]"
+                className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--text)_6%,transparent)] hover:text-[var(--text)]"
                 onClick={() => setShowPwd((v) => !v)}
                 tabIndex={-1}
               >
@@ -150,10 +150,10 @@ export default function LoginPage() {
             <Button type="submit" className="h-10 w-full font-semibold" disabled={busy}>
               {busy ? "登录中…" : "进入"}
             </Button>
-            <p className="m-0 text-center text-[0.75rem] leading-snug text-[var(--text-muted,#526277)]">
+            <p className="m-0 text-center text-[0.75rem] leading-snug text-[var(--text-muted)]">
               忘记密码？见{" "}
               <a
-                className="font-medium text-[var(--accent,#2563eb)] underline-offset-2 hover:underline"
+                className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
                 href={PALLAS_BOT_DOC.faqConsolePassword}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -163,7 +163,7 @@ export default function LoginPage() {
             </p>
           </form>
 
-          <p className="mt-5 mb-0 text-center text-[0.75rem] text-[var(--text-muted,#526277)]">
+          <p className="mt-5 mb-0 text-center text-[0.75rem] text-[var(--text-muted)]">
             © {new Date().getFullYear()} Pallas-Bot
           </p>
         </section>
