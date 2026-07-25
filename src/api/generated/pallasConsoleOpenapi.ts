@@ -2544,6 +2544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/llm/conversation-kernel/knowledge-sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Conversation Kernel Knowledge Source Detail Get */
+        get: operations["_llm_conversation_kernel_knowledge_source_detail_get_pallas_api_llm_conversation_kernel_knowledge_sources__source_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/common-config/llm/history/behavior/annotate": {
         parameters: {
             query?: never;
@@ -11482,6 +11499,43 @@ export interface operations {
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _llm_conversation_kernel_knowledge_source_detail_get_pallas_api_llm_conversation_kernel_knowledge_sources__source_id__get: {
+        parameters: {
+            query?: {
+                preview_limit?: number;
+                preview_content_len?: number;
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                source_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

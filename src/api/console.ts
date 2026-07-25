@@ -4,10 +4,11 @@ import type {
   CommunityPluginRow,
   OfficialExtensionRow,
   PluginRow,
+  KnowledgeSourceDetail,
 } from "@/api/pallasTypes";
 import { http } from "./http";
 
-export type { CommunityPluginRow, OfficialExtensionRow, PluginRow };
+export type { CommunityPluginRow, OfficialExtensionRow, PluginRow, KnowledgeSourceDetail };
 
 export type SystemData = {
   plugin_count: number;
@@ -1286,6 +1287,22 @@ export async function postConversationKernelRelationshipNoteDelete(body: {
 export async function fetchConversationKernelKnowledgeSources(): Promise<ConversationKernelKnowledgeSourcesData> {
   const { data: body } = await http.get("/llm/conversation-kernel/knowledge-sources");
   return envelopeData<ConversationKernelKnowledgeSourcesData>(body) || {};
+}
+
+export async function fetchConversationKernelKnowledgeSourceDetail(
+  sourceId: string,
+  params?: { previewLimit?: number; previewContentLen?: number },
+): Promise<KnowledgeSourceDetail> {
+  const { data: body } = await http.get(
+    `/llm/conversation-kernel/knowledge-sources/${encodeURIComponent(sourceId)}`,
+    {
+      params: {
+        ...(params?.previewLimit ? { preview_limit: params.previewLimit } : {}),
+        ...(params?.previewContentLen ? { preview_content_len: params.previewContentLen } : {}),
+      },
+    },
+  );
+  return envelopeData<KnowledgeSourceDetail>(body) || { source_id: sourceId };
 }
 
 export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {

@@ -1404,6 +1404,32 @@ export interface ConversationKernelKnowledgeSourcesData {
   count: number;
 }
 
+export interface KnowledgeSourceChunkPreview {
+  index?: number;
+  title?: string;
+  keywords?: string;
+  content_preview?: string;
+  content_len?: number;
+}
+
+export interface KnowledgeSourceDetail {
+  source_id: string;
+  title?: string;
+  description?: string;
+  scope?: string;
+  retrieval_mode?: string;
+  origin?: string;
+  plugin_name?: string;
+  plugin_title?: string;
+  default?: boolean;
+  top_k?: number;
+  max_chunk_len?: number;
+  chunk_count?: number;
+  chunks_preview?: KnowledgeSourceChunkPreview[];
+  chunks_preview_truncated?: boolean;
+  preview_content_len?: number;
+}
+
 export interface LlmToolCatalogPolicy {
   tools_enabled?: boolean;
   selective_enabled?: boolean;

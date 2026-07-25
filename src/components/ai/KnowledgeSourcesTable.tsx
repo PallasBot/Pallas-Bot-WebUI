@@ -1,6 +1,20 @@
-import type { ConversationKernelKnowledgeSource } from "@/api/pallasTypes";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type {
+  ConversationKernelKnowledgeSource,
+  KnowledgeSourceDetail,
+} from "@/api/pallasTypes";
+import { fetchConversationKernelKnowledgeSourceDetail } from "@/api/console";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import StateBlock from "@/components/StateBlock";
 
 const ORIGIN_LABEL: Record<string, string> = {
   builtin: "内置",
@@ -15,6 +29,8 @@ const SCOPE_LABEL: Record<string, string> = {
 
 const RETRIEVAL_LABEL: Record<string, string> = {
   prompt_inject: "注入提示",
+  metadata_only: "仅元数据",
+  tool_only: "工具调用",
   tool: "工具调用",
 };
 
@@ -44,50 +60,130 @@ function OriginBadge({ origin }: { origin?: string }) {
   return <Badge variant={key === "builtin" ? "secondary" : "outline"}>{labelOf(ORIGIN_LABEL, key)}</Badge>;
 }
 
+function KnowledgeSourceDetailBody({ detail }: { detail: KnowledgeSourceDetail }) {
+  const chunks = detail.chunks_preview || [];
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <OriginBadge origin={detail.origin} />
+        <span aria-hidden>·</span>
+        <span className="font-mono">{detail.source_id}</span>
+        <span aria-hidden>·</span>
+        <span>{detail.plugin_title || detail.plugin_name || "—"}</span>
+        <span aria-hidden>·</span>
+        <span>{labelOf(SCOPE_LABEL, detail.scope)}</span>
+        <span aria-hidden>·</span>
+        <span>{labelOf(RETRIEVAL_LABEL, detail.retrieval_mode)}</span>
+        <span aria-hidden>·</span>
+        <span className="tabular-nums">top_k {detail.top_k ?? "—"}</span>
+        <span aria-hidden>·</span>
+        <span className="tabular-nums">截断 {detail.max_chunk_len ?? "—"}</span>
+      </div>
+      {detail.description ? (
+        <p className="text-sm leading-relaxed text-muted-foreground">{detail.description}</p>
+      ) : null}
+
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          共 <span className="tabular-nums text-foreground">{detail.chunk_count ?? 0}</span> 条
+          {chunks.length ? (
+            <>
+              ，预览前 <span className="tabular-nums text-foreground">{chunks.length}</span> 条
+            </>
+          ) : null}
+          {detail.chunks_preview_truncated ? "（已截断）" : null}
+        </div>
+        {chunks.length ? (
+          <ul className="flex flex-col gap-2.5" aria-label="语料条目预览">
+            {chunks.map((chunk) => (
+              <li
+                key={`${chunk.index}-${chunk.title || ""}`}
+                className="rounded-[var(--radius-control,8px)] border p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 font-medium">
+                    {chunk.title?.trim() || `条目 ${(chunk.index ?? 0) + 1}`}
+                  </div>
+                  <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+                    {chunk.content_len ?? 0} 字
+                  </span>
+                </div>
+                {chunk.keywords ? (
+                  <div className="mt-1 text-[11px] text-muted-foreground">关键词：{chunk.keywords}</div>
+                ) : null}
+                {chunk.content_preview ? (
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                    {chunk.content_preview}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">该语料源暂无条目。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function KnowledgeSourcesTable({
   items,
 }: {
   items: Array<Record<string, unknown> | ConversationKernelKnowledgeSource>;
 }) {
   const rows = items.map(asSource).filter((row) => row.source_id);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const detailQ = useQuery({
+    queryKey: ["conversation-kernel-knowledge-source-detail", selectedId],
+    queryFn: () => fetchConversationKernelKnowledgeSourceDetail(selectedId!),
+    enabled: Boolean(selectedId),
+  });
 
   return (
     <div className="space-y-3">
       <div className="text-sm text-muted-foreground">
         共 <span className="tabular-nums text-foreground">{rows.length}</span> 个已登记语料源
+        <span className="ml-1 text-xs">· 点击查看条目预览</span>
       </div>
 
-      {/* 窄屏卡片：避免多列表头与列错位 */}
       <ul className="hidden max-[560px]:flex max-[560px]:flex-col max-[560px]:gap-2.5" aria-label="语料源列表">
         {rows.map((row) => (
-          <li key={row.source_id} className="rounded-[var(--radius-control,8px)] border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{row.title}</div>
-                <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground" title={row.source_id}>
-                  {row.source_id}
+          <li key={row.source_id}>
+            <button
+              type="button"
+              className="w-full rounded-[var(--radius-control,8px)] border p-3 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setSelectedId(row.source_id)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{row.title}</div>
+                  <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground" title={row.source_id}>
+                    {row.source_id}
+                  </div>
                 </div>
+                <OriginBadge origin={row.origin} />
               </div>
-              <OriginBadge origin={row.origin} />
-            </div>
-            {row.description ? (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{row.description}</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span>{row.plugin_title || row.plugin_name || "—"}</span>
-              <span aria-hidden>·</span>
-              <span>{labelOf(SCOPE_LABEL, row.scope)}</span>
-              <span aria-hidden>·</span>
-              <span>{labelOf(RETRIEVAL_LABEL, row.retrieval_mode)}</span>
-              <span aria-hidden>·</span>
-              <span className="tabular-nums">{row.chunk_count ?? 0} 条</span>
-              {row.default ? (
-                <>
-                  <span aria-hidden>·</span>
-                  <span className="text-emerald-500">默认</span>
-                </>
+              {row.description ? (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{row.description}</p>
               ) : null}
-            </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span>{row.plugin_title || row.plugin_name || "—"}</span>
+                <span aria-hidden>·</span>
+                <span>{labelOf(SCOPE_LABEL, row.scope)}</span>
+                <span aria-hidden>·</span>
+                <span>{labelOf(RETRIEVAL_LABEL, row.retrieval_mode)}</span>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">{row.chunk_count ?? 0} 条</span>
+                {row.default ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="text-emerald-500">默认</span>
+                  </>
+                ) : null}
+              </div>
+            </button>
           </li>
         ))}
       </ul>
@@ -108,7 +204,11 @@ export default function KnowledgeSourcesTable({
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.source_id}>
+              <TableRow
+                key={row.source_id}
+                className="cursor-pointer"
+                onClick={() => setSelectedId(row.source_id)}
+              >
                 <TableCell className="max-w-[12rem]">
                   <div className="truncate font-medium" title={row.title}>
                     {row.title}
@@ -143,6 +243,29 @@ export default function KnowledgeSourcesTable({
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={Boolean(selectedId)} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <DialogContent className="flex max-h-[min(860px,calc(100dvh-32px))] w-[min(640px,calc(100vw-32px))] max-w-[min(640px,calc(100vw-32px))] flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b px-4 py-3 pr-12 text-left sm:px-5">
+            <DialogTitle className="truncate">
+              {detailQ.data?.title || selectedId || "语料源详情"}
+            </DialogTitle>
+            <DialogDescription className="truncate font-mono text-xs">
+              {selectedId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <StateBlock
+              loading={detailQ.isLoading}
+              error={detailQ.error}
+              empty={!detailQ.isLoading && !detailQ.data}
+              emptyText="未找到该语料源。"
+            >
+              {detailQ.data ? <KnowledgeSourceDetailBody detail={detailQ.data} /> : null}
+            </StateBlock>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

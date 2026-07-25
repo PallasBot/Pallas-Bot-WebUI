@@ -82,6 +82,7 @@ import type {
   LlmPromotionCandidatesData,
   ConversationKernelStatus,
   ConversationKernelKnowledgeSourcesData,
+  KnowledgeSourceDetail,
   LlmToolCatalogData,
   ConversationKernelMemoryData,
   ConversationKernelRelationshipNotesData,
@@ -1543,6 +1544,20 @@ export async function fetchConversationKernelKnowledgeSources(): Promise<Convers
   return (await consoleOpenapiGet<
     ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources"]["get"]
   >("/llm/conversation-kernel/knowledge-sources")) as ConversationKernelKnowledgeSourcesData;
+}
+
+export async function fetchConversationKernelKnowledgeSourceDetail(
+  sourceId: string,
+  params?: { previewLimit?: number; previewContentLen?: number },
+): Promise<KnowledgeSourceDetail> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/llm/conversation-kernel/knowledge-sources/{source_id}"]["get"]
+  >(`/llm/conversation-kernel/knowledge-sources/${encodeURIComponent(sourceId)}`, {
+    params: {
+      ...(params?.previewLimit ? { preview_limit: params.previewLimit } : {}),
+      ...(params?.previewContentLen ? { preview_content_len: params.previewContentLen } : {}),
+    },
+  })) as KnowledgeSourceDetail;
 }
 
 export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
