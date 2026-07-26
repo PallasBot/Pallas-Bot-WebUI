@@ -37,6 +37,7 @@ import HelpTagOverridesPanel, {
 } from "@/components/help/HelpTagOverridesPanel";
 import PluginHelpTagField from "@/components/help/PluginHelpTagField";
 import PluginGovernancePanel from "@/components/PluginGovernancePanel";
+import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import UiButton from "@/components/ui/UiButton";
@@ -179,9 +180,9 @@ function PluginBundledReadme({
       empty={!html}
       emptyText={readmeQ.error ? undefined : "暂无 README 内容"}
     >
-      <div
+      <ReadmeMarkdown
+        html={html}
         className="plugin-readme-panel__body readme-markdown markdown-body"
-        dangerouslySetInnerHTML={{ __html: html }}
       />
     </StateBlock>
   );

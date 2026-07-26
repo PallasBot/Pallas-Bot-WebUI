@@ -52,7 +52,9 @@ describe("releaseNotesToSafeHtml", () => {
     root.innerHTML = html;
     const teardown = setupReadmeCodeCopyButtons(root);
     expect(root.querySelectorAll(".readme-code-block").length).toBe(2);
-    expect(root.querySelector(".readme-code-block__copy")?.textContent).toBe("复制");
+    const btn = root.querySelector(".readme-code-block__copy");
+    expect(btn?.getAttribute("aria-label")).toBe("复制代码");
+    expect(btn?.querySelector("svg")).not.toBeNull();
     teardown();
   });
 });

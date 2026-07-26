@@ -11815,37 +11815,51 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .he
 }
 
 .readme-code-block pre {
-  padding-right: 4.25rem;
+  padding-right: 2.75rem;
 }
 
 .readme-code-block__copy {
   position: absolute;
-  top: 12px;
-  right: 8px;
+  top: 8px;
+  right: 6px;
   z-index: 1;
-  padding: 3px 8px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: calc(var(--radius-sm, 6px) - 1px);
-  background: color-mix(in srgb, var(--bg-card, var(--surface)) 92%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control, 8px);
+  background: transparent;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
+  box-shadow: none;
   cursor: pointer;
   transition:
     color 0.15s ease,
-    border-color 0.15s ease,
     background 0.15s ease;
 }
 
 .readme-code-block__copy:hover {
   color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft, var(--accent)) 12%, var(--bg-card, var(--surface)));
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.readme-code-block__copy:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .readme-code-block__copy--done {
   color: var(--ok, #2a7);
-  border-color: color-mix(in srgb, var(--ok, #2a7) 35%, var(--border));
+}
+
+.readme-code-block__copy svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
 }
 
 .readme-markdown pre code {

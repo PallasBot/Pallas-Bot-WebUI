@@ -22,6 +22,7 @@ import {
 } from "@/utils/pallasExternalLinks";
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
+import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -495,9 +496,9 @@ export default function UpdatePage() {
           <details className="update-page__release-fold update-page__release-notes">
             <UpdateFoldSummary>{webReleaseNotesSummary}</UpdateFoldSummary>
             {(web?.release_notes || "").trim() ? (
-              <div
+              <ReadmeMarkdown
+                html={webReleaseNotesHtml}
                 className="update-page__release-notes-body update-page__release-notes-body--md"
-                dangerouslySetInnerHTML={{ __html: webReleaseNotesHtml }}
               />
             ) : (
               <p className="update-page__release-notes-empty muted">
@@ -650,9 +651,9 @@ export default function UpdatePage() {
           <details className="update-page__release-fold update-page__release-notes">
             <UpdateFoldSummary>{botReleaseNotesSummary}</UpdateFoldSummary>
             {(bot?.release_notes || "").trim() ? (
-              <div
+              <ReadmeMarkdown
+                html={botReleaseNotesHtml}
                 className="update-page__release-notes-body update-page__release-notes-body--md"
-                dangerouslySetInnerHTML={{ __html: botReleaseNotesHtml }}
               />
             ) : (
               <p className="update-page__release-notes-empty muted">
