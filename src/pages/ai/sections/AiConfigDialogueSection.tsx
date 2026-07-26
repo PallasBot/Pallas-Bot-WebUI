@@ -41,7 +41,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   { value: "form", label: "策略", icon: ClipboardList, lead: "接话策略与对话通用参数。" },
   { value: "session", label: "会话", icon: MessagesSquare, lead: "多轮上下文、过期与摘要。" },
   { value: "memory", label: "记忆", icon: Brain, lead: "群记忆检索、向量模式与自动沉淀。" },
-  { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次闲聊可注入的上下文字符上限。" },
+  { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次 LLM 对话可注入的上下文字符上限。" },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
   { value: "tools", label: "工具", icon: Wrench, lead: "LLM 工具目录、触发说法覆盖与可调用状态。" },
@@ -209,7 +209,7 @@ export default function AiConfigDialogueSection() {
         <AiLlmFieldPanel
           icon={Gauge}
           title="上下文预算"
-          lead="单次闲聊可注入的字符上限。0 表示不限制。"
+          lead="单次 LLM 对话可注入的字符上限。0 表示不限制。"
           detailKeys={LLM_BUDGET_DETAIL_KEYS}
           savedMessage="上下文预算已保存"
           inlineSave={false}

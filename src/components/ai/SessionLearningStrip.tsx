@@ -11,7 +11,7 @@ export function learningLoopHint(status: ConversationKernelStatus | undefined): 
   if (!status.feedback_collect_active) {
     return {
       kind: "warn",
-      text: "反哺收集未开。可在 AI 配置 → 对话 → 策略中打开「收集闲聊反哺」。",
+      text: "反哺收集未开。可在 AI 配置 → 对话 → 策略中打开「收集 LLM 对话反哺」。",
     };
   }
   if (!status.feedback_bias_active) {
