@@ -28,7 +28,7 @@ export const CHROME_SELECT_TRIGGER =
   "h-9 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0";
 
 /**
- * 工具条 Bot 账号 Select：按昵称收窄，最长 9rem；须带 `bot-acct-sel`。
+ * 工具条 Bot 账号 Combobox 触发器：按昵称收窄，最长 9rem；须带 `bot-acct-sel`。
  */
 export const CHROME_BOT_ACCOUNT_SELECT =
   "bot-acct-sel h-9 w-auto min-w-[4.5rem] max-w-[9rem] shrink-0 overflow-hidden";

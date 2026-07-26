@@ -14,20 +14,13 @@ import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
-import ChromeTools, { CHROME_BOT_ACCOUNT_SELECT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { cn } from "@/lib/utils";
@@ -411,25 +404,17 @@ export default function ChartsPage() {
         <ChromeTools>
           {sortedBots.length > 1 ? (
             <ChromeField label="账号" icon={Bot} className="shrink-0">
-              <Select
-                value={selectedAccount != null ? String(selectedAccount) : undefined}
+              <BotAccountCombobox
+                value={selectedAccount != null ? String(selectedAccount) : ""}
                 onValueChange={(v) => selectAccount(Number(v) || null)}
-              >
-                <SelectTrigger
-                  className={CHROME_BOT_ACCOUNT_SELECT}
-                  aria-label="选择 Bot 账号"
-                  title={selectedAccount != null ? botTitle(selectedAccount) : undefined}
-                >
-                  <SelectValue placeholder="选择账号" />
-                </SelectTrigger>
-                <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
-                  {sortedBots.map((b) => (
-                    <SelectItem key={b.account} value={String(b.account)}>
-                      <BotSelectLabel nickname={botNick(b.account) || "BOT"} account={b.account} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                bots={sortedBots.map((b) => ({
+                  id: String(b.account),
+                  nickname: botNick(b.account) || "BOT",
+                }))}
+                placeholder="选择账号"
+                ariaLabel="选择 Bot 账号"
+                title={selectedAccount != null ? botTitle(selectedAccount) : undefined}
+              />
             </ChromeField>
           ) : null}
           <DateModeFilter

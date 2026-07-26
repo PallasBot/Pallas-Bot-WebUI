@@ -8,19 +8,12 @@ import {
 } from "@/api/fullConsole";
 import { axiosErrorDetail } from "@/api/http";
 import type { BotRow } from "@/api/pallasTypes";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -189,7 +182,8 @@ export default function CommunityGallerySection() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="gallery-bot">账号</Label>
-              <Select
+              <BotAccountCombobox
+                id="gallery-bot"
                 value={selfIdStr || "__none__"}
                 onValueChange={(v) => {
                   const next = v === "__none__" ? "" : v;
@@ -198,19 +192,15 @@ export default function CommunityGallerySection() {
                     setNickname(profileNick(next) || `牛牛${next}`);
                   }
                 }}
-              >
-                <SelectTrigger id="gallery-bot" className="w-full" aria-label="当前 Bot 账号" title={selectedBotTitle}>
-                  <SelectValue placeholder="可选 Bot…" />
-                </SelectTrigger>
-                <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
-                  <SelectItem value="__none__">不指定账号</SelectItem>
-                  {botsVisible.map((b) => (
-                    <SelectItem key={b.self_id} value={b.self_id}>
-                      <BotSelectLabel nickname={profileNick(b.self_id)} account={b.self_id} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                bots={botsVisible.map((b) => ({
+                  id: b.self_id,
+                  nickname: profileNick(b.self_id),
+                }))}
+                leadingOption={{ value: "__none__", label: "不指定账号", keywords: "不指定账号" }}
+                placeholder="可选 Bot…"
+                triggerClassName="w-full"
+                title={selectedBotTitle}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="gallery-nick">展示昵称</Label>

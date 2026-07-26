@@ -21,12 +21,11 @@ import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, {
-  CHROME_BOT_ACCOUNT_SELECT,
   CHROME_SEARCH_INPUT,
   CHROME_TOOLS_TRAILING,
 } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
@@ -471,36 +470,28 @@ export default function FriendsGroupsPage() {
 
       <ChromeTools>
         <ChromeField label="账号" icon={Bot} className="shrink-0">
-          <Select
+          <BotAccountCombobox
             value={selfIdStr || "__none__"}
             onValueChange={(v) => {
               setSelfIdStr(v === "__none__" ? "" : v);
               setFriendListQ("");
               setGroupListQ("");
             }}
-          >
-            <SelectTrigger
-              className={CHROME_BOT_ACCOUNT_SELECT}
-              aria-label="当前 Bot 账号"
-              title={
-                (() => {
-                  if (!selfIdStr) return undefined;
-                  const cur = botsVisible.find((b) => b.self_id === selfIdStr);
-                  return cur ? botOptionTitle(cur) : selfIdStr;
-                })()
-              }
-            >
-              <SelectValue placeholder="请选择 Bot…" />
-            </SelectTrigger>
-            <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
-              <SelectItem value="__none__">请选择 Bot…</SelectItem>
-              {botsVisible.map((b) => (
-                <SelectItem key={b.self_id} value={b.self_id}>
-                  <BotSelectLabel nickname={profileNick(b.self_id)} account={b.self_id} />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            bots={botsVisible.map((b) => ({
+              id: b.self_id,
+              nickname: profileNick(b.self_id),
+            }))}
+            leadingOption={{ value: "__none__", label: "请选择 Bot…", keywords: "请选择 Bot" }}
+            placeholder="请选择 Bot…"
+            title={
+              selfIdStr
+                ? (() => {
+                    const cur = botsVisible.find((b) => b.self_id === selfIdStr);
+                    return cur ? botOptionTitle(cur) : selfIdStr;
+                  })()
+                : undefined
+            }
+          />
         </ChromeField>
 
         <ChromeField label="选择" icon={Layers} className="shrink-0">

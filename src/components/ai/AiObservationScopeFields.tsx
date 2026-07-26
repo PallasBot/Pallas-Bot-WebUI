@@ -5,17 +5,10 @@ import { fetchInstances } from "@/api/fullConsole";
 import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import { CHROME_BOT_ACCOUNT_SELECT, CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
+import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
 
@@ -73,35 +66,24 @@ export default function AiObservationScopeFields({
       {showBot ? (
         <ChromeField label="Bot" icon={Bot} className="shrink-0">
           {useSelect ? (
-            <Select
+            <BotAccountCombobox
               value={botId.trim() || ALL_BOTS}
               onValueChange={(v) => setBotId(v === ALL_BOTS ? "" : v)}
-            >
-              <SelectTrigger
-                className={CHROME_BOT_ACCOUNT_SELECT}
-                title={
-                  selected
-                    ? botSelectDropdownLabel(selected.nickname, selected.id)
-                    : botId.trim()
-                      ? botId
-                      : undefined
-                }
-              >
-                <SelectValue placeholder="全部 Bot" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectItem value={ALL_BOTS}>
-                  <ChromeOptionLabel icon={Bot}>全部</ChromeOptionLabel>
-                </SelectItem>
-                {botOptions.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    <ChromeOptionLabel icon={Bot}>
-                      <BotSelectLabel nickname={b.nickname} account={b.id} />
-                    </ChromeOptionLabel>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              bots={botOptions}
+              leadingOption={{
+                value: ALL_BOTS,
+                label: <ChromeOptionLabel icon={Bot}>全部</ChromeOptionLabel>,
+                keywords: "全部 Bot",
+              }}
+              placeholder="全部 Bot"
+              title={
+                selected
+                  ? botSelectDropdownLabel(selected.nickname, selected.id)
+                  : botId.trim()
+                    ? botId
+                    : undefined
+              }
+            />
           ) : (
             <Input
               className="h-9 w-[7.5rem] shrink-0"
