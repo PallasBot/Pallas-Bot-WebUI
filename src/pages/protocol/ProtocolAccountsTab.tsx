@@ -1006,7 +1006,7 @@ export default function ProtocolAccountsTab() {
                           </span>
                         </div>
                         <div className="data-summary-card__row">
-                          <span className="data-summary-card__label">内置 WebUI</span>
+                          <span className="data-summary-card__label">原生 WebUI</span>
                           {href ? (
                             <a
                               className="data-summary-card__val data-summary-card__val--link link-quiet"

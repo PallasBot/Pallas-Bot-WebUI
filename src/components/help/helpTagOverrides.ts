@@ -3,13 +3,13 @@
 export const HELP_TAG_OVERRIDES_FIELD = "help_tag_overrides";
 
 export const HELP_TAG_PRESETS: { value: string; label: string }[] = [
-  { value: "core", label: "内核 (core)" },
-  { value: "chat", label: "聊天 (chat)" },
-  { value: "ai", label: "AI (ai)" },
-  { value: "fun", label: "娱乐 (fun)" },
-  { value: "tool", label: "工具 (tool)" },
-  { value: "admin", label: "管理 (admin)" },
-  { value: "other", label: "其他 (other)" },
+  { value: "core", label: "内核" },
+  { value: "chat", label: "聊天" },
+  { value: "ai", label: "AI" },
+  { value: "fun", label: "娱乐" },
+  { value: "tool", label: "工具" },
+  { value: "admin", label: "管理" },
+  { value: "other", label: "其他" },
 ];
 
 export const PRESET_TAG_VALUES = HELP_TAG_PRESETS.map((t) => t.value);
