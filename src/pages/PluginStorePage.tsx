@@ -99,7 +99,6 @@ import {
   resolveCommunityIndexSourceDisplay,
   resultNeedsRestart,
 } from "@/utils/pluginStorePageHelpers";
-import SegTabs from "@/components/SegTabs";
 
 type DetailTab = "readme" | "changelog";
 type DetailKind = "official" | "community";
@@ -1315,20 +1314,24 @@ export default function PluginStorePage() {
           <div className="plugin-store-page__detail-bd min-h-0 flex-1 overflow-auto px-4 py-3">
         {detailTarget ? (
           <>
-            <SegTabs
-              className="plugin-store-page__detail-tabs"
-              ariaLabel="详情分栏"
-              value={detailTab}
-              onValueChange={(v) => {
-                const next = v === "changelog" ? "changelog" : "readme";
-                setDetailTab(next);
-                if (next === "changelog" && detailTarget) void loadDetailChangelog(detailTarget);
-              }}
-              options={[
-                { value: "readme", label: "README" },
-                { value: "changelog", label: "更新日志" },
-              ]}
-            />
+            <div className="plugin-store-page__detail-pane-bar">
+              <Select
+                value={detailTab}
+                onValueChange={(v) => {
+                  const next = v === "changelog" ? "changelog" : "readme";
+                  setDetailTab(next);
+                  if (next === "changelog" && detailTarget) void loadDetailChangelog(detailTarget);
+                }}
+              >
+                <SelectTrigger className="h-9 w-auto min-w-[8.5rem]" aria-label="详情分栏">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="readme">README</SelectItem>
+                  <SelectItem value="changelog">更新日志</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {detailTab === "readme" ? (
               detailReadmeLoading ? (
                 <div className="plugin-store-page__detail-skeleton">

@@ -11748,6 +11748,13 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .he
   overflow: auto;
   min-height: 200px;
 }
+
+.plugin-store-page__detail-pane-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .plugin-store-page__detail-foot {
   display: flex;
   flex-direction: row;
