@@ -4,10 +4,12 @@
  */
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Tags } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import SettingsFormField from "@/components/config/SettingsFormField";
+import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import { HelpField } from "@/components/help/HelpPortalSelect";
 import HelpTagSelect from "@/components/help/HelpTagSelect";
 import { cn } from "@/lib/utils";
 import {
@@ -92,25 +94,36 @@ export default function PluginHelpTagField({
 
   if (!id) return null;
 
-  const statusHint = currentOverride
-    ? `覆盖本插件在帮助图总览中的分组；当前为覆盖值，插件默认：${helpTagLabel(defaultTag)}。保存后立即热载。`
-    : `覆盖本插件在帮助图总览中的分组；当前使用插件默认：${helpTagLabel(defaultTag)}。保存后立即热载。`;
-
   return (
-    <SettingsFormField className={cn(className)} label="帮助图分组" hint={statusHint}>
-      <HelpTagSelect
-        value={currentOverride}
-        extraTags={extraTags}
-        allowEmpty
-        emptyLabel={`使用默认（${helpTagLabel(defaultTag)}）`}
-        disabled={saveMut.isPending || helpCfgQ.isLoading}
-        onValueChange={(v) => {
-          const next = v.trim().toLowerCase();
-          if (next === (currentOverride || "").toLowerCase()) return;
-          if (!next && !currentOverride) return;
-          void saveMut.mutateAsync(next);
-        }}
-      />
-    </SettingsFormField>
+    <PluginConfigFormSection
+      className={cn(className)}
+      title="帮助图分组"
+      icon={Tags}
+      bodyClassName="!grid-cols-1 gap-3"
+      subtitle="覆盖本插件在帮助图总览中的分组；未覆盖时用 metadata.extra.help_tag。保存后立即热载。"
+    >
+      <HelpField
+        label="分组"
+        description={
+          currentOverride
+            ? `当前为覆盖值；插件默认：${helpTagLabel(defaultTag)}`
+            : `当前使用插件默认：${helpTagLabel(defaultTag)}`
+        }
+      >
+        <HelpTagSelect
+          value={currentOverride}
+          extraTags={extraTags}
+          allowEmpty
+          emptyLabel={`使用默认（${helpTagLabel(defaultTag)}）`}
+          disabled={saveMut.isPending || helpCfgQ.isLoading}
+          onValueChange={(v) => {
+            const next = v.trim().toLowerCase();
+            if (next === (currentOverride || "").toLowerCase()) return;
+            if (!next && !currentOverride) return;
+            void saveMut.mutateAsync(next);
+          }}
+        />
+      </HelpField>
+    </PluginConfigFormSection>
   );
 }
