@@ -1,5 +1,6 @@
 import type { PluginConfigField } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
+import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
 import TagsInput from "@/components/config/TagsInput";
 import UiInput from "@/components/ui/UiInput";
 import {
@@ -60,6 +61,7 @@ export default function ConfigFieldRenderer({
   const usesMultiline = field.kind === "string" && Boolean(field.multiline);
   const usesTags = isChipListField(field);
   const usesIdTags = isIdListField(field);
+  const usesStringMap = field.kind === "json" && tryParseStringMap(modelValue) != null;
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -163,7 +165,17 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" ? (
+      {usesStringMap ? (
+        <StringMapField
+          value={modelValue}
+          onValueChange={onValueChange}
+          maxWidth={inputMaxWidth}
+          speakerPlaceholder="Speaker id"
+          aliasPlaceholder="输入别名后回车…"
+        />
+      ) : null}
+
+      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap ? (
         <textarea
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}

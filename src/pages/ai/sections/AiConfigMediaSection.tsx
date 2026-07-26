@@ -212,6 +212,10 @@ export default function AiConfigMediaSection() {
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
     onSuccess: () => setMsg("TTS 默认已保存"), onError: (e) => setMsg(axiosErrorDetail(e)),
   });
+  const singSaveRef = useRef(singMut.mutateAsync);
+  const ttsSaveRef = useRef(ttsMut.mutateAsync);
+  singSaveRef.current = singMut.mutateAsync;
+  ttsSaveRef.current = ttsMut.mutateAsync;
   const payload = (statusQ.data?.data || {}) as Record<string, unknown>;
   const loggedIn = Boolean(payload.success) && Boolean(payload.session);
   const ncmSessionHint = useMemo(() => {
@@ -308,6 +312,38 @@ export default function AiConfigMediaSection() {
   ), [contentPanel]);
 
   const chromeTrailing = useMemo(() => {
+    if (contentPanel === "sing") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={busy || singQ.isLoading || singMut.isPending}
+          onClick={() => {
+            setMsg(null);
+            void singSaveRef.current();
+          }}
+        >
+          {singMut.isPending ? "保存中…" : "保存"}
+        </Button>
+      );
+    }
+    if (contentPanel === "tts") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={busy || ttsQ.isLoading || ttsMut.isPending}
+          onClick={() => {
+            setMsg(null);
+            void ttsSaveRef.current();
+          }}
+        >
+          {ttsMut.isPending ? "保存中…" : "保存"}
+        </Button>
+      );
+    }
     if (contentPanel !== "draw") return null;
     return (
       <>
@@ -344,7 +380,15 @@ export default function AiConfigMediaSection() {
         </Button>
       </>
     );
-  }, [contentPanel, drawStatus]);
+  }, [
+    contentPanel,
+    drawStatus,
+    busy,
+    singQ.isLoading,
+    ttsQ.isLoading,
+    singMut.isPending,
+    ttsMut.isPending,
+  ]);
 
   useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing });
 
@@ -619,11 +663,6 @@ export default function AiConfigMediaSection() {
                 />
               </AiConfigField>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void singMut.mutateAsync(); }}>
-                保存
-              </Button>
-            </div>
           </PluginConfigFormSection>
         </div>
       </StateBlock>
@@ -666,11 +705,6 @@ export default function AiConfigMediaSection() {
               <AiConfigField label="合成语种" description="待合成文本语种。">
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
               </AiConfigField>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void ttsMut.mutateAsync(); }}>
-                保存
-              </Button>
             </div>
           </PluginConfigFormSection>
         </div>
