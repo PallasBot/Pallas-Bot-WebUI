@@ -14,7 +14,7 @@ import ChartsMonthlyCommandChart from "@/components/ChartsMonthlyCommandChart";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
-import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools, { CHROME_BOT_ACCOUNT_SELECT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
@@ -55,8 +55,6 @@ const CHART_PANEL = "charts-page__panel flex flex-col overflow-hidden shadow-non
 const CHART_PANEL_HD =
   "panel__hd panel__hd--split home-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
 const CHART_PANEL_BD = "panel__bd space-y-3 px-4 pb-4 pt-3";
-const ACCOUNT_SEL =
-  "bot-acct-sel charts-page__account-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
 /** 与区间趋势 Matcher 序列同色，柱图不跟主题走 */
 const PLUGIN_TODAY_BAR_ACCENT = "#7c3aed";
 
@@ -418,7 +416,7 @@ export default function ChartsPage() {
                 onValueChange={(v) => selectAccount(Number(v) || null)}
               >
                 <SelectTrigger
-                  className={ACCOUNT_SEL}
+                  className={CHROME_BOT_ACCOUNT_SELECT}
                   aria-label="选择 Bot 账号"
                   title={selectedAccount != null ? botTitle(selectedAccount) : undefined}
                 >

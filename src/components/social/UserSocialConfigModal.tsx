@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
-import { fetchUserConfigById, putUserConfig } from "@/api/fullConsole";
+import { deleteUserConfig, fetchUserConfigById, putUserConfig } from "@/api/fullConsole";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import FormSectionDivider from "@/components/config/FormSectionDivider";
+import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +24,7 @@ type Props = {
   defaultBanned?: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
+  onDeleted?: () => void;
 };
 
 function BoolSwitchField({
@@ -68,22 +70,30 @@ export default function UserSocialConfigModal({
   defaultBanned,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: Props) {
   const [banned, setBanned] = useState(false);
   const [loadBusy, setLoadBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [saveErr, setSaveErr] = useState("");
+  const [deleteErr, setDeleteErr] = useState("");
   const [loadedId, setLoadedId] = useState<number | null>(null);
 
   const displayName = userNickname?.trim() || (defaultBanned ? "添加用户封禁" : "用户配置");
   const qqLabel = String(loadedId ?? userId ?? "—");
+  /** 新建封禁（尚无记录）时不提供删除 */
+  const canDelete = !defaultBanned && loadedId != null;
 
   useEffect(() => {
     if (!open) {
       setLoadErr("");
       setSaveErr("");
+      setDeleteErr("");
       setLoadedId(null);
+      setConfirmDelete(false);
       return;
     }
     const uid = userId;
@@ -95,6 +105,7 @@ export default function UserSocialConfigModal({
     setLoadBusy(true);
     setLoadErr("");
     setSaveErr("");
+    setDeleteErr("");
     void fetchUserConfigById(uid)
       .then((u) => {
         if (cancelled) return;
@@ -113,7 +124,7 @@ export default function UserSocialConfigModal({
   }, [open, userId, defaultBanned]);
 
   async function save() {
-    if (loadedId == null || saveBusy) return;
+    if (loadedId == null || saveBusy || deleteBusy) return;
     setSaveBusy(true);
     setSaveErr("");
     try {
@@ -127,64 +138,120 @@ export default function UserSocialConfigModal({
     }
   }
 
-  const busy = loadBusy || saveBusy;
+  async function confirmDeleteConfig() {
+    if (loadedId == null || deleteBusy || saveBusy) return;
+    setDeleteBusy(true);
+    setDeleteErr("");
+    try {
+      await deleteUserConfig(loadedId);
+      setConfirmDelete(false);
+      onDeleted?.();
+      onOpenChange(false);
+    } catch (e) {
+      setDeleteErr(axiosErrorDetail(e));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  const busy = loadBusy || saveBusy || deleteBusy;
+  const ready = !loadBusy && !loadErr && loadedId != null;
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !busy) onOpenChange(false);
-      }}
-    >
-      <DialogContent
-        className="social-config-dialog social-config-dialog--sm flex max-h-[min(92vh,480px)] w-[min(420px,96vw)] max-w-[min(420px,96vw)] gap-0 overflow-hidden bg-card p-0"
-        onEscapeKeyDown={(e) => {
-          if (busy) e.preventDefault();
-        }}
-        onPointerDownOutside={(e) => {
-          if (busy) e.preventDefault();
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !busy) onOpenChange(false);
         }}
       >
-        <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <DialogTitle id="user-social-config-title" className="text-left">
-            {displayName}
-          </DialogTitle>
-          <p className="muted text-sm">QQ {qqLabel}</p>
-          <DialogDescription className="sr-only">
-            {defaultBanned ? "为该用户添加全局封禁。" : "编辑用户全局封禁状态。"}
-          </DialogDescription>
-        </DialogHeader>
+        <DialogContent
+          className="social-config-dialog social-config-dialog--sm flex max-h-[min(92vh,480px)] w-[min(420px,96vw)] max-w-[min(420px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          onEscapeKeyDown={(e) => {
+            if (busy) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (busy) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="user-social-config-title" className="text-left">
+              {displayName}
+            </DialogTitle>
+            <p className="muted text-sm">QQ · {qqLabel}</p>
+            <DialogDescription className="sr-only">
+              {defaultBanned ? "为该用户添加全局封禁。" : "编辑用户全局封禁状态。"}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
-          {loadBusy ? <p className="muted">加载中…</p> : null}
-          {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
-          {!loadBusy && !loadErr && loadedId != null ? (
-            <div className="bot-config-edit--modal bot-config-edit--modal-sections social-config-dialog__body">
-              {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
-              <div className="bot-config-dialog__block">
-                <FormSectionDivider title="策略" />
-                <BoolSwitchField
-                  label="全局封禁"
-                  hint="开启后该用户在所有群与私聊均无法触发牛牛（与群内屏蔽独立）。"
-                  checked={banned}
-                  onChange={setBanned}
-                />
+          <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+            {loadBusy ? <p className="muted">加载中…</p> : null}
+            {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
+            {ready ? (
+              <div className="bot-config-edit--modal bot-config-edit--modal-sections social-config-dialog__body">
+                {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
+                <div className="bot-config-dialog__block">
+                  <FormSectionDivider title="策略" />
+                  <div className="bot-config-dialog__section-body">
+                    <BoolSwitchField
+                      label="全局封禁"
+                      hint="开启后该用户在所有群与私聊均无法触发牛牛（与群内屏蔽独立）。"
+                      checked={banned}
+                      onChange={setBanned}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
 
-        {!loadBusy && !loadErr && loadedId != null ? (
-          <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 flex-row flex-nowrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button type="button" size="sm" disabled={saveBusy} onClick={() => void save()}>
-              {saveBusy ? "保存中…" : "保存"}
-            </Button>
-          </DialogFooter>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+          {ready ? (
+            <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => onOpenChange(false)}
+              >
+                取消
+              </Button>
+              <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+                {saveBusy ? "保存中…" : "保存"}
+              </Button>
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setDeleteErr("");
+                    setConfirmDelete(true);
+                  }}
+                >
+                  删除
+                </Button>
+              ) : null}
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <ConsoleDeleteConfirmModal
+        open={confirmDelete}
+        title="删除好友配置"
+        subtitle="将移除该好友的 user_config 记录（含全局封禁等），操作不可撤销。"
+        items={loadedId != null ? [{ key: String(loadedId), label: `QQ ${loadedId}` }] : []}
+        listLabel="好友"
+        busy={deleteBusy}
+        error={deleteErr}
+        titleId="user-social-config-delete-title"
+        onClose={() => {
+          if (!deleteBusy) setConfirmDelete(false);
+        }}
+        onConfirm={() => void confirmDeleteConfig()}
+      />
+    </>
   );
 }

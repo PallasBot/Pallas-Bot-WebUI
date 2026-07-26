@@ -16,10 +16,15 @@ import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances, botSelectDropdownLabel } from "@/utils/botDisplay";
 import { requestOverviewToFriendOverview } from "@/utils/consoleSocialCache";
 import { slicePage } from "@/utils/paginate";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_BOT_ACCOUNT_SELECT,
+  CHROME_SEARCH_INPUT,
+  CHROME_TOOLS_TRAILING,
+} from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -45,10 +50,8 @@ const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden shado
 const FG_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
-const FG_ACCOUNT_SEL =
-  "bot-acct-sel friends-groups-account-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
 const FG_SECTION_SEL =
-  "h-8 w-[6.5rem] min-w-[5.5rem] max-w-[6.5rem] shrink-0 overflow-hidden";
+  "chrome-section-compact-sel h-9 w-auto min-w-[4.5rem] max-w-[5.75rem] shrink-0 overflow-hidden";
 
 const FG_LIST_SKEL_ROWS = 8;
 
@@ -284,11 +287,13 @@ export default function FriendsGroupsPage() {
   }, [location.hash]);
 
   function selectSection(id: FgSectionId) {
-    setSection(id);
-    const nextHash = id === "friends" ? "#fg-friends" : "#fg-groups";
-    if (location.hash !== nextHash) {
-      navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
-    }
+    preserveShellMainScroll(() => {
+      setSection(id);
+      const nextHash = id === "friends" ? "#fg-friends" : "#fg-groups";
+      if (location.hash !== nextHash) {
+        navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
+      }
+    });
   }
 
   function displayFriendReqNickname(row: { user_id: number; nickname?: string | null }): string {
@@ -476,7 +481,7 @@ export default function FriendsGroupsPage() {
             }}
           >
             <SelectTrigger
-              className={FG_ACCOUNT_SEL}
+              className={CHROME_BOT_ACCOUNT_SELECT}
               aria-label="当前 Bot 账号"
               title={
                 (() => {
@@ -1052,6 +1057,12 @@ export default function FriendsGroupsPage() {
           if (!o) setGroupModal(null);
         }}
         onSaved={() => setOk("群颗粒配置已保存。")}
+        onDeleted={() => {
+          setOk(
+            groupModal?.id != null ? `已删除群配置 ${groupModal.id}` : "已删除群配置",
+          );
+          setGroupModal(null);
+        }}
       />
       <UserSocialConfigModal
         open={userModal != null}
@@ -1061,6 +1072,12 @@ export default function FriendsGroupsPage() {
           if (!o) setUserModal(null);
         }}
         onSaved={() => setOk("用户颗粒配置已保存。")}
+        onDeleted={() => {
+          setOk(
+            userModal?.id != null ? `已删除好友配置 ${userModal.id}` : "已删除好友配置",
+          );
+          setUserModal(null);
+        }}
       />
     </div>
   );

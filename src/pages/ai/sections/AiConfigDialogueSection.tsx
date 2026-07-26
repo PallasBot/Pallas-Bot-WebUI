@@ -12,6 +12,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import SegTabs from "@/components/SegTabs";
 import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
 import LlmToolsTable from "@/components/ai/LlmToolsTable";
@@ -66,14 +67,16 @@ export default function AiConfigDialogueSection() {
   }, []);
 
   const setPanel = (next: Panel) => {
-    setParams(
-      (prev) => {
-        const n = new URLSearchParams(prev);
-        n.set("panel", next);
-        return n;
-      },
-      { replace: true },
-    );
+    preserveShellMainScroll(() => {
+      setParams(
+        (prev) => {
+          const n = new URLSearchParams(prev);
+          n.set("panel", next);
+          return n;
+        },
+        { replace: true },
+      );
+    });
   };
 
   const sourcesQ = useQuery({

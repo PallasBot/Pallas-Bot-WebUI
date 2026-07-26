@@ -26,6 +26,7 @@ import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
 import {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
@@ -423,7 +424,9 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
         <ChromeField label="工作区" icon={Layers} className="shrink-0">
           <Select
             value={detailTab}
-            onValueChange={(v) => setDetailTab(v as ConfigTab)}
+            onValueChange={(v) => {
+              preserveShellMainScroll(() => setDetailTab(v as ConfigTab));
+            }}
           >
             <SelectTrigger
               className={CHROME_SELECT_TRIGGER}

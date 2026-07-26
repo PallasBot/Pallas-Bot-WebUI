@@ -38,6 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
@@ -823,7 +824,12 @@ export default function LlmProvidersForm() {
     () => (
       <>
         <ChromeField label="接入分区" icon={Layers}>
-          <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
+          <Select
+            value={tab}
+            onValueChange={(v) => {
+              preserveShellMainScroll(() => setTab(v as Tab));
+            }}
+          >
             <SelectTrigger className={CHROME_SELECT_TRIGGER}>
               <SelectValue />
             </SelectTrigger>

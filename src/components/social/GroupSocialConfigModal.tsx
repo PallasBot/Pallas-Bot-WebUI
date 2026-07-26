@@ -1,10 +1,11 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
-import { fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/fullConsole";
+import { deleteGroupConfig, fetchGroupConfigById, fetchPlugins, putGroupConfig } from "@/api/fullConsole";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import FormSectionDivider from "@/components/config/FormSectionDivider";
 import IdChipsInput from "@/components/config/IdChipsInput";
 import SettingsFormField from "@/components/config/SettingsFormField";
+import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,6 +39,7 @@ type Props = {
   groupName?: string;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
+  onDeleted?: () => void;
 };
 
 type Draft = {
@@ -89,14 +91,24 @@ function BoolSwitchField({
 }
 
 /** 群颗粒配置：对齐 Bot 配置弹窗的 divider / 字段「?」/ 开关。 */
-export default function GroupSocialConfigModal({ open, groupId, groupName, onOpenChange, onSaved }: Props) {
+export default function GroupSocialConfigModal({
+  open,
+  groupId,
+  groupName,
+  onOpenChange,
+  onSaved,
+  onDeleted,
+}: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loadedId, setLoadedId] = useState<number | null>(null);
   const [pluginNames, setPluginNames] = useState<Array<{ name: string; label: string }>>([]);
   const [loadBusy, setLoadBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [saveErr, setSaveErr] = useState("");
+  const [deleteErr, setDeleteErr] = useState("");
 
   const rouletteOpts = useMemo(
     () => rouletteModeSelectOptions(draft?.roulette_mode),
@@ -111,6 +123,8 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
       setLoadedId(null);
       setLoadErr("");
       setSaveErr("");
+      setDeleteErr("");
+      setConfirmDelete(false);
       return;
     }
     const gid = groupId;
@@ -122,6 +136,7 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
     setLoadBusy(true);
     setLoadErr("");
     setSaveErr("");
+    setDeleteErr("");
     void (async () => {
       try {
         const [g, plugins] = await Promise.all([fetchGroupConfigById(gid), fetchPlugins()]);
@@ -156,7 +171,7 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
   }
 
   async function save() {
-    if (loadedId == null || !draft || saveBusy) return;
+    if (loadedId == null || !draft || saveBusy || deleteBusy) return;
     setSaveBusy(true);
     setSaveErr("");
     try {
@@ -175,136 +190,192 @@ export default function GroupSocialConfigModal({ open, groupId, groupName, onOpe
     }
   }
 
-  const busy = loadBusy || saveBusy;
+  async function confirmDeleteConfig() {
+    if (loadedId == null || deleteBusy || saveBusy) return;
+    setDeleteBusy(true);
+    setDeleteErr("");
+    try {
+      await deleteGroupConfig(loadedId);
+      setConfirmDelete(false);
+      onDeleted?.();
+      onOpenChange(false);
+    } catch (e) {
+      setDeleteErr(axiosErrorDetail(e));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  const busy = loadBusy || saveBusy || deleteBusy;
+  const ready = !loadBusy && !loadErr && draft != null && loadedId != null;
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !busy) onOpenChange(false);
-      }}
-    >
-      <DialogContent
-        className="social-config-dialog flex max-h-[min(92vh,720px)] w-[min(560px,96vw)] max-w-[min(560px,96vw)] gap-0 overflow-hidden bg-card p-0"
-        onEscapeKeyDown={(e) => {
-          if (busy) e.preventDefault();
-        }}
-        onPointerDownOutside={(e) => {
-          if (busy) e.preventDefault();
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !busy) onOpenChange(false);
         }}
       >
-        <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <DialogTitle id="group-social-config-title" className="text-left">
-            {displayName}
-          </DialogTitle>
-          <p className="muted text-sm">群号 {gidLabel}</p>
-          <DialogDescription className="sr-only">编辑本群封禁、轮盘、禁用插件与屏蔽用户。</DialogDescription>
-        </DialogHeader>
+        <DialogContent
+          className="social-config-dialog flex max-h-[min(92vh,720px)] w-[min(560px,96vw)] max-w-[min(560px,96vw)] gap-0 overflow-hidden bg-card p-0"
+          onEscapeKeyDown={(e) => {
+            if (busy) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (busy) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
+            <DialogTitle id="group-social-config-title" className="text-left">
+              {displayName}
+            </DialogTitle>
+            <p className="muted text-sm">群号 · {gidLabel}</p>
+            <DialogDescription className="sr-only">编辑本群封禁、轮盘、禁用插件与屏蔽用户。</DialogDescription>
+          </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
-          {loadBusy ? <p className="muted">加载中…</p> : null}
-          {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
-          {!loadBusy && !loadErr && draft ? (
-            <div className="bot-config-edit--modal bot-config-edit--modal-sections social-config-dialog__body">
-              {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
+          <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+            {loadBusy ? <p className="muted">加载中…</p> : null}
+            {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
+            {ready ? (
+              <div className="bot-config-edit--modal bot-config-edit--modal-sections social-config-dialog__body">
+                {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
 
-              <div className="bot-config-dialog__block">
-                <FormSectionDivider title="策略" />
-                <div className="social-config-dialog__strategy">
-                  <BoolSwitchField
-                    label="封禁本群"
-                    hint="开启后本群不响应口令与常规回复（与实例级配置独立）。"
-                    checked={draft.banned}
-                    onChange={(v) => setDraft({ ...draft, banned: v })}
-                  />
-                  <SettingsFormField
-                    label="轮盘模式"
-                    hint="本群轮盘玩法规则；选项随当前配置值解析。"
-                  >
-                    <Select
-                      value={rouletteModeSelectValue(draft.roulette_mode)}
-                      onValueChange={(v) =>
-                        setDraft({
-                          ...draft,
-                          roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
-                        })
-                      }
+                <div className="bot-config-dialog__block">
+                  <FormSectionDivider title="策略" />
+                  <div className="bot-config-dialog__section-body social-config-dialog__strategy">
+                    <BoolSwitchField
+                      label="封禁本群"
+                      hint="开启后本群不响应口令与常规回复（与实例级配置独立）。"
+                      checked={draft.banned}
+                      onChange={(v) => setDraft({ ...draft, banned: v })}
+                    />
+                    <SettingsFormField
+                      label="轮盘模式"
+                      hint="本群轮盘玩法规则；选项随当前配置值解析。"
                     >
-                      <SelectTrigger className="h-9 w-full" aria-label="轮盘模式">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rouletteOpts.map((o) => (
-                          <SelectItem key={o.value} value={String(o.value)}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </SettingsFormField>
+                      <Select
+                        value={rouletteModeSelectValue(draft.roulette_mode)}
+                        onValueChange={(v) =>
+                          setDraft({
+                            ...draft,
+                            roulette_mode: parseRouletteModeSelect(v, draft.roulette_mode),
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-9 w-full" aria-label="轮盘模式">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rouletteOpts.map((o) => (
+                            <SelectItem key={o.value} value={String(o.value)}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </SettingsFormField>
+                  </div>
+                </div>
+
+                <div className="bot-config-dialog__block">
+                  <FormSectionDivider title="插件" />
+                  <div className="bot-config-dialog__section-body">
+                    <SettingsFormField
+                      label="禁用插件"
+                      hint="勾选后该插件对本群不生效；清单来自当前已加载插件。"
+                    >
+                      {!pluginNames.length ? (
+                        <p className="bot-config-edit__empty muted">无插件列表</p>
+                      ) : (
+                        <div className="plugin-check-grid plugin-check-grid--bot-modal">
+                          {pluginNames.map((p) => (
+                            <label
+                              key={p.name}
+                              className={cn(
+                                "plugin-check-grid__item",
+                                draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.disabled_plugins.includes(p.name)}
+                                onChange={(e) => togglePlugin(p.name, e.target.checked)}
+                              />
+                              <span>{p.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </SettingsFormField>
+                  </div>
+                </div>
+
+                <div className="bot-config-dialog__block">
+                  <FormSectionDivider title="屏蔽用户" />
+                  <div className="bot-config-dialog__section-body">
+                    <SettingsFormField
+                      label="屏蔽用户 QQ"
+                      hint="仅本群生效；被屏蔽用户在本群无法触发牛牛。点「更多」添加，芯片 × 可移除。"
+                    >
+                      <IdChipsInput
+                        value={draft.blocked_user_ids}
+                        onChange={(ids) => setDraft({ ...draft, blocked_user_ids: normalizeBlocked(ids) })}
+                        placeholder="QQ 号"
+                        emptyText="尚未屏蔽用户。"
+                      />
+                    </SettingsFormField>
+                  </div>
                 </div>
               </div>
+            ) : null}
+          </div>
 
-              <div className="bot-config-dialog__block">
-                <FormSectionDivider title="插件" />
-                <SettingsFormField
-                  label="禁用插件"
-                  hint="勾选后该插件对本群不生效；清单来自当前已加载插件。"
-                >
-                  {!pluginNames.length ? (
-                    <p className="bot-config-edit__empty muted">无插件列表</p>
-                  ) : (
-                    <div className="plugin-check-grid plugin-check-grid--bot-modal">
-                      {pluginNames.map((p) => (
-                        <label
-                          key={p.name}
-                          className={cn(
-                            "plugin-check-grid__item",
-                            draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={draft.disabled_plugins.includes(p.name)}
-                            onChange={(e) => togglePlugin(p.name, e.target.checked)}
-                          />
-                          <span>{p.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </SettingsFormField>
-              </div>
-
-              <div className="bot-config-dialog__block">
-                <FormSectionDivider title="屏蔽用户" />
-                <SettingsFormField
-                  label="屏蔽用户 QQ"
-                  hint="仅本群生效；被屏蔽用户在本群无法触发牛牛。点「更多」添加，芯片 × 可移除。"
-                >
-                  <IdChipsInput
-                    value={draft.blocked_user_ids}
-                    onChange={(ids) => setDraft({ ...draft, blocked_user_ids: normalizeBlocked(ids) })}
-                    placeholder="QQ 号"
-                    emptyText="尚未屏蔽用户。"
-                  />
-                </SettingsFormField>
-              </div>
-            </div>
+          {ready ? (
+            <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => onOpenChange(false)}
+              >
+                取消
+              </Button>
+              <Button type="button" size="sm" disabled={busy} onClick={() => void save()}>
+                {saveBusy ? "保存中…" : "保存"}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  setDeleteErr("");
+                  setConfirmDelete(true);
+                }}
+              >
+                删除
+              </Button>
+            </DialogFooter>
           ) : null}
-        </div>
+        </DialogContent>
+      </Dialog>
 
-        {!loadBusy && !loadErr && draft ? (
-          <DialogFooter className="social-config-dialog__foot border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 flex-row flex-nowrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={saveBusy} onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button type="button" size="sm" disabled={saveBusy} onClick={() => void save()}>
-              {saveBusy ? "保存中…" : "保存"}
-            </Button>
-          </DialogFooter>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+      <ConsoleDeleteConfirmModal
+        open={confirmDelete}
+        title="删除群配置"
+        subtitle="将移除该群的 group_config 记录（含封禁、轮盘、禁用插件、拉黑等），操作不可撤销。"
+        items={loadedId != null ? [{ key: String(loadedId), label: `群 ${loadedId}` }] : []}
+        listLabel="群"
+        busy={deleteBusy}
+        error={deleteErr}
+        titleId="group-social-config-delete-title"
+        onClose={() => {
+          if (!deleteBusy) setConfirmDelete(false);
+        }}
+        onConfirm={() => void confirmDeleteConfig()}
+      />
+    </>
   );
 }

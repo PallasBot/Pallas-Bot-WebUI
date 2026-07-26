@@ -20,6 +20,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
@@ -77,11 +78,15 @@ export default function AiConfigMediaSection() {
   const [params, setParams] = useSearchParams();
   const rawPanel = params.get("panel") || "";
   const panel = normalizeMediaPanel(rawPanel);
-  const setPanel = (next: Panel) => setParams((prev) => {
-    const nextParams = new URLSearchParams(prev);
-    nextParams.set("panel", next === "connection" || next === "runtime" ? "service" : next);
-    return nextParams;
-  }, { replace: true });
+  const setPanel = (next: Panel) => {
+    preserveShellMainScroll(() => {
+      setParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set("panel", next === "connection" || next === "runtime" ? "service" : next);
+        return nextParams;
+      }, { replace: true });
+    });
+  };
   const qc = useQueryClient();
   const [msg, setMsg] = useState<string | null>(null);
 

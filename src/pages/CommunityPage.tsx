@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import {
   Globe2,
   Network,
@@ -382,12 +383,14 @@ export default function CommunityPage() {
   }, [location.hash]);
 
   function selectSection(id: CommunitySectionId) {
-    setSection(id);
-    const meta = COMMUNITY_SECTIONS.find((s) => s.id === id) ?? COMMUNITY_SECTIONS[0];
-    const nextHash = `#${meta.hash}`;
-    if (location.hash !== nextHash) {
-      navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
-    }
+    preserveShellMainScroll(() => {
+      setSection(id);
+      const meta = COMMUNITY_SECTIONS.find((s) => s.id === id) ?? COMMUNITY_SECTIONS[0];
+      const nextHash = `#${meta.hash}`;
+      if (location.hash !== nextHash) {
+        navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
+      }
+    });
   }
 
   async function runConnectivityCheck() {

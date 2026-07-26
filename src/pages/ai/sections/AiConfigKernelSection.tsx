@@ -16,6 +16,7 @@ import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 
 type Panel = "status" | "traces" | "memory" | "notes";
 
@@ -77,7 +78,9 @@ export default function AiConfigKernelSection() {
         size="toolbar"
         ariaLabel="会话状态分区"
         value={panel}
-        onValueChange={(v) => setPanel(v as Panel)}
+        onValueChange={(v) => {
+          preserveShellMainScroll(() => setPanel(v as Panel));
+        }}
         options={PANEL_OPTIONS}
       />
     ),

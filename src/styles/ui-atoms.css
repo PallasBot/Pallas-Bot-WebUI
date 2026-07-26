@@ -1232,15 +1232,11 @@ html[data-theme="dark"] .ui-dialog__panel {
   gap: 18px;
 }
 
+/* 策略区：封禁开关与轮盘上下排列，避免两列控件高度/标签错位 */
 .social-config-dialog__strategy {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: start;
-}
-
-.social-config-dialog__strategy .form-bool-switch-field {
-  height: 100%;
 }
 
 .social-config-dialog .ui-field__label-text {
@@ -1249,7 +1245,7 @@ html[data-theme="dark"] .ui-dialog__panel {
   color: var(--text) !important;
 }
 
-/* 窄屏也保持取消/保存同一行（覆盖 DialogFooter 默认 flex-col-reverse） */
+/* 页脚：取消 / 保存 / 删除 靠右同一行 */
 .social-config-dialog__foot {
   display: flex;
   flex-direction: row;
@@ -1262,12 +1258,6 @@ html[data-theme="dark"] .ui-dialog__panel {
 .social-config-dialog__foot > button {
   flex: 0 0 auto;
   width: auto;
-}
-
-@media (max-width: 560px) {
-  .social-config-dialog__strategy {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ── UiCard（不用 Vue ui.css，避免 --card HSL 分量破坏 background） ── */

@@ -9569,6 +9569,21 @@ table.data.console-data-table.database-page__storage-table tbody td {
   gap: 2px 10px;
 }
 
+.database-social-select-col {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.database-social-select-col input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
 /* 实例页 · 数据库 Bot 配置：卡片多选批量操作（右下角紧凑条） */
 .inst-db-bulk-bar {
   display: flex;

@@ -55,9 +55,18 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
-import { Code2, Database, Layers, Search, Table2, Users } from "lucide-react";
+import { Code2, ChevronDown, Database, Layers, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+import { cn } from "@/lib/utils";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const BROWSE_ID_KEYS = ["account", "group_id", "user_id", "id"] as const;
 const BROWSE_SUMMARY_MAX_COLS = 4;
@@ -197,8 +206,10 @@ export default function DatabasePage() {
   const [pageUsers, setPageUsers] = useState(1);
   const [groupModalId, setGroupModalId] = useState<number | null>(null);
   const [userModal, setUserModal] = useState<{ id: number; defaultBanned?: boolean } | null>(null);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<number>>(() => new Set());
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(() => new Set());
   const [deleteTarget, setDeleteTarget] = useState<
-    { kind: "group"; id: number } | { kind: "user"; id: number } | null
+    { kind: "group"; ids: number[] } | { kind: "user"; ids: number[] } | null
   >(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteErr, setDeleteErr] = useState("");
@@ -308,9 +319,43 @@ export default function DatabasePage() {
     [filteredUserConfigs, pageUsers, prefs.tablePageSize],
   );
 
+  const pagedGroupIds = useMemo(
+    () => pagedGroupConfigs.map((g) => g.group_id),
+    [pagedGroupConfigs],
+  );
+  const pagedUserIds = useMemo(
+    () => pagedUserConfigs.map((u) => u.user_id),
+    [pagedUserConfigs],
+  );
+  const groupPageAllSelected = useMemo(
+    () => pagedGroupIds.length > 0 && pagedGroupIds.every((id) => selectedGroupIds.has(id)),
+    [pagedGroupIds, selectedGroupIds],
+  );
+  const userPageAllSelected = useMemo(
+    () => pagedUserIds.length > 0 && pagedUserIds.every((id) => selectedUserIds.has(id)),
+    [pagedUserIds, selectedUserIds],
+  );
+
+  const socialSelectedCount =
+    activeSection === "group"
+      ? selectedGroupIds.size
+      : activeSection === "user"
+        ? selectedUserIds.size
+        : 0;
+  const socialPageAllSelected =
+    activeSection === "group"
+      ? groupPageAllSelected
+      : activeSection === "user"
+        ? userPageAllSelected
+        : false;
+
   useEffect(() => {
     const fromHash = sectionFromHash(location.hash);
-    if (fromHash && fromHash !== section) setSection(fromHash);
+    if (fromHash && fromHash !== section) {
+      setSection(fromHash);
+      setSelectedGroupIds(new Set());
+      setSelectedUserIds(new Set());
+    }
   }, [location.hash]);
 
   useEffect(() => {
@@ -320,11 +365,57 @@ export default function DatabasePage() {
   }, [overview, section]);
 
   function selectSection(id: DbSectionId) {
-    setSection(id);
-    const nextHash = `#${SECTION_META[id].panelId}`;
-    if (location.hash !== nextHash) {
-      navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
-    }
+    preserveShellMainScroll(() => {
+      setSection(id);
+      setSelectedGroupIds(new Set());
+      setSelectedUserIds(new Set());
+      const nextHash = `#${SECTION_META[id].panelId}`;
+      if (location.hash !== nextHash) {
+        navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
+      }
+    });
+  }
+
+  function setGroupSelected(id: number, on: boolean) {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function setUserSelected(id: number, on: boolean) {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllGroupsOnPage() {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (groupPageAllSelected) {
+        for (const id of pagedGroupIds) next.delete(id);
+      } else {
+        for (const id of pagedGroupIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAllUsersOnPage() {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (userPageAllSelected) {
+        for (const id of pagedUserIds) next.delete(id);
+      } else {
+        for (const id of pagedUserIds) next.add(id);
+      }
+      return next;
+    });
   }
 
   async function loadBrowseRows(table: string, page: number) {
@@ -411,9 +502,32 @@ export default function DatabasePage() {
     void loadSocialConfigs();
   }
 
-  function openDeleteConfig(kind: "group" | "user", id: number) {
+  function onSocialConfigDeleted(kind: "group" | "user", id: number) {
+    setOk(kind === "group" ? `已删除群配置 ${id}` : `已删除好友配置 ${id}`);
+    setErr("");
+    if (kind === "group") {
+      setSelectedGroupIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      setSelectedUserIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+    void loadSocialConfigs();
+  }
+
+  function openDeleteConfig(kind: "group" | "user", ids: number[]) {
+    const unique = [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+    if (!unique.length) return;
     setDeleteErr("");
-    setDeleteTarget({ kind, id });
+    setDeleteTarget({ kind, ids: unique });
   }
 
   function closeDeleteConfig() {
@@ -424,17 +538,32 @@ export default function DatabasePage() {
 
   async function confirmDeleteConfig() {
     if (!deleteTarget) return;
+    const { kind, ids } = deleteTarget;
     setDeleteBusy(true);
     setDeleteErr("");
     try {
-      if (deleteTarget.kind === "group") {
-        await deleteGroupConfig(deleteTarget.id);
-        if (groupModalId === deleteTarget.id) setGroupModalId(null);
-        setOk(`已删除群配置 ${deleteTarget.id}`);
+      if (kind === "group") {
+        for (const id of ids) {
+          await deleteGroupConfig(id);
+        }
+        if (groupModalId != null && ids.includes(groupModalId)) setGroupModalId(null);
+        setSelectedGroupIds((prev) => {
+          const next = new Set(prev);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+        setOk(ids.length === 1 ? `已删除群配置 ${ids[0]}` : `已删除 ${ids.length} 条群配置`);
       } else {
-        await deleteUserConfig(deleteTarget.id);
-        if (userModal?.id === deleteTarget.id) setUserModal(null);
-        setOk(`已删除好友配置 ${deleteTarget.id}`);
+        for (const id of ids) {
+          await deleteUserConfig(id);
+        }
+        if (userModal?.id != null && ids.includes(userModal.id)) setUserModal(null);
+        setSelectedUserIds((prev) => {
+          const next = new Set(prev);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+        setOk(ids.length === 1 ? `已删除好友配置 ${ids[0]}` : `已删除 ${ids.length} 条好友配置`);
       }
       setErr("");
       setDeleteTarget(null);
@@ -500,12 +629,28 @@ export default function DatabasePage() {
     activeSection === "backend"
       ? "后端"
       : activeSection === "tables"
-        ? overview?.backend === "postgres"
-          ? "表与行数"
-          : "集合与文档数"
+        ? browseTable
+          ? `只读浏览 · ${browseTable}`
+          : overview?.backend === "postgres"
+            ? "表与行数"
+            : "集合与文档数"
         : activeSection === "aggregate"
           ? "聚合查询"
           : activeMeta.label;
+
+  function selectStorageView(next: string) {
+    preserveShellMainScroll(() => {
+      if (next === "__overview__" || !next) {
+        setBrowseTable("");
+        setBrowsePage(1);
+        setBrowseRows(null);
+      } else {
+        setBrowseTable(next);
+        setBrowsePage(1);
+        void loadBrowseRows(next, 1);
+      }
+    });
+  }
 
   return (
     <div className="database-page console-hub-page">
@@ -589,6 +734,29 @@ export default function DatabasePage() {
           </Select>
         </ChromeField>
 
+        {activeSection === "tables" ? (
+          <ChromeField label="视图" icon={Table2} className="shrink-0">
+            <Select value={browseTable || "__overview__"} onValueChange={selectStorageView}>
+              <SelectTrigger
+                className={cn(CHROME_SELECT_TRIGGER, "max-w-[16rem]")}
+                aria-label="存储视图"
+              >
+                <SelectValue placeholder="表总览" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectItem value="__overview__">
+                  <ChromeOptionLabel icon={Table2}>表总览</ChromeOptionLabel>
+                </SelectItem>
+                {browseableTables.map((t) => (
+                  <SelectItem key={t.name} value={t.name}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ChromeField>
+        ) : null}
+
         {listSearch ? (
           <div className="relative min-w-[8rem] flex-1 basis-[8rem]">
             <Search
@@ -608,6 +776,64 @@ export default function DatabasePage() {
               onChange={(e) => listSearch.onChange(e.target.value)}
             />
           </div>
+        ) : null}
+
+        {activeSection === "group" || activeSection === "user" ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 gap-1"
+                disabled={socialConfigsBusy || deleteBusy}
+                aria-label="选项"
+              >
+                {deleteBusy
+                  ? "处理中…"
+                  : `选项${socialSelectedCount > 0 ? `（${socialSelectedCount}）` : ""}`}
+                <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-0 w-max">
+              <DropdownMenuItem
+                disabled={
+                  activeSection === "group"
+                    ? pagedGroupIds.length === 0
+                    : pagedUserIds.length === 0
+                }
+                onSelect={() => {
+                  if (activeSection === "group") toggleSelectAllGroupsOnPage();
+                  else toggleSelectAllUsersOnPage();
+                }}
+              >
+                {socialPageAllSelected ? "取消全选" : "全选本页"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={socialSelectedCount === 0}
+                onSelect={() => {
+                  if (activeSection === "group") setSelectedGroupIds(new Set());
+                  else setSelectedUserIds(new Set());
+                }}
+              >
+                清除选择
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={socialSelectedCount === 0 || deleteBusy}
+                onSelect={() => {
+                  if (activeSection === "group") {
+                    openDeleteConfig("group", [...selectedGroupIds]);
+                  } else {
+                    openDeleteConfig("user", [...selectedUserIds]);
+                  }
+                }}
+              >
+                删除选中
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
 
         <div className={CHROME_TOOLS_TRAILING}>
@@ -633,7 +859,7 @@ export default function DatabasePage() {
       <Card id={activeMeta.panelId} className={DB_PANEL}>
         <CardHeader className={DB_PANEL_HD}>
           <CardTitle className="panel__title flex items-center gap-1.5">
-            <PanelTitleIcon icon={activeMeta.icon} />
+            <PanelTitleIcon icon={activeSection === "tables" && browseTable ? Table2 : activeMeta.icon} />
             {panelTitle}
           </CardTitle>
         </CardHeader>
@@ -686,6 +912,15 @@ export default function DatabasePage() {
                   <table className="data console-data-table">
                     <thead>
                       <tr>
+                        <th className="database-social-select-col" aria-label="选择">
+                          <input
+                            type="checkbox"
+                            checked={groupPageAllSelected}
+                            disabled={deleteBusy || pagedGroupIds.length === 0}
+                            aria-label={groupPageAllSelected ? "取消全选本页" : "全选本页"}
+                            onChange={() => toggleSelectAllGroupsOnPage()}
+                          />
+                        </th>
                         <th>群号</th>
                         <th>封禁</th>
                         <th>轮盘</th>
@@ -697,6 +932,15 @@ export default function DatabasePage() {
                     <tbody>
                       {pagedGroupConfigs.map((g: GroupConfigPublic) => (
                         <tr key={g.group_id}>
+                          <td className="database-social-select-col">
+                            <input
+                              type="checkbox"
+                              checked={selectedGroupIds.has(g.group_id)}
+                              disabled={deleteBusy}
+                              aria-label={`选择群 ${g.group_id}`}
+                              onChange={(e) => setGroupSelected(g.group_id, e.target.checked)}
+                            />
+                          </td>
                           <td>{g.group_id}</td>
                           <td>
                             <span className={`badge ${g.banned ? "badge--warn" : "badge--ok"}`}>
@@ -715,7 +959,7 @@ export default function DatabasePage() {
                                 label="删除"
                                 variant="danger"
                                 disabled={deleteBusy}
-                                onClick={() => openDeleteConfig("group", g.group_id)}
+                                onClick={() => openDeleteConfig("group", [g.group_id])}
                               />
                             </div>
                           </td>
@@ -789,6 +1033,15 @@ export default function DatabasePage() {
                   <table className="data console-data-table">
                     <thead>
                       <tr>
+                        <th className="database-social-select-col" aria-label="选择">
+                          <input
+                            type="checkbox"
+                            checked={userPageAllSelected}
+                            disabled={deleteBusy || pagedUserIds.length === 0}
+                            aria-label={userPageAllSelected ? "取消全选本页" : "全选本页"}
+                            onChange={() => toggleSelectAllUsersOnPage()}
+                          />
+                        </th>
                         <th>QQ</th>
                         <th>封禁</th>
                         <th style={{ minWidth: 112, width: "1%" }}>操作</th>
@@ -797,6 +1050,15 @@ export default function DatabasePage() {
                     <tbody>
                       {pagedUserConfigs.map((u: UserConfigPublic) => (
                         <tr key={u.user_id}>
+                          <td className="database-social-select-col">
+                            <input
+                              type="checkbox"
+                              checked={selectedUserIds.has(u.user_id)}
+                              disabled={deleteBusy}
+                              aria-label={`选择 QQ ${u.user_id}`}
+                              onChange={(e) => setUserSelected(u.user_id, e.target.checked)}
+                            />
+                          </td>
                           <td>{u.user_id}</td>
                           <td>
                             <span className={`badge ${u.banned ? "badge--warn" : "badge--ok"}`}>
@@ -810,7 +1072,7 @@ export default function DatabasePage() {
                                 label="删除"
                                 variant="danger"
                                 disabled={deleteBusy}
-                                onClick={() => openDeleteConfig("user", u.user_id)}
+                                onClick={() => openDeleteConfig("user", [u.user_id])}
                               />
                             </div>
                           </td>
@@ -833,182 +1095,152 @@ export default function DatabasePage() {
           ) : null}
 
           {activeSection === "tables" ? (
-            !overview && !tableMeta.length ? (
+            browseTable ? (
+              browseBusy && !browseRows ? (
+                <ConsoleBlockSkeleton lines={4} label="正在加载行" />
+              ) : browseRows ? (
+                <>
+                  <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
+                    列表仅显示短字段；完整内容请点「查看」。
+                    {browseBusy ? " 刷新中…" : ""}
+                  </p>
+                  <div className="table-wrap">
+                    <table className="data console-data-table">
+                      <thead>
+                        <tr>
+                          {browseColumns.map((col) => (
+                            <th key={col}>{col}</th>
+                          ))}
+                          <th style={{ minWidth: 72, width: "1%" }}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {browseRows.rows.length ? (
+                          browseRows.rows.map((r, idx) => (
+                            <tr key={`${browseTable}-${idx}`}>
+                              {browseColumns.map((col) => (
+                                <td
+                                  key={col}
+                                  className="muted"
+                                  style={{
+                                    maxWidth: 140,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  title={formatBrowseCell(r[col])}
+                                >
+                                  {formatBrowseCell(r[col])}
+                                </td>
+                              ))}
+                              <td>
+                                <ConsoleTableEdit label="查看" onClick={() => setBrowseDetail(r)} />
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              className="muted"
+                              colSpan={Math.max(1, browseColumns.length) + 1}
+                            >
+                              暂无数据
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ConsolePagerBar
+                    page={browsePage}
+                    pageSize={prefs.tablePageSize}
+                    total={browseRows.total}
+                    onPageChange={(p) => {
+                      setBrowsePage(p);
+                      void loadBrowseRows(browseTable, p);
+                    }}
+                    onPageSizeChange={(size) => {
+                      prefs.setTablePageSize(size);
+                      setBrowsePage(1);
+                      void loadBrowseRows(browseTable, 1);
+                    }}
+                  />
+                </>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  暂无数据
+                </p>
+              )
+            ) : !overview && !tableMeta.length ? (
               <ConsoleBlockSkeleton lines={4} label="正在加载存储明细" />
             ) : (
-              <>
-                <div className="table-wrap">
-                  <table className="data console-data-table database-page__storage-table">
-                    <thead>
-                      <tr>
-                        <th>{overview?.backend === "mongodb" ? "集合" : "表名"}</th>
-                        {overview?.backend === "mongodb" ? <th>文档字段</th> : null}
-                        <th>数量</th>
-                        <th>浏览</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(tableMeta.length
-                        ? tableMeta.map((t) => ({
-                            name: t.name,
-                            document:
-                              mongoCollections.find((c) => c.name === t.name)?.document ?? "—",
-                            count: t.count ?? 0,
-                            count_estimated: Boolean(t.count_estimated),
-                            browseable: Boolean(t.browseable),
+              <div className="table-wrap">
+                <table className="data console-data-table database-page__storage-table">
+                  <thead>
+                    <tr>
+                      <th>{overview?.backend === "mongodb" ? "集合" : "表名"}</th>
+                      {overview?.backend === "mongodb" ? <th>文档字段</th> : null}
+                      <th>数量</th>
+                      <th>浏览</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tableMeta.length
+                      ? tableMeta.map((t) => ({
+                          name: t.name,
+                          document:
+                            mongoCollections.find((c) => c.name === t.name)?.document ?? "—",
+                          count: t.count ?? 0,
+                          count_estimated: Boolean(t.count_estimated),
+                          browseable: Boolean(t.browseable),
+                        }))
+                      : overview?.backend === "mongodb"
+                        ? mongoCollections.map((c) => ({
+                            name: c.name,
+                            document: c.document,
+                            count: c.count,
+                            count_estimated: Boolean(c.count_estimated),
+                            browseable: false,
                           }))
-                        : overview?.backend === "mongodb"
-                          ? mongoCollections.map((c) => ({
-                              name: c.name,
-                              document: c.document,
-                              count: c.count,
-                              count_estimated: Boolean(c.count_estimated),
-                              browseable: false,
-                            }))
-                          : pgTables.map((t) => ({
-                              name: t.table,
-                              document: "—",
-                              count: t.count,
-                              count_estimated: false,
-                              browseable: false,
-                            }))
-                      ).map((row) => (
-                        <tr key={row.name}>
-                          <td style={{ fontWeight: 600 }}>{row.name}</td>
-                          {overview?.backend === "mongodb" ? (
-                            <td className="muted">{row.document}</td>
-                          ) : null}
-                          <td
-                            style={{ fontVariantNumeric: "tabular-nums" }}
-                            title={row.count_estimated ? "估算值（集合较大时）" : undefined}
-                          >
-                            {row.count_estimated ? "≈" : ""}
-                            {nf.format(row.count)}
-                          </td>
-                          <td>
-                            {row.browseable ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setBrowseTable(row.name);
-                                  setBrowsePage(1);
-                                  void loadBrowseRows(row.name, 1);
-                                }}
-                              >
-                                只读
-                              </Button>
-                            ) : (
-                              <span className="muted">概览</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {browseableTables.length ? (
-                  <div style={{ marginTop: 16 }}>
-                    <div className="row-actions" style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-                      <Select
-                        value={browseTable || "__none__"}
-                        onValueChange={(v) => {
-                          const next = v === "__none__" ? "" : v;
-                          setBrowseTable(next);
-                          setBrowsePage(1);
-                          void loadBrowseRows(next, 1);
-                        }}
-                      >
-                        <SelectTrigger className="h-9 w-full max-w-[16rem]" aria-label="只读浏览表">
-                          <SelectValue placeholder="选择可浏览表" />
-                        </SelectTrigger>
-                        <SelectContent align="start">
-                          <SelectItem value="__none__">选择可浏览表</SelectItem>
-                          {browseableTables.map((t) => (
-                            <SelectItem key={t.name} value={t.name}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {browseBusy ? <span className="muted">加载中…</span> : null}
-                    </div>
-                    {browseTable && browseRows ? (
-                      <>
-                        <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                          列表仅显示短字段；完整内容请点「查看」。
-                        </p>
-                        <div className="table-wrap">
-                          <table className="data console-data-table">
-                            <thead>
-                              <tr>
-                                {browseColumns.map((col) => (
-                                  <th key={col}>{col}</th>
-                                ))}
-                                <th style={{ minWidth: 72, width: "1%" }}>操作</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {browseRows.rows.length ? (
-                                browseRows.rows.map((r, idx) => (
-                                  <tr key={`${browseTable}-${idx}`}>
-                                    {browseColumns.map((col) => (
-                                      <td
-                                        key={col}
-                                        className="muted"
-                                        style={{
-                                          maxWidth: 140,
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        }}
-                                        title={formatBrowseCell(r[col])}
-                                      >
-                                        {formatBrowseCell(r[col])}
-                                      </td>
-                                    ))}
-                                    <td>
-                                      <ConsoleTableEdit
-                                        label="查看"
-                                        onClick={() => setBrowseDetail(r)}
-                                      />
-                                    </td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td
-                                    className="muted"
-                                    colSpan={Math.max(1, browseColumns.length) + 1}
-                                  >
-                                    暂无数据
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                        <ConsolePagerBar
-                          page={browsePage}
-                          pageSize={prefs.tablePageSize}
-                          total={browseRows.total}
-                          onPageChange={(p) => {
-                            setBrowsePage(p);
-                            void loadBrowseRows(browseTable, p);
-                          }}
-                          onPageSizeChange={(size) => {
-                            prefs.setTablePageSize(size);
-                            setBrowsePage(1);
-                            void loadBrowseRows(browseTable, 1);
-                          }}
-                        />
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
-              </>
+                        : pgTables.map((t) => ({
+                            name: t.table,
+                            document: "—",
+                            count: t.count,
+                            count_estimated: false,
+                            browseable: false,
+                          }))
+                    ).map((row) => (
+                      <tr key={row.name}>
+                        <td style={{ fontWeight: 600 }}>{row.name}</td>
+                        {overview?.backend === "mongodb" ? (
+                          <td className="muted">{row.document}</td>
+                        ) : null}
+                        <td
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                          title={row.count_estimated ? "估算值（集合较大时）" : undefined}
+                        >
+                          {row.count_estimated ? "≈" : ""}
+                          {nf.format(row.count)}
+                        </td>
+                        <td>
+                          {row.browseable ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => selectStorageView(row.name)}
+                            >
+                              只读
+                            </Button>
+                          ) : (
+                            <span className="muted">概览</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )
           ) : null}
 
@@ -1072,6 +1304,9 @@ export default function DatabasePage() {
           if (!o) setGroupModalId(null);
         }}
         onSaved={() => onSocialConfigSaved("group")}
+        onDeleted={() => {
+          if (groupModalId != null) onSocialConfigDeleted("group", groupModalId);
+        }}
       />
       <UserSocialConfigModal
         open={userModal != null}
@@ -1081,6 +1316,9 @@ export default function DatabasePage() {
           if (!o) setUserModal(null);
         }}
         onSaved={() => onSocialConfigSaved("user")}
+        onDeleted={() => {
+          if (userModal?.id != null) onSocialConfigDeleted("user", userModal.id);
+        }}
       />
 
       <ConsoleDeleteConfirmModal
@@ -1088,20 +1326,17 @@ export default function DatabasePage() {
         title={deleteTarget?.kind === "user" ? "删除好友配置" : "删除群配置"}
         subtitle={
           deleteTarget?.kind === "user"
-            ? "将移除该好友的 user_config 记录（含全局封禁等），操作不可撤销。"
-            : "将移除该群的 group_config 记录（含封禁、轮盘、禁用插件、拉黑等），操作不可撤销。"
+            ? `将移除以下好友的 user_config 记录（共 ${deleteTarget.ids.length} 条，含全局封禁等），操作不可撤销。`
+            : deleteTarget
+              ? `将移除以下群的 group_config 记录（共 ${deleteTarget.ids.length} 条，含封禁、轮盘、禁用插件、拉黑等），操作不可撤销。`
+              : ""
         }
         items={
           deleteTarget
-            ? [
-                {
-                  key: String(deleteTarget.id),
-                  label:
-                    deleteTarget.kind === "user"
-                      ? `QQ ${deleteTarget.id}`
-                      : `群 ${deleteTarget.id}`,
-                },
-              ]
+            ? deleteTarget.ids.map((id) => ({
+                key: String(id),
+                label: deleteTarget.kind === "user" ? `QQ ${id}` : `群 ${id}`,
+              }))
             : []
         }
         listLabel={deleteTarget?.kind === "user" ? "好友" : "群"}

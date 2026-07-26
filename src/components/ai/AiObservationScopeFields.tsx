@@ -7,7 +7,7 @@ import {
 } from "@/components/ai/AiObservationScopeContext";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
+import { CHROME_BOT_ACCOUNT_SELECT, CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -78,7 +78,7 @@ export default function AiObservationScopeFields({
               onValueChange={(v) => setBotId(v === ALL_BOTS ? "" : v)}
             >
               <SelectTrigger
-                className="bot-acct-sel h-9 w-[9rem] shrink-0"
+                className={CHROME_BOT_ACCOUNT_SELECT}
                 title={
                   selected
                     ? botSelectDropdownLabel(selected.nickname, selected.id)

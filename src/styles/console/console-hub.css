@@ -1244,9 +1244,70 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   overflow: hidden;
 }
 
-/* Bot 账号 Select：触发器隐藏账号后缀，下拉仍显示完整「昵称（账号）」 */
+/*
+ * Bot 账号 Select：按内容收窄（勿固定 9rem，否则短昵称尾部大留白）。
+ * 覆盖通用 combobox max-width:12rem，以及 SelectTrigger 的 justify-between / span flex-1。
+ */
+.chrome-tools button[role="combobox"].bot-acct-sel,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel,
+button[role="combobox"].bot-acct-sel {
+  width: auto;
+  min-width: 4.5rem;
+  max-width: 9rem;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  overflow: hidden;
+  padding-left: 10px;
+  padding-right: 0.45rem;
+}
+
+/* 触发器隐藏账号后缀，下拉仍显示完整「昵称（账号）」 */
 button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
   display: none;
+}
+
+.chrome-tools button[role="combobox"].bot-acct-sel > span,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > span,
+button[role="combobox"].bot-acct-sel > span {
+  display: grid;
+  align-items: center;
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: left;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chrome-tools button[role="combobox"].bot-acct-sel > svg,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > svg,
+button[role="combobox"].bot-acct-sel > svg {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* 好友/群聊等二字分区：图标+两字文案，按内容收窄 */
+.chrome-tools button[role="combobox"].chrome-section-compact-sel,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel {
+  width: auto;
+  min-width: 4.5rem;
+  max-width: 5.75rem;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+  padding-right: 0.35rem;
+}
+
+.chrome-tools button[role="combobox"].chrome-section-compact-sel > span,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel > span {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
 }
 
 /* SelectValue：grid 垂直居中 + 横向省略；行高勿用 1（CJK 易被纵向裁切） */
