@@ -71,12 +71,15 @@ function RangeMetricCard({
   data,
   loading,
   hint,
+  costCurrency,
 }: {
   label: string;
   data: TokenBucket;
   loading: boolean;
   hint?: string;
+  costCurrency?: string;
 }) {
+  const currency = costCurrency || data.costCurrency;
   return (
     <Card>
       <CardContent className="space-y-2 p-3 sm:p-4">
@@ -89,6 +92,16 @@ function RangeMetricCard({
           <span>输出 {loading ? "…" : formatCompactNumber(data.completionTokens)}</span>
           <span>缓存读 {loading ? "…" : formatCompactNumber(data.cacheReadTokens)}</span>
           <span>缓存写 {loading ? "…" : formatCompactNumber(data.cacheWriteTokens)}</span>
+        </div>
+        <div className="text-xs tabular-nums text-muted-foreground">
+          费用{currency ? ` (${currency})` : ""}{" "}
+          {loading
+            ? "…"
+            : data.costTotal > 0
+              ? data.costTotal.toFixed(4)
+              : data.totalTokens > 0
+                ? "未配置单价"
+                : "—"}
         </div>
         {hint ? <div className="text-[11px] text-muted-foreground">{hint}</div> : null}
       </CardContent>
@@ -385,12 +398,14 @@ export default function AiStatisticsPage() {
                 label="近 7 天"
                 data={range7}
                 loading={loading}
+                costCurrency={costCurrency}
                 hint="相对今天的固定窗口，不受顶栏日期影响"
               />
               <RangeMetricCard
                 label="近 30 天"
                 data={range30}
                 loading={loading}
+                costCurrency={costCurrency}
                 hint="相对今天的固定窗口，不受顶栏日期影响"
               />
             </div>
