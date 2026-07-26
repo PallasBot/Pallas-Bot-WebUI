@@ -462,7 +462,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
             JSON.stringify({
               protocol_backend: nextBackend,
               docker_image: nextDockerImage.trim(),
-              snowluma_docker_image: nextSnowlumaDockerImage.trim(),
+              ...(nextBackend === "snowluma" && nextRuntimeMode === "new"
+                ? { snowluma_docker_image: nextSnowlumaDockerImage.trim() }
+                : {}),
               runtime_mode: nextRuntimeMode,
               runtime_id: nextRuntimeId.trim(),
             }),
@@ -487,7 +489,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       return JSON.stringify({
         protocol_backend: targetBackend,
         docker_image: napcatDockerImage.trim(),
-        snowluma_docker_image: snowlumaDockerImage.trim(),
+        ...(targetBackend === "snowluma" && runtimeMode === "new"
+          ? { snowluma_docker_image: snowlumaDockerImage.trim() }
+          : {}),
         runtime_mode: runtimeMode,
         runtime_id: runtimeId.trim(),
       });
@@ -584,7 +588,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
             protocol_backend: targetBackend,
             docker_image:
               targetBackend === "napcat" ? napcatDockerImage.trim() || undefined : undefined,
-            ...(targetBackend === "snowluma"
+            ...(targetBackend === "snowluma" && runtimeMode === "new"
               ? { snowluma_docker_image: snowlumaDockerImage.trim() }
               : {}),
             runtime_mode: runtimeMode,
@@ -669,19 +673,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       return out;
     }, [account, accountId]);
 
-    async function copySnowlumaSecret(label: string, text: string) {
+    async function copySnowlumaSecret(label: string, text: string): Promise<boolean> {
       const ok = await copyTextToClipboard(text);
       notify(ok ? `${label}已复制` : "复制失败", ok ? "ok" : "err");
+      return ok;
     }
 
-    async function copyProcessLogs() {
+    async function copyProcessLogs(): Promise<boolean> {
       const text = logs.join("\n").trim();
       if (!text) {
         notify("暂无日志可复制", "warn");
-        return;
+        return false;
       }
       const ok = await copyTextToClipboard(text);
       notify(ok ? "日志已复制" : "复制失败", ok ? "ok" : "err");
+      return ok;
     }
 
     const saveSettingsRef = useRef(saveSettings);
@@ -857,7 +863,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                                   <CopyIconButton
                                     label={`复制${row.label}`}
                                     className="protocol-account-workspace__copy-btn"
-                                    onClick={() => void copySnowlumaSecret(row.label, row.copyText)}
+                                    onClick={() => copySnowlumaSecret(row.label, row.copyText)}
                                   />
                                 ) : null}
                               </div>
@@ -933,7 +939,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       <CopyIconButton
                         label="复制日志"
                         className="protocol-account-workspace__copy-btn"
-                        onClick={() => void copyProcessLogs()}
+                        onClick={() => copyProcessLogs()}
                       />
                     </div>
                   </div>
@@ -1083,7 +1089,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                                 label="复制托管密码"
                                 className="protocol-account-workspace__copy-btn"
                                 onClick={() =>
-                                  void copySnowlumaSecret(
+                                  copySnowlumaSecret(
                                     "托管 WebUI 密码",
                                     `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
                                   )
@@ -1106,7 +1112,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                               <CopyIconButton
                                 label="复制初始密码"
                                 className="protocol-account-workspace__copy-btn"
-                                onClick={() => void copySnowlumaSecret("初始密码", snowlumaInitialPassword)}
+                                onClick={() => copySnowlumaSecret("初始密码", snowlumaInitialPassword)}
                               />
                             </p>
                           ) : null}
@@ -1260,18 +1266,6 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     ) : (
                       <>
                         <SettingsFormField
-                          label="SnowLuma Docker 镜像"
-                          hint="留空时使用服务端默认镜像。"
-                        >
-                          <ProtocolDockerImageSelect
-                            mountUrl={mountUrl}
-                            protocol="snowluma"
-                            value={snowlumaDockerImage}
-                            onValueChange={setSnowlumaDockerImage}
-                            placeholder="pallas/snowluma-auto-login:latest"
-                          />
-                        </SettingsFormField>
-                        <SettingsFormField
                           label="Runtime 模式"
                           hint="新建，或挂载到已有 Runtime。"
                         >
@@ -1290,7 +1284,20 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             </SelectContent>
                           </Select>
                         </SettingsFormField>
-                        {runtimeMode === "existing" ? (
+                        {runtimeMode === "new" ? (
+                          <SettingsFormField
+                            label="SnowLuma Docker 镜像"
+                            hint="留空时使用服务端默认镜像。"
+                          >
+                            <ProtocolDockerImageSelect
+                              mountUrl={mountUrl}
+                              protocol="snowluma"
+                              value={snowlumaDockerImage}
+                              onValueChange={setSnowlumaDockerImage}
+                              placeholder="pallas/snowluma-auto-login:latest"
+                            />
+                          </SettingsFormField>
+                        ) : (
                           <SettingsFormField className="field--full" label="Runtime">
                             <Select
                               value={runtimeId || "__empty__"}
@@ -1315,7 +1322,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                               </SelectContent>
                             </Select>
                           </SettingsFormField>
-                        ) : null}
+                        )}
                       </>
                     )}
                   </div>
@@ -1443,18 +1450,6 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     ) : (
                       <>
                         <SettingsFormField
-                          label="SnowLuma Docker 镜像"
-                          hint="留空时使用服务端默认镜像。"
-                        >
-                          <ProtocolDockerImageSelect
-                            mountUrl={mountUrl}
-                            protocol="snowluma"
-                            value={snowlumaDockerImage}
-                            onValueChange={setSnowlumaDockerImage}
-                            placeholder="pallas/snowluma-auto-login:latest"
-                          />
-                        </SettingsFormField>
-                        <SettingsFormField
                           label="Runtime 模式"
                           hint="新建，或挂载到已有 Runtime。"
                         >
@@ -1473,7 +1468,20 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             </SelectContent>
                           </Select>
                         </SettingsFormField>
-                        {runtimeMode === "existing" ? (
+                        {runtimeMode === "new" ? (
+                          <SettingsFormField
+                            label="SnowLuma Docker 镜像"
+                            hint="留空时使用服务端默认镜像。"
+                          >
+                            <ProtocolDockerImageSelect
+                              mountUrl={mountUrl}
+                              protocol="snowluma"
+                              value={snowlumaDockerImage}
+                              onValueChange={setSnowlumaDockerImage}
+                              placeholder="pallas/snowluma-auto-login:latest"
+                            />
+                          </SettingsFormField>
+                        ) : (
                           <SettingsFormField className="field--full" label="Runtime">
                             <Select
                               value={runtimeId || "__empty__"}
@@ -1498,7 +1506,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                               </SelectContent>
                             </Select>
                           </SettingsFormField>
-                        ) : null}
+                        )}
                       </>
                     )}
                     <SettingsFormField
