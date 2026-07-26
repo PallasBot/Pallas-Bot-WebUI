@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SystemData } from "@/api/pallasTypes";
 import ProtocolAccountWorkspace, {
+  type ProtocolAccountHeaderProfile,
   type ProtocolAccountTab,
   type ProtocolAccountWorkspaceHandle,
 } from "@/components/ProtocolAccountWorkspace";
@@ -14,11 +15,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 
 const ACCOUNT_TABS = [
   { id: "overview" as const, label: "概览" },
   { id: "settings" as const, label: "设置" },
 ];
+
+const EMPTY_PROFILE: ProtocolAccountHeaderProfile = {
+  displayName: "",
+  qq: "",
+  backendLabel: "—",
+  runtimeModeLabel: "—",
+  processRunning: false,
+  connected: false,
+};
 
 /** 协议账号配置弹窗：shadcn Dialog（居中实心底，对齐插件配置弹窗）。 */
 export default function ProtocolAccountConfigDialog({
@@ -42,6 +53,7 @@ export default function ProtocolAccountConfigDialog({
   const [activeTab, setActiveTab] = useState<ProtocolAccountTab>("overview");
   const [title, setTitle] = useState("");
   const [statusLine, setStatusLine] = useState("");
+  const [headerProfile, setHeaderProfile] = useState<ProtocolAccountHeaderProfile>(EMPTY_PROFILE);
   const [saveBusy, setSaveBusy] = useState(false);
   const [loadBusy, setLoadBusy] = useState(false);
 
@@ -57,6 +69,7 @@ export default function ProtocolAccountConfigDialog({
       if (!ws) return;
       setTitle(ws.pageTitle);
       setStatusLine(ws.statusLine);
+      setHeaderProfile(ws.headerProfile);
       setSaveBusy(ws.saveBusy);
       setLoadBusy(ws.loadBusy);
     };
@@ -66,6 +79,11 @@ export default function ProtocolAccountConfigDialog({
   }, [open, accountId, activeTab]);
 
   const canSave = activeTab === "settings" && Boolean(mountUrl && accountId) && !loadBusy && !saveBusy;
+  const qq = headerProfile.qq || accountId;
+  const displayName = headerProfile.displayName || title || (accountId ? `账号 ${accountId}` : "协议账号");
+  const metaBits = [headerProfile.backendLabel, headerProfile.runtimeModeLabel]
+    .filter((x) => x && x !== "—")
+    .join(" · ");
 
   function requestClose() {
     if (saveBusy) return;
@@ -80,7 +98,7 @@ export default function ProtocolAccountConfigDialog({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(920px,calc(100vw-32px))] max-w-[min(920px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog protocol-account-config-dialog flex max-h-[min(960px,calc(100dvh-32px))] w-[min(960px,calc(100vw-32px))] max-w-[min(960px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (saveBusy) e.preventDefault();
         }}
@@ -90,15 +108,59 @@ export default function ProtocolAccountConfigDialog({
       >
         <DialogHeader className="plugin-config-dialog__head protocol-account-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
           <div className="protocol-account-config-dialog__head-row flex flex-wrap items-start justify-between gap-3 pr-6">
-            <div className="plugin-config-dialog__head-text min-w-0 flex-1 space-y-1 text-left">
-              <DialogTitle id="protocol-account-config-dialog-title" className="text-left">
-                {title || (accountId ? `账号 ${accountId}` : "协议账号")}
-              </DialogTitle>
-              {statusLine ? (
-                <DialogDescription className="muted">{statusLine}</DialogDescription>
-              ) : (
-                <DialogDescription className="sr-only">协议账号配置</DialogDescription>
-              )}
+            <div className="protocol-account-config-dialog__identity min-w-0 flex-1">
+              <div className="protocol-account-config-dialog__identity-main">
+                <img
+                  src={qqAvatarUrl(qq)}
+                  alt=""
+                  width={44}
+                  height={44}
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  className="protocol-account-config-dialog__avatar"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.visibility = "hidden";
+                  }}
+                />
+                <div className="plugin-config-dialog__head-text min-w-0 flex-1 space-y-1 text-left">
+                  <DialogTitle id="protocol-account-config-dialog-title" className="text-left">
+                    {displayName}
+                  </DialogTitle>
+                  <p className="protocol-account-config-dialog__sub muted">
+                    QQ {qq}
+                    {metaBits ? ` · ${metaBits}` : ""}
+                  </p>
+                  <div className="protocol-account-config-dialog__pills" aria-label="账号状态">
+                    <span
+                      className={cn(
+                        "protocol-account-config-dialog__pill",
+                        headerProfile.processRunning
+                          ? "protocol-account-config-dialog__pill--on"
+                          : "protocol-account-config-dialog__pill--off",
+                      )}
+                    >
+                      <span className="protocol-account-config-dialog__pill-dot" aria-hidden />
+                      {headerProfile.processRunning ? "运行中" : "已停止"}
+                    </span>
+                    <span
+                      className={cn(
+                        "protocol-account-config-dialog__pill",
+                        headerProfile.connected
+                          ? "protocol-account-config-dialog__pill--on"
+                          : "protocol-account-config-dialog__pill--off",
+                      )}
+                    >
+                      <span className="protocol-account-config-dialog__pill-dot" aria-hidden />
+                      {headerProfile.connected ? "已连接" : "未连接"}
+                    </span>
+                  </div>
+                  {statusLine ? (
+                    <DialogDescription className="sr-only">{statusLine}</DialogDescription>
+                  ) : (
+                    <DialogDescription className="sr-only">协议账号配置</DialogDescription>
+                  )}
+                </div>
+              </div>
             </div>
             <div
               className="protocol-account-workspace__portal-tabs shrink-0"

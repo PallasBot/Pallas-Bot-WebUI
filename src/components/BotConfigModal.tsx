@@ -1,7 +1,11 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { Puzzle, Shield, Sparkles, Users } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { putBotConfig } from "@/api/fullConsole";
+import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
 import IdChipsInput from "@/components/config/IdChipsInput";
+import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import SettingsFormField from "@/components/config/SettingsFormField";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +22,7 @@ import {
   readBotPersonaSeedPrefs,
 } from "@/api/pallasTypes";
 import { cn } from "@/lib/utils";
+import { qqAvatarUrl } from "@/utils/botDisplay";
 import { pluginPickListFromRows } from "@/utils/pluginDisplay";
 
 const BOT_SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
@@ -86,7 +91,8 @@ function BoolSwitchField({
     <div className="form-bool-switch-field">
       <div className="form-bool-switch-field__row">
         <span className="form-bool-switch-field__label" id={labelId}>
-          {label}
+          <span className="form-bool-switch-field__label-text">{label}</span>
+          {hint ? <ConfigFieldHelp title={label} description={hint} /> : null}
         </span>
         <div className="prefs-switch-row__control">
           <Switch
@@ -100,12 +106,11 @@ function BoolSwitchField({
           </span>
         </div>
       </div>
-      {hint ? <p className="form-bool-switch-field__hint muted">{hint}</p> : null}
     </div>
   );
 }
 
-/** 数据库实例 Bot 配置：shadcn Dialog（居中实心底，对齐插件配置弹窗）。 */
+/** 数据库实例 Bot 配置：头像头栏 + 分区卡片，对齐协议账号设置页。 */
 export default function BotConfigModal({
   account,
   isInit,
@@ -121,6 +126,8 @@ export default function BotConfigModal({
   const [saveErr, setSaveErr] = useState("");
 
   const pluginPickList = useMemo(() => pluginPickListFromRows(plugins), [plugins]);
+  const displayName = botNickname?.trim() || "BOT";
+  const qq = account != null ? String(account) : "";
 
   useEffect(() => {
     if (!open) {
@@ -207,7 +214,7 @@ export default function BotConfigModal({
       }}
     >
       <DialogContent
-        className="plugin-config-dialog flex max-h-[min(720px,calc(100dvh-32px))] w-[min(640px,calc(100vw-32px))] max-w-[min(640px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
+        className="plugin-config-dialog bot-config-dialog flex max-h-[min(800px,calc(100dvh-32px))] w-[min(720px,calc(100vw-32px))] max-w-[min(720px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0"
         onEscapeKeyDown={(e) => {
           if (saveBusy) e.preventDefault();
         }}
@@ -216,31 +223,54 @@ export default function BotConfigModal({
         }}
       >
         <DialogHeader className="plugin-config-dialog__head border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left sm:text-left">
-          <div className="plugin-config-dialog__head-text w-full space-y-1 pr-6 text-left">
-            <DialogTitle id="bot-config-modal-title" className="text-left">
-              {isInit ? "初始化 Bot 配置" : "编辑 Bot 配置"}
-            </DialogTitle>
-            <DialogDescription asChild>
-              <div>
-                <p className="m-0 text-sm">
-                  <span className="font-medium text-foreground">{botNickname?.trim() || "BOT"}</span>
-                  <span className="text-muted-foreground"> · 账号 {account}</span>
-                </p>
-                {isInit ? (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    首次写入数据库配置；请至少添加一名号主 QQ。保存后该牛牛会出现在上方「数据库中的实例」列表。
-                  </p>
-                ) : null}
-              </div>
-            </DialogDescription>
+          <div className="protocol-account-config-dialog__identity-main pr-6">
+            {qq ? (
+              <img
+                src={qqAvatarUrl(qq)}
+                alt=""
+                width={44}
+                height={44}
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="protocol-account-config-dialog__avatar"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.visibility = "hidden";
+                }}
+              />
+            ) : null}
+            <div className="plugin-config-dialog__head-text min-w-0 flex-1 space-y-1 text-left">
+              <DialogTitle id="bot-config-modal-title" className="text-left">
+                {displayName}
+              </DialogTitle>
+              <p className="protocol-account-config-dialog__sub muted">
+                QQ {qq || "—"}
+                {isInit ? " · 初始化配置" : " · 数据库实例"}
+              </p>
+              <DialogDescription className="sr-only">
+                {isInit
+                  ? "首次写入数据库配置；请至少添加一名号主 QQ。"
+                  : "编辑 Bot 数据库配置。"}
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 
         <div className="plugin-config-dialog__bd min-h-0 flex-1 overflow-auto px-4 py-3">
           {draft ? (
-            <div className="bot-config-edit--modal">
-              {saveErr ? <p className="alert alert--err mb-3">{saveErr}</p> : null}
-              <div className="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches">
+            <div className="bot-config-edit--modal bot-config-edit--modal-sections">
+              {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
+              {isInit ? (
+                <p className="bot-config-dialog__init-note muted">
+                  首次写入数据库配置；请至少添加一名号主 QQ。保存后会出现在「数据库中的实例」列表。
+                </p>
+              ) : null}
+
+              <PluginConfigFormSection
+                title="行为与安全"
+                subtitle="开关控制回复安全与自动同意策略。"
+                icon={Shield}
+                bodyClassName="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches"
+              >
                 <BoolSwitchField
                   label="安全模式"
                   hint="开启后，牛牛回复发送失败时会直接 ban 掉这句话。"
@@ -265,84 +295,103 @@ export default function BotConfigModal({
                   checked={draft.community_roster_show_qq}
                   onChange={(v) => setDraftBool("community_roster_show_qq", v)}
                 />
-              </div>
+              </PluginConfigFormSection>
 
-              <div className="bot-config-edit__field">
-                <label>管理员 QQ</label>
-                <p className="bot-config-edit__hint muted">点「更多」添加或管理；芯片 × 可移除。</p>
-                <IdChipsInput
-                  value={draft.admins}
-                  onChange={(admins) => setDraft({ ...draft, admins })}
-                  placeholder="QQ 号"
-                  emptyText="尚未添加管理员。"
-                />
-              </div>
+              <PluginConfigFormSection
+                title="权限"
+                subtitle="号主与管理员 QQ。"
+                icon={Users}
+                bodyClassName="bot-config-dialog__section-body"
+              >
+                <SettingsFormField
+                  label="管理员 QQ"
+                  hint="点「更多」添加或管理；芯片 × 可移除。初始化时请至少添加一名号主。"
+                >
+                  <IdChipsInput
+                    value={draft.admins}
+                    onChange={(admins) => setDraft({ ...draft, admins })}
+                    placeholder="QQ 号"
+                    emptyText="尚未添加管理员。"
+                  />
+                </SettingsFormField>
+              </PluginConfigFormSection>
 
-              <div className="bot-config-edit__field">
-                <label>牛格种子（最多 2 项）</label>
-                <p className="bot-config-edit__hint muted">
-                  自动按账号派生；点选后为手改覆盖，主要影响复读选句风格。清空可恢复自动。
-                </p>
-                <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
-                  {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
-                    const on = draft.seedPrefs.includes(opt.id);
-                    const locked = !on && draft.seedPrefs.length >= 2;
-                    return (
-                      <button
-                        key={`seed-${account}-${opt.id}`}
-                        type="button"
-                        className={cn(
-                          "bot-config-seed-tiles__btn",
-                          on && "bot-config-seed-tiles__btn--on",
-                        )}
-                        aria-pressed={on}
-                        disabled={locked}
-                        onClick={() => toggleSeedPref(opt.id, !on)}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="bot-config-seed-status">
+              <PluginConfigFormSection
+                title="牛格种子"
+                subtitle="最多选择 2 项；影响复读选句风格。"
+                icon={Sparkles}
+                bodyClassName="bot-config-dialog__section-body"
+              >
+                <SettingsFormField
+                  label="偏好"
+                  hint="自动按账号派生；点选后为手改覆盖。清空可恢复自动。"
+                >
+                  <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
+                    {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
+                      const on = draft.seedPrefs.includes(opt.id);
+                      const locked = !on && draft.seedPrefs.length >= 2;
+                      return (
+                        <button
+                          key={`seed-${account}-${opt.id}`}
+                          type="button"
+                          className={cn(
+                            "bot-config-seed-tiles__btn",
+                            on && "bot-config-seed-tiles__btn--on",
+                          )}
+                          aria-pressed={on}
+                          disabled={locked}
+                          onClick={() => toggleSeedPref(opt.id, !on)}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                   {draft.seedManual ? (
-                    <>
+                    <div className="bot-config-seed-status">
                       <span className="muted">当前：手改覆盖</span>
                       <Button type="button" variant="ghost" size="sm" onClick={clearSeedOverride}>
                         恢复自动
                       </Button>
-                    </>
-                  ) : (
-                    <span className="muted">当前：自动种子（未手改）</span>
-                  )}
-                </div>
-              </div>
+                    </div>
+                  ) : null}
+                </SettingsFormField>
+              </PluginConfigFormSection>
 
-              <div className="bot-config-edit__field">
-                <label>禁用插件（勾选表示禁用）</label>
-                {!pluginPickList.length ? (
-                  <p className="bot-config-edit__hint muted">无插件清单，无法勾选禁用项。</p>
-                ) : (
-                  <div className="plugin-check-grid plugin-check-grid--bot-modal">
-                    {pluginPickList.map((p) => (
-                      <label
-                        key={`mod-pl-${account}-${p.name}`}
-                        className={cn(
-                          "plugin-check-grid__item",
-                          draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={draft.disabled_plugins.includes(p.name)}
-                          onChange={(e) => togglePluginDisabled(p.name, e.target.checked)}
-                        />
-                        <span>{p.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PluginConfigFormSection
+                title="插件"
+                subtitle="勾选表示禁用该插件。"
+                icon={Puzzle}
+                bodyClassName="bot-config-dialog__section-body"
+              >
+                <SettingsFormField
+                  label="禁用插件"
+                  hint="勾选后该插件对该账号不生效；清单来自当前已加载插件。"
+                >
+                  {!pluginPickList.length ? (
+                    <p className="bot-config-edit__empty muted">无插件清单，无法勾选禁用项。</p>
+                  ) : (
+                    <div className="plugin-check-grid plugin-check-grid--bot-modal">
+                      {pluginPickList.map((p) => (
+                        <label
+                          key={`mod-pl-${account}-${p.name}`}
+                          className={cn(
+                            "plugin-check-grid__item",
+                            draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={draft.disabled_plugins.includes(p.name)}
+                            onChange={(e) => togglePluginDisabled(p.name, e.target.checked)}
+                          />
+                          <span>{p.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </SettingsFormField>
+              </PluginConfigFormSection>
             </div>
           ) : null}
         </div>
