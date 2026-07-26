@@ -6,6 +6,48 @@
 
 <!-- entries -->
 
+## [0.7.12] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(ai): 对话策略页暴露发言感知配置分组 ([4b81608](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4b816081701d0aa95ce7184c7a20c74151dea528))
+
+**完整变更**: [`v0.7.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.11...HEAD)
+
+
+## [0.7.11] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(webui): README 代码块恢复幽灵 Copy 按钮 ([8d9aed4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8d9aed40d49a00cb6b0f06a83f19eeea4c52ec12))
+* feat(ai): 优化人物工具任务页与联网搜索配置入口 ([43a7c6a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/43a7c6ae1d0f5b6cf8556296b902968dadc36bfb))
+* feat(ai): 增加人物、工具与任务观测入口 ([1b99123](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1b99123781ad2702292d2995591724237b607a40))
+* feat(ai): 近 7/30 天 Token 卡展示费用 ([48b9032](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/48b9032f522d6b5dfd341bc0a6152258026cb5e7))
+* feat(ai): 对话策略字段改用软召回配置标签 ([9d95a59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9d95a59cba1a9431ae9ec0683a1c80d22dffb8ab))
+
+### 🐛 错误修复
+
+* fix(ai): 口癖文案对齐短习惯并支持停用已启用项 ([8340281](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/83402815aa88ab8e9ea4ae0601b66307df191123))
+* fix(ai): 工具可见性与联网搜索文案更易懂 ([f61d13c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f61d13c84235cd71b792cf6dc53474b51bd49b5e))
+* fix(ai): 配置文案「闲聊」改为「LLM 对话」 ([78a6936](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/78a6936a34caed5e1dd410821a5cc8b3497a1873))
+
+### ♻️ 重构
+
+* refactor(ai): 更新任务页面文案与过滤功能 ([02fc18c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02fc18cfe3666d23ff00b5364964417b3aec42b1))
+* refactor(ai): 观测工具并入配置并优化人设导出 ([d1b9b5c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d1b9b5c75b983b0a393f6fbb9c0dd67bb29ce336))
+
+**完整变更**: [`v0.7.10...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.10...HEAD)
+
+
+## [0.7.10] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(protocol): NapCat Overview 展示 WebUI token 与端口 ([aeccb7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aeccb7a10c1e910236614fadc455a49d3b607b7d))
+
+**完整变更**: [`v0.7.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.9...HEAD)
+
+
 ## [0.7.9] - 2026-07-26
 
 ### 🚀 新功能
