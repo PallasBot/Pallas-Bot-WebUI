@@ -1,0 +1,93 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  deleteSceneDialogueExample,
+  fetchSceneDialogueExamples,
+  postSceneDialogueExample,
+  putSceneDialogueExample,
+} from "@/api/fullConsole";
+import type { SceneDialogueExample } from "@/api/pallasTypes";
+import AiScopeHint from "@/components/ai/AiScopeHint";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+type Draft = Pick<SceneDialogueExample, "scene" | "user_cue" | "positive" | "negative" | "enabled" | "order">;
+
+const emptyDraft = (): Draft => ({
+  scene: "",
+  user_cue: "",
+  positive: "",
+  negative: "",
+  enabled: true,
+  order: 0,
+});
+
+export default function SceneDialogueExamplesCard({ botId }: { botId: number | null }) {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [editing, setEditing] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["scene-dialogue-examples", botId],
+    enabled: Boolean(botId),
+    queryFn: () => fetchSceneDialogueExamples(botId as number),
+  });
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["scene-dialogue-examples", botId] });
+  const save = async () => {
+    if (!botId) return;
+    if (editing) await putSceneDialogueExample(editing, draft);
+    else await postSceneDialogueExample({ bot_id: botId, ...draft });
+    setDraft(emptyDraft());
+    setEditing(null);
+    refresh();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">场景对话正反例</CardTitle>
+        <CardDescription>仅手工维护的小型示例库；按本轮场景和用户线索临时选取，不会自动收集群聊天记录。</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!botId ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
+        {botId ? (
+          <>
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input value={draft.scene} onChange={(e) => setDraft({ ...draft, scene: e.target.value })} placeholder="场景，如 banter" />
+                <Input value={draft.user_cue} onChange={(e) => setDraft({ ...draft, user_cue: e.target.value })} placeholder="用户线索" />
+              </div>
+              <Textarea value={draft.positive} onChange={(e) => setDraft({ ...draft, positive: e.target.value })} placeholder="建议回应或示例" />
+              <Textarea value={draft.negative} onChange={(e) => setDraft({ ...draft, negative: e.target.value })} placeholder="避免回应或示例" />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input className="w-24" type="number" value={draft.order} onChange={(e) => setDraft({ ...draft, order: Number(e.target.value) || 0 })} aria-label="排序" />
+                <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />启用</label>
+                <Button size="sm" onClick={() => void save()} disabled={!draft.scene || !draft.user_cue || !draft.positive || !draft.negative}>保存</Button>
+                {editing ? <Button size="sm" variant="ghost" onClick={() => { setEditing(null); setDraft(emptyDraft()); }}>取消</Button> : null}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {(query.data?.items ?? []).map((item) => (
+                <article key={item.example_id} className="space-y-2 rounded-md border p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{item.scene} · {item.enabled ? "启用" : "停用"}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="outline" onClick={() => void putSceneDialogueExample(item.example_id, { enabled: !item.enabled }).then(refresh)}>{item.enabled ? "停用" : "启用"}</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setEditing(item.example_id); setDraft(item); }}>编辑</Button>
+                      <Button size="sm" variant="destructive" onClick={() => void deleteSceneDialogueExample(item.example_id).then(refresh)}>删除</Button>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground">线索：{item.user_cue}</p>
+                  <p>建议：{item.positive}</p>
+                  <p>避免：{item.negative}</p>
+                </article>
+              ))}
+              {!query.isLoading && !(query.data?.items.length) ? <p className="text-sm text-muted-foreground">暂无场景对话示例。</p> : null}
+            </div>
+          </>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
