@@ -18,6 +18,7 @@ import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_T
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
+import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
@@ -324,6 +325,18 @@ export default function DatabasePage() {
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
       <PageMasthead title="数据库总览" description="后端概览与群 / 好友配置。" />
+
+      <DatabaseBackendPanel
+        onMessage={(kind, text) => {
+          if (kind === "ok") {
+            setOk(text);
+            setErr("");
+          } else {
+            setErr(text);
+            setOk("");
+          }
+        }}
+      />
 
       {showBody ? (
         <section className="database-page__kpi home-kpi-bar">

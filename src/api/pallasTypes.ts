@@ -1595,6 +1595,49 @@ export type DbOverviewData =
     }
   | { backend: string; note?: string };
 
+export type DbBackendKind = "postgresql" | "mongodb";
+
+export interface DbBackendPostgresConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  password_set?: boolean;
+  db: string;
+  auto_create_db: boolean;
+}
+
+export interface DbBackendMongoConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  password_set?: boolean;
+  db: string;
+  auth_source: string;
+}
+
+export interface DbBackendConfigData {
+  active_backend: DbBackendKind | string;
+  backend: DbBackendKind | string;
+  postgres: DbBackendPostgresConfig;
+  mongo: DbBackendMongoConfig;
+  restart_required_hint?: string;
+}
+
+export interface DbBackendSaveResult {
+  restart_required: boolean;
+  backend: string;
+  message: string;
+  force?: boolean;
+}
+
+export interface DbBackendProbeResult {
+  ok: boolean;
+  latency_ms: number;
+  detail: string;
+}
+
 export interface DbBackupConnectionInfo {
   host: string;
   port: number;

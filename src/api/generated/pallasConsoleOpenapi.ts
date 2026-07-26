@@ -2816,6 +2816,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/db/backend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Db Backend Get */
+        get: operations["_db_backend_get_pallas_api_db_backend_get"];
+        /** Db Backend Put */
+        put: operations["_db_backend_put_pallas_api_db_backend_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/backend/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Db Backend Probe */
+        post: operations["_db_backend_probe_pallas_api_db_backend_probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/db/backup/info": {
         parameters: {
             query?: never;
@@ -3611,6 +3646,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/update/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Update Apply Job Get */
+        get: operations["_update_apply_job_get_pallas_api_update_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/update/jobs/{job_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Update Apply Job Stream */
+        get: operations["_update_apply_job_stream_pallas_api_update_jobs__job_id__stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/security/console-login": {
         parameters: {
             query?: never;
@@ -4397,6 +4466,87 @@ export interface components {
             first_completed_at?: string | null;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /** _DbBackendBody */
+        _DbBackendBody: {
+            /**
+             * Backend
+             * @enum {string}
+             */
+            backend: "postgresql" | "mongodb";
+            postgres?: components["schemas"]["_DbBackendPostgresBody"] | null;
+            mongo?: components["schemas"]["_DbBackendMongoBody"] | null;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+        };
+        /** _DbBackendMongoBody */
+        _DbBackendMongoBody: {
+            /**
+             * Host
+             * @default 127.0.0.1
+             */
+            host: string;
+            /**
+             * Port
+             * @default 27017
+             */
+            port: number;
+            /**
+             * User
+             * @default
+             */
+            user: string;
+            /**
+             * Password
+             * @default
+             */
+            password: string;
+            /**
+             * Db
+             * @default PallasBot
+             */
+            db: string;
+            /**
+             * Auth Source
+             * @default
+             */
+            auth_source: string;
+        };
+        /** _DbBackendPostgresBody */
+        _DbBackendPostgresBody: {
+            /**
+             * Host
+             * @default 127.0.0.1
+             */
+            host: string;
+            /**
+             * Port
+             * @default 5432
+             */
+            port: number;
+            /**
+             * User
+             * @default
+             */
+            user: string;
+            /**
+             * Password
+             * @default
+             */
+            password: string;
+            /**
+             * Db
+             * @default PallasBot
+             */
+            db: string;
+            /**
+             * Auto Create Db
+             * @default false
+             */
+            auto_create_db: boolean;
         };
         /** _DbBackupBody */
         _DbBackupBody: {
@@ -12138,6 +12288,113 @@ export interface operations {
             };
         };
     };
+    _db_backend_get_pallas_api_db_backend_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_backend_put_pallas_api_db_backend_put: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_DbBackendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_backend_probe_pallas_api_db_backend_probe_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_DbBackendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     _db_backup_info_pallas_api_db_backup_info_get: {
         parameters: {
             query?: {
@@ -13911,6 +14168,76 @@ export interface operations {
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _update_apply_job_get_pallas_api_update_jobs__job_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _update_apply_job_stream_pallas_api_update_jobs__job_id__stream_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

@@ -26,6 +26,12 @@ import type {
   DbBackupBrowseData,
   DbBackupDeleteResult,
   DbBackupRunsData,
+  DbBackendConfigData,
+  DbBackendKind,
+  DbBackendMongoConfig,
+  DbBackendPostgresConfig,
+  DbBackendProbeResult,
+  DbBackendSaveResult,
   DbOverviewData,
   FriendListData,
   FriendOverviewData,
@@ -2367,6 +2373,35 @@ export async function fetchDbOverview(): Promise<DbOverviewData> {
     "/db/overview",
     { timeout: DB_HEAVY_READ_TIMEOUT_MS },
   )) as DbOverviewData;
+}
+
+export async function fetchDbBackendConfig(): Promise<DbBackendConfigData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backend"]["get"]>(
+    "/db/backend",
+  )) as DbBackendConfigData;
+}
+
+export async function putDbBackendConfig(body: {
+  backend: DbBackendKind;
+  postgres?: Partial<DbBackendPostgresConfig> | null;
+  mongo?: Partial<DbBackendMongoConfig> | null;
+  force?: boolean;
+}): Promise<DbBackendSaveResult> {
+  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/db/backend"]["put"]>(
+    "/db/backend",
+    body,
+  )) as DbBackendSaveResult;
+}
+
+export async function postDbBackendProbe(body: {
+  backend: DbBackendKind;
+  postgres?: Partial<DbBackendPostgresConfig> | null;
+  mongo?: Partial<DbBackendMongoConfig> | null;
+}): Promise<DbBackendProbeResult> {
+  return (await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/backend/probe"]["post"]>(
+    "/db/backend/probe",
+    body,
+  )) as DbBackendProbeResult;
 }
 
 export async function fetchDbBackupInfo(): Promise<DbBackupInfo> {
