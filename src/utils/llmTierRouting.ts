@@ -23,6 +23,7 @@ export const LOW_TIER_TASKS = [
   "repeater_polish_lite",
   "repeater_fallback",
   "affect_refine",
+  "turn_decision",
 ] as const;
 
 export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS] as const;
@@ -38,13 +39,46 @@ export const TASK_ROUTE_META: Record<
   RoutableTask,
   { title: string; description: string; kind: RoutingTier }
 > = {
-  llm_chat: { title: "@ LLM 对话", description: "群内 @ 牛牛对话", kind: "high" },
-  drunk: { title: "醉聊", description: "酒后对话路径", kind: "high" },
-  repeater_polish: { title: "接话润色", description: "强场景完整润色", kind: "high" },
-  repeater_select: { title: "接话选句", description: "从语料池挑选出口", kind: "low" },
-  repeater_polish_lite: { title: "轻润色", description: "语料命中后轻顺口气", kind: "low" },
-  repeater_fallback: { title: "接话兜底", description: "语料不足时现编", kind: "low" },
-  affect_refine: { title: "群情感 refine", description: "后台刷群情感偏移", kind: "low" },
+  llm_chat: {
+    title: "@ LLM 对话",
+    description: "群里 @ 牛牛、口令聊天等主对话，建议用更强模型",
+    kind: "high",
+  },
+  drunk: {
+    title: "醉聊",
+    description: "酒后玩法专用对话；与日常 @ 分开配模型",
+    kind: "high",
+  },
+  repeater_polish: {
+    title: "接话润色",
+    description: "强场景下把接话整段改得更顺，相对更费",
+    kind: "high",
+  },
+  repeater_select: {
+    title: "接话选句",
+    description: "从已有语料里挑一句发出，轻量常用",
+    kind: "low",
+  },
+  repeater_polish_lite: {
+    title: "轻润色",
+    description: "语料命中后只轻轻改口气，比完整润色便宜",
+    kind: "low",
+  },
+  repeater_fallback: {
+    title: "接话兜底",
+    description: "语料不够用时现编一句，避免冷场",
+    kind: "low",
+  },
+  affect_refine: {
+    title: "群情感 refine",
+    description: "后台微调本群情绪偏移，不直接对用户说话",
+    kind: "low",
+  },
+  turn_decision: {
+    title: "本轮动作决策",
+    description: "回复前先判断：回、跳过，还是走工具；须在对话策略里开启才会请求",
+    kind: "low",
+  },
 };
 
 export type TaskRouteSlotState = {

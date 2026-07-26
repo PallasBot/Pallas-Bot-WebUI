@@ -1,6 +1,7 @@
 import type { PluginConfigField } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
+import ReplyStyleVariantsField from "@/components/config/ReplyStyleVariantsField";
 import TagsInput from "@/components/config/TagsInput";
 import UiInput from "@/components/ui/UiInput";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
@@ -56,6 +57,7 @@ export default function ConfigFieldRenderer({
   const usesTags = isChipListField(field);
   const usesIdTags = isIdListField(field);
   const usesStringMap = field.kind === "json" && tryParseStringMap(modelValue) != null;
+  const usesReplyStyleVariants = field.name === "llm_reply_style_variants";
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -170,7 +172,11 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {usesStringMap ? (
+      {usesReplyStyleVariants ? (
+        <ReplyStyleVariantsField value={modelValue} onValueChange={onValueChange} />
+      ) : null}
+
+      {usesStringMap && !usesReplyStyleVariants ? (
         <StringMapField
           value={modelValue}
           onValueChange={onValueChange}
@@ -180,7 +186,7 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap ? (
+      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap && !usesReplyStyleVariants ? (
         <textarea
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}

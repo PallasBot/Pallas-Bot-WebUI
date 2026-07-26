@@ -56,6 +56,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_repeater_max_inflight: "接话并发上限",
   llm_repeater_global_rpm: "接话全局限流（次/分）",
   llm_reply_gate_enabled: "过滤无意义 @",
+  llm_current_turn_decision_enabled: "启用本轮动作决策",
   llm_chat_queue_merge: "冷却期合并多条 @",
   llm_reply_postprocess_enabled: "回复后处理",
   llm_reply_typo_enabled: "偶发近音错别字",
@@ -98,15 +99,16 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_tools_desc_max_len",
       "llm_governance_enabled",
       "conversation_feature_level",
+      "llm_current_turn_decision_enabled",
     ],
-    hint: "总开关、接话方式与工具策略。会话与记忆见同页其它分区；联网搜索见下方分组。",
+    hint: "先开「智能对话」，再选接话怎么用模型、要不要给工具。本轮动作决策默认关：关着不额外花钱；若开启，模型在「接入 → 任务编排」里配。",
   },
   {
     title: "联网搜索",
     tier: "essential",
     anchorId: "llm-web-search",
     keys: ["web_search_api_url", "tavily_api_key"],
-    hint: "群里「搜一下」用。两项都填才联网；点字段旁「？」看推荐填法。",
+    hint: "群友说「搜一下」时用。地址和密钥都填、并开启「允许调用工具」才会真联网；填法点字段旁「？」。",
   },
   {
     title: "学习闭环",
@@ -117,7 +119,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_repeater_bias_enabled",
       "llm_repeater_writeback_enabled",
     ],
-    hint: "在会话页排除坏回复或填期望回复；写回语料为进阶选项。",
+    hint: "把成功发出的智能对话短句，轻轻反哺以后的接话选句。坏样本先在会话页排除；「写回语料」偏进阶，确认样本干净再开。",
   },
   {
     title: "输出过滤",
@@ -129,6 +131,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_output_filter_polish_lite_hard_phrases",
       "llm_output_filter_polish_lite_soft_phrases",
     ],
+    hint: "拦住客服腔、乱邀约等怪句。硬拦=直接挡；软拦=同处理但方便分批试验。接话被拦时优先退回语料原文。",
   },
   {
     title: "并发与限流",
@@ -141,12 +144,13 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_reply_gate_enabled",
       "llm_chat_queue_merge",
     ],
+    hint: "控制同一时间能跑几路对话/接话、群冷却多久，以及无意义 @ 是否直接忽略。默认偏保守，活跃群可再调严省额度。",
   },
   {
     title: "风格变体",
     tier: "advanced",
     keys: ["llm_reply_style_variants"],
-    hint: "按牛格/情感类别临时调整本轮措辞；不会写入静态人设。默认无情感数据时约 25% 概率抽样。",
+    hint: "按当前情绪临时换口气（俏皮、冷静等），只影响当轮，不改长期人设。默认大约四分之一概率触发；没有情感数据时用默认口气组。",
   },
   {
     title: "回复后处理",
@@ -160,6 +164,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_sticker_fit_enabled",
       "llm_reply_effect_eval_enabled",
     ],
+    hint: "发出前的可选花样：偶发错别字、拆成多条气泡、表情适配与效果记分。须先开总开关；结果不写回语料学习。",
   },
 ];
 
@@ -220,6 +225,7 @@ export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
   "llm_memory_graph_extract_on_write",
   "llm_memory_hiergraph_max_layers",
   "llm_relationship_notes_enabled",
+  "llm_current_turn_decision_model",
 ]);
 
 export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {

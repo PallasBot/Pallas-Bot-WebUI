@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_ROUTABLE_TASKS,
+  LOW_TIER_TASKS,
+  TASK_ROUTE_META,
   applyLocalTiers,
   applyTaskRoutes,
   applyTaskTiers,
@@ -9,6 +12,15 @@ import {
 } from "../src/utils/llmTierRouting";
 
 describe("llmTierRouting task tiers", () => {
+  it("includes current-turn decision as a low-tier task", () => {
+    expect(LOW_TIER_TASKS).toContain("turn_decision");
+    expect(ALL_ROUTABLE_TASKS).toContain("turn_decision");
+    expect(TASK_ROUTE_META.turn_decision).toMatchObject({
+      title: "本轮动作决策",
+      kind: "low",
+    });
+  });
+
   it("expands high/low primary into task routes and chain", () => {
     const doc = {
       providers: [
