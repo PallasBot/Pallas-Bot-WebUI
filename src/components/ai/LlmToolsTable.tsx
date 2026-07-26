@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { patchLlmToolOverride } from "@/api/console";
+import { patchLlmToolOverride, previewLlmToolIntent } from "@/api/console";
 import type { LlmToolCatalogItem, LlmToolCatalogPolicy, LlmToolOverridePatch } from "@/api/pallasTypes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,9 +83,68 @@ function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
     <p className="text-xs leading-relaxed text-muted-foreground">
       {bits.join(" · ")}
       <span className="mt-1 block">
-        策略开关可在「对话 · 策略」表单中修改；下方可覆盖单工具 hints / 可见性。
+        策略开关可在「对话 · 策略」表单中修改；下方可预览口语选型并覆盖单工具 hints。
       </span>
     </p>
+  );
+}
+
+function IntentPreviewBox() {
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (value: string) => previewLlmToolIntent(value),
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : "预览失败");
+    },
+    onSuccess: () => setError(null),
+  });
+  const preview = mutation.data;
+
+  return (
+    <div className="space-y-2 rounded-[var(--radius-control,8px)] border p-3">
+      <div className="text-sm font-medium">口语选型预览</div>
+      <div className="flex flex-col gap-2 min-[561px]:flex-row min-[561px]:items-center">
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="例如：放首铁花飞 / 来杯酒 / 怎么用"
+          className="h-8 text-xs min-[561px]:flex-1"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && text.trim()) mutation.mutate(text.trim());
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0"
+          disabled={!text.trim() || mutation.isPending}
+          onClick={() => mutation.mutate(text.trim())}
+        >
+          {mutation.isPending ? "预览中…" : "预览"}
+        </Button>
+      </div>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {preview ? (
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p>
+            命中域：
+            <span className="text-foreground">
+              {(preview.domains || []).join(", ") || (preview.selective_empty ? "（空，不注入工具）" : "—")}
+            </span>
+          </p>
+          {(preview.structure_domains || []).length ? (
+            <p>结构召回：{(preview.structure_domains || []).join(", ")}</p>
+          ) : null}
+          <p>
+            将下发 {preview.schema_count ?? 0} 个工具
+            {(preview.schema_tools || []).length
+              ? `：${(preview.schema_tools || []).slice(0, 8).join(", ")}${(preview.schema_tools || []).length > 8 ? "…" : ""}`
+              : ""}
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -99,6 +158,7 @@ function ToolOverrideEditor({
   const [hintsText, setHintsText] = useState(
     () => (row.override?.hints ?? row.effective_hints ?? row.hints ?? []).join(", "),
   );
+  const [description, setDescription] = useState(() => row.override?.description || "");
   const [visibility, setVisibility] = useState(row.visibility || "visible");
   const [disabled, setDisabled] = useState(Boolean(row.override?.disabled));
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +175,15 @@ function ToolOverrideEditor({
 
   return (
     <div className="mt-2 space-y-2 rounded-[var(--radius-control,8px)] border border-dashed bg-muted/20 p-2.5">
+      <div className="space-y-1">
+        <label className="text-[11px] text-muted-foreground">描述覆盖（留空保持原描述）</label>
+        <Input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={row.description || "工具描述"}
+          className="h-8 text-xs"
+        />
+      </div>
       <div className="space-y-1">
         <label className="text-[11px] text-muted-foreground">触发说法（逗号分隔，留空则恢复声明默认）</label>
         <Input
@@ -154,6 +223,7 @@ function ToolOverrideEditor({
               .map((s) => s.trim())
               .filter(Boolean);
             mutation.mutate({
+              description: description.trim() || null,
               hints: hints.length ? hints : null,
               visibility: visibility === "deferred" ? "deferred" : "visible",
               disabled,
@@ -198,6 +268,8 @@ export default function LlmToolsTable({
         </div>
         <PolicySummary policy={policy} />
       </div>
+
+      <IntentPreviewBox />
 
       <ul className="hidden max-[560px]:flex max-[560px]:flex-col max-[560px]:gap-2.5" aria-label="工具列表">
         {rows.map((row) => (

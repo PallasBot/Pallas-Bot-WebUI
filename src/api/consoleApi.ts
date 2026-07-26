@@ -1593,6 +1593,10 @@ export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
   )) as LlmToolCatalogData;
 }
 
+export async function previewLlmToolIntent(text: string): Promise<import("./pallasTypes").LlmToolIntentPreview> {
+  return (await consoleOpenapiPost("/llm/tools/preview", { text })) as import("./pallasTypes").LlmToolIntentPreview;
+}
+
 export async function patchLlmToolOverride(
   toolName: string,
   patch: import("./pallasTypes").LlmToolOverridePatch,

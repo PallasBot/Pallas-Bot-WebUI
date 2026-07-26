@@ -1501,6 +1501,22 @@ export interface LlmToolOverridePatch {
   disabled?: boolean | null;
 }
 
+export interface LlmToolIntentPreview {
+  text?: string;
+  domains?: string[];
+  structure_domains?: string[];
+  hint_domains?: string[];
+  top_scores?: Array<{
+    name?: string;
+    score?: number;
+    domains?: string[];
+    visibility?: string;
+  }>;
+  schema_tools?: string[];
+  schema_count?: number;
+  selective_empty?: boolean;
+}
+
 export interface LlmToolCatalogData {
   items: LlmToolCatalogItem[];
   count: number;
