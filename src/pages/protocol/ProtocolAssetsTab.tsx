@@ -14,6 +14,7 @@ import {
   type ProtocolRuntimeJob,
   type ProtocolRuntimeProfile,
 } from "@/api/protocol";
+import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -535,21 +536,21 @@ export default function ProtocolAssetsTab() {
             <div className="protocol-form-grid protocol-assets-docker-grid">
               <div className="field space-y-1.5">
                 <Label htmlFor="napcat-docker-image">NapCat Docker 镜像</Label>
-                <Input
+                <ProtocolDockerImageSelect
                   id="napcat-docker-image"
-                  className="h-9"
-                  placeholder="mlikiowa/napcat-docker:latest"
-                  autoComplete="off"
+                  mountUrl={mountUrl}
+                  protocol="napcat"
                   value={profileForm.docker_image ?? ""}
-                  onChange={(e) => setProfileForm((p) => ({ ...p, docker_image: e.target.value }))}
+                  onValueChange={(v) => setProfileForm((p) => ({ ...p, docker_image: v }))}
+                  placeholder="mlikiowa/napcat-docker:latest"
                 />
               </div>
               <div className="field space-y-1.5">
-                <Label htmlFor="snowluma-docker-image">SnowLuma Docker 镜像</Label>
+                <Label htmlFor="snowluma-docker-image">SnowLuma Docker 镜像（上游）</Label>
                 <Input
                   id="snowluma-docker-image"
                   className="h-9"
-                  placeholder="motricseven7/snowluma:latest"
+                  placeholder="motricseven7/snowluma:v1.12.9"
                   autoComplete="off"
                   value={profileForm.snowluma_docker_image ?? ""}
                   onChange={(e) =>
@@ -649,7 +650,10 @@ export default function ProtocolAssetsTab() {
             <p className="muted protocol-assets-docker-hint">
               需在宿主机或已挂载 docker.sock 的环境执行；Bot 容器内无 Docker CLI 时请在宿主机手动
               pull。SnowLuma 拉取成功后会自动重建派生镜像{" "}
-              <code className="mono">pallas/snowluma-auto-login:latest</code>。
+              <code className="mono">pallas/snowluma-auto-login</code>
+              ，并打与上游相同的 tag（例如上游 <code className="mono">:v1.12.9</code> → 派生{" "}
+              <code className="mono">:v1.12.9</code>；拉取 <code className="mono">:latest</code>{" "}
+              时还会额外打上解析出的版本 tag）。
             </p>
 
             {showNapcatDocker ? (
@@ -695,7 +699,9 @@ export default function ProtocolAssetsTab() {
                   </code>
                 </div>
                 <p className="muted protocol-assets-docker-note">
-                  拉取目标为上游基础镜像；「查看本地」列出插件实际使用的派生镜像。
+                  拉取目标为上游基础镜像；运行与「查看本地」使用同 tag 的派生镜像
+                  （<code className="mono">pallas/snowluma-auto-login</code>）。填版本 tag 可固定版本，写法与
+                  NapCat 镜像一致。
                 </p>
                 <div className="row-actions protocol-assets-download">
                   <Button

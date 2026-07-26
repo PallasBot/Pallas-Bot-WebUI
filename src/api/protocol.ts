@@ -118,6 +118,7 @@ export type SnowlumaRuntimeRow = {
   member_count?: number;
   process_running?: boolean;
   snowluma_managed_webui_password?: string;
+  snowluma_docker_image?: string;
   [key: string]: unknown;
 };
 
@@ -132,6 +133,7 @@ export type ProtocolAccountConfigs = {
 export type ProtocolAccountRuntimeSwitch = {
   protocol_backend: "napcat" | "snowluma";
   docker_image?: string;
+  snowluma_docker_image?: string;
   runtime_mode: "new" | "existing";
   runtime_id?: string;
 };

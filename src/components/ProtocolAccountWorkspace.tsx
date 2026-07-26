@@ -36,6 +36,8 @@ import {
   protocolUpdateAccountConfigs,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
+import CopyIconButton from "@/components/CopyIconButton";
+import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import SegTabs from "@/components/SegTabs";
@@ -146,6 +148,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [wsToken, setWsToken] = useState("");
     const [targetBackend, setTargetBackend] = useState<"napcat" | "snowluma">("napcat");
     const [napcatDockerImage, setNapcatDockerImage] = useState("");
+    const [snowlumaDockerImage, setSnowlumaDockerImage] = useState("");
     const [bypassEnabled, setBypassEnabled] = useState(false);
     const [runtimeMode, setRuntimeMode] = useState<"new" | "existing">("new");
     const [runtimeId, setRuntimeId] = useState("");
@@ -234,65 +237,67 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const wsPortLabel = account ? accountConnectedWsPortLabel(account) : "—";
     const runtimeVersion = account ? protocolRuntimeVersionText(account) : "—";
     const nativeWebUiLabel = isSnowluma ? "SnowLuma WebUI" : "NapCat WebUI";
+    const nativeWebUiAuthNote = String(account?.native_webui_auth_note ?? "").trim();
 
-    const overviewDetails = useMemo(() => {
+    const overviewFacts = useMemo(
+      () => [
+        { label: "实例名", value: (account?.display_name || "").trim() || "—", mono: false },
+        { label: "PID", value: account?.pid != null ? String(account.pid) : "—", mono: true },
+        { label: "版本", value: runtimeVersion || "—", mono: false },
+        { label: "WS 端口", value: wsPortLabel || "—", mono: true },
+      ],
+      [account?.display_name, account?.pid, runtimeVersion, wsPortLabel],
+    );
+
+    const overviewSecrets = useMemo(() => {
       const rows: Array<{
         label: string;
-        value: string;
-        href?: string | null;
-        copyText?: string;
+        user?: string;
+        secret: string;
+        copyText: string;
         hint?: string;
-      }> = [
-        { label: "实例名", value: (account?.display_name || "").trim() || "—" },
-        { label: "PID", value: account?.pid != null ? String(account.pid) : "—" },
-        { label: "版本", value: runtimeVersion || "—" },
-        { label: "WS 端口", value: wsPortLabel || "—" },
-        {
-          label: "原生 WebUI",
-          value: webUiHref
-            ? nativeWebUiLabel
-            : account?.webui_port != null
-              ? `端口 ${account.webui_port}`
-              : "—",
-          href: webUiHref,
-          hint: String(account?.native_webui_auth_note ?? "").trim() || undefined,
-        },
-      ];
-      if (isSnowluma) {
+        plain?: boolean;
+      }> = [];
+      if (!isSnowluma) return rows;
+      if (snowlumaManagedPassword) {
+        rows.push({
+          label: "托管口令",
+          user: snowlumaWebuiUser,
+          secret: snowlumaManagedPassword,
+          copyText: `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
+        });
+      }
+      if (snowlumaInitialPassword) {
+        rows.push({
+          label: "初始口令",
+          secret: snowlumaInitialPassword,
+          copyText: snowlumaInitialPassword,
+        });
+      }
+      if (snowlumaNovncHref) {
+        rows.push({
+          label: "VNC 口令",
+          secret: snowlumaNovncHint,
+          copyText: snowlumaNovncHint,
+          hint: "用于 SL 桌面（noVNC）",
+        });
+      } else if (isSnowlumaDocker) {
         rows.push({
           label: "SL 桌面",
-          value: snowlumaNovncHref ? "打开 noVNC" : "未发布端口",
-          href: snowlumaNovncHref,
-          hint: snowlumaNovncHref ? `VNC 口令 ${snowlumaNovncHint}` : undefined,
+          secret: "未发布 noVNC 端口",
+          copyText: "",
+          plain: true,
         });
-        if (snowlumaManagedPassword) {
-          rows.push({
-            label: "托管口令",
-            value: `${snowlumaWebuiUser} / ${snowlumaManagedPassword}`,
-            copyText: `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
-          });
-        }
-        if (snowlumaInitialPassword) {
-          rows.push({
-            label: "初始口令",
-            value: snowlumaInitialPassword,
-            copyText: snowlumaInitialPassword,
-          });
-        }
       }
       return rows;
     }, [
-      account,
       isSnowluma,
-      nativeWebUiLabel,
-      runtimeVersion,
+      isSnowlumaDocker,
       snowlumaInitialPassword,
       snowlumaManagedPassword,
       snowlumaNovncHint,
       snowlumaNovncHref,
       snowlumaWebuiUser,
-      webUiHref,
-      wsPortLabel,
     ]);
 
     const logSegments = useMemo(() => segmentProtocolLogLines(logs), [logs]);
@@ -404,16 +409,19 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
               ? "snowluma"
               : "napcat";
           const nextDockerImage = String(row.docker_image ?? "");
+          const nextSnowlumaDockerImage = String(row.snowluma_docker_image ?? "");
           const nextRuntimeId = String(row.snowluma_runtime_id ?? "");
           const nextRuntimeMode: "new" | "existing" = nextRuntimeId ? "existing" : "new";
           setTargetBackend(nextBackend);
           setNapcatDockerImage(nextDockerImage);
+          setSnowlumaDockerImage(nextSnowlumaDockerImage);
           setRuntimeId(nextRuntimeId);
           setRuntimeMode(nextRuntimeMode);
           setSavedRuntimeSettings(
             JSON.stringify({
               protocol_backend: nextBackend,
               docker_image: nextDockerImage.trim(),
+              snowluma_docker_image: nextSnowlumaDockerImage.trim(),
               runtime_mode: nextRuntimeMode,
               runtime_id: nextRuntimeId.trim(),
             }),
@@ -438,6 +446,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       return JSON.stringify({
         protocol_backend: targetBackend,
         docker_image: napcatDockerImage.trim(),
+        snowluma_docker_image: snowlumaDockerImage.trim(),
         runtime_mode: runtimeMode,
         runtime_id: runtimeId.trim(),
       });
@@ -456,9 +465,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     function validateRuntimeSettings(): string | null {
       if (targetBackend !== "snowluma" || runtimeMode !== "existing") return null;
       const selectedRuntimeId = runtimeId.trim();
-      if (!selectedRuntimeId) return "请选择已有 SnowLuma Runtime";
+      if (!selectedRuntimeId) return "请选择 Runtime";
       if (!snowlumaRuntimes.some((runtime) => runtime.id === selectedRuntimeId)) {
-        return "所选 SnowLuma Runtime 不存在或已被删除";
+        return "所选 Runtime 不存在或已被删除";
       }
       return null;
     }
@@ -532,7 +541,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         if (runtimeChanged) {
           await protocolSwitchAccountRuntime(mountUrl, accountId, {
             protocol_backend: targetBackend,
-            docker_image: napcatDockerImage.trim() || undefined,
+            docker_image:
+              targetBackend === "napcat" ? napcatDockerImage.trim() || undefined : undefined,
+            ...(targetBackend === "snowluma"
+              ? { snowluma_docker_image: snowlumaDockerImage.trim() }
+              : {}),
             runtime_mode: runtimeMode,
             runtime_id: runtimeId.trim() || undefined,
           });
@@ -774,21 +787,31 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         disabled={injectBusy}
                         onClick={() => void injectHook()}
                       >
-                        注入 Hook
+                        注入
                       </Button>
                     ) : null}
                   </div>
                   <div className="protocol-account-workspace__actions protocol-account-workspace__actions--aux">
                     {webUiHref ? (
                       <Button type="button" size="sm" variant="secondary" asChild>
-                        <a href={webUiHref} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={webUiHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={nativeWebUiAuthNote || undefined}
+                        >
                           {nativeWebUiLabel}
                         </a>
                       </Button>
                     ) : null}
                     {snowlumaNovncHref ? (
                       <Button type="button" size="sm" variant="secondary" asChild>
-                        <a href={snowlumaNovncHref} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={snowlumaNovncHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`VNC 口令 ${snowlumaNovncHint}`}
+                        >
                           SL 桌面
                         </a>
                       </Button>
@@ -837,40 +860,70 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
                 <div className="protocol-account-workspace__overview-main">
                   <dl className="protocol-account-workspace__detail-grid" aria-label="账号详情">
-                    {overviewDetails.map((row) => (
-                      <div key={row.label} className="protocol-account-workspace__detail-cell">
+                    {overviewFacts.map((row) => (
+                      <div
+                        key={row.label}
+                        className={
+                          row.mono
+                            ? "protocol-account-workspace__detail-cell protocol-account-workspace__detail-cell--mono"
+                            : "protocol-account-workspace__detail-cell"
+                        }
+                      >
                         <dt>{row.label}</dt>
-                        <dd>
-                          <div className="protocol-account-workspace__detail-main">
-                            {row.href ? (
-                              <a
-                                className="protocol-account-workspace__extra-link"
-                                href={row.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {row.value}
-                              </a>
-                            ) : (
-                              <span className={row.copyText ? "mono" : undefined}>{row.value}</span>
-                            )}
-                            {row.copyText ? (
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
-                                onClick={() => void copySnowlumaSecret(row.label, row.copyText!)}
-                              >
-                                复制
-                              </button>
-                            ) : null}
-                          </div>
-                          {row.hint ? (
-                            <div className="muted protocol-account-workspace__detail-hint">{row.hint}</div>
-                          ) : null}
-                        </dd>
+                        <dd title={row.value}>{row.value}</dd>
                       </div>
                     ))}
                   </dl>
+
+                  {overviewSecrets.length ? (
+                    <ul className="protocol-account-workspace__secrets" aria-label="访问凭证">
+                      {overviewSecrets.map((row) => (
+                        <li key={row.label} className="protocol-account-workspace__secret-row">
+                          <span className="protocol-account-workspace__secret-label">{row.label}</span>
+                          <div className="protocol-account-workspace__secret-body">
+                            <div className="protocol-account-workspace__secret-main">
+                              {row.plain ? (
+                                <span className="muted">{row.secret}</span>
+                              ) : (
+                                <>
+                                  {row.user ? (
+                                    <>
+                                      <span className="mono protocol-account-workspace__secret-user">
+                                        {row.user}
+                                      </span>
+                                      <span className="muted" aria-hidden>
+                                        /
+                                      </span>
+                                    </>
+                                  ) : null}
+                                  <input
+                                    type="password"
+                                    readOnly
+                                    autoComplete="off"
+                                    className="protocol-account-workspace__secret-input mono"
+                                    value={row.secret}
+                                    aria-label={row.label}
+                                    tabIndex={-1}
+                                    size={Math.max(8, Math.min(24, row.secret.length || 8))}
+                                  />
+                                </>
+                              )}
+                              {row.copyText ? (
+                                <CopyIconButton
+                                  label={`复制${row.label}`}
+                                  className="protocol-account-workspace__copy-btn"
+                                  onClick={() => void copySnowlumaSecret(row.label, row.copyText)}
+                                />
+                              ) : null}
+                            </div>
+                            {row.hint ? (
+                              <span className="muted protocol-account-workspace__secret-hint">{row.hint}</span>
+                            ) : null}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
 
                   <div className="protocol-account-workspace__log-block">
                     <div className="protocol-account-workspace__tile-hd protocol-account-workspace__tile-hd--row">
@@ -947,7 +1000,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             disabled={injectBusy}
                             onClick={() => void injectHook()}
                           >
-                            注入 Hook
+                            注入
                           </button>
                         ) : null}
                         {webUiHref ? (
@@ -1006,35 +1059,48 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             </span>
                           ) : null}
                           {snowlumaManagedPassword ? (
-                            <p className="protocol-account-workspace__extra-item muted">
-                              托管口令：
-                              <code className="mono">{snowlumaWebuiUser}</code> /
-                              <code className="mono">{snowlumaManagedPassword}</code>
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
+                            <p className="protocol-account-workspace__extra-item muted protocol-account-workspace__secret-inline">
+                              <span>托管口令：</span>
+                              <span className="mono">{snowlumaWebuiUser}</span>
+                              <span>/</span>
+                              <input
+                                type="password"
+                                readOnly
+                                autoComplete="off"
+                                className="protocol-account-workspace__secret-input mono"
+                                value={snowlumaManagedPassword}
+                                aria-label="托管口令"
+                                tabIndex={-1}
+                              />
+                              <CopyIconButton
+                                label="复制托管口令"
+                                className="protocol-account-workspace__copy-btn"
                                 onClick={() =>
                                   void copySnowlumaSecret(
                                     "托管 WebUI 口令",
                                     `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
                                   )
                                 }
-                              >
-                                复制
-                              </button>
+                              />
                             </p>
                           ) : null}
                           {snowlumaInitialPassword ? (
-                            <p className="protocol-account-workspace__extra-item muted">
-                              初始口令：
-                              <code className="mono">{snowlumaInitialPassword}</code>
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
+                            <p className="protocol-account-workspace__extra-item muted protocol-account-workspace__secret-inline">
+                              <span>初始口令：</span>
+                              <input
+                                type="password"
+                                readOnly
+                                autoComplete="off"
+                                className="protocol-account-workspace__secret-input mono"
+                                value={snowlumaInitialPassword}
+                                aria-label="初始口令"
+                                tabIndex={-1}
+                              />
+                              <CopyIconButton
+                                label="复制初始口令"
+                                className="protocol-account-workspace__copy-btn"
                                 onClick={() => void copySnowlumaSecret("初始口令", snowlumaInitialPassword)}
-                              >
-                                复制
-                              </button>
+                              />
                             </p>
                           ) : null}
                         </div>
@@ -1168,12 +1234,12 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       <label className="field">
                         <span className="field__label">NapCat Docker 镜像</span>
                         <span className="field__hint muted">留空时使用服务端默认镜像。</span>
-                        <UiInput
-                          type="text"
-                          autoComplete="off"
-                          placeholder="mlikiowa/napcat-docker:latest"
+                        <ProtocolDockerImageSelect
+                          mountUrl={mountUrl}
+                          protocol="napcat"
                           value={napcatDockerImage}
                           onValueChange={setNapcatDockerImage}
+                          placeholder="mlikiowa/napcat-docker:latest"
                         />
                       </label>
                       <label className="field field--check field--full">
@@ -1191,39 +1257,55 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                   ) : (
                     <>
                       <label className="field">
-                        <span className="field__label">SnowLuma Runtime 模式</span>
-                        <span className="field__hint muted">可新建独立 Runtime，或挂载到已有 Runtime。</span>
+                        <span className="field__label">SnowLuma Docker 镜像</span>
+                        <span className="field__hint muted">留空时使用服务端默认镜像。</span>
+                        <ProtocolDockerImageSelect
+                          mountUrl={mountUrl}
+                          protocol="snowluma"
+                          value={snowlumaDockerImage}
+                          onValueChange={setSnowlumaDockerImage}
+                          placeholder="pallas/snowluma-auto-login:latest"
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">Runtime 模式</span>
+                        <span className="field__hint muted">新建，或挂载到已有 Runtime。</span>
                         <Select
                           value={runtimeMode}
                           onValueChange={(v) =>
                             setRuntimeMode(v === "existing" ? "existing" : "new")
                           }
                         >
-                          <SelectTrigger className="w-full" aria-label="SnowLuma Runtime 模式">
+                          <SelectTrigger className="w-full" aria-label="Runtime 模式">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="new">新建独立 Runtime</SelectItem>
-                            <SelectItem value="existing">挂载已有 Runtime</SelectItem>
+                            <SelectItem value="new">新建</SelectItem>
+                            <SelectItem value="existing">挂载已有</SelectItem>
                           </SelectContent>
                         </Select>
                       </label>
                       {runtimeMode === "existing" ? (
                         <label className="field field--full">
-                          <span className="field__label">已有 SnowLuma Runtime</span>
-                          <span className="field__hint muted">选择要挂载的现有运行时。</span>
+                          <span className="field__label">Runtime</span>
                           <Select
                             value={runtimeId || "__empty__"}
-                            onValueChange={(v) => setRuntimeId(v === "__empty__" ? "" : v)}
+                            onValueChange={(v) => {
+                              const nextId = v === "__empty__" ? "" : v;
+                              setRuntimeId(nextId);
+                              const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
+                              const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                              if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
+                            }}
                           >
-                            <SelectTrigger className="w-full" aria-label="已有 SnowLuma Runtime">
-                              <SelectValue placeholder="请选择已有 SnowLuma Runtime" />
+                            <SelectTrigger className="w-full" aria-label="Runtime">
+                              <SelectValue placeholder="选择 Runtime" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__empty__">请选择已有 SnowLuma Runtime</SelectItem>
+                              <SelectItem value="__empty__">选择 Runtime</SelectItem>
                               {snowlumaRuntimes.map((runtime) => (
                                 <SelectItem key={runtime.id} value={runtime.id}>
-                                  {runtime.id}
+                                  {runtime.display_name?.trim() || runtime.id}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1333,12 +1415,12 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         <label className="field">
                           <span className="field__label">NapCat Docker 镜像</span>
                           <span className="field__hint muted">留空时使用服务端默认镜像。</span>
-                          <UiInput
-                            type="text"
-                            autoComplete="off"
-                            placeholder="mlikiowa/napcat-docker:latest"
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="napcat"
                             value={napcatDockerImage}
                             onValueChange={setNapcatDockerImage}
+                            placeholder="mlikiowa/napcat-docker:latest"
                           />
                         </label>
                         <label className="field field--check field--full">
@@ -1356,39 +1438,55 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                     ) : (
                       <>
                         <label className="field">
-                          <span className="field__label">SnowLuma Runtime 模式</span>
-                          <span className="field__hint muted">可新建独立 Runtime，或挂载到已有 Runtime。</span>
+                          <span className="field__label">SnowLuma Docker 镜像</span>
+                          <span className="field__hint muted">留空时使用服务端默认镜像。</span>
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="snowluma"
+                            value={snowlumaDockerImage}
+                            onValueChange={setSnowlumaDockerImage}
+                            placeholder="pallas/snowluma-auto-login:latest"
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field__label">Runtime 模式</span>
+                          <span className="field__hint muted">新建，或挂载到已有 Runtime。</span>
                           <Select
                             value={runtimeMode}
                             onValueChange={(v) =>
                               setRuntimeMode(v === "existing" ? "existing" : "new")
                             }
                           >
-                            <SelectTrigger className="w-full" aria-label="SnowLuma Runtime 模式">
+                            <SelectTrigger className="w-full" aria-label="Runtime 模式">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="new">新建独立 Runtime</SelectItem>
-                              <SelectItem value="existing">挂载已有 Runtime</SelectItem>
+                              <SelectItem value="new">新建</SelectItem>
+                              <SelectItem value="existing">挂载已有</SelectItem>
                             </SelectContent>
                           </Select>
                         </label>
                         {runtimeMode === "existing" ? (
                           <label className="field">
-                            <span className="field__label">已有 SnowLuma Runtime</span>
-                            <span className="field__hint muted">选择要挂载的现有运行时。</span>
+                            <span className="field__label">Runtime</span>
                             <Select
                               value={runtimeId || "__empty__"}
-                              onValueChange={(v) => setRuntimeId(v === "__empty__" ? "" : v)}
+                              onValueChange={(v) => {
+                                const nextId = v === "__empty__" ? "" : v;
+                                setRuntimeId(nextId);
+                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
+                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
+                              }}
                             >
-                              <SelectTrigger className="w-full" aria-label="已有 SnowLuma Runtime">
-                                <SelectValue placeholder="请选择已有 SnowLuma Runtime" />
+                              <SelectTrigger className="w-full" aria-label="Runtime">
+                                <SelectValue placeholder="选择 Runtime" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__empty__">请选择已有 SnowLuma Runtime</SelectItem>
+                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
                                 {snowlumaRuntimes.map((runtime) => (
                                   <SelectItem key={runtime.id} value={runtime.id}>
-                                    {runtime.id}
+                                    {runtime.display_name?.trim() || runtime.id}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

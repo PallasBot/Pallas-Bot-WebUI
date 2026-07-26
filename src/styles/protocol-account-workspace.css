@@ -9,6 +9,8 @@
 
 .protocol-account-workspace--dialog {
   gap: 12px;
+  container-type: inline-size;
+  container-name: protocol-account;
 }
 
 .protocol-account-workspace__loading {
@@ -210,7 +212,15 @@
   font-weight: 500;
   color: var(--text);
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.protocol-account-workspace__detail-cell--mono dd {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .protocol-account-workspace__detail-row {
@@ -256,6 +266,98 @@
   font-size: 0.75rem;
   line-height: 1.4;
   font-weight: 400;
+}
+
+.protocol-account-workspace__secrets {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.protocol-account-workspace__secret-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  margin: 0;
+  padding: 8px 10px 8px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 72%, transparent);
+  border-radius: 0 var(--radius-control, 8px) var(--radius-control, 8px) 0;
+  background: color-mix(in srgb, var(--text) 2.5%, var(--bg-card, transparent));
+}
+
+.protocol-account-workspace__secret-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.75rem;
+  color: var(--text-muted);
+}
+
+.protocol-account-workspace__secret-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.protocol-account-workspace__secret-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+  min-height: 1.75rem;
+}
+
+.protocol-account-workspace__secret-user {
+  flex: 0 0 auto;
+  line-height: 1.75rem;
+}
+
+.protocol-account-workspace__secret-input {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.75rem;
+  letter-spacing: 0.06em;
+  outline: none;
+  box-shadow: none;
+  cursor: default;
+}
+
+.protocol-account-workspace__secret-hint {
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.protocol-account-workspace__secret-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.protocol-account-workspace__copy-btn {
+  flex: 0 0 auto;
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  min-width: 1.75rem !important;
+  min-height: 1.75rem !important;
+  padding: 0 !important;
 }
 
 .protocol-account-workspace__tile {
@@ -520,11 +622,6 @@ html[data-theme="light"] .protocol-account-workspace__meta {
   gap: 8px;
 }
 
-.protocol-account-workspace__copy-btn {
-  margin-left: 4px;
-  vertical-align: middle;
-}
-
 .protocol-account-workspace__extra-item {
   margin: 0;
   font-size: 0.8125rem;
@@ -638,6 +735,10 @@ html[data-theme="light"] .protocol-account-workspace__meta {
     align-items: stretch;
   }
 
+  .protocol-account-workspace__toolbar > .protocol-account-workspace__actions {
+    width: 100%;
+  }
+
   .protocol-account-workspace__actions--aux {
     margin-left: 0;
     padding-left: 0;
@@ -675,6 +776,11 @@ html[data-theme="light"] .protocol-account-workspace__meta {
     padding-top: 0;
   }
 
+  .protocol-account-workspace__secret-row {
+    grid-template-columns: 3.75rem minmax(0, 1fr);
+    padding-left: 10px;
+  }
+
   .protocol-account-workspace__action-sep {
     display: none;
   }
@@ -692,10 +798,17 @@ html[data-theme="light"] .protocol-account-workspace__meta {
     flex: 1 1 calc(50% - 12px);
     border-right: none;
     padding: 0 8px 0 0;
+    min-width: 0;
   }
 
   .protocol-account-workspace__meta-item:nth-child(odd) {
     padding-left: 0;
+  }
+
+  .protocol-account-workspace__meta-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .protocol-account-workspace__form-grid {
@@ -721,14 +834,32 @@ html[data-theme="light"] .protocol-account-workspace__meta {
 
   .protocol-account-workspace__actions .ui-btn,
   .protocol-account-workspace__actions .btn,
-  .protocol-account-workspace__actions > button {
-    flex: 1 1 calc(50% - 4px);
+  .protocol-account-workspace__actions > button,
+  .protocol-account-workspace__actions > a {
+    flex: 0 1 auto;
     min-width: 0;
   }
+}
 
-  .protocol-account-workspace__actions .ui-btn:last-child,
-  .protocol-account-workspace__actions .btn:last-child,
-  .protocol-account-workspace__actions > button:last-child {
-    flex-basis: 100%;
+/* 弹窗窄宽时视口可能仍 >560：用容器查询避免 PID/WS 被两列挤碎 */
+@container protocol-account (max-width: 420px) {
+  .protocol-account-workspace__detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .protocol-account-workspace__detail-cell:nth-child(odd) {
+    border-right: none;
+    padding-left: 0;
+  }
+
+  .protocol-account-workspace__detail-cell:nth-child(1),
+  .protocol-account-workspace__detail-cell:nth-child(2) {
+    border-top: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+    padding-top: 8px;
+  }
+
+  .protocol-account-workspace__detail-cell:first-child {
+    border-top: none;
+    padding-top: 0;
   }
 }
