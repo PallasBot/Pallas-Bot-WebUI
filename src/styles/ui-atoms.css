@@ -424,10 +424,12 @@ html[data-layout="hub"] .ui-btn--sm {
 
 .plugin-config-field-popover__eyebrow {
   font-size: 10px;
-  line-height: 1;
+  line-height: 1.35;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-muted, rgba(255, 255, 255, 0.62));
+  /* 避免 line-height 偏紧时汉字顶角被 overflow 裁切 */
+  padding-top: 1px;
 }
 
 .plugin-config-field-popover__title {
@@ -1183,7 +1185,7 @@ html[data-theme="dark"] .ui-dialog__panel {
 }
 
 .social-config-dialog__row > span {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .social-config-dialog__row-pair {
@@ -1212,7 +1214,7 @@ html[data-theme="dark"] .ui-dialog__panel {
 
 .social-config-dialog__block-hd {
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .social-config-dialog__checklist {

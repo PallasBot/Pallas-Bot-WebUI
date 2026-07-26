@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchDbOverview,
@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import UiInput from "@/components/ui/UiInput";
 import { useConsolePrefs } from "@/hooks/useConsolePrefs";
-import { Code2, Search, Table2, Users } from "lucide-react";
+import { Code2, Database, Layers, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 
@@ -47,16 +47,17 @@ const DB_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const DB_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
 
-type DbSectionId = "group" | "user" | "tables" | "aggregate";
+type DbSectionId = "backend" | "group" | "user" | "tables" | "aggregate";
 
 const SECTION_META: Record<
   DbSectionId,
   { label: string; icon: LucideIcon; panelId: string }
 > = {
+  backend: { label: "后端", icon: Database, panelId: "db-backend-config" },
   group: { label: "群配置", icon: Users, panelId: "db-group-configs" },
   user: { label: "好友配置", icon: Users, panelId: "db-user-configs" },
-  tables: { label: "表", icon: Table2, panelId: "db-tables" },
-  aggregate: { label: "函数", icon: Code2, panelId: "db-aggregate" },
+  tables: { label: "存储", icon: Table2, panelId: "db-tables" },
+  aggregate: { label: "聚合查询", icon: Code2, panelId: "db-aggregate" },
 };
 
 function isMongo(o: DbOverviewData | null): o is Extract<DbOverviewData, { backend: "mongodb" }> {
@@ -81,6 +82,7 @@ function rowMatchesNeedle(
 
 function sectionFromHash(hash: string): DbSectionId | null {
   const id = hash.replace(/^#/, "").trim();
+  if (id === "db-backend-config") return "backend";
   if (id === "db-group-configs") return "group";
   if (id === "db-user-configs") return "user";
   if (id === "db-tables") return "tables";
@@ -90,6 +92,7 @@ function sectionFromHash(hash: string): DbSectionId | null {
 
 export default function DatabasePage() {
   const prefs = useConsolePrefs();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
   const [err, setErr] = useState("");
@@ -133,7 +136,7 @@ export default function DatabasePage() {
   const showAggregate = isMongo(overview);
 
   const sectionOptions = useMemo(() => {
-    const ids: DbSectionId[] = ["group", "user", "tables"];
+    const ids: DbSectionId[] = ["backend", "group", "user", "tables"];
     if (showAggregate) ids.push("aggregate");
     return ids.map((id) => ({ id, ...SECTION_META[id] }));
   }, [showAggregate]);
@@ -257,12 +260,12 @@ export default function DatabasePage() {
     setAddUserHint("");
     const raw = addUserInput.trim();
     if (!raw) {
-      setAddUserHint("请输入 QQ 号。");
+      setAddUserHint("请先填写 QQ 号");
       return;
     }
     const uid = parseInt(raw, 10);
     if (!Number.isFinite(uid) || uid < 1) {
-      setAddUserHint("请输入有效的 QQ 号。");
+      setAddUserHint("QQ 号格式不正确");
       return;
     }
     setUserModal({ id: uid, defaultBanned: true });
@@ -270,11 +273,16 @@ export default function DatabasePage() {
   }
 
   function onSocialConfigSaved(kind: "group" | "user") {
-    setOk(kind === "group" ? "群配置已保存。" : "好友配置已保存。");
+    setOk(kind === "group" ? "群配置已保存" : "好友配置已保存");
     void loadSocialConfigs();
   }
 
   function onChromeRefresh() {
+    if (activeSection === "backend") {
+      void queryClient.invalidateQueries({ queryKey: ["db-backend-config"] });
+      void overviewQ.refetch();
+      return;
+    }
     if (activeSection === "group" || activeSection === "user") {
       void loadSocialConfigs();
       return;
@@ -283,9 +291,11 @@ export default function DatabasePage() {
   }
 
   const chromeBusy =
-    activeSection === "group" || activeSection === "user"
-      ? socialConfigsBusy
-      : dbRefreshBusy || overviewQ.isFetching;
+    activeSection === "backend"
+      ? overviewQ.isFetching
+      : activeSection === "group" || activeSection === "user"
+        ? socialConfigsBusy
+        : dbRefreshBusy || overviewQ.isFetching;
   const showBody = overview && !dbRefreshBusy;
   const listSearch =
     activeSection === "group"
@@ -295,8 +305,8 @@ export default function DatabasePage() {
             setGroupListQ(v);
             setPageGroups(1);
           },
-          placeholder: "搜索群配置…",
-          title: "按群号、轮盘模式、封禁状态、禁用插件、拉黑 QQ 筛选",
+          placeholder: "搜索群号、轮盘、封禁…",
+          title: "可按群号、轮盘模式、封禁、禁用插件、拉黑 QQ 筛选",
         }
       : activeSection === "user"
         ? {
@@ -305,44 +315,34 @@ export default function DatabasePage() {
               setUserListQ(v);
               setPageUsers(1);
             },
-            placeholder: "搜索好友配置…",
-            title: "按 QQ、封禁状态筛选",
+            placeholder: "搜索 QQ、封禁状态…",
+            title: "可按 QQ、封禁状态筛选",
           }
         : null;
 
   const panelTitle =
-    activeSection === "tables"
-      ? overview?.backend === "postgres"
-        ? "表与行数"
-        : "集合与文档数"
-      : activeSection === "aggregate"
-        ? "MongoDB 聚合"
-        : activeMeta.label;
+    activeSection === "backend"
+      ? "后端"
+      : activeSection === "tables"
+        ? overview?.backend === "postgres"
+          ? "表与行数"
+          : "集合与文档数"
+        : activeSection === "aggregate"
+          ? "聚合查询"
+          : activeMeta.label;
 
   return (
     <div className="database-page console-hub-page">
       {err ? <div className="alert alert--err">{err}</div> : null}
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
-      <PageMasthead title="数据库总览" description="后端概览与群 / 好友配置。" />
-
-      <DatabaseBackendPanel
-        onMessage={(kind, text) => {
-          if (kind === "ok") {
-            setOk(text);
-            setErr("");
-          } else {
-            setErr(text);
-            setOk("");
-          }
-        }}
-      />
+      <PageMasthead title="数据库" description="切换后端、查看存储概况，并管理群与好友配置。" />
 
       {showBody ? (
         <section className="database-page__kpi home-kpi-bar">
           <div className="metric-tile">
             <div className="metric-tile__head">
-              <span className="metric-tile__label">后端类型</span>
+              <span className="metric-tile__label">当前后端</span>
             </div>
             <div className="metric-tile__value-slot">
               <span className="metric-tile__value metric-tile__value--inline">{backendLabel}</span>
@@ -356,7 +356,7 @@ export default function DatabasePage() {
           {totalDocuments != null ? (
             <div className="metric-tile">
               <div className="metric-tile__head">
-                <span className="metric-tile__label">集合文档（合计）</span>
+                <span className="metric-tile__label">文档合计</span>
               </div>
               <div className="metric-tile__value-slot">
                 <span className="metric-tile__value metric-tile__value--inline">{nf.format(totalDocuments)}</span>
@@ -367,7 +367,7 @@ export default function DatabasePage() {
           {totalRows != null ? (
             <div className="metric-tile">
               <div className="metric-tile__head">
-                <span className="metric-tile__label">表行数（合计）</span>
+                <span className="metric-tile__label">行数合计</span>
               </div>
               <div className="metric-tile__value-slot">
                 <span className="metric-tile__value metric-tile__value--inline">{nf.format(totalRows)}</span>
@@ -379,10 +379,10 @@ export default function DatabasePage() {
       ) : null}
 
       <ChromeTools>
-        <ChromeField label="选择" icon={activeMeta.icon} className="shrink-0">
+        <ChromeField label="分区" icon={Layers} className="shrink-0">
           <Select value={activeSection} onValueChange={(v) => selectSection(v as DbSectionId)}>
-            <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="数据库分段">
-              <SelectValue placeholder="选择" />
+            <SelectTrigger className={CHROME_SELECT_TRIGGER} aria-label="数据库分区">
+              <SelectValue placeholder="选择分区" />
             </SelectTrigger>
             <SelectContent align="start">
               {sectionOptions.map((s) => (
@@ -443,18 +443,29 @@ export default function DatabasePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className={DB_PANEL_BD}>
+          {activeSection === "backend" ? (
+            <DatabaseBackendPanel
+              onMessage={(kind, text) => {
+                if (kind === "ok") {
+                  setOk(text);
+                  setErr("");
+                }
+              }}
+            />
+          ) : null}
+
           {activeSection === "group" ? (
             <>
               {pluginsQ.error ? (
                 <p className="muted" style={{ margin: "0 0 10px" }}>
-                  插件列表加载失败，禁用插件列可能不完整：{axiosErrorDetail(pluginsQ.error)}
+                  插件列表加载失败，禁用插件列可能显示不全：{axiosErrorDetail(pluginsQ.error)}
                 </p>
               ) : null}
               {socialConfigsBusy && !groupConfigs.length ? (
-                <ConsoleBlockSkeleton lines={5} label="群配置加载中" />
+                <ConsoleBlockSkeleton lines={5} label="正在加载群配置" />
               ) : !filteredGroupConfigs.length ? (
                 <p className="muted">
-                  {groupListQ.trim() && groupConfigs.length > 0 ? "无匹配结果。" : "数据库中暂无群配置记录。"}
+                  {groupListQ.trim() && groupConfigs.length > 0 ? "没有匹配的群配置" : "暂无群配置"}
                 </p>
               ) : (
                 <div className="table-wrap">
@@ -508,7 +519,7 @@ export default function DatabasePage() {
             <>
               <div className="database-user-config-add" style={{ marginBottom: 12 }}>
                 <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                  输入 QQ 号后点击添加并设置封禁。此为全局拉黑，与私聊「牛牛拉黑」写入同一字段；本群维度拉黑请在群配置中维护。
+                  添加后可设置全局封禁（与私聊「牛牛拉黑」相同）。仅本群拉黑请到「群配置」里设置。
                 </p>
                 <div className="row-actions database-user-config-add__row">
                   <UiInput
@@ -544,12 +555,12 @@ export default function DatabasePage() {
                 ) : null}
               </div>
               {socialConfigsBusy && !userConfigs.length ? (
-                <ConsoleBlockSkeleton lines={4} label="好友配置加载中" />
+                <ConsoleBlockSkeleton lines={4} label="正在加载好友配置" />
               ) : !filteredUserConfigs.length ? (
                 <p className="muted">
                   {userListQ.trim() && userConfigs.length > 0
-                    ? "无匹配结果。"
-                    : "数据库中暂无好友配置记录，可使用上方输入框添加。"}
+                    ? "没有匹配的好友配置"
+                    : "暂无好友配置，可用上方输入框添加"}
                 </p>
               ) : (
                 <div className="table-wrap">
@@ -593,7 +604,7 @@ export default function DatabasePage() {
 
           {activeSection === "tables" ? (
             !overview ? (
-              <ConsoleBlockSkeleton lines={4} label="存储明细加载中" />
+              <ConsoleBlockSkeleton lines={4} label="正在加载存储明细" />
             ) : overview.backend === "mongodb" ? (
               <div className="table-wrap">
                 <table className="data console-data-table database-page__storage-table">
@@ -611,7 +622,7 @@ export default function DatabasePage() {
                         <td className="muted">{c.document}</td>
                         <td
                           style={{ fontVariantNumeric: "tabular-nums" }}
-                          title={c.count_estimated ? "Mongo 估算行数（大表）" : undefined}
+                          title={c.count_estimated ? "估算值（集合较大时）" : undefined}
                         >
                           {c.count_estimated ? "≈" : ""}
                           {nf.format(c.count)}
@@ -641,7 +652,7 @@ export default function DatabasePage() {
                 </table>
               </div>
             ) : (
-              <p className="muted">当前后端暂无表 / 集合明细。</p>
+              <p className="muted">当前后端没有可展示的表或集合</p>
             )
           ) : null}
 
@@ -649,18 +660,18 @@ export default function DatabasePage() {
             <>
               <div style={{ marginBottom: 12 }}>
                 <label className="muted" style={{ display: "block", marginBottom: 6 }}>
-                  集合名
+                  集合
                 </label>
                 {mongoCollections.length ? (
                   <Select
                     value={collection || "__none__"}
                     onValueChange={(v) => setCollection(v === "__none__" ? "" : v)}
                   >
-                    <SelectTrigger className="h-9 w-full max-w-[26.25rem]" aria-label="集合名">
-                      <SelectValue placeholder="请选择集合" />
+                    <SelectTrigger className="h-9 w-full max-w-[26.25rem]" aria-label="集合">
+                      <SelectValue placeholder="选择集合" />
                     </SelectTrigger>
                     <SelectContent align="start">
-                      <SelectItem value="__none__">请选择集合</SelectItem>
+                      <SelectItem value="__none__">选择集合</SelectItem>
                       {mongoCollections.map((c) => (
                         <SelectItem key={c.name} value={c.name}>
                           {c.name}（{nf.format(c.count)}）
@@ -670,25 +681,25 @@ export default function DatabasePage() {
                   </Select>
                 ) : (
                   <div style={{ maxWidth: 360, width: "100%" }}>
-                    <UiInput placeholder="collection" value={collection} onValueChange={setCollection} />
+                    <UiInput placeholder="集合名" value={collection} onValueChange={setCollection} />
                   </div>
                 )}
               </div>
               <label className="muted" style={{ display: "block", marginBottom: 6 }}>
-                Pipeline（JSON 数组）
+                聚合管道（JSON 数组）
               </label>
               <textarea
                 className="inp"
                 rows={8}
                 value={pipelineText}
                 spellCheck={false}
-                placeholder='页内或弹窗编辑；须为 JSON 数组，例如 [{"$limit":20}]'
+                placeholder='例如 [{"$limit":20}]'
                 onChange={(e) => setPipelineText(e.target.value)}
               />
               {aggResult ? (
                 <div style={{ marginTop: 16 }}>
                   <div className="muted" style={{ marginBottom: 8 }}>
-                    结果
+                    查询结果
                   </div>
                   <pre className="pre-block">{aggResult}</pre>
                 </div>
