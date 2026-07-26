@@ -5,7 +5,6 @@ export type AiObservationSectionId =
   | "session"
   | "memory"
   | "people"
-  | "tools"
   | "tasks"
   | "persona"
   | "logs";
@@ -55,12 +54,6 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
     scope: { bot: true, group: true },
   },
   {
-    id: "tools",
-    label: "工具",
-    lead: "当前可调用的内置、插件与 MCP 工具；联网搜索在对话策略里配置。",
-    path: "/ai/tools",
-  },
-  {
     id: "tasks",
     label: "任务",
     lead: "提醒、周期任务与异步调研的运行情况。",
@@ -94,7 +87,6 @@ export function aiObservationSectionFromPath(pathname: string): AiObservationSec
   if (p === "/ai/history" || p.startsWith("/ai/history/")) return "session";
   if (p === "/ai/memory" || p.startsWith("/ai/memory/")) return "memory";
   if (p === "/ai/people" || p.startsWith("/ai/people/")) return "people";
-  if (p === "/ai/tools" || p.startsWith("/ai/tools/")) return "tools";
   if (p === "/ai/tasks" || p.startsWith("/ai/tasks/")) return "tasks";
   if (p === "/ai/persona" || p.startsWith("/ai/persona/")) return "persona";
   if (p === "/ai/logs" || p.startsWith("/ai/logs/")) return "logs";
