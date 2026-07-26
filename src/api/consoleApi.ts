@@ -3212,6 +3212,29 @@ export async function postBotUpdateApply(options?: { restart?: boolean }): Promi
   )) as UpdateApplyJobStartData;
 }
 
+export type UpdateChangelogTarget = "webui" | "bot";
+
+export type UpdateChangelogData = {
+  target: UpdateChangelogTarget;
+  repo?: string;
+  source?: string;
+  changelog_url?: string;
+  markdown?: string;
+  max_versions?: number;
+};
+
+export async function fetchUpdateChangelog(
+  target: UpdateChangelogTarget,
+  options?: { maxVersions?: number },
+): Promise<UpdateChangelogData> {
+  return (await consoleOpenapiGet("/update/changelog", {
+    params: {
+      target,
+      max_versions: options?.maxVersions ?? 10,
+    },
+  })) as UpdateChangelogData;
+}
+
 export function openUpdateApplyJobEventSource(jobId: string): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
   const apiBase = `${root}/api`;

@@ -42,6 +42,7 @@ export default function PreferencesPage() {
   const [controlRadiusDraft, setControlRadiusDraft] = useState(prefs.controlRadius);
   const [density, setDensity] = useState<DensityMode>(prefs.density);
   const [shadowIntensityDraft, setShadowIntensityDraft] = useState(prefs.shadowIntensity);
+  const [showUpdateChangelog, setShowUpdateChangelog] = useState(prefs.showUpdateChangelog);
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [pwdErr, setPwdErr] = useState("");
@@ -78,6 +79,7 @@ export default function PreferencesPage() {
     setControlRadiusDraft(next.controlRadius);
     setDensity(next.density);
     setShadowIntensityDraft(next.shadowIntensity);
+    setShowUpdateChangelog(next.showUpdateChangelog);
   }
 
   function onGlassBlurInput(v: number) {
@@ -230,6 +232,27 @@ export default function PreferencesPage() {
             toolbar
             onUpdated={onWebuiDevModeUpdated}
           />
+        </PrefsSettingCard>
+
+        <PrefsSettingCard
+          title="更新 CHANGELOG"
+          lead="应用 WebUI / Bot 更新后，是否自动弹出仓库 CHANGELOG。可随时在更新页手动打开。"
+        >
+          <div className="prefs-form-field prefs-form-field--switch">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm">应用更新后弹出 CHANGELOG</span>
+              <Switch
+                className={PREFS_SWITCH_CLASS}
+                checked={showUpdateChangelog}
+                onCheckedChange={(v) => {
+                  const next = Boolean(v);
+                  setShowUpdateChangelog(next);
+                  patchPrefs({ showUpdateChangelog: next });
+                }}
+                aria-label="应用更新后弹出 CHANGELOG"
+              />
+            </div>
+          </div>
         </PrefsSettingCard>
 
         {surfaceStyle === "glass" ? (
