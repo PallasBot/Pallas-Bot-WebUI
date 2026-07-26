@@ -28,6 +28,22 @@ const DISABLED_REASON_LABEL: Record<string, string> = {
   override_disabled: "已手动停用",
 };
 
+/** visible / deferred → 面向维护者的短标签（列表）与完整说明（编辑）。 */
+const VISIBILITY_SHORT: Record<string, string> = {
+  visible: "相关即带",
+  deferred: "触发才带",
+};
+
+const VISIBILITY_OPTION_LABEL: Record<string, string> = {
+  visible: "话题相关就带上",
+  deferred: "说到触发词才带上",
+};
+
+function visibilityShort(raw: string | undefined): string {
+  const key = (raw || "visible").trim() || "visible";
+  return VISIBILITY_SHORT[key] || key;
+}
+
 function labelOf(map: Record<string, string>, raw: string | undefined, fallback = "—") {
   const key = (raw || "").trim();
   if (!key) return fallback;
@@ -83,7 +99,10 @@ function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
     <p className="text-xs leading-relaxed text-muted-foreground">
       {bits.join(" · ")}
       <span className="mt-1 block">
-        策略开关可在「对话 · 策略」表单中修改；下方可预览口语选型并覆盖单工具 hints。
+        策略开关在「对话 · 策略」修改。下方可预览口语会带上哪些工具，也可覆盖单工具的触发说法。
+      </span>
+      <span className="mt-1 block">
+        「相关即带」：话题沾边就把工具交给模型；「触发才带」：平时不带，只有说到触发说法（或模型主动找工具）后才出现，更省上下文。
       </span>
     </p>
   );
@@ -180,8 +199,9 @@ function ToolOverrideEditor({
         <Input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder={row.description || "工具描述"}
+          placeholder="可选：自定义交给模型看的工具说明"
           className="h-8 text-xs"
+          title={row.description || undefined}
         />
       </div>
       <div className="space-y-1">
@@ -189,49 +209,57 @@ function ToolOverrideEditor({
         <Input
           value={hintsText}
           onChange={(e) => setHintsText(e.target.value)}
-          placeholder="点歌, 放首歌, 音乐"
+          placeholder="可选：说法一, 说法二, 说法三"
           className="h-8 text-xs"
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={visibility} onValueChange={setVisibility}>
-          <SelectTrigger className="h-8 w-[8.5rem] text-xs">
-            <SelectValue placeholder="可见性" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="visible">随域注入</SelectItem>
-            <SelectItem value="deferred">延迟发现</SelectItem>
-          </SelectContent>
-        </Select>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={disabled}
-            onChange={(e) => setDisabled(e.target.checked)}
-            className="size-3.5"
-          />
-          停用此工具
-        </label>
-        <Button
-          type="button"
-          size="sm"
-          className="h-8"
-          disabled={mutation.isPending}
-          onClick={() => {
-            const hints = hintsText
-              .split(/[,，]/)
-              .map((s) => s.trim())
-              .filter(Boolean);
-            mutation.mutate({
-              description: description.trim() || null,
-              hints: hints.length ? hints : null,
-              visibility: visibility === "deferred" ? "deferred" : "visible",
-              disabled,
-            });
-          }}
-        >
-          {mutation.isPending ? "保存中…" : "保存覆盖"}
-        </Button>
+      <div className="space-y-1">
+        <label className="text-[11px] text-muted-foreground">何时交给模型</label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={visibility} onValueChange={setVisibility}>
+            <SelectTrigger className="h-8 w-[11.5rem] text-xs">
+              <SelectValue placeholder="何时交给模型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="visible">{VISIBILITY_OPTION_LABEL.visible}</SelectItem>
+              <SelectItem value="deferred">{VISIBILITY_OPTION_LABEL.deferred}</SelectItem>
+            </SelectContent>
+          </Select>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={disabled}
+              onChange={(e) => setDisabled(e.target.checked)}
+              className="size-3.5"
+            />
+            停用此工具
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            className="h-8"
+            disabled={mutation.isPending}
+            onClick={() => {
+              const hints = hintsText
+                .split(/[,，]/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              mutation.mutate({
+                description: description.trim() || null,
+                hints: hints.length ? hints : null,
+                visibility: visibility === "deferred" ? "deferred" : "visible",
+                disabled,
+              });
+            }}
+          >
+            {mutation.isPending ? "保存中…" : "保存覆盖"}
+          </Button>
+        </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {visibility === "deferred"
+            ? "平时不把这个工具交给模型；用户说到上方触发说法，或模型主动找工具后，才会带上。"
+            : "话题与该工具所属领域相关时就会带上，方便常用能力；工具很多时更占上下文。"}
+        </p>
       </div>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
@@ -288,7 +316,7 @@ export default function LlmToolsTable({
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span>{(row.domains || []).join(", ") || "—"}</span>
               <span aria-hidden>·</span>
-              <span>{row.visibility === "deferred" ? "延迟" : "可见"}</span>
+              <span>{visibilityShort(row.visibility)}</span>
               <span aria-hidden>·</span>
               {row.eligible ? (
                 <span className="text-emerald-500">可调用</span>
@@ -326,7 +354,7 @@ export default function LlmToolsTable({
               <TableHead>名称</TableHead>
               <TableHead>来源</TableHead>
               <TableHead>领域</TableHead>
-              <TableHead>触发 / 可见性</TableHead>
+              <TableHead>触发 / 何时带上</TableHead>
               <TableHead>状态</TableHead>
               <TableHead className="w-[5rem]">操作</TableHead>
             </TableRow>
@@ -355,15 +383,22 @@ export default function LlmToolsTable({
                   </TableCell>
                   <TableCell className="max-w-[14rem]">
                     <div className="text-xs">
-                      <span className="text-muted-foreground">
-                        {row.visibility === "deferred" ? "延迟" : "随域"}
+                      <span
+                        className="text-muted-foreground"
+                        title={
+                          row.visibility === "deferred"
+                            ? VISIBILITY_OPTION_LABEL.deferred
+                            : VISIBILITY_OPTION_LABEL.visible
+                        }
+                      >
+                        {visibilityShort(row.visibility)}
                       </span>
                       {(row.effective_hints || []).length ? (
                         <div className="mt-0.5 line-clamp-2" title={(row.effective_hints || []).join("、")}>
                           {(row.effective_hints || []).join("、")}
                         </div>
                       ) : (
-                        <div className="mt-0.5 text-muted-foreground">无 hints</div>
+                        <div className="mt-0.5 text-muted-foreground">无触发说法</div>
                       )}
                     </div>
                   </TableCell>

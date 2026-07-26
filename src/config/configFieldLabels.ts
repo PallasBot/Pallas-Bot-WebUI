@@ -27,7 +27,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_tools_max_rounds: "工具调用最多轮数",
   llm_tools_blacklist: "工具黑名单",
   llm_tools_desc_max_len: "工具描述最大长度",
-  web_search_api_url: "搜索接口地址",
+  web_search_api_url: "搜索接口完整地址",
   tavily_api_key: "搜索接口密钥",
   llm_governance_enabled: "限制 LLM 对话频率与字数",
   conversation_feature_level: "对话能力档位",
@@ -105,7 +105,7 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     tier: "essential",
     anchorId: "llm-web-search",
     keys: ["web_search_api_url", "tavily_api_key"],
-    hint: "供 web.search 调用。两项都填才会真正联网；留空时群里搜网页会如实说搜不了。",
+    hint: "群里「搜一下」用。两项都填才联网；点字段旁「？」看推荐填法。",
   },
   {
     title: "学习闭环",

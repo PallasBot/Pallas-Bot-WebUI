@@ -105,14 +105,14 @@ export default function AiToolsPage() {
         <CardContent className="space-y-3">
           {hasWebSearch ? (
             <p className="rounded-md border border-dashed px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              联网搜索（web.search）的接口地址与密钥在{" "}
+              联网搜索密钥与地址在{" "}
               <Link
                 to="/ai/config/dialogue?panel=form"
                 className="text-primary underline-offset-2 hover:underline"
               >
-                AI 配置 · 对话 · 策略
-              </Link>{" "}
-              的「联网搜索」分组。两项都填后才会真正搜网页。
+                AI 配置 · 对话 · 策略 → 联网搜索
+              </Link>
+              （字段旁「？」有推荐填法）。
             </p>
           ) : null}
           <StateBlock loading={query.isLoading} error={query.error}>
@@ -127,9 +127,9 @@ export default function AiToolsPage() {
                     <Badge variant={item.eligible ? "default" : "outline"} className="h-5 px-1.5 text-[10px]">
                       {item.eligible ? "可用" : String(item.disabled_reason || "不可用")}
                     </Badge>
-                    {item.visibility && String(item.visibility) !== "visible" ? (
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                        {String(item.visibility)}
+                    {item.visibility && String(item.visibility) === "deferred" ? (
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]" title="说到触发词才带上">
+                        触发才带
                       </Badge>
                     ) : null}
                   </div>

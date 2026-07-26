@@ -44,7 +44,12 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次 LLM 对话可注入的上下文字符上限。" },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
-  { value: "tools", label: "工具", icon: Wrench, lead: "工具目录与触发说法；联网密钥在「策略 → 联网搜索」。" },
+  {
+    value: "tools",
+    label: "工具",
+    icon: Wrench,
+    lead: "工具目录、触发说法，以及「相关即带 / 触发才带」；联网密钥在「策略 → 联网搜索」。",
+  },
 ];
 
 const MODE_OPTIONS = [
