@@ -95,8 +95,22 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
     if (!draft) return null;
     return {
       backend: draft.backend,
-      postgres: draft.postgres,
-      mongo: draft.mongo,
+      postgres: {
+        host: draft.postgres.host,
+        port: draft.postgres.port,
+        user: draft.postgres.user,
+        password: draft.postgres.password,
+        db: draft.postgres.db,
+        auto_create_db: draft.postgres.auto_create_db,
+      },
+      mongo: {
+        host: draft.mongo.host,
+        port: draft.mongo.port,
+        user: draft.mongo.user,
+        password: draft.mongo.password,
+        db: draft.mongo.db,
+        auth_source: draft.mongo.auth_source,
+      },
       force,
     };
   }
@@ -207,7 +221,7 @@ export default function DatabaseBackendPanel({ onMessage }: Props) {
               {
                 id: "mongodb" as const,
                 title: "MongoDB",
-                desc: "3.x 遗留后端",
+                desc: "文档型数据库",
                 icon: Server,
               },
             ] as const
