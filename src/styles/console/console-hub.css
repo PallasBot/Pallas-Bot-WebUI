@@ -1001,6 +1001,32 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   gap: var(--chrome-tools-cluster-gap, 0.375rem);
 }
 
+/* 右侧操作簇钉在可视区右端：左侧筛选可横滑，保存/刷新始终可见 */
+.console-hub-page__chrome-row > .chrome-tools__trailing {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  background: var(--bg-card);
+  box-shadow: -10px 0 12px -10px color-mix(in srgb, var(--foreground) 18%, transparent);
+}
+
+/* 长配置页：只钉工具条（标题滚走）；滚动容器须为祖先 shell__main-inner */
+.chrome-tools.chrome-tools--sticky,
+.console-hub-page__chrome-tools.chrome-tools--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow:
+    0 8px 16px -12px color-mix(in srgb, var(--foreground) 22%, transparent),
+    0 1px 0 color-mix(in srgb, var(--border) 70%, transparent);
+}
+
 .console-hub-page__chrome-row:hover,
 .console-hub-page__chrome-row:focus-within {
   scrollbar-width: thin;
@@ -1218,12 +1244,93 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
   overflow: hidden;
 }
 
-/* Bot 账号 Select：触发器隐藏账号后缀，下拉仍显示完整「昵称（账号）」 */
+/*
+ * Bot 账号 Select：按内容收窄（勿固定 9rem，否则短昵称尾部大留白）。
+ * 覆盖通用 combobox max-width:12rem，以及 SelectTrigger 的 justify-between / span flex-1。
+ */
+.chrome-tools button[role="combobox"].bot-acct-sel,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel,
+button[role="combobox"].bot-acct-sel {
+  width: auto;
+  min-width: 4.5rem;
+  max-width: 9rem;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  overflow: hidden;
+  padding-left: 10px;
+  padding-right: 0.45rem;
+}
+
+/* 触发器隐藏账号后缀，下拉仍显示完整「昵称（账号）」 */
 button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
   display: none;
 }
 
-/* SelectValue：grid 垂直居中 + 省略；勿用 block（会让图标/文字偏基线） */
+.chrome-tools button[role="combobox"].bot-acct-sel > span,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > span,
+button[role="combobox"].bot-acct-sel > span {
+  display: grid;
+  align-items: center;
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: left;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chrome-tools button[role="combobox"].bot-acct-sel > svg,
+.console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > svg,
+button[role="combobox"].bot-acct-sel > svg {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* 好友/群聊等紧凑分区：完全按内容宽度，不设固定 max-width */
+.chrome-tools button[role="combobox"].chrome-section-compact-sel,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  overflow: visible;
+  padding-left: 0.5rem;
+  padding-right: 0.35rem;
+}
+
+.chrome-tools button[role="combobox"].chrome-section-compact-sel > span,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel > span {
+  display: flex !important;
+  align-items: center;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.chrome-tools button[role="combobox"].chrome-section-compact-sel > span > *,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel > span > * {
+  min-width: auto !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.chrome-tools button[role="combobox"].chrome-section-compact-sel svg,
+.console-hub-page__chrome-tools button[role="combobox"].chrome-section-compact-sel svg {
+  display: block !important;
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* SelectValue：grid 垂直居中 + 横向省略；行高勿用 1（CJK 易被纵向裁切） */
 .chrome-tools button[role="combobox"] > span,
 .console-hub-page__chrome-tools button[role="combobox"] > span {
   display: grid;
@@ -1231,9 +1338,10 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
   height: 100%;
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   text-align: left;
-  line-height: 1;
+  line-height: 1.25;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1241,7 +1349,8 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
 .chrome-tools button[role="combobox"] > span > *,
 .console-hub-page__chrome-tools button[role="combobox"] > span > * {
   min-width: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -27,7 +27,8 @@ const SECTION_ICONS: Record<AiConfigSectionId, LucideIcon> = {
 };
 
 /**
- * AI 配置工具条：选择分段 Select | 段内 middle | 搜索? | trailing | 刷新。
+ * AI 配置工具条：选择分段 Select | 段内 middle | 搜索? | trailing（保存/测试）| 刷新。
+ * 有分区筛选 → 刷新跟工具条；sticky 竖钉（标题可滚走）。
  * middle 直接进 chrome-row（与协议页一致），勿再包 CLUSTER。
  */
 export default function AiConfigChromeTools({
@@ -57,11 +58,10 @@ export default function AiConfigChromeTools({
   const refresh = slots.onRefresh ?? onRefresh;
   const currentMeta = AI_CONFIG_SECTIONS.find((s) => s.id === section);
   const currentLabel = currentMeta?.label ?? "分段";
-  const SectionIcon = SECTION_ICONS[section] ?? Layers;
 
   return (
-    <ChromeTools className={className}>
-      <ChromeField label="选择" icon={SectionIcon} className="shrink-0">
+    <ChromeTools sticky className={className}>
+      <ChromeField label="选择" icon={Layers} className="shrink-0">
         <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
           <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue placeholder="选择">{currentLabel}</SelectValue>

@@ -15,7 +15,6 @@ import {
   snowlumaManagedWebuiPassword,
   snowlumaNovncPasswordHint,
   snowlumaRuntimeWebuiPassword,
-  yn,
 } from "@/utils/protocolLinks";
 import {
   protocolApiErrorMessage,
@@ -36,7 +35,10 @@ import {
   protocolUpdateAccountConfigs,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
-import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import CopyIconButton from "@/components/CopyIconButton";
+import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
+import FormSectionDivider from "@/components/config/FormSectionDivider";
+import SettingsFormField from "@/components/config/SettingsFormField";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import SegTabs from "@/components/SegTabs";
 import UiInput from "@/components/ui/UiInput";
@@ -49,11 +51,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { protocolBackendDisplayName, protocolRuntimeVersionText } from "@/utils/protocolUi";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { Cable, Server, Tag } from "lucide-react";
+import {
+  protocolAccountIsLinuxDocker,
+  protocolBackendDisplayName,
+  protocolRuntimeModeLabel,
+  protocolRuntimeVersionText,
+} from "@/utils/protocolUi";
 
 export type ProtocolAccountTab = "overview" | "settings";
+
+export type ProtocolAccountHeaderProfile = {
+  displayName: string;
+  qq: string;
+  backendLabel: string;
+  runtimeModeLabel: string;
+  processRunning: boolean;
+  connected: boolean;
+};
 
 export type ProtocolAccountWorkspaceHandle = {
   saveSettings: () => Promise<void>;
@@ -61,6 +76,7 @@ export type ProtocolAccountWorkspaceHandle = {
   loadBusy: boolean;
   pageTitle: string;
   statusLine: string;
+  headerProfile: ProtocolAccountHeaderProfile;
 };
 
 const PROTOCOL_LOG_QR_LINE_RE = /^[\s\u2580-\u259F]+$/u;
@@ -146,6 +162,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const [wsToken, setWsToken] = useState("");
     const [targetBackend, setTargetBackend] = useState<"napcat" | "snowluma">("napcat");
     const [napcatDockerImage, setNapcatDockerImage] = useState("");
+    const [snowlumaDockerImage, setSnowlumaDockerImage] = useState("");
     const [bypassEnabled, setBypassEnabled] = useState(false);
     const [runtimeMode, setRuntimeMode] = useState<"new" | "existing">("new");
     const [runtimeId, setRuntimeId] = useState("");
@@ -165,14 +182,31 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
     const pageTitle = useMemo(() => {
       const name = (account?.display_name || "").trim();
-      return name ? `账号 ${accountId} · ${name}` : `账号 ${accountId}`;
+      return name || `账号 ${accountId}`;
     }, [account, accountId]);
+
+    const isLinuxDocker = protocolAccountIsLinuxDocker(account as Record<string, unknown> | null);
+
+    const headerProfile = useMemo((): ProtocolAccountHeaderProfile => {
+      const qq = String(account?.qq ?? accountId);
+      const row = (account ?? {}) as Record<string, unknown>;
+      return {
+        displayName: pageTitle,
+        qq,
+        backendLabel: account ? protocolBackendDisplayName(account) : "—",
+        runtimeModeLabel: account ? protocolRuntimeModeLabel(row) : "—",
+        processRunning: account?.process_running === true,
+        connected: account?.connected === true,
+      };
+    }, [account, accountId, pageTitle]);
 
     const statusLine = useMemo(() => {
       const a = account;
       if (!a) return "加载中…";
       if (a.process_running) {
-        let s = `运行中 · PID ${a.pid ?? "—"}`;
+        let s = "运行中";
+        if (!isLinuxDocker && a.pid != null) s += ` · PID ${a.pid}`;
+        else if (isLinuxDocker) s += " · 容器";
         if (a.connected) s += " · 已连接";
         return s;
       }
@@ -180,25 +214,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       if (a.launch_ready) return "已停止";
       const issues = Array.isArray(a.launch_issues) ? a.launch_issues.join("; ") : "";
       return issues || "未就绪";
-    }, [account]);
-
-    const statusMetrics = useMemo(
-      () => [
-        { label: "协议", value: account ? protocolBackendDisplayName(account) : "—", hint: "" },
-        { label: "QQ", value: String(account?.qq ?? accountId), hint: "" },
-        {
-          label: "已连接",
-          value: yn(account?.connected),
-          hint: account?.connected ? "Bot 侧 WS 已连上" : "尚未建立连接",
-        },
-        {
-          label: "进程",
-          value: yn(account?.process_running),
-          hint: account?.process_running && account.pid != null ? `PID ${account.pid}` : "协议端进程状态",
-        },
-      ],
-      [account, accountId],
-    );
+    }, [account, isLinuxDocker]);
 
     const isSnowluma = String(account?.protocol_backend ?? "").toLowerCase() === "snowluma";
     const isAccountConnected = account?.connected === true;
@@ -210,7 +226,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         : qrHint || "加载中…";
 
     const showQrImage = !isAccountConnected && qrExists && Boolean(qrImageUrl);
-    const isSnowlumaDocker = account?.snowluma_linux_docker === true;
+    const isSnowlumaDocker = isLinuxDocker && isSnowluma;
     const snowlumaNovncHref = accountSnowlumaNovncHref(account, resolvedSystem);
     const snowlumaManagedPassword = snowlumaManagedWebuiPassword(account);
     const snowlumaInitialPassword = (() => {
@@ -233,66 +249,67 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     const webUiHref = account ? accountWebUiHref(account, resolvedSystem) : null;
     const wsPortLabel = account ? accountConnectedWsPortLabel(account) : "—";
     const runtimeVersion = account ? protocolRuntimeVersionText(account) : "—";
-    const nativeWebUiLabel = isSnowluma ? "SnowLuma WebUI" : "NapCat WebUI";
+    const nativeWebUiLabel = "原生 WebUI";
+    const nativeWebUiAuthNote = String(account?.native_webui_auth_note ?? "").trim();
 
-    const overviewDetails = useMemo(() => {
+    const overviewFacts = useMemo(() => {
+      const rows: Array<{ label: string; value: string; mono: boolean }> = [
+        { label: "实例名", value: (account?.display_name || "").trim() || "—", mono: false },
+      ];
+      if (!isLinuxDocker) {
+        rows.push({ label: "PID", value: account?.pid != null ? String(account.pid) : "—", mono: true });
+      }
+      rows.push(
+        { label: "版本", value: runtimeVersion || "—", mono: false },
+        { label: "WS 端口", value: wsPortLabel || "—", mono: true },
+      );
+      return rows;
+    }, [account?.display_name, account?.pid, isLinuxDocker, runtimeVersion, wsPortLabel]);
+
+    const overviewSecrets = useMemo(() => {
       const rows: Array<{
         label: string;
-        value: string;
-        href?: string | null;
-        copyText?: string;
-        hint?: string;
-      }> = [
-        { label: "实例名", value: (account?.display_name || "").trim() || "—" },
-        { label: "PID", value: account?.pid != null ? String(account.pid) : "—" },
-        { label: "版本", value: runtimeVersion || "—" },
-        { label: "WS 端口", value: wsPortLabel || "—" },
-        {
-          label: "原生 WebUI",
-          value: webUiHref
-            ? nativeWebUiLabel
-            : account?.webui_port != null
-              ? `端口 ${account.webui_port}`
-              : "—",
-          href: webUiHref,
-          hint: String(account?.native_webui_auth_note ?? "").trim() || undefined,
-        },
-      ];
-      if (isSnowluma) {
+        secret: string;
+        copyText: string;
+        plain?: boolean;
+      }> = [];
+      if (!isSnowluma) return rows;
+      if (snowlumaManagedPassword) {
+        rows.push({
+          label: "托管密码",
+          secret: snowlumaManagedPassword,
+          copyText: snowlumaManagedPassword,
+        });
+      }
+      if (snowlumaInitialPassword) {
+        rows.push({
+          label: "初始密码",
+          secret: snowlumaInitialPassword,
+          copyText: snowlumaInitialPassword,
+        });
+      }
+      if (snowlumaNovncHref) {
+        rows.push({
+          label: "VNC 密码",
+          secret: snowlumaNovncHint,
+          copyText: snowlumaNovncHint,
+        });
+      } else if (isSnowlumaDocker) {
         rows.push({
           label: "SL 桌面",
-          value: snowlumaNovncHref ? "打开 noVNC" : "未发布端口",
-          href: snowlumaNovncHref,
-          hint: snowlumaNovncHref ? `VNC 口令 ${snowlumaNovncHint}` : undefined,
+          secret: "未发布 noVNC 端口",
+          copyText: "",
+          plain: true,
         });
-        if (snowlumaManagedPassword) {
-          rows.push({
-            label: "托管口令",
-            value: `${snowlumaWebuiUser} / ${snowlumaManagedPassword}`,
-            copyText: `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
-          });
-        }
-        if (snowlumaInitialPassword) {
-          rows.push({
-            label: "初始口令",
-            value: snowlumaInitialPassword,
-            copyText: snowlumaInitialPassword,
-          });
-        }
       }
       return rows;
     }, [
-      account,
       isSnowluma,
-      nativeWebUiLabel,
-      runtimeVersion,
+      isSnowlumaDocker,
       snowlumaInitialPassword,
       snowlumaManagedPassword,
       snowlumaNovncHint,
       snowlumaNovncHref,
-      snowlumaWebuiUser,
-      webUiHref,
-      wsPortLabel,
     ]);
 
     const logSegments = useMemo(() => segmentProtocolLogLines(logs), [logs]);
@@ -404,16 +421,19 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
               ? "snowluma"
               : "napcat";
           const nextDockerImage = String(row.docker_image ?? "");
+          const nextSnowlumaDockerImage = String(row.snowluma_docker_image ?? "");
           const nextRuntimeId = String(row.snowluma_runtime_id ?? "");
           const nextRuntimeMode: "new" | "existing" = nextRuntimeId ? "existing" : "new";
           setTargetBackend(nextBackend);
           setNapcatDockerImage(nextDockerImage);
+          setSnowlumaDockerImage(nextSnowlumaDockerImage);
           setRuntimeId(nextRuntimeId);
           setRuntimeMode(nextRuntimeMode);
           setSavedRuntimeSettings(
             JSON.stringify({
               protocol_backend: nextBackend,
               docker_image: nextDockerImage.trim(),
+              snowluma_docker_image: nextSnowlumaDockerImage.trim(),
               runtime_mode: nextRuntimeMode,
               runtime_id: nextRuntimeId.trim(),
             }),
@@ -438,6 +458,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       return JSON.stringify({
         protocol_backend: targetBackend,
         docker_image: napcatDockerImage.trim(),
+        snowluma_docker_image: snowlumaDockerImage.trim(),
         runtime_mode: runtimeMode,
         runtime_id: runtimeId.trim(),
       });
@@ -456,9 +477,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     function validateRuntimeSettings(): string | null {
       if (targetBackend !== "snowluma" || runtimeMode !== "existing") return null;
       const selectedRuntimeId = runtimeId.trim();
-      if (!selectedRuntimeId) return "请选择已有 SnowLuma Runtime";
+      if (!selectedRuntimeId) return "请选择 Runtime";
       if (!snowlumaRuntimes.some((runtime) => runtime.id === selectedRuntimeId)) {
-        return "所选 SnowLuma Runtime 不存在或已被删除";
+        return "所选 Runtime 不存在或已被删除";
       }
       return null;
     }
@@ -532,7 +553,11 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         if (runtimeChanged) {
           await protocolSwitchAccountRuntime(mountUrl, accountId, {
             protocol_backend: targetBackend,
-            docker_image: napcatDockerImage.trim() || undefined,
+            docker_image:
+              targetBackend === "napcat" ? napcatDockerImage.trim() || undefined : undefined,
+            ...(targetBackend === "snowluma"
+              ? { snowluma_docker_image: snowlumaDockerImage.trim() }
+              : {}),
             runtime_mode: runtimeMode,
             runtime_id: runtimeId.trim() || undefined,
           });
@@ -620,6 +645,16 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       notify(ok ? `${label}已复制` : "复制失败", ok ? "ok" : "err");
     }
 
+    async function copyProcessLogs() {
+      const text = logs.join("\n").trim();
+      if (!text) {
+        notify("暂无日志可复制", "warn");
+        return;
+      }
+      const ok = await copyTextToClipboard(text);
+      notify(ok ? "日志已复制" : "复制失败", ok ? "ok" : "err");
+    }
+
     const saveSettingsRef = useRef(saveSettings);
     saveSettingsRef.current = saveSettings;
 
@@ -631,8 +666,9 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         loadBusy,
         pageTitle,
         statusLine,
+        headerProfile,
       }),
-      [saveBusy, loadBusy, pageTitle, statusLine],
+      [saveBusy, loadBusy, pageTitle, statusLine, headerProfile],
     );
 
     useEffect(() => {
@@ -697,7 +733,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                       aria-selected={on}
                       variant={on ? "secondary" : "ghost"}
                       className={cn(
-                        "h-8 min-w-[4.5rem] px-3 text-xs",
+                        "h-8 min-w-[4.5rem] px-3 text-xs max-[560px]:h-10 max-[560px]:min-w-0 max-[560px]:flex-1 max-[560px]:text-sm",
                         on ? "font-medium" : "text-muted-foreground",
                       )}
                       onClick={() => onActiveTabChange(tab.id)}
@@ -724,184 +760,179 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
 
         {activeTab === "overview" ? (
           <section className="protocol-account-workspace__section" aria-label="账号概览">
-            <dl className="protocol-account-workspace__meta">
-              {statusMetrics.map((metric) => (
-                <div key={metric.label} className="protocol-account-workspace__meta-item">
-                  <dt className="protocol-account-workspace__meta-label">{metric.label}</dt>
-                  <dd className="protocol-account-workspace__meta-value" title={metric.hint || undefined}>
-                    {metric.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
             {isDialog ? (
-              <>
-                <div className="protocol-account-workspace__toolbar">
-                  <div className="protocol-account-workspace__actions">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={actionBusy}
-                      onClick={() => void runAction("start")}
-                    >
-                      启动
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={actionBusy}
-                      onClick={() => void runAction("stop")}
-                    >
-                      停止
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={actionBusy}
-                      onClick={() => void runAction("restart")}
-                    >
-                      重启
-                    </Button>
-                    {isSnowluma ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={injectBusy}
-                        onClick={() => void injectHook()}
-                      >
-                        注入 Hook
-                      </Button>
-                    ) : null}
-                  </div>
-                  <div className="protocol-account-workspace__actions protocol-account-workspace__actions--aux">
-                    {webUiHref ? (
-                      <Button type="button" size="sm" variant="secondary" asChild>
-                        <a href={webUiHref} target="_blank" rel="noopener noreferrer">
-                          {nativeWebUiLabel}
-                        </a>
-                      </Button>
-                    ) : null}
-                    {snowlumaNovncHref ? (
-                      <Button type="button" size="sm" variant="secondary" asChild>
-                        <a href={snowlumaNovncHref} target="_blank" rel="noopener noreferrer">
-                          SL 桌面
-                        </a>
-                      </Button>
-                    ) : null}
-                    {!showQrImage ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={qrRefreshBusy}
-                        onClick={() => void refreshQrcode(true)}
-                      >
-                        {qrRefreshBusy ? "恢复中…" : "恢复登录"}
-                      </Button>
-                    ) : null}
-                  </div>
-                  <div className="protocol-account-workspace__toolbar-end">
-                    <Button type="button" size="sm" variant="destructive" onClick={openDeleteModal}>
-                      删除账号
-                    </Button>
-                  </div>
-                </div>
-
-                {showQrImage ? (
-                  <div className="protocol-account-workspace__qr-panel">
-                    <div className="protocol-account-workspace__tile-hd protocol-account-workspace__tile-hd--row">
-                      <div className="min-w-0">
-                        <h3 className="protocol-account-workspace__block-title">扫码登录</h3>
-                        <p className="muted protocol-account-workspace__block-lead">{displayQrHint}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={qrRefreshBusy}
-                        onClick={() => void refreshQrcode(true)}
-                      >
-                        {qrRefreshBusy ? "恢复中…" : "恢复登录"}
-                      </Button>
-                    </div>
-                    <div className="protocol-account-workspace__qr-body">
-                      <img src={qrImageUrl} alt="登录二维码" className="protocol-account-workspace__qr-img" />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="protocol-account-workspace__overview-main">
-                  <dl className="protocol-account-workspace__detail-grid" aria-label="账号详情">
-                    {overviewDetails.map((row) => (
-                      <div key={row.label} className="protocol-account-workspace__detail-cell">
-                        <dt>{row.label}</dt>
-                        <dd>
-                          <div className="protocol-account-workspace__detail-main">
-                            {row.href ? (
-                              <a
-                                className="protocol-account-workspace__extra-link"
-                                href={row.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {row.value}
-                              </a>
-                            ) : (
-                              <span className={row.copyText ? "mono" : undefined}>{row.value}</span>
-                            )}
-                            {row.copyText ? (
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
-                                onClick={() => void copySnowlumaSecret(row.label, row.copyText!)}
-                              >
-                                复制
-                              </button>
-                            ) : null}
+              <div className="protocol-account-workspace__overview">
+                <div className="protocol-account-workspace__overview-body">
+                  <div className="protocol-account-workspace__overview-main">
+                    {showQrImage ? (
+                      <div className="protocol-account-workspace__qr-panel">
+                        <div className="protocol-account-workspace__tile-hd protocol-account-workspace__tile-hd--row">
+                          <div className="min-w-0">
+                            <h3 className="protocol-account-workspace__block-title">扫码登录</h3>
+                            <p className="muted protocol-account-workspace__block-lead">{displayQrHint}</p>
                           </div>
-                          {row.hint ? (
-                            <div className="muted protocol-account-workspace__detail-hint">{row.hint}</div>
-                          ) : null}
-                        </dd>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={qrRefreshBusy}
+                            onClick={() => void refreshQrcode(true)}
+                          >
+                            {qrRefreshBusy ? "恢复中…" : "恢复登录"}
+                          </Button>
+                        </div>
+                        <div className="protocol-account-workspace__qr-body">
+                          <img src={qrImageUrl} alt="登录二维码" className="protocol-account-workspace__qr-img" />
+                        </div>
                       </div>
-                    ))}
-                  </dl>
+                    ) : null}
 
-                  <div className="protocol-account-workspace__log-block">
-                    <div className="protocol-account-workspace__tile-hd protocol-account-workspace__tile-hd--row">
-                      <h3 className="protocol-account-workspace__block-title">进程日志</h3>
-                      <span className="muted protocol-account-workspace__log-meta">每 5 秒刷新</span>
-                    </div>
-                    <pre
-                      ref={logPreRef}
-                      className={
-                        logs.length
-                          ? "protocol-account-workspace__log-pre"
-                          : "protocol-account-workspace__log-pre protocol-account-workspace__log-pre--empty"
-                      }
-                      onScroll={onLogPreScroll}
-                    >
-                      {!logs.length
-                        ? "暂无进程输出"
-                        : logSegments.map((seg, i) => (
-                            <span key={i}>
-                              {seg.kind === "qr" ? (
-                                <span className="protocol-account-workspace__log-qr">{seg.text}</span>
-                              ) : (
-                                seg.text
-                              )}
-                              {i < logSegments.length - 1 ? "\n" : ""}
-                            </span>
+                    <dl className="protocol-account-workspace__detail-grid" aria-label="账号详情">
+                      {overviewFacts.map((row) => (
+                        <div
+                          key={row.label}
+                          className={
+                            row.mono
+                              ? "protocol-account-workspace__detail-cell protocol-account-workspace__detail-cell--mono"
+                              : "protocol-account-workspace__detail-cell"
+                          }
+                        >
+                          <dt>{row.label}</dt>
+                          <dd title={row.value}>{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    {overviewSecrets.length ? (
+                      <>
+                        <ul className="protocol-account-workspace__secrets" aria-label="访问凭证">
+                          {overviewSecrets.map((row) => (
+                            <li key={row.label} className="protocol-account-workspace__secret-row">
+                              <span className="protocol-account-workspace__secret-label">{row.label}</span>
+                              <div className="protocol-account-workspace__secret-main">
+                                {row.plain ? (
+                                  <span className="muted protocol-account-workspace__secret-plain">
+                                    {row.secret}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="password"
+                                    readOnly
+                                    autoComplete="off"
+                                    className="protocol-account-workspace__secret-input mono"
+                                    value={row.secret}
+                                    aria-label={row.label}
+                                    tabIndex={-1}
+                                  />
+                                )}
+                                {row.copyText ? (
+                                  <CopyIconButton
+                                    label={`复制${row.label}`}
+                                    className="protocol-account-workspace__copy-btn"
+                                    onClick={() => void copySnowlumaSecret(row.label, row.copyText)}
+                                  />
+                                ) : null}
+                              </div>
+                            </li>
                           ))}
-                    </pre>
+                        </ul>
+                        <p className="protocol-account-workspace__secrets-note">
+                          托管密码用于原生 WebUI；VNC 密码用于 SL 桌面。点击复制即可粘贴。
+                        </p>
+                      </>
+                    ) : null}
                   </div>
+
+                  <aside className="protocol-account-workspace__overview-aside" aria-label="账号操作">
+                    <div className="protocol-account-workspace__aside-group">
+                      <p className="protocol-account-workspace__aside-label">生命周期</p>
+                      <div className="protocol-account-workspace__aside-actions">
+                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("start")}>
+                          启动
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("stop")}>
+                          停止
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" disabled={actionBusy} onClick={() => void runAction("restart")}>
+                          重启
+                        </Button>
+                        {isSnowluma ? (
+                          <Button type="button" size="sm" variant="outline" disabled={injectBusy} onClick={() => void injectHook()}>
+                            注入
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="protocol-account-workspace__aside-group">
+                      <p className="protocol-account-workspace__aside-label">打开</p>
+                      <div className="protocol-account-workspace__aside-actions">
+                        {webUiHref ? (
+                          <Button type="button" size="sm" variant="secondary" asChild>
+                            <a href={webUiHref} target="_blank" rel="noopener noreferrer" title={nativeWebUiAuthNote || undefined}>
+                              {nativeWebUiLabel}
+                            </a>
+                          </Button>
+                        ) : null}
+                        {snowlumaNovncHref ? (
+                          <Button type="button" size="sm" variant="secondary" asChild>
+                            <a href={snowlumaNovncHref} target="_blank" rel="noopener noreferrer" title={`VNC 密码 ${snowlumaNovncHint}`}>
+                              SL 桌面
+                            </a>
+                          </Button>
+                        ) : null}
+                        {!showQrImage ? (
+                          <Button type="button" size="sm" disabled={qrRefreshBusy} onClick={() => void refreshQrcode(true)}>
+                            {qrRefreshBusy ? "恢复中…" : "恢复登录"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="protocol-account-workspace__aside-danger">
+                      <Button type="button" size="sm" variant="destructive" onClick={openDeleteModal}>
+                        删除账号
+                      </Button>
+                    </div>
+                  </aside>
                 </div>
-              </>
+
+                <div className="protocol-account-workspace__log-block protocol-account-workspace__log-block--full">
+                  <div className="protocol-account-workspace__tile-hd protocol-account-workspace__tile-hd--row">
+                    <h3 className="protocol-account-workspace__block-title">进程日志</h3>
+                    <div className="protocol-account-workspace__log-tools">
+                      <span className="muted protocol-account-workspace__log-meta">每 5 秒刷新</span>
+                      <CopyIconButton
+                        label="复制日志"
+                        className="protocol-account-workspace__copy-btn"
+                        onClick={() => void copyProcessLogs()}
+                      />
+                    </div>
+                  </div>
+                  <pre
+                    ref={logPreRef}
+                    className={
+                      logs.length
+                        ? "protocol-account-workspace__log-pre"
+                        : "protocol-account-workspace__log-pre protocol-account-workspace__log-pre--empty"
+                    }
+                    onScroll={onLogPreScroll}
+                  >
+                    {!logs.length
+                      ? "暂无进程输出"
+                      : logSegments.map((seg, i) => (
+                          <span key={i}>
+                            {seg.kind === "qr" ? (
+                              <span className="protocol-account-workspace__log-qr">{seg.text}</span>
+                            ) : (
+                              seg.text
+                            )}
+                            {i < logSegments.length - 1 ? "\n" : ""}
+                          </span>
+                        ))}
+                  </pre>
+                </div>
+              </div>
+
             ) : (
               <>
                 <div className="ui-card protocol-account-workspace__panel ui-card--glass">
@@ -947,7 +978,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             disabled={injectBusy}
                             onClick={() => void injectHook()}
                           >
-                            注入 Hook
+                            注入
                           </button>
                         ) : null}
                         {webUiHref ? (
@@ -996,7 +1027,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                               href={snowlumaNovncHref}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title={`VNC 口令 ${snowlumaNovncHint}`}
+                              title={`VNC 密码 ${snowlumaNovncHint}`}
                             >
                               打开 SL 桌面（noVNC）
                             </a>
@@ -1006,35 +1037,48 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                             </span>
                           ) : null}
                           {snowlumaManagedPassword ? (
-                            <p className="protocol-account-workspace__extra-item muted">
-                              托管口令：
-                              <code className="mono">{snowlumaWebuiUser}</code> /
-                              <code className="mono">{snowlumaManagedPassword}</code>
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
+                            <p className="protocol-account-workspace__extra-item muted protocol-account-workspace__secret-inline">
+                              <span>托管密码：</span>
+                              <span className="mono">{snowlumaWebuiUser}</span>
+                              <span>/</span>
+                              <input
+                                type="password"
+                                readOnly
+                                autoComplete="off"
+                                className="protocol-account-workspace__secret-input mono"
+                                value={snowlumaManagedPassword}
+                                aria-label="托管密码"
+                                tabIndex={-1}
+                              />
+                              <CopyIconButton
+                                label="复制托管密码"
+                                className="protocol-account-workspace__copy-btn"
                                 onClick={() =>
                                   void copySnowlumaSecret(
-                                    "托管 WebUI 口令",
+                                    "托管 WebUI 密码",
                                     `${snowlumaWebuiUser}/${snowlumaManagedPassword}`,
                                   )
                                 }
-                              >
-                                复制
-                              </button>
+                              />
                             </p>
                           ) : null}
                           {snowlumaInitialPassword ? (
-                            <p className="protocol-account-workspace__extra-item muted">
-                              初始口令：
-                              <code className="mono">{snowlumaInitialPassword}</code>
-                              <button
-                                type="button"
-                                className="btn btn--ghost btn--sm protocol-account-workspace__copy-btn"
-                                onClick={() => void copySnowlumaSecret("初始口令", snowlumaInitialPassword)}
-                              >
-                                复制
-                              </button>
+                            <p className="protocol-account-workspace__extra-item muted protocol-account-workspace__secret-inline">
+                              <span>初始密码：</span>
+                              <input
+                                type="password"
+                                readOnly
+                                autoComplete="off"
+                                className="protocol-account-workspace__secret-input mono"
+                                value={snowlumaInitialPassword}
+                                aria-label="初始密码"
+                                tabIndex={-1}
+                              />
+                              <CopyIconButton
+                                label="复制初始密码"
+                                className="protocol-account-workspace__copy-btn"
+                                onClick={() => void copySnowlumaSecret("初始密码", snowlumaInitialPassword)}
+                              />
                             </p>
                           ) : null}
                         </div>
@@ -1110,194 +1154,21 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
           <section className="protocol-account-workspace__section" aria-label="账号设置">
             {isDialog ? (
               <div className="protocol-account-workspace__settings-stack">
-                <PluginConfigFormSection
-                  title="实例"
-                  subtitle="控制台展示与协议端内置 WebUI。"
-                  icon={Tag}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <label className="field">
-                    <span className="field__label">实例名</span>
-                    <span className="field__hint muted">控制台与列表中的展示称呼。</span>
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      value={displayName}
-                      onValueChange={setDisplayName}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="field__label">内置 WebUI 端口</span>
-                    <span className="field__hint muted">协议端自带 Web 控制台监听端口。</span>
-                    <UiInput
-                      type="number"
-                      min={1}
-                      max={65535}
-                      value={webuiPort}
-                      onValueChange={setWebuiPort}
-                    />
-                  </label>
-                </PluginConfigFormSection>
-
-                <PluginConfigFormSection
-                  title="协议与运行时"
-                  subtitle="切换到 SnowLuma 时保留原 NapCat 数据目录。"
-                  icon={Server}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <label className="field">
-                    <span className="field__label">协议实现</span>
-                    <span className="field__hint muted">保存后按所选实现重启协议进程。</span>
-                    <Select
-                      value={targetBackend}
-                      onValueChange={(v) =>
-                        setTargetBackend(v === "snowluma" ? "snowluma" : "napcat")
-                      }
-                    >
-                      <SelectTrigger className="w-full" aria-label="协议实现">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="napcat">NapCat</SelectItem>
-                        <SelectItem value="snowluma">SnowLuma</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  {targetBackend === "napcat" ? (
-                    <>
-                      <label className="field">
-                        <span className="field__label">NapCat Docker 镜像</span>
-                        <span className="field__hint muted">留空时使用服务端默认镜像。</span>
-                        <UiInput
-                          type="text"
-                          autoComplete="off"
-                          placeholder="mlikiowa/napcat-docker:latest"
-                          value={napcatDockerImage}
-                          onValueChange={setNapcatDockerImage}
-                        />
-                      </label>
-                      <label className="field field--check field--full">
-                        <input
-                          type="checkbox"
-                          checked={bypassEnabled}
-                          onChange={(e) => setBypassEnabled(e.target.checked)}
-                        />
-                        <span>
-                          启用 NapCat bypass 总开关
-                          <span className="field__hint muted">关闭后不写入 NapCat bypass 配置。</span>
-                        </span>
-                      </label>
-                    </>
-                  ) : (
-                    <>
-                      <label className="field">
-                        <span className="field__label">SnowLuma Runtime 模式</span>
-                        <span className="field__hint muted">可新建独立 Runtime，或挂载到已有 Runtime。</span>
-                        <Select
-                          value={runtimeMode}
-                          onValueChange={(v) =>
-                            setRuntimeMode(v === "existing" ? "existing" : "new")
-                          }
-                        >
-                          <SelectTrigger className="w-full" aria-label="SnowLuma Runtime 模式">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">新建独立 Runtime</SelectItem>
-                            <SelectItem value="existing">挂载已有 Runtime</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </label>
-                      {runtimeMode === "existing" ? (
-                        <label className="field field--full">
-                          <span className="field__label">已有 SnowLuma Runtime</span>
-                          <span className="field__hint muted">选择要挂载的现有运行时。</span>
-                          <Select
-                            value={runtimeId || "__empty__"}
-                            onValueChange={(v) => setRuntimeId(v === "__empty__" ? "" : v)}
-                          >
-                            <SelectTrigger className="w-full" aria-label="已有 SnowLuma Runtime">
-                              <SelectValue placeholder="请选择已有 SnowLuma Runtime" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__empty__">请选择已有 SnowLuma Runtime</SelectItem>
-                              {snowlumaRuntimes.map((runtime) => (
-                                <SelectItem key={runtime.id} value={runtime.id}>
-                                  {runtime.id}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </label>
-                      ) : null}
-                    </>
-                  )}
-                </PluginConfigFormSection>
-
-                <PluginConfigFormSection
-                  title="连接"
-                  subtitle="Bot 侧 OneBot WebSocket 接入参数。"
-                  icon={Cable}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <label className="field field--full">
-                    <span className="field__label">WS 连接地址</span>
-                    <span className="field__hint muted">Bot 连接 OneBot WebSocket 的完整地址。</span>
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
-                      value={wsUrl}
-                      onValueChange={setWsUrl}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="field__label">连接名</span>
-                    <span className="field__hint muted">实例列表里显示的连接标识。</span>
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      value={wsName}
-                      onValueChange={setWsName}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="field__label">WS Token</span>
-                    <span className="field__hint muted">须与协议端鉴权配置一致。</span>
-                    <UiInput
-                      type="password"
-                      autoComplete="off"
-                      value={wsToken}
-                      onValueChange={setWsToken}
-                    />
-                  </label>
-                </PluginConfigFormSection>
-              </div>
-            ) : (
-              <div className="ui-card protocol-account-workspace__panel ui-card--glass">
-                <div className="ui-card__content">
-                  <div className="panel__hd panel__hd--split">
-                    <div>
-                      <h3 className="panel__title">连接与实例</h3>
-                      <p className="muted protocol-account-workspace__panel-lead">
-                        保存后将重启协议进程以使配置生效。
-                      </p>
-                    </div>
-                  </div>
-                  <div className="panel__bd protocol-account-workspace__form-grid">
-                    <label className="field">
-                      <span className="field__label">实例名</span>
-                      <span className="field__hint muted">控制台与列表中的展示称呼。</span>
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="实例" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
                       <UiInput
                         type="text"
                         autoComplete="off"
                         value={displayName}
                         onValueChange={setDisplayName}
                       />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">内置 WebUI 端口</span>
-                      <span className="field__hint muted">协议端自带 Web 控制台监听端口。</span>
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="原生 WebUI 端口"
+                      hint="协议端自带 Web 控制台监听端口。"
+                    >
                       <UiInput
                         type="number"
                         min={1}
@@ -1305,14 +1176,14 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         value={webuiPort}
                         onValueChange={setWebuiPort}
                       />
-                    </label>
-                    <div className="field field--full protocol-account-workspace__runtime-heading">
-                      <span className="field__label">协议与运行时</span>
-                      <span className="field__hint muted">切换到 SnowLuma 时保留原 NapCat 数据目录。</span>
-                    </div>
-                    <label className="field">
-                      <span className="field__label">协议实现</span>
-                      <span className="field__hint muted">保存后按所选实现重启协议进程。</span>
+                    </SettingsFormField>
+                  </div>
+                </div>
+
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="协议与运行时" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField label="协议实现" hint="保存后按所选实现重启协议进程。">
                       <Select
                         value={targetBackend}
                         onValueChange={(v) =>
@@ -1327,79 +1198,108 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           <SelectItem value="snowluma">SnowLuma</SelectItem>
                         </SelectContent>
                       </Select>
-                    </label>
+                    </SettingsFormField>
                     {targetBackend === "napcat" ? (
                       <>
-                        <label className="field">
-                          <span className="field__label">NapCat Docker 镜像</span>
-                          <span className="field__hint muted">留空时使用服务端默认镜像。</span>
-                          <UiInput
-                            type="text"
-                            autoComplete="off"
-                            placeholder="mlikiowa/napcat-docker:latest"
+                        <SettingsFormField
+                          label="NapCat Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
+                        >
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="napcat"
                             value={napcatDockerImage}
                             onValueChange={setNapcatDockerImage}
+                            placeholder="mlikiowa/napcat-docker:latest"
                           />
-                        </label>
-                        <label className="field field--check field--full">
-                          <input
-                            type="checkbox"
-                            checked={bypassEnabled}
-                            onChange={(e) => setBypassEnabled(e.target.checked)}
-                          />
-                          <span>
-                            启用 NapCat bypass 总开关
-                            <span className="field__hint muted">关闭后不写入 NapCat bypass 配置。</span>
-                          </span>
-                        </label>
+                        </SettingsFormField>
+                        <SettingsFormField
+                          className="field--full"
+                          label="启用 NapCat bypass 总开关"
+                          hint="关闭后不写入 NapCat bypass 配置。"
+                        >
+                          <label className="protocol-account-workspace__check">
+                            <input
+                              type="checkbox"
+                              checked={bypassEnabled}
+                              onChange={(e) => setBypassEnabled(e.target.checked)}
+                            />
+                            <span>{bypassEnabled ? "已启用" : "已关闭"}</span>
+                          </label>
+                        </SettingsFormField>
                       </>
                     ) : (
                       <>
-                        <label className="field">
-                          <span className="field__label">SnowLuma Runtime 模式</span>
-                          <span className="field__hint muted">可新建独立 Runtime，或挂载到已有 Runtime。</span>
+                        <SettingsFormField
+                          label="SnowLuma Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
+                        >
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="snowluma"
+                            value={snowlumaDockerImage}
+                            onValueChange={setSnowlumaDockerImage}
+                            placeholder="pallas/snowluma-auto-login:latest"
+                          />
+                        </SettingsFormField>
+                        <SettingsFormField
+                          label="Runtime 模式"
+                          hint="新建，或挂载到已有 Runtime。"
+                        >
                           <Select
                             value={runtimeMode}
                             onValueChange={(v) =>
                               setRuntimeMode(v === "existing" ? "existing" : "new")
                             }
                           >
-                            <SelectTrigger className="w-full" aria-label="SnowLuma Runtime 模式">
+                            <SelectTrigger className="w-full" aria-label="Runtime 模式">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="new">新建独立 Runtime</SelectItem>
-                              <SelectItem value="existing">挂载已有 Runtime</SelectItem>
+                              <SelectItem value="new">新建</SelectItem>
+                              <SelectItem value="existing">挂载已有</SelectItem>
                             </SelectContent>
                           </Select>
-                        </label>
+                        </SettingsFormField>
                         {runtimeMode === "existing" ? (
-                          <label className="field">
-                            <span className="field__label">已有 SnowLuma Runtime</span>
-                            <span className="field__hint muted">选择要挂载的现有运行时。</span>
+                          <SettingsFormField className="field--full" label="Runtime">
                             <Select
                               value={runtimeId || "__empty__"}
-                              onValueChange={(v) => setRuntimeId(v === "__empty__" ? "" : v)}
+                              onValueChange={(v) => {
+                                const nextId = v === "__empty__" ? "" : v;
+                                setRuntimeId(nextId);
+                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
+                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
+                              }}
                             >
-                              <SelectTrigger className="w-full" aria-label="已有 SnowLuma Runtime">
-                                <SelectValue placeholder="请选择已有 SnowLuma Runtime" />
+                              <SelectTrigger className="w-full" aria-label="Runtime">
+                                <SelectValue placeholder="选择 Runtime" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__empty__">请选择已有 SnowLuma Runtime</SelectItem>
+                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
                                 {snowlumaRuntimes.map((runtime) => (
                                   <SelectItem key={runtime.id} value={runtime.id}>
-                                    {runtime.id}
+                                    {runtime.display_name?.trim() || runtime.id}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                          </label>
+                          </SettingsFormField>
                         ) : null}
                       </>
                     )}
-                    <label className="field field--full">
-                      <span className="field__label">WS 连接地址</span>
-                      <span className="field__hint muted">Bot 连接 OneBot WebSocket 的完整地址。</span>
+                  </div>
+                </div>
+
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="连接" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField
+                      className="field--full"
+                      label="WS 连接地址"
+                      hint="Bot 连接 OneBot WebSocket 的完整地址。"
+                    >
                       <UiInput
                         type="text"
                         autoComplete="off"
@@ -1407,27 +1307,204 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                         value={wsUrl}
                         onValueChange={setWsUrl}
                       />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">连接名</span>
-                      <span className="field__hint muted">实例列表里显示的连接标识。</span>
+                    </SettingsFormField>
+                    <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
                       <UiInput
                         type="text"
                         autoComplete="off"
                         value={wsName}
                         onValueChange={setWsName}
                       />
-                    </label>
-                    <label className="field">
-                      <span className="field__label">WS Token</span>
-                      <span className="field__hint muted">须与协议端鉴权配置一致。</span>
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="WS Token"
+                      hint="须与协议端鉴权配置一致。"
+                      secret
+                    >
                       <UiInput
                         type="password"
                         autoComplete="off"
                         value={wsToken}
                         onValueChange={setWsToken}
                       />
-                    </label>
+                    </SettingsFormField>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="ui-card protocol-account-workspace__panel ui-card--glass">
+                <div className="ui-card__content">
+                  <div className="panel__hd panel__hd--split">
+                    <div>
+                      <h3 className="panel__title">连接与实例</h3>
+                      <p className="muted protocol-account-workspace__panel-lead">
+                        保存后将重启协议进程以使配置生效。
+                      </p>
+                    </div>
+                  </div>
+                  <div className="panel__bd protocol-account-workspace__form-grid">
+                    <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        value={displayName}
+                        onValueChange={setDisplayName}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="原生 WebUI 端口"
+                      hint="协议端自带 Web 控制台监听端口。"
+                    >
+                      <UiInput
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={webuiPort}
+                        onValueChange={setWebuiPort}
+                      />
+                    </SettingsFormField>
+                    <div className="field field--full protocol-account-workspace__runtime-heading">
+                      <span className="field__label">协议与运行时</span>
+                    </div>
+                    <SettingsFormField label="协议实现" hint="保存后按所选实现重启协议进程。">
+                      <Select
+                        value={targetBackend}
+                        onValueChange={(v) =>
+                          setTargetBackend(v === "snowluma" ? "snowluma" : "napcat")
+                        }
+                      >
+                        <SelectTrigger className="w-full" aria-label="协议实现">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="napcat">NapCat</SelectItem>
+                          <SelectItem value="snowluma">SnowLuma</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </SettingsFormField>
+                    {targetBackend === "napcat" ? (
+                      <>
+                        <SettingsFormField
+                          label="NapCat Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
+                        >
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="napcat"
+                            value={napcatDockerImage}
+                            onValueChange={setNapcatDockerImage}
+                            placeholder="mlikiowa/napcat-docker:latest"
+                          />
+                        </SettingsFormField>
+                        <SettingsFormField
+                          className="field--full"
+                          label="启用 NapCat bypass 总开关"
+                          hint="关闭后不写入 NapCat bypass 配置。"
+                        >
+                          <label className="protocol-account-workspace__check">
+                            <input
+                              type="checkbox"
+                              checked={bypassEnabled}
+                              onChange={(e) => setBypassEnabled(e.target.checked)}
+                            />
+                            <span>{bypassEnabled ? "已启用" : "已关闭"}</span>
+                          </label>
+                        </SettingsFormField>
+                      </>
+                    ) : (
+                      <>
+                        <SettingsFormField
+                          label="SnowLuma Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
+                        >
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="snowluma"
+                            value={snowlumaDockerImage}
+                            onValueChange={setSnowlumaDockerImage}
+                            placeholder="pallas/snowluma-auto-login:latest"
+                          />
+                        </SettingsFormField>
+                        <SettingsFormField
+                          label="Runtime 模式"
+                          hint="新建，或挂载到已有 Runtime。"
+                        >
+                          <Select
+                            value={runtimeMode}
+                            onValueChange={(v) =>
+                              setRuntimeMode(v === "existing" ? "existing" : "new")
+                            }
+                          >
+                            <SelectTrigger className="w-full" aria-label="Runtime 模式">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new">新建</SelectItem>
+                              <SelectItem value="existing">挂载已有</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </SettingsFormField>
+                        {runtimeMode === "existing" ? (
+                          <SettingsFormField className="field--full" label="Runtime">
+                            <Select
+                              value={runtimeId || "__empty__"}
+                              onValueChange={(v) => {
+                                const nextId = v === "__empty__" ? "" : v;
+                                setRuntimeId(nextId);
+                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
+                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
+                              }}
+                            >
+                              <SelectTrigger className="w-full" aria-label="Runtime">
+                                <SelectValue placeholder="选择 Runtime" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
+                                {snowlumaRuntimes.map((runtime) => (
+                                  <SelectItem key={runtime.id} value={runtime.id}>
+                                    {runtime.display_name?.trim() || runtime.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </SettingsFormField>
+                        ) : null}
+                      </>
+                    )}
+                    <SettingsFormField
+                      className="field--full"
+                      label="WS 连接地址"
+                      hint="Bot 连接 OneBot WebSocket 的完整地址。"
+                    >
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
+                        value={wsUrl}
+                        onValueChange={setWsUrl}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        value={wsName}
+                        onValueChange={setWsName}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="WS Token"
+                      hint="须与协议端鉴权配置一致。"
+                      secret
+                    >
+                      <UiInput
+                        type="password"
+                        autoComplete="off"
+                        value={wsToken}
+                        onValueChange={setWsToken}
+                      />
+                    </SettingsFormField>
                     <div className="field field--full protocol-account-workspace__save-row">
                       <button
                         type="button"

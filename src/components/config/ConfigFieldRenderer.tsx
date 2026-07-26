@@ -1,14 +1,9 @@
 import type { PluginConfigField } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
+import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
 import TagsInput from "@/components/config/TagsInput";
 import UiInput from "@/components/ui/UiInput";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import {
   binaryEnumIsOn,
@@ -60,6 +55,7 @@ export default function ConfigFieldRenderer({
   const usesMultiline = field.kind === "string" && Boolean(field.multiline);
   const usesTags = isChipListField(field);
   const usesIdTags = isIdListField(field);
+  const usesStringMap = field.kind === "json" && tryParseStringMap(modelValue) != null;
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -85,7 +81,24 @@ export default function ConfigFieldRenderer({
     : [];
 
   const enumKnown = choices.includes(modelValue);
-  const enumSelectValue = modelValue || undefined;
+  const enumOptions: ComboboxOption[] = [];
+  if (usesEnumSelect) {
+    if (!enumKnown && modelValue) {
+      enumOptions.push({
+        value: modelValue,
+        label: enumChoiceLabel(modelValue, fieldWithChoices),
+        keywords: `${modelValue} ${enumChoiceLabel(modelValue, fieldWithChoices)}`,
+      });
+    }
+    for (const opt of choices) {
+      const label = enumChoiceLabel(opt, fieldWithChoices);
+      enumOptions.push({
+        value: opt,
+        label,
+        keywords: `${opt} ${label}`,
+      });
+    }
+  }
 
   return (
     <div className={cn("config-field-renderer form-field", usesBoolSwitch && "config-field-renderer--bool")}>
@@ -129,25 +142,19 @@ export default function ConfigFieldRenderer({
       ) : null}
 
       {usesEnumSelect ? (
-        <Select value={enumSelectValue} onValueChange={onValueChange}>
-          <SelectTrigger
-            className="form-field__control w-full"
-            style={{ maxWidth: inputMaxWidth }}
-            aria-label={fieldDisplayTitle(field)}
-          >
-            <SelectValue placeholder="请选择" />
-          </SelectTrigger>
-          <SelectContent>
-            {!enumKnown && modelValue ? (
-              <SelectItem value={modelValue}>{enumChoiceLabel(modelValue, fieldWithChoices)}</SelectItem>
-            ) : null}
-            {choices.map((opt) => (
-              <SelectItem key={opt} value={opt}>
-                {enumChoiceLabel(opt, fieldWithChoices)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="form-field__control w-full" style={{ maxWidth: inputMaxWidth }}>
+          <Combobox
+            value={modelValue}
+            onValueChange={onValueChange}
+            options={enumOptions}
+            placeholder="请选择"
+            searchPlaceholder="搜索选项…"
+            emptyText="无匹配选项"
+            searchCount={choices.length}
+            ariaLabel={fieldDisplayTitle(field)}
+            triggerClassName="w-full"
+          />
+        </div>
       ) : null}
 
       {usesTags ? (
@@ -163,7 +170,17 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" ? (
+      {usesStringMap ? (
+        <StringMapField
+          value={modelValue}
+          onValueChange={onValueChange}
+          maxWidth={inputMaxWidth}
+          speakerPlaceholder="Speaker id"
+          aliasPlaceholder="输入别名后回车…"
+        />
+      ) : null}
+
+      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap ? (
         <textarea
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}

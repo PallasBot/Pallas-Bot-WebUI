@@ -3,6 +3,7 @@ import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import {
   consoleOpenapiDelete,
   consoleOpenapiGet,
+  consoleOpenapiPatch,
   consoleOpenapiPost,
   consoleOpenapiPut,
   type ConsoleOpenapiPaths,
@@ -26,7 +27,18 @@ import type {
   DbBackupBrowseData,
   DbBackupDeleteResult,
   DbBackupRunsData,
+  DbBackendConfigData,
+  DbBackendKind,
+  DbBackendMongoConfig,
+  DbBackendPostgresConfig,
+  DbBackendProbeResult,
+  DbBackendSaveResult,
+  DbHealthData,
+  DbMigrateMongoPgInfo,
+  DbMigrateMongoPgJob,
   DbOverviewData,
+  DbTableRowsData,
+  DbTablesData,
   FriendListData,
   FriendOverviewData,
   RequestOverviewData,
@@ -1581,6 +1593,20 @@ export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
   )) as LlmToolCatalogData;
 }
 
+export async function previewLlmToolIntent(text: string): Promise<import("./pallasTypes").LlmToolIntentPreview> {
+  return (await consoleOpenapiPost("/llm/tools/preview", { text })) as import("./pallasTypes").LlmToolIntentPreview;
+}
+
+export async function patchLlmToolOverride(
+  toolName: string,
+  patch: import("./pallasTypes").LlmToolOverridePatch,
+): Promise<LlmToolCatalogData> {
+  return (await consoleOpenapiPatch(
+    `/llm/tools/overrides/${encodeURIComponent(toolName)}`,
+    patch,
+  )) as LlmToolCatalogData;
+}
+
 export async function fetchLlmPersonaObserve(params?: {
   groupId?: number | null;
   accounts?: number[];
@@ -2369,6 +2395,100 @@ export async function fetchDbOverview(): Promise<DbOverviewData> {
   )) as DbOverviewData;
 }
 
+export async function fetchDbHealth(): Promise<DbHealthData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/health"]["get"]>(
+    "/db/health",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbHealthData;
+}
+
+export async function fetchDbTables(): Promise<DbTablesData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/tables"]["get"]>(
+    "/db/tables",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbTablesData;
+}
+
+export async function fetchDbTableRows(params: {
+  table: string;
+  offset?: number;
+  limit?: number;
+}): Promise<DbTableRowsData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/table-rows"]["get"]>(
+    "/db/table-rows",
+    {
+      timeout: DB_HEAVY_READ_TIMEOUT_MS,
+      params: {
+        table: params.table,
+        offset: params.offset ?? 0,
+        limit: params.limit ?? 50,
+      },
+    },
+  )) as DbTableRowsData;
+}
+
+export async function fetchDbMigrateMongoPgInfo(): Promise<DbMigrateMongoPgInfo> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/info"]["get"]
+  >("/db/migrate/mongo-to-pg/info")) as DbMigrateMongoPgInfo;
+}
+
+export async function postDbMigrateMongoPg(body: {
+  dry_run?: boolean;
+  restart_cursor?: boolean;
+  switch_backend?: boolean;
+  try_hot_rebind?: boolean;
+  batch_size?: number;
+  tables?: string[];
+}): Promise<DbMigrateMongoPgJob> {
+  return (await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg"]["post"]>(
+    "/db/migrate/mongo-to-pg",
+    body,
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbMigrateMongoPgJob;
+}
+
+export async function fetchActiveDbMigrateMongoPgJob(): Promise<DbMigrateMongoPgJob | null> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/jobs/active"]["get"]
+  >("/db/migrate/mongo-to-pg/jobs/active")) as DbMigrateMongoPgJob | null;
+}
+
+export async function fetchDbMigrateMongoPgJob(jobId: string): Promise<DbMigrateMongoPgJob> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/jobs/{job_id}"]["get"]
+  >(`/db/migrate/mongo-to-pg/jobs/${encodeURIComponent(jobId)}`)) as DbMigrateMongoPgJob;
+}
+
+export async function fetchDbBackendConfig(): Promise<DbBackendConfigData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backend"]["get"]>(
+    "/db/backend",
+  )) as DbBackendConfigData;
+}
+
+export async function putDbBackendConfig(body: {
+  backend: DbBackendKind;
+  postgres?: Partial<DbBackendPostgresConfig> | null;
+  mongo?: Partial<DbBackendMongoConfig> | null;
+  force?: boolean;
+}): Promise<DbBackendSaveResult> {
+  return (await consoleOpenapiPut<ConsoleOpenapiPaths["/pallas/api/db/backend"]["put"]>(
+    "/db/backend",
+    body,
+  )) as DbBackendSaveResult;
+}
+
+export async function postDbBackendProbe(body: {
+  backend: DbBackendKind;
+  postgres?: Partial<DbBackendPostgresConfig> | null;
+  mongo?: Partial<DbBackendMongoConfig> | null;
+}): Promise<DbBackendProbeResult> {
+  return (await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/backend/probe"]["post"]>(
+    "/db/backend/probe",
+    body,
+  )) as DbBackendProbeResult;
+}
+
 export async function fetchDbBackupInfo(): Promise<DbBackupInfo> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/backup/info"]["get"]>(
     "/db/backup/info",
@@ -2692,6 +2812,10 @@ export async function putGroupConfig(
   );
 }
 
+export async function deleteGroupConfig(groupId: number): Promise<{ deleted: boolean }> {
+  return deleteDbTableRow({ table: "group_config", row_id: groupId });
+}
+
 export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/user-configs"]["get"]>(
     "/user-configs",
@@ -2715,6 +2839,10 @@ export async function putUserConfig(
     `/user-configs/${userId}`,
     body,
   );
+}
+
+export async function deleteUserConfig(userId: number): Promise<{ deleted: boolean }> {
+  return deleteDbTableRow({ table: "user_config", row_id: userId });
 }
 
 export async function fetchAiExtensionConfig(): Promise<AiExtensionConfig> {

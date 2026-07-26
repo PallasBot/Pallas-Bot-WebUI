@@ -32,6 +32,27 @@ export function appendPluginStoreQueueTask(
   return [...queue, task];
 }
 
+/** Remove the first queued task matching kind/key/action (active item stays visible until done). */
+export function removePluginStoreQueueTask(
+  queue: PluginStoreQueueTask[],
+  task: PluginStoreQueueTask,
+): PluginStoreQueueTask[] {
+  const target = pluginStoreQueueTaskKey(task.kind, task.key, task.action);
+  let removed = false;
+  return queue.filter((item) => {
+    if (removed) return true;
+    if (pluginStoreQueueTaskKey(item.kind, item.key, item.action) === target) {
+      removed = true;
+      return false;
+    }
+    return true;
+  });
+}
+
+export function pluginStoreQueuePendingAfterActive(queueLength: number): number {
+  return Math.max(0, queueLength - 1);
+}
+
 export function withPluginStoreQueueSuffix(message: string, pendingCount: number): string {
   if (pendingCount <= 0) return message;
   return `${message}（队列中还有 ${pendingCount} 项）`;

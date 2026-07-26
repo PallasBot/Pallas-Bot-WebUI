@@ -1482,12 +1482,47 @@ export interface LlmToolCatalogItem {
   mcp_server_id?: string | null;
   eligible?: boolean;
   disabled_reason?: string | null;
+  hints?: string[];
+  effective_hints?: string[];
+  visibility?: string;
+  declared_visibility?: string;
+  override?: {
+    description?: string | null;
+    hints?: string[] | null;
+    visibility?: string | null;
+    disabled?: boolean | null;
+  } | null;
+}
+
+export interface LlmToolOverridePatch {
+  description?: string | null;
+  hints?: string[] | null;
+  visibility?: "visible" | "deferred" | "" | null;
+  disabled?: boolean | null;
+}
+
+export interface LlmToolIntentPreview {
+  text?: string;
+  domains?: string[];
+  structure_domains?: string[];
+  hint_domains?: string[];
+  top_scores?: Array<{
+    name?: string;
+    score?: number;
+    domains?: string[];
+    visibility?: string;
+  }>;
+  schema_tools?: string[];
+  schema_count?: number;
+  selective_empty?: boolean;
 }
 
 export interface LlmToolCatalogData {
   items: LlmToolCatalogItem[];
   count: number;
   policy?: LlmToolCatalogPolicy;
+  overrides?: Record<string, LlmToolOverridePatch>;
+  patched?: { name?: string; override?: LlmToolOverridePatch };
 }
 
 export interface PersonaAxisSnapshot {
@@ -1594,6 +1629,121 @@ export type DbOverviewData =
       tables: { table: string; count: number }[];
     }
   | { backend: string; note?: string };
+
+export type DbHealthStatus = "healthy" | "degraded" | "unhealthy";
+
+export interface DbHealthData {
+  status: DbHealthStatus;
+  reason: string;
+  backend?: string;
+  updated_at?: number;
+  updated_at_unix?: number;
+  last_probe_ok?: boolean | null;
+  pool?: {
+    capacity?: number;
+    utilization?: number | null;
+    under_pressure?: boolean;
+    live?: Record<string, number> | null;
+    idle_in_tx?: number | null;
+  } | null;
+  schema?: {
+    ok?: number;
+    failed?: number;
+    last_error?: string;
+    steps?: { name: string; ok: boolean; error?: string }[];
+  };
+  low_priority_writers?: {
+    name: string;
+    queued: number;
+    dropped: number;
+    flushed: number;
+    max_retain: number;
+  }[];
+}
+
+export interface DbTablesData {
+  backend?: string;
+  tables: {
+    name: string;
+    count?: number;
+    count_estimated?: boolean;
+    browseable?: boolean;
+    overview_only?: boolean;
+  }[];
+}
+
+export interface DbTableRowsData {
+  table: string;
+  offset: number;
+  limit: number;
+  total: number;
+  rows: Record<string, unknown>[];
+}
+
+export type DbBackendKind = "postgresql" | "mongodb";
+
+export interface DbBackendPostgresConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  password_set?: boolean;
+  db: string;
+  auto_create_db: boolean;
+}
+
+export interface DbBackendMongoConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  password_set?: boolean;
+  db: string;
+  auth_source: string;
+}
+
+export interface DbBackendConfigData {
+  active_backend: DbBackendKind | string;
+  backend: DbBackendKind | string;
+  postgres: DbBackendPostgresConfig;
+  mongo: DbBackendMongoConfig;
+  restart_required_hint?: string;
+}
+
+export interface DbBackendSaveResult {
+  restart_required: boolean;
+  backend: string;
+  message: string;
+  force?: boolean;
+}
+
+export interface DbMigrateMongoPgInfo {
+  active_backend?: string;
+  tables: string[];
+  schema_ensure_steps?: { id: string; kind: string }[];
+  notes?: string[];
+}
+
+export interface DbMigrateMongoPgJob {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed" | string;
+  phase?: string;
+  dry_run?: boolean;
+  tables?: string[];
+  logs?: string[];
+  result?: Record<string, unknown>;
+  error?: string;
+  created_at?: number;
+  started_at?: number | null;
+  finished_at?: number | null;
+  elapsed_sec?: number | null;
+}
+
+export interface DbBackendProbeResult {
+  ok: boolean;
+  latency_ms: number;
+  detail: string;
+}
 
 export interface DbBackupConnectionInfo {
   host: string;

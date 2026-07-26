@@ -1,11 +1,5 @@
 import { useMemo } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 
 const EMPTY_VALUE = "__ai_option_empty__";
@@ -37,9 +31,27 @@ function normalizeOptions(
   return rows;
 }
 
+function optionLabel(row: AiOptionSelectItem): ComboboxOption["label"] {
+  const main = row.label || row.value;
+  if (!row.description || row.description === main) {
+    return <span className="block min-w-0 truncate">{main}</span>;
+  }
+  return (
+    <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+      <span className="truncate text-sm leading-tight">{main}</span>
+      <span
+        className="truncate font-mono text-[11px] leading-tight text-muted-foreground"
+        title={row.description}
+      >
+        {row.description}
+      </span>
+    </span>
+  );
+}
+
 /**
- * 媒体等有限选项下拉（Speaker / 后端 / 参考音频）。
- * 不用模型发现 Popover，走普通 Select。
+ * 媒体等有限选项下拉（Speaker / 后端 / 参考音频 / Provider）。
+ * 选项 ≥ 8 时显示搜索（Combobox）。
  */
 export default function AiOptionSelect({
   value,
@@ -50,6 +62,8 @@ export default function AiOptionSelect({
   emptyLabel = "（未指定）",
   disabled = false,
   className,
+  searchThreshold = 8,
+  ariaLabel,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -59,10 +73,52 @@ export default function AiOptionSelect({
   emptyLabel?: string;
   disabled?: boolean;
   className?: string;
+  searchThreshold?: number;
+  ariaLabel?: string;
 }) {
   const rows = useMemo(() => normalizeOptions(options), [options]);
   const safeValue = (value || "").trim();
   const known = rows.some((row) => row.value === safeValue);
+
+  const comboboxOptions = useMemo(() => {
+    const out: ComboboxOption[] = [];
+    if (allowEmpty) {
+      out.push({
+        value: EMPTY_VALUE,
+        label: emptyLabel,
+        keywords: emptyLabel,
+      });
+    }
+    if (!known && safeValue) {
+      out.push({
+        value: safeValue,
+        label: (
+          <span className="block min-w-0 truncate font-mono text-xs" title={safeValue}>
+            {safeValue}
+          </span>
+        ),
+        keywords: safeValue,
+      });
+    }
+    for (const row of rows) {
+      out.push({
+        value: row.value,
+        label: optionLabel(row),
+        triggerLabel: row.label || row.value,
+        keywords: [row.label || row.value, row.description || "", row.value].filter(Boolean).join(" "),
+      });
+    }
+    if (!rows.length && !safeValue && !allowEmpty) {
+      out.push({
+        value: "__ai_option_none__",
+        label: "暂无可选项",
+        disabled: true,
+        keywords: "暂无可选项",
+      });
+    }
+    return out;
+  }, [allowEmpty, emptyLabel, known, rows, safeValue]);
+
   const selectValue = safeValue
     ? safeValue
     : allowEmpty
@@ -70,48 +126,22 @@ export default function AiOptionSelect({
       : (rows[0]?.value ?? EMPTY_VALUE);
 
   return (
-    <Select
+    <Combobox
       value={selectValue}
-      disabled={disabled}
       onValueChange={(next) => {
+        if (next === "__ai_option_none__") return;
         onValueChange(next === EMPTY_VALUE ? "" : next);
       }}
-    >
-      <SelectTrigger className={cn("h-9 w-full", className)}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {allowEmpty ? (
-          <SelectItem value={EMPTY_VALUE}>{emptyLabel}</SelectItem>
-        ) : null}
-        {!known && safeValue ? (
-          <SelectItem value={safeValue}>
-            <span className="block min-w-0 truncate font-mono text-xs" title={safeValue}>
-              {safeValue}
-            </span>
-          </SelectItem>
-        ) : null}
-        {rows.map((row) => (
-          <SelectItem key={row.value} value={row.value} textValue={row.label || row.value}>
-            <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-              <span className="truncate text-sm leading-tight">{row.label || row.value}</span>
-              {row.description && row.description !== row.label ? (
-                <span
-                  className="truncate font-mono text-[11px] leading-tight text-muted-foreground"
-                  title={row.description}
-                >
-                  {row.description}
-                </span>
-              ) : null}
-            </span>
-          </SelectItem>
-        ))}
-        {!rows.length && !safeValue ? (
-          <SelectItem value="__ai_option_none__" disabled>
-            暂无可选项
-          </SelectItem>
-        ) : null}
-      </SelectContent>
-    </Select>
+      options={comboboxOptions}
+      placeholder={placeholder}
+      searchPlaceholder="搜索…"
+      emptyText={rows.length ? "无匹配" : "暂无可选项"}
+      searchThreshold={searchThreshold}
+      searchCount={rows.length}
+      disabled={disabled}
+      ariaLabel={ariaLabel}
+      triggerClassName={cn("h-9 w-full", className)}
+      contentClassName="min-w-[var(--radix-popover-trigger-width)]"
+    />
   );
 }

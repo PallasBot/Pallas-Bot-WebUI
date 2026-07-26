@@ -86,7 +86,7 @@ export default function HelpTagOverridesPanel({ fieldValues, onFieldChange, clas
     <PluginConfigFormSection
       className={cn(className)}
       title="帮助图分组覆盖"
-      subtitle="批量覆盖插件 metadata.extra.help_tag；可选已有分组或手输新分组名。保存后帮助图热载生效。"
+      subtitle="按插件批量指定帮助图分组；可选用已有分组或手输新名称。保存后立即生效。"
       bodyClassName="!grid-cols-1 gap-3"
     >
       <div className="space-y-3">

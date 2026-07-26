@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
-  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Library, MessagesSquare, Wrench, type LucideIcon,
+  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Layers, Library, MessagesSquare, Wrench, type LucideIcon,
 } from "lucide-react";
 import { fetchConversationKernelKnowledgeSources, fetchLlmToolsCatalog } from "@/api/console";
 import type { AiConfigSaveState } from "@/components/ai/aiConfigSaveState";
@@ -12,6 +12,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import SegTabs from "@/components/SegTabs";
 import KnowledgeSourcesTable from "@/components/ai/KnowledgeSourcesTable";
 import LlmToolsTable from "@/components/ai/LlmToolsTable";
@@ -43,7 +44,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次闲聊可注入的上下文字符上限。" },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
-  { value: "tools", label: "工具", icon: Wrench, lead: "已注册 LLM 工具与当前可调用状态。" },
+  { value: "tools", label: "工具", icon: Wrench, lead: "LLM 工具目录、触发说法覆盖与可调用状态。" },
 ];
 
 const MODE_OPTIONS = [
@@ -66,14 +67,16 @@ export default function AiConfigDialogueSection() {
   }, []);
 
   const setPanel = (next: Panel) => {
-    setParams(
-      (prev) => {
-        const n = new URLSearchParams(prev);
-        n.set("panel", next);
-        return n;
-      },
-      { replace: true },
-    );
+    preserveShellMainScroll(() => {
+      setParams(
+        (prev) => {
+          const n = new URLSearchParams(prev);
+          n.set("panel", next);
+          return n;
+        },
+        { replace: true },
+      );
+    });
   };
 
   const sourcesQ = useQuery({
@@ -88,13 +91,10 @@ export default function AiConfigDialogueSection() {
     enabled: contentPanel === "tools",
   });
 
-  const activeSelectIcon =
-    SELECT_OPTIONS.find((p) => p.value === contentPanel)?.icon || ClipboardList;
-
   const chromeMiddle = useMemo(
     () => (
       <>
-        <ChromeField label="对话分区" icon={activeSelectIcon}>
+        <ChromeField label="对话分区" icon={Layers}>
           <Select
             value={contentPanel}
             onValueChange={(v) => {
@@ -124,7 +124,7 @@ export default function AiConfigDialogueSection() {
         ) : null}
       </>
     ),
-    [activeSelectIcon, contentPanel, editMode],
+    [contentPanel, editMode],
   );
 
   const chromeTrailing = useMemo(() => {

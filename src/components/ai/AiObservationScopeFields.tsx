@@ -1,29 +1,25 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, Users } from "lucide-react";
-import { fetchInstances } from "@/api/fullConsole";
+import { fetchGroupList, fetchInstances } from "@/api/fullConsole";
 import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
 
 const ALL_BOTS = "__all__";
+const ALL_GROUPS = "__all_groups__";
 
 /**
  * 观测顶栏 Bot / 群过滤（ChromeField）。
  * 是否展示由分段 `scope` 决定；Bot：有实例时下拉，否则数字输入。
+ * 群：已选 Bot 时用 Combobox（可搜 / 手输群号），否则数字输入。
  */
 export default function AiObservationScopeFields({
   showBot = true,
@@ -64,6 +60,43 @@ export default function AiObservationScopeFields({
     return out;
   }, [favorites, instQ.data]);
 
+  const botNum = Number.parseInt(botId.trim(), 10);
+  const botReady = Number.isFinite(botNum) && botNum > 0;
+  const groupsQ = useQuery({
+    queryKey: ["group-list", String(botNum)],
+    queryFn: () => fetchGroupList(botNum),
+    enabled: botReady,
+  });
+
+  const groupOptions = useMemo(() => {
+    const out: ComboboxOption[] = [
+      {
+        value: ALL_GROUPS,
+        label: <ChromeOptionLabel icon={Users}>全部</ChromeOptionLabel>,
+        keywords: "全部群",
+      },
+    ];
+    const rows = groupsQ.data?.groups ?? [];
+    const seen = new Set<string>();
+    for (const g of rows) {
+      const id = String(g.group_id ?? "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const name = String(g.group_name ?? "").trim();
+      out.push({
+        value: id,
+        label: name ? `${name}（${id}）` : id,
+        triggerLabel: name || id,
+        keywords: `${id} ${name}`,
+      });
+    }
+    const cur = groupId.trim();
+    if (cur && !seen.has(cur)) {
+      out.push({ value: cur, label: cur, keywords: cur });
+    }
+    return out;
+  }, [groupId, groupsQ.data?.groups]);
+
   const useSelect = botOptions.length > 0;
   const selected = botOptions.find((b) => b.id === botId.trim());
 
@@ -73,35 +106,24 @@ export default function AiObservationScopeFields({
       {showBot ? (
         <ChromeField label="Bot" icon={Bot} className="shrink-0">
           {useSelect ? (
-            <Select
+            <BotAccountCombobox
               value={botId.trim() || ALL_BOTS}
               onValueChange={(v) => setBotId(v === ALL_BOTS ? "" : v)}
-            >
-              <SelectTrigger
-                className="bot-acct-sel h-9 w-[9rem] shrink-0"
-                title={
-                  selected
-                    ? botSelectDropdownLabel(selected.nickname, selected.id)
-                    : botId.trim()
-                      ? botId
-                      : undefined
-                }
-              >
-                <SelectValue placeholder="全部 Bot" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectItem value={ALL_BOTS}>
-                  <ChromeOptionLabel icon={Bot}>全部</ChromeOptionLabel>
-                </SelectItem>
-                {botOptions.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    <ChromeOptionLabel icon={Bot}>
-                      <BotSelectLabel nickname={b.nickname} account={b.id} />
-                    </ChromeOptionLabel>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              bots={botOptions}
+              leadingOption={{
+                value: ALL_BOTS,
+                label: <ChromeOptionLabel icon={Bot}>全部</ChromeOptionLabel>,
+                keywords: "全部 Bot",
+              }}
+              placeholder="全部 Bot"
+              title={
+                selected
+                  ? botSelectDropdownLabel(selected.nickname, selected.id)
+                  : botId.trim()
+                    ? botId
+                    : undefined
+              }
+            />
           ) : (
             <Input
               className="h-9 w-[7.5rem] shrink-0"
@@ -116,13 +138,28 @@ export default function AiObservationScopeFields({
 
       {showGroup ? (
         <ChromeField label="群" icon={Users} className="shrink-0">
-          <Input
-            className="h-9 w-[7.5rem] shrink-0"
-            inputMode="numeric"
-            placeholder="群号可空"
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-          />
+          {botReady ? (
+            <Combobox
+              value={groupId.trim() || ALL_GROUPS}
+              onValueChange={(v) => setGroupId(v === ALL_GROUPS ? "" : v)}
+              options={groupOptions}
+              placeholder="全部群"
+              searchPlaceholder="搜索或输入群号…"
+              emptyText="无匹配群"
+              searchCount={(groupsQ.data?.groups ?? []).length}
+              allowCustom
+              ariaLabel="群号过滤"
+              triggerClassName="h-9 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0"
+            />
+          ) : (
+            <Input
+              className="h-9 w-[7.5rem] shrink-0"
+              inputMode="numeric"
+              placeholder="群号可空"
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+            />
+          )}
         </ChromeField>
       ) : null}
     </div>

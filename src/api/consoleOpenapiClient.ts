@@ -50,6 +50,15 @@ export async function consoleOpenapiPut<TOperation>(
   return unwrapConsoleData(data, url);
 }
 
+export async function consoleOpenapiPatch<TOperation>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<OpenapiOkData<TOperation>> {
+  const { data } = await http.patch<ApiOkEnvelope<OpenapiOkData<TOperation>>>(url, body, config);
+  return unwrapConsoleData(data, url);
+}
+
 export async function consoleOpenapiDelete<TOperation>(
   url: string,
   config?: AxiosRequestConfig,

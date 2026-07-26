@@ -211,7 +211,7 @@ export default function ProtocolCreateTab() {
             </>
           ) : null}
           <div className="field space-y-1.5">
-            <Label htmlFor="create-webui-port">内置 WebUI 端口</Label>
+            <Label htmlFor="create-webui-port">原生 WebUI 端口</Label>
             <Input
               id="create-webui-port"
               className="h-9"

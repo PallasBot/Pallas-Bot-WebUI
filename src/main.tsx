@@ -23,6 +23,7 @@ import "./styles/ui-atoms.css";
 import "./styles/tags-input.css";
 import "./styles/console-page-skel.css";
 import "./styles/update-page.css";
+import "./styles/form-section-divider.css";
 import "./styles/git-mirror-dialog.css";
 import "./styles/bot-restart-dialog.css";
 import "react-day-picker/dist/style.css";

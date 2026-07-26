@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines, ScrollText, type LucideIcon } from "lucide-react";
+import { AudioLines, Layers, ScrollText, type LucideIcon } from "lucide-react";
 import { fetchAiExtensionLogs, openAiExtensionLogsEventSource } from "@/api/console";
 import {
   useAiConfigChromeSearch,
@@ -116,7 +116,7 @@ export default function AiConfigLogsSection({
 
   const chromeMiddle = useMemo(
     () => (
-      <ChromeField label="日志种类" icon={kindMeta.icon}>
+      <ChromeField label="日志种类" icon={Layers}>
         <Select value={kind} onValueChange={(v) => setKind(v as AiExtensionLogKind)}>
           <SelectTrigger className={CHROME_SELECT_TRIGGER}>
             <SelectValue />
@@ -131,7 +131,7 @@ export default function AiConfigLogsSection({
         </Select>
       </ChromeField>
     ),
-    [kind, kindMeta.icon],
+    [kind],
   );
 
   const chromeRefresh = useCallback(() => {

@@ -100,7 +100,7 @@ export default function PluginHelpTagField({
       title="帮助图分组"
       icon={Tags}
       bodyClassName="!grid-cols-1 gap-3"
-      subtitle="覆盖本插件在帮助图总览中的分组；未覆盖时用 metadata.extra.help_tag。保存后立即热载。"
+      subtitle="决定本插件在帮助图总览里落在哪一组；不选则用插件自带默认。改完即生效。"
     >
       <HelpField
         label="分组"

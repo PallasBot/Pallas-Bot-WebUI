@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { axiosErrorDetail } from "@/api/http";
 import { fetchCommunityCorpusHot, fetchLocalCorpusHot } from "@/api/fullConsole";
 import type { CommunityCorpusHotData, CommunityHotTab } from "@/api/pallasTypes";
+import ConsoleHint from "@/components/ConsoleHint";
 import SegTabs from "@/components/SegTabs";
 import { rankHotItems, type HotTagNode } from "@/utils/hotBubbleLayout";
 import { cn } from "@/lib/utils";
@@ -170,7 +171,7 @@ export default function CorpusWordCloud({
       {busy && !items.length ? (
         <p className="muted corpus-hot__status">加载{scopeLabel}热词…</p>
       ) : err ? (
-        <p className="alert alert--warn corpus-hot__status">热词加载失败：{err}</p>
+        <ConsoleHint className="corpus-hot__status">热词加载失败：{err}</ConsoleHint>
       ) : !items.length ? (
         <p className="muted corpus-hot__status">
           {source === "local"

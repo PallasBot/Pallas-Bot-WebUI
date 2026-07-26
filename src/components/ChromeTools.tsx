@@ -16,13 +16,22 @@ export const CHROME_TOOLS_SURFACE =
 export const CHROME_TOOLS_CLUSTER =
   "chrome-tools__cluster flex shrink-0 flex-nowrap items-center";
 
-/** 右侧操作簇（保存 / 刷新…）：ml-auto + 统一簇距。 */
+/**
+ * 右侧操作簇（保存 / 刷新…）：ml-auto + 统一簇距。
+ * 在 chrome-row 内 sticky 右钉，左侧筛选横滑时仍保持可见。
+ */
 export const CHROME_TOOLS_TRAILING =
   "chrome-tools__trailing ml-auto flex shrink-0 flex-nowrap items-center self-center";
 
-/** 工具条分段 / 筛选 Select；高度由 CSS `--chrome-field-h` 强制为 h-9。 */
+/** 工具条分段 / 筛选 Select；高度由 CSS `--chrome-field-h` 固定为 h-9。 */
 export const CHROME_SELECT_TRIGGER =
   "h-9 w-auto min-w-[7.5rem] max-w-[12rem] shrink-0";
+
+/**
+ * 工具条 Bot 账号 Combobox 触发器：按昵称收窄，最长 9rem；须带 `bot-acct-sel`。
+ */
+export const CHROME_BOT_ACCOUNT_SELECT =
+  "bot-acct-sel h-9 w-auto min-w-[4.5rem] max-w-[9rem] shrink-0 overflow-hidden";
 
 /** 工具条搜索 Input；高度由 CSS 强制为 h-9。 */
 export const CHROME_SEARCH_INPUT = "h-9 min-h-9 w-full pl-8";
@@ -30,10 +39,13 @@ export const CHROME_SEARCH_INPUT = "h-9 min-h-9 w-full pl-8";
 export default function ChromeTools({
   children,
   advanced,
+  sticky = false,
   className,
 }: {
   children: ReactNode;
   advanced?: ReactNode;
+  /** 竖向钉在滚动容器顶：标题可滚走，工具条（含保存/刷新）保持可见 */
+  sticky?: boolean;
   className?: string;
 }) {
   return (
@@ -41,6 +53,7 @@ export default function ChromeTools({
       className={cn(
         "chrome-tools console-hub-page__chrome-tools flex min-w-0 flex-col gap-3 p-4",
         CHROME_TOOLS_SURFACE,
+        sticky && "chrome-tools--sticky",
         className,
       )}
     >

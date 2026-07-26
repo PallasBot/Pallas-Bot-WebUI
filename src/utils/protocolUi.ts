@@ -52,6 +52,15 @@ function coerceRuntimeModeToken(raw: unknown): string {
   return "";
 }
 
+/** 账号是否以 Linux Docker 容器方式运行（无宿主进程 PID）。 */
+export function protocolAccountIsLinuxDocker(account: Record<string, unknown> | null | undefined): boolean {
+  if (!account) return false;
+  return (
+    coerceBoolean(account.snowluma_linux_docker) === true ||
+    coerceBoolean(account.napcat_linux_docker) === true
+  );
+}
+
 /** 账号实际运行方式（与协议内置页 docker / shell / appimage 一致） */
 export function protocolRuntimeModeLabel(account: Record<string, unknown>): string {
   if (
@@ -60,16 +69,15 @@ export function protocolRuntimeModeLabel(account: Record<string, unknown>): stri
   ) {
     return "—";
   }
+  if (protocolAccountIsLinuxDocker(account)) return "Docker";
   const bk = protocolBackendKey(account);
   if (bk === "snowluma") {
-    if (coerceBoolean(account.snowluma_linux_docker) === true) return "Docker";
     const mode =
       coerceRuntimeModeToken(account.global_snowluma_runtime_mode) ||
       coerceRuntimeModeToken(account.global_runtime_mode);
     if (mode) return mode === "appimage" ? "AppImage" : mode.charAt(0).toUpperCase() + mode.slice(1);
     return "Shell";
   }
-  if (coerceBoolean(account.napcat_linux_docker) === true) return "Docker";
   const mode =
     coerceRuntimeModeToken(account.global_napcat_runtime_mode) ||
     coerceRuntimeModeToken(account.global_runtime_mode);

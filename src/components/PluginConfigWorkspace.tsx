@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { FileText, Layers, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchPluginConfig,
@@ -26,9 +26,8 @@ import type { PluginRow } from "@/api/pallasTypes";
 import HelpImagePreview from "@/components/HelpImagePreview";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import DynamicConfigPanel from "@/components/config/DynamicConfigPanel";
-import PluginConfigFieldShell from "@/components/config/PluginConfigFieldShell";
-import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import {
   DRAW_GATEWAY_PANEL_FIELD_NAMES,
 } from "@/components/draw/DrawProviderGatewayPanel";
@@ -418,15 +417,16 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   const currentWorkspaceLabel =
     workspaceTabOptions.find((t) => t.value === detailTab)?.label ?? "插件配置";
-  const WorkspaceTabIcon = WORKSPACE_TAB_ICONS[detailTab] ?? SlidersHorizontal;
 
   const configBody = (
     <>
       <ChromeTools className="plugin-config-workspace__chrome">
-        <ChromeField label="工作区" icon={WorkspaceTabIcon} className="shrink-0">
+        <ChromeField label="工作区" icon={Layers} className="shrink-0">
           <Select
             value={detailTab}
-            onValueChange={(v) => setDetailTab(v as ConfigTab)}
+            onValueChange={(v) => {
+              preserveShellMainScroll(() => setDetailTab(v as ConfigTab));
+            }}
           >
             <SelectTrigger
               className={CHROME_SELECT_TRIGGER}
@@ -558,28 +558,24 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
                       }
                     />
                   ) : null}
-                  {cfgQ.data?.field_groups?.length ? (
+                  {formFields.length ? (
                     <DynamicConfigPanel
                       fields={formFields}
-                      fieldGroups={cfgQ.data.field_groups}
+                      fieldGroups={cfgQ.data?.field_groups}
                       fieldValues={fieldValues}
                       onFieldChange={(name, value) =>
                         setFieldValues((prev) => ({ ...prev, [name]: value }))
                       }
+                      groupSubtitles={
+                        cfgQ.data?.field_groups?.length
+                          ? undefined
+                          : {
+                              // 仅单组「配置项」时保留原先说明；多 ui_group 用默认「共 N 项」
+                              "ui:配置项": `共 ${formFields.length} 项参数，保存后按插件热重载策略生效`,
+                              all: `共 ${formFields.length} 项参数，保存后按插件热重载策略生效`,
+                            }
+                      }
                     />
-                  ) : formFields.length ? (
-                    <PluginConfigFormSection
-                      subtitle={`共 ${formFields.length} 项参数，保存后按插件热重载策略生效`}
-                    >
-                      {formFields.map((f) => (
-                        <PluginConfigFieldShell
-                          key={f.name}
-                          field={f}
-                          modelValue={fieldValues[f.name] ?? ""}
-                          onValueChange={(v) => setFieldValues((prev) => ({ ...prev, [f.name]: v }))}
-                        />
-                      ))}
-                    </PluginConfigFormSection>
                   ) : null}
                   {!isDialog ? (
                     <div className="mt-4">

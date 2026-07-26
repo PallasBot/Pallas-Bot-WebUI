@@ -1,0 +1,54 @@
+/* hub 风格表单分段：竖条标题 + 分隔线（弹窗/短表单少叠卡） */
+.form-section-divider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-section-divider__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.form-section-divider__bar {
+  width: 3px;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: var(--accent, var(--primary));
+  flex-shrink: 0;
+}
+
+.form-section-divider__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.form-section-divider__line {
+  flex: 1 1 auto;
+  min-width: 2rem;
+}
+
+.form-section-divider__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .form-section-divider__toolbar {
+    justify-content: stretch;
+  }
+
+  .form-section-divider__toolbar .btn,
+  .form-section-divider__toolbar .ui-btn {
+    flex: 1 1 auto;
+  }
+}

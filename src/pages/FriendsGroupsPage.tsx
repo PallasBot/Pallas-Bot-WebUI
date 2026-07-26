@@ -16,12 +16,16 @@ import { accountHasNonebotBot } from "@/utils/botConnection";
 import { botPickerRowsFromInstances, botSelectDropdownLabel } from "@/utils/botDisplay";
 import { requestOverviewToFriendOverview } from "@/utils/consoleSocialCache";
 import { slicePage } from "@/utils/paginate";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
-import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ChromeTools, {
+  CHROME_SEARCH_INPUT,
+  CHROME_TOOLS_TRAILING,
+} from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
-import BotSelectLabel from "@/components/BotSelectLabel";
+import BotAccountCombobox from "@/components/BotAccountCombobox";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
@@ -45,10 +49,7 @@ const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden shado
 const FG_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
-const FG_ACCOUNT_SEL =
-  "bot-acct-sel friends-groups-account-sel h-8 w-[9rem] min-w-[7.5rem] max-w-[9rem] shrink-0 overflow-hidden";
-const FG_SECTION_SEL =
-  "h-8 w-[6.5rem] min-w-[5.5rem] max-w-[6.5rem] shrink-0 overflow-hidden";
+const FG_SECTION_SEL = "chrome-section-compact-sel h-9 w-auto shrink-0";
 
 const FG_LIST_SKEL_ROWS = 8;
 
@@ -284,11 +285,13 @@ export default function FriendsGroupsPage() {
   }, [location.hash]);
 
   function selectSection(id: FgSectionId) {
-    setSection(id);
-    const nextHash = id === "friends" ? "#fg-friends" : "#fg-groups";
-    if (location.hash !== nextHash) {
-      navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
-    }
+    preserveShellMainScroll(() => {
+      setSection(id);
+      const nextHash = id === "friends" ? "#fg-friends" : "#fg-groups";
+      if (location.hash !== nextHash) {
+        navigate({ pathname: location.pathname, search: location.search, hash: nextHash }, { replace: true });
+      }
+    });
   }
 
   function displayFriendReqNickname(row: { user_id: number; nickname?: string | null }): string {
@@ -467,42 +470,36 @@ export default function FriendsGroupsPage() {
 
       <ChromeTools>
         <ChromeField label="账号" icon={Bot} className="shrink-0">
-          <Select
+          <BotAccountCombobox
             value={selfIdStr || "__none__"}
             onValueChange={(v) => {
               setSelfIdStr(v === "__none__" ? "" : v);
               setFriendListQ("");
               setGroupListQ("");
             }}
-          >
-            <SelectTrigger
-              className={FG_ACCOUNT_SEL}
-              aria-label="当前 Bot 账号"
-              title={
-                (() => {
-                  if (!selfIdStr) return undefined;
-                  const cur = botsVisible.find((b) => b.self_id === selfIdStr);
-                  return cur ? botOptionTitle(cur) : selfIdStr;
-                })()
-              }
-            >
-              <SelectValue placeholder="请选择 Bot…" />
-            </SelectTrigger>
-            <SelectContent align="start" className="min-w-[var(--radix-select-trigger-width)]">
-              <SelectItem value="__none__">请选择 Bot…</SelectItem>
-              {botsVisible.map((b) => (
-                <SelectItem key={b.self_id} value={b.self_id}>
-                  <BotSelectLabel nickname={profileNick(b.self_id)} account={b.self_id} />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            bots={botsVisible.map((b) => ({
+              id: b.self_id,
+              nickname: profileNick(b.self_id),
+            }))}
+            leadingOption={{ value: "__none__", label: "请选择 Bot…", keywords: "请选择 Bot" }}
+            placeholder="请选择 Bot…"
+            title={
+              selfIdStr
+                ? (() => {
+                    const cur = botsVisible.find((b) => b.self_id === selfIdStr);
+                    return cur ? botOptionTitle(cur) : selfIdStr;
+                  })()
+                : undefined
+            }
+          />
         </ChromeField>
 
         <ChromeField label="选择" icon={Layers} className="shrink-0">
           <Select value={section} onValueChange={(v) => selectSection(v as FgSectionId)}>
             <SelectTrigger className={FG_SECTION_SEL} aria-label="好友或群聊">
-              <SelectValue placeholder="选择">{sectionMeta.label}</SelectValue>
+              <SelectValue placeholder="选择">
+                <ChromeOptionLabel icon={sectionMeta.icon}>{sectionMeta.label}</ChromeOptionLabel>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="start">
               {FG_SECTIONS.map((s) => (
@@ -1052,6 +1049,12 @@ export default function FriendsGroupsPage() {
           if (!o) setGroupModal(null);
         }}
         onSaved={() => setOk("群颗粒配置已保存。")}
+        onDeleted={() => {
+          setOk(
+            groupModal?.id != null ? `已删除群配置 ${groupModal.id}` : "已删除群配置",
+          );
+          setGroupModal(null);
+        }}
       />
       <UserSocialConfigModal
         open={userModal != null}
@@ -1061,6 +1064,12 @@ export default function FriendsGroupsPage() {
           if (!o) setUserModal(null);
         }}
         onSaved={() => setOk("用户颗粒配置已保存。")}
+        onDeleted={() => {
+          setOk(
+            userModal?.id != null ? `已删除好友配置 ${userModal.id}` : "已删除好友配置",
+          );
+          setUserModal(null);
+        }}
       />
     </div>
   );

@@ -6,6 +6,8 @@ import {
   formatPluginStoreEnqueuedHint,
   formatPluginStoreInstallProgressHint,
   isPluginStoreTaskQueued,
+  pluginStoreQueuePendingAfterActive,
+  removePluginStoreQueueTask,
   withPluginStoreQueueSuffix,
 } from "@/utils/pluginStoreActionQueue";
 
@@ -27,6 +29,32 @@ describe("pluginStoreActionQueue", () => {
       key: "pallas-plugin-draw",
       action: "update",
     })).toBe(false);
+  });
+
+  it("keeps waiting tasks queued while the active head remains until removed", () => {
+    let queue = appendPluginStoreQueueTask([], {
+      kind: "official",
+      key: "pkg-a",
+      action: "update",
+    });
+    queue = appendPluginStoreQueueTask(queue, {
+      kind: "official",
+      key: "pkg-b",
+      action: "update",
+    });
+    queue = appendPluginStoreQueueTask(queue, {
+      kind: "official",
+      key: "pkg-c",
+      action: "update",
+    });
+    expect(pluginStoreQueuePendingAfterActive(queue.length)).toBe(2);
+    expect(isPluginStoreTaskQueued(queue, { kind: "official", key: "pkg-b", action: "update" })).toBe(true);
+    expect(isPluginStoreTaskQueued(queue, { kind: "official", key: "pkg-c", action: "update" })).toBe(true);
+
+    queue = removePluginStoreQueueTask(queue, { kind: "official", key: "pkg-a", action: "update" });
+    expect(queue.map((item) => item.key)).toEqual(["pkg-b", "pkg-c"]);
+    expect(pluginStoreQueuePendingAfterActive(queue.length)).toBe(1);
+    expect(isPluginStoreTaskQueued(queue, { kind: "official", key: "pkg-a", action: "update" })).toBe(false);
   });
 
   it("formats queue hints", () => {

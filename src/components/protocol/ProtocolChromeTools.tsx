@@ -1,11 +1,19 @@
-import { Layers } from "lucide-react";
+import {
+  Cable,
+  Container,
+  Layers,
+  Package,
+  Upload,
+  UserPlus,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import {
   protocolSectionsForSelect,
   type ProtocolSectionId,
 } from "@/config/protocolSections";
 import { useProtocolChromeSlots } from "@/components/protocol/ProtocolChromeContext";
-import ChromeField from "@/components/ChromeField";
+import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, {
   CHROME_SELECT_TRIGGER,
   CHROME_TOOLS_TRAILING,
@@ -18,6 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const SECTION_ICONS: Record<ProtocolSectionId, LucideIcon> = {
+  accounts: Cable,
+  create: UserPlus,
+  import: Upload,
+  assets: Package,
+  runtime: Container,
+};
 
 /**
  * 协议连接工具条：分段 Select | 段内 middle | trailing | 刷新。
@@ -60,7 +76,9 @@ export default function ProtocolChromeTools({
           <SelectContent align="start">
             {options.map((s) => (
               <SelectItem key={s.id} value={s.id}>
-                {s.label}
+                <ChromeOptionLabel icon={SECTION_ICONS[s.id] ?? Layers}>
+                  {s.label}
+                </ChromeOptionLabel>
               </SelectItem>
             ))}
           </SelectContent>

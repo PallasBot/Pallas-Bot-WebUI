@@ -23,6 +23,14 @@ export function writeSavedHomeAccount(acc: number | null) {
   }
 }
 
+/** 解析 `?self_id=` / 账号字符串；无效则 null。 */
+export function parseBotAccountId(raw: string | null | undefined): number | null {
+  if (raw == null || raw === "") return null;
+  const n = parseInt(String(raw).trim(), 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(n);
+}
+
 export function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

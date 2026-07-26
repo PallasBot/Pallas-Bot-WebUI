@@ -6,6 +6,7 @@ import type {
   PluginRow,
   KnowledgeSourceDetail,
   KnowledgeSourceRetrieveData,
+  LlmToolIntentPreview,
 } from "@/api/pallasTypes";
 import { http } from "./http";
 
@@ -15,6 +16,7 @@ export type {
   PluginRow,
   KnowledgeSourceDetail,
   KnowledgeSourceRetrieveData,
+  LlmToolIntentPreview,
 };
 
 export type SystemData = {
@@ -1327,6 +1329,19 @@ export async function postConversationKernelKnowledgeSourceRetrieve(body: {
 
 export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
   const { data: body } = await http.get("/llm/tools");
+  return envelopeData<LlmToolCatalogData>(body) || {};
+}
+
+export async function previewLlmToolIntent(text: string): Promise<LlmToolIntentPreview> {
+  const { data: body } = await http.post("/llm/tools/preview", { text });
+  return envelopeData<LlmToolIntentPreview>(body) || { text, domains: [], schema_tools: [] };
+}
+
+export async function patchLlmToolOverride(
+  toolName: string,
+  patch: import("./pallasTypes").LlmToolOverridePatch,
+): Promise<LlmToolCatalogData> {
+  const { data: body } = await http.patch(`/llm/tools/overrides/${encodeURIComponent(toolName)}`, patch);
   return envelopeData<LlmToolCatalogData>(body) || {};
 }
 

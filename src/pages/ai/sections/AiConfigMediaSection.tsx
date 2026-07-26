@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
-  AudioLines, Cloud, HardDrive, Music2, Palette, Server, type LucideIcon,
+  AudioLines, Cloud, HardDrive, Layers, Music2, Palette, Server, type LucideIcon,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -20,6 +20,7 @@ import AiConfigSectionCard from "@/components/ai/AiConfigSectionCard";
 import AiSectionHeader from "@/components/ai/AiSectionHeader";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import { CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
+import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import PluginConfigWorkspace, {
   type PluginConfigWorkspaceHandle,
@@ -77,11 +78,15 @@ export default function AiConfigMediaSection() {
   const [params, setParams] = useSearchParams();
   const rawPanel = params.get("panel") || "";
   const panel = normalizeMediaPanel(rawPanel);
-  const setPanel = (next: Panel) => setParams((prev) => {
-    const nextParams = new URLSearchParams(prev);
-    nextParams.set("panel", next === "connection" || next === "runtime" ? "service" : next);
-    return nextParams;
-  }, { replace: true });
+  const setPanel = (next: Panel) => {
+    preserveShellMainScroll(() => {
+      setParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set("panel", next === "connection" || next === "runtime" ? "service" : next);
+        return nextParams;
+      }, { replace: true });
+    });
+  };
   const qc = useQueryClient();
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -212,6 +217,10 @@ export default function AiConfigMediaSection() {
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
     onSuccess: () => setMsg("TTS 默认已保存"), onError: (e) => setMsg(axiosErrorDetail(e)),
   });
+  const singSaveRef = useRef(singMut.mutateAsync);
+  const ttsSaveRef = useRef(ttsMut.mutateAsync);
+  singSaveRef.current = singMut.mutateAsync;
+  ttsSaveRef.current = ttsMut.mutateAsync;
   const payload = (statusQ.data?.data || {}) as Record<string, unknown>;
   const loggedIn = Boolean(payload.success) && Boolean(payload.session);
   const ncmSessionHint = useMemo(() => {
@@ -280,8 +289,6 @@ export default function AiConfigMediaSection() {
     [ttsQ.data],
   );
   const contentPanel: SelectPanel = panel as SelectPanel;
-  const activeSelectIcon =
-    SELECT_OPTIONS.find((item) => item.value === contentPanel)?.icon || Server;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const [drawStatus, setDrawStatus] = useState<
     Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">
@@ -294,7 +301,7 @@ export default function AiConfigMediaSection() {
   });
 
   const chromeMiddle = useMemo(() => (
-    <ChromeField label="媒体配置" icon={activeSelectIcon}>
+    <ChromeField label="媒体配置" icon={Layers}>
       <Select
         value={contentPanel}
         onValueChange={(value) => setPanel(value as SelectPanel)}
@@ -307,9 +314,41 @@ export default function AiConfigMediaSection() {
         ))}</SelectContent>
       </Select>
     </ChromeField>
-  ), [activeSelectIcon, contentPanel]);
+  ), [contentPanel]);
 
   const chromeTrailing = useMemo(() => {
+    if (contentPanel === "sing") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={busy || singQ.isLoading || singMut.isPending}
+          onClick={() => {
+            setMsg(null);
+            void singSaveRef.current();
+          }}
+        >
+          {singMut.isPending ? "保存中…" : "保存"}
+        </Button>
+      );
+    }
+    if (contentPanel === "tts") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="shrink-0"
+          disabled={busy || ttsQ.isLoading || ttsMut.isPending}
+          onClick={() => {
+            setMsg(null);
+            void ttsSaveRef.current();
+          }}
+        >
+          {ttsMut.isPending ? "保存中…" : "保存"}
+        </Button>
+      );
+    }
     if (contentPanel !== "draw") return null;
     return (
       <>
@@ -346,7 +385,15 @@ export default function AiConfigMediaSection() {
         </Button>
       </>
     );
-  }, [contentPanel, drawStatus]);
+  }, [
+    contentPanel,
+    drawStatus,
+    busy,
+    singQ.isLoading,
+    ttsQ.isLoading,
+    singMut.isPending,
+    ttsMut.isPending,
+  ]);
 
   useRegisterAiConfigChrome({ middle: chromeMiddle, trailing: chromeTrailing });
 
@@ -621,11 +668,6 @@ export default function AiConfigMediaSection() {
                 />
               </AiConfigField>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void singMut.mutateAsync(); }}>
-                保存
-              </Button>
-            </div>
           </PluginConfigFormSection>
         </div>
       </StateBlock>
@@ -668,11 +710,6 @@ export default function AiConfigMediaSection() {
               <AiConfigField label="合成语种" description="待合成文本语种。">
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
               </AiConfigField>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void ttsMut.mutateAsync(); }}>
-                保存
-              </Button>
             </div>
           </PluginConfigFormSection>
         </div>
