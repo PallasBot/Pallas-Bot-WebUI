@@ -3920,26 +3920,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pallas/api/update/changelog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Update Changelog
-         * @description 拉取仓库 CHANGELOG.md，截取最近若干版本段（与发行说明分离）。
-         */
-        get: operations["_update_changelog_pallas_api_update_changelog_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/pallas/api/update/bot/config-migration/check": {
         parameters: {
             query?: never;
@@ -15222,42 +15202,6 @@ export interface operations {
     _update_check_all_pallas_api_update_check_all_get: {
         parameters: {
             query?: {
-                token?: string | null;
-            };
-            header?: {
-                "X-Pallas-Token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    _update_changelog_pallas_api_update_changelog_get: {
-        parameters: {
-            query: {
-                /** @description webui 或 bot */
-                target: string;
-                max_versions?: number;
                 token?: string | null;
             };
             header?: {
