@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchUserConfigById, putUserConfig } from "@/api/fullConsole";
+import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
+import FormSectionDivider from "@/components/config/FormSectionDivider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,13 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+
+const SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
 
 type Props = {
   open: boolean;
@@ -27,7 +25,42 @@ type Props = {
   onSaved?: () => void;
 };
 
-/** 用户颗粒配置：shadcn Dialog，标题左对齐。 */
+function BoolSwitchField({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const labelId = useId();
+  return (
+    <div className="form-bool-switch-field">
+      <div className="form-bool-switch-field__row">
+        <span className="form-bool-switch-field__label" id={labelId}>
+          <span className="form-bool-switch-field__label-text">{label}</span>
+          {hint ? <ConfigFieldHelp title={label} description={hint} /> : null}
+        </span>
+        <div className="prefs-switch-row__control">
+          <Switch
+            checked={checked}
+            onCheckedChange={onChange}
+            aria-labelledby={labelId}
+            className={SWITCH_CLASS}
+          />
+          <span className="prefs-switch-row__state" aria-hidden="true">
+            {checked ? "开" : "关"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 用户颗粒配置：对齐群配置弹窗头栏与封禁开关。 */
 export default function UserSocialConfigModal({
   open,
   userId,
@@ -42,6 +75,9 @@ export default function UserSocialConfigModal({
   const [loadErr, setLoadErr] = useState("");
   const [saveErr, setSaveErr] = useState("");
   const [loadedId, setLoadedId] = useState<number | null>(null);
+
+  const displayName = userNickname?.trim() || (defaultBanned ? "添加用户封禁" : "用户配置");
+  const qqLabel = String(loadedId ?? userId ?? "—");
 
   useEffect(() => {
     if (!open) {
@@ -110,12 +146,12 @@ export default function UserSocialConfigModal({
         }}
       >
         <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
-          <DialogTitle id="user-social-config-title">
-            {defaultBanned ? "添加用户封禁" : "编辑用户颗粒配置"}
+          <DialogTitle id="user-social-config-title" className="text-left">
+            {displayName}
           </DialogTitle>
-          <DialogDescription className="muted">
-            QQ {loadedId ?? userId ?? "—"}
-            {userNickname?.trim() ? ` · ${userNickname.trim()}` : ""}
+          <p className="muted text-sm">QQ {qqLabel}</p>
+          <DialogDescription className="sr-only">
+            {defaultBanned ? "为该用户添加全局封禁。" : "编辑用户全局封禁状态。"}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,19 +159,16 @@ export default function UserSocialConfigModal({
           {loadBusy ? <p className="muted">加载中…</p> : null}
           {loadErr ? <p className="alert alert--err">{loadErr}</p> : null}
           {!loadBusy && !loadErr && loadedId != null ? (
-            <div className="social-config-dialog__body">
-              {saveErr ? <p className="alert alert--err">{saveErr}</p> : null}
-              <div className="social-config-dialog__row">
-                <span>封禁</span>
-                <Select value={banned ? "1" : "0"} onValueChange={(v) => setBanned(v === "1")}>
-                  <SelectTrigger className="h-9 w-auto min-w-[5rem]" aria-label="封禁">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">是</SelectItem>
-                    <SelectItem value="0">否</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="bot-config-edit--modal bot-config-edit--modal-sections social-config-dialog__body">
+              {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}
+              <div className="bot-config-dialog__block">
+                <FormSectionDivider title="策略" />
+                <BoolSwitchField
+                  label="全局封禁"
+                  hint="开启后该用户在所有群与私聊均无法触发牛牛（与群内屏蔽独立）。"
+                  checked={banned}
+                  onChange={setBanned}
+                />
               </div>
             </div>
           ) : null}
