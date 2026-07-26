@@ -29,6 +29,7 @@ import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
+import DatabaseMigratePanel from "@/components/DatabaseMigratePanel";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
@@ -405,6 +406,7 @@ export default function DatabasePage() {
   function onChromeRefresh() {
     if (activeSection === "backend") {
       void queryClient.invalidateQueries({ queryKey: ["db-backend-config"] });
+      void queryClient.invalidateQueries({ queryKey: ["db-migrate-mongo-pg-info"] });
       void overviewQ.refetch();
       void healthQ.refetch();
       return;
@@ -594,14 +596,33 @@ export default function DatabasePage() {
         </CardHeader>
         <CardContent className={DB_PANEL_BD}>
           {activeSection === "backend" ? (
-            <DatabaseBackendPanel
-              onMessage={(kind, text) => {
-                if (kind === "ok") {
-                  setOk(text);
-                  setErr("");
-                }
-              }}
-            />
+            <div className="space-y-6">
+              <DatabaseBackendPanel
+                onMessage={(kind, text) => {
+                  if (kind === "ok") {
+                    setOk(text);
+                    setErr("");
+                  } else {
+                    setErr(text);
+                    setOk("");
+                  }
+                }}
+              />
+              <div>
+                <h3 className="mb-2 text-sm font-medium">MongoDB → PostgreSQL 迁移</h3>
+                <DatabaseMigratePanel
+                  onMessage={(kind, text) => {
+                    if (kind === "ok") {
+                      setOk(text);
+                      setErr("");
+                    } else {
+                      setErr(text);
+                      setOk("");
+                    }
+                  }}
+                />
+              </div>
+            </div>
           ) : null}
 
           {activeSection === "group" ? (

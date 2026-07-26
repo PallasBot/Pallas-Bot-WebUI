@@ -1682,6 +1682,28 @@ export interface DbBackendSaveResult {
   force?: boolean;
 }
 
+export interface DbMigrateMongoPgInfo {
+  active_backend?: string;
+  tables: string[];
+  schema_ensure_steps?: { id: string; kind: string }[];
+  notes?: string[];
+}
+
+export interface DbMigrateMongoPgJob {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed" | string;
+  phase?: string;
+  dry_run?: boolean;
+  tables?: string[];
+  logs?: string[];
+  result?: Record<string, unknown>;
+  error?: string;
+  created_at?: number;
+  started_at?: number | null;
+  finished_at?: number | null;
+  elapsed_sec?: number | null;
+}
+
 export interface DbBackendProbeResult {
   ok: boolean;
   latency_ms: number;

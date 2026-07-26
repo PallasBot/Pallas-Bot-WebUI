@@ -2867,6 +2867,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pallas/api/db/migrate/mongo-to-pg/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Db Migrate Mongo Pg Info */
+        get: operations["_db_migrate_mongo_pg_info_pallas_api_db_migrate_mongo_to_pg_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/migrate/mongo-to-pg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Db Migrate Mongo Pg Start */
+        post: operations["_db_migrate_mongo_pg_start_pallas_api_db_migrate_mongo_to_pg_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/migrate/mongo-to-pg/jobs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Db Migrate Mongo Pg Active */
+        get: operations["_db_migrate_mongo_pg_active_pallas_api_db_migrate_mongo_to_pg_jobs_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pallas/api/db/migrate/mongo-to-pg/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Db Migrate Mongo Pg Job */
+        get: operations["_db_migrate_mongo_pg_job_pallas_api_db_migrate_mongo_to_pg_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pallas/api/db/backend": {
         parameters: {
             query?: never;
@@ -4653,6 +4721,36 @@ export interface components {
             path: string;
             /** Output Parent */
             output_parent?: string | null;
+        };
+        /** _DbMigrateMongoPgBody */
+        _DbMigrateMongoPgBody: {
+            /**
+             * Dry Run
+             * @default false
+             */
+            dry_run: boolean;
+            /**
+             * Restart Cursor
+             * @default false
+             */
+            restart_cursor: boolean;
+            /**
+             * Switch Backend
+             * @default true
+             */
+            switch_backend: boolean;
+            /**
+             * Try Hot Rebind
+             * @default true
+             */
+            try_hot_rebind: boolean;
+            /**
+             * Batch Size
+             * @default 1000
+             */
+            batch_size: number;
+            /** Tables */
+            tables?: string[];
         };
         /** _DbTableRowUpsertBody */
         _DbTableRowUpsertBody: {
@@ -12418,6 +12516,144 @@ export interface operations {
                 "X-Pallas-Token"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_migrate_mongo_pg_info_pallas_api_db_migrate_mongo_to_pg_info_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_migrate_mongo_pg_start_pallas_api_db_migrate_mongo_to_pg_post: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_DbMigrateMongoPgBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_migrate_mongo_pg_active_pallas_api_db_migrate_mongo_to_pg_jobs_active_get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    _db_migrate_mongo_pg_job_pallas_api_db_migrate_mongo_to_pg_jobs__job_id__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                "X-Pallas-Token"?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
