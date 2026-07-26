@@ -467,14 +467,100 @@
 .update-page__release-notes-body--md ol {
   margin: 0.35em 0 0.55em;
   padding-left: 1.25rem;
+  /* Tailwind preflight 会去掉 marker，需显式恢复 */
+  list-style-position: outside;
+}
+
+.update-page__release-notes-body--md ul {
+  list-style-type: disc;
+}
+
+.update-page__release-notes-body--md ol {
+  list-style-type: decimal;
 }
 
 .update-page__release-notes-body--md li {
   margin: 0.15em 0;
+  display: list-item;
 }
 
 .update-page__release-notes-body--md li + li {
   margin-top: 0.15em;
+}
+
+.update-page__release-notes-body--md li > ul {
+  list-style-type: circle;
+}
+
+.update-page__release-notes-body--md li > ol {
+  list-style-type: lower-alpha;
+}
+
+/* CHANGELOG 弹窗：拉开标题层次与列表扫读间距 */
+.update-page__release-notes-body--dialog {
+  margin: 0;
+  max-height: none;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.update-page__release-notes-body--dialog h2,
+.update-page__release-notes-body--dialog h3,
+.update-page__release-notes-body--dialog h4 {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.update-page__release-notes-body--dialog h2 {
+  margin: 0 0 0.7em;
+  font-size: 1.28em;
+  line-height: 1.3;
+  padding-bottom: 0.45em;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+.update-page__release-notes-body--dialog h3 {
+  margin: 1.25em 0 0.5em;
+  font-size: 1.12em;
+  line-height: 1.35;
+}
+
+.update-page__release-notes-body--dialog h4 {
+  margin: 1.05em 0 0.4em;
+  font-size: 1.02em;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text) 88%, var(--text-muted));
+}
+
+.update-page__release-notes-body--dialog p {
+  margin: 0.45em 0 0.7em;
+  color: color-mix(in srgb, var(--text) 92%, var(--text-muted));
+}
+
+.update-page__release-notes-body--dialog ul,
+.update-page__release-notes-body--dialog ol {
+  margin: 0.4em 0 0.85em;
+  padding-left: 1.35rem;
+}
+
+.update-page__release-notes-body--dialog li {
+  margin: 0.28em 0;
+  color: color-mix(in srgb, var(--text) 94%, var(--text-muted));
+}
+
+.update-page__release-notes-body--dialog li + li {
+  margin-top: 0.35em;
+}
+
+.update-page__release-notes-body--dialog strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.update-page__release-notes-body--dialog hr {
+  margin: 1.1em 0;
 }
 
 .update-page__release-notes-body--md blockquote {
@@ -631,6 +717,35 @@
 @media (max-width: 560px) {
   .update-page__panel-hd-meta {
     padding-left: 0;
+  }
+
+  .update-page__changelog-dialog {
+    width: min(42rem, calc(100vw - 20px));
+    max-width: min(42rem, calc(100vw - 20px));
+    max-height: min(860px, calc(100dvh - 20px));
+  }
+
+  .update-page__changelog-body {
+    max-height: min(55vh, 22rem);
+  }
+
+  .update-page__release-notes-body--dialog {
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .update-page__release-notes-body--dialog ul,
+  .update-page__release-notes-body--dialog ol {
+    padding-left: 1.2rem;
+  }
+
+  .update-page__changelog-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .update-page__changelog-pref {
+    margin-right: 0;
   }
 
   .update-page__release-primary {

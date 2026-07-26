@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 生成 GitHub Release 变更摘要（按 Conventional Commits 分组，空分组省略）。
+# 分节标题与 Bot / Keep a Changelog 对齐：Added / Fixed / Changed。
 set -euo pipefail
 
 PREVIOUS_TAG="${1:-}"
@@ -18,6 +19,20 @@ emit_section() {
   if [ -n "${body//[[:space:]]/}" ]; then
     printf '### %s\n\n%s\n\n' "$title" "$body"
   fi
+}
+
+join_bodies() {
+  local out=""
+  local part
+  for part in "$@"; do
+    if [ -n "${part//[[:space:]]/}" ]; then
+      if [ -n "$out" ]; then
+        out="${out}"$'\n'
+      fi
+      out="${out}${part}"
+    fi
+  done
+  printf '%s' "$out"
 }
 
 if [ -z "$PREVIOUS_TAG" ]; then
@@ -40,30 +55,30 @@ FEATS=$(format_log "$RANGE" --grep='^feat')
 FIXES=$(format_log "$RANGE" --grep='^fix')
 DOCS=$(format_log "$RANGE" --grep='^docs')
 PERF=$(format_log "$RANGE" --grep='^perf')
+REFACTOR=""
 if [ "${INCLUDE_REFACTOR:-0}" = "1" ]; then
   REFACTOR=$(format_log "$RANGE" --grep='^refactor')
 fi
-OTHER=$(
-  format_log "$RANGE" \
-    --invert-grep --grep='^feat' --grep='^fix' --grep='^docs' --grep='^perf' \
-    --grep='^chore(release)' --grep='^chore: release'
-)
+
 if [ "${INCLUDE_REFACTOR:-0}" = "1" ]; then
   OTHER=$(
     format_log "$RANGE" \
       --invert-grep --grep='^feat' --grep='^fix' --grep='^docs' --grep='^perf' --grep='^refactor' \
       --grep='^chore(release)' --grep='^chore: release'
   )
+else
+  OTHER=$(
+    format_log "$RANGE" \
+      --invert-grep --grep='^feat' --grep='^fix' --grep='^docs' --grep='^perf' \
+      --grep='^chore(release)' --grep='^chore: release'
+  )
 fi
 
-emit_section "🚀 新功能" "$FEATS"
-emit_section "🐛 错误修复" "$FIXES"
-emit_section "📚 文档更新" "$DOCS"
-emit_section "⚡ 性能优化" "$PERF"
-if [ "${INCLUDE_REFACTOR:-0}" = "1" ]; then
-  emit_section "♻️ 重构" "${REFACTOR:-}"
-fi
-emit_section "🔨 其他更改" "$OTHER"
+CHANGED=$(join_bodies "$DOCS" "$PERF" "$REFACTOR" "$OTHER")
+
+emit_section "Added" "$FEATS"
+emit_section "Fixed" "$FIXES"
+emit_section "Changed" "$CHANGED"
 
 COMPARE_TO="${CURRENT_REF}"
 if ! git rev-parse --verify "${COMPARE_TO}^{commit}" >/dev/null 2>&1; then
