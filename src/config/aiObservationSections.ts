@@ -50,20 +50,20 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
   {
     id: "people",
     label: "人物",
-    lead: "人物事实、观察队列与账号口癖审批。",
+    lead: "群内人物事实、待整理观察，以及口癖审批。",
     path: "/ai/people",
     scope: { bot: true, group: true },
   },
   {
     id: "tools",
     label: "工具",
-    lead: "内置、插件与 MCP 工具目录。",
+    lead: "当前可调用的内置、插件与 MCP 工具；联网搜索在对话策略里配置。",
     path: "/ai/tools",
   },
   {
     id: "tasks",
     label: "任务",
-    lead: "定时任务、子代理与 Agent 运行摘要。",
+    lead: "提醒、周期任务与异步调研的运行情况。",
     path: "/ai/tasks",
     scope: { bot: true, group: true },
   },

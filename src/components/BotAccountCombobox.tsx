@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import BotSelectLabel from "@/components/BotSelectLabel";
 import { CHROME_BOT_ACCOUNT_SELECT } from "@/components/ChromeTools";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
-import { botSelectDropdownLabel } from "@/utils/botDisplay";
+import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
 
 export type BotAccountOption = {
   id: string;
@@ -16,6 +16,8 @@ export type BotAccountComboboxProps = {
   bots: BotAccountOption[];
   /** 空选 / 全部等前置项；value 为约定哨兵（如 `__none__` / `__all__`） */
   leadingOption?: { value: string; label: ReactNode; keywords?: string };
+  /** 复用既有收藏集合：列表内收藏账号排前 */
+  favorites?: ReadonlySet<number> | null;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -31,12 +33,14 @@ export type BotAccountComboboxProps = {
 /**
  * 控制台 Bot 账号 Combobox（Popover + Command）。
  * 触发器只显示昵称；列表显示「昵称（账号）」；选项 ≥ searchThreshold 时显示搜索。
+ * 传入 favorites 时收藏实例排前（不在此组件内增删收藏）。
  */
 export default function BotAccountCombobox({
   value,
   onValueChange,
   bots,
   leadingOption,
+  favorites,
   placeholder = "请选择 Bot…",
   searchPlaceholder = "搜索昵称或账号…",
   emptyText = "无匹配账号",
@@ -48,6 +52,21 @@ export default function BotAccountCombobox({
   disabled,
   id,
 }: BotAccountComboboxProps) {
+  const sortedBots = useMemo(() => {
+    const rows = [...bots];
+    rows.sort((a, b) => {
+      const fa = botAccountFavoriteRank(favorites, a.id);
+      const fb = botAccountFavoriteRank(favorites, b.id);
+      if (fa !== fb) return fb - fa;
+      const na = String(a.nickname || "").trim();
+      const nb = String(b.nickname || "").trim();
+      const cmp = na.localeCompare(nb, "zh-CN");
+      if (cmp !== 0) return cmp;
+      return String(a.id).localeCompare(String(b.id), "zh-CN", { numeric: true });
+    });
+    return rows;
+  }, [bots, favorites]);
+
   const options = useMemo(() => {
     const out: ComboboxOption[] = [];
     if (leadingOption) {
@@ -57,7 +76,7 @@ export default function BotAccountCombobox({
         keywords: leadingOption.keywords ?? String(leadingOption.label),
       });
     }
-    for (const b of bots) {
+    for (const b of sortedBots) {
       const idStr = String(b.id).trim();
       if (!idStr) continue;
       const nick = b.nickname?.trim() || "";
@@ -69,13 +88,13 @@ export default function BotAccountCombobox({
       });
     }
     return out;
-  }, [bots, leadingOption]);
+  }, [leadingOption, sortedBots]);
 
   const resolvedTitle =
     title ??
     (() => {
       if (!value || (leadingOption && value === leadingOption.value)) return undefined;
-      const cur = bots.find((b) => String(b.id) === value);
+      const cur = sortedBots.find((b) => String(b.id) === value);
       if (!cur) return value;
       return botSelectDropdownLabel(cur.nickname, cur.id);
     })();
@@ -90,7 +109,7 @@ export default function BotAccountCombobox({
       searchPlaceholder={searchPlaceholder}
       emptyText={emptyText}
       searchThreshold={searchThreshold}
-      searchCount={bots.length}
+      searchCount={sortedBots.length}
       triggerClassName={triggerClassName}
       contentClassName={contentClassName}
       ariaLabel={ariaLabel}

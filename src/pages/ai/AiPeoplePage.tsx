@@ -7,6 +7,7 @@ import {
   resolveAgentCatchphrase,
   saveAgentPersonFact,
 } from "@/api/agentPlatformApi";
+import { fetchFriendList } from "@/api/console";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import AiScopeHint from "@/components/ai/AiScopeHint";
 import {
@@ -15,9 +16,45 @@ import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
 import StateBlock from "@/components/StateBlock";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+
+type CatchStatusFilter = "candidate" | "active" | "all";
+
+function truncateText(raw: string, max = 72): string {
+  const text = String(raw || "").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}…`;
+}
+
+function friendDisplayName(row: { nickname?: string; remark?: string; user_id: number }): string {
+  const remark = String(row.remark || "").trim();
+  const nick = String(row.nickname || "").trim();
+  return remark || nick || String(row.user_id);
+}
+
+function catchphraseStatusLabel(status: string): string {
+  if (status === "candidate") return "待审";
+  if (status === "active") return "已启用";
+  if (status === "rejected") return "已驳回";
+  return status || "—";
+}
+
+function observationStatusLabel(status: string): string {
+  if (status === "pending") return "待整理";
+  if (status === "processed") return "已处理";
+  if (status === "dropped") return "已丢弃";
+  return status || "—";
+}
+
+function factScopeLabel(scope: string): string {
+  if (scope === "group") return "本群";
+  if (scope === "global") return "全局";
+  return scope || "—";
+}
 
 export default function AiPeoplePage() {
   const qc = useQueryClient();
@@ -26,6 +63,7 @@ export default function AiPeoplePage() {
   const scopeGroup = parseScopeGroupId(groupId);
   const [userId, setUserId] = useState("");
   const [content, setContent] = useState("");
+  const [catchFilter, setCatchFilter] = useState<CatchStatusFilter>("candidate");
 
   useRegisterAiObservationChrome({ middle: null });
 
@@ -50,6 +88,11 @@ export default function AiPeoplePage() {
   const catchphrasesQuery = useQuery({
     queryKey: ["agent-catchphrases", scopeBot],
     queryFn: () => fetchAgentCatchphrases({ botId: scopeBot }),
+  });
+  const friendsQuery = useQuery({
+    queryKey: ["friend-list", scopeBot],
+    enabled: Boolean(scopeBot),
+    queryFn: () => fetchFriendList(scopeBot!),
   });
 
   const saveFact = useMutation({
@@ -81,6 +124,44 @@ export default function AiPeoplePage() {
   const facts = useMemo(() => factsQuery.data?.items || [], [factsQuery.data]);
   const observations = useMemo(() => observationsQuery.data?.items || [], [observationsQuery.data]);
   const catchphrases = useMemo(() => catchphrasesQuery.data?.items || [], [catchphrasesQuery.data]);
+  const friends = useMemo(() => friendsQuery.data?.friends || [], [friendsQuery.data]);
+
+  const friendOptions = useMemo(() => {
+    const out: ComboboxOption[] = [];
+    const seen = new Set<string>();
+    for (const row of friends) {
+      const id = String(row.user_id ?? "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const name = friendDisplayName(row);
+      out.push({
+        value: id,
+        label: name !== id ? `${name}（${id}）` : id,
+        triggerLabel: name || id,
+        keywords: `${id} ${row.nickname || ""} ${row.remark || ""}`,
+      });
+    }
+    const cur = userId.trim();
+    if (cur && !seen.has(cur)) {
+      out.push({ value: cur, label: cur, keywords: cur });
+    }
+    return out;
+  }, [friends, userId]);
+
+  const filteredCatchphrases = useMemo(() => {
+    if (catchFilter === "all") return catchphrases;
+    return catchphrases.filter((item) => String(item.status || "") === catchFilter);
+  }, [catchFilter, catchphrases]);
+  const catchCounts = useMemo(() => {
+    let candidate = 0;
+    let active = 0;
+    for (const item of catchphrases) {
+      const status = String(item.status || "");
+      if (status === "candidate") candidate += 1;
+      else if (status === "active") active += 1;
+    }
+    return { candidate, active, all: catchphrases.length };
+  }, [catchphrases]);
 
   if (!scopeBot) {
     return <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint>;
@@ -89,121 +170,190 @@ export default function AiPeoplePage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">人物事实</CardTitle>
-          <CardDescription>群内默认隔离；全局层需用户同意后才可复用。</CardDescription>
+          <CardDescription>
+            写入群内稳定信息（如希望怎么称呼）。默认只在本群生效；跨群复用需用户同意。
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              className="sm:max-w-[10rem]"
-              placeholder="用户 QQ"
+            <Combobox
               value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              onValueChange={setUserId}
+              options={friendOptions}
+              placeholder="选择或输入用户 QQ"
+              searchPlaceholder="搜索好友昵称 / QQ…"
+              emptyText={friendsQuery.isLoading ? "好友加载中…" : "无匹配好友"}
+              allowCustom
+              searchThreshold={0}
+              searchCount={friends.length}
+              ariaLabel="用户 QQ"
+              triggerClassName="h-9 w-full min-w-0 sm:max-w-[14rem]"
+              title={userId || undefined}
             />
             <Input
-              placeholder="稳定事实，例如希望被叫作…"
+              placeholder="例如：希望被叫作小明"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
             <Button
-              disabled={!content.trim() || saveFact.isPending || scopeGroup == null}
+              disabled={!content.trim() || saveFact.isPending || scopeGroup == null || !userId.trim()}
               onClick={() => saveFact.mutate()}
             >
               写入
             </Button>
           </div>
-          {scopeGroup == null ? <p className="text-xs text-muted-foreground">写入事实需要选择群号。</p> : null}
+          <p className="text-xs text-muted-foreground">
+            {friendsQuery.isError
+              ? "好友列表拉取失败，仍可直接输入 QQ。"
+              : friends.length
+                ? `已加载 ${friends.length} 位好友，可搜索或直接输入 QQ。`
+                : "可搜索好友，或直接输入 QQ。"}
+            {scopeGroup == null ? " 写入前请先在顶栏选择群。" : ""}
+          </p>
           {saveFact.error ? <p className="text-xs text-destructive">{String(saveFact.error)}</p> : null}
           <StateBlock loading={factsQuery.isLoading} error={factsQuery.error}>
-            <ul className="space-y-2">
+            <ul className="max-h-[14rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
               {facts.map((item) => (
-                <li key={String(item.fact_id)} className="rounded-md border p-3 text-sm">
-                  <div className="font-medium">{String(item.content || "")}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    用户 {String(item.user_id)} · {String(item.scope)} · {String(item.status)}
+                <li
+                  key={String(item.fact_id)}
+                  className="rounded-md border px-2.5 py-1.5 text-sm leading-snug"
+                >
+                  <div className="font-medium">{truncateText(String(item.content || ""), 96)}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    QQ {String(item.user_id)} · {factScopeLabel(String(item.scope || ""))} ·{" "}
+                    {String(item.status || "—")}
                   </div>
                 </li>
               ))}
-              {!facts.length ? <li className="text-sm text-muted-foreground">暂无人物事实。</li> : null}
+              {!facts.length ? <li className="text-sm text-muted-foreground">还没有人物事实。</li> : null}
             </ul>
           </StateBlock>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">观察队列</CardTitle>
-          <CardDescription>待整理的候选记忆；队列大小 {observationsQuery.data?.queue_size ?? 0}。</CardDescription>
+          <CardDescription>
+            尚未写入长期记忆的候选片段。当前队列 {observationsQuery.data?.queue_size ?? 0} 条。
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <StateBlock loading={observationsQuery.isLoading} error={observationsQuery.error}>
-            <ul className="space-y-2">
-              {observations.slice(0, 20).map((item) => (
-                <li key={String(item.observation_id)} className="rounded-md border p-3 text-sm">
-                  <div>{String(item.text || "")}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {String(item.status)} · 用户 {String(item.user_id)} · {String(item.source)}
+            <ul className="max-h-[12rem] space-y-1.5 overflow-y-auto overscroll-contain pr-1">
+              {observations.slice(0, 30).map((item) => (
+                <li
+                  key={String(item.observation_id)}
+                  className="rounded-md border px-2.5 py-1.5 text-sm leading-snug"
+                >
+                  <div>{truncateText(String(item.text || ""), 100)}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    {observationStatusLabel(String(item.status || ""))} · QQ {String(item.user_id)}
+                    {item.source ? ` · ${String(item.source)}` : ""}
                   </div>
                 </li>
               ))}
-              {!observations.length ? <li className="text-sm text-muted-foreground">队列为空。</li> : null}
+              {!observations.length ? (
+                <li className="text-sm text-muted-foreground">队列是空的。</li>
+              ) : null}
             </ul>
           </StateBlock>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">账号口癖候选</CardTitle>
-          <CardDescription>仅来自该 Bot 成功表达；审批后进入账号级口癖。</CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-base">口癖候选</CardTitle>
+              <CardDescription>
+                从该 Bot 成功回复里抽样的说法；通过后可作为账号口癖复用。
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  ["candidate", `待审 ${catchCounts.candidate}`],
+                  ["active", `已启用 ${catchCounts.active}`],
+                  ["all", `全部 ${catchCounts.all}`],
+                ] as const
+              ).map(([key, label]) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant={catchFilter === key ? "secondary" : "ghost"}
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setCatchFilter(key)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <StateBlock loading={catchphrasesQuery.isLoading} error={catchphrasesQuery.error}>
-            <ul className="space-y-2">
-              {catchphrases.map((item) => (
-                <li
-                  key={String(item.entry_id)}
-                  className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <div className="font-medium">{String(item.saying || "")}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {String(item.status)} · 支持 {String(item.support)} · 群数{" "}
-                      {Array.isArray(item.groups_seen) ? item.groups_seen.length : 0}
+            <ul className="max-h-[min(22rem,50vh)] divide-y overflow-y-auto overscroll-contain rounded-md border">
+              {filteredCatchphrases.map((item) => {
+                const status = String(item.status || "");
+                const saying = String(item.saying || "");
+                return (
+                  <li
+                    key={String(item.entry_id)}
+                    className="flex flex-col gap-1.5 px-2.5 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium leading-snug" title={saying}>
+                        {truncateText(saying, 80)}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Badge variant={status === "active" ? "default" : "outline"} className="h-5 px-1.5 text-[10px]">
+                          {catchphraseStatusLabel(status)}
+                        </Badge>
+                        <span>支持 {String(item.support)}</span>
+                        <span>
+                          出现过的群 {Array.isArray(item.groups_seen) ? item.groups_seen.length : 0}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  {String(item.status) === "candidate" ? (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          resolveCatchphrase.mutate({
-                            entryId: String(item.entry_id),
-                            action: "approve",
-                          })
-                        }
-                      >
-                        通过
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          resolveCatchphrase.mutate({
-                            entryId: String(item.entry_id),
-                            action: "reject",
-                          })
-                        }
-                      >
-                        驳回
-                      </Button>
-                    </div>
-                  ) : null}
-                </li>
-              ))}
-              {!catchphrases.length ? <li className="text-sm text-muted-foreground">暂无口癖候选。</li> : null}
+                    {status === "candidate" ? (
+                      <div className="flex shrink-0 gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 px-2"
+                          onClick={() =>
+                            resolveCatchphrase.mutate({
+                              entryId: String(item.entry_id),
+                              action: "approve",
+                            })
+                          }
+                        >
+                          通过
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2"
+                          onClick={() =>
+                            resolveCatchphrase.mutate({
+                              entryId: String(item.entry_id),
+                              action: "reject",
+                            })
+                          }
+                        >
+                          驳回
+                        </Button>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+              {!filteredCatchphrases.length ? (
+                <li className="px-2.5 py-3 text-sm text-muted-foreground">当前筛选下没有口癖。</li>
+              ) : null}
             </ul>
           </StateBlock>
         </CardContent>

@@ -11,7 +11,7 @@ import { CHROME_TOOLS_CLUSTER } from "@/components/ChromeTools";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
-import { botAccountFavoriteRank, botSelectDropdownLabel } from "@/utils/botDisplay";
+import { botSelectDropdownLabel } from "@/utils/botDisplay";
 
 const ALL_BOTS = "__all__";
 const ALL_GROUPS = "__all_groups__";
@@ -49,16 +49,8 @@ export default function AiObservationScopeFields({
       seen.add(id);
       out.push({ id, nickname: data.bot_profiles?.[id]?.nickname?.trim() || "" });
     }
-    out.sort((a, b) => {
-      const fa = botAccountFavoriteRank(favorites, a.id);
-      const fb = botAccountFavoriteRank(favorites, b.id);
-      if (fa !== fb) return fb - fa;
-      const cmp = a.nickname.localeCompare(b.nickname, "zh-CN");
-      if (cmp !== 0) return cmp;
-      return a.id.localeCompare(b.id, "zh-CN", { numeric: true });
-    });
     return out;
-  }, [favorites, instQ.data]);
+  }, [instQ.data]);
 
   const botNum = Number.parseInt(botId.trim(), 10);
   const botReady = Number.isFinite(botNum) && botNum > 0;
@@ -110,6 +102,7 @@ export default function AiObservationScopeFields({
               value={botId.trim() || ALL_BOTS}
               onValueChange={(v) => setBotId(v === ALL_BOTS ? "" : v)}
               bots={botOptions}
+              favorites={favorites}
               leadingOption={{
                 value: ALL_BOTS,
                 label: <ChromeOptionLabel icon={Bot}>全部</ChromeOptionLabel>,

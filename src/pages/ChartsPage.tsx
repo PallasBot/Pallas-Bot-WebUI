@@ -411,6 +411,7 @@ export default function ChartsPage() {
                   id: String(b.account),
                   nickname: botNick(b.account) || "BOT",
                 }))}
+                favorites={favorites}
                 placeholder="选择账号"
                 ariaLabel="选择 Bot 账号"
                 title={selectedAccount != null ? botTitle(selectedAccount) : undefined}

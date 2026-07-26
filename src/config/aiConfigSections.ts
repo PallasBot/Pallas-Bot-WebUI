@@ -46,7 +46,7 @@ export const AI_CONFIG_SECTIONS: AiConfigSectionDef[] = [
   {
     id: "dialogue",
     label: "对话",
-    lead: "接话策略、会话、记忆、预算、知识库与工具。",
+    lead: "接话策略、会话、记忆、预算、知识库、工具与联网搜索。",
     icon: "sparkles",
     groupId: "dialogue",
   },

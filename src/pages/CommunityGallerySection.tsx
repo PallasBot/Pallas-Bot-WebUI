@@ -196,6 +196,7 @@ export default function CommunityGallerySection() {
                   id: b.self_id,
                   nickname: profileNick(b.self_id),
                 }))}
+                favorites={favorites}
                 leadingOption={{ value: "__none__", label: "不指定账号", keywords: "不指定账号" }}
                 placeholder="可选 Bot…"
                 triggerClassName="w-full"
