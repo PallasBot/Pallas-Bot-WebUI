@@ -4394,7 +4394,7 @@ html[data-theme="light"] .bot-config-edit {
 }
 
 .bot-config-edit--modal-sections {
-  gap: 12px;
+  gap: 18px;
 }
 
 .bot-config-dialog__init-note {
@@ -4403,11 +4403,16 @@ html[data-theme="light"] .bot-config-edit {
   line-height: 1.5;
 }
 
-.bot-config-dialog__section-body {
-  display: flex !important;
+.bot-config-dialog__block {
+  display: flex;
   flex-direction: column;
   gap: 12px;
-  grid-template-columns: none !important;
+}
+
+.bot-config-dialog__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   width: 100%;
 }
 
@@ -4443,10 +4448,6 @@ html[data-theme="light"] .bot-config-edit {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 10px 12px;
   margin-bottom: 0;
-}
-
-.bot-config-edit--modal .plugin-config-group-card__title {
-  font-weight: 700;
 }
 
 .bot-config-edit--modal .bot-config-edit__grid--switches .form-bool-switch-field {

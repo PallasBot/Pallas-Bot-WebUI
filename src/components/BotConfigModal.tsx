@@ -1,10 +1,9 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { Puzzle, Shield, Sparkles, Users } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import { putBotConfig } from "@/api/fullConsole";
 import ConfigFieldHelp from "@/components/config/ConfigFieldHelp";
+import FormSectionDivider from "@/components/config/FormSectionDivider";
 import IdChipsInput from "@/components/config/IdChipsInput";
-import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,7 +109,7 @@ function BoolSwitchField({
   );
 }
 
-/** 数据库实例 Bot 配置：头像头栏 + 分区卡片，对齐协议账号设置页。 */
+/** 数据库实例 Bot 配置：头像头栏 + hub 风格 divider 分段。 */
 export default function BotConfigModal({
   account,
   isInit,
@@ -265,133 +264,125 @@ export default function BotConfigModal({
                 </p>
               ) : null}
 
-              <PluginConfigFormSection
-                title="行为与安全"
-                subtitle="开关控制回复安全与自动同意策略。"
-                icon={Shield}
-                bodyClassName="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches"
-              >
-                <BoolSwitchField
-                  label="安全模式"
-                  hint="开启后，牛牛回复发送失败时会直接 ban 掉这句话。"
-                  checked={draft.security}
-                  onChange={(v) => setDraftBool("security", v)}
-                />
-                <BoolSwitchField
-                  label="自动同意好友"
-                  hint="自动通过好友申请，无需在协议端手动确认。"
-                  checked={draft.auto_accept_friend}
-                  onChange={(v) => setDraftBool("auto_accept_friend", v)}
-                />
-                <BoolSwitchField
-                  label="自动同意入群"
-                  hint="自动通过入群邀请或加群申请。"
-                  checked={draft.auto_accept_group}
-                  onChange={(v) => setDraftBool("auto_accept_group", v)}
-                />
-                <BoolSwitchField
-                  label="社区名册公开"
-                  hint="关闭后该牛不上报社区名册（气泡墙不展示）。"
-                  checked={draft.community_roster_show_qq}
-                  onChange={(v) => setDraftBool("community_roster_show_qq", v)}
-                />
-              </PluginConfigFormSection>
-
-              <PluginConfigFormSection
-                title="权限"
-                subtitle="号主与管理员 QQ。"
-                icon={Users}
-                bodyClassName="bot-config-dialog__section-body"
-              >
-                <SettingsFormField
-                  label="管理员 QQ"
-                  hint="点「更多」添加或管理；芯片 × 可移除。初始化时请至少添加一名号主。"
-                >
-                  <IdChipsInput
-                    value={draft.admins}
-                    onChange={(admins) => setDraft({ ...draft, admins })}
-                    placeholder="QQ 号"
-                    emptyText="尚未添加管理员。"
+              <div className="bot-config-dialog__block">
+                <FormSectionDivider title="行为与安全" />
+                <div className="bot-config-edit__grid bot-config-edit__grid--pair bot-config-edit__grid--switches">
+                  <BoolSwitchField
+                    label="安全模式"
+                    hint="开启后，牛牛回复发送失败时会直接 ban 掉这句话。"
+                    checked={draft.security}
+                    onChange={(v) => setDraftBool("security", v)}
                   />
-                </SettingsFormField>
-              </PluginConfigFormSection>
+                  <BoolSwitchField
+                    label="自动同意好友"
+                    hint="自动通过好友申请，无需在协议端手动确认。"
+                    checked={draft.auto_accept_friend}
+                    onChange={(v) => setDraftBool("auto_accept_friend", v)}
+                  />
+                  <BoolSwitchField
+                    label="自动同意入群"
+                    hint="自动通过入群邀请或加群申请。"
+                    checked={draft.auto_accept_group}
+                    onChange={(v) => setDraftBool("auto_accept_group", v)}
+                  />
+                  <BoolSwitchField
+                    label="社区名册公开"
+                    hint="关闭后该牛不上报社区名册（气泡墙不展示）。"
+                    checked={draft.community_roster_show_qq}
+                    onChange={(v) => setDraftBool("community_roster_show_qq", v)}
+                  />
+                </div>
+              </div>
 
-              <PluginConfigFormSection
-                title="牛格种子"
-                subtitle="最多选择 2 项；影响复读选句风格。"
-                icon={Sparkles}
-                bodyClassName="bot-config-dialog__section-body"
-              >
-                <SettingsFormField
-                  label="偏好"
-                  hint="自动按账号派生；点选后为手改覆盖。清空可恢复自动。"
-                >
-                  <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
-                    {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
-                      const on = draft.seedPrefs.includes(opt.id);
-                      const locked = !on && draft.seedPrefs.length >= 2;
-                      return (
-                        <button
-                          key={`seed-${account}-${opt.id}`}
-                          type="button"
-                          className={cn(
-                            "bot-config-seed-tiles__btn",
-                            on && "bot-config-seed-tiles__btn--on",
-                          )}
-                          aria-pressed={on}
-                          disabled={locked}
-                          onClick={() => toggleSeedPref(opt.id, !on)}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {draft.seedManual ? (
-                    <div className="bot-config-seed-status">
-                      <span className="muted">当前：手改覆盖</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={clearSeedOverride}>
-                        恢复自动
-                      </Button>
-                    </div>
-                  ) : null}
-                </SettingsFormField>
-              </PluginConfigFormSection>
+              <div className="bot-config-dialog__block">
+                <FormSectionDivider title="权限" />
+                <div className="bot-config-dialog__section-body">
+                  <SettingsFormField
+                    label="管理员 QQ"
+                    hint="点「更多」添加或管理；芯片 × 可移除。初始化时请至少添加一名号主。"
+                  >
+                    <IdChipsInput
+                      value={draft.admins}
+                      onChange={(admins) => setDraft({ ...draft, admins })}
+                      placeholder="QQ 号"
+                      emptyText="尚未添加管理员。"
+                    />
+                  </SettingsFormField>
+                </div>
+              </div>
 
-              <PluginConfigFormSection
-                title="插件"
-                subtitle="勾选表示禁用该插件。"
-                icon={Puzzle}
-                bodyClassName="bot-config-dialog__section-body"
-              >
-                <SettingsFormField
-                  label="禁用插件"
-                  hint="勾选后该插件对该账号不生效；清单来自当前已加载插件。"
-                >
-                  {!pluginPickList.length ? (
-                    <p className="bot-config-edit__empty muted">无插件清单，无法勾选禁用项。</p>
-                  ) : (
-                    <div className="plugin-check-grid plugin-check-grid--bot-modal">
-                      {pluginPickList.map((p) => (
-                        <label
-                          key={`mod-pl-${account}-${p.name}`}
-                          className={cn(
-                            "plugin-check-grid__item",
-                            draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={draft.disabled_plugins.includes(p.name)}
-                            onChange={(e) => togglePluginDisabled(p.name, e.target.checked)}
-                          />
-                          <span>{p.label}</span>
-                        </label>
-                      ))}
+              <div className="bot-config-dialog__block">
+                <FormSectionDivider title="牛格种子" />
+                <div className="bot-config-dialog__section-body">
+                  <SettingsFormField
+                    label="偏好"
+                    hint="最多 2 项；自动按账号派生，点选后为手改覆盖。清空可恢复自动。"
+                  >
+                    <div className="bot-config-seed-tiles" role="group" aria-label="牛格种子偏好">
+                      {PERSONA_SEED_PREF_OPTIONS.map((opt) => {
+                        const on = draft.seedPrefs.includes(opt.id);
+                        const locked = !on && draft.seedPrefs.length >= 2;
+                        return (
+                          <button
+                            key={`seed-${account}-${opt.id}`}
+                            type="button"
+                            className={cn(
+                              "bot-config-seed-tiles__btn",
+                              on && "bot-config-seed-tiles__btn--on",
+                            )}
+                            aria-pressed={on}
+                            disabled={locked}
+                            onClick={() => toggleSeedPref(opt.id, !on)}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </SettingsFormField>
-              </PluginConfigFormSection>
+                    {draft.seedManual ? (
+                      <div className="bot-config-seed-status">
+                        <span className="muted">当前：手改覆盖</span>
+                        <Button type="button" variant="outline" size="sm" onClick={clearSeedOverride}>
+                          恢复自动
+                        </Button>
+                      </div>
+                    ) : null}
+                  </SettingsFormField>
+                </div>
+              </div>
+
+              <div className="bot-config-dialog__block">
+                <FormSectionDivider title="插件" />
+                <div className="bot-config-dialog__section-body">
+                  <SettingsFormField
+                    label="禁用插件"
+                    hint="勾选后该插件对该账号不生效；清单来自当前已加载插件。"
+                  >
+                    {!pluginPickList.length ? (
+                      <p className="bot-config-edit__empty muted">无插件清单，无法勾选禁用项。</p>
+                    ) : (
+                      <div className="plugin-check-grid plugin-check-grid--bot-modal">
+                        {pluginPickList.map((p) => (
+                          <label
+                            key={`mod-pl-${account}-${p.name}`}
+                            className={cn(
+                              "plugin-check-grid__item",
+                              draft.disabled_plugins.includes(p.name) && "plugin-check-grid__item--on",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={draft.disabled_plugins.includes(p.name)}
+                              onChange={(e) => togglePluginDisabled(p.name, e.target.checked)}
+                            />
+                            <span>{p.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </SettingsFormField>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>

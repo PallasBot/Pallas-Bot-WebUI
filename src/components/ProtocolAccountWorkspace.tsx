@@ -37,7 +37,7 @@ import {
 } from "@/api/protocol";
 import CopyIconButton from "@/components/CopyIconButton";
 import ProtocolDockerImageSelect from "@/components/protocol/ProtocolDockerImageSelect";
-import PluginConfigFormSection from "@/components/config/PluginConfigFormSection";
+import FormSectionDivider from "@/components/config/FormSectionDivider";
 import SettingsFormField from "@/components/config/SettingsFormField";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import SegTabs from "@/components/SegTabs";
@@ -58,7 +58,6 @@ import {
   protocolRuntimeModeLabel,
   protocolRuntimeVersionText,
 } from "@/utils/protocolUi";
-import { Cable, Server, Tag } from "lucide-react";
 
 export type ProtocolAccountTab = "overview" | "settings";
 
@@ -1155,188 +1154,182 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
           <section className="protocol-account-workspace__section" aria-label="账号设置">
             {isDialog ? (
               <div className="protocol-account-workspace__settings-stack">
-                <PluginConfigFormSection
-                  title="实例"
-                  subtitle="控制台展示与协议端原生 WebUI。"
-                  icon={Tag}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      value={displayName}
-                      onValueChange={setDisplayName}
-                    />
-                  </SettingsFormField>
-                  <SettingsFormField
-                    label="原生 WebUI 端口"
-                    hint="协议端自带 Web 控制台监听端口。"
-                  >
-                    <UiInput
-                      type="number"
-                      min={1}
-                      max={65535}
-                      value={webuiPort}
-                      onValueChange={setWebuiPort}
-                    />
-                  </SettingsFormField>
-                </PluginConfigFormSection>
-
-                <PluginConfigFormSection
-                  title="协议与运行时"
-                  subtitle="切换到 SnowLuma 时保留原 NapCat 数据目录。"
-                  icon={Server}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <SettingsFormField label="协议实现" hint="保存后按所选实现重启协议进程。">
-                    <Select
-                      value={targetBackend}
-                      onValueChange={(v) =>
-                        setTargetBackend(v === "snowluma" ? "snowluma" : "napcat")
-                      }
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="实例" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField label="实例名" hint="控制台与列表中的展示称呼。">
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        value={displayName}
+                        onValueChange={setDisplayName}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="原生 WebUI 端口"
+                      hint="协议端自带 Web 控制台监听端口。"
                     >
-                      <SelectTrigger className="w-full" aria-label="协议实现">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="napcat">NapCat</SelectItem>
-                        <SelectItem value="snowluma">SnowLuma</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingsFormField>
-                  {targetBackend === "napcat" ? (
-                    <>
-                      <SettingsFormField
-                        label="NapCat Docker 镜像"
-                        hint="留空时使用服务端默认镜像。"
+                      <UiInput
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={webuiPort}
+                        onValueChange={setWebuiPort}
+                      />
+                    </SettingsFormField>
+                  </div>
+                </div>
+
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="协议与运行时" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField label="协议实现" hint="保存后按所选实现重启协议进程。">
+                      <Select
+                        value={targetBackend}
+                        onValueChange={(v) =>
+                          setTargetBackend(v === "snowluma" ? "snowluma" : "napcat")
+                        }
                       >
-                        <ProtocolDockerImageSelect
-                          mountUrl={mountUrl}
-                          protocol="napcat"
-                          value={napcatDockerImage}
-                          onValueChange={setNapcatDockerImage}
-                          placeholder="mlikiowa/napcat-docker:latest"
-                        />
-                      </SettingsFormField>
-                      <SettingsFormField
-                        className="field--full"
-                        label="启用 NapCat bypass 总开关"
-                        hint="关闭后不写入 NapCat bypass 配置。"
-                      >
-                        <label className="protocol-account-workspace__check">
-                          <input
-                            type="checkbox"
-                            checked={bypassEnabled}
-                            onChange={(e) => setBypassEnabled(e.target.checked)}
-                          />
-                          <span>{bypassEnabled ? "已启用" : "已关闭"}</span>
-                        </label>
-                      </SettingsFormField>
-                    </>
-                  ) : (
-                    <>
-                      <SettingsFormField
-                        label="SnowLuma Docker 镜像"
-                        hint="留空时使用服务端默认镜像。"
-                      >
-                        <ProtocolDockerImageSelect
-                          mountUrl={mountUrl}
-                          protocol="snowluma"
-                          value={snowlumaDockerImage}
-                          onValueChange={setSnowlumaDockerImage}
-                          placeholder="pallas/snowluma-auto-login:latest"
-                        />
-                      </SettingsFormField>
-                      <SettingsFormField
-                        label="Runtime 模式"
-                        hint="新建，或挂载到已有 Runtime。"
-                      >
-                        <Select
-                          value={runtimeMode}
-                          onValueChange={(v) =>
-                            setRuntimeMode(v === "existing" ? "existing" : "new")
-                          }
+                        <SelectTrigger className="w-full" aria-label="协议实现">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="napcat">NapCat</SelectItem>
+                          <SelectItem value="snowluma">SnowLuma</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </SettingsFormField>
+                    {targetBackend === "napcat" ? (
+                      <>
+                        <SettingsFormField
+                          label="NapCat Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
                         >
-                          <SelectTrigger className="w-full" aria-label="Runtime 模式">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">新建</SelectItem>
-                            <SelectItem value="existing">挂载已有</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </SettingsFormField>
-                      {runtimeMode === "existing" ? (
-                        <SettingsFormField className="field--full" label="Runtime">
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="napcat"
+                            value={napcatDockerImage}
+                            onValueChange={setNapcatDockerImage}
+                            placeholder="mlikiowa/napcat-docker:latest"
+                          />
+                        </SettingsFormField>
+                        <SettingsFormField
+                          className="field--full"
+                          label="启用 NapCat bypass 总开关"
+                          hint="关闭后不写入 NapCat bypass 配置。"
+                        >
+                          <label className="protocol-account-workspace__check">
+                            <input
+                              type="checkbox"
+                              checked={bypassEnabled}
+                              onChange={(e) => setBypassEnabled(e.target.checked)}
+                            />
+                            <span>{bypassEnabled ? "已启用" : "已关闭"}</span>
+                          </label>
+                        </SettingsFormField>
+                      </>
+                    ) : (
+                      <>
+                        <SettingsFormField
+                          label="SnowLuma Docker 镜像"
+                          hint="留空时使用服务端默认镜像。"
+                        >
+                          <ProtocolDockerImageSelect
+                            mountUrl={mountUrl}
+                            protocol="snowluma"
+                            value={snowlumaDockerImage}
+                            onValueChange={setSnowlumaDockerImage}
+                            placeholder="pallas/snowluma-auto-login:latest"
+                          />
+                        </SettingsFormField>
+                        <SettingsFormField
+                          label="Runtime 模式"
+                          hint="新建，或挂载到已有 Runtime。"
+                        >
                           <Select
-                            value={runtimeId || "__empty__"}
-                            onValueChange={(v) => {
-                              const nextId = v === "__empty__" ? "" : v;
-                              setRuntimeId(nextId);
-                              const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
-                              const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
-                              if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
-                            }}
+                            value={runtimeMode}
+                            onValueChange={(v) =>
+                              setRuntimeMode(v === "existing" ? "existing" : "new")
+                            }
                           >
-                            <SelectTrigger className="w-full" aria-label="Runtime">
-                              <SelectValue placeholder="选择 Runtime" />
+                            <SelectTrigger className="w-full" aria-label="Runtime 模式">
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__empty__">选择 Runtime</SelectItem>
-                              {snowlumaRuntimes.map((runtime) => (
-                                <SelectItem key={runtime.id} value={runtime.id}>
-                                  {runtime.display_name?.trim() || runtime.id}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="new">新建</SelectItem>
+                              <SelectItem value="existing">挂载已有</SelectItem>
                             </SelectContent>
                           </Select>
                         </SettingsFormField>
-                      ) : null}
-                    </>
-                  )}
-                </PluginConfigFormSection>
+                        {runtimeMode === "existing" ? (
+                          <SettingsFormField className="field--full" label="Runtime">
+                            <Select
+                              value={runtimeId || "__empty__"}
+                              onValueChange={(v) => {
+                                const nextId = v === "__empty__" ? "" : v;
+                                setRuntimeId(nextId);
+                                const picked = snowlumaRuntimes.find((runtime) => runtime.id === nextId);
+                                const fromRuntime = String(picked?.snowluma_docker_image ?? "").trim();
+                                if (fromRuntime) setSnowlumaDockerImage(fromRuntime);
+                              }}
+                            >
+                              <SelectTrigger className="w-full" aria-label="Runtime">
+                                <SelectValue placeholder="选择 Runtime" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__empty__">选择 Runtime</SelectItem>
+                                {snowlumaRuntimes.map((runtime) => (
+                                  <SelectItem key={runtime.id} value={runtime.id}>
+                                    {runtime.display_name?.trim() || runtime.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </SettingsFormField>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                <PluginConfigFormSection
-                  title="连接"
-                  subtitle="Bot 侧 OneBot WebSocket 接入参数。"
-                  icon={Cable}
-                  bodyClassName="protocol-account-workspace__form-grid"
-                >
-                  <SettingsFormField
-                    className="field--full"
-                    label="WS 连接地址"
-                    hint="Bot 连接 OneBot WebSocket 的完整地址。"
-                  >
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
-                      value={wsUrl}
-                      onValueChange={setWsUrl}
-                    />
-                  </SettingsFormField>
-                  <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
-                    <UiInput
-                      type="text"
-                      autoComplete="off"
-                      value={wsName}
-                      onValueChange={setWsName}
-                    />
-                  </SettingsFormField>
-                  <SettingsFormField
-                    label="WS Token"
-                    hint="须与协议端鉴权配置一致。"
-                    secret
-                  >
-                    <UiInput
-                      type="password"
-                      autoComplete="off"
-                      value={wsToken}
-                      onValueChange={setWsToken}
-                    />
-                  </SettingsFormField>
-                </PluginConfigFormSection>
+                <div className="protocol-account-workspace__settings-block">
+                  <FormSectionDivider title="连接" />
+                  <div className="protocol-account-workspace__form-grid">
+                    <SettingsFormField
+                      className="field--full"
+                      label="WS 连接地址"
+                      hint="Bot 连接 OneBot WebSocket 的完整地址。"
+                    >
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        placeholder="ws://127.0.0.1:8088/onebot/v11/ws"
+                        value={wsUrl}
+                        onValueChange={setWsUrl}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField label="连接名" hint="实例列表里显示的连接标识。">
+                      <UiInput
+                        type="text"
+                        autoComplete="off"
+                        value={wsName}
+                        onValueChange={setWsName}
+                      />
+                    </SettingsFormField>
+                    <SettingsFormField
+                      label="WS Token"
+                      hint="须与协议端鉴权配置一致。"
+                      secret
+                    >
+                      <UiInput
+                        type="password"
+                        autoComplete="off"
+                        value={wsToken}
+                        onValueChange={setWsToken}
+                      />
+                    </SettingsFormField>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="ui-card protocol-account-workspace__panel ui-card--glass">
