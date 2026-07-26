@@ -178,7 +178,7 @@ export default function ProtocolAccountConfigDialog({
                     aria-selected={on}
                     variant={on ? "secondary" : "ghost"}
                     className={cn(
-                      "h-8 min-w-[4.5rem] px-3 text-xs",
+                      "h-8 min-w-[4.5rem] px-3 text-xs max-[560px]:h-10 max-[560px]:min-w-0 max-[560px]:flex-1 max-[560px]:text-sm",
                       on ? "font-medium" : "text-muted-foreground",
                     )}
                     onClick={() => setActiveTab(tab.id)}

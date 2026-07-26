@@ -846,6 +846,24 @@ html[data-theme="light"] .protocol-account-workspace__meta {
     flex: 1 1 auto;
   }
 
+  .protocol-account-workspace__portal-tabs {
+    display: flex;
+    width: 100%;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .protocol-account-workspace__portal-tabs > .ui-btn,
+  .protocol-account-workspace__portal-tabs > button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+    justify-content: center;
+  }
+
   .protocol-account-workspace__toolbar {
     flex-direction: column;
     align-items: stretch;
