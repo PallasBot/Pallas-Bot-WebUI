@@ -20,8 +20,8 @@ import {
   llmBotFieldGroupsForMode,
   type LlmBotFieldGroupDef,
 } from "@/config/configFieldLabels";
-import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 function fieldsForDefs(
   defs: ReadonlyArray<LlmBotFieldGroupDef>,
@@ -128,7 +128,6 @@ export default function CommonConfigForm({
   const [formBaseline, setFormBaseline] = useState("");
   const [raw, setRaw] = useState("");
   const [rawBaseline, setRawBaseline] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const cfgQ = useQuery({
     queryKey: ["common-config", sectionId],
@@ -159,23 +158,23 @@ export default function CommonConfigForm({
       return putCommonConfig(sectionId, collectFieldValues(allFields, fieldValues));
     },
     onSuccess: async () => {
-      setMsg(savedMessage);
+      pushConsoleToast(savedMessage, "ok");
       setFormBaseline(JSON.stringify(fieldValues));
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   const saveRaw = useMutation({
     mutationFn: () => putCommonConfigRaw(sectionId, raw),
     onSuccess: async () => {
-      setMsg(savedMessage);
+      pushConsoleToast(savedMessage, "ok");
       setRawBaseline(raw);
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   const saving = saveForm.isPending || saveRaw.isPending;
@@ -194,7 +193,6 @@ export default function CommonConfigForm({
   saveRawRef.current = saveRaw;
 
   const save = useCallback(() => {
-    setMsg(null);
     if (mode === "raw") void saveRawRef.current.mutateAsync();
     else void saveFormRef.current.mutateAsync();
   }, [mode]);
@@ -211,9 +209,6 @@ export default function CommonConfigForm({
 
   return (
     <div className="space-y-3">
-      {msg ? (
-        <p className={cn("text-sm", msg.includes("已保存") ? "text-emerald-400" : "text-destructive")}>{msg}</p>
-      ) : null}
       {mode === "form" ? (
         <StateBlock loading={cfgQ.isLoading} error={cfgQ.error} empty={!fields.length} emptyText="该分区无可编辑字段">
           {sectionId === "llm" ? (
