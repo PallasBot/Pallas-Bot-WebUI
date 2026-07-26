@@ -837,7 +837,7 @@ export default function UpdatePage() {
             ) : (changelog?.markdown || "").trim() ? (
               <ReadmeMarkdown
                 html={changelogNotesHtml}
-                className="update-page__release-notes-body update-page__release-notes-body--md"
+                className="update-page__release-notes-body update-page__release-notes-body--md update-page__release-notes-body--dialog"
               />
             ) : (
               <p className="muted">
