@@ -248,6 +248,13 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       );
     const webUiHref = account ? accountWebUiHref(account, resolvedSystem) : null;
     const wsPortLabel = account ? accountConnectedWsPortLabel(account) : "—";
+    const webuiPortLabel = (() => {
+      const raw = account?.webui_port;
+      if (raw == null) return "—";
+      const s = String(raw).trim();
+      return s || "—";
+    })();
+    const napcatWebuiToken = isSnowluma ? "" : String(account?.webui_token ?? "").trim();
     const runtimeVersion = account ? protocolRuntimeVersionText(account) : "—";
     const nativeWebUiLabel = "原生 WebUI";
     const nativeWebUiAuthNote = String(account?.native_webui_auth_note ?? "").trim();
@@ -262,9 +269,17 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
       rows.push(
         { label: "版本", value: runtimeVersion || "—", mono: false },
         { label: "WS 端口", value: wsPortLabel || "—", mono: true },
+        { label: "原生 WebUI 端口", value: webuiPortLabel, mono: true },
       );
       return rows;
-    }, [account?.display_name, account?.pid, isLinuxDocker, runtimeVersion, wsPortLabel]);
+    }, [
+      account?.display_name,
+      account?.pid,
+      isLinuxDocker,
+      runtimeVersion,
+      webuiPortLabel,
+      wsPortLabel,
+    ]);
 
     const overviewSecrets = useMemo(() => {
       const rows: Array<{
@@ -273,7 +288,16 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
         copyText: string;
         plain?: boolean;
       }> = [];
-      if (!isSnowluma) return rows;
+      if (!isSnowluma) {
+        if (napcatWebuiToken) {
+          rows.push({
+            label: "WebUI token",
+            secret: napcatWebuiToken,
+            copyText: napcatWebuiToken,
+          });
+        }
+        return rows;
+      }
       if (snowlumaManagedPassword) {
         rows.push({
           label: "托管密码",
@@ -306,11 +330,16 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
     }, [
       isSnowluma,
       isSnowlumaDocker,
+      napcatWebuiToken,
       snowlumaInitialPassword,
       snowlumaManagedPassword,
       snowlumaNovncHint,
       snowlumaNovncHref,
     ]);
+
+    const overviewSecretsNote = isSnowluma
+      ? "托管密码用于原生 WebUI；VNC 密码用于 SL 桌面。点击复制即可粘贴。"
+      : "WebUI token 用于登录原生 WebUI；打开入口时也会带在 URL 里。点击复制即可粘贴。";
 
     const logSegments = useMemo(() => segmentProtocolLogLines(logs), [logs]);
 
@@ -836,7 +865,7 @@ const ProtocolAccountWorkspace = forwardRef<ProtocolAccountWorkspaceHandle, Prop
                           ))}
                         </ul>
                         <p className="protocol-account-workspace__secrets-note">
-                          托管密码用于原生 WebUI；VNC 密码用于 SL 桌面。点击复制即可粘贴。
+                          {overviewSecretsNote}
                         </p>
                       </>
                     ) : null}
