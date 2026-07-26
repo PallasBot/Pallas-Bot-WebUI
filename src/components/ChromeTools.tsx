@@ -16,7 +16,10 @@ export const CHROME_TOOLS_SURFACE =
 export const CHROME_TOOLS_CLUSTER =
   "chrome-tools__cluster flex shrink-0 flex-nowrap items-center";
 
-/** 右侧操作簇（保存 / 刷新…）：ml-auto + 统一簇距。 */
+/**
+ * 右侧操作簇（保存 / 刷新…）：ml-auto + 统一簇距。
+ * 在 chrome-row 内 sticky 右钉，左侧筛选横滑时仍保持可见。
+ */
 export const CHROME_TOOLS_TRAILING =
   "chrome-tools__trailing ml-auto flex shrink-0 flex-nowrap items-center self-center";
 
@@ -30,10 +33,13 @@ export const CHROME_SEARCH_INPUT = "h-9 min-h-9 w-full pl-8";
 export default function ChromeTools({
   children,
   advanced,
+  sticky = false,
   className,
 }: {
   children: ReactNode;
   advanced?: ReactNode;
+  /** 竖向钉在滚动容器顶：标题可滚走，工具条（含保存/刷新）保持可见 */
+  sticky?: boolean;
   className?: string;
 }) {
   return (
@@ -41,6 +47,7 @@ export default function ChromeTools({
       className={cn(
         "chrome-tools console-hub-page__chrome-tools flex min-w-0 flex-col gap-3 p-4",
         CHROME_TOOLS_SURFACE,
+        sticky && "chrome-tools--sticky",
         className,
       )}
     >
