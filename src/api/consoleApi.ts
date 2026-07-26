@@ -2797,6 +2797,10 @@ export async function putGroupConfig(
   );
 }
 
+export async function deleteGroupConfig(groupId: number): Promise<{ deleted: boolean }> {
+  return deleteDbTableRow({ table: "group_config", row_id: groupId });
+}
+
 export async function fetchUserConfigs(limit: number): Promise<UserConfigPublic[]> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/user-configs"]["get"]>(
     "/user-configs",
@@ -2820,6 +2824,10 @@ export async function putUserConfig(
     `/user-configs/${userId}`,
     body,
   );
+}
+
+export async function deleteUserConfig(userId: number): Promise<{ deleted: boolean }> {
+  return deleteDbTableRow({ table: "user_config", row_id: userId });
 }
 
 export async function fetchAiExtensionConfig(): Promise<AiExtensionConfig> {

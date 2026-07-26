@@ -9553,6 +9553,21 @@ table.data.console-data-table.database-page__storage-table tbody td {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.console-table-edit--danger {
+  color: var(--danger, #dc2626);
+}
+.console-table-edit--danger:hover:not(:disabled) {
+  color: color-mix(in srgb, var(--danger, #dc2626) 82%, var(--text) 18%);
+}
+.console-table-edit--danger:focus-visible {
+  outline-color: color-mix(in srgb, var(--danger, #dc2626) 55%, transparent);
+}
+.console-table-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
 
 /* 实例页 · 数据库 Bot 配置：卡片多选批量操作（右下角紧凑条） */
 .inst-db-bulk-bar {
@@ -11548,7 +11563,22 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
   }
 
   .protocol-account-config-dialog__head-row .protocol-account-workspace__portal-tabs {
-    align-self: flex-start;
+    align-self: stretch;
+    width: 100%;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .protocol-account-config-dialog__head-row .protocol-account-workspace__portal-tabs > .ui-btn,
+  .protocol-account-config-dialog__head-row .protocol-account-workspace__portal-tabs > button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+    justify-content: center;
   }
 }
 

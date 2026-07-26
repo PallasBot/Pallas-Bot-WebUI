@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
+  deleteGroupConfig,
+  deleteUserConfig,
   fetchDbHealth,
   fetchDbOverview,
   fetchDbTableRows,
@@ -27,6 +29,7 @@ import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import DatabaseBackendPanel from "@/components/DatabaseBackendPanel";
 import DatabaseMigratePanel from "@/components/DatabaseMigratePanel";
@@ -194,6 +197,11 @@ export default function DatabasePage() {
   const [pageUsers, setPageUsers] = useState(1);
   const [groupModalId, setGroupModalId] = useState<number | null>(null);
   const [userModal, setUserModal] = useState<{ id: number; defaultBanned?: boolean } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<
+    { kind: "group"; id: number } | { kind: "user"; id: number } | null
+  >(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteErr, setDeleteErr] = useState("");
   const [addUserInput, setAddUserInput] = useState("");
   const [addUserHint, setAddUserHint] = useState("");
   const [collection, setCollection] = useState("");
@@ -401,6 +409,41 @@ export default function DatabasePage() {
   function onSocialConfigSaved(kind: "group" | "user") {
     setOk(kind === "group" ? "群配置已保存" : "好友配置已保存");
     void loadSocialConfigs();
+  }
+
+  function openDeleteConfig(kind: "group" | "user", id: number) {
+    setDeleteErr("");
+    setDeleteTarget({ kind, id });
+  }
+
+  function closeDeleteConfig() {
+    if (deleteBusy) return;
+    setDeleteTarget(null);
+    setDeleteErr("");
+  }
+
+  async function confirmDeleteConfig() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteErr("");
+    try {
+      if (deleteTarget.kind === "group") {
+        await deleteGroupConfig(deleteTarget.id);
+        if (groupModalId === deleteTarget.id) setGroupModalId(null);
+        setOk(`已删除群配置 ${deleteTarget.id}`);
+      } else {
+        await deleteUserConfig(deleteTarget.id);
+        if (userModal?.id === deleteTarget.id) setUserModal(null);
+        setOk(`已删除好友配置 ${deleteTarget.id}`);
+      }
+      setErr("");
+      setDeleteTarget(null);
+      void loadSocialConfigs();
+    } catch (e) {
+      setDeleteErr(axiosErrorDetail(e));
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   function onChromeRefresh() {
@@ -648,7 +691,7 @@ export default function DatabasePage() {
                         <th>轮盘</th>
                         <th>禁用插件</th>
                         <th>拉黑</th>
-                        <th style={{ minWidth: 88, width: "1%" }}>操作</th>
+                        <th style={{ minWidth: 112, width: "1%" }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -666,7 +709,15 @@ export default function DatabasePage() {
                             {(g.blocked_user_ids ?? []).length ? `${(g.blocked_user_ids ?? []).length} 人` : "—"}
                           </td>
                           <td>
-                            <ConsoleTableEdit onClick={() => setGroupModalId(g.group_id)} />
+                            <div className="console-table-actions">
+                              <ConsoleTableEdit onClick={() => setGroupModalId(g.group_id)} />
+                              <ConsoleTableEdit
+                                label="删除"
+                                variant="danger"
+                                disabled={deleteBusy}
+                                onClick={() => openDeleteConfig("group", g.group_id)}
+                              />
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -740,7 +791,7 @@ export default function DatabasePage() {
                       <tr>
                         <th>QQ</th>
                         <th>封禁</th>
-                        <th style={{ minWidth: 88, width: "1%" }}>操作</th>
+                        <th style={{ minWidth: 112, width: "1%" }}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -753,7 +804,15 @@ export default function DatabasePage() {
                             </span>
                           </td>
                           <td>
-                            <ConsoleTableEdit onClick={() => setUserModal({ id: u.user_id })} />
+                            <div className="console-table-actions">
+                              <ConsoleTableEdit onClick={() => setUserModal({ id: u.user_id })} />
+                              <ConsoleTableEdit
+                                label="删除"
+                                variant="danger"
+                                disabled={deleteBusy}
+                                onClick={() => openDeleteConfig("user", u.user_id)}
+                              />
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1022,6 +1081,35 @@ export default function DatabasePage() {
           if (!o) setUserModal(null);
         }}
         onSaved={() => onSocialConfigSaved("user")}
+      />
+
+      <ConsoleDeleteConfirmModal
+        open={deleteTarget != null}
+        title={deleteTarget?.kind === "user" ? "删除好友配置" : "删除群配置"}
+        subtitle={
+          deleteTarget?.kind === "user"
+            ? "将移除该好友的 user_config 记录（含全局封禁等），操作不可撤销。"
+            : "将移除该群的 group_config 记录（含封禁、轮盘、禁用插件、拉黑等），操作不可撤销。"
+        }
+        items={
+          deleteTarget
+            ? [
+                {
+                  key: String(deleteTarget.id),
+                  label:
+                    deleteTarget.kind === "user"
+                      ? `QQ ${deleteTarget.id}`
+                      : `群 ${deleteTarget.id}`,
+                },
+              ]
+            : []
+        }
+        listLabel={deleteTarget?.kind === "user" ? "好友" : "群"}
+        busy={deleteBusy}
+        error={deleteErr}
+        titleId="db-social-config-delete-title"
+        onClose={closeDeleteConfig}
+        onConfirm={() => void confirmDeleteConfig()}
       />
 
       <Dialog
