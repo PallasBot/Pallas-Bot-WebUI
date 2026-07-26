@@ -56,7 +56,7 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
   {
     id: "tasks",
     label: "任务",
-    lead: "提醒、周期任务与异步调研的运行情况。",
+    lead: "提醒与异步任务；默认看未完成。",
     path: "/ai/tasks",
     scope: { bot: true, group: true },
   },
