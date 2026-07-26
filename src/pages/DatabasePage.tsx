@@ -471,21 +471,6 @@ export default function DatabasePage() {
 
       {showBody || health ? (
         <section className="database-page__kpi home-kpi-bar">
-          <div className="metric-tile">
-            <div className="metric-tile__head">
-              <span className="metric-tile__label">健康</span>
-            </div>
-            <div className="metric-tile__value-slot">
-              <span className={healthBadgeClass(health?.status)}>{healthStatusLabel(health?.status)}</span>
-              <span
-                className="database-page__kpi-hint muted"
-                title={health?.reason || undefined}
-              >
-                池利用率 {formatPoolUtil(health)}
-                {health?.reason ? ` · ${health.reason}` : ""}
-              </span>
-            </div>
-          </div>
           {showBody && overview ? (
             <div className="metric-tile">
               <div className="metric-tile__head">
@@ -520,6 +505,23 @@ export default function DatabasePage() {
               <div className="metric-tile__value-slot">
                 <span className="metric-tile__value metric-tile__value--inline">{nf.format(totalRows)}</span>
                 <span className="database-page__kpi-hint muted">{pgTables.length} 张表</span>
+              </div>
+            </div>
+          ) : null}
+          {health ? (
+            <div className="metric-tile">
+              <div className="metric-tile__head">
+                <span className="metric-tile__label">健康</span>
+              </div>
+              <div className="metric-tile__value-slot">
+                <span className={healthBadgeClass(health.status)}>{healthStatusLabel(health.status)}</span>
+                <span
+                  className="database-page__kpi-hint muted"
+                  title={health.reason || undefined}
+                >
+                  池利用率 {formatPoolUtil(health)}
+                  {health.reason ? ` · ${health.reason}` : ""}
+                </span>
               </div>
             </div>
           ) : null}
