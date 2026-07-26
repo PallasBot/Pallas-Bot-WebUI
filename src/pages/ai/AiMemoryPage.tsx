@@ -62,6 +62,7 @@ import IconStatCard from "@/components/IconStatCard";
 import StateBlock from "@/components/StateBlock";
 import TruncatedText from "@/components/TruncatedText";
 import { Button } from "@/components/ui/button";
+import CopyIconButton from "@/components/CopyIconButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1315,9 +1316,8 @@ export default function AiMemoryPage() {
                 >
                   导出当前 scope
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <CopyIconButton
+                  label="复制导出 JSON"
                   disabled={!exportJson}
                   onClick={async () => {
                     try {
@@ -1327,9 +1327,7 @@ export default function AiMemoryPage() {
                       setMsg("复制失败");
                     }
                   }}
-                >
-                  复制
-                </Button>
+                />
                 <Button
                   size="sm"
                   variant="outline"

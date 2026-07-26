@@ -22,6 +22,7 @@ import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SELECT_TRIGGER, CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import RefreshIconButton from "@/components/RefreshIconButton";
+import CopyIconButton from "@/components/CopyIconButton";
 import SegTabs from "@/components/SegTabs";
 import UiBadge from "@/components/ui/UiBadge";
 import UiButton from "@/components/ui/UiButton";
@@ -648,9 +649,10 @@ export default function CommunityPage() {
                   <span className="community-page__federation-secret-label">
                     {federationOnboarding?.instance_secret_label || "入池密钥"}
                   </span>
-                  <UiButton variant="ghost" size="sm" onClick={() => void copyFederationSecret()}>
-                    复制密钥
-                  </UiButton>
+                  <CopyIconButton
+                    label="复制入池密钥"
+                    onClick={() => void copyFederationSecret()}
+                  />
                 </div>
                 <code className="community-page__federation-secret-value community-page__mono">{federationSecret}</code>
                 {federationOnboarding?.instance_secret_hint ? (
@@ -676,9 +678,10 @@ export default function CommunityPage() {
                       <code className="community-page__federation-coord-value community-page__mono">
                         {federationCoordDisplay || federationCoordEndpoint}
                       </code>
-                      <UiButton variant="ghost" size="sm" onClick={() => void copyCoordAddress()}>
-                        复制地址
-                      </UiButton>
+                      <CopyIconButton
+                        label="复制去重服务器地址"
+                        onClick={() => void copyCoordAddress()}
+                      />
                     </div>
                   ) : (
                     <span className="muted">—</span>
