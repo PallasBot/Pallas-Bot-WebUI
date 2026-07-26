@@ -302,29 +302,31 @@ export default function CommunityPage() {
     return formatCommunityStatNum(n);
   }, [communityStats, federationOnboarding]);
 
-  async function copyFederationSecret() {
+  async function copyFederationSecret(): Promise<boolean> {
     if (!federationSecret) {
       pushConsoleToast("中心未提供入池密钥", "err");
-      return;
+      return false;
     }
     if (!(await copyTextToClipboard(federationSecret))) {
       pushConsoleToast("复制失败", "err");
-      return;
+      return false;
     }
     pushConsoleToast("已复制入池密钥", "ok");
+    return true;
   }
 
-  async function copyCoordAddress() {
+  async function copyCoordAddress(): Promise<boolean> {
     const text = federationCoordDisplay || federationCoordEndpoint;
     if (!text) {
       pushConsoleToast("暂无去重服务器地址", "err");
-      return;
+      return false;
     }
     if (!(await copyTextToClipboard(text))) {
       pushConsoleToast("复制失败", "err");
-      return;
+      return false;
     }
     pushConsoleToast("已复制去重服务器地址（不含密码）", "ok");
+    return true;
   }
 
   const fedSourceVisible = (fed: CorpusSourceStatusData | undefined) => !!(fed?.configured || fed?.enabled);
@@ -664,7 +666,7 @@ export default function CommunityPage() {
                   </span>
                   <CopyIconButton
                     label="复制入池密钥"
-                    onClick={() => void copyFederationSecret()}
+                    onClick={() => copyFederationSecret()}
                   />
                 </div>
                 <code className="community-page__federation-secret-value community-page__mono">{federationSecret}</code>
@@ -693,7 +695,7 @@ export default function CommunityPage() {
                       </code>
                       <CopyIconButton
                         label="复制去重服务器地址"
-                        onClick={() => void copyCoordAddress()}
+                        onClick={() => copyCoordAddress()}
                       />
                     </div>
                   ) : (

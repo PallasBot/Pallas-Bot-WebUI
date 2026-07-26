@@ -11852,7 +11852,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .he
 }
 
 .readme-code-block__copy--done {
-  color: var(--ok, #2a7);
+  color: var(--text-muted);
 }
 
 .readme-code-block__copy svg {

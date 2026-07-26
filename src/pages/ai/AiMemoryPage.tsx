@@ -1324,8 +1324,10 @@ export default function AiMemoryPage() {
                     try {
                       await navigator.clipboard.writeText(exportJson);
                       setMsg("已复制到剪贴板");
+                      return true;
                     } catch {
                       setMsg("复制失败");
+                      return false;
                     }
                   }}
                 />
