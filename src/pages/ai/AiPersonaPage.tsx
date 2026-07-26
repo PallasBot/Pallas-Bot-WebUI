@@ -21,12 +21,14 @@ import {
   parseScopeGroupId,
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
+import CopyIconButton from "@/components/CopyIconButton";
 import StateBlock from "@/components/StateBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { copyTextToClipboard } from "@/utils/clipboard";
 import { personaValueZh, personaValuesZh } from "@/utils/personaLabels";
 
 function num(v: unknown, fallback = 0): number {
@@ -380,13 +382,35 @@ function GroupStyleLiveCard({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function PromptSection({ title, body }: { title: string; body?: string }) {
+function PromptSection({
+  title,
+  body,
+  className,
+}: {
+  title: string;
+  body?: string;
+  className?: string;
+}) {
   const text = (body || "").trim();
   if (!text) return null;
   return (
-    <div className="space-y-1.5 rounded-md border p-3">
-      <div className="text-sm font-medium">{title}</div>
-      <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-muted-foreground">
+    <div
+      className={cn(
+        "group flex h-full min-w-0 flex-col gap-2 rounded-md border px-3 py-2.5",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 truncate text-sm font-medium">{title}</div>
+        <CopyIconButton
+          label={`复制${title}`}
+          className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 max-[560px]:opacity-100"
+          onClick={async () => {
+            await copyTextToClipboard(text);
+          }}
+        />
+      </div>
+      <pre className="min-h-0 max-h-52 flex-1 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-muted-foreground">
         {text}
       </pre>
     </div>
@@ -447,7 +471,7 @@ function ExportCard({
             </div>
 
             <PromptSection title="完整 system" body={String(prompt?.system || "")} />
-            <div className="console-panel-grid sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
               <PromptSection title="基座" body={String(sections?.base || "")} />
               <PromptSection title="自我认同" body={String(sections?.self_identity || "")} />
               <PromptSection title="预设层" body={String(sections?.preset_layers || "")} />

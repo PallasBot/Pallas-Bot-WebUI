@@ -822,7 +822,7 @@ export default function AiHistoryPage() {
       <div className="space-y-3">
         <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
           <p>
-            标注回复表现，用于优化闲聊；也可管理行为规则。
+            标注回复表现，用于优化 LLM 对话；也可管理行为规则。
           </p>
           <Button
             size="sm"
@@ -1193,7 +1193,7 @@ export default function AiHistoryPage() {
           <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
             <DialogTitle>行为规则（进阶）</DialogTitle>
             <DialogDescription className="text-left">
-              配置特定闲聊场景的回复动作。日常维护在「标注」中打标签即可。
+              配置特定 LLM 对话场景的回复动作。日常维护在「标注」中打标签即可。
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">

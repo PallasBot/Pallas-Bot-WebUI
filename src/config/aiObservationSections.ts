@@ -4,6 +4,8 @@ export type AiObservationSectionId =
   | "statistics"
   | "session"
   | "memory"
+  | "people"
+  | "tasks"
   | "persona"
   | "logs";
 
@@ -45,11 +47,24 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
     scope: { bot: true, group: true },
   },
   {
+    id: "people",
+    label: "人物",
+    lead: "群内人物事实、待整理观察，以及口癖审批。",
+    path: "/ai/people",
+    scope: { bot: true, group: true },
+  },
+  {
+    id: "tasks",
+    label: "任务",
+    lead: "提醒与异步任务；默认看未完成。",
+    path: "/ai/tasks",
+    scope: { bot: true, group: true },
+  },
+  {
     id: "persona",
     label: "牛格",
     lead: "牛格状态、群风格画像，以及发给模型的人设。",
     path: "/ai/persona",
-    // 群风格画像必须群号；导出需 Bot。
     scope: { bot: true, group: true },
   },
   {
@@ -66,13 +81,13 @@ export function aiObservationSectionPath(id: AiObservationSectionId): string {
 
 export function aiObservationSectionFromPath(pathname: string): AiObservationSectionId | null {
   const p = pathname.replace(/\/$/, "") || "/";
-  // 旧总览入口并入统计
   if (p === "/ai" || p === "/ai/home" || p.startsWith("/ai/home/")) return "statistics";
   if (p === "/ai/statistics" || p.startsWith("/ai/statistics/")) return "statistics";
-  // 旧「历史」并入会话
   if (p === "/ai/session" || p.startsWith("/ai/session/")) return "session";
   if (p === "/ai/history" || p.startsWith("/ai/history/")) return "session";
   if (p === "/ai/memory" || p.startsWith("/ai/memory/")) return "memory";
+  if (p === "/ai/people" || p.startsWith("/ai/people/")) return "people";
+  if (p === "/ai/tasks" || p.startsWith("/ai/tasks/")) return "tasks";
   if (p === "/ai/persona" || p.startsWith("/ai/persona/")) return "persona";
   if (p === "/ai/logs" || p.startsWith("/ai/logs/")) return "logs";
   return null;

@@ -492,8 +492,8 @@
 
 .update-page__release-notes-body--md .readme-code-block pre {
   margin: 0;
-  /* 为右上角「复制」留空；覆盖上方 padding 简写 */
-  padding-right: 4.25rem;
+  /* 为右上角幽灵 Copy 留空；覆盖上方 padding 简写 */
+  padding-right: 2.75rem;
 }
 
 /* 仅行内 code 用紧凑 chip；勿用 :not(pre > code)（会命中 p/li/a 等） */

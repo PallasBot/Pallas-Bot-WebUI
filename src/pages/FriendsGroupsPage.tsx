@@ -481,6 +481,7 @@ export default function FriendsGroupsPage() {
               id: b.self_id,
               nickname: profileNick(b.self_id),
             }))}
+            favorites={favorites}
             leadingOption={{ value: "__none__", label: "请选择 Bot…", keywords: "请选择 Bot" }}
             placeholder="请选择 Bot…"
             title={

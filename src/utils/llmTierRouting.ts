@@ -38,7 +38,7 @@ export const TASK_ROUTE_META: Record<
   RoutableTask,
   { title: string; description: string; kind: RoutingTier }
 > = {
-  llm_chat: { title: "@ 闲聊", description: "群内 @ 牛牛对话", kind: "high" },
+  llm_chat: { title: "@ LLM 对话", description: "群内 @ 牛牛对话", kind: "high" },
   drunk: { title: "醉聊", description: "酒后对话路径", kind: "high" },
   repeater_polish: { title: "接话润色", description: "强场景完整润色", kind: "high" },
   repeater_select: { title: "接话选句", description: "从语料池挑选出口", kind: "low" },

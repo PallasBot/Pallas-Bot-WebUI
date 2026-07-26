@@ -3,6 +3,7 @@
  * 页面可直接 `import { fetchX } from "@/api/fullConsole"`。
  */
 export * from "@/api/consoleApi";
+export * from "@/api/agentPlatformApi";
 export type {
   GroupFleetWhitelistEntry,
   PluginGovernanceBody,

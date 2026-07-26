@@ -58,6 +58,7 @@ import {
   useAiObservationScope,
 } from "@/components/ai/AiObservationScopeContext";
 import MemoryForceGraph from "@/components/ai/MemoryForceGraph";
+import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import IconStatCard from "@/components/IconStatCard";
 import StateBlock from "@/components/StateBlock";
 import TruncatedText from "@/components/TruncatedText";
@@ -408,7 +409,7 @@ export default function AiMemoryPage() {
 
   const filters = useMemo(
     () => (
-      <div className="relative w-28 shrink-0 sm:w-40">
+      <div className="relative min-w-[8rem] flex-1 basis-[8rem]">
         <Search
           className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
           strokeWidth={1.75}
@@ -416,8 +417,8 @@ export default function AiMemoryPage() {
         />
         <Input
           type="search"
-          className="h-9 w-full pl-8"
-          placeholder="搜索记忆"
+          className={CHROME_SEARCH_INPUT}
+          placeholder="搜索记忆…"
           aria-label="搜索记忆"
           autoComplete="off"
           value={query}

@@ -47,6 +47,7 @@ import PageMasthead from "@/components/PageMasthead";
 import { cn } from "@/lib/utils";
 import PluginStoreCard, { type PluginStoreMenuItem } from "@/components/PluginStoreCard";
 import PluginStoreCardSkeleton from "@/components/PluginStoreCardSkeleton";
+import ReadmeMarkdown from "@/components/ReadmeMarkdown";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import { BadgeCheck, Filter, FolderOpen, Package, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -1363,7 +1364,7 @@ export default function PluginStorePage() {
               ) : detailReadmeErr ? (
                 <p className="muted plugin-store-page__detail-fallback">{detailReadmeErr}</p>
               ) : detailReadmeHtml ? (
-                <div className="readme-markdown" dangerouslySetInnerHTML={{ __html: detailReadmeHtml }} />
+                <ReadmeMarkdown html={detailReadmeHtml} />
               ) : (
                 <p className="muted plugin-store-page__detail-fallback">暂无 README 内容</p>
               )
@@ -1380,7 +1381,7 @@ export default function PluginStorePage() {
                     该插件未提供 CHANGELOG.md，以下为根据 git 提交历史自动生成。
                   </p>
                 ) : null}
-                <div className="readme-markdown" dangerouslySetInnerHTML={{ __html: detailChangelogHtml }} />
+                <ReadmeMarkdown html={detailChangelogHtml} />
               </>
             ) : (
               <p className="muted plugin-store-page__detail-fallback">暂无更新日志</p>
