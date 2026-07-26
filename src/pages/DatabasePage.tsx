@@ -3,13 +3,23 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
+  fetchDbHealth,
   fetchDbOverview,
+  fetchDbTableRows,
+  fetchDbTables,
   fetchGroupConfigs,
   fetchPlugins,
   fetchUserConfigs,
   postMongoAggregate,
 } from "@/api/fullConsole";
-import type { DbOverviewData, GroupConfigPublic, UserConfigPublic } from "@/api/pallasTypes";
+import type {
+  DbHealthData,
+  DbHealthStatus,
+  DbOverviewData,
+  DbTableRowsData,
+  GroupConfigPublic,
+  UserConfigPublic,
+} from "@/api/pallasTypes";
 import { formatDisabledPluginIds } from "@/utils/pluginDisplay";
 import { slicePage } from "@/utils/paginate";
 import { rouletteModeLabel } from "@/utils/rouletteMode";
@@ -90,6 +100,26 @@ function sectionFromHash(hash: string): DbSectionId | null {
   return null;
 }
 
+function healthBadgeClass(status: DbHealthStatus | undefined): string {
+  if (status === "healthy") return "badge badge--ok";
+  if (status === "degraded") return "badge badge--warn";
+  if (status === "unhealthy") return "badge badge--err";
+  return "badge";
+}
+
+function healthStatusLabel(status: DbHealthStatus | undefined): string {
+  if (status === "healthy") return "正常";
+  if (status === "degraded") return "降级";
+  if (status === "unhealthy") return "异常";
+  return "未知";
+}
+
+function formatPoolUtil(health: DbHealthData | null | undefined): string {
+  const util = health?.pool?.utilization;
+  if (typeof util !== "number" || Number.isNaN(util)) return "—";
+  return `${Math.round(util * 100)}%`;
+}
+
 export default function DatabasePage() {
   const prefs = useConsolePrefs();
   const queryClient = useQueryClient();
@@ -113,8 +143,18 @@ export default function DatabasePage() {
   const [pipelineText, setPipelineText] = useState('[\n  { "$limit": 20 }\n]');
   const [aggResult, setAggResult] = useState("");
   const [aggLoading, setAggLoading] = useState(false);
+  const [browseTable, setBrowseTable] = useState("");
+  const [browsePage, setBrowsePage] = useState(1);
+  const [browseRows, setBrowseRows] = useState<DbTableRowsData | null>(null);
+  const [browseBusy, setBrowseBusy] = useState(false);
 
   const overviewQ = useQuery({ queryKey: ["db-overview"], queryFn: fetchDbOverview });
+  const healthQ = useQuery({
+    queryKey: ["db-health"],
+    queryFn: fetchDbHealth,
+    refetchInterval: 15_000,
+  });
+  const tablesQ = useQuery({ queryKey: ["db-tables"], queryFn: fetchDbTables });
   const pluginsQ = useQuery({ queryKey: ["plugins-catalog"], queryFn: () => fetchPlugins() });
   const groupQ = useQuery({
     queryKey: ["group-configs"],
@@ -126,6 +166,8 @@ export default function DatabasePage() {
   });
 
   const overview = overviewQ.data ?? null;
+  const health = healthQ.data ?? null;
+  const tableMeta = tablesQ.data?.tables ?? [];
   const socialConfigsBusy = groupQ.isFetching || userQ.isFetching;
   const groupConfigs = groupQ.data ?? [];
   const userConfigs = userQ.data ?? [];
@@ -219,12 +261,38 @@ export default function DatabasePage() {
     }
   }
 
+  async function loadBrowseRows(table: string, page: number) {
+    if (!table) {
+      setBrowseRows(null);
+      return;
+    }
+    setBrowseBusy(true);
+    setErr("");
+    try {
+      const limit = prefs.tablePageSize;
+      const data = await fetchDbTableRows({
+        table,
+        offset: Math.max(0, (page - 1) * limit),
+        limit,
+      });
+      setBrowseRows(data);
+    } catch (e) {
+      setBrowseRows(null);
+      setErr(axiosErrorDetail(e));
+    } finally {
+      setBrowseBusy(false);
+    }
+  }
+
   async function loadAll() {
     setErr("");
     setDbRefreshBusy(true);
     try {
-      await overviewQ.refetch();
+      await Promise.all([overviewQ.refetch(), healthQ.refetch(), tablesQ.refetch()]);
       await Promise.all([groupQ.refetch(), userQ.refetch()]);
+      if (browseTable) {
+        await loadBrowseRows(browseTable, browsePage);
+      }
     } catch (e) {
       setErr(axiosErrorDetail(e));
     } finally {
@@ -281,6 +349,7 @@ export default function DatabasePage() {
     if (activeSection === "backend") {
       void queryClient.invalidateQueries({ queryKey: ["db-backend-config"] });
       void overviewQ.refetch();
+      void healthQ.refetch();
       return;
     }
     if (activeSection === "group" || activeSection === "user") {
@@ -292,11 +361,18 @@ export default function DatabasePage() {
 
   const chromeBusy =
     activeSection === "backend"
-      ? overviewQ.isFetching
+      ? overviewQ.isFetching || healthQ.isFetching
       : activeSection === "group" || activeSection === "user"
         ? socialConfigsBusy
-        : dbRefreshBusy || overviewQ.isFetching;
-  const showBody = overview && !dbRefreshBusy;
+        : dbRefreshBusy || overviewQ.isFetching || tablesQ.isFetching || browseBusy;
+  const showBody = Boolean(overview) && !dbRefreshBusy;
+  const browseableTables = tableMeta.filter((t) => t.browseable);
+  const browseColumns =
+    browseRows && browseRows.rows.length
+      ? Object.keys(browseRows.rows[0] ?? {})
+      : browseRows
+        ? []
+        : [];
   const listSearch =
     activeSection === "group"
       ? {
@@ -338,21 +414,38 @@ export default function DatabasePage() {
 
       <PageMasthead title="数据库" description="切换后端、查看存储概况，并管理群与好友配置。" />
 
-      {showBody ? (
+      {showBody || health ? (
         <section className="database-page__kpi home-kpi-bar">
           <div className="metric-tile">
             <div className="metric-tile__head">
-              <span className="metric-tile__label">当前后端</span>
+              <span className="metric-tile__label">健康</span>
             </div>
             <div className="metric-tile__value-slot">
-              <span className="metric-tile__value metric-tile__value--inline">{backendLabel}</span>
-              {"note" in overview && overview.note ? (
-                <span className="database-page__kpi-hint muted" title={overview.note}>
-                  {overview.note}
-                </span>
-              ) : null}
+              <span className={healthBadgeClass(health?.status)}>{healthStatusLabel(health?.status)}</span>
+              <span
+                className="database-page__kpi-hint muted"
+                title={health?.reason || undefined}
+              >
+                池利用率 {formatPoolUtil(health)}
+                {health?.reason ? ` · ${health.reason}` : ""}
+              </span>
             </div>
           </div>
+          {showBody && overview ? (
+            <div className="metric-tile">
+              <div className="metric-tile__head">
+                <span className="metric-tile__label">当前后端</span>
+              </div>
+              <div className="metric-tile__value-slot">
+                <span className="metric-tile__value metric-tile__value--inline">{backendLabel}</span>
+                {"note" in overview && overview.note ? (
+                  <span className="database-page__kpi-hint muted" title={overview.note}>
+                    {overview.note}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {totalDocuments != null ? (
             <div className="metric-tile">
               <div className="metric-tile__head">
@@ -603,56 +696,161 @@ export default function DatabasePage() {
           ) : null}
 
           {activeSection === "tables" ? (
-            !overview ? (
+            !overview && !tableMeta.length ? (
               <ConsoleBlockSkeleton lines={4} label="正在加载存储明细" />
-            ) : overview.backend === "mongodb" ? (
-              <div className="table-wrap">
-                <table className="data console-data-table database-page__storage-table">
-                  <thead>
-                    <tr>
-                      <th>集合</th>
-                      <th>文档字段</th>
-                      <th>数量</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mongoCollections.map((c) => (
-                      <tr key={c.name}>
-                        <td style={{ fontWeight: 600 }}>{c.name}</td>
-                        <td className="muted">{c.document}</td>
-                        <td
-                          style={{ fontVariantNumeric: "tabular-nums" }}
-                          title={c.count_estimated ? "估算值（集合较大时）" : undefined}
-                        >
-                          {c.count_estimated ? "≈" : ""}
-                          {nf.format(c.count)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : overview.backend === "postgres" ? (
-              <div className="table-wrap">
-                <table className="data console-data-table database-page__storage-table">
-                  <thead>
-                    <tr>
-                      <th>表名</th>
-                      <th>行数</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pgTables.map((t) => (
-                      <tr key={t.table}>
-                        <td style={{ fontWeight: 600 }}>{t.table}</td>
-                        <td style={{ fontVariantNumeric: "tabular-nums" }}>{nf.format(t.count)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             ) : (
-              <p className="muted">当前后端没有可展示的表或集合</p>
+              <>
+                <div className="table-wrap">
+                  <table className="data console-data-table database-page__storage-table">
+                    <thead>
+                      <tr>
+                        <th>{overview?.backend === "mongodb" ? "集合" : "表名"}</th>
+                        {overview?.backend === "mongodb" ? <th>文档字段</th> : null}
+                        <th>数量</th>
+                        <th>浏览</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(tableMeta.length
+                        ? tableMeta.map((t) => ({
+                            name: t.name,
+                            document:
+                              mongoCollections.find((c) => c.name === t.name)?.document ?? "—",
+                            count: t.count ?? 0,
+                            count_estimated: Boolean(t.count_estimated),
+                            browseable: Boolean(t.browseable),
+                          }))
+                        : overview?.backend === "mongodb"
+                          ? mongoCollections.map((c) => ({
+                              name: c.name,
+                              document: c.document,
+                              count: c.count,
+                              count_estimated: Boolean(c.count_estimated),
+                              browseable: false,
+                            }))
+                          : pgTables.map((t) => ({
+                              name: t.table,
+                              document: "—",
+                              count: t.count,
+                              count_estimated: false,
+                              browseable: false,
+                            }))
+                      ).map((row) => (
+                        <tr key={row.name}>
+                          <td style={{ fontWeight: 600 }}>{row.name}</td>
+                          {overview?.backend === "mongodb" ? (
+                            <td className="muted">{row.document}</td>
+                          ) : null}
+                          <td
+                            style={{ fontVariantNumeric: "tabular-nums" }}
+                            title={row.count_estimated ? "估算值（集合较大时）" : undefined}
+                          >
+                            {row.count_estimated ? "≈" : ""}
+                            {nf.format(row.count)}
+                          </td>
+                          <td>
+                            {row.browseable ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setBrowseTable(row.name);
+                                  setBrowsePage(1);
+                                  void loadBrowseRows(row.name, 1);
+                                }}
+                              >
+                                只读
+                              </Button>
+                            ) : (
+                              <span className="muted">概览</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {browseableTables.length ? (
+                  <div style={{ marginTop: 16 }}>
+                    <div className="row-actions" style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+                      <Select
+                        value={browseTable || "__none__"}
+                        onValueChange={(v) => {
+                          const next = v === "__none__" ? "" : v;
+                          setBrowseTable(next);
+                          setBrowsePage(1);
+                          void loadBrowseRows(next, 1);
+                        }}
+                      >
+                        <SelectTrigger className="h-9 w-full max-w-[16rem]" aria-label="只读浏览表">
+                          <SelectValue placeholder="选择可浏览表" />
+                        </SelectTrigger>
+                        <SelectContent align="start">
+                          <SelectItem value="__none__">选择可浏览表</SelectItem>
+                          {browseableTables.map((t) => (
+                            <SelectItem key={t.name} value={t.name}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {browseBusy ? <span className="muted">加载中…</span> : null}
+                    </div>
+                    {browseTable && browseRows ? (
+                      <>
+                        <div className="table-wrap">
+                          <table className="data console-data-table">
+                            <thead>
+                              <tr>
+                                {browseColumns.length ? (
+                                  browseColumns.map((col) => <th key={col}>{col}</th>)
+                                ) : (
+                                  <th>行</th>
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {browseRows.rows.length ? (
+                                browseRows.rows.map((r, idx) => (
+                                  <tr key={`${browseTable}-${idx}`}>
+                                    {browseColumns.map((col) => (
+                                      <td key={col} className="muted" style={{ maxWidth: 220 }}>
+                                        {typeof r[col] === "object"
+                                          ? JSON.stringify(r[col])
+                                          : String(r[col] ?? "—")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td className="muted">暂无数据</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                        <ConsolePagerBar
+                          page={browsePage}
+                          pageSize={prefs.tablePageSize}
+                          total={browseRows.total}
+                          onPageChange={(p) => {
+                            setBrowsePage(p);
+                            void loadBrowseRows(browseTable, p);
+                          }}
+                          onPageSizeChange={(size) => {
+                            prefs.setTablePageSize(size);
+                            setBrowsePage(1);
+                            void loadBrowseRows(browseTable, 1);
+                          }}
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
             )
           ) : null}
 

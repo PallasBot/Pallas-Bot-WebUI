@@ -32,7 +32,10 @@ import type {
   DbBackendPostgresConfig,
   DbBackendProbeResult,
   DbBackendSaveResult,
+  DbHealthData,
   DbOverviewData,
+  DbTableRowsData,
+  DbTablesData,
   FriendListData,
   FriendOverviewData,
   RequestOverviewData,
@@ -2373,6 +2376,38 @@ export async function fetchDbOverview(): Promise<DbOverviewData> {
     "/db/overview",
     { timeout: DB_HEAVY_READ_TIMEOUT_MS },
   )) as DbOverviewData;
+}
+
+export async function fetchDbHealth(): Promise<DbHealthData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/health"]["get"]>(
+    "/db/health",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbHealthData;
+}
+
+export async function fetchDbTables(): Promise<DbTablesData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/tables"]["get"]>(
+    "/db/tables",
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbTablesData;
+}
+
+export async function fetchDbTableRows(params: {
+  table: string;
+  offset?: number;
+  limit?: number;
+}): Promise<DbTableRowsData> {
+  return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/db/table-rows"]["get"]>(
+    "/db/table-rows",
+    {
+      timeout: DB_HEAVY_READ_TIMEOUT_MS,
+      params: {
+        table: params.table,
+        offset: params.offset ?? 0,
+        limit: params.limit ?? 50,
+      },
+    },
+  )) as DbTableRowsData;
 }
 
 export async function fetchDbBackendConfig(): Promise<DbBackendConfigData> {

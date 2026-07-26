@@ -1595,6 +1595,56 @@ export type DbOverviewData =
     }
   | { backend: string; note?: string };
 
+export type DbHealthStatus = "healthy" | "degraded" | "unhealthy";
+
+export interface DbHealthData {
+  status: DbHealthStatus;
+  reason: string;
+  backend?: string;
+  updated_at?: number;
+  updated_at_unix?: number;
+  last_probe_ok?: boolean | null;
+  pool?: {
+    capacity?: number;
+    utilization?: number | null;
+    under_pressure?: boolean;
+    live?: Record<string, number> | null;
+    idle_in_tx?: number | null;
+  } | null;
+  schema?: {
+    ok?: number;
+    failed?: number;
+    last_error?: string;
+    steps?: { name: string; ok: boolean; error?: string }[];
+  };
+  low_priority_writers?: {
+    name: string;
+    queued: number;
+    dropped: number;
+    flushed: number;
+    max_retain: number;
+  }[];
+}
+
+export interface DbTablesData {
+  backend?: string;
+  tables: {
+    name: string;
+    count?: number;
+    count_estimated?: boolean;
+    browseable?: boolean;
+    overview_only?: boolean;
+  }[];
+}
+
+export interface DbTableRowsData {
+  table: string;
+  offset: number;
+  limit: number;
+  total: number;
+  rows: Record<string, unknown>[];
+}
+
 export type DbBackendKind = "postgresql" | "mongodb";
 
 export interface DbBackendPostgresConfig {
