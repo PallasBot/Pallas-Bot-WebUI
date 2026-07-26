@@ -769,27 +769,20 @@ export default function LlmProvidersForm() {
   }) {
     return (
       <div className="grid gap-2">
-        <Select
-          value={opts.providerId || "__empty__"}
-          onValueChange={(value) => {
-            const providerId = value === "__empty__" ? "" : value;
+        <AiOptionSelect
+          value={opts.providerId}
+          onValueChange={(providerId) => {
             opts.onProviderChange(providerId);
             loadTaskProviderModels(doc.providers.find((p) => p.id === providerId));
           }}
-        >
-          <SelectTrigger aria-label={opts.providerAria}>
-            <SelectValue placeholder="选择提供方" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__empty__">（未指定）</SelectItem>
-            {doc.providers.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.id}
-                {!p.enabled ? " (停用)" : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={doc.providers.map((p) => ({
+            value: p.id,
+            label: p.enabled ? p.id : `${p.id} (停用)`,
+          }))}
+          placeholder="选择提供方"
+          emptyLabel="（未指定）"
+          ariaLabel={opts.providerAria}
+        />
         <AiModelSelect
           value={opts.model}
           disabled={!opts.providerId}

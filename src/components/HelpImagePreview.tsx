@@ -9,14 +9,8 @@ import {
   pickDefaultHelpPreviewFunction,
 } from "@/utils/helpPreviewOptions";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import SegTabs from "@/components/SegTabs";
 
 type Level = "menu" | "plugin" | "function";
@@ -149,59 +143,57 @@ export default function HelpImagePreview({ embedded = false, defaultPlugin = "he
         {level === "plugin" || level === "function" ? (
           <label className="grid min-w-[10rem] flex-1 gap-1 text-sm">
             <span className="text-muted-foreground">插件</span>
-            <Select
+            <Combobox
               value={pluginsQ.isLoading ? "__loading__" : plugin}
               disabled={pluginsQ.isLoading || !pluginOptions.length}
               onValueChange={setPlugin}
-            >
-              <SelectTrigger className="w-full" aria-label="插件">
-                <SelectValue placeholder="选择插件" />
-              </SelectTrigger>
-              <SelectContent>
-                {pluginsQ.isLoading ? (
-                  <SelectItem value="__loading__" disabled>
-                    加载插件列表…
-                  </SelectItem>
-                ) : null}
-                {!pluginsQ.isLoading &&
-                plugin &&
-                !pluginOptions.some((item) => item.value === plugin) ? (
-                  <SelectItem value={plugin}>{plugin}</SelectItem>
-                ) : null}
-                {pluginOptions.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ariaLabel="插件"
+              placeholder="选择插件"
+              searchPlaceholder="搜索插件…"
+              emptyText="无匹配插件"
+              searchCount={pluginOptions.length}
+              triggerClassName="w-full"
+              options={
+                pluginsQ.isLoading
+                  ? [{ value: "__loading__", label: "加载插件列表…", disabled: true }]
+                  : [
+                      ...(plugin && !pluginOptions.some((item) => item.value === plugin)
+                        ? [{ value: plugin, label: plugin, keywords: plugin }]
+                        : []),
+                      ...pluginOptions.map((item) => ({
+                        value: item.value,
+                        label: item.label,
+                        keywords: `${item.value} ${item.label}`,
+                      })),
+                    ]
+              }
+            />
           </label>
         ) : null}
 
         {level === "function" ? (
           <label className="grid min-w-[10rem] flex-1 gap-1 text-sm">
             <span className="text-muted-foreground">功能</span>
-            <Select
+            <Combobox
               value={functionOptions.length ? functionName : "__empty__"}
               disabled={!functionOptions.length}
               onValueChange={setFunctionName}
-            >
-              <SelectTrigger className="w-full" aria-label="功能">
-                <SelectValue placeholder="选择功能" />
-              </SelectTrigger>
-              <SelectContent>
-                {!functionOptions.length ? (
-                  <SelectItem value="__empty__" disabled>
-                    该插件暂无功能项
-                  </SelectItem>
-                ) : null}
-                {functionOptions.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ariaLabel="功能"
+              placeholder="选择功能"
+              searchPlaceholder="搜索功能…"
+              emptyText="无匹配功能"
+              searchCount={functionOptions.length}
+              triggerClassName="w-full"
+              options={
+                functionOptions.length
+                  ? functionOptions.map((item) => ({
+                      value: item.value,
+                      label: item.label,
+                      keywords: `${item.value} ${item.label}`,
+                    }))
+                  : [{ value: "__empty__", label: "该插件暂无功能项", disabled: true }]
+              }
+            />
           </label>
         ) : null}
 

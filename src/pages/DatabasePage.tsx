@@ -45,6 +45,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -736,24 +737,28 @@ export default function DatabasePage() {
 
         {activeSection === "tables" ? (
           <ChromeField label="视图" icon={Table2} className="shrink-0">
-            <Select value={browseTable || "__overview__"} onValueChange={selectStorageView}>
-              <SelectTrigger
-                className={cn(CHROME_SELECT_TRIGGER, "max-w-[16rem]")}
-                aria-label="存储视图"
-              >
-                <SelectValue placeholder="表总览" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                <SelectItem value="__overview__">
-                  <ChromeOptionLabel icon={Table2}>表总览</ChromeOptionLabel>
-                </SelectItem>
-                {browseableTables.map((t) => (
-                  <SelectItem key={t.name} value={t.name}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              value={browseTable || "__overview__"}
+              onValueChange={selectStorageView}
+              ariaLabel="存储视图"
+              placeholder="表总览"
+              searchPlaceholder="搜索表名…"
+              emptyText="无匹配表"
+              searchCount={browseableTables.length}
+              triggerClassName={cn(CHROME_SELECT_TRIGGER, "max-w-[16rem]")}
+              options={[
+                {
+                  value: "__overview__",
+                  label: <ChromeOptionLabel icon={Table2}>表总览</ChromeOptionLabel>,
+                  keywords: "表总览 overview",
+                },
+                ...browseableTables.map((t) => ({
+                  value: t.name,
+                  label: t.name,
+                  keywords: t.name,
+                })),
+              ]}
+            />
           </ChromeField>
         ) : null}
 
@@ -1251,22 +1256,24 @@ export default function DatabasePage() {
                   集合
                 </label>
                 {mongoCollections.length ? (
-                  <Select
+                  <Combobox
                     value={collection || "__none__"}
                     onValueChange={(v) => setCollection(v === "__none__" ? "" : v)}
-                  >
-                    <SelectTrigger className="h-9 w-full max-w-[26.25rem]" aria-label="集合">
-                      <SelectValue placeholder="选择集合" />
-                    </SelectTrigger>
-                    <SelectContent align="start">
-                      <SelectItem value="__none__">选择集合</SelectItem>
-                      {mongoCollections.map((c) => (
-                        <SelectItem key={c.name} value={c.name}>
-                          {c.name}（{nf.format(c.count)}）
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    ariaLabel="集合"
+                    placeholder="选择集合"
+                    searchPlaceholder="搜索集合…"
+                    emptyText="无匹配集合"
+                    searchCount={mongoCollections.length}
+                    triggerClassName="h-9 w-full max-w-[26.25rem]"
+                    options={[
+                      { value: "__none__", label: "选择集合", keywords: "选择集合" },
+                      ...mongoCollections.map((c) => ({
+                        value: c.name,
+                        label: `${c.name}（${nf.format(c.count)}）`,
+                        keywords: c.name,
+                      })),
+                    ]}
+                  />
                 ) : (
                   <div style={{ maxWidth: 360, width: "100%" }}>
                     <UiInput placeholder="集合名" value={collection} onValueChange={setCollection} />

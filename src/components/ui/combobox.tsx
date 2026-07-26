@@ -38,6 +38,8 @@ export type ComboboxProps = {
   searchThreshold?: number;
   /** 参与阈值判断的数量；默认 `options.length`（Bot 选择可传账号数，不含「全部」等前置项） */
   searchCount?: number;
+  /** 允许在搜索框 Enter 提交不在列表中的值（群号等） */
+  allowCustom?: boolean;
   triggerClassName?: string;
   contentClassName?: string;
   ariaLabel?: string;
@@ -55,6 +57,7 @@ export function Combobox({
   searchPlaceholder = "搜索…",
   searchThreshold = 8,
   searchCount,
+  allowCustom = false,
   triggerClassName,
   contentClassName,
   ariaLabel,
@@ -63,9 +66,18 @@ export function Combobox({
   id,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  const showSearch = (searchCount ?? options.length) >= searchThreshold;
+  const [query, setQuery] = React.useState("");
+  const showSearch = allowCustom || (searchCount ?? options.length) >= searchThreshold;
   const selected = options.find((o) => o.value === value);
-  const triggerBody = selected ? (selected.triggerLabel ?? selected.label) : null;
+  const triggerBody = selected
+    ? (selected.triggerLabel ?? selected.label)
+    : value.trim()
+      ? value
+      : null;
+
+  React.useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -93,12 +105,33 @@ export function Combobox({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className={cn("w-auto min-w-[var(--radix-popover-trigger-width)] max-w-[min(24rem,calc(100vw-2rem))] p-0", contentClassName)}
+        className={cn(
+          "w-auto min-w-[var(--radix-popover-trigger-width)] max-w-[min(24rem,calc(100vw-2rem))] p-0",
+          contentClassName,
+        )}
       >
         <Command>
-          {showSearch ? <CommandInput placeholder={searchPlaceholder} /> : null}
+          {showSearch ? (
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={query}
+              onValueChange={setQuery}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || !allowCustom) return;
+                const next = query.trim();
+                if (!next) return;
+                e.preventDefault();
+                onValueChange(next);
+                setOpen(false);
+              }}
+            />
+          ) : null}
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandEmpty>
+              {allowCustom && query.trim()
+                ? "无匹配；按 Enter 使用输入值"
+                : emptyText}
+            </CommandEmpty>
             <CommandGroup>
               {options.map((opt) => {
                 const selectedNow = opt.value === value;
