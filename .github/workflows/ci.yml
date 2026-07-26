@@ -22,18 +22,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Checkout Bot openspec
+      # Bot 可能在 main 或 `dev` 开发；生成类型与任一侧 openspec 对齐即通过。
+      - name: Checkout Bot openspec (dev)
+        uses: actions/checkout@v4
+        with:
+          repository: PallasBot/Pallas-Bot
+          ref: dev
+          path: Pallas-Bot-dev
+          sparse-checkout: |
+            openspec
+          sparse-checkout-cone-mode: true
+
+      - name: Checkout Bot openspec (main)
         uses: actions/checkout@v4
         with:
           repository: PallasBot/Pallas-Bot
           ref: main
-          path: Pallas-Bot
+          path: Pallas-Bot-main
           sparse-checkout: |
             openspec
           sparse-checkout-cone-mode: true
 
       - name: Check generated OpenAPI types drift
-        run: npm run check:console-openapi-types -- --input Pallas-Bot/openspec/pallas-console-v1.json
+        run: >-
+          npm run check:console-openapi-types --
+          --input Pallas-Bot-dev/openspec/pallas-console-v1.json
+          --input Pallas-Bot-main/openspec/pallas-console-v1.json
 
       - name: Type check and build
         run: npm run build:ci
