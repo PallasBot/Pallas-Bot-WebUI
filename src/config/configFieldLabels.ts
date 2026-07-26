@@ -66,6 +66,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_sticker_fit_enabled: "表情适配与反馈",
   llm_reply_effect_eval_enabled: "记录回复效果评分",
   llm_reply_style_variants: "本轮回复风格变体",
+  llm_persona_output_firewall: "人设输出防火墙",
 };
 
 export type LlmBotFieldGroupTier = "essential" | "advanced";
@@ -130,8 +131,9 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_output_filter_chat_soft_phrases",
       "llm_output_filter_polish_lite_hard_phrases",
       "llm_output_filter_polish_lite_soft_phrases",
+      "llm_persona_output_firewall",
     ],
-    hint: "拦住客服腔、乱邀约等怪句。硬拦=直接挡；软拦=同处理但方便分批试验。接话被拦时优先退回语料原文。",
+    hint: "拦住客服腔、乱邀约等怪句；人设防火墙另拦泄提示词、舞台旁白、自称模型。硬拦=直接挡；接话被拦时优先退回语料原文。",
   },
   {
     title: "并发与限流",
