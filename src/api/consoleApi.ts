@@ -33,6 +33,8 @@ import type {
   DbBackendProbeResult,
   DbBackendSaveResult,
   DbHealthData,
+  DbMigrateMongoPgInfo,
+  DbMigrateMongoPgJob,
   DbOverviewData,
   DbTableRowsData,
   DbTablesData,
@@ -2408,6 +2410,39 @@ export async function fetchDbTableRows(params: {
       },
     },
   )) as DbTableRowsData;
+}
+
+export async function fetchDbMigrateMongoPgInfo(): Promise<DbMigrateMongoPgInfo> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/info"]["get"]
+  >("/db/migrate/mongo-to-pg/info")) as DbMigrateMongoPgInfo;
+}
+
+export async function postDbMigrateMongoPg(body: {
+  dry_run?: boolean;
+  restart_cursor?: boolean;
+  switch_backend?: boolean;
+  try_hot_rebind?: boolean;
+  batch_size?: number;
+  tables?: string[];
+}): Promise<DbMigrateMongoPgJob> {
+  return (await consoleOpenapiPost<ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg"]["post"]>(
+    "/db/migrate/mongo-to-pg",
+    body,
+    { timeout: DB_HEAVY_READ_TIMEOUT_MS },
+  )) as DbMigrateMongoPgJob;
+}
+
+export async function fetchActiveDbMigrateMongoPgJob(): Promise<DbMigrateMongoPgJob | null> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/jobs/active"]["get"]
+  >("/db/migrate/mongo-to-pg/jobs/active")) as DbMigrateMongoPgJob | null;
+}
+
+export async function fetchDbMigrateMongoPgJob(jobId: string): Promise<DbMigrateMongoPgJob> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/db/migrate/mongo-to-pg/jobs/{job_id}"]["get"]
+  >(`/db/migrate/mongo-to-pg/jobs/${encodeURIComponent(jobId)}`)) as DbMigrateMongoPgJob;
 }
 
 export async function fetchDbBackendConfig(): Promise<DbBackendConfigData> {
