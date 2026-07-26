@@ -1,6 +1,7 @@
 import type { PluginConfigField } from "@/api/console";
 import ConsoleSwitch from "@/components/ConsoleSwitch";
 import StringMapField, { tryParseStringMap } from "@/components/config/StringMapField";
+import PersonaOutputFirewallField from "@/components/config/PersonaOutputFirewallField";
 import ReplyStyleVariantsField from "@/components/config/ReplyStyleVariantsField";
 import TagsInput from "@/components/config/TagsInput";
 import UiInput from "@/components/ui/UiInput";
@@ -58,6 +59,8 @@ export default function ConfigFieldRenderer({
   const usesIdTags = isIdListField(field);
   const usesStringMap = field.kind === "json" && tryParseStringMap(modelValue) != null;
   const usesReplyStyleVariants = field.name === "llm_reply_style_variants";
+  const usesPersonaOutputFirewall = field.name === "llm_persona_output_firewall";
+  const usesStructuredJsonForm = usesReplyStyleVariants || usesPersonaOutputFirewall;
 
   const boolOn =
     field.kind === "bool" ? modelValue === "true" : binaryEnumIsOn(fieldWithChoices, modelValue);
@@ -176,7 +179,11 @@ export default function ConfigFieldRenderer({
         <ReplyStyleVariantsField value={modelValue} onValueChange={onValueChange} />
       ) : null}
 
-      {usesStringMap && !usesReplyStyleVariants ? (
+      {usesPersonaOutputFirewall ? (
+        <PersonaOutputFirewallField value={modelValue} onValueChange={onValueChange} />
+      ) : null}
+
+      {usesStringMap && !usesStructuredJsonForm ? (
         <StringMapField
           value={modelValue}
           onValueChange={onValueChange}
@@ -186,7 +193,7 @@ export default function ConfigFieldRenderer({
         />
       ) : null}
 
-      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap && !usesReplyStyleVariants ? (
+      {!usesBoolSwitch && !usesEnumSelect && !usesTags && field.kind === "json" && !usesStringMap && !usesStructuredJsonForm ? (
         <textarea
           className="textarea inp form-field__control config-field-renderer__textarea"
           rows={6}
