@@ -6,7 +6,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.1] - 2026-07-26
 
 ### 更新公告
 
@@ -20,6 +20,15 @@ CHANGELOG 弹窗更易扫读：标题层次、列表圆点与字号间距已调�
 
 - 更新页 CHANGELOG 弹窗正文与标题层次加大，窄屏 footer 可纵向排布
 - CHANGELOG 与发版脚本分节统一为 Keep a Changelog 英文标题（Added / Fixed / Changed）
+
+### 提交明细
+
+### Fixed
+
+* fix(update): CHANGELOG 弹窗更易读并统一 Added/Fixed/Changed ([e962442](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e962442e0f4df586b0488eed3c1b600635a1f439))
+
+**完整变更**: [`v0.8.0...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.0...HEAD)
+
 
 ## [0.8.0] - 2026-07-26
 
@@ -93,7 +102,6 @@ CHANGELOG 弹窗更易扫读：标题层次、列表圆点与字号间距已调�
 * chore(ai-config): 优化配置分区与任务说明 ([877479c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/877479c8b5cef0be89e64d99063d2c09da631aae))
 
 **完整变更**: [`v0.7.12...v0.8.0`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.12...v0.8.0)
-
 
 ## [0.7.12] - 2026-07-26
 
