@@ -268,9 +268,7 @@ export default function AiPeoplePage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-base">口癖候选</CardTitle>
-              <CardDescription>
-                从该 Bot 成功回复里抽样的说法；通过后可作为账号口癖复用。
-              </CardDescription>
+              <CardDescription>成功回复里的短习惯，通过后注入人设。</CardDescription>
             </div>
             <div className="flex flex-wrap gap-1">
               {(
@@ -324,6 +322,7 @@ export default function AiPeoplePage() {
                           size="sm"
                           variant="secondary"
                           className="h-7 px-2"
+                          disabled={resolveCatchphrase.isPending}
                           onClick={() =>
                             resolveCatchphrase.mutate({
                               entryId: String(item.entry_id),
@@ -337,6 +336,7 @@ export default function AiPeoplePage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2"
+                          disabled={resolveCatchphrase.isPending}
                           onClick={() =>
                             resolveCatchphrase.mutate({
                               entryId: String(item.entry_id),
@@ -345,6 +345,24 @@ export default function AiPeoplePage() {
                           }
                         >
                           驳回
+                        </Button>
+                      </div>
+                    ) : null}
+                    {status === "active" ? (
+                      <div className="flex shrink-0 gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2"
+                          disabled={resolveCatchphrase.isPending}
+                          onClick={() =>
+                            resolveCatchphrase.mutate({
+                              entryId: String(item.entry_id),
+                              action: "reject",
+                            })
+                          }
+                        >
+                          停用
                         </Button>
                       </div>
                     ) : null}
