@@ -35,6 +35,12 @@ import GroupSocialConfigModal from "@/components/social/GroupSocialConfigModal";
 import UserSocialConfigModal from "@/components/social/UserSocialConfigModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -48,6 +54,56 @@ import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { Code2, Database, Layers, Search, Table2, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
+
+const BROWSE_ID_KEYS = ["account", "group_id", "user_id", "id"] as const;
+const BROWSE_SUMMARY_MAX_COLS = 4;
+const BROWSE_CELL_MAX_CHARS = 36;
+
+function isBrowseScalar(value: unknown): boolean {
+  return value == null || ["string", "number", "boolean"].includes(typeof value);
+}
+
+function browseRowIdLabel(row: Record<string, unknown>): string {
+  for (const key of BROWSE_ID_KEYS) {
+    if (key in row && row[key] != null) return `${key}=${String(row[key])}`;
+  }
+  return "行详情";
+}
+
+function browseSummaryColumns(rows: Record<string, unknown>[]): string[] {
+  if (!rows.length) return [];
+  const keys = Object.keys(rows[0] ?? {});
+  const preferred = BROWSE_ID_KEYS.filter((k) => keys.includes(k));
+  const scalars = keys.filter(
+    (k) =>
+      !preferred.includes(k as (typeof BROWSE_ID_KEYS)[number]) &&
+      rows.every((r) => isBrowseScalar(r[k])),
+  );
+  return [...preferred, ...scalars].slice(0, BROWSE_SUMMARY_MAX_COLS);
+}
+
+function formatBrowseCell(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "boolean") return value ? "是" : "否";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") {
+    const text = value.trim() || "—";
+    return text.length > BROWSE_CELL_MAX_CHARS
+      ? `${text.slice(0, BROWSE_CELL_MAX_CHARS)}…`
+      : text;
+  }
+  if (Array.isArray(value)) return `数组(${value.length})`;
+  if (typeof value === "object") return `对象(${Object.keys(value).length})`;
+  return String(value);
+}
+
+function formatBrowseRowJson(row: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(row, null, 2);
+  } catch {
+    return String(row);
+  }
+}
 
 const CONFIG_LIST_LIMIT = 10_000;
 const nf = new Intl.NumberFormat("zh-CN");
@@ -147,6 +203,7 @@ export default function DatabasePage() {
   const [browsePage, setBrowsePage] = useState(1);
   const [browseRows, setBrowseRows] = useState<DbTableRowsData | null>(null);
   const [browseBusy, setBrowseBusy] = useState(false);
+  const [browseDetail, setBrowseDetail] = useState<Record<string, unknown> | null>(null);
 
   const overviewQ = useQuery({ queryKey: ["db-overview"], queryFn: fetchDbOverview });
   const healthQ = useQuery({
@@ -367,12 +424,10 @@ export default function DatabasePage() {
         : dbRefreshBusy || overviewQ.isFetching || tablesQ.isFetching || browseBusy;
   const showBody = Boolean(overview) && !dbRefreshBusy;
   const browseableTables = tableMeta.filter((t) => t.browseable);
-  const browseColumns =
-    browseRows && browseRows.rows.length
-      ? Object.keys(browseRows.rows[0] ?? {})
-      : browseRows
-        ? []
-        : [];
+  const browseColumns = useMemo(
+    () => browseSummaryColumns(browseRows?.rows ?? []),
+    [browseRows],
+  );
   const listSearch =
     activeSection === "group"
       ? {
@@ -800,15 +855,17 @@ export default function DatabasePage() {
                     </div>
                     {browseTable && browseRows ? (
                       <>
+                        <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
+                          列表仅显示短字段；完整内容请点「查看」。
+                        </p>
                         <div className="table-wrap">
                           <table className="data console-data-table">
                             <thead>
                               <tr>
-                                {browseColumns.length ? (
-                                  browseColumns.map((col) => <th key={col}>{col}</th>)
-                                ) : (
-                                  <th>行</th>
-                                )}
+                                {browseColumns.map((col) => (
+                                  <th key={col}>{col}</th>
+                                ))}
+                                <th style={{ minWidth: 72, width: "1%" }}>操作</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -816,17 +873,36 @@ export default function DatabasePage() {
                                 browseRows.rows.map((r, idx) => (
                                   <tr key={`${browseTable}-${idx}`}>
                                     {browseColumns.map((col) => (
-                                      <td key={col} className="muted" style={{ maxWidth: 220 }}>
-                                        {typeof r[col] === "object"
-                                          ? JSON.stringify(r[col])
-                                          : String(r[col] ?? "—")}
+                                      <td
+                                        key={col}
+                                        className="muted"
+                                        style={{
+                                          maxWidth: 140,
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                        title={formatBrowseCell(r[col])}
+                                      >
+                                        {formatBrowseCell(r[col])}
                                       </td>
                                     ))}
+                                    <td>
+                                      <ConsoleTableEdit
+                                        label="查看"
+                                        onClick={() => setBrowseDetail(r)}
+                                      />
+                                    </td>
                                   </tr>
                                 ))
                               ) : (
                                 <tr>
-                                  <td className="muted">暂无数据</td>
+                                  <td
+                                    className="muted"
+                                    colSpan={Math.max(1, browseColumns.length) + 1}
+                                  >
+                                    暂无数据
+                                  </td>
                                 </tr>
                               )}
                             </tbody>
@@ -924,6 +1000,27 @@ export default function DatabasePage() {
         }}
         onSaved={() => onSocialConfigSaved("user")}
       />
+
+      <Dialog
+        open={browseDetail != null}
+        onOpenChange={(open) => {
+          if (!open) setBrowseDetail(null);
+        }}
+      >
+        <DialogContent className="max-w-[min(42rem,calc(100vw-24px))] gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-4 py-3 text-left">
+            <DialogTitle className="text-left">
+              {browseTable ? `${browseTable} · ` : ""}
+              {browseDetail ? browseRowIdLabel(browseDetail) : "行详情"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[min(70vh,36rem)] overflow-auto px-4 py-3">
+            <pre className="pre-block" style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {browseDetail ? formatBrowseRowJson(browseDetail) : ""}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
