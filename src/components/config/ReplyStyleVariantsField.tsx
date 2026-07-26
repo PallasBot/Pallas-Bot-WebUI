@@ -34,7 +34,9 @@ export default function ReplyStyleVariantsField({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">临时调整本轮口气</p>
-          <p className="text-xs text-muted-foreground">只影响当轮回复，不会修改静态人设。</p>
+          <p className="text-xs text-muted-foreground">
+            开=按概率抽一种口气（俏皮、冷静等）只改当轮说法；关=不做变体。不会改长期人设。
+          </p>
         </div>
         <Switch
           checked={policy.enabled}
@@ -44,7 +46,7 @@ export default function ReplyStyleVariantsField({
       </div>
 
       <label className="grid gap-1.5 text-sm">
-        <span>触发概率</span>
+        <span>触发概率（默认约 25%，没有情感数据时也按此抽）</span>
         <div className="flex max-w-40 items-center gap-2">
           <input
             className="inp h-9 w-full"
@@ -62,7 +64,7 @@ export default function ReplyStyleVariantsField({
       </label>
 
       <div className="space-y-1.5">
-        <p className="text-sm">可选口气</p>
+        <p className="text-sm">可选口气（点选参与抽取；至少留一种）</p>
         <div className="flex flex-wrap gap-2">
           {REPLY_STYLE_CHOICES.map((style) => {
             const active = policy.styles.includes(style.id);

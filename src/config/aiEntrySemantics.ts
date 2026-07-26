@@ -27,12 +27,12 @@ export const AI_ENTRY_CONNECTION_DIAG = {
 
 /** task 相关配置分层说明（Provider / 路由页共用，避免同名 task 被当成同一项） */
 export const AI_TASK_CONFIG_HINTS = {
-  providerSection: "本页登记上游提供方；各场景用的模型在「任务编排」里指定。",
-  providerIntro: "保存后通常无需重启。远程密钥可写环境变量名；明文密钥保存在本机配置。",
-  providerTaskRoute: "选「自动」时按备用链路顺序解析；显式指定则固定走该提供方。",
-  providerTaskModel: "写入对应提供方的任务模型表；未填则用提供方默认模型。",
-  routingSection: "本页配置本机 Ollama 分档；云端任务见「任务编排」。",
-  routingIntro: "单模型时跟随「运行模型」；开启多模型后可按档分流。",
-  routingTaskModels: "已并入「任务编排」；旧环境变量仅作兼容回退。",
-  routingProviderTaskReadonly: "只读摘要，来自提供方配置；请到「提供方」页修改。",
+  providerSection: "先在本页登记「从哪家调用模型」；具体哪种群聊场景用谁，到「任务编排」里指定。",
+  providerIntro: "保存后一般不用重启 Bot。密钥可填环境变量名，也可以明文写在本机配置（勿泄露）。",
+  providerTaskRoute: "「自动」=按备用链路依次试；选中某一提供方=这类任务固定走它。",
+  providerTaskModel: "给该提供方的某类任务指定模型名；留空则用提供方默认模型。",
+  routingSection: "只管本机 Ollama 高低档模型；云端/按任务细调请回「任务编排」。",
+  routingIntro: "只用一个模型时跟「运行模型」；打开多模型后，可把重活、轻活分到不同本机模型。",
+  routingTaskModels: "按任务选模型已并到「任务编排」；这里旧项仅作兼容回退。",
+  routingProviderTaskReadonly: "只读摘要，改法：回到「提供方 / 任务编排」页。",
 } as const;

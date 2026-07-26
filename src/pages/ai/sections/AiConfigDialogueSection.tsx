@@ -38,17 +38,37 @@ type EditMode = "form" | "raw";
 type Panel = ContentPanel | "raw";
 
 const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIcon; lead: string }> = [
-  { value: "form", label: "策略", icon: ClipboardList, lead: "接话策略、工具策略与联网搜索。" },
-  { value: "session", label: "会话", icon: MessagesSquare, lead: "多轮上下文、过期与摘要。" },
-  { value: "memory", label: "记忆", icon: Brain, lead: "群记忆检索、向量模式与自动沉淀。" },
-  { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次 LLM 对话可注入的上下文字符上限。" },
-  { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
-  { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
+  {
+    value: "form",
+    label: "策略",
+    icon: ClipboardList,
+    lead: "总开关、接话怎么用模型、工具与「搜一下」、过滤与限流。",
+  },
+  {
+    value: "session",
+    label: "会话",
+    icon: MessagesSquare,
+    lead: "能不能连续聊、记多少句、旁听群消息、过期与长聊摘要。",
+  },
+  {
+    value: "memory",
+    label: "记忆",
+    icon: Brain,
+    lead: "「记住：」怎么检索、每群存多少、是否自动沉淀与抽关系。",
+  },
+  {
+    value: "budget",
+    label: "上下文预算",
+    icon: Gauge,
+    lead: "单次对话最多塞进多少字的记忆/旁听/说明，防止撑爆模型。",
+  },
+  { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟相关知识的检索与注入。" },
+  { value: "sources", label: "语料源", icon: Library, lead: "当前已登记、可供接话选用的语料来源。" },
   {
     value: "tools",
     label: "工具",
     icon: Wrench,
-    lead: "工具目录、触发说法，以及「相关即带 / 触发才带」；联网密钥在「策略 → 联网搜索」。",
+    lead: "能调哪些能力、怎么触发；联网密钥在「策略 → 联网搜索」。",
   },
 ];
 
