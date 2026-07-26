@@ -225,32 +225,34 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard title="开发模式" lead="联调时可跳过控制台登录与 API token；生产环境务必关闭。">
-          <ConsoleDevModePanel
-            active={webuiDevModeActive}
-            showBanner={false}
-            toolbar
-            onUpdated={onWebuiDevModeUpdated}
-          />
-        </PrefsSettingCard>
-
         <PrefsSettingCard
-          title="更新 CHANGELOG"
-          lead="应用 WebUI / Bot 更新后，是否自动弹出仓库 CHANGELOG。可随时在更新页手动打开。"
+          title="开发与更新"
+          lead="开发模式仅供本机/内网联调；CHANGELOG 弹窗可随时在更新页手动打开。"
         >
-          <div className="prefs-form-field prefs-form-field--switch">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm">应用更新后弹出 CHANGELOG</span>
-              <Switch
-                className={PREFS_SWITCH_CLASS}
-                checked={showUpdateChangelog}
-                onCheckedChange={(v) => {
-                  const next = Boolean(v);
-                  setShowUpdateChangelog(next);
-                  patchPrefs({ showUpdateChangelog: next });
-                }}
-                aria-label="应用更新后弹出 CHANGELOG"
-              />
+          <div className="space-y-3">
+            <ConsoleDevModePanel
+              active={webuiDevModeActive}
+              showBanner={false}
+              prefsRow
+              onUpdated={onWebuiDevModeUpdated}
+            />
+            <div className="prefs-switch-row">
+              <span className="prefs-switch-row__label">应用更新后弹出 CHANGELOG</span>
+              <div className="prefs-switch-row__control">
+                <Switch
+                  className={PREFS_SWITCH_CLASS}
+                  checked={showUpdateChangelog}
+                  onCheckedChange={(v) => {
+                    const next = Boolean(v);
+                    setShowUpdateChangelog(next);
+                    patchPrefs({ showUpdateChangelog: next });
+                  }}
+                  aria-label="应用更新后弹出 CHANGELOG"
+                />
+                <span className="prefs-switch-row__state" aria-hidden="true">
+                  {showUpdateChangelog ? "开" : "关"}
+                </span>
+              </div>
             </div>
           </div>
         </PrefsSettingCard>
