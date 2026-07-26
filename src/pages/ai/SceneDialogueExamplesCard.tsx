@@ -6,8 +6,10 @@ import {
   postSceneDialogueExample,
   putSceneDialogueExample,
 } from "@/api/fullConsole";
+import { axiosErrorDetail } from "@/api/http";
 import type { SceneDialogueExample } from "@/api/pallasTypes";
 import AiScopeHint from "@/components/ai/AiScopeHint";
+import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,8 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
   const qc = useQueryClient();
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editing, setEditing] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+  const [actionPending, setActionPending] = useState(false);
   const query = useQuery({
     queryKey: ["scene-dialogue-examples", botId],
     enabled: Boolean(botId),
@@ -36,11 +40,43 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
   const refresh = () => void qc.invalidateQueries({ queryKey: ["scene-dialogue-examples", botId] });
   const save = async () => {
     if (!botId) return;
-    if (editing) await putSceneDialogueExample(editing, draft);
-    else await postSceneDialogueExample({ bot_id: botId, ...draft });
-    setDraft(emptyDraft());
-    setEditing(null);
-    refresh();
+    setActionError("");
+    setActionPending(true);
+    try {
+      if (editing) await putSceneDialogueExample(editing, draft);
+      else await postSceneDialogueExample({ bot_id: botId, ...draft });
+      setDraft(emptyDraft());
+      setEditing(null);
+      refresh();
+    } catch (error) {
+      setActionError(`保存失败：${axiosErrorDetail(error)}`);
+    } finally {
+      setActionPending(false);
+    }
+  };
+  const toggle = async (item: SceneDialogueExample) => {
+    setActionError("");
+    setActionPending(true);
+    try {
+      await putSceneDialogueExample(item.example_id, { enabled: !item.enabled });
+      refresh();
+    } catch (error) {
+      setActionError(`更新失败：${axiosErrorDetail(error)}`);
+    } finally {
+      setActionPending(false);
+    }
+  };
+  const remove = async (exampleId: string) => {
+    setActionError("");
+    setActionPending(true);
+    try {
+      await deleteSceneDialogueExample(exampleId);
+      refresh();
+    } catch (error) {
+      setActionError(`删除失败：${axiosErrorDetail(error)}`);
+    } finally {
+      setActionPending(false);
+    }
   };
 
   return (
@@ -63,28 +99,30 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
               <div className="flex flex-wrap items-center gap-2">
                 <Input className="w-24" type="number" value={draft.order} onChange={(e) => setDraft({ ...draft, order: Number(e.target.value) || 0 })} aria-label="排序" />
                 <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />启用</label>
-                <Button size="sm" onClick={() => void save()} disabled={!draft.scene || !draft.user_cue || !draft.positive || !draft.negative}>保存</Button>
-                {editing ? <Button size="sm" variant="ghost" onClick={() => { setEditing(null); setDraft(emptyDraft()); }}>取消</Button> : null}
+                <Button size="sm" onClick={() => void save()} disabled={actionPending || !draft.scene || !draft.user_cue || !draft.positive || !draft.negative}>保存</Button>
+                {editing ? <Button size="sm" variant="ghost" disabled={actionPending} onClick={() => { setEditing(null); setDraft(emptyDraft()); }}>取消</Button> : null}
               </div>
             </div>
-            <div className="space-y-2">
-              {(query.data?.items ?? []).map((item) => (
-                <article key={item.example_id} className="space-y-2 rounded-md border p-3 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-medium">{item.scene} · {item.enabled ? "启用" : "停用"}</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="outline" onClick={() => void putSceneDialogueExample(item.example_id, { enabled: !item.enabled }).then(refresh)}>{item.enabled ? "停用" : "启用"}</Button>
-                      <Button size="sm" variant="outline" onClick={() => { setEditing(item.example_id); setDraft(item); }}>编辑</Button>
-                      <Button size="sm" variant="destructive" onClick={() => void deleteSceneDialogueExample(item.example_id).then(refresh)}>删除</Button>
+            {actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
+            <StateBlock loading={query.isLoading} error={query.error} empty={!query.data?.items.length} emptyText="暂无场景对话示例。">
+              <div className="space-y-2">
+                {(query.data?.items ?? []).map((item) => (
+                  <article key={item.example_id} className="space-y-2 rounded-md border p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">{item.scene} · {item.enabled ? "启用" : "停用"}</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button size="sm" variant="outline" disabled={actionPending} onClick={() => void toggle(item)}>{item.enabled ? "停用" : "启用"}</Button>
+                        <Button size="sm" variant="outline" disabled={actionPending} onClick={() => { setEditing(item.example_id); setDraft(item); }}>编辑</Button>
+                        <Button size="sm" variant="destructive" disabled={actionPending} onClick={() => void remove(item.example_id)}>删除</Button>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-muted-foreground">线索：{item.user_cue}</p>
-                  <p>建议：{item.positive}</p>
-                  <p>避免：{item.negative}</p>
-                </article>
-              ))}
-              {!query.isLoading && !(query.data?.items.length) ? <p className="text-sm text-muted-foreground">暂无场景对话示例。</p> : null}
-            </div>
+                    <p className="text-muted-foreground">线索：{item.user_cue}</p>
+                    <p>建议：{item.positive}</p>
+                    <p>避免：{item.negative}</p>
+                  </article>
+                ))}
+              </div>
+            </StateBlock>
           </>
         ) : null}
       </CardContent>
