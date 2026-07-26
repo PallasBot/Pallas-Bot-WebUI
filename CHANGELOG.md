@@ -6,6 +6,79 @@
 
 <!-- entries -->
 
+## [0.7.9] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(ui): 长列表选择统一 Combobox 搜索 ([e1b8c9f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e1b8c9fbadec0bdcf003e72056521a4f432b754a))
+* feat(ui): Bot 账号选择改用可搜索 Combobox ([0424cae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0424cae4d702a785d46e7d098824da0325518300))
+* feat(ai): 对话工具页增加口语选型预览与描述覆盖 ([28f15f5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/28f15f5894d0f4f51977ff6f10e67cd342ab42ba))
+* feat(ai): 对话工具页支持 hints 覆盖与策略字段 ([5bf4b2c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5bf4b2cf72bd3c0917a8d2c02f70f6d26af9b883))
+* feat(ui): 唱歌/TTS 保存上工具条，音色映射按 Speaker 分组 ([fc19a2b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fc19a2be3f6101bdd291f88510ce3f82dccdd9c4))
+* feat(database): 增加 Mongo→PostgreSQL 迁移向导 ([b2daa23](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b2daa231f5c873fed7c99b30d6c62ebaa9f48d00))
+* feat(database): 健康摘要与表白名单只读浏览 ([d4cc7f3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d4cc7f39c00f576a5a3633f6e78d063dcaa39350))
+* feat(ui): 配置弹窗身份头栏与字段「?」说明 ([08083ca](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/08083cad3fd275ccf4bf91595267837c2de1884f))
+* feat(protocol): 分段下拉选项补充图标 ([20fdaa2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/20fdaa2cd91fc41f7f298430d36a14eac77cf16f))
+* feat(ui): 工具条右侧操作横滑右钉，支持竖向 sticky ([d84016d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d84016d31e694f8d69c87726fc270358bd2f80e8))
+* feat(database): 后端配置并入分区 Select，弹窗标签加粗 ([2def335](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2def3357429ab65aeb480a7308c69832f42b0ea9))
+* feat(database): 后端配置并列卡片与连通探测 ([9d6d627](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9d6d62724616c209861756939f1b8afb34d67f40))
+* feat(protocol): Docker 镜像选择器，账号与资产页可搜可选本地镜像 ([f52deeb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f52deeb77809943e9fc010fda1d14163abf075e3))
+* feat(ui): 抽取 CopyIconButton，社区与 AI 记忆改用幽灵复制图标 ([882725f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/882725f61ecfc31da0d3ee0c0f7dbc9692ac7d3d))
+* feat(update): 对接更新进度 job，进度条显示真实百分比 ([e26b405](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e26b405d6c8a6a62126d9e8cb63376e199d1f0d9))
+* feat(community): 语料与热词同页双面板，本部署改称本机语料 ([85a0e28](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/85a0e2842390756b8a3f020e7ef654ba003eec86))
+* feat(plugin-config): 工作区迁入 ChromeTools 并隐藏类型标签 ([dab2888](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dab28882c1debc042cbcf8a83135f7f8f7239bb3))
+
+### 🐛 错误修复
+
+* fix(ci): OpenAPI 漂移检查同时接受 Bot main/`dev` openspec ([b5ada30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b5ada30b8de27964c4a3a8f0fe846091f61c2b68))
+* fix(ui): 好友群聊分区 Select 显式图标并按内容宽度 ([6a35a0b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6a35a0bd373a8c62746bdd987a602276b05de165))
+* fix(ui): 好友群聊分区 Select 触发器显示图标 ([ad1c56b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ad1c56bae9f61860d00ab365b536246a93e2215d))
+* fix(ui): 存储视图切换、滚动锚定与工具条 Select 收窄 ([d788290](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d7882903de8f7bea85d9567a7e52962b1c5754f2))
+* fix(protocol): 窄屏账号分区 Tab 均分可点 ([14b67fa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/14b67fa0af1d7747ee6a81de42ff1df11dd8e314))
+* fix(database): 群与好友配置支持删除记录 ([c7298e6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c7298e669c4cd597098c9d59e6ba180ccc5a5e25))
+* fix(ui): 修复工具条 Select 中文被纵向裁切 ([1bcd676](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1bcd67617ebfd5874a53250bd8c85f2f58eed5e5))
+* fix(store): 连点更新时保持排队中按钮状态 ([f4298a5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f4298a5c65f04cec6b9fdcc7efbcf1016a85a94e))
+* fix(database): 健康 KPI 移至条末 ([ed65ab1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ed65ab1de42692e0522a4194f4a741ec030847eb))
+* fix(database): 只读浏览改为短字段列表与行详情 Dialog ([37d4002](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/37d400253cceebacc4a342846383aa1dee8e797f))
+* fix(ui): 帮助图分组恢复分区卡，与插件配置分组对齐 ([c1b231b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c1b231b0b73a18e2376f30f1ea4e915801e56b73))
+* fix(plugins): 无 field_groups 时仍按 ui_group 渲染配置分组 ([46e2a2c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/46e2a2cffc84c638d9fc68b1bd5e38e2c6df1f0f))
+* fix(logs): 报错页来源 Select 前置，刷新回到工具条 ([121f824](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/121f8242769b3e7c19af08290e860ce14a0ad878))
+* fix(database): 探测/保存时去掉 password_set ([dc36c5e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dc36c5e2c7001961a15e6f7cb470c8291964d910))
+* fix(ui): 优化看板/社区载入态，抽取 ConsoleHint 并同步仪表盘账号 ([e993273](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e9932730983dd853b13a2d4eb8f91ee7cddeb309))
+* fix(store): 插件详情 README/更新日志分栏改为 Select ([70ec52f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/70ec52f35bd30c28f152a89a4f5fa5db440c39c9))
+* fix(ui): masthead 窄屏同行、商店操作上移并去掉重复保存提示 ([3b94eef](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3b94eef53dde3a6153e202244eec4e097aa2c111))
+* fix(ai): 窄屏配置网格保持两列 ([f837760](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f837760fd4839261ccd76f58c352c63f3759d243))
+* fix(social): 群配置封禁与轮盘同行并对齐标题字重 ([a31c27a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a31c27a9035619778a0ad128e543cb88d4efae6e))
+* fix(backup): 修复窄屏「开始备份」按钮错位 ([bad5ddb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bad5ddbaed35950b189719ce8ff982b6c57798bc))
+* fix(social): 群好友弹窗 footer 同行，名单改芯片输入 ([469f9ef](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/469f9ef628716a86f8dde7414d20ff625a572f67))
+* fix(shell): 手机侧栏导航竖直居中且文字左对齐 ([79253c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/79253c077fd2dec0bccf6a72367830263e9a134c))
+* fix(ai): 作用域提示统一虚线框，情感零点线加粗 ([0bf758e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0bf758e6f347269e9ed6178598d7e79e0b0af3be))
+* fix(login): 深色主题改用 --bg-deep 等变量 ([f857bb4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f857bb4c03c3d0fe4604c0dce903f45246ef6d3a))
+
+### 📚 文档更新
+
+* docs(release): 重写 v0.7.8 说明（含自 v0.7.2 累计） ([65e359c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/65e359cdc6c86e002cfbbe5f0a48c299c2ce279f))
+
+### ♻️ 重构
+
+* refactor(ui): 群/好友配置弹窗对齐 divider 与开关字段 ([b5d968a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b5d968a8a0458f2f3adcd60b5c9b59f42fecb139))
+* refactor(ui): 恢复 Git 镜像源弹窗 divider 扁分区 ([36d2203](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/36d22033e6939f2475ba839dd553f0836790e7dc))
+* refactor(ui): 配置弹窗改用 divider 扁分区 ([6fe5587](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6fe55879b35ef96ec838aa8fe03e97e6a5e64d18))
+* refactor(ai): 刷新与保存回到工具条，新增提供方后整页保存 ([3aa7462](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3aa74628116cb770ec384c43bc85d5ce100ff03b))
+* refactor(protocol): 重启全部并入协议账号选项菜单 ([e3ed899](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e3ed8999a70d165b0434c99e06f3e65fd284afa9))
+* refactor(chrome): 统一工具条行距与簇距约定 ([5002623](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5002623bbc04cceb6362c2db28d707ecdf8e4e7f))
+
+### 🔨 其他更改
+
+* chore(api): 按 Bot main openspec 对齐 console 类型 ([8311381](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8311381bc1db64b6a61512693a40f9bea0338d39))
+* chore(api): 同步 console OpenAPI 类型（LLM tools preview/overrides） ([aa0059c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aa0059c4e31c495bfeabef282b76e19f12571b9a))
+* chore(ui): 帮助图分组说明去掉技术字段名 ([ff4b1ac](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ff4b1acd97dc70931454272b128de151cd44a5f4))
+* chore(ui): 帮助分组与协议 WebUI 文案微调 ([758a773](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/758a77375ce5821954bf7cbcf16278a1cdc3caa0))
+* chore(ci): main 直推不再触发 Release 发版 ([d6aa069](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d6aa069671c095e86788c0d21682fe2f58f6439a))
+
+**完整变更**: [`v0.7.8...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.8...HEAD)
+
+
 ## [0.7.8] - 2026-07-25
 
 相对 **0.7.2**（Bot **v4.1.1** 捆绑）至本版的累计说明；中间 0.7.3～0.7.7 的逐条提交见下文各节。
