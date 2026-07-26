@@ -3,6 +3,7 @@ import { DB_BACKUP_TIMEOUT_MS, DB_HEAVY_READ_TIMEOUT_MS, http } from "./http";
 import {
   consoleOpenapiDelete,
   consoleOpenapiGet,
+  consoleOpenapiPatch,
   consoleOpenapiPost,
   consoleOpenapiPut,
   type ConsoleOpenapiPaths,
@@ -1589,6 +1590,20 @@ export async function postConversationKernelKnowledgeSourceRetrieve(body: {
 export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
   return (await consoleOpenapiGet<ConsoleOpenapiPaths["/pallas/api/llm/tools"]["get"]>(
     "/llm/tools",
+  )) as LlmToolCatalogData;
+}
+
+export async function previewLlmToolIntent(text: string): Promise<import("./pallasTypes").LlmToolIntentPreview> {
+  return (await consoleOpenapiPost("/llm/tools/preview", { text })) as import("./pallasTypes").LlmToolIntentPreview;
+}
+
+export async function patchLlmToolOverride(
+  toolName: string,
+  patch: import("./pallasTypes").LlmToolOverridePatch,
+): Promise<LlmToolCatalogData> {
+  return (await consoleOpenapiPatch(
+    `/llm/tools/overrides/${encodeURIComponent(toolName)}`,
+    patch,
   )) as LlmToolCatalogData;
 }
 

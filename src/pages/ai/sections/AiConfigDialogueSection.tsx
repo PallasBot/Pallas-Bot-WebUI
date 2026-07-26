@@ -44,7 +44,7 @@ const SELECT_OPTIONS: Array<{ value: ContentPanel; label: string; icon: LucideIc
   { value: "budget", label: "上下文预算", icon: Gauge, lead: "单次闲聊可注入的上下文字符上限。" },
   { value: "arknights", label: "方舟知识库", icon: BookOpen, lead: "明日方舟知识库检索与注入。" },
   { value: "sources", label: "语料源", icon: Library, lead: "当前已登记的语料源清单。" },
-  { value: "tools", label: "工具", icon: Wrench, lead: "已注册 LLM 工具与当前可调用状态。" },
+  { value: "tools", label: "工具", icon: Wrench, lead: "LLM 工具目录、触发说法覆盖与可调用状态。" },
 ];
 
 const MODE_OPTIONS = [
