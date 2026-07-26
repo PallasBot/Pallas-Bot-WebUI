@@ -1249,7 +1249,7 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
   display: none;
 }
 
-/* SelectValue：grid 垂直居中 + 省略；勿用 block（会让图标/文字偏基线） */
+/* SelectValue：grid 垂直居中 + 横向省略；行高勿用 1（CJK 易被纵向裁切） */
 .chrome-tools button[role="combobox"] > span,
 .console-hub-page__chrome-tools button[role="combobox"] > span {
   display: grid;
@@ -1257,9 +1257,10 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
   height: 100%;
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   text-align: left;
-  line-height: 1;
+  line-height: 1.25;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1267,7 +1268,8 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
 .chrome-tools button[role="combobox"] > span > *,
 .console-hub-page__chrome-tools button[role="combobox"] > span > * {
   min-width: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
