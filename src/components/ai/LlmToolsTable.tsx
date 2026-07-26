@@ -1,6 +1,18 @@
-import type { LlmToolCatalogItem, LlmToolCatalogPolicy } from "@/api/pallasTypes";
+import { Fragment, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { patchLlmToolOverride } from "@/api/console";
+import type { LlmToolCatalogItem, LlmToolCatalogPolicy, LlmToolOverridePatch } from "@/api/pallasTypes";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SOURCE_LABEL: Record<string, string> = {
   builtin: "内置",
@@ -8,17 +20,12 @@ const SOURCE_LABEL: Record<string, string> = {
   mcp: "MCP",
 };
 
-const CAPABILITY_LABEL: Record<string, string> = {
-  read_only: "只读",
-  side_effecting: "有副作用",
-  requires_group_context: "需群上下文",
-};
-
 const DISABLED_REASON_LABEL: Record<string, string> = {
   tools_disabled: "总开关关闭",
   blacklisted: "黑名单",
   arknights_kb_disabled: "方舟知识库关闭",
   plugin_not_in_process: "本进程未加载（Worker 侧可用）",
+  override_disabled: "已手动停用",
 };
 
 function labelOf(map: Record<string, string>, raw: string | undefined, fallback = "—") {
@@ -28,6 +35,11 @@ function labelOf(map: Record<string, string>, raw: string | undefined, fallback 
 }
 
 function asTool(row: Record<string, unknown> | LlmToolCatalogItem): LlmToolCatalogItem {
+  const overrideRaw = row.override;
+  const override =
+    overrideRaw && typeof overrideRaw === "object"
+      ? (overrideRaw as LlmToolCatalogItem["override"])
+      : null;
   return {
     name: String(row.name || ""),
     description: row.description != null ? String(row.description) : undefined,
@@ -40,6 +52,14 @@ function asTool(row: Record<string, unknown> | LlmToolCatalogItem): LlmToolCatal
     mcp_server_id: row.mcp_server_id != null ? String(row.mcp_server_id) : undefined,
     eligible: Boolean(row.eligible),
     disabled_reason: row.disabled_reason != null ? String(row.disabled_reason) : null,
+    hints: Array.isArray(row.hints) ? row.hints.map((h) => String(h)) : [],
+    effective_hints: Array.isArray(row.effective_hints)
+      ? row.effective_hints.map((h) => String(h))
+      : [],
+    visibility: row.visibility != null ? String(row.visibility) : "visible",
+    declared_visibility:
+      row.declared_visibility != null ? String(row.declared_visibility) : "visible",
+    override,
   };
 }
 
@@ -52,7 +72,7 @@ function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
   if (!policy) return null;
   const bits = [
     policy.tools_enabled ? "工具已启用" : "工具已关闭",
-    policy.selective_enabled ? "按领域筛选" : "全量暴露",
+    policy.selective_enabled ? "按意图筛选" : "全量暴露",
     `最多 ${policy.max_rounds ?? "—"} 轮`,
     policy.arknights_kb_enabled ? "方舟知识库开" : "方舟知识库关",
   ];
@@ -62,10 +82,89 @@ function PolicySummary({ policy }: { policy?: LlmToolCatalogPolicy | null }) {
   return (
     <p className="text-xs leading-relaxed text-muted-foreground">
       {bits.join(" · ")}
-      {policy.selective_enabled ? (
-        <span className="mt-1 block">选择性模式下，闲聊仅在文本命中领域时下发对应工具（如方舟资料）。</span>
-      ) : null}
+      <span className="mt-1 block">
+        策略开关可在「对话 · 策略」表单中修改；下方可覆盖单工具 hints / 可见性。
+      </span>
     </p>
+  );
+}
+
+function ToolOverrideEditor({
+  row,
+  onSaved,
+}: {
+  row: LlmToolCatalogItem;
+  onSaved: () => void;
+}) {
+  const [hintsText, setHintsText] = useState(
+    () => (row.override?.hints ?? row.effective_hints ?? row.hints ?? []).join(", "),
+  );
+  const [visibility, setVisibility] = useState(row.visibility || "visible");
+  const [disabled, setDisabled] = useState(Boolean(row.override?.disabled));
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (patch: LlmToolOverridePatch) => patchLlmToolOverride(row.name, patch),
+    onSuccess: () => {
+      setError(null);
+      onSaved();
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : "保存失败");
+    },
+  });
+
+  return (
+    <div className="mt-2 space-y-2 rounded-[var(--radius-control,8px)] border border-dashed bg-muted/20 p-2.5">
+      <div className="space-y-1">
+        <label className="text-[11px] text-muted-foreground">触发说法（逗号分隔，留空则恢复声明默认）</label>
+        <Input
+          value={hintsText}
+          onChange={(e) => setHintsText(e.target.value)}
+          placeholder="点歌, 放首歌, 音乐"
+          className="h-8 text-xs"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={visibility} onValueChange={setVisibility}>
+          <SelectTrigger className="h-8 w-[8.5rem] text-xs">
+            <SelectValue placeholder="可见性" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="visible">随域注入</SelectItem>
+            <SelectItem value="deferred">延迟发现</SelectItem>
+          </SelectContent>
+        </Select>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={disabled}
+            onChange={(e) => setDisabled(e.target.checked)}
+            className="size-3.5"
+          />
+          停用此工具
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8"
+          disabled={mutation.isPending}
+          onClick={() => {
+            const hints = hintsText
+              .split(/[,，]/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            mutation.mutate({
+              hints: hints.length ? hints : null,
+              visibility: visibility === "deferred" ? "deferred" : "visible",
+              disabled,
+            });
+          }}
+        >
+          {mutation.isPending ? "保存中…" : "保存覆盖"}
+        </Button>
+      </div>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
   );
 }
 
@@ -76,8 +175,15 @@ export default function LlmToolsTable({
   items: Array<Record<string, unknown> | LlmToolCatalogItem>;
   policy?: LlmToolCatalogPolicy | null;
 }) {
-  const rows = items.map(asTool).filter((row) => row.name);
+  const queryClient = useQueryClient();
+  const rows = useMemo(() => items.map(asTool).filter((row) => row.name), [items]);
   const eligibleCount = rows.filter((row) => row.eligible).length;
+  const [editing, setEditing] = useState<string | null>(null);
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["llm-tools-catalog"] });
+    setEditing(null);
+  };
 
   return (
     <div className="space-y-3">
@@ -110,9 +216,7 @@ export default function LlmToolsTable({
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span>{(row.domains || []).join(", ") || "—"}</span>
               <span aria-hidden>·</span>
-              <span>
-                {(row.capabilities || []).map((c) => labelOf(CAPABILITY_LABEL, c, c)).join(" / ") || "—"}
-              </span>
+              <span>{row.visibility === "deferred" ? "延迟" : "可见"}</span>
               <span aria-hidden>·</span>
               {row.eligible ? (
                 <span className="text-emerald-500">可调用</span>
@@ -122,65 +226,104 @@ export default function LlmToolsTable({
                 </span>
               )}
             </div>
-            {row.plugin_name || row.mcp_server_id || row.command_id ? (
-              <div className="mt-1.5 truncate text-[11px] text-muted-foreground">
-                {[row.plugin_name, row.mcp_server_id, row.command_id].filter(Boolean).join(" · ")}
-              </div>
+            {(row.effective_hints || []).length ? (
+              <p className="mt-1.5 line-clamp-2 text-[11px] text-muted-foreground">
+                触发：{(row.effective_hints || []).join("、")}
+              </p>
             ) : null}
+            <div className="mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
+              >
+                {editing === row.name ? "收起" : "覆盖"}
+              </Button>
+            </div>
+            {editing === row.name ? <ToolOverrideEditor row={row} onSaved={refresh} /> : null}
           </li>
         ))}
       </ul>
 
       <div className="max-[560px]:hidden">
-        <Table className="min-w-[44rem]">
+        <Table className="min-w-[52rem]">
           <TableHeader>
             <TableRow>
               <TableHead>名称</TableHead>
               <TableHead>来源</TableHead>
               <TableHead>领域</TableHead>
-              <TableHead>能力</TableHead>
+              <TableHead>触发 / 可见性</TableHead>
               <TableHead>状态</TableHead>
+              <TableHead className="w-[5rem]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.name}>
-                <TableCell className="max-w-[18rem]">
-                  <div className="truncate font-mono text-sm font-medium" title={row.name}>
-                    {row.name}
-                  </div>
-                  {row.description ? (
-                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
-                      {row.description}
+              <Fragment key={row.name}>
+                <TableRow>
+                  <TableCell className="max-w-[16rem]">
+                    <div className="truncate font-mono text-sm font-medium" title={row.name}>
+                      {row.name}
                     </div>
-                  ) : null}
-                </TableCell>
-                <TableCell>
-                  <SourceBadge source={row.source} />
-                </TableCell>
-                <TableCell className="max-w-[10rem]">
-                  <span className="block truncate" title={(row.domains || []).join(", ")}>
-                    {(row.domains || []).join(", ") || "—"}
-                  </span>
-                </TableCell>
-                <TableCell className="max-w-[10rem]">
-                  <span
-                    className="block truncate"
-                    title={(row.capabilities || []).map((c) => labelOf(CAPABILITY_LABEL, c, c)).join(", ")}
-                  >
-                    {(row.capabilities || []).map((c) => labelOf(CAPABILITY_LABEL, c, c)).join(" / ") || "—"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {row.eligible ? (
-                    <Badge variant="success">可调用</Badge>
-                  ) : (
-                    <Badge variant="outline">
-                      {labelOf(DISABLED_REASON_LABEL, row.disabled_reason || undefined, "不可用")}
-                    </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
+                    {row.description ? (
+                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={row.description}>
+                        {row.description}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>
+                    <SourceBadge source={row.source} />
+                  </TableCell>
+                  <TableCell className="max-w-[9rem]">
+                    <span className="block truncate" title={(row.domains || []).join(", ")}>
+                      {(row.domains || []).join(", ") || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-[14rem]">
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">
+                        {row.visibility === "deferred" ? "延迟" : "随域"}
+                      </span>
+                      {(row.effective_hints || []).length ? (
+                        <div className="mt-0.5 line-clamp-2" title={(row.effective_hints || []).join("、")}>
+                          {(row.effective_hints || []).join("、")}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-muted-foreground">无 hints</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {row.eligible ? (
+                      <Badge variant="success">可调用</Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        {labelOf(DISABLED_REASON_LABEL, row.disabled_reason || undefined, "不可用")}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setEditing((cur) => (cur === row.name ? null : row.name))}
+                    >
+                      {editing === row.name ? "收起" : "覆盖"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                {editing === row.name ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <ToolOverrideEditor row={row} onSaved={refresh} />
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </Fragment>
             ))}
           </TableBody>
         </Table>

@@ -1482,12 +1482,31 @@ export interface LlmToolCatalogItem {
   mcp_server_id?: string | null;
   eligible?: boolean;
   disabled_reason?: string | null;
+  hints?: string[];
+  effective_hints?: string[];
+  visibility?: string;
+  declared_visibility?: string;
+  override?: {
+    description?: string | null;
+    hints?: string[] | null;
+    visibility?: string | null;
+    disabled?: boolean | null;
+  } | null;
+}
+
+export interface LlmToolOverridePatch {
+  description?: string | null;
+  hints?: string[] | null;
+  visibility?: "visible" | "deferred" | "" | null;
+  disabled?: boolean | null;
 }
 
 export interface LlmToolCatalogData {
   items: LlmToolCatalogItem[];
   count: number;
   policy?: LlmToolCatalogPolicy;
+  overrides?: Record<string, LlmToolOverridePatch>;
+  patched?: { name?: string; override?: LlmToolOverridePatch };
 }
 
 export interface PersonaAxisSnapshot {

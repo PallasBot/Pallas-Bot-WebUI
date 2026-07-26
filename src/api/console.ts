@@ -1330,6 +1330,14 @@ export async function fetchLlmToolsCatalog(): Promise<LlmToolCatalogData> {
   return envelopeData<LlmToolCatalogData>(body) || {};
 }
 
+export async function patchLlmToolOverride(
+  toolName: string,
+  patch: import("./pallasTypes").LlmToolOverridePatch,
+): Promise<LlmToolCatalogData> {
+  const { data: body } = await http.patch(`/llm/tools/overrides/${encodeURIComponent(toolName)}`, patch);
+  return envelopeData<LlmToolCatalogData>(body) || {};
+}
+
 export async function fetchLlmBehaviorRuns(params?: {
   groupId?: number | null;
   scene?: string | null;
