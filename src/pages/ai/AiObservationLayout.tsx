@@ -34,6 +34,9 @@ const SECTION_REFRESH_KEYS: Record<AiObservationSectionId, string[][]> = {
     ["conversation-kernel-memory-preferences"],
     ["conversation-kernel-mid-term"],
   ],
+  people: [["agent-person-facts"], ["agent-observations"], ["agent-catchphrases"]],
+  tools: [["agent-tools-catalog"]],
+  tasks: [["agent-tasks"], ["agent-platform-overview"]],
   persona: [["llm-persona-observe"], ["llm-persona-export"], ["llm-persona-group-style"]],
   logs: [["ai-extension-logs"]],
 };

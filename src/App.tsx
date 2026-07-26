@@ -27,6 +27,9 @@ import AiHistoryPage from "@/pages/ai/AiHistoryPage";
 import AiLayout from "@/pages/ai/AiLayout";
 import AiLogsPage from "@/pages/ai/AiLogsPage";
 import AiMemoryPage from "@/pages/ai/AiMemoryPage";
+import AiPeoplePage from "@/pages/ai/AiPeoplePage";
+import AiToolsPage from "@/pages/ai/AiToolsPage";
+import AiTasksPage from "@/pages/ai/AiTasksPage";
 import AiObservationLayout from "@/pages/ai/AiObservationLayout";
 import AiPersonaPage from "@/pages/ai/AiPersonaPage";
 import AiStatisticsPage from "@/pages/ai/AiStatisticsPage";
@@ -91,6 +94,9 @@ export default function App() {
             <Route path="session" element={<AiHistoryPage />} />
             <Route path="history" element={<Navigate to="/ai/session" replace />} />
             <Route path="memory" element={<AiMemoryPage />} />
+            <Route path="people" element={<AiPeoplePage />} />
+            <Route path="tools" element={<AiToolsPage />} />
+            <Route path="tasks" element={<AiTasksPage />} />
             <Route path="persona" element={<AiPersonaPage />} />
             <Route path="logs" element={<AiLogsPage />} />
           </Route>
