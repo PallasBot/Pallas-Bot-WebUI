@@ -147,6 +147,27 @@ export default function LogErrorsPage() {
         />
 
         <ChromeTools>
+          {shardedLogErrors ? (
+            <ChromeField label="来源" icon={Radio} className="shrink-0">
+              <Select value={logSource} onValueChange={setLogSource}>
+                <SelectTrigger
+                  className={cn(CHROME_SELECT_TRIGGER, "min-w-[9rem] whitespace-nowrap")}
+                  aria-label="报错来源"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start" className="min-w-[10rem]">
+                  {sourceOptions.map((s) => (
+                    <SelectItem key={`err-src-${s}`} value={s}>
+                      <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
+                        {s === "all" ? "全部来源" : s}
+                      </ChromeOptionLabel>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ChromeField>
+          ) : null}
           <div className="relative min-w-[10rem] flex-1">
             <Search
               className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
@@ -163,27 +184,6 @@ export default function LogErrorsPage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          {shardedLogErrors ? (
-            <ChromeField label="来源" icon={Radio}>
-              <Select value={logSource} onValueChange={setLogSource}>
-                <SelectTrigger
-                  className={cn(CHROME_SELECT_TRIGGER, "min-w-[9rem] whitespace-nowrap")}
-                  aria-label="报错来源"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end" className="min-w-[10rem]">
-                  {sourceOptions.map((s) => (
-                    <SelectItem key={`err-src-${s}`} value={s}>
-                      <ChromeOptionLabel icon={s === "all" ? Radio : FileText}>
-                        {s === "all" ? "全部来源" : s}
-                      </ChromeOptionLabel>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </ChromeField>
-          ) : null}
           <div className={CHROME_TOOLS_TRAILING}>
             <Button
               type="button"
