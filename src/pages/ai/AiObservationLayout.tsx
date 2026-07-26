@@ -40,7 +40,7 @@ const SECTION_REFRESH_KEYS: Record<AiObservationSectionId, string[][]> = {
 
 /**
  * AI 观测壳：PageMasthead + ChromeTools 分段（统计/会话/记忆/牛格/历史/日志）。
- * 配置不经此壳。
+ * 有分区/筛选 → 刷新在工具条右钉。
  */
 export default function AiObservationLayout() {
   const location = useLocation();

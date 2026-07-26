@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
-  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Library, MessagesSquare, Wrench, type LucideIcon,
+  BookOpen, Brain, ClipboardList, FileCode2, Gauge, Layers, Library, MessagesSquare, Wrench, type LucideIcon,
 } from "lucide-react";
 import { fetchConversationKernelKnowledgeSources, fetchLlmToolsCatalog } from "@/api/console";
 import type { AiConfigSaveState } from "@/components/ai/aiConfigSaveState";
@@ -88,13 +88,10 @@ export default function AiConfigDialogueSection() {
     enabled: contentPanel === "tools",
   });
 
-  const activeSelectIcon =
-    SELECT_OPTIONS.find((p) => p.value === contentPanel)?.icon || ClipboardList;
-
   const chromeMiddle = useMemo(
     () => (
       <>
-        <ChromeField label="对话分区" icon={activeSelectIcon}>
+        <ChromeField label="对话分区" icon={Layers}>
           <Select
             value={contentPanel}
             onValueChange={(v) => {
@@ -124,7 +121,7 @@ export default function AiConfigDialogueSection() {
         ) : null}
       </>
     ),
-    [activeSelectIcon, contentPanel, editMode],
+    [contentPanel, editMode],
   );
 
   const chromeTrailing = useMemo(() => {

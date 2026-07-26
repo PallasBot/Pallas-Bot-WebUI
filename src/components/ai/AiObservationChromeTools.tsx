@@ -23,7 +23,7 @@ import {
 
 /**
  * AI 观测工具条：选择分段 | 段内 scope（按需 Bot/群）| middle | trailing | 刷新。
- * middle 直接进 chrome-row；ScopeFields 自身包 CLUSTER。
+ * middle 直接进 chrome-row；ScopeFields 自身包 CLUSTER；trailing 右钉。
  */
 export default function AiObservationChromeTools({
   section,

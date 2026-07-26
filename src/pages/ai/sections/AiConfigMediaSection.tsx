@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
-  AudioLines, Cloud, HardDrive, Music2, Palette, Server, type LucideIcon,
+  AudioLines, Cloud, HardDrive, Layers, Music2, Palette, Server, type LucideIcon,
 } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -280,8 +280,6 @@ export default function AiConfigMediaSection() {
     [ttsQ.data],
   );
   const contentPanel: SelectPanel = panel as SelectPanel;
-  const activeSelectIcon =
-    SELECT_OPTIONS.find((item) => item.value === contentPanel)?.icon || Server;
   const drawWorkspaceRef = useRef<PluginConfigWorkspaceHandle>(null);
   const [drawStatus, setDrawStatus] = useState<
     Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">
@@ -294,7 +292,7 @@ export default function AiConfigMediaSection() {
   });
 
   const chromeMiddle = useMemo(() => (
-    <ChromeField label="媒体配置" icon={activeSelectIcon}>
+    <ChromeField label="媒体配置" icon={Layers}>
       <Select
         value={contentPanel}
         onValueChange={(value) => setPanel(value as SelectPanel)}
@@ -307,7 +305,7 @@ export default function AiConfigMediaSection() {
         ))}</SelectContent>
       </Select>
     </ChromeField>
-  ), [activeSelectIcon, contentPanel]);
+  ), [contentPanel]);
 
   const chromeTrailing = useMemo(() => {
     if (contentPanel !== "draw") return null;

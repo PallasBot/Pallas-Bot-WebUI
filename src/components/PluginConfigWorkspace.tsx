@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { FileText, Layers, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchPluginConfig,
@@ -418,12 +418,11 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   const currentWorkspaceLabel =
     workspaceTabOptions.find((t) => t.value === detailTab)?.label ?? "插件配置";
-  const WorkspaceTabIcon = WORKSPACE_TAB_ICONS[detailTab] ?? SlidersHorizontal;
 
   const configBody = (
     <>
       <ChromeTools className="plugin-config-workspace__chrome">
-        <ChromeField label="工作区" icon={WorkspaceTabIcon} className="shrink-0">
+        <ChromeField label="工作区" icon={Layers} className="shrink-0">
           <Select
             value={detailTab}
             onValueChange={(v) => setDetailTab(v as ConfigTab)}

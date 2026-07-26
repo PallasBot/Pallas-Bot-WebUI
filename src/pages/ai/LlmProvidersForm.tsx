@@ -38,7 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { normalizeDrawCostCurrency } from "@/utils/drawGateways";
 import {
@@ -451,12 +451,13 @@ export default function LlmProvidersForm() {
   }
 
   async function submitEdit() {
+    const wasNew = editIndex === null;
     const id = draft.id.trim();
     if (!id) {
       setEditErr("请填写提供方 ID");
       return;
     }
-    if (editIndex === null && providerIds.includes(id)) {
+    if (wasNew && providerIds.includes(id)) {
       setEditErr(`提供方 ID「${id}」已存在`);
       return;
     }
@@ -495,7 +496,7 @@ export default function LlmProvidersForm() {
       request_method:
         draft.kind === "local" ? "chat_completions" : draft.request_method || "chat_completions",
     };
-    const nextIndex = editIndex === null ? doc.providers.length : editIndex;
+    const nextIndex = wasNew ? doc.providers.length : editIndex!;
     setEditIndex(nextIndex);
     setDraft(row);
     setDraftApiKeys(apiKeys);
@@ -507,8 +508,14 @@ export default function LlmProvidersForm() {
     try {
       // 单条 upsert：不整表回写，避免把其他提供方的脱敏空密钥写盘擦掉
       await putLlmProvider(row);
-      const providers = await fetchLlmProvidersConfig();
-      const next = cloneDoc(providers);
+      let providers = await fetchLlmProvidersConfig();
+      let next = cloneDoc(providers);
+      // 新增后跟一次整页保存，同步路由等整表侧效应
+      if (wasNew) {
+        await putLlmProvidersConfig(next);
+        providers = await fetchLlmProvidersConfig();
+        next = cloneDoc(providers);
+      }
       setDoc(next);
       setBaseline(JSON.stringify(next));
       const savedRow = next.providers.find((p) => p.id === id);
@@ -531,7 +538,10 @@ export default function LlmProvidersForm() {
         const idx = next.providers.findIndex((p) => p.id === id);
         if (idx >= 0) setEditIndex(idx);
       }
-      pushConsoleToast(`已保存提供方「${id}」`, "ok");
+      pushConsoleToast(
+        wasNew ? `已添加并保存提供方「${id}」` : `已保存提供方「${id}」`,
+        "ok",
+      );
     } catch (e) {
       const detail = axiosErrorDetail(e);
       setErr(detail);
@@ -812,7 +822,7 @@ export default function LlmProvidersForm() {
   const chromeMiddle = useMemo(
     () => (
       <>
-        <ChromeField label="接入分区" icon={activeTabMeta.icon}>
+        <ChromeField label="接入分区" icon={Layers}>
           <Select value={tab} onValueChange={(v) => setTab(v as Tab)}>
             <SelectTrigger className={CHROME_SELECT_TRIGGER}>
               <SelectValue />
@@ -867,12 +877,14 @@ export default function LlmProvidersForm() {
         ) : null}
       </>
     ),
-    [activeTabMeta.icon, tab, doc.routing.cost_currency, tasksViewMode],
+    [tab, doc.routing.cost_currency, tasksViewMode],
   );
 
-  const chromeTrailing = useMemo(
-    () =>
-      tab === "routing" ? (
+  /** 工具条右钉：保存 / 测试共用一个按钮位（在刷新左侧） */
+  const chromeTrailing = useMemo(() => {
+    if (tab === "runtime") return null;
+    if (tab === "routing") {
+      return (
         <Button
           type="button"
           size="sm"
@@ -882,7 +894,10 @@ export default function LlmProvidersForm() {
         >
           {localSaving ? "保存中…" : "保存"}
         </Button>
-      ) : tab === "runtime" ? null : tab === "tasks" || dirty || saving ? (
+      );
+    }
+    if (tab === "tasks" || dirty || saving) {
+      return (
         <Button
           type="button"
           size="sm"
@@ -892,19 +907,28 @@ export default function LlmProvidersForm() {
         >
           {saving ? "保存中…" : "保存"}
         </Button>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          className="shrink-0"
-          disabled={Boolean(testBusy) || doc.providers.length === 0}
-          onClick={() => void testAllProviders()}
-        >
-          {testBusy === "__all__" ? "测试中…" : "测试"}
-        </Button>
-      ),
-    [tab, localDirty, localSaving, dirty, saving, testBusy, doc.providers.length],
-  );
+      );
+    }
+    return (
+      <Button
+        type="button"
+        size="sm"
+        className="shrink-0"
+        disabled={Boolean(testBusy) || doc.providers.length === 0}
+        onClick={() => void testAllProviders()}
+      >
+        {testBusy === "__all__" ? "测试中…" : "测试"}
+      </Button>
+    );
+  }, [
+    tab,
+    localDirty,
+    localSaving,
+    dirty,
+    saving,
+    testBusy,
+    doc.providers.length,
+  ]);
 
   const chromeRefresh = useCallback(() => {
     void load();
