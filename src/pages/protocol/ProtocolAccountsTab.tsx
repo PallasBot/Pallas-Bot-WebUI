@@ -618,83 +618,77 @@ export default function ProtocolAccountsTab() {
           ]}
         />
         {protoActionsEnabled ? (
-          <>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              disabled={
-                restartAllBusy ||
-                stopSelectedBusy ||
-                restartSelectedBusy ||
-                batchBusy ||
-                protocolAccountsTotalCount === 0 ||
-                actionBusy.size > 0
-              }
-              onClick={() => void restartAllAccounts()}
-            >
-              {restartAllBusy ? "重启全部中…" : "重启全部"}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="shrink-0 gap-1"
-                  disabled={
-                    restartSelectedBusy ||
-                    stopSelectedBusy ||
-                    deleteBusy ||
-                    batchBusy ||
-                    actionBusy.size > 0
-                  }
-                  aria-label="选项"
-                >
-                  {restartSelectedBusy || stopSelectedBusy
-                    ? "处理中…"
-                    : `选项${selected.size > 0 ? `（${selected.size}）` : ""}`}
-                  <ChevronDown className="size-3.5 opacity-70" aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-0 w-max">
-                <DropdownMenuItem
-                  disabled={pagedProtocolIds.length === 0}
-                  onSelect={() => toggleSelectAllOnPage()}
-                >
-                  {protoCardsPageAllSelected ? "取消全选" : "全选本页"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={selected.size === 0}
-                  onSelect={() => setSelected(new Set())}
-                >
-                  清除选择
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  disabled={selected.size === 0 || restartSelectedBusy || batchBusy}
-                  onSelect={() => openSelectedBatchConfirm("restart")}
-                >
-                  重启所选
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={selected.size === 0 || stopSelectedBusy || batchBusy}
-                  onSelect={() => openSelectedBatchConfirm("stop")}
-                >
-                  停止所选
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  disabled={selected.size === 0 || deleteBusy}
-                  onSelect={() => openDeleteModal()}
-                >
-                  删除选中
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 gap-1"
+                disabled={
+                  restartAllBusy ||
+                  restartSelectedBusy ||
+                  stopSelectedBusy ||
+                  deleteBusy ||
+                  batchBusy ||
+                  actionBusy.size > 0
+                }
+                aria-label="选项"
+              >
+                {restartAllBusy || restartSelectedBusy || stopSelectedBusy
+                  ? "处理中…"
+                  : `选项${selected.size > 0 ? `（${selected.size}）` : ""}`}
+                <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-0 w-max">
+              <DropdownMenuItem
+                disabled={
+                  restartAllBusy ||
+                  batchBusy ||
+                  protocolAccountsTotalCount === 0 ||
+                  actionBusy.size > 0
+                }
+                onSelect={() => void restartAllAccounts()}
+              >
+                {restartAllBusy ? "重启全部中…" : "重启全部"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={pagedProtocolIds.length === 0}
+                onSelect={() => toggleSelectAllOnPage()}
+              >
+                {protoCardsPageAllSelected ? "取消全选" : "全选本页"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={selected.size === 0}
+                onSelect={() => setSelected(new Set())}
+              >
+                清除选择
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={selected.size === 0 || restartSelectedBusy || batchBusy}
+                onSelect={() => openSelectedBatchConfirm("restart")}
+              >
+                重启所选
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={selected.size === 0 || stopSelectedBusy || batchBusy}
+                onSelect={() => openSelectedBatchConfirm("stop")}
+              >
+                停止所选
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={selected.size === 0 || deleteBusy}
+                onSelect={() => openDeleteModal()}
+              >
+                删除选中
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
       </>
     ),
