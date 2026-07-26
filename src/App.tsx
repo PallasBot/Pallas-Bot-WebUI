@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useParams, useSearchParams } from "react-route
 import ConsoleSetupGuard from "@/components/ConsoleSetupGuard";
 import AppShell from "@/layout/AppShell";
 import ChartsPage from "@/pages/ChartsPage";
+import CommunityGalleryPage from "@/pages/CommunityGalleryPage";
 import CommunityPage from "@/pages/CommunityPage";
 import DatabaseBackupsPage from "@/pages/DatabaseBackupsPage";
 import DatabasePage from "@/pages/DatabasePage";
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="database" element={<DatabasePage />} />
         <Route path="database/backups" element={<DatabaseBackupsPage />} />
         <Route path="community" element={<CommunityPage />} />
+        <Route path="community-gallery" element={<CommunityGalleryPage />} />
         <Route path="corpus-config" element={<Navigate to="/plugins/pb_core" replace />} />
         <Route path="community-stats-config" element={<Navigate to="/plugins/pb_stats" replace />} />
         <Route path="common-config" element={<CommonConfigLegacyRedirect />} />

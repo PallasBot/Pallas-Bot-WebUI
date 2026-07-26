@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchCommunityStats,
@@ -17,7 +17,6 @@ import type {
 import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
-import CommunityGallerySection from "@/pages/CommunityGallerySection";
 import ConsoleHint from "@/components/ConsoleHint";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
@@ -45,7 +44,6 @@ import {
   Flame,
   HardDrive,
   Layers,
-  Images,
   ExternalLink,
   type LucideIcon,
 } from "lucide-react";
@@ -54,7 +52,7 @@ import PanelTitleIcon from "@/components/PanelTitleIcon";
 const allSourceKeys = ["local", "fed", "community"] as const;
 type SourceKey = (typeof allSourceKeys)[number];
 
-type CommunitySectionId = "deploy" | "federation" | "corpus" | "hot" | "gallery";
+type CommunitySectionId = "deploy" | "federation" | "corpus" | "hot";
 
 const COMMUNITY_SECTIONS: Array<{
   id: CommunitySectionId;
@@ -66,7 +64,6 @@ const COMMUNITY_SECTIONS: Array<{
   { id: "federation", label: "多机协同", hash: "community-federation", icon: Network },
   { id: "corpus", label: "语料", hash: "community-corpus", icon: Library },
   { id: "hot", label: "热词", hash: "community-hot", icon: Flame },
-  { id: "gallery", label: "社区投稿", hash: "community-gallery", icon: Images },
 ];
 
 /** 旧 hash（本机语料 / 本机热词独立页）仍落到合并后的面板 */
@@ -176,6 +173,7 @@ function ingressEnabledLabel(raw: string | undefined): string {
 export default function CommunityPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const redirectToGallery = location.hash.replace(/^#/, "").trim() === "community-gallery";
   const [section, setSection] = useState<CommunitySectionId>(
     () => communitySectionFromHash(typeof window !== "undefined" ? window.location.hash : "") ?? "deploy",
   );
@@ -382,7 +380,7 @@ export default function CommunityPage() {
   useEffect(() => {
     const fromHash = communitySectionFromHash(location.hash);
     if (fromHash && fromHash !== section) setSection(fromHash);
-  }, [location.hash]);
+  }, [location.hash, section]);
 
   function selectSection(id: CommunitySectionId) {
     preserveShellMainScroll(() => {
@@ -406,6 +404,10 @@ export default function CommunityPage() {
     } finally {
       setConnectivityBusy(false);
     }
+  }
+
+  if (redirectToGallery) {
+    return <Navigate to="/community-gallery" replace />;
   }
 
   if (!pageReady) {
@@ -927,8 +929,6 @@ export default function CommunityPage() {
           </section>
         </>
       ) : null}
-
-      {section === "gallery" ? <CommunityGallerySection /> : null}
     </div>
   );
 }

@@ -39,11 +39,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import UiInput from "@/components/ui/UiInput";
-import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
-import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Wrench } from "lucide-react";
+import { ChevronRight, RefreshCw, LayoutDashboard, Bot } from "lucide-react";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
@@ -55,7 +54,6 @@ const UPDATE_PANEL = "update-page__panel flex flex-col overflow-hidden shadow-no
 const UPDATE_PANEL_HD =
   "panel__hd panel__hd--split update-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
 const UPDATE_PANEL_BD = "panel__bd update-page__bd update-page__bd--release space-y-0 px-4 pb-4 pt-3";
-const UPDATE_OPS_BD = "panel__bd update-page__bd px-4 pb-4 pt-3";
 const UPDATE_STATUS_PILL = "update-page__status-pill";
 
 type ApplyKind = "web" | "bot";
@@ -217,18 +215,6 @@ export default function UpdatePage() {
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
-  const {
-    restartBusy,
-    restartErr,
-    restartMsg,
-    restartProgressLabel,
-    restartInProgress,
-    restartAvailable,
-    shardedRuntime,
-    ensureRestartContext,
-    restartBot,
-  } = useBotSystemRestart({ botUpdateCheck: bot ?? null });
-
   const webCurrentDisplay = updateCheckCurrentTagLabel(web?.current_tag);
   const botCurrentDisplay = pallasBotVersionLabel(undefined, bot);
   const webReleaseNotesHtml = useMemo(() => releaseNotesToSafeHtml(web?.release_notes), [web?.release_notes]);
@@ -302,10 +288,6 @@ export default function UpdatePage() {
   useEffect(() => {
     void loadGithubTokenHint();
   }, []);
-
-  useEffect(() => {
-    if (q.isSuccess) void ensureRestartContext();
-  }, [q.isSuccess, ensureRestartContext]);
 
   useEffect(() => {
     const raw = (location.hash || "").replace(/^#/, "").trim();
@@ -488,14 +470,6 @@ export default function UpdatePage() {
       setApplyPercent(0);
       setApplyHint("");
     }
-  }
-
-  async function triggerBotRestart(workersOnly = false) {
-    setErr("");
-    setMsg("");
-    const ok = await restartBot(workersOnly);
-    if (ok) setMsg(restartProgressLabel || restartMsg || "Bot 已恢复在线。");
-    else if (restartErr) setErr(restartErr);
   }
 
   function openWebChangelog() {
@@ -803,55 +777,6 @@ export default function UpdatePage() {
           </CardContent>
         </Card>
       </div>
-
-      {restartAvailable ? (
-        <Card id="console-update-restart" className={cn(UPDATE_PANEL, "update-page__panel--ops")}>
-          <CardHeader className={cn(UPDATE_PANEL_HD, "update-page__ops-hd")}>
-            <CardTitle className="panel__title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Wrench} />
-              运维
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={UPDATE_OPS_BD}>
-            <p className="muted update-page__ops-lead">
-              安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
-              {shardedRuntime ? "分片部署下可选择仅重启分片节点或重启全部进程。" : null}
-            </p>
-            {restartInProgress || restartMsg ? (
-              <p className="muted update-page__ops-lead" role="status">
-                {restartProgressLabel || restartMsg}
-              </p>
-            ) : null}
-            {restartErr ? (
-              <p className="alert alert--err update-page__ops-lead" role="alert">
-                {restartErr}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-1.5 update-page__ops-actions">
-              {shardedRuntime ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={restartBusy || restartInProgress}
-                  onClick={() => void triggerBotRestart(true)}
-                >
-                  重启 Worker
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={restartBusy || restartInProgress}
-                onClick={() => void triggerBotRestart(false)}
-              >
-                {restartInProgress ? "重启中…" : shardedRuntime ? "重启全部进程" : "重启 Bot"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <details id="console-update-github" className="update-page__gh-fold">
         <summary className="update-page__gh-fold-summary">

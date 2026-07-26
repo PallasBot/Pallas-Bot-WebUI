@@ -628,16 +628,6 @@
   white-space: nowrap;
 }
 
-.update-page__ops-lead {
-  margin: 0 0 12px;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.update-page__ops-actions {
-  justify-content: flex-start;
-}
-
 @media (max-width: 560px) {
   .update-page__panel-hd-meta {
     padding-left: 0;
@@ -670,18 +660,5 @@
     font-size: 13px;
     line-height: 1.25;
     min-height: 0;
-  }
-
-  .update-page__ops-actions {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: stretch;
-  }
-
-  .update-page__ops-actions > .ui-btn {
-    width: auto;
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: center;
   }
 }
