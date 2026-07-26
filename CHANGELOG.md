@@ -6,19 +6,37 @@
 
 <!-- entries -->
 
+## [Unreleased]
+
+### 更新公告
+
+CHANGELOG 弹窗更易扫读：标题层次、列表圆点与字号间距已调整；全文分节标题与 Bot 仓库对齐为 Added / Fixed / Changed。
+
+### Fixed
+
+- CHANGELOG / 发行说明 Markdown 列表在 Tailwind preflight 下丢失圆点
+
+### Changed
+
+- 更新页 CHANGELOG 弹窗正文与标题层次加大，窄屏 footer 可纵向排布
+- CHANGELOG 与发版脚本分节统一为 Keep a Changelog 英文标题（Added / Fixed / Changed）
+
 ## [0.8.0] - 2026-07-26
 
-相对 **0.7.12**（随 Bot **v4.1.6** 捆绑）至本版的控制台更新。合入 main 发版后，本说明会升为正式版本段并附提交明细。
+相对 **0.7.12**（随 Bot **v4.1.6** 捆绑）至本版的控制台更新。
 
-### 亮点
+### 更新公告
 
-- **人设对话治理**：场景正反例管理、本轮回复风格变体、人设输出防火墙专用中文表单
-- **本轮动作决策**：对话策略里一键开关；模型走「接入 → 任务编排 → 本轮动作决策」，不再挤在通用策略表单里
-- **AI 配置更易懂**：字段说明面向新手重写；分区与任务说明整理；保存成功改为右下角 toast
-- **更新体验**：应用更新后可弹出 CHANGELOG；更新页排版优化；偏好里可开关弹窗
-- **社区与协议**：社区投稿独立成页；挂载已有 SnowLuma Runtime 时不覆盖镜像
+本版加强人设对话治理与本轮动作决策配置，AI 字段说明面向新手重写，更新后可弹出仓库 CHANGELOG；社区投稿独立成页。
 
-### 新增
+#### 你会明显感觉到
+
+- 场景正反例、本轮回复风格变体、人设输出防火墙可用中文表单配置
+- 对话策略里一键开关本轮动作决策；模型走「接入 → 任务编排 → 本轮动作决策」
+- 应用更新后可弹出 CHANGELOG；偏好里可开关弹窗
+- 社区投稿独立成页；挂载已有 SnowLuma Runtime 时不覆盖镜像
+
+### Added
 
 #### AI / 人设
 
@@ -35,7 +53,7 @@
 
 - 社区投稿独立成页；去掉更新页上重复的运维面板
 
-### 修复
+### Fixed
 
 - 配置表单点开关后内容被顶出可视区
 - AI 配置保存反馈改为 toast（去掉易被忽略的行内绿字）
@@ -43,13 +61,13 @@
 - 幽灵复制按钮成功后显示同色打勾
 - 协议：已有 SnowLuma Runtime 挂载时不覆盖镜像
 
-### 其他
+### Changed
 
 - AI 配置分区、任务说明与字段帮助文案整理
 
 ### 提交明细
 
-### 🚀 新功能
+### Added
 
 * feat(ai-config): 人设防火墙改用中文专用表单 ([8d3e7c0](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8d3e7c0fc419f1ec35540305dd0fee1bad388804))
 * feat(persona): 场景示例改用可搜索选择框 ([4485de8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4485de8c3716d926d25c27daad0011a89db7f3f2))
@@ -58,7 +76,7 @@
 * feat(ui): 社区投稿独立成页，并移除更新页重复运维面板 ([a56faf9](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a56faf95f7cc83bd196d3e409a705f15df8de9a8))
 * feat(update): CHANGELOG 弹窗与更新页排版优化 ([ef50a6d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ef50a6d6d9c2ad5aa06055294a7783cc9b6f769b))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ai-config): 保存反馈改为 toast ([741c5c7](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/741c5c73600b37a105cc3c6c4b08b70cbff714bc))
 * fix(ai-config): 优化本轮决策与风格表单 ([a507850](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a507850ace8e4cc8b29be40fd10516f9179acf93))
@@ -69,20 +87,17 @@
 * fix(ui): 幽灵复制按钮成功后显示同色打勾 ([af14858](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/af1485862b87a2216c05818f864a66fb1c8023bb))
 * fix(protocol): 挂载已有 SnowLuma Runtime 时不覆盖镜像 ([51b73c4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/51b73c40c4282005a5c476bad33a87700c21f193))
 
-### 📚 文档更新
+### Changed
 
 * docs(release): 准备 0.8.0 更新公告并支持 Unreleased 升版 ([55cfd60](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/55cfd602f2c0776a39b6c821559275775c3f850e))
-
-### 🔨 其他更改
-
 * chore(ai-config): 优化配置分区与任务说明 ([877479c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/877479c8b5cef0be89e64d99063d2c09da631aae))
 
-**完整变更**: [`v0.7.12...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.12...HEAD)
+**完整变更**: [`v0.7.12...v0.8.0`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.12...v0.8.0)
 
 
 ## [0.7.12] - 2026-07-26
 
-### 🚀 新功能
+### Added
 
 * feat(ai): 对话策略页暴露发言感知配置分组 ([4b81608](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4b816081701d0aa95ce7184c7a20c74151dea528))
 
@@ -90,7 +105,7 @@
 
 ## [0.7.11] - 2026-07-26
 
-### 🚀 新功能
+### Added
 
 * feat(webui): README 代码块恢复幽灵 Copy 按钮 ([8d9aed4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8d9aed40d49a00cb6b0f06a83f19eeea4c52ec12))
 * feat(ai): 优化人物工具任务页与联网搜索配置入口 ([43a7c6a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/43a7c6ae1d0f5b6cf8556296b902968dadc36bfb))
@@ -98,13 +113,13 @@
 * feat(ai): 近 7/30 天 Token 卡展示费用 ([48b9032](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/48b9032f522d6b5dfd341bc0a6152258026cb5e7))
 * feat(ai): 对话策略字段改用软召回配置标签 ([9d95a59](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9d95a59cba1a9431ae9ec0683a1c80d22dffb8ab))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ai): 口癖文案对齐短习惯并支持停用已启用项 ([8340281](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/83402815aa88ab8e9ea4ae0601b66307df191123))
 * fix(ai): 工具可见性与联网搜索文案更易懂 ([f61d13c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f61d13c84235cd71b792cf6dc53474b51bd49b5e))
 * fix(ai): 配置文案「闲聊」改为「LLM 对话」 ([78a6936](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/78a6936a34caed5e1dd410821a5cc8b3497a1873))
 
-### ♻️ 重构
+### Changed
 
 * refactor(ai): 更新任务页面文案与过滤功能 ([02fc18c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02fc18cfe3666d23ff00b5364964417b3aec42b1))
 * refactor(ai): 观测工具并入配置并优化人设导出 ([d1b9b5c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d1b9b5c75b983b0a393f6fbb9c0dd67bb29ce336))
@@ -113,7 +128,7 @@
 
 ## [0.7.10] - 2026-07-26
 
-### 🚀 新功能
+### Added
 
 * feat(protocol): NapCat Overview 展示 WebUI token 与端口 ([aeccb7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aeccb7a10c1e910236614fadc455a49d3b607b7d))
 
@@ -121,7 +136,7 @@
 
 ## [0.7.9] - 2026-07-26
 
-### 🚀 新功能
+### Added
 
 * feat(ui): 长列表选择统一 Combobox 搜索 ([e1b8c9f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e1b8c9fbadec0bdcf003e72056521a4f432b754a))
 * feat(ui): Bot 账号选择改用可搜索 Combobox ([0424cae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0424cae4d702a785d46e7d098824da0325518300))
@@ -141,7 +156,7 @@
 * feat(community): 语料与热词同页双面板，本部署改称本机语料 ([85a0e28](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/85a0e2842390756b8a3f020e7ef654ba003eec86))
 * feat(plugin-config): 工作区迁入 ChromeTools 并隐藏类型标签 ([dab2888](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dab28882c1debc042cbcf8a83135f7f8f7239bb3))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ci): OpenAPI 漂移检查同时接受 Bot main/`dev` openspec ([b5ada30](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b5ada30b8de27964c4a3a8f0fe846091f61c2b68))
 * fix(ui): 好友群聊分区 Select 显式图标并按内容宽度 ([6a35a0b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6a35a0bd373a8c62746bdd987a602276b05de165))
@@ -168,11 +183,11 @@
 * fix(ai): 作用域提示统一虚线框，情感零点线加粗 ([0bf758e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0bf758e6f347269e9ed6178598d7e79e0b0af3be))
 * fix(login): 深色主题改用 --bg-deep 等变量 ([f857bb4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f857bb4c03c3d0fe4604c0dce903f45246ef6d3a))
 
-### 📚 文档更新
+### Changed
 
 * docs(release): 重写 v0.7.8 说明（含自 v0.7.2 累计） ([65e359c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/65e359cdc6c86e002cfbbe5f0a48c299c2ce279f))
 
-### ♻️ 重构
+### Changed
 
 * refactor(ui): 群/好友配置弹窗对齐 divider 与开关字段 ([b5d968a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b5d968a8a0458f2f3adcd60b5c9b59f42fecb139))
 * refactor(ui): 恢复 Git 镜像源弹窗 divider 扁分区 ([36d2203](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/36d22033e6939f2475ba839dd553f0836790e7dc))
@@ -181,7 +196,7 @@
 * refactor(protocol): 重启全部并入协议账号选项菜单 ([e3ed899](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e3ed8999a70d165b0434c99e06f3e65fd284afa9))
 * refactor(chrome): 统一工具条行距与簇距约定 ([5002623](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5002623bbc04cceb6362c2db28d707ecdf8e4e7f))
 
-### 🔨 其他更改
+### Changed
 
 * chore(api): 按 Bot main openspec 对齐 console 类型 ([8311381](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8311381bc1db64b6a61512693a40f9bea0338d39))
 * chore(api): 同步 console OpenAPI 类型（LLM tools preview/overrides） ([aa0059c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aa0059c4e31c495bfeabef282b76e19f12571b9a))
@@ -195,7 +210,7 @@
 
 相对 **0.7.2**（Bot **v4.1.1** 捆绑）至本版的累计说明；中间 0.7.3～0.7.7 的逐条提交见下文各节。
 
-### 亮点
+### 更新公告
 
 - AI：工具清单、语料预览/检索试探、历史工具轨迹；统计趋势与记忆/门控；任务编排高低档/全任务
 - Provider：通用主备线路面板；帮助图分组与芯片 portal
@@ -239,7 +254,7 @@
 
 ## [0.7.7] - 2026-07-25
 
-### 🔨 其他更改
+### Changed
 
 * chore(api): 同步控制台 OpenAPI 类型 ([70f75f5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/70f75f5d5bfc2b722a7893adc344de842da97b8f))
 
@@ -247,7 +262,7 @@
 
 ## [0.7.6] - 2026-07-25
 
-### 🚀 新功能
+### Added
 
 * feat(provider): 通用主备 Provider 线路面板 ([a13f736](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a13f7361445eb300efe18a94d63c425af6bf7f00))
 * feat(help): 插件配置帮助图分组与芯片 portal 滚动 ([0abc877](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0abc877ca2086979cbff8af30099ef49b556cddc))
@@ -257,7 +272,7 @@
 * feat(ai): 任务编排支持高低档/全任务切换且全任务优先 ([6d5ab1e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6d5ab1e3bb972ffb28f172a8f66ac386913e608b))
 * feat(ai-stats): 统计页增加趋势图与记忆/门控面板 ([dacd4ad](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/dacd4ad6e07187bf8fbdfd44c3871bfc64d807d1))
 
-### ♻️ 重构
+### Changed
 
 * refactor(community): 投稿页迁 shadcn Card，无 Bot 截图用瓦片展示 ([2b4dafa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b4dafa31d8236ba0c97df8eed9e825f3ace0073))
 
@@ -265,7 +280,7 @@
 
 ## [0.7.5] - 2026-07-24
 
-### 🐛 错误修复
+### Fixed
 
 * fix(console): 看板中文名与布局，页头版本与主题修正 ([c388077](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c388077b9b2ee076e3f06e5fd7101c4b8d6952f0))
 * fix(console): 看板中文名与布局，移除流量编排并修正页头版本展示 ([e0c8b66](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e0c8b6659ddba8d70bee6e67c6863b87c5ef7711))
@@ -275,7 +290,7 @@
 
 ## [0.7.4] - 2026-07-24
 
-### 🐛 错误修复
+### Fixed
 
 * fix(build): 恢复 Tailwind content glob（注释清洗误删 /**/） ([a0af0fa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a0af0fa9bd1fe294a0fa24254182a5f62680c175))
 
@@ -283,7 +298,7 @@
 
 ## [0.7.3] - 2026-07-24
 
-### 🐛 错误修复
+### Fixed
 
 * fix(styles): 修复分区注释被提前闭合导致样式失效 ([2a2965e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a2965ea6ab1f7edc66de3228af53d750cdf016b))
 
@@ -291,7 +306,7 @@
 
 ## [0.7.2] - 2026-07-24
 
-### 🔨 其他更改
+### Changed
 
 * chore(openapi): 同步 Bot 控制台 OpenAPI 类型 ([e51315e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e51315e00053490e6a879b0acbd218249ce7b778))
 
@@ -299,7 +314,7 @@
 
 ## [0.7.1] - 2026-07-24
 
-### 📚 文档更新
+### Changed
 
 * docs: 精简 ui-conventions 表述 ([9432229](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9432229b49eeb2d3c2ef9deec4919fb0a6e5dbcb))
 
@@ -307,7 +322,7 @@
 
 ## [0.7.0] - 2026-07-24
 
-### 🚀 新功能
+### Added
 
 * feat(console): 壳层页面、配置控件与 OpenAPI 类型 ([5e971b1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5e971b1290d184e0a2feb3a7cbd330fb4c6d50a3))
 * feat(protocol): Runtime 页与画画网关控件 ([d31da9e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d31da9e10105a48eb044c6a077db7ce81603ed26))
@@ -322,7 +337,7 @@
 * feat(react): 非 AI 视觉对齐 P1（Update/Community/对话框） ([633b717](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/633b717dd3c8dfb8714278d87ba1e580b1b97757))
 * feat(react): 非 AI 视觉对齐 P0（Ui* 与配置/侧栏） ([02cee76](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02cee7629ac609356c84e64927becd84b1964aa5))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(react): 修复深色模式主按钮与搜索图标对比度 ([06e2e9f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/06e2e9f48a1f2cc666ed5165311cffc22505ff22))
 * fix(react): 配置字段展示与插件 README 辅助 ([03e269e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/03e269eb847145a49a7b6ef5af035d00b584f6a1))
@@ -335,13 +350,13 @@
 * fix(react): 重构数据看板图表布局与图例 ([cf427f5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cf427f5d2139774988ba1744558d23a43455d9a1))
 * fix(react): 修复运行日志行重叠 ([e86f47c](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e86f47c1838d125ef39abf2eb51601f5c4dadb95))
 
-### ♻️ 重构
+### Changed
 
 * refactor(react): 壳层导航与 Tailwind 主题桥接 ([0115c2b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0115c2b95f090766d2049b29037ec092ca53c119))
 * refactor(react): 弹窗与共享组件对齐 shadcn Dialog/Select ([f0e5c1d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f0e5c1d74fab31a4447b5c6b0d355d16e282ee04))
 * refactor(ai): align template indentation and improve readability in AiHistoryPage.vue ([96a1dbe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/96a1dbe07dfd0c430776cbee9093a3acab96c01b))
 
-### 🔨 其他更改
+### Changed
 
 * chore(repo): React 提升为仓库根并更新发版 CI ([f82d789](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f82d789defffad752c90061f4cf8477db108c64c))
 * style(react): 同步 hub/token 与页面密度样式 ([1cb4fa2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1cb4fa2983839094581ed65b111c8cf429c2ef0e))
@@ -351,15 +366,15 @@
 
 ## [0.6.51] - 2026-07-22
 
-### 🚀 新功能
+### Added
 
 * feat(protocol): 增加账号运行时切换设置 ([a682490](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a6824907a3d761ce418b4459148a9ccfac287d8e))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(protocol): 修复控制台接口基址 ([baeebb3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/baeebb351286b81d6c2f2d4157e7c1922ca35bb7))
 
-### 🔨 其他更改
+### Changed
 
 * chore(worktree): 忽略本地工作树 ([865a348](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/865a34811b11c20d02f6c853677d11ccf36eea47))
 
@@ -367,7 +382,7 @@
 
 ## [0.6.50] - 2026-07-22
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ai-config): 修复响应式分区与模型操作布局 ([08b7be8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/08b7be8d0fbcf1674e63fa415174321141a893da))
 * fix(home): 恢复 KPI 右侧入口宽度 ([2a81fae](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a81fae6e164821a2d460d7e018952e375f8642e))
@@ -378,7 +393,7 @@
 
 ## [0.6.49] - 2026-07-22
 
-### 🐛 错误修复
+### Fixed
 
 * fix(webui): 优化 AI 配置窄屏布局 ([647161a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/647161ae689c92e3e3dc11adbd0ca73df6df8952))
 
@@ -386,7 +401,7 @@
 
 ## [0.6.48] - 2026-07-22
 
-### 🚀 新功能
+### Added
 
 * feat(ai): 配置页搜索、专家模式切换与模型管理紧凑操作 ([cac5039](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cac50399a724c02e4ec107048ecd0d369bd2ec2d))
 * feat(ai): AI 首页卡片顺序与显隐偏好 ([02ce58f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/02ce58f11811073a82728e5bd706613f6d1ed284))
@@ -395,7 +410,7 @@
 * feat(protocol): 协议账号日志按二维码行分段渲染 ([c7b9e51](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c7b9e5105cd40b5761e0eaea5f08aec8d4fe1704))
 * feat(protocol): SnowLuma Runtime 管理与创建流 ([d3ee813](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d3ee8130346ae7956a6365d7be3728b71e46fbb8))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ai): AI 体检向导接入 PagePinned 钉顶布局 ([bc3b7e6](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/bc3b7e62c6ad208e24c78f65da36dc29a8764ffc))
 * fix(ui): 插件商店非本地分区隐藏空工具条 actions ([956d99d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/956d99d25f395efccf9b9b5ec3d27ed8688ab4a4))
@@ -404,7 +419,7 @@
 * fix(ui): Hub 工具条窄屏保持单行并截断来源 select ([c12ab38](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c12ab38bddf5bc4dc3652650cbb94d96583ffd99))
 * fix(ui): Safari 日期控件与统计筛选窄屏布局 ([50a26ce](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/50a26cea8d78d598efaee3ac74572fc95971e28c))
 
-### 🔨 其他更改
+### Changed
 
 * style(ui): 侧栏滚动条默认隐藏、悬停显现 ([89d6e29](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/89d6e293ba6715e1f58f7353c7bf950cbb02a6ca))
 
@@ -412,11 +427,11 @@
 
 ## [0.6.47] - 2026-07-21
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ui): 高流量页与 AiHistory 双栏窄屏收口 ([fa4aa26](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fa4aa26e2a9853f67881cbbb67729d172bfa0afc))
 
-### ♻️ 重构
+### Changed
 
 * refactor(ui): 外迁 AiHistory 页面共享样式到 ai-history.css ([9ab8baa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9ab8baa5b3667f352df930eef6b03de1faac55f2))
 * refactor(ui): 拆分 AiHistory 判定轨迹与孤立行为块 ([882516a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/882516acb6bbb035022514699623d9392ad2195a))
@@ -425,15 +440,15 @@
 
 ## [0.6.46] - 2026-07-21
 
-### 🚀 新功能
+### Added
 
 * feat(ui): AiHistory 会话区 PageFill 与列表密度收口 ([ba719fa](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ba719fac53d01a9f299f1492f83d0842a905b741))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ui): AiHistory 抽离组件后恢复共享样式 ([2c420f8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2c420f857b5a70116cb4d77429556c0ce7da8593))
 
-### ♻️ 重构
+### Changed
 
 * refactor(ui): 拆分 AiHistory 回合维护体与牛格观测面板 ([2a78eb3](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2a78eb3a84a5244fdc6f229a6ba412a07bfe90a2))
 * refactor(ui): 拆分 AiHistory 规则编辑与重放弹窗 ([80e8686](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/80e86868b25ed18576b484b85f8241f7d59313ef))
@@ -447,7 +462,7 @@
 
 ## [0.6.45] - 2026-07-21
 
-### 🚀 新功能
+### Added
 
 * feat(ui): 首页窄屏页头与 AI/插件配置轻量抛光 ([9e9f985](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9e9f98541f5555390d8f67e47f33bd29036b68b2))
 * feat(ui): 运行日志页接入 PageChrome 与钉顶工具条 ([f67f306](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f67f306d7af67f6292e76bfc8a8fe4dd62af9a91))
@@ -467,12 +482,12 @@
 * feat(ui): PageChrome 与表面契约，Prefs/Update/Plugins 去嵌套 ([273ce11](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/273ce11a5f3657b0e9c8b900e89dbcd8ea1a94a0))
 * feat(ui): 更新页与 AI 统计/历史布局清爽化 ([411cdbc](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/411cdbce140d0198b523ad89cf650874e2d50da0))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ui): 配置项帮助按钮贴齐字段标题 ([487fdce](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/487fdce1748f158376215b1fdb6ae3461566258a))
 * fix(ui): 修复数据库页 KPI 条被异常撑高 ([070c8a8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/070c8a85c9e31e225be30de8cbbbf64412135239))
 
-### 🔨 其他更改
+### Changed
 
 * chore(openapi): 同步 Bot LLM Provider 模型发现接口类型 ([9808a0a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9808a0a06d9916d41d085e3761edb94b6344f9f4))
 
@@ -480,7 +495,7 @@
 
 ## [0.6.44] - 2026-07-21
 
-### 🚀 新功能
+### Added
 
 * feat(ui): 协议与商店等残留控件接入 Ui* ([c8d4e5b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c8d4e5b591db8080e34a99f130ac7a96f51e0007))
 * feat(ui): 圆角滑块并联动控件半径 ([4c47b87](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4c47b871eb41e872d4b4cb8077e34ea24bfc87a7))
@@ -492,7 +507,7 @@
 * feat(ui): 扩展 Ui* 原语并接入配置表单 ([a419149](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a419149f84ce69c431f804f7db139826ec29628e))
 * feat(ui): 配置表单与表面系统清爽化 ([8af57ca](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/8af57cae565898bdacbade80b2d24db52de8884b))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(charts): 移除总看板 AI 专项跳转块 ([9853639](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9853639877f7c133546232be81382d1a2501205d))
 * fix(ui): 协议账号操作栏搜索与按钮对齐 ([6a5e229](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6a5e229a7a632e0d369f06329b2d4a3c6ba01f0e))
@@ -505,18 +520,18 @@
 
 ## [0.6.43] - 2026-07-21
 
-### 🐛 错误修复
+### Fixed
 
 * fix(webui): 集中嵌入式刷新与窄屏标题栏样式 ([f4a4dfe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f4a4dfee91c35fd3668a3142e0a34a296d33dd62))
 * fix(webui): AI 历史「去验证」切换会话工作区并监听 query ([eef1a41](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/eef1a41c4ee1143a16cfa23cff85b357d8f5e2cf))
 * fix(webui): 图表与 AI 统计日期工具栏去掉月份仅保留起止 ([212211e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/212211e5de357c952eda15d43f4a2aa9a2734aeb))
 * fix(webui): AI 配置窄屏标题栏与嵌入面板扁平化 ([2b7dc34](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b7dc3497121bf5d9f11644a4245dafb0fa5ab25))
 
-### ♻️ 重构
+### Changed
 
 * refactor(webui): 抽出 PanelHdCollapseCaret 并迁移面板展开收起 ([f237e76](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f237e76a3a14252fe51094b8f014b21d1471bc63))
 
-### 🔨 其他更改
+### Changed
 
 * style(webui): 好友申请 container query、prefs 单行与其它窄屏样式 ([df9c47b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/df9c47bee4bd6874f1ba6d6d5475babb3186e977))
 * style(webui): RefreshIconButton 默认 embedded 并统一标题旁刷新样式 ([22cd181](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/22cd181665effd593a9490fb45da5e208b149c93))
@@ -526,17 +541,17 @@
 
 ## [0.6.42] - 2026-07-20
 
-### 🚀 新功能
+### Added
 
 * feat(webui): 官方商店插件镜像可单独切换 ([6b3df2d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6b3df2db7639b5b7371a0ae0570ed0afc9e77642))
 * feat(ai-config): 能力包媒体模型管理、LLM/媒体 IA 与控制台 UI 修复 ([79b6ccf](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/79b6ccf481b8b60d0f4cb5008afde0bd16dbdb10))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(webui): 窄屏按钮布局、规则弹窗与画画运行态展示 ([48b4b41](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/48b4b419e79ef6d17a10d97d528ca44eaf9570d9))
 * fix(ai-config): 按 review 修正镜像 scope 应用与下载轮询 ([61a6ff8](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/61a6ff883603814dd99796c737714563dcce61fe))
 
-### 🔨 其他更改
+### Changed
 
 * chore(openapi): 同步 Bot main 控制台 OpenAPI 类型 ([b05e856](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/b05e8564b7bb216c6c9d21474f38b185d186d87d))
 * chore(openapi): 生成类型与 Bot main openspec 对齐 ([fba47c1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/fba47c1b42b52679aea623ab5df681f76999cf30))
@@ -546,11 +561,11 @@
 
 ## [0.6.41] - 2026-07-20
 
-### 🚀 新功能
+### Added
 
 * feat(ai-config): Docker 连接态与 LLM 聊天文案 ([1fdfe07](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1fdfe070ffb997b88b82e04eb651e02aa70e9586))
 
-### 📚 文档更新
+### Changed
 
 * docs(draw): 画画页强调直连网关，弱化 AI Runtime ([2b82dbb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2b82dbb3c899178e180f63f0c9cd6ad9fc6fd59c))
 
@@ -558,11 +573,11 @@
 
 ## [0.6.40] - 2026-07-20
 
-### 🚀 新功能
+### Added
 
 * feat(ai-config): AI Runtime 托管状态与启停控件 ([5b380f2](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/5b380f2b928db5ab83a4b1e8b27cbe6e5c231e48))
 
-### 📚 文档更新
+### Changed
 
 * docs(ai-config): 闲聊改为内核 Provider，弱化必须装 AI Runtime ([598e523](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/598e5239177fff83beb3bdbe69112c665661f854))
 
@@ -570,15 +585,15 @@
 
 ## [0.6.39] - 2026-07-20
 
-### 🚀 新功能
+### Added
 
 * feat(webui): 更新页与插件商店接入 Git 镜像源 ([ccb4f3e](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ccb4f3ecfcf5df7c81d8a230e71c294b25ad7cb1))
 
-### 🐛 错误修复
+### Fixed
 
 * fix(ai): 默认 healthPaths 与 AI /health 对齐 ([d8d9781](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/d8d9781c866318c3da1a9ae4f7f7c5a453eef4f9))
 
-### 🔨 其他更改
+### Changed
 
 * chore(openapi): 同步 Bot main 控制台类型 ([ce1abfe](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ce1abfef2c3da7a0e672a9d5de9c776d0a9a9622))
 * chore(ci): Keep a Changelog 并去掉发版类型脚注 ([a950bbb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a950bbb7a8587aa3899368a3236c34a84b4cb744))
