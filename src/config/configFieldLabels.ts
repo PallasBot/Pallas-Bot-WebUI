@@ -64,6 +64,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_reply_split_max_chars: "拆条单段字数上限",
   llm_sticker_fit_enabled: "表情适配与反馈",
   llm_reply_effect_eval_enabled: "记录回复效果评分",
+  llm_reply_style_variants: "本轮回复风格变体",
 };
 
 export type LlmBotFieldGroupTier = "essential" | "advanced";
@@ -140,6 +141,12 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_reply_gate_enabled",
       "llm_chat_queue_merge",
     ],
+  },
+  {
+    title: "风格变体",
+    tier: "advanced",
+    keys: ["llm_reply_style_variants"],
+    hint: "按牛格/情感类别临时调整本轮措辞；不会写入静态人设。默认无情感数据时约 25% 概率抽样。",
   },
   {
     title: "回复后处理",

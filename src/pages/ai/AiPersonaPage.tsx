@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { personaValueZh, personaValuesZh } from "@/utils/personaLabels";
+import SceneDialogueExamplesCard from "./SceneDialogueExamplesCard";
 
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
@@ -621,6 +622,8 @@ export default function AiPersonaPage() {
           </StateBlock>
         </CardContent>
       </Card>
+
+      <SceneDialogueExamplesCard botId={botReady ? bot : null} />
 
       <StateBlock loading={exportQ.isLoading && botReady} error={exportQ.error}>
         <ExportCard

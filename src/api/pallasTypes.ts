@@ -1579,6 +1579,25 @@ export interface PersonaObserveData {
   bots: PersonaObserveBotRow[];
 }
 
+export interface SceneDialogueExample {
+  schema_version: number;
+  example_id: string;
+  bot_id: number;
+  scene: string;
+  user_cue: string;
+  positive: string;
+  negative: string;
+  enabled: boolean;
+  order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface SceneDialogueExamplesData {
+  items: SceneDialogueExample[];
+  count: number;
+}
+
 export interface BotRow {
   connection_key: string;
   self_id: string;
