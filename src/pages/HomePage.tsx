@@ -307,6 +307,8 @@ export default function HomePage() {
   }, [favorites, instances]);
 
   useEffect(() => {
+    // overview 未返回前 sortedDbBots 为空，勿清空与数据看板共用的已选账号
+    if (overviewQ.isPending && !overviewQ.data) return;
     if (!sortedDbBots.length) {
       setSelectedAccount(null);
       writeSavedHomeAccount(null);
@@ -320,7 +322,7 @@ export default function HomePage() {
     }
     setSelectedAccount(sortedDbBots[0]!.account);
     writeSavedHomeAccount(sortedDbBots[0]!.account);
-  }, [sortedDbBots, selectedAccount]);
+  }, [overviewQ.data, overviewQ.isPending, sortedDbBots, selectedAccount]);
 
   const dbNick = (account: number) => instances?.bot_profiles?.[String(account)]?.nickname?.trim() || "";
 
@@ -674,7 +676,11 @@ export default function HomePage() {
                 </span>
                 <span className="home-kpi-community__hint muted">牛牛</span>
               </Link>
-              <Link className="home-kpi-community home-kpi-quick" to="/charts" title="数据看板">
+              <Link
+                className="home-kpi-community home-kpi-quick"
+                to={selectedAccount != null ? `/charts?self_id=${selectedAccount}` : "/charts"}
+                title="数据看板"
+              >
                 <span>数据看板</span>
               </Link>
             </div>
@@ -1175,7 +1181,7 @@ export default function HomePage() {
                               开发构建
                             </span>
                           ) : null}
-                          <span className="home-ver-dl__tag">业务</span>
+                          <span className="home-ver-dl__tag">core</span>
                         </span>
                       </dd>
                     </div>

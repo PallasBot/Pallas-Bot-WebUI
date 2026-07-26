@@ -5,6 +5,7 @@ import {
   fetchCommunityStats,
   fetchCorpusStatus,
   fetchFederationOnboarding,
+  peekCommunityStatsCache,
   probeCommunityConnectivity,
 } from "@/api/fullConsole";
 import type {
@@ -17,6 +18,7 @@ import { PALLAS_COMMUNITY_HUB } from "@/utils/pallasExternalLinks";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import CorpusWordCloud, { COMMUNITY_HOT_TAB_OPTIONS } from "@/components/CorpusWordCloud";
 import CommunityGallerySection from "@/pages/CommunityGallerySection";
+import ConsoleHint from "@/components/ConsoleHint";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import PageMasthead from "@/components/PageMasthead";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
@@ -183,7 +185,11 @@ export default function CommunityPage() {
   const [connectivityBusy, setConnectivityBusy] = useState(false);
   const [connectivityResult, setConnectivityResult] = useState<CommunityConnectivityCheckData | null>(null);
 
-  const statsQ = useQuery({ queryKey: ["community-stats"], queryFn: () => fetchCommunityStats({}) });
+  const statsQ = useQuery({
+    queryKey: ["community-stats"],
+    queryFn: () => fetchCommunityStats({}),
+    initialData: () => peekCommunityStatsCache() ?? undefined,
+  });
   const corpusStatusQ = useQuery({ queryKey: ["corpus-status"], queryFn: fetchCorpusStatus });
   const federationQ = useQuery({
     queryKey: ["federation-onboarding"],
@@ -195,7 +201,9 @@ export default function CommunityPage() {
   const corpusStatus = corpusStatusQ.data ?? null;
   const federationOnboarding = federationQ.data ?? null;
   const federationOnboardingUnavailable = federationQ.isFetched && federationOnboarding == null;
-  const pageReady = statsQ.isFetched || corpusStatusQ.isFetched;
+  // 须等社区统计结束再进页，避免语料先返回时误显「无法获取数据」
+  const pageReady = statsQ.isFetched && corpusStatusQ.isFetched;
+  const statsUnavailable = statsQ.isFetched && !communityStats;
 
   const onlineHint = useMemo(() => {
     const sec = communityStats?.online_ttl_sec;
@@ -451,9 +459,11 @@ export default function CommunityPage() {
 
       {err ? <p className="alert alert--err community-page__alert">{err}</p> : null}
 
-      {!communityStats ? (
-        <p className="alert alert--warn community-page__alert">
-          暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
+      {statsUnavailable ? (
+        <ConsoleHint className="community-page__alert">
+          <span>
+            暂时无法从社区中心获取数据，下列数字以 — 占位。请确认本机已开启「上报在线统计」，且网络能访问社区中心。
+          </span>
           <UiButton
             variant="ghost"
             size="sm"
@@ -466,7 +476,7 @@ export default function CommunityPage() {
           <Link className="community-page__inline-link" to="/community-stats-config">
             前往在线统计设置
           </Link>
-        </p>
+        </ConsoleHint>
       ) : null}
 
       {section === "deploy" ? (

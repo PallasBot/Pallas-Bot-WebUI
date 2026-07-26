@@ -9576,6 +9576,30 @@ html[data-theme="light"] .alert--warn {
   color: #92400e;
 }
 
+/* 软提醒（引导 / 暂不可用）：虚线框，全站通用；强告警仍用 .alert--* */
+.console-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  margin: 0 0 14px;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control, 8px);
+  border: 1px dashed color-mix(in srgb, var(--text-muted) 38%, var(--border));
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background: transparent;
+}
+.console-hint a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.console-hint a:hover {
+  color: var(--text);
+}
+
 .console-dev-mode-banner {
   display: flex;
   flex-wrap: wrap;
@@ -14638,11 +14662,10 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
 .community-page__panel {
   min-width: 0;
 }
-.community-page__alert {
-  margin: 0;
+.community-page__alert.console-hint {
+  margin-bottom: 14px;
 }
 .community-page__alert-probe-btn {
-  margin-left: 0.5em;
   vertical-align: baseline;
 }
 .community-page__probe-card {

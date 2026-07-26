@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Activity, BarChart3, Bot, LineChart, UsersRound } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
@@ -14,6 +15,7 @@ import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
 import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
@@ -34,6 +36,7 @@ import {
   currentMonthIso,
   fillDailyRows,
   monthBounds,
+  parseBotAccountId,
   readSavedHomeAccount,
   todayIso,
   writeSavedHomeAccount,
@@ -80,18 +83,31 @@ function MetricTile({
 }
 
 export default function ChartsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const accountFromQuery = parseBotAccountId(searchParams.get("self_id"));
   const [rangeStart, setRangeStart] = useState(() => monthBounds(currentMonthIso()).start);
   const [rangeEnd, setRangeEnd] = useState(todayIso);
   const [dateMode, setDateMode] = useState<DateMode>("range");
-  const [selectedAccount, setSelectedAccount] = useState<number | null>(() => readSavedHomeAccount());
+  const [selectedAccount, setSelectedAccount] = useState<number | null>(
+    () => accountFromQuery ?? readSavedHomeAccount(),
+  );
   const [rankFilterOpen, setRankFilterOpen] = useState(false);
   const [matcherFilterOpen, setMatcherFilterOpen] = useState(false);
   const [rankFilter, setRankFilter] = useState<ChartsPluginFilterState>(() =>
-    readChartsPluginFilter(readSavedHomeAccount(), "rank"),
+    readChartsPluginFilter(accountFromQuery ?? readSavedHomeAccount(), "rank"),
   );
   const [matcherFilter, setMatcherFilter] = useState<ChartsPluginFilterState>(() =>
-    readChartsPluginFilter(readSavedHomeAccount(), "matcher"),
+    readChartsPluginFilter(accountFromQuery ?? readSavedHomeAccount(), "matcher"),
   );
+
+  function selectAccount(next: number | null) {
+    setSelectedAccount(next);
+    if (searchParams.has("self_id")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("self_id");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }
 
   const { favorites } = useBotFavorites();
   const instQ = useQuery({ queryKey: ["instances"], queryFn: () => fetchInstances() });
@@ -131,12 +147,6 @@ export default function ChartsPage() {
     void ensurePluginsList();
   }, [ensurePluginsList]);
 
-  useEffect(() => {
-    void instQ.refetch();
-    void pluginRunGlobalQ.refetch();
-    void refreshChartStats();
-  }, [refreshChartStats]);
-
   const sortedBots = useMemo(() => {
     const rows = [...((instQ.data?.db_bot_configs || []) as BotConfigPublic[])];
     const nick = (account: number) =>
@@ -151,20 +161,39 @@ export default function ChartsPage() {
     return rows;
   }, [favorites, instQ.data]);
 
+  const instancesPending = instQ.isPending && !instQ.data;
+  const botsResolved = instQ.isFetched;
+
   useEffect(() => {
+    // 实例列表未返回前不要当成「无 Bot」，否则会闪「未配置」并打断已选账号的图表请求
+    if (!botsResolved) return;
     if (!sortedBots.length) {
       setSelectedAccount(null);
       return;
     }
-    if (selectedAccount != null && sortedBots.some((r) => r.account === selectedAccount)) return;
+    const inList = (acc: number | null) =>
+      acc != null && sortedBots.some((r) => r.account === acc);
+    // 优先 URL（仪表盘跳转）→ 当前选择 → 与仪表盘共用的本地记忆 → 列表第一项
+    if (inList(accountFromQuery)) {
+      if (selectedAccount !== accountFromQuery) setSelectedAccount(accountFromQuery);
+      return;
+    }
+    if (inList(selectedAccount)) return;
+    const saved = readSavedHomeAccount();
+    if (inList(saved)) {
+      setSelectedAccount(saved);
+      return;
+    }
     setSelectedAccount(sortedBots[0]!.account);
-  }, [sortedBots, selectedAccount]);
+  }, [accountFromQuery, botsResolved, sortedBots, selectedAccount]);
 
   useEffect(() => {
-    writeSavedHomeAccount(selectedAccount);
+    // 列表未就绪时不要把仪表盘已选账号写成 null
+    if (selectedAccount != null) writeSavedHomeAccount(selectedAccount);
+    else if (botsResolved && !sortedBots.length) writeSavedHomeAccount(null);
     setRankFilter(readChartsPluginFilter(selectedAccount, "rank"));
     setMatcherFilter(readChartsPluginFilter(selectedAccount, "matcher"));
-  }, [selectedAccount]);
+  }, [botsResolved, selectedAccount, sortedBots.length]);
 
   const dailyRowsScoped = useMemo((): ConsoleDailyStatRow[] => {
     const src = dailyRangeQ.data?.rows ?? consoleDailyStats?.rows ?? [];
@@ -380,13 +409,13 @@ export default function ChartsPage() {
         description="流量、命令与群活跃概览；趋势与排行同屏。"
       />
 
-      {sortedBots.length ? (
+      {sortedBots.length || (selectedAccount != null && instancesPending) ? (
         <ChromeTools>
           {sortedBots.length > 1 ? (
             <ChromeField label="账号" icon={Bot} className="shrink-0">
               <Select
                 value={selectedAccount != null ? String(selectedAccount) : undefined}
-                onValueChange={(v) => setSelectedAccount(Number(v) || null)}
+                onValueChange={(v) => selectAccount(Number(v) || null)}
               >
                 <SelectTrigger
                   className={ACCOUNT_SEL}
@@ -425,7 +454,9 @@ export default function ChartsPage() {
         </ChromeTools>
       ) : null}
 
-      {!sortedBots.length ? (
+      {instancesPending && selectedAccount == null ? <ConsolePageSkeleton panels={3} /> : null}
+
+      {botsResolved && !sortedBots.length ? (
         <p className="muted charts-page__empty">数据库中暂无 Bot 配置。请先在「数据库实例」创建账号。</p>
       ) : null}
 
