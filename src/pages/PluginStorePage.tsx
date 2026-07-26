@@ -35,6 +35,7 @@ import {
   formatPluginStoreEnqueuedHint,
   formatPluginStoreInstallProgressHint,
   isPluginStoreTaskQueued,
+  pluginStoreQueuePendingAfterActive,
   type PluginStoreQueueAction,
   type PluginStoreQueueKind,
   withPluginStoreQueueSuffix,
@@ -177,7 +178,14 @@ export default function PluginStorePage() {
   const [storeBusyCommunityAction, setStoreBusyCommunityAction] = useState<"" | "install" | "update" | "uninstall">("");
   const [installUpdateQueue, setInstallUpdateQueue] = useState<InstallUpdateQueueEntry[]>([]);
   const [installUpdateQueueRunning, setInstallUpdateQueueRunning] = useState(false);
+  const installUpdateQueueRef = useRef<InstallUpdateQueueEntry[]>([]);
+  const installUpdateQueueRunningRef = useRef(false);
   const installUpdateQueueDeferredRestartRef = useRef(false);
+
+  const syncInstallUpdateQueue = useCallback((next: InstallUpdateQueueEntry[]) => {
+    installUpdateQueueRef.current = next;
+    setInstallUpdateQueue(next);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<StoreTab>("all");
   const [officialActionState, setOfficialActionState] = useState<Record<string, OfficialExtensionInstallResult>>({});
@@ -331,7 +339,8 @@ export default function PluginStorePage() {
         if (ok) setStoreActionHint("Bot 已恢复在线。");
         return;
       }
-      if (queuePending > 0 || installUpdateQueue.length > 0) {
+      // Active task stays in the queue until finished; only defer when others remain.
+      if (queuePending > 0 || installUpdateQueueRef.current.length > 1) {
         installUpdateQueueDeferredRestartRef.current =
           installUpdateQueueDeferredRestartRef.current || needsRestart;
         return;
@@ -340,7 +349,7 @@ export default function PluginStorePage() {
       setStoreActionNeedsRestart(needsRestart || installUpdateQueueDeferredRestartRef.current);
       installUpdateQueueDeferredRestartRef.current = false;
     },
-    [ensureRestartContext, installUpdateQueue.length, systemRestartAvailable, trackRestartFromPluginResult],
+    [ensureRestartContext, systemRestartAvailable, trackRestartFromPluginResult],
   );
 
   const refreshOfficialStore = useCallback(async () => {
@@ -422,7 +431,7 @@ export default function PluginStorePage() {
 
   const isInstallUpdatePipelineBusy = useCallback(
     () => {
-      if (installUpdateQueueRunning) return true;
+      if (installUpdateQueueRunningRef.current || installUpdateQueueRunning) return true;
       if (gitInstallBusy) return true;
       const official = storeBusyOfficialAction;
       if (official === "install" || official === "update") return true;
@@ -557,21 +566,17 @@ export default function PluginStorePage() {
   );
 
   const drainInstallUpdateQueue = useCallback(
-    async (first?: InstallUpdateQueueEntry) => {
+    async () => {
+      if (installUpdateQueueRunningRef.current) return;
+      installUpdateQueueRunningRef.current = true;
       setInstallUpdateQueueRunning(true);
       installUpdateQueueDeferredRestartRef.current = false;
-      let current: InstallUpdateQueueEntry | undefined = first;
       let processedCount = 0;
       let batchHadUpdate = false;
-      const queueSnapshot = [...installUpdateQueue];
-      const pendingQueue = first ? [first, ...queueSnapshot] : [...queueSnapshot];
-      setInstallUpdateQueue([]);
       try {
-        let idx = 0;
-        while (idx < pendingQueue.length) {
-          current = pendingQueue[idx];
-          idx += 1;
-          const pendingAfter = pendingQueue.length - idx;
+        while (installUpdateQueueRef.current.length > 0) {
+          const current = installUpdateQueueRef.current[0];
+          const pendingAfter = pluginStoreQueuePendingAfterActive(installUpdateQueueRef.current.length);
           if (current.kind === "official") {
             if (current.action === "install") {
               await executeInstallExtension(current.row, current.restart, pendingAfter);
@@ -585,6 +590,20 @@ export default function PluginStorePage() {
           }
           if (current.action === "update") batchHadUpdate = true;
           processedCount += 1;
+          // Drop the finished task; keep any tasks enqueued while this one ran.
+          const done = queueTaskDescriptor(current);
+          const beforeLen = installUpdateQueueRef.current.length;
+          let removed = false;
+          const rest = installUpdateQueueRef.current.filter((item) => {
+            if (removed) return true;
+            const d = queueTaskDescriptor(item);
+            if (d.kind === done.kind && d.key === done.key && d.action === done.action) {
+              removed = true;
+              return false;
+            }
+            return true;
+          });
+          syncInstallUpdateQueue(removed && rest.length < beforeLen ? rest : installUpdateQueueRef.current.slice(1));
         }
         if (batchHadUpdate && !storeErr) {
           await refreshUpdateSnapshotAfterUpdate();
@@ -600,6 +619,7 @@ export default function PluginStorePage() {
           if (batchHint && !storeErr) setStoreActionHint(batchHint);
         }
       } finally {
+        installUpdateQueueRunningRef.current = false;
         setInstallUpdateQueueRunning(false);
         installUpdateQueueDeferredRestartRef.current = false;
       }
@@ -609,17 +629,17 @@ export default function PluginStorePage() {
       executeInstallExtension,
       executeUpdateCommunity,
       executeUpdateExtension,
-      installUpdateQueue,
       refreshUpdateSnapshotAfterUpdate,
       storeActionNeedsRestart,
       storeErr,
+      syncInstallUpdateQueue,
     ],
   );
 
   const enqueueInstallUpdate = useCallback(
     (entry: InstallUpdateQueueEntry) => {
       const descriptor = queueTaskDescriptor(entry);
-      const queued = isPluginStoreTaskQueued(installUpdateQueue.map(queueTaskDescriptor), descriptor);
+      const queued = isPluginStoreTaskQueued(installUpdateQueueRef.current.map(queueTaskDescriptor), descriptor);
       const active =
         entry.kind === "official"
           ? storeBusyPackage === entry.row.package && storeBusyOfficialAction === entry.action
@@ -627,23 +647,25 @@ export default function PluginStorePage() {
       if (queued || active) return;
       setStoreErr("");
       setStoreActionNeedsRestart(false);
-      if (isInstallUpdatePipelineBusy()) {
-        setInstallUpdateQueue((prev) => [...prev, entry]);
+      const wasRunning = installUpdateQueueRunningRef.current || isInstallUpdatePipelineBusy();
+      const next = [...installUpdateQueueRef.current, entry];
+      syncInstallUpdateQueue(next);
+      if (wasRunning) {
         setStoreActionHint(
-          formatPluginStoreEnqueuedHint(entry.action, queueEntryLabel(entry), installUpdateQueue.length + 1),
+          formatPluginStoreEnqueuedHint(entry.action, queueEntryLabel(entry), next.length),
         );
         return;
       }
-      void drainInstallUpdateQueue(entry);
+      void drainInstallUpdateQueue();
     },
     [
       drainInstallUpdateQueue,
-      installUpdateQueue,
       isInstallUpdatePipelineBusy,
       storeBusyCommunityAction,
       storeBusyOfficialAction,
       storeBusyPackage,
       storeBusyPluginId,
+      syncInstallUpdateQueue,
     ],
   );
 
