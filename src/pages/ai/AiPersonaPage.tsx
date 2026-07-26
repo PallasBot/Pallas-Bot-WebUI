@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { personaValueZh, personaValuesZh } from "@/utils/personaLabels";
+import SceneDialogueExamplesCard from "./SceneDialogueExamplesCard";
 
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
@@ -405,9 +406,7 @@ function PromptSection({
         <CopyIconButton
           label={`复制${title}`}
           className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 max-[560px]:opacity-100"
-          onClick={async () => {
-            await copyTextToClipboard(text);
-          }}
+          onClick={async () => copyTextToClipboard(text)}
         />
       </div>
       <pre className="min-h-0 max-h-52 flex-1 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-muted-foreground">
@@ -623,6 +622,8 @@ export default function AiPersonaPage() {
           </StateBlock>
         </CardContent>
       </Card>
+
+      <SceneDialogueExamplesCard botId={botReady ? bot : null} />
 
       <StateBlock loading={exportQ.isLoading && botReady} error={exportQ.error}>
         <ExportCard

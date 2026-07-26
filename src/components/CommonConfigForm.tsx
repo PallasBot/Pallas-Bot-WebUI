@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -20,8 +20,8 @@ import {
   llmBotFieldGroupsForMode,
   type LlmBotFieldGroupDef,
 } from "@/config/configFieldLabels";
-import { cn } from "@/lib/utils";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 function fieldsForDefs(
   defs: ReadonlyArray<LlmBotFieldGroupDef>,
@@ -128,7 +128,6 @@ export default function CommonConfigForm({
   const [formBaseline, setFormBaseline] = useState("");
   const [raw, setRaw] = useState("");
   const [rawBaseline, setRawBaseline] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const cfgQ = useQuery({
     queryKey: ["common-config", sectionId],
@@ -159,23 +158,23 @@ export default function CommonConfigForm({
       return putCommonConfig(sectionId, collectFieldValues(allFields, fieldValues));
     },
     onSuccess: async () => {
-      setMsg(savedMessage);
+      pushConsoleToast(savedMessage, "ok");
       setFormBaseline(JSON.stringify(fieldValues));
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   const saveRaw = useMutation({
     mutationFn: () => putCommonConfigRaw(sectionId, raw),
     onSuccess: async () => {
-      setMsg(savedMessage);
+      pushConsoleToast(savedMessage, "ok");
       setRawBaseline(raw);
       await qc.invalidateQueries({ queryKey: ["common-config", sectionId] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", sectionId] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   const saving = saveForm.isPending || saveRaw.isPending;
@@ -188,11 +187,15 @@ export default function CommonConfigForm({
     setFieldValues((prev) => ({ ...prev, [name]: value }));
   }
 
+  const saveFormRef = useRef(saveForm);
+  const saveRawRef = useRef(saveRaw);
+  saveFormRef.current = saveForm;
+  saveRawRef.current = saveRaw;
+
   const save = useCallback(() => {
-    setMsg(null);
-    if (mode === "raw") void saveRaw.mutateAsync();
-    else void saveForm.mutateAsync();
-  }, [mode, saveForm, saveRaw]);
+    if (mode === "raw") void saveRawRef.current.mutateAsync();
+    else void saveFormRef.current.mutateAsync();
+  }, [mode]);
 
   useEffect(() => {
     if (!onSaveState) return;
@@ -206,9 +209,6 @@ export default function CommonConfigForm({
 
   return (
     <div className="space-y-3">
-      {msg ? (
-        <p className={cn("text-sm", msg.includes("已保存") ? "text-emerald-400" : "text-destructive")}>{msg}</p>
-      ) : null}
       {mode === "form" ? (
         <StateBlock loading={cfgQ.isLoading} error={cfgQ.error} empty={!fields.length} emptyText="该分区无可编辑字段">
           {sectionId === "llm" ? (

@@ -102,6 +102,8 @@ import type {
   ConversationKernelTracesData,
   LlmTaskStatsData,
   PersonaObserveData,
+  SceneDialogueExample,
+  SceneDialogueExamplesData,
   MessageStatsData,
   CommunityStatsData,
   CommunityConnectivityCheckData,
@@ -1524,6 +1526,35 @@ export async function fetchLlmPersonaGroupStyle(params: {
       ...(params.windowHours ? { window_hours: params.windowHours } : {}),
     },
   })) as Record<string, unknown>;
+}
+
+export async function fetchSceneDialogueExamples(botId: number): Promise<SceneDialogueExamplesData> {
+  return (await consoleOpenapiGet<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/scene-dialogue-examples"]["get"]
+  >("/common-config/llm/persona/scene-dialogue-examples", { params: { bot_id: botId } })) as SceneDialogueExamplesData;
+}
+
+export async function postSceneDialogueExample(
+  body: Omit<SceneDialogueExample, "schema_version" | "example_id" | "created_at" | "updated_at">,
+): Promise<SceneDialogueExample> {
+  return consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/scene-dialogue-examples"]["post"]
+  >("/common-config/llm/persona/scene-dialogue-examples", body) as Promise<SceneDialogueExample>;
+}
+
+export async function putSceneDialogueExample(
+  exampleId: string,
+  body: Partial<Pick<SceneDialogueExample, "scene" | "user_cue" | "positive" | "negative" | "enabled" | "order">>,
+): Promise<SceneDialogueExample> {
+  return consoleOpenapiPut<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/scene-dialogue-examples/{example_id}"]["put"]
+  >(`/common-config/llm/persona/scene-dialogue-examples/${encodeURIComponent(exampleId)}`, body) as Promise<SceneDialogueExample>;
+}
+
+export async function deleteSceneDialogueExample(exampleId: string): Promise<{ id: string }> {
+  return consoleOpenapiDelete<
+    ConsoleOpenapiPaths["/pallas/api/common-config/llm/persona/scene-dialogue-examples/{example_id}"]["delete"]
+  >(`/common-config/llm/persona/scene-dialogue-examples/${encodeURIComponent(exampleId)}`) as Promise<{ id: string }>;
 }
 
 export async function fetchConversationKernelRelationshipNotes(params: {
@@ -3210,6 +3241,29 @@ export async function postBotUpdateApply(options?: { restart?: boolean }): Promi
     null,
     { params: { restart: options?.restart ? "true" : "false" } },
   )) as UpdateApplyJobStartData;
+}
+
+export type UpdateChangelogTarget = "webui" | "bot";
+
+export type UpdateChangelogData = {
+  target: UpdateChangelogTarget;
+  repo?: string;
+  source?: string;
+  changelog_url?: string;
+  markdown?: string;
+  max_versions?: number;
+};
+
+export async function fetchUpdateChangelog(
+  target: UpdateChangelogTarget,
+  options?: { maxVersions?: number },
+): Promise<UpdateChangelogData> {
+  return (await consoleOpenapiGet("/update/changelog", {
+    params: {
+      target,
+      max_versions: options?.maxVersions ?? 10,
+    },
+  })) as UpdateChangelogData;
 }
 
 export function openUpdateApplyJobEventSource(jobId: string): EventSource {

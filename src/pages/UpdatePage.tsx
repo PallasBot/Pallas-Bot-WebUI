@@ -4,10 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {
+  fetchUpdateChangelog,
   fetchUpdateCheckAll,
   openUpdateApplyJobEventSource,
   postBotUpdateApply,
   postUpdateApply,
+  type UpdateChangelogTarget,
 } from "@/api/fullConsole";
 import { releaseNotesToSafeHtml } from "@/utils/releaseNotesHtml";
 import { waitForUpdateApplyJob } from "@/utils/updateApplyJobStream";
@@ -23,28 +25,84 @@ import {
 import GitMirrorDialog from "@/components/GitMirrorDialog";
 import PageMasthead from "@/components/PageMasthead";
 import ReadmeMarkdown from "@/components/ReadmeMarkdown";
-import RefreshIconButton from "@/components/RefreshIconButton";
+import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import UiInput from "@/components/ui/UiInput";
-import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { ChevronRight, RefreshCw, LayoutDashboard, Bot, Wrench } from "lucide-react";
-import PanelTitleIcon from "@/components/PanelTitleIcon";
+import { readPrefs, writePrefs } from "@/theme/applyShellTheme";
+import { ChevronRight, RefreshCw, LayoutDashboard, Bot } from "lucide-react";
 
 const PB_PROTOCOL_PLUGIN = "pb_protocol";
 const GITHUB_TOKEN_FIELD = "pallas_protocol_github_token";
 const WEBUI_RELEASES_PAGE = PALLAS_WEBUI_RELEASES;
 const BOT_RELEASES_PAGE = PALLAS_BOT_RELEASES;
+const PENDING_CHANGELOG_KEY = "pallas.webui.pendingUpdateChangelog";
 
 const UPDATE_PANEL = "update-page__panel flex flex-col overflow-hidden shadow-none";
 const UPDATE_PANEL_HD =
   "panel__hd panel__hd--split update-page__panel-hd-nowrap flex-row items-center justify-between space-y-0 border-b px-4 py-3";
 const UPDATE_PANEL_BD = "panel__bd update-page__bd update-page__bd--release space-y-0 px-4 pb-4 pt-3";
-const UPDATE_OPS_BD = "panel__bd update-page__bd px-4 pb-4 pt-3";
 const UPDATE_STATUS_PILL = "update-page__status-pill";
+
+type ApplyKind = "web" | "bot";
+
+type PendingChangelog = {
+  kind: ApplyKind;
+  tag: string;
+};
+
+type ChangelogView = {
+  kind: ApplyKind;
+  tag: string;
+  markdown: string;
+  changelogUrl: string;
+  loading: boolean;
+  error: string;
+};
+
+function readPendingChangelog(): PendingChangelog | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_CHANGELOG_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PendingChangelog;
+    if (!parsed?.tag || (parsed.kind !== "web" && parsed.kind !== "bot")) return null;
+    return { kind: parsed.kind, tag: String(parsed.tag) };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingChangelog(draft: PendingChangelog) {
+  try {
+    sessionStorage.setItem(PENDING_CHANGELOG_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearPendingChangelog() {
+  try {
+    sessionStorage.removeItem(PENDING_CHANGELOG_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function applyKindToTarget(kind: ApplyKind): UpdateChangelogTarget {
+  return kind === "bot" ? "bot" : "webui";
+}
 
 function UpdateFoldSummary({ children }: { children: ReactNode }) {
   return (
@@ -52,6 +110,21 @@ function UpdateFoldSummary({ children }: { children: ReactNode }) {
       <ChevronRight className="update-page__release-fold-chevron" aria-hidden strokeWidth={2} />
       <span className="min-w-0">{children}</span>
     </summary>
+  );
+}
+
+function UpdateReleaseNotesTrigger({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="update-page__release-notes-trigger" onClick={onClick}>
+      <ChevronRight className="update-page__release-fold-chevron" aria-hidden strokeWidth={2} />
+      <span className="min-w-0">{label}</span>
+    </button>
   );
 }
 
@@ -85,9 +158,6 @@ function UpdateApplyProgress({
     </div>
   );
 }
-
-type ApplyKind = "web" | "bot";
-
 function formatCheckedAt(ts?: number | null): string {
   if (ts == null || !Number.isFinite(ts) || ts <= 0) return "—";
   try {
@@ -136,27 +206,23 @@ export default function UpdatePage() {
   const [ghTokenHadValue, setGhTokenHadValue] = useState(false);
   const [ghTokenBusy, setGhTokenBusy] = useState(false);
   const [ghTokenErr, setGhTokenErr] = useState("");
+  const [changelog, setChangelog] = useState<ChangelogView | null>(null);
+  const [showChangelogAfterUpdate, setShowChangelogAfterUpdate] = useState(
+    () => readPrefs().showUpdateChangelog,
+  );
 
   const q = useQuery({ queryKey: ["update-check-all"], queryFn: fetchUpdateCheckAll });
   const web = q.data?.webui;
   const bot = q.data?.bot;
 
-  const {
-    restartBusy,
-    restartErr,
-    restartMsg,
-    restartProgressLabel,
-    restartInProgress,
-    restartAvailable,
-    shardedRuntime,
-    ensureRestartContext,
-    restartBot,
-  } = useBotSystemRestart({ botUpdateCheck: bot ?? null });
-
   const webCurrentDisplay = updateCheckCurrentTagLabel(web?.current_tag);
   const botCurrentDisplay = pallasBotVersionLabel(undefined, bot);
   const webReleaseNotesHtml = useMemo(() => releaseNotesToSafeHtml(web?.release_notes), [web?.release_notes]);
   const botReleaseNotesHtml = useMemo(() => releaseNotesToSafeHtml(bot?.release_notes), [bot?.release_notes]);
+  const changelogNotesHtml = useMemo(
+    () => releaseNotesToSafeHtml(changelog?.markdown),
+    [changelog?.markdown],
+  );
   const webReleaseNotesSummary = releaseNotesFoldSummary(web?.current_tag, web?.latest_tag, web?.has_update);
   const botReleaseNotesSummary = releaseNotesFoldSummary(bot?.current_tag, bot?.latest_tag, bot?.has_update);
 
@@ -172,9 +238,6 @@ export default function UpdatePage() {
         text: `更新前会自动 stash ${bot.dirty_file_count ?? 0} 项本地改动；冲突时需 git stash pop。建议插件放 local/plugins/。`,
       };
     }
-    if (bot.deployment_mode === "dev_clone") {
-      return { kind: "info", text: "更新时执行 git pull --ff-only --autostash。" };
-    }
     return null;
   }, [bot]);
 
@@ -187,11 +250,11 @@ export default function UpdatePage() {
   }, [bot]);
 
   const updateMastheadLead = useMemo(() => {
-    const parts: string[] = [];
-    if (web) parts.push(`WebUI ${webCurrentDisplay}${web.has_update ? " · 有更新" : ""}`);
-    if (bot) parts.push(`Bot ${botCurrentDisplay}${bot.has_update ? " · 有更新" : ""}`);
-    return parts.length ? parts.join(" · ") : "WebUI 与 Bot 版本更新。";
-  }, [bot, botCurrentDisplay, web, webCurrentDisplay]);
+    if (!web && !bot) return "WebUI 与 Bot 版本更新。";
+    const n = (web?.has_update ? 1 : 0) + (bot?.has_update ? 1 : 0);
+    if (n > 0) return `有 ${n} 项可更新`;
+    return "均已是最新";
+  }, [bot, web]);
 
   const checkedAtDisplay = formatCheckedAt(q.data?.checked_at);
   const webApplyDisabled = busy || !web?.has_update || !web?.latest_tag;
@@ -227,16 +290,56 @@ export default function UpdatePage() {
   }, []);
 
   useEffect(() => {
-    if (q.isSuccess) void ensureRestartContext();
-  }, [q.isSuccess, ensureRestartContext]);
-
-  useEffect(() => {
     const raw = (location.hash || "").replace(/^#/, "").trim();
     if (!raw || q.isLoading) return;
     requestAnimationFrame(() => {
       document.getElementById(raw)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, [location.hash, q.isLoading, q.dataUpdatedAt]);
+
+  async function openChangelogDialog(kind: ApplyKind, tag: string) {
+    setChangelog({
+      kind,
+      tag,
+      markdown: "",
+      changelogUrl: "",
+      loading: true,
+      error: "",
+    });
+    try {
+      const data = await fetchUpdateChangelog(applyKindToTarget(kind));
+      setChangelog({
+        kind,
+        tag,
+        markdown: data.markdown || "",
+        changelogUrl: (data.changelog_url || "").trim(),
+        loading: false,
+        error: "",
+      });
+    } catch (e) {
+      setChangelog({
+        kind,
+        tag,
+        markdown: "",
+        changelogUrl: "",
+        loading: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  useEffect(() => {
+    const pending = readPendingChangelog();
+    if (!pending) return;
+    clearPendingChangelog();
+    if (!readPrefs().showUpdateChangelog) return;
+    void openChangelogDialog(pending.kind, pending.tag);
+  }, []);
+
+  function queueChangelogAfterUpdate(kind: ApplyKind, tag: string) {
+    if (!readPrefs().showUpdateChangelog) return;
+    writePendingChangelog({ kind, tag });
+  }
 
   async function loadGithubTokenHint() {
     setGhTokenErr("");
@@ -310,6 +413,7 @@ export default function UpdatePage() {
       });
       setApplyPercent(100);
       const resultMsg = done.result?.message || done.message || "更新成功";
+      queueChangelogAfterUpdate("web", web.latest_tag);
       setMsg(`${resultMsg} · 正在刷新页面以载入新版本…`);
       window.setTimeout(() => window.location.reload(), 800);
     } catch (e) {
@@ -346,6 +450,10 @@ export default function UpdatePage() {
       });
       setApplyPercent(100);
       setMsg(done.result?.message || done.message || (restart ? "已触发更新与重启。" : "已触发。"));
+      if (readPrefs().showUpdateChangelog) {
+        if (restart) writePendingChangelog({ kind: "bot", tag: bot.latest_tag });
+        else void openChangelogDialog("bot", bot.latest_tag);
+      }
       if (!restart) await qc.invalidateQueries({ queryKey: ["update-check-all"] });
       setApplyKind(null);
       setApplyPercent(0);
@@ -364,13 +472,27 @@ export default function UpdatePage() {
     }
   }
 
-  async function triggerBotRestart(workersOnly = false) {
-    setErr("");
-    setMsg("");
-    const ok = await restartBot(workersOnly);
-    if (ok) setMsg(restartProgressLabel || restartMsg || "Bot 已恢复在线。");
-    else if (restartErr) setErr(restartErr);
+  function openWebChangelog() {
+    void openChangelogDialog(
+      "web",
+      (web?.latest_tag || web?.current_tag || webCurrentDisplay || "—").trim() || "—",
+    );
   }
+
+  function openBotChangelog() {
+    void openChangelogDialog(
+      "bot",
+      (bot?.latest_tag || bot?.current_tag || botCurrentDisplay || "—").trim() || "—",
+    );
+  }
+
+  function setShowChangelogPref(next: boolean) {
+    writePrefs({ showUpdateChangelog: next });
+    setShowChangelogAfterUpdate(next);
+  }
+
+  const webReleaseHref = (web?.release_url || "").trim() || WEBUI_RELEASES_PAGE;
+  const botReleaseHref = (bot?.release_url || "").trim() || BOT_RELEASES_PAGE;
 
   return (
     <div className="update-page console-hub-page">
@@ -406,340 +528,255 @@ export default function UpdatePage() {
         }
       />
 
-      <div className="update-page__overview">
-        <a
-          href="#console-update-webui"
-          className={cn("update-page__overview-card", web?.has_update && "update-page__overview-card--warn")}
-        >
-          <span className="update-page__overview-k">WebUI</span>
-          <span className="update-page__overview-v">{webCurrentDisplay}</span>
-          <span className="update-page__overview-meta muted">
-            {web?.has_update ? `→ ${web?.latest_tag ?? "?"}` : "已是最新"}
-          </span>
-        </a>
-        <a
-          href="#console-update-bot"
-          className={cn("update-page__overview-card", bot?.has_update && "update-page__overview-card--warn")}
-        >
-          <span className="update-page__overview-k">Bot</span>
-          <span className="update-page__overview-v">{botCurrentDisplay}</span>
-          <span className="update-page__overview-meta muted">
-            {bot?.has_update ? `→ ${bot?.latest_tag ?? "?"}` : botDeployLabel(bot?.deployment_mode)}
-          </span>
-        </a>
-      </div>
-
-      <Card id="console-update-webui" className={UPDATE_PANEL}>
-        <CardHeader className={UPDATE_PANEL_HD}>
-          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
-            <PanelTitleIcon icon={LayoutDashboard} />
-            WebUI
-            <RefreshIconButton
-              embedded
-              showLabel={false}
-              busy={q.isFetching}
-              disabled={busy}
-              label="刷新 WebUI 更新检查"
-              onClick={() => void q.refetch()}
-            />
-            {web?.has_update ? (
-              <Badge className={UPDATE_STATUS_PILL} variant="warn">
-                有更新
-              </Badge>
-            ) : (
-              <Badge className={UPDATE_STATUS_PILL} variant="success">
-                已是最新
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={UPDATE_PANEL_BD}>
-          <div className="update-page__release-summary">
-            <div className="update-page__release-stat">
-              <span className="update-page__release-stat-label">当前</span>
-              <span className="update-page__release-stat-value">{webCurrentDisplay}</span>
-            </div>
-            <span className="update-page__release-stat-arrow muted" aria-hidden="true">
-              →
-            </span>
-            <div className="update-page__release-stat">
-              <span className="update-page__release-stat-label">远端</span>
-              <span className="update-page__release-stat-value">{web?.latest_tag ?? "—"}</span>
-            </div>
-          </div>
-
-          <div className="update-page__release-actions">
-            <div className="update-page__release-primary">
-              <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
-                {applyKind === "web" ? "处理中…" : "应用 WebUI 更新"}
-              </Button>
-              <a
-                className="update-page__link update-page__release-ext-link"
-                href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub Release
-              </a>
-            </div>
-            {applyKind === "web" ? (
-              <UpdateApplyProgress label={applyHint || "正在下载并应用 WebUI 更新…"} percent={applyPercent} />
-            ) : null}
-          </div>
-
-          {web?.error ? (
-            <p className="alert alert--err update-page__release-inline-alert">{web.error}</p>
-          ) : webCallout ? (
-            <div className="update-page__release-callout update-page__release-callout--info">{webCallout}</div>
-          ) : null}
-
-          <details className="update-page__release-fold update-page__release-notes">
-            <UpdateFoldSummary>{webReleaseNotesSummary}</UpdateFoldSummary>
-            {(web?.release_notes || "").trim() ? (
-              <ReadmeMarkdown
-                html={webReleaseNotesHtml}
-                className="update-page__release-notes-body update-page__release-notes-body--md"
-              />
-            ) : (
-              <p className="update-page__release-notes-empty muted">
-                GitHub 未提供发行说明正文，请查看{" "}
-                <a
-                  className="update-page__link"
-                  href={(web?.release_url || "").trim() || WEBUI_RELEASES_PAGE}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Release 页面
-                </a>
-                。
-              </p>
-            )}
-          </details>
-
-          <details className="update-page__release-fold update-page__doc-links">
-            <UpdateFoldSummary>相关文档</UpdateFoldSummary>
-            <ul className="update-page__doc-links-list">
-              {webDocLinks.map((link) => (
-                <li key={link.href}>
-                  <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </details>
-
-          <p className="update-page__release-foot muted">
-            由 Bot 从 GitHub 下载 <code>dist.zip</code> 并解压到控制台静态目录。
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card id="console-update-bot" className={UPDATE_PANEL}>
-        <CardHeader className={UPDATE_PANEL_HD}>
-          <CardTitle className="panel__title flex flex-wrap items-center gap-1.5">
-            <PanelTitleIcon icon={Bot} />
-            Bot 本体
-            <RefreshIconButton
-              embedded
-              showLabel={false}
-              busy={q.isFetching}
-              disabled={busy}
-              label="刷新 Bot 更新检查"
-              onClick={() => void q.refetch()}
-            />
-            {bot?.has_update ? (
-              <Badge className={UPDATE_STATUS_PILL} variant="warn">
-                有更新
-              </Badge>
-            ) : bot?.development_build ? (
-              <Badge
-                className={UPDATE_STATUS_PILL}
-                variant="secondary"
-                title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
-              >
-                开发构建
-              </Badge>
-            ) : (
-              <Badge className={UPDATE_STATUS_PILL} variant="success">
-                已是最新
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={UPDATE_PANEL_BD}>
-          <div className="update-page__release-summary">
-            <div className="update-page__release-stat">
-              <span className="update-page__release-stat-label">当前</span>
-              <span className="update-page__release-stat-value">{botCurrentDisplay}</span>
-              {bot?.current_commit ? (
-                <span className="update-page__release-stat-sub muted">{bot.current_commit.slice(0, 7)}</span>
-              ) : null}
-            </div>
-            <span className="update-page__release-stat-arrow muted" aria-hidden="true">
-              →
-            </span>
-            <div className="update-page__release-stat">
-              <span className="update-page__release-stat-label">远端</span>
-              <span className="update-page__release-stat-value">{bot?.latest_tag ?? "—"}</span>
-            </div>
-          </div>
-
-          {botMetaParts.length ? (
-            <p className="update-page__release-meta muted">{botMetaParts.join(" · ")}</p>
-          ) : null}
-
-          <div className="update-page__release-actions">
-            <div className="update-page__release-primary">
-              {bot?.deployment_mode !== "docker" ? (
-                <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
-                  {applyKind === "bot" ? "处理中…" : "应用 Bot 更新"}
-                </Button>
-              ) : null}
-              {bot?.deployment_mode !== "docker" && bot?.restart_available ? (
-                <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
-                  更新并重启
-                </Button>
-              ) : null}
-              <a
-                className="update-page__link update-page__release-ext-link"
-                href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub Release
-              </a>
-            </div>
-            {applyKind === "bot" ? (
-              <UpdateApplyProgress label={applyHint || "正在拉取并应用 Bot 更新…"} percent={applyPercent} />
-            ) : null}
-          </div>
-
-          {bot?.error ? (
-            <p className="alert alert--err update-page__release-inline-alert">{bot.error}</p>
-          ) : botCallout ? (
-            <div
-              className={cn(
-                "update-page__release-callout",
-                botCallout.kind === "warn" ? "alert alert--warn" : "update-page__release-callout--info",
+      <div className="update-page__panels">
+        <Card id="console-update-webui" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+              <PanelTitleIcon icon={LayoutDashboard} />
+              WebUI
+              {web?.has_update ? (
+                <Badge className={UPDATE_STATUS_PILL} variant="warn">
+                  有更新
+                </Badge>
+              ) : (
+                <Badge className={UPDATE_STATUS_PILL} variant="success">
+                  已是最新
+                </Badge>
               )}
-            >
-              {botCallout.text}
-            </div>
-          ) : null}
-
-          {bot?.deployment_mode === "docker" ? (
-            <section className="update-page__release-section update-page__docker-hint">
-              <h3 className="update-page__release-section-title">Docker 更新步骤</h3>
-              <ol className="update-page__docker-steps">
-                <li>
-                  <code>docker compose pull pallasbot</code>
-                </li>
-                <li>
-                  <code>docker compose up -d pallasbot</code>（未换镜像时加 <code>--force-recreate</code>）
-                </li>
-                <li>
-                  未用 <code>:latest</code> 时，先把 compose 里 image tag 改为目标版本
-                </li>
-              </ol>
-              <p className="muted update-page__docker-foot">
-                数据与配置通常在卷中（<code>data/</code>、<code>config/pallas.toml</code>、<code>local/plugins/</code>）。
-              </p>
-            </section>
-          ) : null}
-
-          <details className="update-page__release-fold update-page__release-notes">
-            <UpdateFoldSummary>{botReleaseNotesSummary}</UpdateFoldSummary>
-            {(bot?.release_notes || "").trim() ? (
-              <ReadmeMarkdown
-                html={botReleaseNotesHtml}
-                className="update-page__release-notes-body update-page__release-notes-body--md"
-              />
-            ) : (
-              <p className="update-page__release-notes-empty muted">
-                GitHub 未提供发行说明正文，请查看{" "}
-                <a
-                  className="update-page__link"
-                  href={(bot?.release_url || "").trim() || BOT_RELEASES_PAGE}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Release 页面
-                </a>
-                。
-              </p>
-            )}
-          </details>
-
-          <details className="update-page__release-fold update-page__doc-links">
-            <UpdateFoldSummary>相关文档</UpdateFoldSummary>
-            <ul className="update-page__doc-links-list">
-              {botDocLinks.map((link) => (
-                <li key={link.href}>
-                  <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </details>
-
-          {bot?.deployment_mode !== "docker" ? (
-            <p className="update-page__release-foot muted">
-              配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {restartAvailable ? (
-        <Card id="console-update-restart" className={cn(UPDATE_PANEL, "update-page__panel--ops")}>
-          <CardHeader className={cn(UPDATE_PANEL_HD, "update-page__ops-hd")}>
-            <CardTitle className="panel__title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Wrench} />
-              运维
             </CardTitle>
-          </CardHeader>
-          <CardContent className={UPDATE_OPS_BD}>
-            <p className="muted update-page__ops-lead">
-              安装/更新插件或修改需重启生效的配置后，可在此触发 Bot 进程重启。与「更新并重启」不同，此处不会拉取新代码。
-              {shardedRuntime ? "分片部署下可选择仅重启分片节点或重启全部进程。" : null}
-            </p>
-            {restartInProgress || restartMsg ? (
-              <p className="muted update-page__ops-lead" role="status">
-                {restartProgressLabel || restartMsg}
-              </p>
-            ) : null}
-            {restartErr ? (
-              <p className="alert alert--err update-page__ops-lead" role="alert">
-                {restartErr}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-1.5 update-page__ops-actions">
-              {shardedRuntime ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={restartBusy || restartInProgress}
-                  onClick={() => void triggerBotRestart(true)}
-                >
-                  重启 Worker
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={restartBusy || restartInProgress}
-                onClick={() => void triggerBotRestart(false)}
-              >
-                {restartInProgress ? "重启中…" : shardedRuntime ? "重启全部进程" : "重启 Bot"}
+            <div className="update-page__panel-hd-actions">
+              <Button asChild type="button" variant="secondary" size="sm">
+                <a href={webReleaseHref} target="_blank" rel="noopener noreferrer">
+                  GitHub Release
+                </a>
               </Button>
             </div>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__release-summary">
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">当前</span>
+                <span className="update-page__release-stat-value">{webCurrentDisplay}</span>
+              </div>
+              <span className="update-page__release-stat-arrow muted" aria-hidden="true">
+                →
+              </span>
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">远端</span>
+                <span className="update-page__release-stat-value">{web?.latest_tag ?? "—"}</span>
+              </div>
+            </div>
+
+            {(web?.has_update || applyKind === "web") ? (
+              <div className="update-page__release-actions">
+                <div className="update-page__release-primary">
+                  {web?.has_update ? (
+                    <Button type="button" disabled={webApplyDisabled} onClick={() => void applyWeb()}>
+                      {applyKind === "web" ? "处理中…" : "应用 WebUI 更新"}
+                    </Button>
+                  ) : null}
+                </div>
+                {applyKind === "web" ? (
+                  <UpdateApplyProgress label={applyHint || "正在下载并应用 WebUI 更新…"} percent={applyPercent} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {web?.error ? (
+              <p className="alert alert--err update-page__release-inline-alert">{web.error}</p>
+            ) : webCallout ? (
+              <div className="update-page__release-callout update-page__release-callout--info">{webCallout}</div>
+            ) : null}
+
+            <details className="update-page__release-fold update-page__release-notes">
+              <UpdateFoldSummary>{webReleaseNotesSummary}</UpdateFoldSummary>
+              {(web?.release_notes || "").trim() ? (
+                <ReadmeMarkdown
+                  html={webReleaseNotesHtml}
+                  className="update-page__release-notes-body update-page__release-notes-body--md"
+                />
+              ) : (
+                <p className="update-page__release-notes-empty muted">
+                  GitHub 未提供发行说明正文，请查看{" "}
+                  <a className="update-page__link" href={webReleaseHref} target="_blank" rel="noopener noreferrer">
+                    Release 页面
+                  </a>
+                  。
+                </p>
+              )}
+            </details>
+
+            <UpdateReleaseNotesTrigger label="CHANGELOG" onClick={openWebChangelog} />
+
+            <details className="update-page__release-fold update-page__doc-links">
+              <UpdateFoldSummary>相关文档</UpdateFoldSummary>
+              <ul className="update-page__doc-links-list">
+                {webDocLinks.map((link) => (
+                  <li key={link.href}>
+                    <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+
+            {web?.has_update ? (
+              <p className="update-page__release-foot muted">
+                由 Bot 从 GitHub 下载 <code>dist.zip</code> 并解压到控制台静态目录。
+              </p>
+            ) : null}
           </CardContent>
         </Card>
-      ) : null}
+
+        <Card id="console-update-bot" className={UPDATE_PANEL}>
+          <CardHeader className={UPDATE_PANEL_HD}>
+            <div className="update-page__panel-hd-main min-w-0">
+              <CardTitle className="panel__title flex min-w-0 flex-wrap items-center gap-1.5">
+                <PanelTitleIcon icon={Bot} />
+                Bot 本体
+                {bot?.has_update ? (
+                  <Badge className={UPDATE_STATUS_PILL} variant="warn">
+                    有更新
+                  </Badge>
+                ) : bot?.development_build ? (
+                  <Badge
+                    className={UPDATE_STATUS_PILL}
+                    variant="secondary"
+                    title="当前 commit 超前于 GitHub 最新发行版，无需执行「应用 Bot 更新」"
+                  >
+                    开发构建
+                  </Badge>
+                ) : (
+                  <Badge className={UPDATE_STATUS_PILL} variant="success">
+                    已是最新
+                  </Badge>
+                )}
+              </CardTitle>
+              {botMetaParts.length ? (
+                <p className="update-page__panel-hd-meta muted">{botMetaParts.join(" · ")}</p>
+              ) : null}
+            </div>
+            <div className="update-page__panel-hd-actions">
+              <Button asChild type="button" variant="secondary" size="sm">
+                <a href={botReleaseHref} target="_blank" rel="noopener noreferrer">
+                  GitHub Release
+                </a>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className={UPDATE_PANEL_BD}>
+            <div className="update-page__release-summary">
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">当前</span>
+                <span className="update-page__release-stat-value">{botCurrentDisplay}</span>
+                {bot?.current_commit ? (
+                  <span className="update-page__release-stat-sub muted">{bot.current_commit.slice(0, 7)}</span>
+                ) : null}
+              </div>
+              <span className="update-page__release-stat-arrow muted" aria-hidden="true">
+                →
+              </span>
+              <div className="update-page__release-stat">
+                <span className="update-page__release-stat-label">远端</span>
+                <span className="update-page__release-stat-value">{bot?.latest_tag ?? "—"}</span>
+              </div>
+            </div>
+
+            {(bot?.has_update && bot?.deployment_mode !== "docker") || applyKind === "bot" ? (
+              <div className="update-page__release-actions">
+                <div className="update-page__release-primary">
+                  {bot?.has_update && bot?.deployment_mode !== "docker" ? (
+                    <Button type="button" disabled={botApplyDisabled} onClick={() => void applyBot(false)}>
+                      {applyKind === "bot" ? "处理中…" : "应用 Bot 更新"}
+                    </Button>
+                  ) : null}
+                  {bot?.has_update && bot?.deployment_mode !== "docker" && bot?.restart_available ? (
+                    <Button type="button" variant="outline" disabled={botApplyDisabled} onClick={() => void applyBot(true)}>
+                      更新并重启
+                    </Button>
+                  ) : null}
+                </div>
+                {applyKind === "bot" ? (
+                  <UpdateApplyProgress label={applyHint || "正在拉取并应用 Bot 更新…"} percent={applyPercent} />
+                ) : null}
+              </div>
+            ) : null}
+
+            {bot?.error ? (
+              <p className="alert alert--err update-page__release-inline-alert">{bot.error}</p>
+            ) : botCallout ? (
+              <div
+                className={cn(
+                  "update-page__release-callout",
+                  botCallout.kind === "warn" ? "alert alert--warn" : "update-page__release-callout--info",
+                )}
+              >
+                {botCallout.text}
+              </div>
+            ) : null}
+
+            {bot?.deployment_mode === "docker" ? (
+              <section className="update-page__release-section update-page__docker-hint">
+                <h3 className="update-page__release-section-title">Docker 更新步骤</h3>
+                <ol className="update-page__docker-steps">
+                  <li>
+                    <code>docker compose pull pallasbot</code>
+                  </li>
+                  <li>
+                    <code>docker compose up -d pallasbot</code>（未换镜像时加 <code>--force-recreate</code>）
+                  </li>
+                  <li>
+                    未用 <code>:latest</code> 时，先把 compose 里 image tag 改为目标版本
+                  </li>
+                </ol>
+                <p className="muted update-page__docker-foot">
+                  数据与配置通常在卷中（<code>data/</code>、<code>config/pallas.toml</code>、<code>local/plugins/</code>）。
+                </p>
+              </section>
+            ) : null}
+
+            <details className="update-page__release-fold update-page__release-notes">
+              <UpdateFoldSummary>{botReleaseNotesSummary}</UpdateFoldSummary>
+              {(bot?.release_notes || "").trim() ? (
+                <ReadmeMarkdown
+                  html={botReleaseNotesHtml}
+                  className="update-page__release-notes-body update-page__release-notes-body--md"
+                />
+              ) : (
+                <p className="update-page__release-notes-empty muted">
+                  GitHub 未提供发行说明正文，请查看{" "}
+                  <a className="update-page__link" href={botReleaseHref} target="_blank" rel="noopener noreferrer">
+                    Release 页面
+                  </a>
+                  。
+                </p>
+              )}
+            </details>
+
+            <UpdateReleaseNotesTrigger label="CHANGELOG" onClick={openBotChangelog} />
+
+            <details className="update-page__release-fold update-page__doc-links">
+              <UpdateFoldSummary>相关文档</UpdateFoldSummary>
+              <ul className="update-page__doc-links-list">
+                {botDocLinks.map((link) => (
+                  <li key={link.href}>
+                    <a className="update-page__link" href={link.href} target="_blank" rel="noopener noreferrer">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+
+            {bot?.has_update && bot?.deployment_mode !== "docker" ? (
+              <p className="update-page__release-foot muted">
+                配置与数据请放在 <code>config/pallas.toml</code>、<code>data/</code>，避免改主仓 <code>src/</code>。
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
 
       <details id="console-update-github" className="update-page__gh-fold">
         <summary className="update-page__gh-fold-summary">
@@ -775,6 +812,77 @@ export default function UpdatePage() {
           {ghTokenErr ? <div className="alert alert--err update-page__gh-alert">{ghTokenErr}</div> : null}
         </div>
       </details>
+
+      <Dialog
+        open={changelog != null}
+        onOpenChange={(open) => {
+          if (!open) setChangelog(null);
+        }}
+      >
+        <DialogContent className="update-page__changelog-dialog gap-0 overflow-hidden bg-card p-0">
+          <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3">
+            <DialogTitle>
+              {changelog?.kind === "bot" ? "Bot" : "WebUI"} CHANGELOG
+              {changelog?.tag ? ` · ${changelog.tag}` : ""}
+            </DialogTitle>
+            <DialogDescription>仓库 CHANGELOG.md，与发行说明分开。</DialogDescription>
+          </DialogHeader>
+          <div className="update-page__changelog-body min-h-0 flex-1 overflow-auto px-4 py-3">
+            {changelog?.loading ? (
+              <p className="muted" role="status">
+                正在拉取 CHANGELOG…
+              </p>
+            ) : changelog?.error ? (
+              <p className="alert alert--err">{changelog.error}</p>
+            ) : (changelog?.markdown || "").trim() ? (
+              <ReadmeMarkdown
+                html={changelogNotesHtml}
+                className="update-page__release-notes-body update-page__release-notes-body--md"
+              />
+            ) : (
+              <p className="muted">
+                暂无 CHANGELOG 正文
+                {changelog?.changelogUrl ? (
+                  <>
+                    ，可查看{" "}
+                    <a
+                      className="update-page__link"
+                      href={changelog.changelogUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      CHANGELOG.md
+                    </a>
+                  </>
+                ) : null}
+                。
+              </p>
+            )}
+          </div>
+          <DialogFooter className="update-page__changelog-footer border-t border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 sm:items-center">
+            <label className="update-page__changelog-pref mr-auto flex items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                checked={!showChangelogAfterUpdate}
+                onCheckedChange={(v) => setShowChangelogPref(v !== true)}
+              />
+              <span>关闭后不再自动弹出</span>
+            </label>
+            {changelog?.changelogUrl ? (
+              <a
+                className="update-page__link self-center"
+                href={changelog.changelogUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                完整 CHANGELOG
+              </a>
+            ) : null}
+            <Button type="button" onClick={() => setChangelog(null)}>
+              知道了
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <GitMirrorDialog open={gitMirrorOpen} onClose={() => setGitMirrorOpen(false)} />
     </div>

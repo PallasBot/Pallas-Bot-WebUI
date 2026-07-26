@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -32,9 +32,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AI_ENTRY_PLUGIN_CONFIG_CHECK } from "@/config/aiEntrySemantics";
-import { cn } from "@/lib/utils";
 import { AI_NCM_DEFAULTS, aiRuntimeLayoutLabel } from "@/config/aiConstants";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 /** URL / 内部 panel；connection、runtime 为旧深链别名，归一到 service；draw-raw → draw。 */
 type Panel = "service" | "connection" | "runtime" | "assets" | "sing" | "tts" | "draw" | "ncm";
@@ -88,7 +96,6 @@ export default function AiConfigMediaSection() {
     });
   };
   const qc = useQueryClient();
-  const [msg, setMsg] = useState<string | null>(null);
 
   const aiCfgQ = useQuery({ queryKey: ["ai-extension-config"], queryFn: fetchAiExtensionConfig });
   const runtimeQ = useQuery({ queryKey: ["ai-runtime"], queryFn: fetchAiRuntimeStatus });
@@ -162,20 +169,23 @@ export default function AiConfigMediaSection() {
       api_prefix: (aiCfgQ.data?.api_prefix || "/api").trim() || "/api",
       timeout_sec: Number(timeoutSec) || 30,
     }),
-    onSuccess: async () => { setMsg("AI 扩展连接已保存"); await invalidate(); }, onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async () => { notifyOk("AI 扩展连接已保存"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const testMut = useMutation({
     mutationFn: postAiExtensionTest,
-    onSuccess: (r) => setMsg(r.reachable ? `连通性 OK (${r.latency_ms ?? "?"} ms)` : r.error || "不可达"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: (r) => {
+      if (r.reachable) notifyOk(`连通性 OK (${r.latency_ms ?? "?"} ms)`);
+      else notifyErr(r.error || "不可达");
+    },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const startMut = useMutation({
     mutationFn: () => postAiRuntimeStart(),
-    onSuccess: async () => { setMsg("媒体服务已启动"); await invalidate(); }, onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async () => { notifyOk("媒体服务已启动"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const stopMut = useMutation({
     mutationFn: postAiRuntimeStop,
-    onSuccess: async () => { setMsg("媒体服务已停止"); await invalidate(); }, onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async () => { notifyOk("媒体服务已停止"); await invalidate(); }, onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const installMut = useMutation({
     mutationFn: async (action: "clone" | "bootstrap" | "clone_and_bootstrap") => {
@@ -186,8 +196,8 @@ export default function AiConfigMediaSection() {
       });
       return waitForInstallJob(job.job_id, openAiInstallJobEventSource, setInstallProgress);
     },
-    onSuccess: async () => { setMsg("安装任务完成"); setInstallProgress(""); await invalidate(); },
-    onError: (e) => { setInstallProgress(""); setMsg(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e)); },
+    onSuccess: async () => { notifyOk("安装任务完成"); setInstallProgress(""); await invalidate(); },
+    onError: (e) => { setInstallProgress(""); notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e)); },
   });
   const pollJob = (jobId: string) => {
     if (pollRef.current != null) window.clearInterval(pollRef.current);
@@ -201,21 +211,21 @@ export default function AiConfigMediaSection() {
   };
   const downloadMut = useMutation({
     mutationFn: (assets?: string[]) => postMediaAssetsDownload(assets),
-    onSuccess: (job) => { setMsg(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`); if (job.job_id) pollJob(job.job_id); },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: (job) => { notifyOk(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`); if (job.job_id) pollJob(job.job_id); },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
-    onSuccess: async () => { setMsg("已删除选中资产"); await qc.invalidateQueries({ queryKey: ["media-assets"] }); },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async () => { notifyOk("已删除选中资产"); await qc.invalidateQueries({ queryKey: ["media-assets"] }); },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const singMut = useMutation({
     mutationFn: () => putSingDefaults({ default_speaker: defaultSpeaker, preferred_backend: preferredBackend }),
-    onSuccess: () => setMsg("唱歌默认已保存"), onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: () => notifyOk("唱歌默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const ttsMut = useMutation({
     mutationFn: () => putTtsDefaults({ ref_audio_path: ttsRef, prompt_text: ttsPrompt, prompt_lang: ttsPromptLang, text_lang: ttsTextLang }),
-    onSuccess: () => setMsg("TTS 默认已保存"), onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: () => notifyOk("TTS 默认已保存"), onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const singSaveRef = useRef(singMut.mutateAsync);
   const ttsSaveRef = useRef(ttsMut.mutateAsync);
@@ -236,18 +246,18 @@ export default function AiConfigMediaSection() {
   }, [loggedIn, payload.session]);
   const sendMut = useMutation({
     mutationFn: () => postAiNcmSendSms({ phone: phone.trim(), ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode }),
-    onSuccess: async (r) => { setMsg(r.ok ? "验证码已发送" : r.error || "发送失败"); await statusQ.refetch(); },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async (r) => { if (r.ok) notifyOk("验证码已发送"); else notifyErr(r.error || "发送失败"); await statusQ.refetch(); },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const verifyMut = useMutation({
     mutationFn: () => postAiNcmVerifySms({ phone: phone.trim(), captcha: captcha.trim(), ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode }),
-    onSuccess: async (r) => { setMsg(r.ok ? "登录成功" : r.error || "验证失败"); await statusQ.refetch(); },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async (r) => { if (r.ok) notifyOk("登录成功"); else notifyErr(r.error || "验证失败"); await statusQ.refetch(); },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const logoutMut = useMutation({
     mutationFn: postAiNcmLogout,
-    onSuccess: async (r) => { setMsg(r.ok ? "已登出" : r.error || "登出失败"); await statusQ.refetch(); },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: async (r) => { if (r.ok) notifyOk("已登出"); else notifyErr(r.error || "登出失败"); await statusQ.refetch(); },
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const busy = saveMut.isPending || testMut.isPending || startMut.isPending || stopMut.isPending || installMut.isPending ||
     downloadMut.isPending || deleteMut.isPending || singMut.isPending || ttsMut.isPending ||
@@ -300,6 +310,24 @@ export default function AiConfigMediaSection() {
     supportsConfigCheck: false,
   });
 
+  const onDrawStatusChange = useCallback(
+    (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+      setDrawStatus((prev) => {
+        if (
+          prev.saving === next.saving &&
+          prev.checking === next.checking &&
+          prev.loading === next.loading &&
+          prev.hasData === next.hasData &&
+          prev.supportsConfigCheck === next.supportsConfigCheck
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   const chromeMiddle = useMemo(() => (
     <ChromeField label="媒体配置" icon={Layers}>
       <Select
@@ -325,7 +353,6 @@ export default function AiConfigMediaSection() {
           className="shrink-0"
           disabled={busy || singQ.isLoading || singMut.isPending}
           onClick={() => {
-            setMsg(null);
             void singSaveRef.current();
           }}
         >
@@ -341,7 +368,6 @@ export default function AiConfigMediaSection() {
           className="shrink-0"
           disabled={busy || ttsQ.isLoading || ttsMut.isPending}
           onClick={() => {
-            setMsg(null);
             void ttsSaveRef.current();
           }}
         >
@@ -425,7 +451,6 @@ export default function AiConfigMediaSection() {
 
   return <AiConfigSectionCard contentClassName="space-y-4">
     <AiSectionHeader icon={panelMeta.icon} title={panelMeta.label} lead={panelMeta.lead} />
-    {msg ? <p className={cn("text-sm", /成功|OK|完成|已保存|已删除|任务|已发送|已登出|已启动|已停止/.test(msg) ? "text-emerald-400" : "text-destructive")}>{msg}</p> : null}
     {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
     {panel === "service" ? (
       <StateBlock loading={serviceLoading} error={serviceError}>
@@ -476,14 +501,14 @@ export default function AiConfigMediaSection() {
                   })}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" disabled={busy || !canManageRuntime} onClick={() => { setMsg(null); void startMut.mutateAsync(); }}>启动</Button>
-                  <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { setMsg(null); void stopMut.mutateAsync(); }}>停止</Button>
+                  <Button size="sm" disabled={busy || !canManageRuntime} onClick={() => { void startMut.mutateAsync(); }}>启动</Button>
+                  <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={busy || !canClone}
                     title="首次使用：拉取媒体服务源码并安装依赖"
-                    onClick={() => { setMsg(null); void installMut.mutateAsync("clone_and_bootstrap"); }}
+                    onClick={() => { void installMut.mutateAsync("clone_and_bootstrap"); }}
                   >
                     下载并安装
                   </Button>
@@ -492,7 +517,7 @@ export default function AiConfigMediaSection() {
                     variant="outline"
                     disabled={busy || !canBootstrap}
                     title="已有源码目录时：只重装依赖"
-                    onClick={() => { setMsg(null); void installMut.mutateAsync("bootstrap"); }}
+                    onClick={() => { void installMut.mutateAsync("bootstrap"); }}
                   >
                     安装依赖
                   </Button>
@@ -523,8 +548,8 @@ export default function AiConfigMediaSection() {
               </AiConfigField>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={busy} onClick={() => { setMsg(null); void saveMut.mutateAsync(); }}>保存</Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => { setMsg(null); void testMut.mutateAsync(); }}>测试连通</Button>
+              <Button size="sm" disabled={busy} onClick={() => { void saveMut.mutateAsync(); }}>保存</Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => { void testMut.mutateAsync(); }}>测试连通</Button>
             </div>
           </PluginConfigFormSection>
         </div>
@@ -578,7 +603,7 @@ export default function AiConfigMediaSection() {
                       size="sm"
                       variant="outline"
                       disabled={busy || !mediaQ.data?.download_allowed}
-                      onClick={() => { setMsg(null); void downloadMut.mutateAsync([key]); }}
+                      onClick={() => { void downloadMut.mutateAsync([key]); }}
                     >
                       下载
                     </Button>
@@ -586,7 +611,7 @@ export default function AiConfigMediaSection() {
                       size="sm"
                       variant="outline"
                       disabled={busy || !asset?.ready || mediaQ.data?.delete_allowed === false}
-                      onClick={() => { setMsg(null); void deleteMut.mutateAsync([key]); }}
+                      onClick={() => { void deleteMut.mutateAsync([key]); }}
                     >
                       删除
                     </Button>
@@ -600,7 +625,7 @@ export default function AiConfigMediaSection() {
               <Button
                 size="sm"
                 disabled={busy || !mediaQ.data?.download_allowed}
-                onClick={() => { setMsg(null); void downloadMut.mutateAsync(undefined); }}
+                onClick={() => { void downloadMut.mutateAsync(undefined); }}
               >
                 下载全部
               </Button>
@@ -725,7 +750,7 @@ export default function AiConfigMediaSection() {
           ref={drawWorkspaceRef}
           pluginName="draw"
           presentation="dialog"
-          onStatusChange={setDrawStatus}
+          onStatusChange={onDrawStatusChange}
         />
       </div>
     ) : null}
@@ -793,7 +818,7 @@ export default function AiConfigMediaSection() {
             <Button
               size="sm"
               disabled={busy || phone.trim().length < AI_NCM_DEFAULTS.phoneMinLength}
-              onClick={() => { setMsg(null); void sendMut.mutateAsync(); }}
+              onClick={() => { void sendMut.mutateAsync(); }}
             >
               发送验证码
             </Button>
@@ -805,7 +830,7 @@ export default function AiConfigMediaSection() {
                 || phone.trim().length < AI_NCM_DEFAULTS.phoneMinLength
                 || captcha.trim().length < AI_NCM_DEFAULTS.captchaMinLength
               }
-              onClick={() => { setMsg(null); void verifyMut.mutateAsync(); }}
+              onClick={() => { void verifyMut.mutateAsync(); }}
             >
               验证登录
             </Button>
@@ -813,7 +838,7 @@ export default function AiConfigMediaSection() {
               size="sm"
               variant="outline"
               disabled={busy || !loggedIn}
-              onClick={() => { setMsg(null); void logoutMut.mutateAsync(); }}
+              onClick={() => { void logoutMut.mutateAsync(); }}
             >
               登出
             </Button>

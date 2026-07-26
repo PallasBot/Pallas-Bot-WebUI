@@ -78,10 +78,30 @@ type Tab = "upstream" | "tasks" | "runtime" | "routing";
 type TasksViewMode = "tiers" | "all";
 
 const PROVIDER_TABS: Array<{ id: Tab; label: string; icon: LucideIcon; lead: string }> = [
-  { id: "upstream", label: "提供方", icon: Cloud, lead: "云端服务商或本机 Ollama。" },
-  { id: "tasks", label: "任务编排", icon: ListTree, lead: "高低两档或按任务细调主备提供方与模型。" },
-  { id: "runtime", label: "Ollama 运行", icon: Cpu, lead: "切换本机模型与 GPU 层数。" },
-  { id: "routing", label: "Ollama 分档", icon: GitBranch, lead: "本机多模型分档。" },
+  {
+    id: "upstream",
+    label: "提供方",
+    icon: Cloud,
+    lead: "登记云端 API 或本机 Ollama：地址、密钥与默认模型。",
+  },
+  {
+    id: "tasks",
+    label: "任务编排",
+    icon: ListTree,
+    lead: "按场景指定主用/备用：@ 对话、接话选句、本轮动作决策等。",
+  },
+  {
+    id: "runtime",
+    label: "Ollama 运行",
+    icon: Cpu,
+    lead: "切换当前本机运行模型，以及 GPU 层数等运行参数。",
+  },
+  {
+    id: "routing",
+    label: "Ollama 分档",
+    icon: GitBranch,
+    lead: "本机多模型时，把重活/轻活分到不同 Ollama 模型。",
+  },
 ];
 
 function cloneDoc(doc: LlmProvidersConfig): LlmProvidersConfig {
@@ -1560,7 +1580,7 @@ export default function LlmProvidersForm() {
                     <TierCard
                       kind="low"
                       title="低级任务"
-                      description="选句、轻润色、兜底、群情感 refine"
+                      description="选句、轻润色、兜底、群情感与本轮动作决策"
                       primaryInvalid={!taskTiers.low.primary.providerId}
                       primary={renderProviderModelSlot({
                         providerId: taskTiers.low.primary.providerId,
@@ -1591,7 +1611,7 @@ export default function LlmProvidersForm() {
                         key={task}
                         kind={meta.kind}
                         title={meta.title}
-                        description={`${meta.description} · ${task}`}
+                        description={meta.description}
                         primaryInvalid={!slot.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: slot.primary.providerId,

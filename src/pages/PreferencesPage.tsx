@@ -42,6 +42,7 @@ export default function PreferencesPage() {
   const [controlRadiusDraft, setControlRadiusDraft] = useState(prefs.controlRadius);
   const [density, setDensity] = useState<DensityMode>(prefs.density);
   const [shadowIntensityDraft, setShadowIntensityDraft] = useState(prefs.shadowIntensity);
+  const [showUpdateChangelog, setShowUpdateChangelog] = useState(prefs.showUpdateChangelog);
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [pwdErr, setPwdErr] = useState("");
@@ -78,6 +79,7 @@ export default function PreferencesPage() {
     setControlRadiusDraft(next.controlRadius);
     setDensity(next.density);
     setShadowIntensityDraft(next.shadowIntensity);
+    setShowUpdateChangelog(next.showUpdateChangelog);
   }
 
   function onGlassBlurInput(v: number) {
@@ -223,13 +225,36 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard title="开发模式" lead="联调时可跳过控制台登录与 API token；生产环境务必关闭。">
-          <ConsoleDevModePanel
-            active={webuiDevModeActive}
-            showBanner={false}
-            toolbar
-            onUpdated={onWebuiDevModeUpdated}
-          />
+        <PrefsSettingCard
+          title="开发与更新"
+          lead="开发模式仅供本机/内网联调；CHANGELOG 弹窗可随时在更新页手动打开。"
+        >
+          <div className="space-y-3">
+            <ConsoleDevModePanel
+              active={webuiDevModeActive}
+              showBanner={false}
+              prefsRow
+              onUpdated={onWebuiDevModeUpdated}
+            />
+            <div className="prefs-switch-row">
+              <span className="prefs-switch-row__label">应用更新后弹出 CHANGELOG</span>
+              <div className="prefs-switch-row__control">
+                <Switch
+                  className={PREFS_SWITCH_CLASS}
+                  checked={showUpdateChangelog}
+                  onCheckedChange={(v) => {
+                    const next = Boolean(v);
+                    setShowUpdateChangelog(next);
+                    patchPrefs({ showUpdateChangelog: next });
+                  }}
+                  aria-label="应用更新后弹出 CHANGELOG"
+                />
+                <span className="prefs-switch-row__state" aria-hidden="true">
+                  {showUpdateChangelog ? "开" : "关"}
+                </span>
+              </div>
+            </div>
+          </div>
         </PrefsSettingCard>
 
         {surfaceStyle === "glass" ? (

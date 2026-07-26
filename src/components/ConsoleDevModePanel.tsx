@@ -17,6 +17,7 @@ export default function ConsoleDevModePanel({
   active,
   compact = false,
   toolbar = false,
+  prefsRow = false,
   showBanner = true,
   showPanel = true,
   onUpdated,
@@ -24,6 +25,8 @@ export default function ConsoleDevModePanel({
   active: boolean;
   compact?: boolean;
   toolbar?: boolean;
+  /** 偏好页：与其它开关同行左文案右开关 */
+  prefsRow?: boolean;
   showBanner?: boolean;
   showPanel?: boolean;
   onUpdated?: (active: boolean) => void;
@@ -32,7 +35,7 @@ export default function ConsoleDevModePanel({
   const [err, setErr] = useState("");
 
   const switchLabel = active ? "开发模式已开启" : "开发模式已关闭";
-  const showDevBanner = showBanner && active && !toolbar;
+  const showDevBanner = showBanner && active && !toolbar && !prefsRow;
 
   async function applyDevMode(next: boolean) {
     if (busy) return;
@@ -69,6 +72,30 @@ export default function ConsoleDevModePanel({
           控制台 API 与页面鉴权已跳过；请勿在公网或生产环境长期开启。
           <Link to={`/plugins/${PB_WEBUI_PLUGIN}`}>网页控制台配置</Link>
         </span>
+      </div>
+    );
+  }
+
+  if (showPanel && prefsRow) {
+    return (
+      <div className="prefs-dev-mode-row" title={DEV_MODE_TOOLTIP}>
+        <div className="prefs-switch-row">
+          <span className="prefs-switch-row__label">开发模式</span>
+          <div className="prefs-switch-row__control">
+            <ConsoleSwitch
+              checked={active}
+              disabled={busy}
+              tone="amber"
+              showLabel={false}
+              ariaLabel={active ? "关闭开发模式" : "开启开发模式"}
+              onCheckedChange={onToggleInput}
+            />
+            <span className="prefs-switch-row__state" aria-hidden="true">
+              {active ? "开" : "关"}
+            </span>
+          </div>
+        </div>
+        {err ? <div className="alert alert--err">{err}</div> : null}
       </div>
     );
   }

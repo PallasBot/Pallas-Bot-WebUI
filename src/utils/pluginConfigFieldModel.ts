@@ -92,7 +92,11 @@ export function parsePluginConfigField(f: PluginConfigField, raw: unknown): unkn
 export function fieldValuesFromConfig(fields: PluginConfigField[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of fields) {
-    out[f.name] = fieldModel(f);
+    try {
+      out[f.name] = fieldModel(f);
+    } catch {
+      out[f.name] = f.kind === "bool" ? "false" : f.kind === "json" ? "null" : "";
+    }
   }
   return out;
 }

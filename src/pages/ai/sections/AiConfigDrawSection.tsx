@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRegisterAiConfigChrome } from "@/components/ai/AiConfigChromeContext";
 import PluginConfigWorkspace, {
@@ -22,6 +22,24 @@ export default function AiConfigDrawSection() {
     supportsConfigCheck: false,
   });
 
+  const onStatusChange = useCallback(
+    (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+      setStatus((prev) => {
+        if (
+          prev.saving === next.saving &&
+          prev.checking === next.checking &&
+          prev.loading === next.loading &&
+          prev.hasData === next.hasData &&
+          prev.supportsConfigCheck === next.supportsConfigCheck
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   useRegisterAiConfigChrome({});
 
   const canSave = status.hasData && !status.loading && !status.saving && !status.checking;
@@ -43,7 +61,7 @@ export default function AiConfigDrawSection() {
           ref={workspaceRef}
           pluginName="draw"
           presentation="dialog"
-          onStatusChange={setStatus}
+          onStatusChange={onStatusChange}
         />
         <div className="flex flex-wrap gap-2">
           {status.supportsConfigCheck ? (

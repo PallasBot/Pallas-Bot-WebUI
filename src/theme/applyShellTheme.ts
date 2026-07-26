@@ -24,6 +24,8 @@ export type PrefsSlice = {
   cardGlassOpacity: number;
   /** 卡片/壳层阴影强度倍率（0.4–1.8，默认 1） */
   shadowIntensity: number;
+  /** 应用 WebUI/Bot 更新后是否自动弹出 CHANGELOG（默认开） */
+  showUpdateChangelog: boolean;
 };
 
 const DEFAULTS: PrefsSlice = {
@@ -38,6 +40,7 @@ const DEFAULTS: PrefsSlice = {
   glassBlur: 12,
   cardGlassOpacity: 0.25,
   shadowIntensity: 1,
+  showUpdateChangelog: true,
 };
 
 const ACCENTS = new Set<AccentPreset>(["sky", "indigo", "emerald", "rose", "amber", "violet"]);
@@ -100,6 +103,10 @@ export function readPrefs(): PrefsSlice {
           ? Number(parsed.shadowIntensity)
           : DEFAULTS.shadowIntensity,
       ),
+      showUpdateChangelog:
+        parsed.showUpdateChangelog === undefined
+          ? DEFAULTS.showUpdateChangelog
+          : Boolean(parsed.showUpdateChangelog),
     };
   } catch {
     return { ...DEFAULTS };

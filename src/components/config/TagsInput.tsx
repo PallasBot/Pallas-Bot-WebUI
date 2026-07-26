@@ -357,7 +357,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                           onClick={() => void handleCopy(tag, originalIndex)}
                         >
                           {copiedIndex === originalIndex ? (
-                            <Check className="size-3.5 text-emerald-500" />
+                            <Check className="size-3.5" />
                           ) : (
                             <Copy className="size-3.5" />
                           )}

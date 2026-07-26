@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
@@ -10,6 +10,7 @@ import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { collectFieldValues, fieldValuesFromConfig } from "@/utils/pluginConfigFieldModel";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 function boolFromField(value: string | undefined): boolean {
   const raw = String(value ?? "").trim().toLowerCase();
@@ -54,7 +55,6 @@ export default function AiLlmFieldPanel({
   const qc = useQueryClient();
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [baseline, setBaseline] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const cfgQ = useQuery({
     queryKey: ["common-config", "llm"],
@@ -81,22 +81,24 @@ export default function AiLlmFieldPanel({
       return putCommonConfig("llm", collectFieldValues(allFields, fieldValues));
     },
     onSuccess: async () => {
-      setMsg(savedMessage);
+      pushConsoleToast(savedMessage, "ok");
       setBaseline(JSON.stringify(fieldValues));
       await qc.invalidateQueries({ queryKey: ["common-config", "llm"] });
       await qc.invalidateQueries({ queryKey: ["common-config-raw", "llm"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => pushConsoleToast(axiosErrorDetail(e) || "保存失败", "err"),
   });
 
   function setFieldValue(name: string, value: string) {
     setFieldValues((prev) => ({ ...prev, [name]: value }));
   }
 
+  const saveMutRef = useRef(saveMut);
+  saveMutRef.current = saveMut;
+
   const save = useCallback(() => {
-    setMsg(null);
-    void saveMut.mutateAsync();
-  }, [saveMut]);
+    void saveMutRef.current.mutateAsync();
+  }, []);
 
   useEffect(() => {
     if (!onSaveState) return;
@@ -127,12 +129,6 @@ export default function AiLlmFieldPanel({
           ) : undefined
         }
       />
-
-      {msg ? (
-        <p className={`text-sm ${msg.includes("已保存") ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
-          {msg}
-        </p>
-      ) : null}
 
       <StateBlock
         loading={cfgQ.isLoading}

@@ -15,6 +15,7 @@ import {
   Store,
   Users,
   Globe2,
+  Images,
 } from "lucide-react";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
 
@@ -46,6 +47,7 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
   { to: "/database", label: "数据库", section: "数据", icon: Database },
   { to: "/database/backups", label: "备份管理", section: "数据", icon: Archive },
   { to: "/community", label: "统计与语料", section: "数据", icon: Globe2 },
+  { to: "/community-gallery", label: "社区投稿", section: "", icon: Images },
   { to: "/preferences", label: "偏好", section: "", icon: Palette },
   { to: "/update", label: "更新", section: "", icon: Download },
 ];

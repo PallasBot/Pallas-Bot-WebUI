@@ -266,7 +266,12 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
 
   useEffect(() => {
     if (!cfgQ.data?.fields) return;
-    setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
+    try {
+      setFieldValues(fieldValuesFromConfig(cfgQ.data.fields));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "配置字段解析失败");
+      setFieldValues({});
+    }
     setMode("form");
     setCheckErr("");
     setCheckLines([]);
@@ -306,7 +311,7 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
       await qc.invalidateQueries({ queryKey: ["plugins"] });
     },
     onError: (e) => {
-      const detail = axiosErrorDetail(e);
+      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败");
       setMsg(detail);
       pushConsoleToast(detail, "err");
     },
@@ -388,8 +393,14 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   async function save() {
     if (!cfgQ.data) return;
     setMsg(null);
-    if (mode === "raw") await saveRaw.mutateAsync();
-    else await saveForm.mutateAsync();
+    try {
+      if (mode === "raw") await saveRaw.mutateAsync();
+      else await saveForm.mutateAsync();
+    } catch (e) {
+      const detail = axiosErrorDetail(e) || (e instanceof Error ? e.message : "保存失败");
+      setMsg(detail);
+      pushConsoleToast(detail, "err");
+    }
   }
 
   useImperativeHandle(ref, () => ({
@@ -403,7 +414,8 @@ const PluginConfigWorkspace = forwardRef<PluginConfigWorkspaceHandle, Props>(fun
   }));
 
   useEffect(() => {
-    onStatusChange?.({ saving, checking, loading, hasData, supportsConfigCheck });
+    if (!onStatusChange) return;
+    onStatusChange({ saving, checking, loading, hasData, supportsConfigCheck });
   }, [saving, checking, loading, hasData, supportsConfigCheck, onStatusChange]);
 
   const tabButtons: Array<{ id: ConfigTab; label: string; show: boolean }> = [

@@ -24,6 +24,13 @@ export default function ConsoleSwitch({
         checked && "console-bool-switch--on",
         tone === "amber" && "console-bool-switch--amber",
       )}
+      onMouseDown={(e) => {
+        if (disabled) return;
+        // 避免聚焦时 scrollIntoView 滚到 transform 居中的 Dialog 上，把内容顶出可视区。
+        e.preventDefault();
+        const input = e.currentTarget.querySelector<HTMLInputElement>("input");
+        input?.focus({ preventScroll: true });
+      }}
     >
       <input
         type="checkbox"

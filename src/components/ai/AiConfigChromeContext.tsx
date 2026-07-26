@@ -4,6 +4,7 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -35,7 +36,16 @@ export function AiConfigChromeProvider({
 }) {
   const [slots, setSlotsState] = useState<AiConfigChromeSlots>({});
   const setSlots = useCallback((next: AiConfigChromeSlots) => {
-    setSlotsState(next);
+    setSlotsState((prev) => {
+      if (
+        prev.middle === next.middle &&
+        prev.trailing === next.trailing &&
+        prev.onRefresh === next.onRefresh
+      ) {
+        return prev;
+      }
+      return next;
+    });
   }, []);
 
   const value = useMemo(
@@ -58,14 +68,27 @@ export function useAiConfigChromeSlots(): AiConfigChromeSlots {
 
 /**
  * 段内注册工具条 middle / trailing / onRefresh。
- * 调用方须对 middle / trailing / onRefresh 做 useMemo / useCallback，避免每渲循环。
+ * onRefresh 经 ref 稳定；middle / trailing 仍须 useMemo，避免每渲 setSlots。
  */
 export function useRegisterAiConfigChrome(slots: AiConfigChromeSlots) {
   const setSlots = useContext(AiConfigChromeContext)?.setSlots;
   const { middle, trailing, onRefresh } = slots;
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
+  const stableRefresh = useCallback(() => {
+    onRefreshRef.current?.();
+  }, []);
+
+  const hasRefresh = Boolean(onRefresh);
+
   useLayoutEffect(() => {
     if (!setSlots) return;
-    setSlots({ middle, trailing, onRefresh });
+    setSlots({
+      middle,
+      trailing,
+      onRefresh: hasRefresh ? stableRefresh : undefined,
+    });
     return () => setSlots({});
-  }, [setSlots, middle, trailing, onRefresh]);
+  }, [setSlots, middle, trailing, hasRefresh, stableRefresh]);
 }

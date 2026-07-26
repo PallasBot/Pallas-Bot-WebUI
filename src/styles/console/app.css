@@ -11499,7 +11499,7 @@ html[data-theme="light"] .plugin-store-page--hub .plugin-store-card__foot-btn--l
 .plugin-config-dialog__bd {
   flex: 1;
   overflow: auto;
-  min-height: 240px;
+  min-height: 0;
   padding: 0;
 }
 
@@ -11852,7 +11852,7 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-workspace--dialog .he
 }
 
 .readme-code-block__copy--done {
-  color: var(--ok, #2a7);
+  color: var(--text-muted);
 }
 
 .readme-code-block__copy svg {
