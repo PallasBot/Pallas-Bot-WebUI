@@ -50,8 +50,7 @@ const FG_PANEL = "friends-groups-page__panel flex flex-col overflow-hidden shado
 const FG_PANEL_HD =
   "panel__hd panel__hd--split flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FG_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
-const FG_SECTION_SEL =
-  "chrome-section-compact-sel h-9 w-auto min-w-[5.25rem] max-w-[7rem] shrink-0";
+const FG_SECTION_SEL = "chrome-section-compact-sel h-9 w-auto shrink-0";
 
 const FG_LIST_SKEL_ROWS = 8;
 
@@ -507,7 +506,9 @@ export default function FriendsGroupsPage() {
         <ChromeField label="选择" icon={Layers} className="shrink-0">
           <Select value={section} onValueChange={(v) => selectSection(v as FgSectionId)}>
             <SelectTrigger className={FG_SECTION_SEL} aria-label="好友或群聊">
-              <SelectValue placeholder="选择">{sectionMeta.label}</SelectValue>
+              <SelectValue placeholder="选择">
+                <ChromeOptionLabel icon={sectionMeta.icon}>{sectionMeta.label}</ChromeOptionLabel>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent align="start">
               {FG_SECTIONS.map((s) => (
