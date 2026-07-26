@@ -23,6 +23,7 @@ export const LOW_TIER_TASKS = [
   "repeater_polish_lite",
   "repeater_fallback",
   "affect_refine",
+  "turn_decision",
 ] as const;
 
 export const ALL_ROUTABLE_TASKS = [...HIGH_TIER_TASKS, ...LOW_TIER_TASKS] as const;
@@ -45,6 +46,7 @@ export const TASK_ROUTE_META: Record<
   repeater_polish_lite: { title: "轻润色", description: "语料命中后轻顺口气", kind: "low" },
   repeater_fallback: { title: "接话兜底", description: "语料不足时现编", kind: "low" },
   affect_refine: { title: "群情感 refine", description: "后台刷群情感偏移", kind: "low" },
+  turn_decision: { title: "本轮动作决策", description: "决定本轮回复、跳过或工具路径", kind: "low" },
 };
 
 export type TaskRouteSlotState = {

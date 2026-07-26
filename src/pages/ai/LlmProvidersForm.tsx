@@ -1560,7 +1560,7 @@ export default function LlmProvidersForm() {
                     <TierCard
                       kind="low"
                       title="低级任务"
-                      description="选句、轻润色、兜底、群情感 refine"
+                      description="选句、轻润色、兜底、群情感与本轮动作决策"
                       primaryInvalid={!taskTiers.low.primary.providerId}
                       primary={renderProviderModelSlot({
                         providerId: taskTiers.low.primary.providerId,
@@ -1591,7 +1591,7 @@ export default function LlmProvidersForm() {
                         key={task}
                         kind={meta.kind}
                         title={meta.title}
-                        description={`${meta.description} · ${task}`}
+                        description={meta.description}
                         primaryInvalid={!slot.primary.providerId}
                         primary={renderProviderModelSlot({
                           providerId: slot.primary.providerId,

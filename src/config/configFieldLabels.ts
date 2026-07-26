@@ -56,6 +56,7 @@ export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_repeater_max_inflight: "接话并发上限",
   llm_repeater_global_rpm: "接话全局限流（次/分）",
   llm_reply_gate_enabled: "过滤无意义 @",
+  llm_current_turn_decision_enabled: "启用本轮动作决策",
   llm_chat_queue_merge: "冷却期合并多条 @",
   llm_reply_postprocess_enabled: "回复后处理",
   llm_reply_typo_enabled: "偶发近音错别字",
@@ -98,8 +99,9 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
       "llm_tools_desc_max_len",
       "llm_governance_enabled",
       "conversation_feature_level",
+      "llm_current_turn_decision_enabled",
     ],
-    hint: "总开关、接话方式与工具策略。会话与记忆见同页其它分区；联网搜索见下方分组。",
+    hint: "总开关、接话方式与工具策略。本轮动作决策关闭时不会额外请求模型或产生费用；模型在「接入 → 任务编排」设置。",
   },
   {
     title: "联网搜索",
@@ -220,6 +222,7 @@ export const HIDDEN_LLM_STRATEGY_FIELDS = new Set([
   "llm_memory_graph_extract_on_write",
   "llm_memory_hiergraph_max_layers",
   "llm_relationship_notes_enabled",
+  "llm_current_turn_decision_model",
 ]);
 
 export function llmBotFieldGroupsForMode(isSimpleMode: boolean): ReadonlyArray<LlmBotFieldGroupDef> {
