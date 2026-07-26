@@ -12,10 +12,23 @@ import AiScopeHint from "@/components/ai/AiScopeHint";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Draft = Pick<SceneDialogueExample, "scene" | "user_cue" | "positive" | "negative" | "enabled" | "order">;
+
+const sceneOptions: ComboboxOption[] = [
+  { value: "banter", label: "接梗玩笑", triggerLabel: "banter · 接梗玩笑", keywords: "接梗 玩笑 梗" },
+  { value: "smalltalk", label: "日常闲聊", triggerLabel: "smalltalk · 日常闲聊", keywords: "日常 闲聊 接话" },
+  { value: "venting", label: "吐槽安抚", triggerLabel: "venting · 吐槽安抚", keywords: "吐槽 加班 抽卡 安抚" },
+  { value: "provocation", label: "挑衅抬杠", triggerLabel: "provocation · 挑衅抬杠", keywords: "挑衅 抬杠 顶嘴" },
+  { value: "group_threading", label: "群聊接续", triggerLabel: "group_threading · 群聊接续", keywords: "群聊 接续 上下文" },
+  { value: "light_help", label: "轻量帮助", triggerLabel: "light_help · 轻量帮助", keywords: "帮助 问题 说明" },
+  { value: "greeting", label: "问候", triggerLabel: "greeting · 问候", keywords: "问候 早安 晚安" },
+  { value: "warm_reply", label: "友好回应", triggerLabel: "warm_reply · 友好回应", keywords: "感谢 安慰 友好" },
+  { value: "agreement", label: "附和认同", triggerLabel: "agreement · 附和认同", keywords: "附和 认同 同意" },
+];
 
 const emptyDraft = (): Draft => ({
   scene: "",
@@ -91,7 +104,15 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
           <>
             <div className="space-y-2 rounded-md border p-3">
               <div className="grid gap-2 sm:grid-cols-2">
-                <Input value={draft.scene} onChange={(e) => setDraft({ ...draft, scene: e.target.value })} placeholder="场景，如 banter" />
+                <Combobox
+                  value={draft.scene}
+                  onValueChange={(scene) => setDraft({ ...draft, scene })}
+                  options={sceneOptions}
+                  allowCustom
+                  placeholder="选择场景"
+                  searchPlaceholder="搜索或输入自定义场景"
+                  ariaLabel="场景"
+                />
                 <Input value={draft.user_cue} onChange={(e) => setDraft({ ...draft, user_cue: e.target.value })} placeholder="用户线索" />
               </div>
               <Textarea value={draft.positive} onChange={(e) => setDraft({ ...draft, positive: e.target.value })} placeholder="建议回应或示例" />

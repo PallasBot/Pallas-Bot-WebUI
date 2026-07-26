@@ -43,6 +43,7 @@ npm run sync:console-openapi-types   # 从 ../Pallas-Bot/openspec 生成
 - 样式优先复用 `src/styles/console/` 与既有 utility class；页面特有样式放对应 css 或带页面根类名前缀。
 - 新增控件优先 shadcn（`src/components/ui/`）；注释保持精简。
 - 新增函数非必要不要以下划线 `_` 开头。
+- 录入已知结构值时，优先使用带预设选项的 `Combobox`，而非自由文本 `Input`；后端允许扩展值时保留自定义输入，并提供规范值搜索与说明。
 
 ### 窄屏体验（必做）
 
