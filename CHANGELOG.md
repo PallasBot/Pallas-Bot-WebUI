@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.10] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(protocol): NapCat Overview 展示 WebUI token 与端口 ([aeccb7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/aeccb7a10c1e910236614fadc455a49d3b607b7d))
+
+**完整变更**: [`v0.7.9...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.9...HEAD)
+
+
 ## [0.7.9] - 2026-07-26
 
 ### 🚀 新功能
