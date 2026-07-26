@@ -6,6 +6,15 @@
 
 <!-- entries -->
 
+## [0.7.12] - 2026-07-26
+
+### 🚀 新功能
+
+* feat(ai): 对话策略页暴露发言感知配置分组 ([4b81608](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/4b816081701d0aa95ce7184c7a20c74151dea528))
+
+**完整变更**: [`v0.7.11...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.7.11...HEAD)
+
+
 ## [0.7.11] - 2026-07-26
 
 ### 🚀 新功能
