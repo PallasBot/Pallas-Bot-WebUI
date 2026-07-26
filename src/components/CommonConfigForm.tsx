@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { axiosErrorDetail } from "@/api/http";
 import {
@@ -188,11 +188,16 @@ export default function CommonConfigForm({
     setFieldValues((prev) => ({ ...prev, [name]: value }));
   }
 
+  const saveFormRef = useRef(saveForm);
+  const saveRawRef = useRef(saveRaw);
+  saveFormRef.current = saveForm;
+  saveRawRef.current = saveRaw;
+
   const save = useCallback(() => {
     setMsg(null);
-    if (mode === "raw") void saveRaw.mutateAsync();
-    else void saveForm.mutateAsync();
-  }, [mode, saveForm, saveRaw]);
+    if (mode === "raw") void saveRawRef.current.mutateAsync();
+    else void saveFormRef.current.mutateAsync();
+  }, [mode]);
 
   useEffect(() => {
     if (!onSaveState) return;

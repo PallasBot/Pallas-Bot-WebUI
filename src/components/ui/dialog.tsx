@@ -26,16 +26,22 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onScroll, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "ui-surface-dialog fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,calc(100dvh-32px),52rem)] w-[min(42rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-[var(--radius-md,12px)] border bg-background p-4 shadow-lg",
+        "ui-surface-dialog fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,calc(100dvh-32px),52rem)] w-[min(42rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-[var(--radius-md,12px)] border bg-background p-4 shadow-lg",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
+      onScroll={(e) => {
+        // overflow:hidden 仍可被 scrollIntoView 写 scrollTop；固定+transform 弹层被滚走会像「白屏」。
+        if (e.currentTarget.scrollTop !== 0) e.currentTarget.scrollTop = 0;
+        if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0;
+        onScroll?.(e);
+      }}
       {...props}
     >
       {children}

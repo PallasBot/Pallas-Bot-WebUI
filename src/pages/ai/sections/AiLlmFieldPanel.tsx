@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { axiosErrorDetail } from "@/api/http";
@@ -93,10 +93,13 @@ export default function AiLlmFieldPanel({
     setFieldValues((prev) => ({ ...prev, [name]: value }));
   }
 
+  const saveMutRef = useRef(saveMut);
+  saveMutRef.current = saveMut;
+
   const save = useCallback(() => {
     setMsg(null);
-    void saveMut.mutateAsync();
-  }, [saveMut]);
+    void saveMutRef.current.mutateAsync();
+  }, []);
 
   useEffect(() => {
     if (!onSaveState) return;

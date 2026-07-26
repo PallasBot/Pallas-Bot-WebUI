@@ -48,6 +48,21 @@ export default function PluginConfigDialog({
     supportsConfigCheck: false,
   });
 
+  const onStatusChange = (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+    setStatus((prev) => {
+      if (
+        prev.saving === next.saving &&
+        prev.checking === next.checking &&
+        prev.loading === next.loading &&
+        prev.hasData === next.hasData &&
+        prev.supportsConfigCheck === next.supportsConfigCheck
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  };
+
   const displayTitle = pluginRow?.metadata?.name || pluginName;
   const pluginResolvedId = (pluginRow?.resolved_plugin_id || pluginName).trim();
   const showDrawAiConfigHint = pluginResolvedId === "draw";
@@ -96,7 +111,7 @@ export default function PluginConfigDialog({
           </div>
         </DialogHeader>
 
-        <div className="plugin-config-dialog__bd min-h-[240px] flex-1 overflow-auto">
+        <div className="plugin-config-dialog__bd min-h-0 flex-1 overflow-auto">
           {showDrawAiConfigHint ? (
             <p className="px-4 pt-3 text-sm text-muted-foreground">
               推荐在 <Link to={aiConfigSectionPath("media", "draw")} className="text-primary underline-offset-2 hover:underline">AI 配置 · 画画</Link>
@@ -111,7 +126,7 @@ export default function PluginConfigDialog({
               pluginName={pluginName}
               initialPluginRow={pluginRow}
               readmeTarget={readmeTarget}
-              onStatusChange={setStatus}
+              onStatusChange={onStatusChange}
             />
           ) : null}
         </div>

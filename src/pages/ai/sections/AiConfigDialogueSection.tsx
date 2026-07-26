@@ -68,7 +68,18 @@ export default function AiConfigDialogueSection() {
   const editMode: EditMode = panel === "raw" ? "raw" : "form";
   const [saveState, setSaveState] = useState<AiConfigSaveState | null>(null);
   const onSaveState = useCallback((state: AiConfigSaveState | null) => {
-    setSaveState(state);
+    setSaveState((prev) => {
+      if (state == null) return null;
+      if (
+        prev &&
+        prev.dirty === state.dirty &&
+        prev.saving === state.saving &&
+        prev.save === state.save
+      ) {
+        return prev;
+      }
+      return state;
+    });
   }, []);
 
   const setPanel = (next: Panel) => {

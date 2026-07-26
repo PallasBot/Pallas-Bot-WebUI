@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -299,6 +299,24 @@ export default function AiConfigMediaSection() {
     hasData: false,
     supportsConfigCheck: false,
   });
+
+  const onDrawStatusChange = useCallback(
+    (next: Omit<PluginConfigWorkspaceHandle, "save" | "runConfigCheck">) => {
+      setDrawStatus((prev) => {
+        if (
+          prev.saving === next.saving &&
+          prev.checking === next.checking &&
+          prev.loading === next.loading &&
+          prev.hasData === next.hasData &&
+          prev.supportsConfigCheck === next.supportsConfigCheck
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const chromeMiddle = useMemo(() => (
     <ChromeField label="媒体配置" icon={Layers}>
@@ -725,7 +743,7 @@ export default function AiConfigMediaSection() {
           ref={drawWorkspaceRef}
           pluginName="draw"
           presentation="dialog"
-          onStatusChange={setDrawStatus}
+          onStatusChange={onDrawStatusChange}
         />
       </div>
     ) : null}
