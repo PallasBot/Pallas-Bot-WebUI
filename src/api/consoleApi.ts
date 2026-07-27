@@ -1892,9 +1892,9 @@ export async function fetchCommunityStats(options?: { bypassCache?: boolean }): 
 
 /** Bot 进程侧探测社区中心 HTTPS（主/备）并返回上报诊断包。 */
 export async function probeCommunityConnectivity(): Promise<CommunityConnectivityCheckData> {
-  return await consoleOpenapiPost<
+  return (await consoleOpenapiPost<
     ConsoleOpenapiPaths["/pallas/api/community-stats/connectivity-check"]["post"]
-  >("/community-stats/connectivity-check", {});
+  >("/community-stats/connectivity-check", {})) as CommunityConnectivityCheckData;
 }
 
 const CORPUS_HOT_FRESH_MS = 120_000;

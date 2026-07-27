@@ -1,5 +1,14 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef, type HTMLAttributes } from "react";
-import { Check, Copy, Plus, X } from "lucide-react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+  type DragEvent,
+  type HTMLAttributes,
+} from "react";
+import { Check, Copy, GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +31,10 @@ export type TagsInputProps = {
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   /** 提交前校验；不匹配则忽略 */
   acceptPattern?: RegExp;
+  /** 允许拖拽改序（壳上芯片与「更多」列表） */
+  sortable?: boolean;
+  /** 第一项显示「主用」标记（常与 sortable 同开） */
+  showPrimaryBadge?: boolean;
 };
 
 function truncateToWidth(text: string, maxWidth = 10): string {
@@ -62,6 +75,16 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+function reorderList(list: string[], from: number, to: number): string[] {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) {
+    return list;
+  }
+  const next = list.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
 const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput(
   {
     value,
@@ -73,6 +96,8 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
     className,
     inputMode,
     acceptPattern,
+    sortable = false,
+    showPrimaryBadge = false,
   },
   ref,
 ) {
@@ -82,6 +107,8 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
   const [moreOpen, setMoreOpen] = useState(false);
   const [shellWidth, setShellWidth] = useState(240);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const popoverInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef(list);
@@ -99,15 +126,17 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
   disabledRef.current = disabled;
 
   const isEmbedded = variant === "embedded";
+  const canReorder = sortable && !disabled;
+  const popoverReorderable = canReorder && !searchQuery.trim();
 
-  const TAG_SLOT = 88;
+  const TAG_SLOT = showPrimaryBadge ? 108 : 88;
   const MORE_SLOT = 88;
   const PAD = 20;
   const maxVisibleTags = useMemo(() => {
     if (!isEmbedded) return list.length;
     const available = Math.max(0, shellWidth - MORE_SLOT - PAD);
     return Math.max(0, Math.floor(available / TAG_SLOT));
-  }, [isEmbedded, list.length, shellWidth]);
+  }, [isEmbedded, list.length, shellWidth, TAG_SLOT]);
 
   const visibleTags = isEmbedded ? list.slice(0, maxVisibleTags) : list;
   const hiddenCount = isEmbedded ? Math.max(0, list.length - maxVisibleTags) : 0;
@@ -176,6 +205,36 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
     window.setTimeout(() => setCopiedIndex((cur) => (cur === index ? null : cur)), 1500);
   }
 
+  function clearDragState() {
+    setDragFrom(null);
+    setDragOver(null);
+  }
+
+  function onChipDragStart(index: number, e: DragEvent) {
+    if (!canReorder) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+    setDragFrom(index);
+  }
+
+  function onChipDragOver(index: number, e: DragEvent) {
+    if (!canReorder || dragFrom === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOver !== index) setDragOver(index);
+  }
+
+  function onChipDrop(index: number, e: DragEvent) {
+    if (!canReorder) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("text/plain");
+    const from = Number.parseInt(raw || String(dragFrom ?? ""), 10);
+    clearDragState();
+    if (!Number.isFinite(from)) return;
+    const next = reorderList(list, from, index);
+    if (next !== list) onChange(next);
+  }
+
   function onMoreOpenChange(open: boolean) {
     if (!open) {
       // 关闭「更多」时把未回车草稿一并提交，避免点保存前关掉弹层丢密钥
@@ -184,6 +243,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
         commitTag(pending);
         setSearchQuery("");
       }
+      clearDragState();
     }
     setMoreOpen(open);
     if (open) {
@@ -203,13 +263,32 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
     return () => ro.disconnect();
   }, [isEmbedded, list.length]);
 
+  function primaryBadge(index: number) {
+    if (!showPrimaryBadge || index !== 0 || list.length < 2) return null;
+    return <span className="tags-input__primary-badge">主用</span>;
+  }
+
   if (!isEmbedded) {
     return (
       <div className={cn("tags-input tags-input--stacked", disabled && "tags-input--disabled", className)}>
         {list.length ? (
           <div className="tags-input__chips">
             {list.map((tag, index) => (
-              <span key={`${tag}-${index}`} className="tags-input__chip">
+              <span
+                key={`${tag}-${index}`}
+                className={cn(
+                  "tags-input__chip",
+                  canReorder && "tags-input__chip--sortable",
+                  dragFrom === index && "tags-input__chip--dragging",
+                  dragOver === index && dragFrom !== index && "tags-input__chip--drag-over",
+                )}
+                draggable={canReorder}
+                onDragStart={(e) => onChipDragStart(index, e)}
+                onDragOver={(e) => onChipDragOver(index, e)}
+                onDrop={(e) => onChipDrop(index, e)}
+                onDragEnd={clearDragState}
+              >
+                {primaryBadge(index)}
                 <span className="tags-input__chip-text">{tag}</span>
                 <button
                   type="button"
@@ -217,6 +296,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                   aria-label={`移除 ${tag}`}
                   disabled={disabled}
                   onClick={() => removeAt(index)}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   ×
                 </button>
@@ -266,9 +346,24 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
           </PopoverTrigger>
           <div className="tags-input__shell-chips">
             {visibleTags.map((tag, index) => (
-              <span key={`${tag}-${index}`} className="tags-input__embed-chip">
+              <span
+                key={`${tag}-${index}`}
+                className={cn(
+                  "tags-input__embed-chip",
+                  canReorder && "tags-input__embed-chip--sortable",
+                  dragFrom === index && "tags-input__embed-chip--dragging",
+                  dragOver === index && dragFrom !== index && "tags-input__embed-chip--drag-over",
+                )}
+                draggable={canReorder}
+                onDragStart={(e) => onChipDragStart(index, e)}
+                onDragOver={(e) => onChipDragOver(index, e)}
+                onDrop={(e) => onChipDrop(index, e)}
+                onDragEnd={clearDragState}
+                title={canReorder ? `${tag}（拖拽调整顺序）` : tag}
+              >
+                {primaryBadge(index)}
                 <span className="tags-input__embed-chip-text" title={tag}>
-                  {truncateToWidth(tag, 10)}
+                  {truncateToWidth(tag, showPrimaryBadge && index === 0 && list.length > 1 ? 7 : 10)}
                 </span>
                 <button
                   type="button"
@@ -276,6 +371,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                   aria-label={`移除 ${tag}`}
                   disabled={disabled}
                   onClick={() => removeAt(index)}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   ×
                 </button>
@@ -331,6 +427,13 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                 }
               }}
             />
+            {sortable ? (
+              <p className="tags-input__popover-hint">
+                {searchQuery.trim()
+                  ? "搜索中不可排序；清空搜索后可拖拽调整顺序"
+                  : "拖拽调整顺序；第一项为主用密钥"}
+              </p>
+            ) : null}
           </div>
           <div className="tags-input__popover-body">
             <div className="tags-input__popover-section">
@@ -344,7 +447,29 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                   {filteredAdded.map((tag) => {
                     const originalIndex = list.indexOf(tag);
                     return (
-                      <li key={tag} className="tags-input__popover-row group">
+                      <li
+                        key={tag}
+                        className={cn(
+                          "tags-input__popover-row group",
+                          popoverReorderable && "tags-input__popover-row--sortable",
+                          dragFrom === originalIndex && "tags-input__popover-row--dragging",
+                          dragOver === originalIndex &&
+                            dragFrom !== originalIndex &&
+                            "tags-input__popover-row--drag-over",
+                        )}
+                        draggable={popoverReorderable}
+                        onDragStart={(e) => onChipDragStart(originalIndex, e)}
+                        onDragOver={(e) => onChipDragOver(originalIndex, e)}
+                        onDrop={(e) => onChipDrop(originalIndex, e)}
+                        onDragEnd={clearDragState}
+                      >
+                        {popoverReorderable ? (
+                          <GripVertical
+                            className="tags-input__popover-grip size-3.5 shrink-0"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        {primaryBadge(originalIndex)}
                         <span className="tags-input__popover-row-text" title={tag}>
                           {tag}
                         </span>
@@ -355,6 +480,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                           title="复制"
                           aria-label={`复制 ${tag}`}
                           onClick={() => void handleCopy(tag, originalIndex)}
+                          onMouseDown={(e) => e.stopPropagation()}
                         >
                           {copiedIndex === originalIndex ? (
                             <Check className="size-3.5" />
@@ -369,6 +495,7 @@ const TagsInput = forwardRef<TagsInputHandle, TagsInputProps>(function TagsInput
                           title="删除"
                           aria-label={`移除 ${tag}`}
                           onClick={() => removeTag(tag)}
+                          onMouseDown={(e) => e.stopPropagation()}
                         >
                           <X className="size-3.5" />
                         </button>
