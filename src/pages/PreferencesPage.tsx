@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { pushConsoleToast } from "@/utils/consoleToast";
 import {
   applyShellTheme,
+  PREFS_DEFAULTS,
   readPrefs,
   writePrefs,
   type AccentPreset,
@@ -27,6 +29,15 @@ const CONTROL_RADIUS_MIN = 4;
 const CONTROL_RADIUS_MAX = 20;
 
 const PREFS_SWITCH_CLASS = "data-[state=checked]:bg-[var(--accent)]";
+
+function PrefsResetButton({ onClick, label = "复原" }: { onClick: () => void; label?: string }) {
+  return (
+    <button type="button" className="prefs-setting-card__reset" onClick={onClick} aria-label={label}>
+      <RotateCcw className="size-3.5 shrink-0" aria-hidden />
+      {label}
+    </button>
+  );
+}
 
 export default function PreferencesPage() {
   const location = useLocation();
@@ -83,19 +94,15 @@ export default function PreferencesPage() {
   }
 
   function onGlassBlurInput(v: number) {
-    setGlassBlurDraft(Math.min(40, Math.max(8, Math.round(v))));
-  }
-
-  function onGlassBlurCommit() {
-    patchPrefs({ glassBlur: glassBlurDraft });
+    const next = Math.min(40, Math.max(8, Math.round(v)));
+    setGlassBlurDraft(next);
+    patchPrefs({ glassBlur: next });
   }
 
   function onCardGlassOpacityInput(v: number) {
-    setCardGlassOpacityDraft(Math.min(0.72, Math.max(0.12, v)));
-  }
-
-  function onCardGlassOpacityCommit() {
-    patchPrefs({ cardGlassOpacity: cardGlassOpacityDraft });
+    const next = Math.min(0.88, Math.max(0.08, Math.round(v * 100) / 100));
+    setCardGlassOpacityDraft(next);
+    patchPrefs({ cardGlassOpacity: next });
   }
 
   function onControlRadiusInput(v: number) {
@@ -206,22 +213,29 @@ export default function PreferencesPage() {
           </div>
         </PrefsSettingCard>
 
-        <PrefsSettingCard title="界面风格" lead="毛玻璃更有层次，纯色更省资源。">
-          <div className="prefs-switch-row">
-            <span className="prefs-switch-row__label" id="prefs-glass-label">
-              毛玻璃效果
-            </span>
-            <div className="prefs-switch-row__control">
-              <Switch
-                checked={surfaceStyle === "glass"}
-                onCheckedChange={(on) => patchPrefs({ surfaceStyle: on ? "glass" : "solid" })}
-                aria-labelledby="prefs-glass-label"
-                className={PREFS_SWITCH_CLASS}
-              />
-              <span className="prefs-switch-row__state" aria-hidden="true">
-                {surfaceStyle === "glass" ? "开" : "关"}
-              </span>
-            </div>
+        <PrefsSettingCard
+          title="界面风格"
+          lead="纯色为实心底；毛玻璃让面板半透明并模糊背后渐变。深色更明显，浅色需调低不透明度才看得出。"
+        >
+          <div className="prefs-style-tiles" role="group" aria-label="界面风格">
+            <button
+              type="button"
+              className={cn("prefs-style-tile", surfaceStyle === "solid" && "prefs-style-tile--active")}
+              onClick={() => patchPrefs({ surfaceStyle: "solid" })}
+              aria-pressed={surfaceStyle === "solid"}
+            >
+              <span className="prefs-style-tile__swatch prefs-style-tile__swatch--solid" aria-hidden />
+              <span className="prefs-style-tile__label">纯色风格</span>
+            </button>
+            <button
+              type="button"
+              className={cn("prefs-style-tile", surfaceStyle === "glass" && "prefs-style-tile--active")}
+              onClick={() => patchPrefs({ surfaceStyle: "glass" })}
+              aria-pressed={surfaceStyle === "glass"}
+            >
+              <span className="prefs-style-tile__swatch prefs-style-tile__swatch--glass" aria-hidden />
+              <span className="prefs-style-tile__label">毛玻璃风格</span>
+            </button>
           </div>
         </PrefsSettingCard>
 
@@ -261,7 +275,12 @@ export default function PreferencesPage() {
           <>
             <PrefsSettingCard
               title="模糊强度"
-              lead="调节背景模糊半径；数值越大越朦胧，饱和度会随强度略增。"
+              lead="作用在面板 backdrop-blur（.panel / 带玻璃的卡片），模糊背后的壳层渐变；需半透明底色才能看出。"
+              headerAction={
+                glassBlurDraft !== PREFS_DEFAULTS.glassBlur ? (
+                  <PrefsResetButton onClick={() => patchPrefs({ glassBlur: PREFS_DEFAULTS.glassBlur })} />
+                ) : null
+              }
             >
               <PrefsGlassPreview
                 label="拖动滑块查看模糊变化"
@@ -278,11 +297,21 @@ export default function PreferencesPage() {
                   step={1}
                   value={glassBlurDraft}
                   onInput={(e) => onGlassBlurInput(Number(e.currentTarget.value))}
-                  onChange={onGlassBlurCommit}
                 />
               </div>
             </PrefsSettingCard>
-            <PrefsSettingCard title="卡片不透明度" lead="调节毛玻璃面板底色浓度；数值越低越透、模糊越明显。">
+            <PrefsSettingCard
+              title="卡片不透明度"
+              lead="控制面板底色浓度；越低越透、模糊越明显。对应 GS 的卡片不透明度。"
+              headerAction={
+                Math.round(cardGlassOpacityDraft * 100) !==
+                Math.round(PREFS_DEFAULTS.cardGlassOpacity * 100) ? (
+                  <PrefsResetButton
+                    onClick={() => patchPrefs({ cardGlassOpacity: PREFS_DEFAULTS.cardGlassOpacity })}
+                  />
+                ) : null
+              }
+            >
               <PrefsGlassPreview
                 label="拖动滑块查看透明度变化"
                 blur={glassBlurDraft}
@@ -295,12 +324,11 @@ export default function PreferencesPage() {
                 <input
                   className="inp"
                   type="range"
-                  min={12}
-                  max={72}
+                  min={8}
+                  max={88}
                   step={1}
                   value={Math.round(cardGlassOpacityDraft * 100)}
                   onInput={(e) => onCardGlassOpacityInput(Number(e.currentTarget.value) / 100)}
-                  onChange={onCardGlassOpacityCommit}
                 />
               </div>
             </PrefsSettingCard>
@@ -330,6 +358,19 @@ export default function PreferencesPage() {
         <PrefsSettingCard
           title="圆角风格"
           lead="滑块调节按钮与输入框圆角；分段为快捷预设。开关与 Chip 保持胶囊，不受滑块影响。"
+          headerAction={
+            controlRadiusDraft !== PREFS_DEFAULTS.controlRadius ||
+            radius !== PREFS_DEFAULTS.radius ? (
+              <PrefsResetButton
+                onClick={() =>
+                  patchPrefs({
+                    controlRadius: PREFS_DEFAULTS.controlRadius,
+                    radius: PREFS_DEFAULTS.radius,
+                  })
+                }
+              />
+            ) : null
+          }
         >
           <div className="prefs-segment prefs-segment--fill">
             {(
@@ -366,6 +407,14 @@ export default function PreferencesPage() {
         <PrefsSettingCard
           title="阴影强度"
           lead="调节卡片与壳层投影深浅；输入框描边由边色控制，不受此滑块影响。"
+          headerAction={
+            Math.round(shadowIntensityDraft * 100) !==
+            Math.round(PREFS_DEFAULTS.shadowIntensity * 100) ? (
+              <PrefsResetButton
+                onClick={() => patchPrefs({ shadowIntensity: PREFS_DEFAULTS.shadowIntensity })}
+              />
+            ) : null
+          }
         >
           <div className="prefs-form-field prefs-form-field--range">
             <label className="prefs-form-field__label">
