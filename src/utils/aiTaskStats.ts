@@ -494,18 +494,20 @@ export function buildRangeCostSummary(
 export type RagBucket = {
   hitCount: number;
   missCount: number;
+  skipCount: number;
   hitRate: number;
   byDocument: Record<string, number>;
 };
 
 export function emptyRagBucket(): RagBucket {
-  return { hitCount: 0, missCount: 0, hitRate: 0, byDocument: {} };
+  return { hitCount: 0, missCount: 0, skipCount: 0, hitRate: 0, byDocument: {} };
 }
 
 export function ragFromSlice(rag: LlmRagMetricsSlice | undefined | null): RagBucket {
   if (!rag) return emptyRagBucket();
   const hitCount = Number(rag.hit_count ?? 0);
   const missCount = Number(rag.miss_count ?? 0);
+  const skipCount = Number(rag.skip_count ?? 0);
   const total = hitCount + missCount;
   const hitRate =
     rag.hit_rate != null && Number.isFinite(Number(rag.hit_rate))
@@ -519,7 +521,7 @@ export function ragFromSlice(rag: LlmRagMetricsSlice | undefined | null): RagBuc
     if (!name) continue;
     byDocument[name] = Number(value ?? 0);
   }
-  return { hitCount, missCount, hitRate, byDocument };
+  return { hitCount, missCount, skipCount, hitRate, byDocument };
 }
 
 export function addRagBuckets(a: RagBucket, b: RagBucket): RagBucket {
@@ -529,10 +531,12 @@ export function addRagBuckets(a: RagBucket, b: RagBucket): RagBucket {
   }
   const hitCount = a.hitCount + b.hitCount;
   const missCount = a.missCount + b.missCount;
+  const skipCount = a.skipCount + b.skipCount;
   const total = hitCount + missCount;
   return {
     hitCount,
     missCount,
+    skipCount,
     hitRate: total > 0 ? Math.round((1000 * hitCount) / total) / 10 : 0,
     byDocument,
   };
@@ -639,6 +643,260 @@ export function dailyRagTrend(
   return out;
 }
 
+/** 闭区间逐日 ISO 日期（含起止）。 */
+export function eachIsoDay(start: string, end: string): string[] {
+  const sd = String(start || "").slice(0, 10);
+  const ed = String(end || "").slice(0, 10);
+  if (!sd || !ed || sd > ed) return [];
+  const out: string[] = [];
+  let cur = sd;
+  while (cur <= ed) {
+    out.push(cur);
+    cur = addDaysIso(cur, 1);
+  }
+  return out;
+}
+
+export type TrendPoint = { at: number; total: number };
+
+/** 按日补齐缺失日为 0，保证折线连续。 */
+export function padDailyTrendPoints(
+  points: TrendPoint[],
+  start: string,
+  end: string,
+): TrendPoint[] {
+  const byDay = new Map<string, number>();
+  for (const p of points) {
+    const day = new Date((Number(p.at) || 0) * 1000);
+    if (Number.isNaN(day.getTime())) continue;
+    const key = todayIso(day);
+    byDay.set(key, Number(p.total) || 0);
+  }
+  return eachIsoDay(start, end).map((day) => ({
+    at: Math.floor(new Date(`${day}T12:00:00`).getTime() / 1000),
+    total: byDay.get(day) ?? 0,
+  }));
+}
+
+/** 按小时补齐 00..(endHour) 为 0；endHour 默认取已有最大小时或 23。 */
+export function padHourlyTrendPoints(points: TrendPoint[], dayIso: string, endHour?: number): TrendPoint[] {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  const byHour = new Map<number, number>();
+  let maxH = 0;
+  for (const p of points) {
+    const d = new Date((Number(p.at) || 0) * 1000);
+    if (Number.isNaN(d.getTime())) continue;
+    const h = d.getHours();
+    byHour.set(h, Number(p.total) || 0);
+    if (h > maxH) maxH = h;
+  }
+  const last =
+    endHour != null && Number.isFinite(endHour)
+      ? Math.min(23, Math.max(0, Math.floor(endHour)))
+      : Math.max(maxH, points.length ? maxH : 0);
+  const out: TrendPoint[] = [];
+  for (let h = 0; h <= last; h += 1) {
+    out.push({
+      at: Math.floor(new Date(`${day}T${String(h).padStart(2, "0")}:00:00`).getTime() / 1000),
+      total: byHour.get(h) ?? 0,
+    });
+  }
+  return out;
+}
+
+export type DailyIoPoint = {
+  date: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costTotal: number;
+};
+
+/** 区间按日输入 / 输出 / 费用（缺日不出现，配合 padDailyTrendPoints）。 */
+export function dailyTokenIoTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyIoPoint[] {
+  const out: DailyIoPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const bucket = tokensFromSlice(row.ai?.tokens ?? null);
+    out.push({
+      date,
+      promptTokens: bucket.promptTokens,
+      completionTokens: bucket.completionTokens,
+      totalTokens: bucket.totalTokens,
+      costTotal: bucket.costTotal,
+    });
+  }
+  return out;
+}
+
+export type DailyCostPoint = {
+  date: string;
+  tokenCost: number;
+  imageCost: number;
+  totalCost: number;
+};
+
+export function dailyCostTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyCostPoint[] {
+  const out: DailyCostPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const tokenCost = tokensFromSlice(row.ai?.tokens ?? null).costTotal;
+    const imageCost = imagesFromSlice(row.ai?.images ?? null).costTotal;
+    out.push({
+      date,
+      tokenCost,
+      imageCost,
+      totalCost: tokenCost + imageCost,
+    });
+  }
+  return out;
+}
+
+export type DailySuccessPoint = { date: string; successRate: number; total: number };
+
+export function dailyAiSuccessTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailySuccessPoint[] {
+  const out: DailySuccessPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const { ok, fail } = aiOutcomesFromSlice(row.ai ?? null);
+    const total = ok + fail;
+    out.push({
+      date,
+      total,
+      successRate: total > 0 ? Math.round((1000 * ok) / total) / 10 : 0,
+    });
+  }
+  return out;
+}
+
+function dayAtNoonSec(day: string): number {
+  return Math.floor(new Date(`${day}T12:00:00`).getTime() / 1000);
+}
+
+/** 把按日字段转成可补零的趋势点。 */
+export function dailyFieldToTrendPoints(
+  rows: Array<{ date: string; value: number }>,
+): TrendPoint[] {
+  return rows.map((r) => ({
+    at: dayAtNoonSec(String(r.date).slice(0, 10)),
+    total: Number(r.value) || 0,
+  }));
+}
+
+/** 区间内有 Token / 检索等用量的日期（供日历禁空日）。 */
+export function daysWithTokenActivity(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+): Set<string> {
+  const out = new Set<string>();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date) continue;
+    const tokens = tokensFromSlice(row.ai?.tokens ?? null);
+    if (tokens.totalTokens > 0 || tokens.cacheReadTokens > 0) {
+      out.add(date);
+      continue;
+    }
+    const rag = ragFromSlice(row.ai?.rag ?? null);
+    const mem = ragFromSlice(row.ai?.memory_rag ?? null);
+    if (rag.hitCount + rag.missCount + mem.hitCount + mem.missCount > 0) {
+      out.add(date);
+    }
+  }
+  return out;
+}
+
+/** 按提供方拆分的日 Token 序列（缺日补 0 后可堆叠）。 */
+export function dailyProviderTokenSeries(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  maxProviders = 8,
+): NamedSeriesLike[] {
+  const byProvider = new Map<string, Map<string, number>>();
+  const totals = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const breakdown = row.ai?.tokens?.by_provider;
+    if (!breakdown || typeof breakdown !== "object") continue;
+    for (const [key, metrics] of Object.entries(breakdown)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const prompt = Number((metrics as LlmTokenMetricBreakdownRow).prompt_tokens ?? 0);
+      const completion = Number((metrics as LlmTokenMetricBreakdownRow).completion_tokens ?? 0);
+      const total =
+        Number((metrics as LlmTokenMetricBreakdownRow).total_tokens ?? 0) || prompt + completion;
+      if (total <= 0) continue;
+      if (!byProvider.has(name)) byProvider.set(name, new Map());
+      const dayMap = byProvider.get(name)!;
+      dayMap.set(date, (dayMap.get(date) || 0) + total);
+      totals.set(name, (totals.get(name) || 0) + total);
+    }
+  }
+  const ranked = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
+    .slice(0, maxProviders)
+    .map(([name]) => name);
+  return ranked.map((name) => {
+    const dayMap = byProvider.get(name) || new Map();
+    const raw = eachIsoDay(start, end).map((day) => ({
+      at: dayAtNoonSec(day),
+      total: dayMap.get(day) || 0,
+    }));
+    return { id: `provider:${name}`, label: name, points: raw };
+  });
+}
+
+type NamedSeriesLike = {
+  id: string;
+  label: string;
+  points: TrendPoint[];
+};
+
+export type KnowledgeInventory = {
+  sourceCount: number;
+  chunkCount: number;
+  topSources: Array<{ id: string; title: string; chunkCount: number }>;
+};
+
+export function summarizeKnowledgeInventory(
+  items: Array<{
+    source_id?: string;
+    title?: string;
+    chunk_count?: number;
+  }>,
+): KnowledgeInventory {
+  const topSources = items
+    .map((row) => ({
+      id: String(row.source_id || "").trim(),
+      title: String(row.title || row.source_id || "").trim() || "未命名",
+      chunkCount: Number(row.chunk_count ?? 0) || 0,
+    }))
+    .filter((row) => row.id)
+    .sort((a, b) => b.chunkCount - a.chunkCount || a.title.localeCompare(b.title, "zh-CN"));
+  return {
+    sourceCount: topSources.length,
+    chunkCount: topSources.reduce((s, r) => s + r.chunkCount, 0),
+    topSources: topSources.slice(0, 8),
+  };
+}
+
 export function aggregateHistoryRoutes(
   rows: LlmTaskStatsHistoryRow[] | undefined,
   start: string,
@@ -696,6 +954,34 @@ export function hourlyTokenTrendPoints(
     const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
     return { at, total: row.totalTokens };
   });
+}
+
+/** 当日按小时：输入 / 输出两条序列（缺小时补 0）。 */
+export function hourlyTokenIoTrendSeries(
+  rows: TokenRow[],
+  dayIso: string,
+  endHour?: number,
+): Array<{ id: string; label: string; points: Array<{ at: number; total: number }> }> {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  const promptRaw: TrendPoint[] = [];
+  const completionRaw: TrendPoint[] = [];
+  for (const row of rows) {
+    const raw = String(row.key || "").trim();
+    const hour = Math.min(23, Math.max(0, parseInt(raw.replace(/:.*/, ""), 10) || 0));
+    const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
+    promptRaw.push({ at, total: row.promptTokens });
+    completionRaw.push({ at, total: row.completionTokens });
+  }
+  if (!promptRaw.length && !completionRaw.length) return [];
+  return [
+    { id: "prompt", label: "输入", points: padHourlyTrendPoints(promptRaw, day, endHour) },
+    {
+      id: "completion",
+      label: "输出",
+      points: padHourlyTrendPoints(completionRaw, day, endHour),
+    },
+  ];
 }
 
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {

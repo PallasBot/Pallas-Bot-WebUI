@@ -19,6 +19,8 @@ type Props = {
   ariaLabel?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** 返回 true 的日期不可选（仍可浏览月份） */
+  isDayDisabled?: (iso: string) => boolean;
 };
 
 /** 日期选择：Popover + Calendar，对外出参仍为 yyyy-MM-dd。 */
@@ -29,6 +31,7 @@ export default function DatePicker({
   ariaLabel,
   placeholder = "选择日期",
   disabled = false,
+  isDayDisabled,
 }: Props) {
   const [open, setOpen] = useState(false);
   const selected = useMemo(() => parseIsoDate(value), [value]);
@@ -66,6 +69,11 @@ export default function DatePicker({
           mode="single"
           selected={selected}
           defaultMonth={selected}
+          disabled={
+            isDayDisabled
+              ? (date) => isDayDisabled(format(date, "yyyy-MM-dd"))
+              : undefined
+          }
           onSelect={(date) => {
             if (!date) return;
             onValueChange(format(date, "yyyy-MM-dd"));

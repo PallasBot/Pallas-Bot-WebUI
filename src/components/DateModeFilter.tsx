@@ -16,6 +16,8 @@ type Props = {
   /** toolbar：对齐 ChromeTools h-9 */
   size?: "default" | "toolbar";
   disabled?: boolean;
+  /** 日历禁选：无数据日等 */
+  isDayDisabled?: (iso: string) => boolean;
 };
 
 /**
@@ -31,6 +33,7 @@ export default function DateModeFilter({
   className,
   size = "default",
   disabled = false,
+  isDayDisabled,
 }: Props) {
   const toolbar = size === "toolbar";
 
@@ -84,6 +87,7 @@ export default function DateModeFilter({
           ariaLabel="选择日期"
           placeholder="选择日期"
           disabled={disabled}
+          isDayDisabled={isDayDisabled}
           className={cn(fieldH, toolbar && "min-w-[10.5rem] shrink-0")}
         />
       ) : (
@@ -94,6 +98,7 @@ export default function DateModeFilter({
             ariaLabel="开始日期"
             placeholder="开始日期"
             disabled={disabled}
+            isDayDisabled={isDayDisabled}
             className={cn(fieldH, toolbar && "min-w-[9.5rem] shrink-0")}
           />
           <span className="shrink-0 text-muted-foreground" aria-hidden>
@@ -105,6 +110,7 @@ export default function DateModeFilter({
             ariaLabel="结束日期"
             placeholder="结束日期"
             disabled={disabled}
+            isDayDisabled={isDayDisabled}
             className={cn(fieldH, toolbar && "min-w-[9.5rem] shrink-0")}
           />
         </div>

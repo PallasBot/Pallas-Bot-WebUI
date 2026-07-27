@@ -1019,6 +1019,7 @@ export interface LlmRagMetricsSlice {
   updated_at?: number;
   hit_count?: number;
   miss_count?: number;
+  skip_count?: number;
   hit_rate?: number;
   by_document?: Record<string, number>;
   by_source?: Record<string, number>;

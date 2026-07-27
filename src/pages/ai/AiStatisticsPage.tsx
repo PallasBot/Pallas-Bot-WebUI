@@ -16,7 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
-import { fetchLlmTaskStats } from "@/api/fullConsole";
+import { fetchConversationKernelKnowledgeSources, fetchLlmTaskStats } from "@/api/fullConsole";
 import { useRegisterAiObservationChrome } from "@/components/ai/AiObservationChromeContext";
 import TokenShareBars from "@/components/ai/TokenShareBars";
 import ChartsNamedSeriesTrend from "@/components/ChartsNamedSeriesTrend";
@@ -38,11 +38,20 @@ import {
   aggregateHistoryTokens,
   buildPersistenceHint,
   buildRangeCostSummary,
+  dailyAiSuccessTrend,
+  dailyCostTrend,
+  dailyFieldToTrendPoints,
+  dailyProviderTokenSeries,
   dailyRagTrend,
+  dailyTokenIoTrend,
   dailyTokenTrend,
+  daysWithTokenActivity,
   formatCompactNumber,
-  hourlyTokenTrendPoints,
+  hourTokenRows,
+  hourlyTokenIoTrendSeries,
+  padDailyTrendPoints,
   ragDocumentRows,
+  summarizeKnowledgeInventory,
   summarizeTaskStats,
   todayIso,
   type ImageRow,
@@ -186,9 +195,9 @@ export default function AiStatisticsPage() {
   const [dateMode, setDateMode] = useState<DateMode>("single");
   const [activeTab, setActiveTab] = useState<StatsTab>(readStoredTab);
 
-  /** 查询窗口至少覆盖近 30 天，便于平铺 7d/30d 数值。 */
+  /** 查询窗口至少覆盖近 90 天，便于日历禁空日与 7d/30d。 */
   const queryStart = useMemo(() => {
-    const floor = addDaysIso(todayIso(), -29);
+    const floor = addDaysIso(todayIso(), -89);
     return start < floor ? start : floor;
   }, [start]);
   const queryEnd = useMemo(() => {
@@ -201,8 +210,30 @@ export default function AiStatisticsPage() {
     queryFn: () => fetchLlmTaskStats({ start: queryStart, end: queryEnd }),
   });
 
+  const knowledgeSourcesQ = useQuery({
+    queryKey: ["conversation-kernel-knowledge-sources"],
+    queryFn: fetchConversationKernelKnowledgeSources,
+  });
+
   const summary = useMemo(() => summarizeTaskStats(taskStatsQ.data), [taskStatsQ.data]);
   const historyRows = taskStatsQ.data?.history?.rows;
+  const knowledgeInventory = useMemo(
+    () => summarizeKnowledgeInventory(knowledgeSourcesQ.data?.items || []),
+    [knowledgeSourcesQ.data?.items],
+  );
+
+  const activeTokenDays = useMemo(() => daysWithTokenActivity(historyRows), [historyRows]);
+  const isCalendarDayDisabled = useCallback(
+    (iso: string) => {
+      const day = String(iso || "").slice(0, 10);
+      if (!day) return false;
+      if (day === todayIso() || day === start || day === end) return false;
+      if (day < queryStart || day > queryEnd) return false;
+      if (activeTokenDays.size === 0) return false;
+      return !activeTokenDays.has(day);
+    },
+    [activeTokenDays, end, queryEnd, queryStart, start],
+  );
 
   const selectedRange = useMemo(
     () => aggregateHistoryTokens(historyRows, start, end),
@@ -257,59 +288,113 @@ export default function AiStatisticsPage() {
   const aiSuccessRate = aiTotal > 0 ? (aiOk / aiTotal) * 100 : null;
 
   const tokenTrendSeries = useMemo((): NamedSeriesInput[] => {
-    const daily = dailyTokenTrend(historyRows, start, end);
-    if (daily.length >= 2) {
-      return [
-        {
-          id: "tokens",
-          label: "Token",
-          points: daily.map((p) => ({
-            at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
-            total: p.totalTokens,
-          })),
-        },
-      ];
+    const dailyIo = dailyTokenIoTrend(historyRows, start, end);
+    if (dailyIo.length >= 2 || (start !== end && dailyIo.length >= 1)) {
+      const prompt = padDailyTrendPoints(
+        dailyFieldToTrendPoints(dailyIo.map((p) => ({ date: p.date, value: p.promptTokens }))),
+        start,
+        end,
+      );
+      const completion = padDailyTrendPoints(
+        dailyFieldToTrendPoints(dailyIo.map((p) => ({ date: p.date, value: p.completionTokens }))),
+        start,
+        end,
+      );
+      if (prompt.length >= 2) {
+        return [
+          { id: "prompt", label: "输入", points: prompt },
+          { id: "completion", label: "输出", points: completion },
+        ];
+      }
     }
-    // 单日：改按小时，避免补点画成水平直线
-    const day = start === end ? start : daily[0]?.date || start;
+    // 单日：按小时输入 / 输出，缺小时补 0
+    const day = start === end ? start : dailyIo[0]?.date || start;
     const histRow = (historyRows ?? []).find((r) => String(r.date || "").slice(0, 10) === day);
-    const fromHist = hourlyTokenTrendPoints(histRow?.ai?.tokens?.by_hour, day);
-    const fromLive =
-      day === todayIso() ? hourlyTokenTrendPoints(taskStatsQ.data?.ai?.tokens?.by_hour, day) : [];
-    const hourly = fromHist.length >= 2 ? fromHist : fromLive;
-    if (hourly.length >= 2) {
-      return [{ id: "tokens", label: "Token", points: hourly }];
-    }
-    return [
-      {
-        id: "tokens",
-        label: "Token",
-        points: daily.map((p) => ({
-          at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
-          total: p.totalTokens,
-        })),
-      },
-    ];
+    const liveHourRows =
+      day === todayIso() ? hourTokenRows(taskStatsQ.data?.ai?.tokens?.by_hour) : [];
+    const histSeries = hourlyTokenIoTrendSeries(hourTokenRows(histRow?.ai?.tokens?.by_hour), day);
+    const liveSeries = hourlyTokenIoTrendSeries(liveHourRows, day, new Date().getHours());
+    const series = histSeries[0]?.points.length >= 2 ? histSeries : liveSeries;
+    if (series[0]?.points.length >= 2) return series as NamedSeriesInput[];
+    return [];
   }, [end, historyRows, start, taskStatsQ.data?.ai?.tokens?.by_hour]);
+
+  const tokenHourIoSeries = useMemo(() => {
+    const hour =
+      start === end && start === todayIso() ? new Date().getHours() : undefined;
+    return hourlyTokenIoTrendSeries(summary.tokenHourRows, todayIso(), hour) as NamedSeriesInput[];
+  }, [start, end, summary.tokenHourRows]);
 
   const tokenTrendIsHourly = useMemo(() => {
     const daily = dailyTokenTrend(historyRows, start, end);
-    return daily.length < 2;
+    return daily.length < 2 && start === end;
   }, [end, historyRows, start]);
 
   const ragTrendSeries = useMemo((): NamedSeriesInput[] => {
-    const knowledge = dailyRagTrend(historyRows, start, end, "rag").map((p) => ({
-      at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
-      total: p.hitRate,
-    }));
-    const memory = dailyRagTrend(historyRows, start, end, "memory_rag").map((p) => ({
-      at: Math.floor(new Date(`${p.date}T12:00:00`).getTime() / 1000),
-      total: p.hitRate,
-    }));
+    const knowledgeRaw = dailyRagTrend(historyRows, start, end, "rag");
+    const memoryRaw = dailyRagTrend(historyRows, start, end, "memory_rag");
+    const hasAny =
+      knowledgeRaw.some((p) => p.queries > 0) || memoryRaw.some((p) => p.queries > 0);
+    if (!hasAny || start === end) {
+      return [
+        { id: "knowledge", label: "知识库命中率%", points: [] },
+        { id: "memory", label: "记忆命中率%", points: [] },
+      ];
+    }
+    const knowledge = padDailyTrendPoints(
+      dailyFieldToTrendPoints(knowledgeRaw.map((p) => ({ date: p.date, value: p.hitRate }))),
+      start,
+      end,
+    );
+    const memory = padDailyTrendPoints(
+      dailyFieldToTrendPoints(memoryRaw.map((p) => ({ date: p.date, value: p.hitRate }))),
+      start,
+      end,
+    );
     return [
       { id: "knowledge", label: "知识库命中率%", points: knowledge },
       { id: "memory", label: "记忆命中率%", points: memory },
     ];
+  }, [end, historyRows, start]);
+
+  const ragTrendEmptyText =
+    start === end ? "请扩大日期查看日趋势" : "本区间暂无检索数据，请扩大日期";
+
+  const costTrendSeries = useMemo((): NamedSeriesInput[] => {
+    const daily = dailyCostTrend(historyRows, start, end);
+    if (start === end) return [];
+    const token = padDailyTrendPoints(
+      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.tokenCost }))),
+      start,
+      end,
+    );
+    const image = padDailyTrendPoints(
+      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.imageCost }))),
+      start,
+      end,
+    );
+    if (token.every((p) => p.total <= 0) && image.every((p) => p.total <= 0)) return [];
+    return [
+      { id: "token-cost", label: "Token 费用", points: token },
+      { id: "image-cost", label: "画画费用", points: image },
+    ];
+  }, [end, historyRows, start]);
+
+  const callsSuccessTrendSeries = useMemo((): NamedSeriesInput[] => {
+    const daily = dailyAiSuccessTrend(historyRows, start, end);
+    if (start === end) return [];
+    const rate = padDailyTrendPoints(
+      dailyFieldToTrendPoints(daily.map((p) => ({ date: p.date, value: p.successRate }))),
+      start,
+      end,
+    );
+    if (daily.every((p) => p.total <= 0)) return [];
+    return [{ id: "success-rate", label: "AI 成功率%", points: rate }];
+  }, [end, historyRows, start]);
+
+  const providerStackSeries = useMemo((): NamedSeriesInput[] => {
+    if (start === end) return [];
+    return dailyProviderTokenSeries(historyRows, start, end, 8) as NamedSeriesInput[];
   }, [end, historyRows, start]);
 
   const routeDonutRows = useMemo(
@@ -375,13 +460,15 @@ export default function AiStatisticsPage() {
         end={end}
         onStartChange={setStart}
         onEndChange={setEnd}
+        isDayDisabled={isCalendarDayDisabled}
       />
     ),
-    [dateMode, end, start],
+    [dateMode, end, isCalendarDayDisabled, start],
   );
 
   const onRefresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["llm-task-stats"] });
+    void qc.invalidateQueries({ queryKey: ["conversation-kernel-knowledge-sources"] });
   }, [qc]);
 
   useRegisterAiObservationChrome({ middle: dateFilter, onRefresh });
@@ -524,12 +611,12 @@ export default function AiStatisticsPage() {
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-1.5 text-base">
                     <PanelTitleIcon icon={LineChart} />
-                    {tokenTrendIsHourly ? "Token 小时趋势" : "Token 日趋势"}
+                    {tokenTrendIsHourly ? "Token 小时趋势（输入 / 输出）" : "Token 日趋势（输入 / 输出）"}
                   </CardTitle>
                   <CardDescription>
                     {tokenTrendIsHourly
-                      ? "当前仅 1 天，按小时展示（扩大日期可看日趋势）"
-                      : "当前区间按日总量"}
+                      ? "当前仅 1 天，按小时展示；缺小时补 0（扩大日期可看日趋势）"
+                      : "当前区间按日；缺日补 0"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
@@ -559,6 +646,32 @@ export default function AiStatisticsPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Cloud} />
+                  提供方 Token 堆叠
+                </CardTitle>
+                <CardDescription>
+                  {start === end
+                    ? "单日请看下方占比；扩大日期可看按日堆叠"
+                    : "当前区间按日总量堆叠；缺日补 0"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={providerStackSeries}
+                  emptyText={
+                    start === end ? "请扩大日期查看按提供方日趋势" : "本区间暂无提供方 Token 趋势"
+                  }
+                  showSummary={false}
+                  axisUnit=""
+                  stacked
+                  maxSeries={8}
+                />
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="p-3 sm:p-6">
@@ -692,6 +805,32 @@ export default function AiStatisticsPage() {
               </Card>
             </div>
 
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={Cloud} />
+                  提供方 Token 堆叠
+                </CardTitle>
+                <CardDescription>
+                  {start === end
+                    ? "单日请看上方占比；扩大日期可看按日堆叠"
+                    : "当前区间按日总量堆叠；缺日补 0"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={providerStackSeries}
+                  emptyText={
+                    start === end ? "请扩大日期查看按提供方日趋势" : "本区间暂无提供方 Token 趋势"
+                  }
+                  showSummary={false}
+                  axisUnit=""
+                  stacked
+                  maxSeries={8}
+                />
+              </CardContent>
+            </Card>
+
             {summary.tokenHourRows.length ? (
               <Card>
                 <CardHeader className="p-3 sm:p-6">
@@ -699,31 +838,15 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={LineChart} />
                     今日按小时 Token
                   </CardTitle>
-                  <CardDescription>当日实时桶（非历史区间）</CardDescription>
+                  <CardDescription>当日实时桶 · 输入 / 输出（非历史区间）</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[20rem] text-left text-sm">
-                      <thead className="text-xs text-muted-foreground">
-                        <tr>
-                          <th className="py-2 pr-3 font-medium">小时</th>
-                          <th className="py-2 pr-3 font-medium">总量</th>
-                          <th className="py-2 pr-3 font-medium">输入</th>
-                          <th className="py-2 font-medium">输出</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summary.tokenHourRows.map((row) => (
-                          <tr key={row.key} className="border-t border-border/60">
-                            <td className="py-2 pr-3 font-mono text-xs">{row.key}:00</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.totalTokens}</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.promptTokens}</td>
-                            <td className="py-2 tabular-nums">{row.completionTokens}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ChartsNamedSeriesTrend
+                    series={tokenHourIoSeries}
+                    emptyText="暂无按小时数据"
+                    showSummary={false}
+                    axisUnit=""
+                  />
                 </CardContent>
               </Card>
             ) : null}
@@ -875,6 +998,30 @@ export default function AiStatisticsPage() {
               ) : null}
             </div>
 
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={LineChart} />
+                  费用日趋势
+                </CardTitle>
+                <CardDescription>
+                  {start === end
+                    ? "单日无日趋势，请扩大日期"
+                    : "当前区间按日；缺日补 0"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={costTrendSeries}
+                  emptyText={
+                    start === end ? "请扩大日期查看日趋势" : "本区间暂无费用趋势"
+                  }
+                  showSummary={false}
+                  axisUnit=""
+                />
+              </CardContent>
+            </Card>
+
             <div className="space-y-2">
               <div className="text-sm font-medium text-muted-foreground">Token 明细</div>
               <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
@@ -951,19 +1098,25 @@ export default function AiStatisticsPage() {
                     {loading ? "…" : `${selectedRag.hitRate.toFixed(1)}%`}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    hit {selectedRag.hitCount} · miss {selectedRag.missCount}
+                    实际检索 hit {selectedRag.hitCount} · miss {selectedRag.missCount}
+                    {selectedRag.skipCount > 0 ? ` · 跳过 ${selectedRag.skipCount}` : ""}
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="space-y-1 p-3 sm:p-4">
-                  <div className="text-xs text-muted-foreground">知识库查询</div>
+                  <div className="text-xs text-muted-foreground">知识库检索</div>
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading
                       ? "…"
                       : formatCompactNumber(selectedRag.hitCount + selectedRag.missCount)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {rangeLabel}
+                    {selectedRag.skipCount > 0
+                      ? ` · 另有跳过 ${formatCompactNumber(selectedRag.skipCount)}`
+                      : ""}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
@@ -988,6 +1141,56 @@ export default function AiStatisticsPage() {
                         )}
                   </div>
                   <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+              <Card>
+                <CardContent className="space-y-1 p-3 sm:p-4">
+                  <div className="text-xs text-muted-foreground">知识源数量</div>
+                  <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                    {knowledgeSourcesQ.isLoading
+                      ? "…"
+                      : formatCompactNumber(knowledgeInventory.sourceCount)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">当前已启用知识源</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="space-y-1 p-3 sm:p-4">
+                  <div className="text-xs text-muted-foreground">知识片段总量</div>
+                  <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                    {knowledgeSourcesQ.isLoading
+                      ? "…"
+                      : formatCompactNumber(knowledgeInventory.chunkCount)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">与命中率无关的库存口径</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="p-3 sm:p-4 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    片段最多的知识源
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+                  {knowledgeInventory.topSources.length ? (
+                    <ul className="space-y-1 text-sm">
+                      {knowledgeInventory.topSources.slice(0, 4).map((row) => (
+                        <li key={row.id} className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate" title={row.title}>
+                            {row.title}
+                          </span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">
+                            {row.chunkCount}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">暂无知识源</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1037,9 +1240,10 @@ export default function AiStatisticsPage() {
                 <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
                   <ChartsNamedSeriesTrend
                     series={ragTrendSeries}
-                    emptyText="暂无 RAG 趋势"
+                    emptyText={ragTrendEmptyText}
                     showSummary={false}
                     axisUnit="%"
+                    keepZeroSeries
                   />
                 </CardContent>
               </Card>
@@ -1099,6 +1303,31 @@ export default function AiStatisticsPage() {
                 }
               />
             </div>
+
+            <Card>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="flex items-center gap-1.5 text-base">
+                  <PanelTitleIcon icon={LineChart} />
+                  AI 成功率日趋势
+                </CardTitle>
+                <CardDescription>
+                  {start === end
+                    ? "单日无日趋势，请扩大日期"
+                    : "当前区间按日成功率；缺日补 0"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <ChartsNamedSeriesTrend
+                  series={callsSuccessTrendSeries}
+                  emptyText={
+                    start === end ? "请扩大日期查看日趋势" : "本区间暂无成功率趋势"
+                  }
+                  showSummary={false}
+                  axisUnit="%"
+                  keepZeroSeries
+                />
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader className="p-3 sm:p-6">

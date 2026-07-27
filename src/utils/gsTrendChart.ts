@@ -63,6 +63,24 @@ export function linearAreaPath(pts: { x: number; y: number }[], bottomY: number)
   return d;
 }
 
+/** 堆叠面积：上沿 top、下沿 bottom（同序点）。 */
+export function linearAreaBandPath(
+  top: { x: number; y: number }[],
+  bottom: { x: number; y: number }[],
+): string {
+  if (!top.length || top.length !== bottom.length) return "";
+  const first = top[0]!;
+  let d = `M ${first.x} ${first.y}`;
+  for (let i = 1; i < top.length; i++) {
+    d += ` L ${top[i]!.x} ${top[i]!.y}`;
+  }
+  for (let i = bottom.length - 1; i >= 0; i--) {
+    d += ` L ${bottom[i]!.x} ${bottom[i]!.y}`;
+  }
+  d += " Z";
+  return d;
+}
+
 export function pickTickIndices(n: number, maxTicks: number): number[] {
   if (n <= 0) return [];
   if (n <= maxTicks) return Array.from({ length: n }, (_, i) => i);
