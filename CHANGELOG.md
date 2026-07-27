@@ -4,7 +4,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.4] - 2026-07-27
 
 相对 **0.8.3** 至本版的控制台更新。
 
@@ -36,6 +36,37 @@
 - 路由懒加载与样式按需引入；hub 主题与进度条布局
 
 ---
+
+### 提交明细
+
+### Added
+
+* feat(prefs): 偏好项复原与阴影默认值 ([f6d5e8b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/f6d5e8b9055c2b8a96fde9e742558cd243ea9077))
+* feat(plugin-store): 异步装更卸与卡片进度 ([c68cafb](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c68cafbba3e196eee306726f37374b03fc4700c0))
+* feat(protocol): Runtime 面板与 SnowLuma 选择 ([df7ad4d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/df7ad4d93d62e037a486408aba894dcfe13ac2c0))
+* feat(ai-stats): 分布图与日期筛选 ([9e0fc69](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9e0fc697150969f0b51b124209a8f1d4de7a729b))
+* feat(ai-stats): 补零趋势、提供方堆叠与日历禁空日 ([cfc99fd](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/cfc99fd20b8fbf42736421ddc579504451ce4bb1))
+* feat(ai-stats): 费用分区与区间费用明细 ([a7b892b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a7b892bbf82f9734973a9514c8d282e1aedf4d9e))
+
+### Fixed
+
+* fix(readme): 稳定代码块复制按钮状态 ([79ab695](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/79ab695ff59375ceba529f027b42392e591c2a66))
+* fix(community): 窄屏 KPI 左对齐并用 Lucide 图标 ([773c283](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/773c28334711ec8aaab51e6979c4b0d750573a31))
+* fix(ai-stats): 百万级紧凑数字用两位小数 ([a09e265](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/a09e265c75367f7246b2ff575ae90b76c5d05ab4))
+* fix(ai-stats): 提供方调用按日期区间聚合 ([3f9a494](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/3f9a4947906dcec4fdf612452515c0cb0f91e670))
+
+### Changed
+
+* perf(shell): 路由懒加载与样式按需引入 ([61d8bac](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/61d8bac7f684a6abbb3b93cdd3ae067b4b848187))
+* perf(home): 延后更新检查并拉长资源轮询 ([6cbb0c4](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/6cbb0c4dcff15a4f993a840e4f4752612647463f))
+* refactor(social): 整理好友群配置页 ([ae8d15b](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/ae8d15bfd0e8cb49f55134aaf5f7b3b5606de287))
+* refactor(ui): 操作反馈改用 toast ([9919b16](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9919b16513d27b533438c4345987fa230228b5b9))
+* style(ui): 行高、主按钮与迁移提示 ([1b6048d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/1b6048ddc88ded777ee3bf05f6b4f05e6afdc036))
+* chore(copy): 「反哺」改为「纠错」并收紧观测文案 ([30f542d](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/30f542d4d9beed6bf7984b8ed954ea1e2eab9539))
+* style(console): hub 主题与商店进度条同行百分比 ([af2fb96](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/af2fb9606db181619e870a5a3a7a583c54e58187))
+
+**完整变更**: [`v0.8.3...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.3...HEAD)
+
 
 ## [0.8.3] - 2026-07-27
 
@@ -73,7 +104,6 @@
 * chore(openapi): 同步控制台类型以消除 CI drift ([0ed3ae1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0ed3ae1f3675f5a48dfcab56db35492dd1fb2f93))
 
 **完整变更**: [`v0.8.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.2...HEAD)
-
 
 ## [0.8.2] - 2026-07-27
 
