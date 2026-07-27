@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   protocolApiErrorMessage,
+  protocolDeleteSnowlumaRuntime,
   protocolListAccounts,
   protocolListSnowlumaRuntimes,
   protocolStartSnowlumaRuntime,
@@ -16,8 +17,9 @@ import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Cpu, Search, UserMinus, UserPlus, X } from "lucide-react";
+import { Cpu, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -48,6 +50,14 @@ function runtimeMatchesQuery(rt: SnowlumaRuntimeRow, q: string): boolean {
   return hay.includes(q);
 }
 
+function runtimeMemberCount(rt: SnowlumaRuntimeRow): number {
+  return (rt.member_account_ids ?? []).filter((id) => String(id || "").trim()).length;
+}
+
+function runtimeTitle(rt: SnowlumaRuntimeRow): string {
+  return String(rt.display_name || rt.id || "Runtime").trim() || "Runtime";
+}
+
 export default function ProtocolRuntimeTab() {
   const { mountUrl } = useOutletContext<ProtocolOutletContext>();
   const qc = useQueryClient();
@@ -56,6 +66,8 @@ export default function ProtocolRuntimeTab() {
   const [memberBusyKey, setMemberBusyKey] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [addAccountId, setAddAccountId] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   const runtimesQ = useQuery({
     queryKey: ["protocol-snowluma-runtimes", mountUrl, "full"],
@@ -84,6 +96,16 @@ export default function ProtocolRuntimeTab() {
     const q = searchQ.trim().toLowerCase();
     return snowlumaRuntimes.filter((rt) => runtimeMatchesQuery(rt, q));
   }, [searchQ, snowlumaRuntimes]);
+
+  const emptyRuntimeIds = useMemo(
+    () => filteredRuntimes.filter((rt) => runtimeMemberCount(rt) === 0).map((rt) => rt.id),
+    [filteredRuntimes],
+  );
+
+  const selectedRows = useMemo(
+    () => filteredRuntimes.filter((rt) => selected.has(rt.id)),
+    [filteredRuntimes, selected],
+  );
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] });
@@ -123,6 +145,23 @@ export default function ProtocolRuntimeTab() {
     ),
   );
 
+  function setSelectedId(runtimeId: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(runtimeId);
+      else next.delete(runtimeId);
+      return next;
+    });
+  }
+
+  function selectEmptyRuntimes() {
+    setSelected(new Set(emptyRuntimeIds));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
   async function startSnowlumaRuntime(runtimeId: string) {
     if (!mountUrl) return;
     setSnowlumaRuntimeBusyId(runtimeId);
@@ -148,6 +187,85 @@ export default function ProtocolRuntimeTab() {
       pushConsoleToast(protocolApiErrorMessage(e, "停止失败"), "err");
     } finally {
       setSnowlumaRuntimeBusyId(null);
+    }
+  }
+
+  async function deleteOneRuntime(rt: SnowlumaRuntimeRow, opts?: { skipConfirm?: boolean }) {
+    if (!mountUrl) return false;
+    const members = runtimeMemberCount(rt);
+    const title = runtimeTitle(rt);
+    const force = members > 0;
+    if (!opts?.skipConfirm) {
+      const ok = force
+        ? window.confirm(
+            `Runtime「${title}」仍有 ${members} 个账号。\n强制删除会一并删除这些协议账号、容器与数据，确定？`,
+          )
+        : window.confirm(`删除空闲 Runtime「${title}」？\n将停止并移除对应容器与注册记录。`);
+      if (!ok) return false;
+    }
+    await protocolDeleteSnowlumaRuntime(mountUrl, rt.id, force);
+    return true;
+  }
+
+  async function deleteSnowlumaRuntime(rt: SnowlumaRuntimeRow) {
+    if (!mountUrl || batchBusy) return;
+    setSnowlumaRuntimeBusyId(rt.id);
+    try {
+      const deleted = await deleteOneRuntime(rt);
+      if (!deleted) return;
+      pushConsoleToast(`已删除 Runtime ${runtimeTitle(rt)}`, "ok");
+      setSelected((prev) => {
+        if (!prev.has(rt.id)) return prev;
+        const next = new Set(prev);
+        next.delete(rt.id);
+        return next;
+      });
+      if (expandedId === rt.id) setExpandedId(null);
+      refresh();
+    } catch (e) {
+      pushConsoleToast(protocolApiErrorMessage(e, "删除失败"), "err");
+    } finally {
+      setSnowlumaRuntimeBusyId(null);
+    }
+  }
+
+  async function deleteSelectedRuntimes() {
+    if (!mountUrl || !selectedRows.length || batchBusy) return;
+    const withMembers = selectedRows.filter((rt) => runtimeMemberCount(rt) > 0);
+    const emptyCount = selectedRows.length - withMembers.length;
+    const ok = withMembers.length
+      ? window.confirm(
+          `将删除 ${selectedRows.length} 个 Runtime（空闲 ${emptyCount}，含账号 ${withMembers.length}）。\n` +
+            `含账号的项会强制删除协议账号、容器与数据，确定？`,
+        )
+      : window.confirm(`将删除 ${emptyCount} 个空闲 Runtime（容器与注册记录），确定？`);
+    if (!ok) return;
+
+    setBatchBusy(true);
+    let okCount = 0;
+    let failCount = 0;
+    try {
+      for (const rt of selectedRows) {
+        try {
+          await deleteOneRuntime(rt, { skipConfirm: true });
+          okCount += 1;
+        } catch {
+          failCount += 1;
+        }
+      }
+      if (failCount === 0) {
+        pushConsoleToast(`已删除 ${okCount} 个 Runtime`, "ok");
+      } else {
+        pushConsoleToast(
+          `删除完成：成功 ${okCount}，失败 ${failCount}`,
+          failCount === okCount ? "err" : "warn",
+        );
+      }
+      clearSelection();
+      setExpandedId(null);
+      refresh();
+    } finally {
+      setBatchBusy(false);
     }
   }
 
@@ -214,20 +332,60 @@ export default function ProtocolRuntimeTab() {
     }
   }
 
+  const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null || memberBusyKey != null;
+
   return (
     <div className="protocol-runtime-tab console-panel-stack">
       {!mountUrl ? <p className="muted text-sm">协议 API 未挂载，无法加载 Runtime。</p> : null}
 
       <Card className={PROTO_PANEL}>
         <CardHeader className={cn(PROTO_PANEL_HD, "border-b")}>
-          <div className="min-w-0 space-y-1">
-            <CardTitle className="panel__title flex items-center gap-1.5">
-              <PanelTitleIcon icon={Cpu} />
-              SnowLuma Runtime
-            </CardTitle>
-            <CardDescription>
-              一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
-            </CardDescription>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="panel__title flex items-center gap-1.5">
+                <PanelTitleIcon icon={Cpu} />
+                SnowLuma Runtime
+              </CardTitle>
+              <CardDescription>
+                一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
+              </CardDescription>
+            </div>
+            <div className="protocol-runtime-batch flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!mountUrl || !emptyRuntimeIds.length || actionsBusy}
+                onClick={selectEmptyRuntimes}
+              >
+                选择空闲{emptyRuntimeIds.length ? `（${emptyRuntimeIds.length}）` : ""}
+              </Button>
+              {selected.size ? (
+                <>
+                  <span className="text-xs text-muted-foreground">已选 {selected.size}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={actionsBusy}
+                    onClick={clearSelection}
+                  >
+                    取消选择
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1"
+                    disabled={!selectedRows.length || actionsBusy}
+                    onClick={() => void deleteSelectedRuntimes()}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                    {batchBusy ? "删除中…" : "删除所选"}
+                  </Button>
+                </>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className={PROTO_PANEL_BD}>
@@ -244,23 +402,44 @@ export default function ProtocolRuntimeTab() {
                 const expanded = expandedId === rt.id;
                 const addOpts = addableOptions(rt);
                 const selectedAdd = addAccountId[rt.id] ?? "";
-                const runtimeBusy = snowlumaRuntimeBusyId === rt.id;
+                const runtimeBusy = snowlumaRuntimeBusyId === rt.id || batchBusy;
+                const checked = selected.has(rt.id);
                 return (
-                  <div key={rt.id} className="protocol-runtime-card">
+                  <div
+                    key={rt.id}
+                    className={cn(
+                      "protocol-runtime-card",
+                      checked && "protocol-runtime-card--selected",
+                    )}
+                  >
                     <div className="protocol-runtime-card__hd">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <strong className="truncate">{rt.display_name || rt.id}</strong>
-                          <span className={rt.process_running ? "pill pill--ok" : "pill"}>
-                            {rt.process_running ? "运行中" : "已停止"}
-                          </span>
-                        </div>
-                        <div className="muted text-xs break-all">{rt.id}</div>
-                        <div className="muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                          <span>{members.length} 个 QQ</span>
-                          {rt.webui_port != null && String(rt.webui_port).trim() ? (
-                            <span>WebUI :{rt.webui_port}</span>
-                          ) : null}
+                      <div className="flex min-w-0 flex-1 items-start gap-2">
+                        <label
+                          className="protocol-runtime-card__select mt-0.5 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={actionsBusy}
+                            aria-label={`选择 Runtime ${runtimeTitle(rt)}`}
+                            onCheckedChange={(value) => setSelectedId(rt.id, value === true)}
+                          />
+                        </label>
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <strong className="truncate">{rt.display_name || rt.id}</strong>
+                            <span className={rt.process_running ? "pill pill--ok" : "pill"}>
+                              {rt.process_running ? "运行中" : "已停止"}
+                            </span>
+                            {!members.length ? <span className="pill">空闲</span> : null}
+                          </div>
+                          <div className="muted text-xs break-all">{rt.id}</div>
+                          <div className="muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                            <span>{members.length} 个 QQ</span>
+                            {rt.webui_port != null && String(rt.webui_port).trim() ? (
+                              <span>WebUI :{rt.webui_port}</span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                       <div className="row-actions protocol-runtime-card__actions">
@@ -281,6 +460,17 @@ export default function ProtocolRuntimeTab() {
                           onClick={() => void stopSnowlumaRuntime(rt.id)}
                         >
                           {runtimeBusy ? "…" : "停"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-rose-600 hover:text-rose-700"
+                          disabled={runtimeBusy}
+                          onClick={() => void deleteSnowlumaRuntime(rt)}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                          {snowlumaRuntimeBusyId === rt.id ? "…" : "删"}
                         </Button>
                       </div>
                     </div>
@@ -349,7 +539,7 @@ export default function ProtocolRuntimeTab() {
                                       size="sm"
                                       variant="ghost"
                                       className="shrink-0 gap-1 text-rose-600"
-                                      disabled={busy || memberBusyKey != null}
+                                      disabled={busy || memberBusyKey != null || batchBusy}
                                       onClick={() => void detachAccount(rt.id, id)}
                                     >
                                       <UserMinus className="size-3.5" aria-hidden />
@@ -390,7 +580,8 @@ export default function ProtocolRuntimeTab() {
                                 disabled={
                                   !selectedAdd ||
                                   memberBusyKey === `${rt.id}:add:${selectedAdd}` ||
-                                  memberBusyKey != null
+                                  memberBusyKey != null ||
+                                  batchBusy
                                 }
                                 onClick={() => void attachAccount(rt.id, selectedAdd)}
                               >
