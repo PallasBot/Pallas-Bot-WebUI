@@ -23,7 +23,7 @@ export default function IconStatCard({
 }) {
   const valueText = String(value);
   return (
-    <Card className={cn("min-w-0 overflow-hidden border-border/50", className)}>
+    <Card className={cn("min-w-0", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2 sm:p-6 sm:pb-2">
         <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />

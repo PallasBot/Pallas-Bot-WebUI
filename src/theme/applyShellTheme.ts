@@ -132,7 +132,7 @@ export function writePrefs(patch: Partial<PrefsSlice>): PrefsSlice {
     next.radius = radiusModeFromControlPx(next.controlRadius);
   } else if (patch.radius !== undefined && patch.controlRadius === undefined) {
     next.radius = patch.radius;
-    next.controlRadius = patch.radius === "tight" ? 6 : patch.radius === "default" ? 12 : 16;
+    next.controlRadius = RADIUS_PRESET_PX[patch.radius];
   } else if (patch.controlRadius !== undefined) {
     next.controlRadius = clampControlRadius(patch.controlRadius);
   }

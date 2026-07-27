@@ -136,7 +136,7 @@ export default function SetupWizardPage() {
           <div className="setup-wizard-page__action-stack">
             {canEnter ? (
               <>
-                <Link to="/protocol" className="btn btn--block">
+                <Link to="/protocol" className="btn btn--primary btn--block">
                   打开协议端管理
                 </Link>
                 <Link to="/instances" className="btn btn--block">
@@ -167,7 +167,7 @@ export default function SetupWizardPage() {
           <div className="setup-wizard-page__action-stack">
             {canEnter ? (
               <>
-                <Link to="/plugin-store" className="btn btn--block">
+                <Link to="/plugin-store" className="btn btn--primary btn--block">
                   打开插件商店
                 </Link>
                 <Link to="/plugins" className="btn btn--block">

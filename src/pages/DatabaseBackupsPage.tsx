@@ -727,7 +727,7 @@ export default function DatabaseBackupsPage() {
                         <div className="database-backups-page__card-actions">
                           <span className={`badge ${runStatusBadgeVariant(row)} database-backups-page__status-badge`}>{runStatusLabel(row)}</span>
                           <div className="database-backups-page__row-btns">
-                            <button type="button" className="btn database-backups-page__restore-btn" disabled={runStatus(row) !== "completed" || anyJobBusy || !restoreToolReady} onClick={() => void restoreRun(row)}>
+                            <button type="button" className="btn btn--primary database-backups-page__restore-btn" disabled={runStatus(row) !== "completed" || anyJobBusy || !restoreToolReady} onClick={() => void restoreRun(row)}>
                               {restoreBusy && restoreJob?.output_dir === row.path ? "复原中…" : "复原"}
                             </button>
                             <button type="button" className="btn database-backups-page__download-btn" disabled={runStatus(row) !== "completed" || downloadState(row.path).status === "downloading"} onClick={() => void downloadRun(row)}>
@@ -783,7 +783,7 @@ export default function DatabaseBackupsPage() {
                             </td>
                             <td style={{ textAlign: "right" }}>
                               <div className="database-backups-page__row-btns database-backups-page__row-btns--table">
-                                <button type="button" className="btn database-backups-page__restore-btn" disabled={runStatus(row) !== "completed" || anyJobBusy || !restoreToolReady} onClick={() => void restoreRun(row)}>
+                                <button type="button" className="btn btn--primary database-backups-page__restore-btn" disabled={runStatus(row) !== "completed" || anyJobBusy || !restoreToolReady} onClick={() => void restoreRun(row)}>
                                   {restoreBusy && restoreJob?.output_dir === row.path ? "复原中…" : "复原"}
                                 </button>
                                 <button type="button" className="btn database-backups-page__download-btn" disabled={runStatus(row) !== "completed" || downloadState(row.path).status === "downloading"} onClick={() => void downloadRun(row)}>

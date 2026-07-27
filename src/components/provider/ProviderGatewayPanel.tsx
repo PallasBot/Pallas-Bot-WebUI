@@ -391,7 +391,6 @@ export default function ProviderGatewayPanel({
             <Button
               type="button"
               size="sm"
-              variant="outline"
               className="h-9 shrink-0"
               disabled={busy || !currencyDirty}
               onClick={() => void saveCurrencyOnly()}
