@@ -174,7 +174,7 @@ export default function AiConfigMediaSection() {
   const testMut = useMutation({
     mutationFn: postAiExtensionTest,
     onSuccess: (r) => {
-      if (r.reachable) notifyOk(`连通性 OK (${r.latency_ms ?? "?"} ms)`);
+      if (r.ok) notifyOk(`连通性 OK (HTTP ${r.status_code ?? "?"})`);
       else notifyErr(r.error || "不可达");
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),

@@ -919,10 +919,11 @@ function unwrapNestedEnvelope<T>(body: unknown): T {
 }
 
 export type AiExtensionTestData = {
-  reachable?: boolean;
-  latency_ms?: number | null;
-  error?: string;
-  url?: string;
+  ok?: boolean;
+  status_code?: number | null;
+  health_url?: string;
+  tried_urls?: string[];
+  error?: string | null;
 };
 
 export type AiExtensionLogsData = {

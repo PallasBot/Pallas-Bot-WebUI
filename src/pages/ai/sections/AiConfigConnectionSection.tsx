@@ -77,7 +77,7 @@ export default function AiConfigConnectionSection() {
 
   const testMut = useMutation({
     mutationFn: () => postAiExtensionTest(),
-    onSuccess: (r) => setMsg(r.reachable ? `连通性 OK (${r.latency_ms ?? "?"} ms)` : r.error || "不可达"),
+    onSuccess: (r) => setMsg(r.ok ? `连通性 OK (HTTP ${r.status_code ?? "?"})` : r.error || "不可达"),
     onError: (e) => setMsg(axiosErrorDetail(e)),
   });
 
