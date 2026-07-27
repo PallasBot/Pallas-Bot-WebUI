@@ -31,8 +31,11 @@
 }
 
 .form-section-divider__line {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 2rem;
+  height: 1px;
+  background: var(--border, hsl(var(--border)));
+  border: none;
 }
 
 .form-section-divider__toolbar {
