@@ -21,8 +21,16 @@ import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 type Panel = "samples" | "patterns" | "repeater" | "promotion" | "persona" | "debug";
 
@@ -30,7 +38,7 @@ const PANEL_OPTIONS = [
   { value: "samples", label: "样本" },
   { value: "patterns", label: "模式" },
   { value: "repeater", label: "复读" },
-  { value: "promotion", label: "升格" },
+  { value: "promotion", label: "入库" },
   { value: "persona", label: "牛格" },
   { value: "debug", label: "调试" },
 ];
@@ -40,7 +48,6 @@ export default function AiConfigBehaviorSection() {
   const [panel, setPanel] = useState<Panel>("samples");
   const [groupId, setGroupId] = useState("0");
   const [requestId, setRequestId] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [debugOut, setDebugOut] = useState<Record<string, unknown> | null>(null);
 
   const group = Number(groupId) || 0;
@@ -76,30 +83,30 @@ export default function AiConfigBehaviorSection() {
   const delPatternMut = useMutation({
     mutationFn: (patternId: string) => postLlmBehaviorPatternDelete(patternId),
     onSuccess: async () => {
-      setMsg("行为模式已删除");
+      notifyOk("行为模式已删除");
       await qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const feedbackMut = useMutation({
     mutationFn: (body: { entryId: string; action: "invalidate" | "restore" | "delete" }) =>
       postLlmRepeaterFeedbackManage(body),
     onSuccess: async () => {
-      setMsg("复读反馈已更新");
+      notifyOk("复读反馈已更新");
       await qc.invalidateQueries({ queryKey: ["llm-repeater-feedback"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const promoMut = useMutation({
     mutationFn: (body: { candidateId: string; action: "promote" | "reject" }) =>
       postLlmPromotionCandidateResolve(body),
     onSuccess: async () => {
-      setMsg("候选已处理");
+      notifyOk("候选已处理");
       await qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const debugMut = useMutation({
@@ -112,9 +119,9 @@ export default function AiConfigBehaviorSection() {
     },
     onSuccess: (data) => {
       setDebugOut(data);
-      setMsg("调试请求已完成");
+      notifyOk("调试请求已完成");
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const chromeMiddle = useMemo(
@@ -138,10 +145,6 @@ export default function AiConfigBehaviorSection() {
 
   return (
     <AiConfigSectionCard title={panelMeta.label} contentClassName="space-y-3">
-      {msg ? (
-        <p className={cn("text-sm", /完成|已/.test(msg) ? "text-emerald-400" : "text-destructive")}>{msg}</p>
-      ) : null}
-
         <label className="block max-w-xs space-y-1 text-sm">
           <span className="text-muted-foreground">群号</span>
           <Input value={groupId} onChange={(e) => setGroupId(e.target.value)} />
@@ -167,7 +170,6 @@ export default function AiConfigBehaviorSection() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        setMsg(null);
                         void delPatternMut.mutateAsync(pid);
                       }}
                     >
@@ -226,7 +228,7 @@ export default function AiConfigBehaviorSection() {
                   {cid ? (
                     <div className="flex gap-1">
                       <Button size="sm" onClick={() => void promoMut.mutateAsync({ candidateId: cid, action: "promote" })}>
-                        升格
+                        入库
                       </Button>
                       <Button
                         size="sm"

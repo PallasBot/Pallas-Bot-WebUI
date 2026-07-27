@@ -58,7 +58,9 @@ export default function AiObservationChromeTools({
           onValueChange={(v) => onSectionChange(v as AiObservationSectionId)}
         >
           <SelectTrigger className={CHROME_SELECT_TRIGGER}>
-            <SelectValue placeholder="选择">{currentLabel}</SelectValue>
+            <SelectValue placeholder="选择">
+              <ChromeOptionLabel icon={Eye}>{currentLabel}</ChromeOptionLabel>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
             {AI_OBSERVATION_SECTIONS.map((s) => (

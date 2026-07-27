@@ -1,9 +1,10 @@
+import { formatSharePercent } from "@/utils/shareDistribution";
 import { formatCompactNumber, type TokenRow } from "@/utils/aiTaskStats";
 import { fixedChartPalette } from "@/utils/chartTheme";
 import { cn } from "@/lib/utils";
 
 /**
- * 占比列表（水平条）。一边倒的分布比甜甜圈可读，名称始终可见。
+ * 占比列表（水平条）。一边倒 / 多类目时比甜甜圈可读，名称始终可见。
  */
 export default function TokenShareBars({
   rows,
@@ -36,10 +37,10 @@ export default function TokenShareBars({
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 {formatCompactNumber(row.totalTokens)}
-                <span className="ml-1.5 text-[11px]">{pct.toFixed(0)}%</span>
+                <span className="ml-1.5 text-[11px]">{formatSharePercent(pct)}</span>
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-2.5 overflow-hidden rounded-full border border-border/80 bg-muted">
               <div
                 className="h-full rounded-full transition-[width]"
                 style={{

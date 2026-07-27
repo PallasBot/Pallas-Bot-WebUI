@@ -15,8 +15,16 @@ import SegTabs from "@/components/SegTabs";
 import StateBlock from "@/components/StateBlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 type Panel = "status" | "traces" | "memory" | "notes";
 
@@ -33,7 +41,6 @@ export default function AiConfigKernelSection() {
   const [botId, setBotId] = useState("0");
   const [groupId, setGroupId] = useState("");
   const [query, setQuery] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const bot = Number(botId) || 0;
   const group = groupId.trim() ? Number(groupId) : null;
@@ -57,19 +64,19 @@ export default function AiConfigKernelSection() {
   const delMemoryMut = useMutation({
     mutationFn: (id: number) => postConversationKernelMemoryDelete({ id, botId: bot }),
     onSuccess: async () => {
-      setMsg("记忆已删除");
+      notifyOk("记忆已删除");
       await qc.invalidateQueries({ queryKey: ["conversation-kernel-memory"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const delNoteMut = useMutation({
     mutationFn: (id: number) => postConversationKernelRelationshipNoteDelete({ id, botId: bot }),
     onSuccess: async () => {
-      setMsg("关系笔记已删除");
+      notifyOk("关系笔记已删除");
       await qc.invalidateQueries({ queryKey: ["conversation-kernel-notes"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const chromeMiddle = useMemo(
@@ -93,8 +100,6 @@ export default function AiConfigKernelSection() {
 
   return (
     <AiConfigSectionCard title={panelMeta.label} contentClassName="space-y-3">
-        {msg ? <p className={cn("text-sm", msg.includes("已删除") ? "text-emerald-400" : "text-destructive")}>{msg}</p> : null}
-
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block space-y-1 text-sm">
             <span className="text-muted-foreground">bot_id</span>
@@ -139,7 +144,6 @@ export default function AiConfigKernelSection() {
                       variant="outline"
                       disabled={delMemoryMut.isPending}
                       onClick={() => {
-                        setMsg(null);
                         void delMemoryMut.mutateAsync(id);
                       }}
                     >
@@ -165,7 +169,6 @@ export default function AiConfigKernelSection() {
                       variant="outline"
                       disabled={delNoteMut.isPending}
                       onClick={() => {
-                        setMsg(null);
                         void delNoteMut.mutateAsync(id);
                       }}
                     >

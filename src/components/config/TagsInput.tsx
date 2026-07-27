@@ -12,6 +12,7 @@ import { Check, Copy, GripVertical, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import "@/styles/tags-input.css";
 
 export type TagsInputHandle = {
   /** 把输入框未回车的草稿一并提交，返回最新标签列表 */

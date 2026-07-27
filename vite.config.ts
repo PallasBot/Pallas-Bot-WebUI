@@ -72,5 +72,30 @@ export default defineConfig(({ mode }) => {
         "/protocol": { target: devProxyTarget, changeOrigin: true },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+            if (
+              id.includes("node_modules/react-dom") ||
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/scheduler")
+            ) {
+              return "vendor-react";
+            }
+            if (id.includes("react-router")) return "vendor-router";
+            if (id.includes("@tanstack")) return "vendor-query";
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("lucide-react")) return "vendor-lucide";
+            if (id.includes("marked") || id.includes("dompurify")) return "vendor-markdown";
+            if (id.includes("graphology")) return "vendor-graph";
+            if (id.includes("@fontsource")) return "vendor-fonts";
+            if (id.includes("date-fns") || id.includes("react-day-picker")) return "vendor-date";
+            if (id.includes("axios")) return "vendor-http";
+          },
+        },
+      },
+    },
   };
 });

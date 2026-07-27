@@ -342,7 +342,7 @@ export function openPluginInstallJobEventSource(jobId: string): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
   const apiBase = `${root}/api`;
   return new EventSource(
-    `${apiBase}/plugins/install-jobs/${encodeURIComponent(jobId)}/stream`,
+    `${apiBase}/plugins/store-jobs/${encodeURIComponent(jobId)}/stream`,
     { withCredentials: true },
   );
 }
@@ -380,6 +380,30 @@ export async function updateOfficialExtension(
   );
   invalidatePluginsCache();
   return out as OfficialExtensionInstallResult;
+}
+
+export async function updateOfficialExtensionAsync(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJobData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/update-async"]["post"]
+  >("/plugins/official-extensions/update-async", {
+    package: packageName,
+    restart: Boolean(options?.restart),
+  })) as ExtensionInstallJobData;
+}
+
+export async function uninstallOfficialExtensionAsync(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJobData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/official-extensions/uninstall-async"]["post"]
+  >("/plugins/official-extensions/uninstall-async", {
+    package: packageName,
+    restart: Boolean(options?.restart),
+  })) as ExtensionInstallJobData;
 }
 
 export async function fetchCommunityPluginStore(options?: { refresh?: boolean }): Promise<CommunityPluginStoreData> {
@@ -560,6 +584,31 @@ export async function updateCommunityPlugin(
   );
   invalidatePluginsCache();
   return out as CommunityPluginActionResult;
+}
+
+export async function updateCommunityPluginAsync(
+  pluginId: string,
+  options?: { restart?: boolean; ref?: string },
+): Promise<ExtensionInstallJobData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/update-async"]["post"]
+  >("/plugins/community-plugins/update-async", {
+    plugin_id: pluginId,
+    ref: options?.ref,
+    restart: Boolean(options?.restart),
+  })) as ExtensionInstallJobData;
+}
+
+export async function uninstallCommunityPluginAsync(
+  pluginId: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJobData> {
+  return (await consoleOpenapiPost<
+    ConsoleOpenapiPaths["/pallas/api/plugins/community-plugins/uninstall-async"]["post"]
+  >("/plugins/community-plugins/uninstall-async", {
+    plugin_id: pluginId,
+    restart: Boolean(options?.restart),
+  })) as ExtensionInstallJobData;
 }
 
 let botsCache: { data: BotRow[]; ts: number } | null = null;

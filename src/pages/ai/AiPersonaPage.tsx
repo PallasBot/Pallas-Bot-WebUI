@@ -241,7 +241,7 @@ function AffectBlock({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">群情感微调</CardTitle>
-        <CardDescription>近期群消息对语气的修正与触发词。</CardDescription>
+        <CardDescription>近期群聊对语气的修正，以及触发词。</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {refine ? (
@@ -439,8 +439,8 @@ function ExportCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">人设资产导出</CardTitle>
-        <CardDescription>编译后发给模型的人设文本；需填写 Bot QQ。</CardDescription>
+        <CardTitle className="text-base">人设导出</CardTitle>
+        <CardDescription>编译后发给模型的人设文本，需填写 Bot QQ。</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Input
@@ -573,7 +573,7 @@ export default function AiPersonaPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">牛格观测</CardTitle>
-          <CardDescription>情绪轴、行为提示与群内解析。</CardDescription>
+          <CardDescription>情绪轴、行为提示，以及群内解析结果。</CardDescription>
         </CardHeader>
         <CardContent>
           <StateBlock loading={observeQ.isLoading} error={observeQ.error}>
@@ -607,8 +607,8 @@ export default function AiPersonaPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">群风格画像</CardTitle>
-          <CardDescription>根据近期群消息统计；需填写群号。</CardDescription>
+          <CardTitle className="text-base">群风格</CardTitle>
+          <CardDescription>根据近期群消息统计，需填写群号。</CardDescription>
         </CardHeader>
         <CardContent>
           <StateBlock loading={styleQ.isLoading} error={styleQ.error}>

@@ -2,6 +2,7 @@ import {
   catmullStrokePath,
   fmtAxisCount,
   fmtAxisTick,
+  linearAreaBandPath,
   linearAreaPath,
   pickTickIndices,
 } from "@/utils/gsTrendChart";
@@ -32,6 +33,7 @@ export type NamedSeriesTrendPack = {
   innerH: number;
   gridYs: number[];
   timesSec: number[];
+  stacked: boolean;
   series: {
     def: NamedSeriesTrendDef;
     values: number[];
@@ -85,21 +87,29 @@ export function buildNamedSeriesTrendPack(
     axisUnit?: string;
     /** 半栏卡片：更接近 2:1，避免宽 viewBox 在窄容器里缩得看不清 */
     compact?: boolean;
+    /** 保留全 0 序列（命中率等百分比图需要） */
+    keepZeroSeries?: boolean;
+    /** 按序列自下而上堆叠面积 */
+    stacked?: boolean;
   },
 ): NamedSeriesTrendPack | null {
   const maxSeries = opts?.maxSeries ?? 12;
   const maxSlots = opts?.maxSlots ?? 56;
   const axisUnit = opts?.axisUnit ?? "次";
   const compact = Boolean(opts?.compact);
+  const keepZeroSeries = Boolean(opts?.keepZeroSeries);
+  const stacked = Boolean(opts?.stacked);
   const ranked = [...rows]
     .map((r) => ({
       ...r,
       sum: r.points.reduce((s, p) => s + (Number(p.total) || 0), 0),
     }))
-    .filter((r) => r.sum > 0 && r.points.length > 0)
+    .filter((r) => r.points.length > 0 && (keepZeroSeries || r.sum > 0))
     .sort((a, b) => b.sum - a.sum || a.label.localeCompare(b.label, "zh-CN"))
     .slice(0, maxSeries);
   if (!ranked.length) return null;
+  // 堆叠时自下而上：用量小的先画底层
+  if (stacked) ranked.reverse();
 
   const timeSet = new Set<number>();
   for (const row of ranked) {
@@ -120,7 +130,16 @@ export function buildNamedSeriesTrendPack(
   const { timesSec, seriesVals } = downsample(timesRaw, seriesValsRaw, maxSlots);
   if (timesSec.length < 2) return null;
 
-  const flat = seriesVals.flat();
+  const cumVals: number[][] = seriesVals.map((vals) => vals.map(() => 0));
+  for (let ti = 0; ti < timesSec.length; ti++) {
+    let running = 0;
+    for (let si = 0; si < seriesVals.length; si++) {
+      running += seriesVals[si]![ti] ?? 0;
+      cumVals[si]![ti] = running;
+    }
+  }
+
+  const flat = stacked ? cumVals.flat() : seriesVals.flat();
   const { rawMax, scaleMax } = softBucketAxisMax(flat);
   const yMax = Math.max(1, scaleMax);
   const axisTopPlus = rawMax > yMax;
@@ -144,16 +163,25 @@ export function buildNamedSeriesTrendPack(
     const def: NamedSeriesTrendDef = {
       id: r.id,
       label: r.label,
-      color: palette[si]!,
+      color: palette[stacked ? ranked.length - 1 - si : si]!,
     };
     const values = seriesVals[si]!;
-    const points = values.map((v, i) => ({ x: xAt(i), y: yAt(v), value: v }));
+    const tops = (stacked ? cumVals[si]! : values).map((v, i) => ({
+      x: xAt(i),
+      y: yAt(v),
+      value: values[i] ?? 0,
+    }));
+    const bottoms = stacked
+      ? si === 0
+        ? tops.map((p) => ({ x: p.x, y: bottom }))
+        : cumVals[si - 1]!.map((v, i) => ({ x: xAt(i), y: yAt(v) }))
+      : null;
     return {
       def,
       values,
-      points,
-      pathD: catmullStrokePath(points),
-      areaD: linearAreaPath(points, bottom),
+      points: tops,
+      pathD: catmullStrokePath(tops),
+      areaD: bottoms ? linearAreaBandPath(tops, bottoms) : linearAreaPath(tops, bottom),
     };
   });
 
@@ -179,6 +207,7 @@ export function buildNamedSeriesTrendPack(
     innerH,
     gridYs,
     timesSec,
+    stacked,
     series,
     yTicks,
     xTicks,

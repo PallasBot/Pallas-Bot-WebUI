@@ -13,6 +13,9 @@ import { matcherPluginDisplayName } from "@/utils/pluginDisplayLabel";
 import GsDualAxisTrendChart from "@/components/GsDualAxisTrendChart";
 import HomeBucketChartSvg from "@/components/HomeBucketChartSvg";
 import HomeHourlyChartSvg from "@/components/HomeHourlyChartSvg";
+import "@/styles/home-plugin-charts.css";
+import "@/styles/home-bucket-chart.css";
+import "@/styles/home-hourly-chart.css";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
 import {
   aggregateLocalToday,

@@ -22,6 +22,7 @@ import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, {
   CHROME_SEARCH_INPUT,
+  CHROME_SELECT_TRIGGER,
   CHROME_TOOLS_TRAILING,
 } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
@@ -33,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Layers, Search, UserPlus, Users } from "lucide-react";
+import { Bot, ClipboardCheck, Layers, Search, UserPlus, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
@@ -54,6 +55,7 @@ const FG_SECTION_SEL = "chrome-section-compact-sel h-9 w-auto shrink-0";
 const FG_LIST_SKEL_ROWS = 8;
 
 type FgSectionId = "friends" | "groups";
+type FgApproveAction = "approve-selected" | "reject-selected" | "approve-all";
 
 const FG_SECTIONS: Array<{ id: FgSectionId; label: string; icon: LucideIcon }> = [
   { id: "friends", label: "好友", icon: Users },
@@ -124,6 +126,7 @@ export default function FriendsGroupsPage() {
   const [pageGroups, setPageGroups] = useState(1);
   const [pickedFriendKeys, setPickedFriendKeys] = useState<Set<string>>(() => new Set());
   const [pickedGroupKeys, setPickedGroupKeys] = useState<Set<string>>(() => new Set());
+  const [approveSelectKey, setApproveSelectKey] = useState(0);
   const [groupModal, setGroupModal] = useState<{ id: number; name: string } | null>(null);
   const [userModal, setUserModal] = useState<{ id: number; nickname: string } | null>(null);
 
@@ -430,6 +433,38 @@ export default function FriendsGroupsPage() {
     }
   }
 
+  function runApproveAction(action: FgApproveAction) {
+    if (section === "friends") {
+      if (action === "approve-selected") {
+        void actFriendBatch(
+          requestRows.filter((r) => pickedFriendKeys.has(friendReqKey(r))),
+          "approve",
+        );
+      } else if (action === "reject-selected") {
+        void actFriendBatch(
+          requestRows.filter((r) => pickedFriendKeys.has(friendReqKey(r))),
+          "reject",
+        );
+      } else {
+        void actFriendBatch([...requestRows], "approve");
+      }
+      return;
+    }
+    if (action === "approve-selected") {
+      void actGroupBatch(
+        groupRequestRows.filter((r) => pickedGroupKeys.has(groupReqKey(r))),
+        "approve",
+      );
+    } else if (action === "reject-selected") {
+      void actGroupBatch(
+        groupRequestRows.filter((r) => pickedGroupKeys.has(groupReqKey(r))),
+        "reject",
+      );
+    } else {
+      void actGroupBatch([...groupRequestRows], "approve");
+    }
+  }
+
   const offlineFriendMsg =
     selfIdNum != null && !accountHasNonebotBot(instances?.nonebot_bots, selfIdNum)
       ? "当前账号未在消息框架上线，无法拉取好友列表。请在「数据库实例」确认协议端已接入后再试。"
@@ -440,6 +475,9 @@ export default function FriendsGroupsPage() {
       : null;
 
   const sectionMeta = FG_SECTIONS.find((s) => s.id === section) ?? FG_SECTIONS[0];
+  const pickedApproveCount =
+    section === "friends" ? pickedFriendKeys.size : pickedGroupKeys.size;
+  const approveRowCount = section === "friends" ? requestRows.length : groupRequestRows.length;
   const listSearch =
     section === "friends"
       ? {
@@ -466,35 +504,39 @@ export default function FriendsGroupsPage() {
       {err ? <div className="alert alert--err">{err}</div> : null}
       {ok ? <div className="alert alert--ok">{ok}</div> : null}
 
-      <PageMasthead title="好友与群聊" description="好友、群聊与申请审批。" />
+      <PageMasthead
+        title="好友与群聊"
+        description="好友、群聊与申请审批。"
+        actions={
+          <ChromeField label="账号" icon={Bot} className="shrink-0">
+            <BotAccountCombobox
+              value={selfIdStr || "__none__"}
+              onValueChange={(v) => {
+                setSelfIdStr(v === "__none__" ? "" : v);
+                setFriendListQ("");
+                setGroupListQ("");
+              }}
+              bots={botsVisible.map((b) => ({
+                id: b.self_id,
+                nickname: profileNick(b.self_id),
+              }))}
+              favorites={favorites}
+              leadingOption={{ value: "__none__", label: "请选择 Bot…", keywords: "请选择 Bot" }}
+              placeholder="请选择 Bot…"
+              title={
+                selfIdStr
+                  ? (() => {
+                      const cur = botsVisible.find((b) => b.self_id === selfIdStr);
+                      return cur ? botOptionTitle(cur) : selfIdStr;
+                    })()
+                  : undefined
+              }
+            />
+          </ChromeField>
+        }
+      />
 
-      <ChromeTools>
-        <ChromeField label="账号" icon={Bot} className="shrink-0">
-          <BotAccountCombobox
-            value={selfIdStr || "__none__"}
-            onValueChange={(v) => {
-              setSelfIdStr(v === "__none__" ? "" : v);
-              setFriendListQ("");
-              setGroupListQ("");
-            }}
-            bots={botsVisible.map((b) => ({
-              id: b.self_id,
-              nickname: profileNick(b.self_id),
-            }))}
-            favorites={favorites}
-            leadingOption={{ value: "__none__", label: "请选择 Bot…", keywords: "请选择 Bot" }}
-            placeholder="请选择 Bot…"
-            title={
-              selfIdStr
-                ? (() => {
-                    const cur = botsVisible.find((b) => b.self_id === selfIdStr);
-                    return cur ? botOptionTitle(cur) : selfIdStr;
-                  })()
-                : undefined
-            }
-          />
-        </ChromeField>
-
+      <ChromeTools sticky>
         <ChromeField label="选择" icon={Layers} className="shrink-0">
           <Select value={section} onValueChange={(v) => selectSection(v as FgSectionId)}>
             <SelectTrigger className={FG_SECTION_SEL} aria-label="好友或群聊">
@@ -532,6 +574,38 @@ export default function FriendsGroupsPage() {
         </div>
 
         <div className={CHROME_TOOLS_TRAILING}>
+          <ChromeField label="审批" icon={ClipboardCheck} className="shrink-0">
+            <Select
+              key={approveSelectKey}
+              onValueChange={(v) => {
+                runApproveAction(v as FgApproveAction);
+                setApproveSelectKey((k) => k + 1);
+              }}
+            >
+              <SelectTrigger
+                className={CHROME_SELECT_TRIGGER}
+                aria-label="审批操作"
+                disabled={busy || !selfIdStr.trim()}
+              >
+                <SelectValue
+                  placeholder={
+                    pickedApproveCount > 0 ? `审批（${pickedApproveCount}）` : "审批操作"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="approve-selected" disabled={pickedApproveCount === 0 || busy}>
+                  同意所选
+                </SelectItem>
+                <SelectItem value="reject-selected" disabled={pickedApproveCount === 0 || busy}>
+                  拒绝所选
+                </SelectItem>
+                <SelectItem value="approve-all" disabled={approveRowCount === 0 || busy}>
+                  全部同意
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </ChromeField>
           <RefreshIconButton
             busy={pageRefreshBusy}
             label="刷新"
@@ -654,46 +728,6 @@ export default function FriendsGroupsPage() {
                   <Badge variant="secondary">{requestRows.length} 条</Badge>
                 ) : null}
               </CardTitle>
-              <div className="row-actions friends-groups-req-hd-actions">
-                <span className="friends-groups-hd-pin-wrap" />
-                <div className="friends-groups-req-hd-bulk-btns">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={busy || pickedFriendKeys.size === 0}
-                    onClick={() =>
-                      void actFriendBatch(
-                        requestRows.filter((r) => pickedFriendKeys.has(friendReqKey(r))),
-                        "approve",
-                      )
-                    }
-                  >
-                    同意所选
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy || pickedFriendKeys.size === 0}
-                    onClick={() =>
-                      void actFriendBatch(
-                        requestRows.filter((r) => pickedFriendKeys.has(friendReqKey(r))),
-                        "reject",
-                      )
-                    }
-                  >
-                    拒绝所选
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={busy || !requestRows.length}
-                    onClick={() => void actFriendBatch([...requestRows], "approve")}
-                  >
-                    全部同意
-                  </Button>
-                </div>
-              </div>
             </CardHeader>
             <CardContent className={FG_PANEL_BD}>
               {reqsBusy ? (
@@ -904,46 +938,6 @@ export default function FriendsGroupsPage() {
                   <Badge variant="secondary">{groupRequestRows.length} 条</Badge>
                 ) : null}
               </CardTitle>
-              <div className="row-actions friends-groups-req-hd-actions">
-                <span className="friends-groups-hd-pin-wrap" />
-                <div className="friends-groups-req-hd-bulk-btns">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={busy || pickedGroupKeys.size === 0}
-                    onClick={() =>
-                      void actGroupBatch(
-                        groupRequestRows.filter((r) => pickedGroupKeys.has(groupReqKey(r))),
-                        "approve",
-                      )
-                    }
-                  >
-                    同意所选
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy || pickedGroupKeys.size === 0}
-                    onClick={() =>
-                      void actGroupBatch(
-                        groupRequestRows.filter((r) => pickedGroupKeys.has(groupReqKey(r))),
-                        "reject",
-                      )
-                    }
-                  >
-                    拒绝所选
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={busy || !groupRequestRows.length}
-                    onClick={() => void actGroupBatch([...groupRequestRows], "approve")}
-                  >
-                    全部同意
-                  </Button>
-                </div>
-              </div>
             </CardHeader>
             <CardContent className={FG_PANEL_BD}>
               {reqsBusy ? (

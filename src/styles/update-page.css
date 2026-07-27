@@ -421,6 +421,8 @@
   padding: 0;
   max-height: min(42vh, 320px);
   overflow: auto;
+  min-width: 0;
+  max-width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   line-height: 1.45;
@@ -605,13 +607,36 @@
 }
 
 .update-page__release-notes-body--md .readme-code-block {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin: 0.55em 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-muted) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
 .update-page__release-notes-body--md .readme-code-block pre {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
-  /* 为右上角幽灵 Copy 留空；覆盖上方 padding 简写 */
-  padding-right: 2.75rem;
+  overflow-x: auto;
+  /* 上下 padding 需包住 top:6px + 1.75rem 按钮，避免单行时 Copy 探出灰底 */
+  padding: 10px 2.75rem 10px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.update-page__release-notes-body--md .readme-code-block__copy {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
 }
 
 /* 仅行内 code 用紧凑 chip；勿用 :not(pre > code)（会命中 p/li/a 等） */

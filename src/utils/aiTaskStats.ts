@@ -11,6 +11,7 @@ import type {
   LlmRagMetricsSlice,
   LlmGatesSlice,
 } from "@/api/pallasTypes";
+import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 
 export function todayIso(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -24,8 +25,13 @@ export function addDaysIso(iso: string, delta: number): string {
 
 export function formatCompactNumber(n: number): string {
   const v = Number(n) || 0;
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(v >= 10_000 ? 0 : 1)}k`;
+  const abs = Math.abs(v);
+  // 百万级用两位小数（1.84M），避免一日内增长被一位小数「卡」在 1.8M
+  if (abs >= 1_000_000) {
+    const digits = abs >= 100_000_000 ? 0 : abs >= 10_000_000 ? 1 : 2;
+    return `${(v / 1_000_000).toFixed(digits)}M`;
+  }
+  if (abs >= 1_000) return `${(v / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
   return String(Math.round(v));
 }
 
@@ -110,6 +116,70 @@ export function dimensionRows(
     .sort((a, b) => b.requests - a.requests || b.failed - a.failed || a.key.localeCompare(b.key));
 }
 
+export type DimensionBreakdown = "provider_stats" | "model_stats";
+
+/** 从 history.rows 聚合区间内提供方/模型调用统计。 */
+export function aggregateHistoryDimensionRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: DimensionBreakdown,
+): DimensionRow[] {
+  const merged: Record<
+    string,
+    {
+      requests: number;
+      succeeded: number;
+      failed: number;
+      total_latency_ms: number;
+      recent_failure_class: string;
+    }
+  > = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const succeeded = Number(metrics.succeeded ?? (metrics as { ok?: number }).ok ?? 0);
+      const failed = Number(metrics.failed ?? (metrics as { fail?: number }).fail ?? 0);
+      const requests = Number(metrics.requests ?? 0) || succeeded + failed;
+      const latency = Number(metrics.total_latency_ms ?? 0);
+      const dst = merged[name] || {
+        requests: 0,
+        succeeded: 0,
+        failed: 0,
+        total_latency_ms: 0,
+        recent_failure_class: "",
+      };
+      dst.requests += requests;
+      dst.succeeded += succeeded;
+      dst.failed += failed;
+      dst.total_latency_ms += Number.isFinite(latency) ? latency : 0;
+      const cls = String(metrics.recent_failure_class ?? "").trim();
+      if (cls) dst.recent_failure_class = cls;
+      merged[name] = dst;
+    }
+  }
+  return dimensionRows(
+    Object.fromEntries(
+      Object.entries(merged).map(([key, row]) => [
+        key,
+        {
+          requests: row.requests,
+          succeeded: row.succeeded,
+          failed: row.failed,
+          total_latency_ms: row.total_latency_ms,
+          avg_latency_ms: row.requests > 0 ? row.total_latency_ms / row.requests : null,
+          recent_failure_class: row.recent_failure_class || null,
+        },
+      ]),
+    ),
+  );
+}
+
 export type TokenRow = {
   key: string;
   totalTokens: number;
@@ -117,6 +187,7 @@ export type TokenRow = {
   completionTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  costTotal: number;
 };
 
 export function tokenRows(source: Record<string, LlmTokenMetricBreakdownRow> | undefined): TokenRow[] {
@@ -131,6 +202,7 @@ export function tokenRows(source: Record<string, LlmTokenMetricBreakdownRow> | u
         cacheReadTokens: Number(row.cache_read_tokens ?? 0),
         cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
         totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+        costTotal: Number(row.cost_total ?? 0),
       };
     })
     .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0 || row.cacheWriteTokens > 0)
@@ -204,6 +276,73 @@ export function aggregateHistoryTokens(
   return { ...total, days: daily.length, daily };
 }
 
+export type TokenBreakdownDimension = "by_provider" | "by_model" | "by_task";
+
+/** 从 history.rows 聚合区间内 by_provider / by_model / by_task 分桶。 */
+export function aggregateHistoryTokenRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: TokenBreakdownDimension,
+): TokenRow[] {
+  const merged: Record<
+    string,
+    {
+      prompt_tokens: number;
+      completion_tokens: number;
+      cache_read_tokens: number;
+      cache_write_tokens: number;
+      total_tokens: number;
+      cost_total: number;
+    }
+  > = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.tokens?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const promptTokens = Number(metrics.prompt_tokens ?? 0);
+      const completionTokens = Number(metrics.completion_tokens ?? 0);
+      const cacheReadTokens = Number(metrics.cache_read_tokens ?? 0);
+      const cacheWriteTokens = Number(metrics.cache_write_tokens ?? 0);
+      const totalTokens =
+        Number(metrics.total_tokens ?? 0) || promptTokens + completionTokens;
+      const costTotal = Number(metrics.cost_total ?? 0);
+      const dst = merged[name] || {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        total_tokens: 0,
+        cost_total: 0,
+      };
+      dst.prompt_tokens += promptTokens;
+      dst.completion_tokens += completionTokens;
+      dst.cache_read_tokens += cacheReadTokens;
+      dst.cache_write_tokens += cacheWriteTokens;
+      dst.total_tokens += totalTokens;
+      dst.cost_total += costTotal;
+      merged[name] = dst;
+    }
+  }
+  return tokenRows(merged);
+}
+
+/** 仅保留有费用的 token 分桶（费用明细用）。 */
+export function aggregateHistoryTokenCostRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: TokenBreakdownDimension,
+): TokenRow[] {
+  return aggregateHistoryTokenRows(rows, start, end, dimension)
+    .filter((row) => row.costTotal > 0)
+    .sort((a, b) => b.costTotal - a.costTotal || a.key.localeCompare(b.key));
+}
+
 export type ImageBucket = {
   okCount: number;
   failCount: number;
@@ -268,25 +407,108 @@ export function imageRows(source: Record<string, LlmImageMetricBreakdownRow> | u
       imageCount: Number(row.image_count ?? 0),
       costTotal: Number(row.cost_total ?? 0),
     }))
-    .filter((row) => row.okCount > 0 || row.failCount > 0 || row.imageCount > 0)
+    .filter((row) => row.okCount > 0 || row.failCount > 0 || row.imageCount > 0 || row.costTotal > 0)
     .sort((a, b) => b.okCount - a.okCount || b.failCount - a.failCount || a.key.localeCompare(b.key));
+}
+
+export type ImageBreakdownDimension = "by_gateway" | "by_provider" | "by_model";
+
+/** 从 history.rows 聚合区间内画画分桶。 */
+export function aggregateHistoryImageRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: ImageBreakdownDimension,
+): ImageRow[] {
+  const merged: Record<string, LlmImageMetricBreakdownRow> = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.images?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const dst = merged[name] || {
+        ok_count: 0,
+        fail_count: 0,
+        image_count: 0,
+        cost_total: 0,
+      };
+      dst.ok_count = Number(dst.ok_count ?? 0) + Number(metrics.ok_count ?? 0);
+      dst.fail_count = Number(dst.fail_count ?? 0) + Number(metrics.fail_count ?? 0);
+      dst.image_count = Number(dst.image_count ?? 0) + Number(metrics.image_count ?? 0);
+      dst.cost_total = Number(dst.cost_total ?? 0) + Number(metrics.cost_total ?? 0);
+      merged[name] = dst;
+    }
+  }
+  return imageRows(merged).sort(
+    (a, b) => b.costTotal - a.costTotal || b.imageCount - a.imageCount || a.key.localeCompare(b.key),
+  );
+}
+
+export type RangeCostSummary = {
+  tokenCost: number;
+  imageCost: number;
+  totalCost: number;
+  currency: string;
+  hasImages: boolean;
+  tokenProviderRows: TokenRow[];
+  tokenModelRows: TokenRow[];
+  tokenTaskRows: TokenRow[];
+  imageGatewayRows: ImageRow[];
+  imageProviderRows: ImageRow[];
+  imageModelRows: ImageRow[];
+};
+
+export function buildRangeCostSummary(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): RangeCostSummary {
+  const tokens = aggregateHistoryTokens(rows, start, end);
+  const images = aggregateHistoryImages(rows, start, end);
+  const hasImages =
+    images.okCount > 0 || images.failCount > 0 || images.imageCount > 0 || images.costTotal > 0;
+  const currency = tokens.costCurrency || images.costCurrency || "";
+  return {
+    tokenCost: tokens.costTotal,
+    imageCost: images.costTotal,
+    totalCost: tokens.costTotal + images.costTotal,
+    currency,
+    hasImages,
+    tokenProviderRows: aggregateHistoryTokenCostRows(rows, start, end, "by_provider"),
+    tokenModelRows: aggregateHistoryTokenCostRows(rows, start, end, "by_model"),
+    tokenTaskRows: aggregateHistoryTokenCostRows(rows, start, end, "by_task"),
+    imageGatewayRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_gateway").filter((r) => r.costTotal > 0)
+      : [],
+    imageProviderRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_provider").filter((r) => r.costTotal > 0)
+      : [],
+    imageModelRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_model").filter((r) => r.costTotal > 0)
+      : [],
+  };
 }
 
 export type RagBucket = {
   hitCount: number;
   missCount: number;
+  skipCount: number;
   hitRate: number;
   byDocument: Record<string, number>;
 };
 
 export function emptyRagBucket(): RagBucket {
-  return { hitCount: 0, missCount: 0, hitRate: 0, byDocument: {} };
+  return { hitCount: 0, missCount: 0, skipCount: 0, hitRate: 0, byDocument: {} };
 }
 
 export function ragFromSlice(rag: LlmRagMetricsSlice | undefined | null): RagBucket {
   if (!rag) return emptyRagBucket();
   const hitCount = Number(rag.hit_count ?? 0);
   const missCount = Number(rag.miss_count ?? 0);
+  const skipCount = Number(rag.skip_count ?? 0);
   const total = hitCount + missCount;
   const hitRate =
     rag.hit_rate != null && Number.isFinite(Number(rag.hit_rate))
@@ -300,7 +522,7 @@ export function ragFromSlice(rag: LlmRagMetricsSlice | undefined | null): RagBuc
     if (!name) continue;
     byDocument[name] = Number(value ?? 0);
   }
-  return { hitCount, missCount, hitRate, byDocument };
+  return { hitCount, missCount, skipCount, hitRate, byDocument };
 }
 
 export function addRagBuckets(a: RagBucket, b: RagBucket): RagBucket {
@@ -310,10 +532,12 @@ export function addRagBuckets(a: RagBucket, b: RagBucket): RagBucket {
   }
   const hitCount = a.hitCount + b.hitCount;
   const missCount = a.missCount + b.missCount;
+  const skipCount = a.skipCount + b.skipCount;
   const total = hitCount + missCount;
   return {
     hitCount,
     missCount,
+    skipCount,
     hitRate: total > 0 ? Math.round((1000 * hitCount) / total) / 10 : 0,
     byDocument,
   };
@@ -420,6 +644,260 @@ export function dailyRagTrend(
   return out;
 }
 
+/** 闭区间逐日 ISO 日期（含起止）。 */
+export function eachIsoDay(start: string, end: string): string[] {
+  const sd = String(start || "").slice(0, 10);
+  const ed = String(end || "").slice(0, 10);
+  if (!sd || !ed || sd > ed) return [];
+  const out: string[] = [];
+  let cur = sd;
+  while (cur <= ed) {
+    out.push(cur);
+    cur = addDaysIso(cur, 1);
+  }
+  return out;
+}
+
+export type TrendPoint = { at: number; total: number };
+
+/** 按日补齐缺失日为 0，保证折线连续。 */
+export function padDailyTrendPoints(
+  points: TrendPoint[],
+  start: string,
+  end: string,
+): TrendPoint[] {
+  const byDay = new Map<string, number>();
+  for (const p of points) {
+    const day = new Date((Number(p.at) || 0) * 1000);
+    if (Number.isNaN(day.getTime())) continue;
+    const key = todayIso(day);
+    byDay.set(key, Number(p.total) || 0);
+  }
+  return eachIsoDay(start, end).map((day) => ({
+    at: Math.floor(new Date(`${day}T12:00:00`).getTime() / 1000),
+    total: byDay.get(day) ?? 0,
+  }));
+}
+
+/** 按小时补齐 00..(endHour) 为 0；endHour 默认取已有最大小时或 23。 */
+export function padHourlyTrendPoints(points: TrendPoint[], dayIso: string, endHour?: number): TrendPoint[] {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  const byHour = new Map<number, number>();
+  let maxH = 0;
+  for (const p of points) {
+    const d = new Date((Number(p.at) || 0) * 1000);
+    if (Number.isNaN(d.getTime())) continue;
+    const h = d.getHours();
+    byHour.set(h, Number(p.total) || 0);
+    if (h > maxH) maxH = h;
+  }
+  const last =
+    endHour != null && Number.isFinite(endHour)
+      ? Math.min(23, Math.max(0, Math.floor(endHour)))
+      : Math.max(maxH, points.length ? maxH : 0);
+  const out: TrendPoint[] = [];
+  for (let h = 0; h <= last; h += 1) {
+    out.push({
+      at: Math.floor(new Date(`${day}T${String(h).padStart(2, "0")}:00:00`).getTime() / 1000),
+      total: byHour.get(h) ?? 0,
+    });
+  }
+  return out;
+}
+
+export type DailyIoPoint = {
+  date: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costTotal: number;
+};
+
+/** 区间按日输入 / 输出 / 费用（缺日不出现，配合 padDailyTrendPoints）。 */
+export function dailyTokenIoTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyIoPoint[] {
+  const out: DailyIoPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const bucket = tokensFromSlice(row.ai?.tokens ?? null);
+    out.push({
+      date,
+      promptTokens: bucket.promptTokens,
+      completionTokens: bucket.completionTokens,
+      totalTokens: bucket.totalTokens,
+      costTotal: bucket.costTotal,
+    });
+  }
+  return out;
+}
+
+export type DailyCostPoint = {
+  date: string;
+  tokenCost: number;
+  imageCost: number;
+  totalCost: number;
+};
+
+export function dailyCostTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailyCostPoint[] {
+  const out: DailyCostPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const tokenCost = tokensFromSlice(row.ai?.tokens ?? null).costTotal;
+    const imageCost = imagesFromSlice(row.ai?.images ?? null).costTotal;
+    out.push({
+      date,
+      tokenCost,
+      imageCost,
+      totalCost: tokenCost + imageCost,
+    });
+  }
+  return out;
+}
+
+export type DailySuccessPoint = { date: string; successRate: number; total: number };
+
+export function dailyAiSuccessTrend(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): DailySuccessPoint[] {
+  const out: DailySuccessPoint[] = [];
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const { ok, fail } = aiOutcomesFromSlice(row.ai ?? null);
+    const total = ok + fail;
+    out.push({
+      date,
+      total,
+      successRate: total > 0 ? Math.round((1000 * ok) / total) / 10 : 0,
+    });
+  }
+  return out;
+}
+
+function dayAtNoonSec(day: string): number {
+  return Math.floor(new Date(`${day}T12:00:00`).getTime() / 1000);
+}
+
+/** 把按日字段转成可补零的趋势点。 */
+export function dailyFieldToTrendPoints(
+  rows: Array<{ date: string; value: number }>,
+): TrendPoint[] {
+  return rows.map((r) => ({
+    at: dayAtNoonSec(String(r.date).slice(0, 10)),
+    total: Number(r.value) || 0,
+  }));
+}
+
+/** 区间内有 Token / 检索等用量的日期（供日历禁空日）。 */
+export function daysWithTokenActivity(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+): Set<string> {
+  const out = new Set<string>();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date) continue;
+    const tokens = tokensFromSlice(row.ai?.tokens ?? null);
+    if (tokens.totalTokens > 0 || tokens.cacheReadTokens > 0) {
+      out.add(date);
+      continue;
+    }
+    const rag = ragFromSlice(row.ai?.rag ?? null);
+    const mem = ragFromSlice(row.ai?.memory_rag ?? null);
+    if (rag.hitCount + rag.missCount + mem.hitCount + mem.missCount > 0) {
+      out.add(date);
+    }
+  }
+  return out;
+}
+
+/** 按提供方拆分的日 Token 序列（缺日补 0 后可堆叠）。 */
+export function dailyProviderTokenSeries(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  maxProviders = 8,
+): NamedSeriesLike[] {
+  const byProvider = new Map<string, Map<string, number>>();
+  const totals = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const breakdown = row.ai?.tokens?.by_provider;
+    if (!breakdown || typeof breakdown !== "object") continue;
+    for (const [key, metrics] of Object.entries(breakdown)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const prompt = Number((metrics as LlmTokenMetricBreakdownRow).prompt_tokens ?? 0);
+      const completion = Number((metrics as LlmTokenMetricBreakdownRow).completion_tokens ?? 0);
+      const total =
+        Number((metrics as LlmTokenMetricBreakdownRow).total_tokens ?? 0) || prompt + completion;
+      if (total <= 0) continue;
+      if (!byProvider.has(name)) byProvider.set(name, new Map());
+      const dayMap = byProvider.get(name)!;
+      dayMap.set(date, (dayMap.get(date) || 0) + total);
+      totals.set(name, (totals.get(name) || 0) + total);
+    }
+  }
+  const ranked = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
+    .slice(0, maxProviders)
+    .map(([name]) => name);
+  return ranked.map((name) => {
+    const dayMap = byProvider.get(name) || new Map();
+    const raw = eachIsoDay(start, end).map((day) => ({
+      at: dayAtNoonSec(day),
+      total: dayMap.get(day) || 0,
+    }));
+    return { id: `provider:${name}`, label: name, points: raw };
+  });
+}
+
+type NamedSeriesLike = {
+  id: string;
+  label: string;
+  points: TrendPoint[];
+};
+
+export type KnowledgeInventory = {
+  sourceCount: number;
+  chunkCount: number;
+  topSources: Array<{ id: string; title: string; chunkCount: number }>;
+};
+
+export function summarizeKnowledgeInventory(
+  items: Array<{
+    source_id?: string;
+    title?: string;
+    chunk_count?: number;
+  }>,
+): KnowledgeInventory {
+  const topSources = items
+    .map((row) => ({
+      id: String(row.source_id || "").trim(),
+      title: String(row.title || row.source_id || "").trim() || "未命名",
+      chunkCount: Number(row.chunk_count ?? 0) || 0,
+    }))
+    .filter((row) => row.id)
+    .sort((a, b) => b.chunkCount - a.chunkCount || a.title.localeCompare(b.title, "zh-CN"));
+  return {
+    sourceCount: topSources.length,
+    chunkCount: topSources.reduce((s, r) => s + r.chunkCount, 0),
+    topSources: topSources.slice(0, 8),
+  };
+}
+
 export function aggregateHistoryRoutes(
   rows: LlmTaskStatsHistoryRow[] | undefined,
   start: string,
@@ -457,6 +935,7 @@ export function hourTokenRows(
         cacheReadTokens: Number(row.cache_read_tokens ?? 0),
         cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
         totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+        costTotal: Number(row.cost_total ?? 0),
       };
     })
     .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0)
@@ -476,6 +955,38 @@ export function hourlyTokenTrendPoints(
     const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
     return { at, total: row.totalTokens };
   });
+}
+
+/** 当日按小时：输入 / 输出两条序列（缺小时补 0）。 */
+export function hourlyTokenIoTrendSeries(
+  rows: TokenRow[],
+  dayIso: string,
+  endHour?: number,
+): Array<{ id: string; label: string; points: Array<{ at: number; total: number }> }> {
+  const day = String(dayIso || "").slice(0, 10);
+  if (!day) return [];
+  const promptRaw: TrendPoint[] = [];
+  const completionRaw: TrendPoint[] = [];
+  for (const row of rows) {
+    const raw = String(row.key || "").trim();
+    const hour = Math.min(23, Math.max(0, parseInt(raw.replace(/:.*/, ""), 10) || 0));
+    const at = Math.floor(new Date(`${day}T${String(hour).padStart(2, "0")}:00:00`).getTime() / 1000);
+    promptRaw.push({ at, total: row.promptTokens });
+    completionRaw.push({ at, total: row.completionTokens });
+  }
+  if (!promptRaw.length && !completionRaw.length) return [];
+  return [
+    {
+      id: "prompt",
+      label: AI_TOKEN_METRIC_LABELS.prompt,
+      points: padHourlyTrendPoints(promptRaw, day, endHour),
+    },
+    {
+      id: "completion",
+      label: AI_TOKEN_METRIC_LABELS.completion,
+      points: padHourlyTrendPoints(completionRaw, day, endHour),
+    },
+  ];
 }
 
 export function summarizeTaskStats(stats: LlmTaskStatsData | undefined) {

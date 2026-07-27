@@ -10,25 +10,64 @@ function extractPreText(pre: HTMLPreElement): string {
   return (pre.textContent || "").replace(/\n$/, "");
 }
 
+function resetCopyButton(btn: HTMLButtonElement) {
+  btn.innerHTML = COPY_ICON;
+  btn.classList.remove("readme-code-block__copy--done");
+  btn.setAttribute("aria-label", "复制代码");
+  btn.title = "复制代码";
+}
+
+function ensureCodeBlockWrapper(pre: HTMLPreElement): { wrapper: HTMLElement; btn: HTMLButtonElement } {
+  const parent = pre.parentElement;
+  if (parent?.classList.contains("readme-code-block")) {
+    let btn = parent.querySelector(":scope > .readme-code-block__copy") as HTMLButtonElement | null;
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "readme-code-block__copy";
+      resetCopyButton(btn);
+      parent.appendChild(btn);
+    }
+    return { wrapper: parent, btn };
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "readme-code-block";
+  pre.parentNode?.insertBefore(wrapper, pre);
+  wrapper.appendChild(pre);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "readme-code-block__copy";
+  resetCopyButton(btn);
+  wrapper.appendChild(btn);
+  return { wrapper, btn };
+}
+
+function unwrapCodeBlock(wrapper: HTMLElement) {
+  const pre = wrapper.querySelector(":scope > pre");
+  if (!pre || !wrapper.parentNode) {
+    wrapper.remove();
+    return;
+  }
+  wrapper.parentNode.insertBefore(pre, wrapper);
+  wrapper.remove();
+}
+
 /** 给 README / release notes 的 fenced `<pre>` 挂上幽灵 Copy 按钮。 */
 export function setupReadmeCodeCopyButtons(container: HTMLElement): () => void {
   const disposers: Array<() => void> = [];
+  const wrappers: HTMLElement[] = [];
 
-  for (const pre of container.querySelectorAll("pre")) {
-    if (pre.closest(".readme-code-block")) continue;
+  // 快照：wrap 过程中 live NodeList 会变
+  for (const pre of [...container.querySelectorAll("pre")]) {
+    if (!(pre instanceof HTMLPreElement)) continue;
+    // 已在其它 wrapper 内（非直接子级）则跳过，避免嵌套
+    const nested = pre.closest(".readme-code-block");
+    if (nested && nested.querySelector(":scope > pre") !== pre) continue;
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "readme-code-block";
-    pre.parentNode?.insertBefore(wrapper, pre);
-    wrapper.appendChild(pre);
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "readme-code-block__copy";
-    btn.innerHTML = COPY_ICON;
-    btn.setAttribute("aria-label", "复制代码");
-    btn.title = "复制代码";
-    wrapper.appendChild(btn);
+    const { wrapper, btn } = ensureCodeBlockWrapper(pre);
+    if (!wrappers.includes(wrapper)) wrappers.push(wrapper);
 
     let resetTimer = 0;
     const onClick = async () => {
@@ -39,12 +78,7 @@ export function setupReadmeCodeCopyButtons(container: HTMLElement): () => void {
       btn.setAttribute("aria-label", "已复制");
       btn.title = "已复制";
       window.clearTimeout(resetTimer);
-      resetTimer = window.setTimeout(() => {
-        btn.innerHTML = COPY_ICON;
-        btn.classList.remove("readme-code-block__copy--done");
-        btn.setAttribute("aria-label", "复制代码");
-        btn.title = "复制代码";
-      }, 1600);
+      resetTimer = window.setTimeout(() => resetCopyButton(btn), 1600);
     };
 
     btn.addEventListener("click", onClick);
@@ -56,5 +90,7 @@ export function setupReadmeCodeCopyButtons(container: HTMLElement): () => void {
 
   return () => {
     for (const dispose of disposers) dispose();
+    // 拆掉 wrapper，避免 React Strict Mode 二次 effect 因「已包装」跳过而丢掉点击逻辑
+    for (const wrapper of wrappers) unwrapCodeBlock(wrapper);
   };
 }

@@ -64,7 +64,11 @@ export default function AiConfigChromeTools({
       <ChromeField label="选择" icon={Layers} className="shrink-0">
         <Select value={section} onValueChange={(v) => onSectionChange(v as AiConfigSectionId)}>
           <SelectTrigger className={CHROME_SELECT_TRIGGER}>
-            <SelectValue placeholder="选择">{currentLabel}</SelectValue>
+            <SelectValue placeholder="选择">
+              <ChromeOptionLabel icon={SECTION_ICONS[section] ?? Layers}>
+                {currentLabel}
+              </ChromeOptionLabel>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
             {AI_CONFIG_SECTIONS.map((s) => (

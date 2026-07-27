@@ -636,7 +636,6 @@ export default function InstancesPage() {
                               {acc != null && !accountInDb(acc) ? (
                                 <Button
                                   type="button"
-                                  variant="secondary"
                                   size="sm"
                                   className="inst-nonebot-init-btn"
                                   onClick={() => startInit(acc)}

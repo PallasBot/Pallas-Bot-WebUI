@@ -95,8 +95,10 @@ export default function SceneDialogueExamplesCard({ botId }: { botId: number | n
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">场景对话正反例</CardTitle>
-        <CardDescription>仅手工维护的小型示例库；按本轮场景和用户线索临时选取，不会自动收集群聊天记录。</CardDescription>
+        <CardTitle className="text-base">场景正反例</CardTitle>
+        <CardDescription>
+          手工维护的小型示例；按场景与用户线索选取，不会自动收集群聊。
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {!botId ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}

@@ -1,41 +1,44 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleSetupGuard from "@/components/ConsoleSetupGuard";
 import AppShell from "@/layout/AppShell";
-import ChartsPage from "@/pages/ChartsPage";
-import CommunityGalleryPage from "@/pages/CommunityGalleryPage";
-import CommunityPage from "@/pages/CommunityPage";
-import DatabaseBackupsPage from "@/pages/DatabaseBackupsPage";
-import DatabasePage from "@/pages/DatabasePage";
-import FriendsGroupsPage from "@/pages/FriendsGroupsPage";
-import HomePage from "@/pages/HomePage";
-import InstancesPage from "@/pages/InstancesPage";
-import LogErrorsPage from "@/pages/LogErrorsPage";
 import LoginPage from "@/pages/LoginPage";
-import LogsPage from "@/pages/LogsPage";
-import PluginStorePage from "@/pages/PluginStorePage";
-import PluginsPage from "@/pages/PluginsPage";
-import PreferencesPage from "@/pages/PreferencesPage";
-import SetupWizardPage from "@/pages/SetupWizardPage";
-import ProtocolPage from "@/pages/ProtocolPage";
-import ProtocolAccountsTab from "@/pages/protocol/ProtocolAccountsTab";
-import ProtocolAssetsTab from "@/pages/protocol/ProtocolAssetsTab";
-import ProtocolCreateTab from "@/pages/protocol/ProtocolCreateTab";
-import ProtocolImportTab from "@/pages/protocol/ProtocolImportTab";
-import ProtocolRuntimeTab from "@/pages/protocol/ProtocolRuntimeTab";
-import UpdatePage from "@/pages/UpdatePage";
-import AiConfigPage from "@/pages/ai/AiConfigPage";
-import AiHistoryPage from "@/pages/ai/AiHistoryPage";
-import AiLayout from "@/pages/ai/AiLayout";
-import AiLogsPage from "@/pages/ai/AiLogsPage";
-import AiMemoryPage from "@/pages/ai/AiMemoryPage";
-import AiPeoplePage from "@/pages/ai/AiPeoplePage";
-import AiToolsPage from "@/pages/ai/AiToolsPage";
-import AiTasksPage from "@/pages/ai/AiTasksPage";
-import AiObservationLayout from "@/pages/ai/AiObservationLayout";
-import AiPersonaPage from "@/pages/ai/AiPersonaPage";
-import AiStatisticsPage from "@/pages/ai/AiStatisticsPage";
 import { commonConfigLegacyRedirectPath } from "@/utils/commonConfigRedirects";
 import { AI_OBSERVATION_DEFAULT_PATH } from "@/config/aiObservationSections";
+
+const HomePage = lazy(() => import("@/pages/HomePage"));
+const ChartsPage = lazy(() => import("@/pages/ChartsPage"));
+const CommunityGalleryPage = lazy(() => import("@/pages/CommunityGalleryPage"));
+const CommunityPage = lazy(() => import("@/pages/CommunityPage"));
+const DatabaseBackupsPage = lazy(() => import("@/pages/DatabaseBackupsPage"));
+const DatabasePage = lazy(() => import("@/pages/DatabasePage"));
+const FriendsGroupsPage = lazy(() => import("@/pages/FriendsGroupsPage"));
+const InstancesPage = lazy(() => import("@/pages/InstancesPage"));
+const LogErrorsPage = lazy(() => import("@/pages/LogErrorsPage"));
+const LogsPage = lazy(() => import("@/pages/LogsPage"));
+const PluginStorePage = lazy(() => import("@/pages/PluginStorePage"));
+const PluginsPage = lazy(() => import("@/pages/PluginsPage"));
+const PreferencesPage = lazy(() => import("@/pages/PreferencesPage"));
+const SetupWizardPage = lazy(() => import("@/pages/SetupWizardPage"));
+const ProtocolPage = lazy(() => import("@/pages/ProtocolPage"));
+const ProtocolAccountsTab = lazy(() => import("@/pages/protocol/ProtocolAccountsTab"));
+const ProtocolAssetsTab = lazy(() => import("@/pages/protocol/ProtocolAssetsTab"));
+const ProtocolCreateTab = lazy(() => import("@/pages/protocol/ProtocolCreateTab"));
+const ProtocolImportTab = lazy(() => import("@/pages/protocol/ProtocolImportTab"));
+const ProtocolRuntimeTab = lazy(() => import("@/pages/protocol/ProtocolRuntimeTab"));
+const UpdatePage = lazy(() => import("@/pages/UpdatePage"));
+const AiConfigPage = lazy(() => import("@/pages/ai/AiConfigPage"));
+const AiHistoryPage = lazy(() => import("@/pages/ai/AiHistoryPage"));
+const AiLayout = lazy(() => import("@/pages/ai/AiLayout"));
+const AiLogsPage = lazy(() => import("@/pages/ai/AiLogsPage"));
+const AiMemoryPage = lazy(() => import("@/pages/ai/AiMemoryPage"));
+const AiPeoplePage = lazy(() => import("@/pages/ai/AiPeoplePage"));
+const AiToolsPage = lazy(() => import("@/pages/ai/AiToolsPage"));
+const AiTasksPage = lazy(() => import("@/pages/ai/AiTasksPage"));
+const AiObservationLayout = lazy(() => import("@/pages/ai/AiObservationLayout"));
+const AiPersonaPage = lazy(() => import("@/pages/ai/AiPersonaPage"));
+const AiStatisticsPage = lazy(() => import("@/pages/ai/AiStatisticsPage"));
 
 function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?: boolean }) {
   const { sectionId } = useParams();
@@ -48,7 +51,14 @@ function CommonConfigLegacyRedirect({ fromPathParam = false }: { fromPathParam?:
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/login"
+        element={
+          <Suspense fallback={<ConsolePageSkeleton panels={1} />}>
+            <LoginPage />
+          </Suspense>
+        }
+      />
       <Route
         path="/"
         element={

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import "@/styles/bot-restart-dialog.css";
 import {
   Dialog,
   DialogContent,

@@ -39,10 +39,10 @@ export function ChromeOptionLabel({
   children: ReactNode;
 }) {
   return (
-    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 leading-snug">
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 leading-[1.25]">
       <Icon className={cn(FIELD_ICO, "block")} strokeWidth={2} aria-hidden />
       {/* 勿用 leading-none + truncate：CJK 字形易被纵向裁切 */}
-      <span className="min-w-0 overflow-x-hidden text-ellipsis whitespace-nowrap leading-snug">
+      <span className="min-w-0 overflow-x-hidden text-ellipsis whitespace-nowrap leading-[1.25]">
         {children}
       </span>
     </span>

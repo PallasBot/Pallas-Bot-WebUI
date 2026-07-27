@@ -8,6 +8,7 @@ import {
   postDbMigrateMongoPg,
 } from "@/api/fullConsole";
 import type { DbMigrateMongoPgJob } from "@/api/pallasTypes";
+import ConsoleHint from "@/components/ConsoleHint";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -93,16 +94,18 @@ export default function DatabaseMigratePanel({ onMessage }: Props) {
 
   return (
     <div className="database-migrate-panel space-y-3">
-      <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-        将 MongoDB 数据迁入 PostgreSQL。建议先预演；正式迁移期间尽量暂停写入。
-      </p>
-      {info?.notes?.length ? (
-        <ul className="muted" style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
-          {info.notes.map((n) => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
-      ) : null}
+      <ConsoleHint className="mb-0 flex-col items-stretch gap-1.5 text-xs">
+        <p className="m-0">
+          将 MongoDB 数据迁入 PostgreSQL。建议先预演；正式迁移期间尽量暂停写入。
+        </p>
+        {info?.notes?.length ? (
+          <ul className="m-0 list-disc space-y-0.5 pl-4">
+            {info.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        ) : null}
+      </ConsoleHint>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
           <Label className="text-sm">仅预演（不写库）</Label>

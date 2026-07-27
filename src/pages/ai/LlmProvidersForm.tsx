@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 import { cn } from "@/lib/utils";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import { AlertTriangle, Cloud, Cpu, GitBranch, HardDrive, Key, Layers, ListTree, Plus, Server, type LucideIcon } from "lucide-react";
@@ -1314,22 +1315,22 @@ export default function LlmProvidersForm() {
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                               <ModelPriceField
-                                label="输入"
+                                label={AI_TOKEN_METRIC_LABELS.prompt}
                                 textValue={priceFieldText(modelName, "price_in", row.price_in)}
                                 onTextChange={(raw) => setPriceField(modelName, "price_in", raw)}
                               />
                               <ModelPriceField
-                                label="输出"
+                                label={AI_TOKEN_METRIC_LABELS.completion}
                                 textValue={priceFieldText(modelName, "price_out", row.price_out)}
                                 onTextChange={(raw) => setPriceField(modelName, "price_out", raw)}
                               />
                               <ModelPriceField
-                                label="缓存读"
+                                label={AI_TOKEN_METRIC_LABELS.cacheRead}
                                 textValue={priceFieldText(modelName, "cache_price_in", row.cache_price_in)}
                                 onTextChange={(raw) => setPriceField(modelName, "cache_price_in", raw)}
                               />
                               <ModelPriceField
-                                label="缓存写"
+                                label={AI_TOKEN_METRIC_LABELS.cacheWrite}
                                 textValue={priceFieldText(modelName, "cache_price_out", row.cache_price_out)}
                                 onTextChange={(raw) => setPriceField(modelName, "cache_price_out", raw)}
                               />

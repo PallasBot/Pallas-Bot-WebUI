@@ -18,6 +18,8 @@ export default function PrefsGlassPreview({
     return {
       "--surface-blur": `${blurPx}px`,
       "--card-glass-opacity": String(op),
+      "--card-glass-pct": `${Math.round(op * 100)}%`,
+      "--shell-glass-pct": `${Math.round(op * 100)}%`,
       "--glass-saturate": saturate.toFixed(2),
     } as CSSProperties;
   }, [blur, opacity]);

@@ -38,6 +38,8 @@ type Props = {
   metaLinkLabel?: string;
   metaLinkUrl?: string | null;
   installedVersionLabel?: string;
+  progressPercent?: number | null;
+  progressMessage?: string;
   onOpen?: () => void;
   onInstall?: () => void;
   onUninstall?: () => void;
@@ -79,6 +81,8 @@ export default function PluginStoreCard({
   metaLinkLabel = "",
   metaLinkUrl = null,
   installedVersionLabel = "",
+  progressPercent = null,
+  progressMessage = "",
   onOpen,
   onInstall,
   onUninstall,
@@ -96,6 +100,12 @@ export default function PluginStoreCard({
   const footLocked = Boolean(
     updateBusy || uninstallBusy || installBusy || busy || installQueued || updateQueued,
   );
+  const showInlineProgress = Boolean(
+    (installBusy || updateBusy || uninstallBusy || busy)
+      && ((progressMessage || "").trim() || progressPercent != null),
+  );
+  const clampedProgress =
+    progressPercent == null ? null : Math.max(0, Math.min(100, Math.round(Number(progressPercent) || 0)));
   const hasMenu = menuItems.some((item) => !item.disabled);
   const hasMetaLink = Boolean((metaLinkLabel || "").trim() && (metaLinkUrl || "").trim());
   const versionChips = useMemo(() => {
@@ -234,7 +244,24 @@ export default function PluginStoreCard({
             ) : null}
           </div>
 
-          {description ? (
+          {showInlineProgress ? (
+            <div className="plugin-store-card__summary plugin-store-card__summary--progress">
+              <p className="plugin-store-card__progress-msg muted" title={progressMessage || undefined}>
+                {(progressMessage || "").trim() || "处理中…"}
+              </p>
+              <div className="plugin-store-card__progress-row">
+                <div className="plugin-store-card__progress-track" aria-hidden="true">
+                  <div
+                    className="plugin-store-card__progress-fill"
+                    style={{ width: `${clampedProgress ?? 8}%` }}
+                  />
+                </div>
+                {clampedProgress != null ? (
+                  <span className="plugin-store-card__progress-pct muted">{clampedProgress}%</span>
+                ) : null}
+              </div>
+            </div>
+          ) : description ? (
             <div className="plugin-store-card__summary">
               <p className="plugin-store-card__desc muted" title={description}>
                 {description}

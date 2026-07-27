@@ -30,7 +30,7 @@ export function SessionTurnFeedbackControls({
     <div className={cn("mt-2 space-y-2 rounded-xl border bg-background/70 p-2.5 text-xs", className)}>
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant={entry?.eligible_for_bias ? "success" : entry ? "secondary" : "outline"}>
-          {!entry ? "未收录反哺" : entry.eligible_for_bias ? "参与学习" : "已排除"}
+          {!entry ? "未收录纠错" : entry.eligible_for_bias ? "参与学习" : "已排除"}
         </Badge>
         {entry?.behavior_scene ? <Badge variant="outline">{labelScene(entry.behavior_scene)}</Badge> : null}
         {entry?.llm_route ? <Badge variant="muted">{labelLlmRoute(entry.llm_route)}</Badge> : null}

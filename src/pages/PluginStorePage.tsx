@@ -5,10 +5,10 @@ import {
   installCommunityPluginAsync,
   installOfficialExtensionAsync,
   openPluginInstallJobEventSource,
-  uninstallCommunityPlugin,
-  uninstallOfficialExtension,
-  updateCommunityPlugin,
-  updateOfficialExtension,
+  uninstallCommunityPluginAsync,
+  uninstallOfficialExtensionAsync,
+  updateCommunityPluginAsync,
+  updateOfficialExtensionAsync,
 } from "@/api/console";
 import {
   fetchCommunityPluginStore,
@@ -33,12 +33,10 @@ import {
   formatPluginStoreActiveHint,
   formatPluginStoreBatchCompleteHint,
   formatPluginStoreEnqueuedHint,
-  formatPluginStoreInstallProgressHint,
   isPluginStoreTaskQueued,
   pluginStoreQueuePendingAfterActive,
   type PluginStoreQueueAction,
   type PluginStoreQueueKind,
-  withPluginStoreQueueSuffix,
 } from "@/utils/pluginStoreActionQueue";
 import ChromeField, { ChromeOptionLabel } from "@/components/ChromeField";
 import ChromeTools, { CHROME_SEARCH_INPUT, CHROME_SELECT_TRIGGER } from "@/components/ChromeTools";
@@ -68,7 +66,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
-import { waitForInstallJob } from "@/utils/installJobStream";
+import { waitForPluginStoreJob } from "@/utils/pluginStoreJobStream";
+import { InstallJobFailedError } from "@/utils/installJobStream";
 import {
   COMMUNITY_INDEX_REPO_URL,
   PLUGIN_ID_PATTERN,
@@ -208,6 +207,7 @@ export default function PluginStorePage() {
   const [gitRepositoryUrl, setGitRepositoryUrl] = useState("");
   const [gitRef, setGitRef] = useState("main");
   const [gitInstallBusy, setGitInstallBusy] = useState(false);
+  const [cardProgress, setCardProgress] = useState<{ key: string; percent: number; message: string } | null>(null);
 
   const {
     restartBusy,
@@ -238,10 +238,15 @@ export default function PluginStorePage() {
     return raw != null ? String(raw).trim() : "";
   }, [communityStore?.meta]);
 
-  const storeActionInProgress = Boolean(
-    storeBusyOfficialAction || storeBusyCommunityAction || gitInstallBusy
-      || installUpdateQueue.length > 0 || installUpdateQueueRunning,
-  );
+  const applyCardProgress = useCallback((key: string) => {
+    return (progress: { percent: number; message: string }) => {
+      setCardProgress({
+        key,
+        percent: progress.percent,
+        message: progress.message,
+      });
+    };
+  }, []);
 
   const communityRowById = useMemo(() => {
     const map = new Map<string, CommunityPluginRow>();
@@ -377,6 +382,7 @@ export default function PluginStorePage() {
     async (force = false) => {
       setLoading(true);
       setStoreErr("");
+      if (force) setStoreActionNeedsRestart(false);
       try {
         if (force && storeSection !== "local") {
           const out = await refreshPluginStore();
@@ -445,24 +451,18 @@ export default function PluginStorePage() {
   const executeInstallExtension = useCallback(
     async (row: OfficialExtensionRow, restart: boolean, queuePending = 0) => {
       setStoreErr("");
-      setStoreActionHint(withPluginStoreQueueSuffix("正在排队安装…", queuePending));
+      setStoreActionHint("");
       setStoreActionNeedsRestart(false);
       setStoreBusyPackage(row.package);
       setStoreBusyOfficialAction("install");
-      const label = officialRowTitle(row);
+      setCardProgress({ key: row.package, percent: 0, message: formatPluginStoreActiveHint("install", officialRowTitle(row)) });
       try {
         const job = await installOfficialExtensionAsync(row.package, { restart });
-        setStoreActionHint(
-          withPluginStoreQueueSuffix(formatPluginStoreActiveHint("install", label), queuePending),
+        const payload = await waitForPluginStoreJob(
+          job.job_id,
+          openPluginInstallJobEventSource,
+          applyCardProgress(row.package),
         );
-        const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-          setStoreActionHint(
-            withPluginStoreQueueSuffix(
-              formatPluginStoreInstallProgressHint(message, label, row.package, "install"),
-              queuePending,
-            ),
-          );
-        });
         const result = payload.result as OfficialExtensionInstallResult | undefined;
         if (result) {
           setOfficialActionState((prev) => ({ ...prev, [row.package]: result }));
@@ -472,98 +472,110 @@ export default function PluginStorePage() {
         }
         await refreshOfficialStore();
       } catch (e) {
-        setStoreErr(axiosErrorDetail(e));
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
       } finally {
         setStoreBusyPackage("");
         setStoreBusyOfficialAction("");
+        setCardProgress(null);
       }
     },
-    [noteStoreActionResult, refreshOfficialStore],
+    [applyCardProgress, noteStoreActionResult, refreshOfficialStore],
   );
 
   const executeUpdateExtension = useCallback(
     async (row: OfficialExtensionRow, restart: boolean, queuePending = 0) => {
       setStoreErr("");
+      setStoreActionHint("");
       setStoreActionNeedsRestart(false);
       setStoreBusyPackage(row.package);
       setStoreBusyOfficialAction("update");
-      const label = officialRowTitle(row);
-      setStoreActionHint(withPluginStoreQueueSuffix(formatPluginStoreActiveHint("update", label), queuePending));
+      setCardProgress({ key: row.package, percent: 0, message: formatPluginStoreActiveHint("update", officialRowTitle(row)) });
       try {
-        const out = await updateOfficialExtension(row.package, { restart });
-        setOfficialActionState((prev) => ({ ...prev, [row.package]: out as OfficialExtensionInstallResult }));
-        await noteStoreActionResult(out.message || "更新完成。", out, queuePending);
+        const job = await updateOfficialExtensionAsync(row.package, { restart });
+        const payload = await waitForPluginStoreJob(
+          job.job_id,
+          openPluginInstallJobEventSource,
+          applyCardProgress(row.package),
+        );
+        const out = (payload.result ?? {}) as OfficialExtensionInstallResult;
+        setOfficialActionState((prev) => ({ ...prev, [row.package]: out }));
+        await noteStoreActionResult(out.message || payload.message || "更新完成。", out, queuePending);
         await refreshOfficialStore();
       } catch (e) {
-        setStoreErr(axiosErrorDetail(e));
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
       } finally {
         setStoreBusyPackage("");
         setStoreBusyOfficialAction("");
+        setCardProgress(null);
       }
     },
-    [noteStoreActionResult, refreshOfficialStore],
+    [applyCardProgress, noteStoreActionResult, refreshOfficialStore],
   );
 
   const executeInstallCommunity = useCallback(
     async (row: CommunityPluginRow, restart: boolean, queuePending = 0) => {
       setStoreErr("");
-      setStoreActionHint(withPluginStoreQueueSuffix("正在排队安装…", queuePending));
+      setStoreActionHint("");
       setStoreActionNeedsRestart(false);
       setStoreBusyPluginId(row.plugin_id);
       setStoreBusyCommunityAction("install");
       const label = (row.name || row.plugin_id).trim();
+      setCardProgress({ key: row.plugin_id, percent: 0, message: formatPluginStoreActiveHint("install", label) });
       try {
         const job = await installCommunityPluginAsync(row.plugin_id, {
           restart,
           repositoryUrl: row.repository_url || undefined,
           ref: row.ref,
         });
-        setStoreActionHint(
-          withPluginStoreQueueSuffix(formatPluginStoreActiveHint("install", label), queuePending),
+        const payload = await waitForPluginStoreJob(
+          job.job_id,
+          openPluginInstallJobEventSource,
+          applyCardProgress(row.plugin_id),
         );
-        const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, (message) => {
-          setStoreActionHint(
-            withPluginStoreQueueSuffix(
-              formatPluginStoreInstallProgressHint(message, label, row.plugin_id, "install"),
-              queuePending,
-            ),
-          );
-        });
         const out = (payload.result ?? {}) as CommunityPluginActionResult;
         setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
         await noteStoreActionResult(out.message || payload.message || "安装完成。", out, queuePending);
         await refreshCommunityStore();
       } catch (e) {
-        setStoreErr(axiosErrorDetail(e));
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
       } finally {
         setStoreBusyPluginId("");
         setStoreBusyCommunityAction("");
+        setCardProgress(null);
       }
     },
-    [noteStoreActionResult, refreshCommunityStore],
+    [applyCardProgress, noteStoreActionResult, refreshCommunityStore],
   );
 
   const executeUpdateCommunity = useCallback(
     async (row: CommunityPluginRow, restart: boolean, queuePending = 0) => {
       setStoreErr("");
+      setStoreActionHint("");
       setStoreActionNeedsRestart(false);
       setStoreBusyPluginId(row.plugin_id);
       setStoreBusyCommunityAction("update");
       const label = (row.name || row.plugin_id).trim();
-      setStoreActionHint(withPluginStoreQueueSuffix(formatPluginStoreActiveHint("update", label), queuePending));
+      setCardProgress({ key: row.plugin_id, percent: 0, message: formatPluginStoreActiveHint("update", label) });
       try {
-        const out = await updateCommunityPlugin(row.plugin_id, { restart, ref: row.ref });
-        setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out as CommunityPluginActionResult }));
-        await noteStoreActionResult(out.message || "更新完成。", out, queuePending);
+        const job = await updateCommunityPluginAsync(row.plugin_id, { restart, ref: row.ref });
+        const payload = await waitForPluginStoreJob(
+          job.job_id,
+          openPluginInstallJobEventSource,
+          applyCardProgress(row.plugin_id),
+        );
+        const out = (payload.result ?? {}) as CommunityPluginActionResult;
+        setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
+        await noteStoreActionResult(out.message || payload.message || "更新完成。", out, queuePending);
         await refreshCommunityStore();
       } catch (e) {
-        setStoreErr(axiosErrorDetail(e));
+        setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
       } finally {
         setStoreBusyPluginId("");
         setStoreBusyCommunityAction("");
+        setCardProgress(null);
       }
     },
-    [noteStoreActionResult, refreshCommunityStore],
+    [applyCardProgress, noteStoreActionResult, refreshCommunityStore],
   );
 
   const drainInstallUpdateQueue = useCallback(
@@ -779,6 +791,7 @@ export default function PluginStorePage() {
     if (checkingUpdate) return;
     setStoreErr("");
     setStoreActionHint("");
+    setStoreActionNeedsRestart(false);
     setCheckingUpdate(true);
     try {
       const out = await refreshPluginUpdateSnapshot();
@@ -817,17 +830,24 @@ export default function PluginStorePage() {
     setStoreActionNeedsRestart(false);
     setStoreBusyPackage(row.package);
     setStoreBusyOfficialAction("uninstall");
-    setStoreActionHint(`正在卸载 ${row.package}…`);
+    setCardProgress({ key: row.package, percent: 0, message: `正在卸载 ${row.package}…` });
     try {
-      const out = await uninstallOfficialExtension(row.package, { restart });
-      setOfficialActionState((prev) => ({ ...prev, [row.package]: out as OfficialExtensionInstallResult }));
-      await noteStoreActionResult(out.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"), out);
+      const job = await uninstallOfficialExtensionAsync(row.package, { restart });
+      const payload = await waitForPluginStoreJob(
+        job.job_id,
+        openPluginInstallJobEventSource,
+        applyCardProgress(row.package),
+      );
+      const out = (payload.result ?? {}) as OfficialExtensionInstallResult;
+      setOfficialActionState((prev) => ({ ...prev, [row.package]: out }));
+      await noteStoreActionResult(out.message || payload.message || (restart ? "已卸载。" : "已卸载，请重启 Bot。"), out);
       await refreshOfficialStore();
     } catch (e) {
-      setStoreErr(axiosErrorDetail(e));
+      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
     } finally {
       setStoreBusyPackage("");
       setStoreBusyOfficialAction("");
+      setCardProgress(null);
     }
   }
 
@@ -844,45 +864,58 @@ export default function PluginStorePage() {
     setStoreActionNeedsRestart(false);
     setStoreBusyPluginId(row.plugin_id);
     setStoreBusyCommunityAction("uninstall");
-    setStoreActionHint(`正在删除 ${row.plugin_id}…`);
+    setCardProgress({ key: row.plugin_id, percent: 0, message: `正在删除 ${row.plugin_id}…` });
     try {
-      const out = await uninstallCommunityPlugin(row.plugin_id, { restart });
-      setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out as CommunityPluginActionResult }));
-      await noteStoreActionResult(out.message || "已卸载。", out);
+      const job = await uninstallCommunityPluginAsync(row.plugin_id, { restart });
+      const payload = await waitForPluginStoreJob(
+        job.job_id,
+        openPluginInstallJobEventSource,
+        applyCardProgress(row.plugin_id),
+      );
+      const out = (payload.result ?? {}) as CommunityPluginActionResult;
+      setCommunityActionState((prev) => ({ ...prev, [row.plugin_id]: out }));
+      await noteStoreActionResult(out.message || payload.message || "已卸载。", out);
       await refreshCommunityStore();
     } catch (e) {
-      setStoreErr(axiosErrorDetail(e));
+      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
     } finally {
       setStoreBusyPluginId("");
       setStoreBusyCommunityAction("");
+      setCardProgress(null);
     }
   }
 
   async function installCommunityFromGit(restart = false) {
     if (gitInstallBusy || !gitInstallValid) return;
     setStoreErr("");
-    setStoreActionHint("正在排队安装…");
+    setStoreActionHint("");
     setStoreActionNeedsRestart(false);
     setGitInstallBusy(true);
     const pluginId = gitPluginId.trim();
     setStoreBusyPluginId(pluginId);
+    setCardProgress({ key: pluginId, percent: 0, message: "正在安装…" });
     try {
       const job = await installCommunityPluginAsync(pluginId, {
         restart,
         repositoryUrl: gitRepositoryUrl.trim(),
         ref: gitRef.trim() || "main",
       });
-      const payload = await waitForInstallJob(job.job_id, openPluginInstallJobEventSource, setStoreActionHint);
+      const payload = await waitForPluginStoreJob(
+        job.job_id,
+        openPluginInstallJobEventSource,
+        applyCardProgress(pluginId),
+      );
       const out = (payload.result ?? {}) as CommunityPluginActionResult;
       setCommunityActionState((prev) => ({ ...prev, [pluginId]: out }));
       await noteStoreActionResult(out.message || payload.message || "安装完成。", out);
       setGitInstallOpen(false);
       await refreshCommunityStore();
     } catch (e) {
-      setStoreErr(axiosErrorDetail(e));
+      setStoreErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
     } finally {
       setGitInstallBusy(false);
       setStoreBusyPluginId("");
+      setCardProgress(null);
     }
   }
 
@@ -1099,16 +1132,18 @@ export default function PluginStorePage() {
       <p className="muted text-sm">共 {resultCount} 项</p>
 
       {storeSection === "community" && communityIndexSourceDisplay ? (
-        <p className="muted plugin-store-page__hint" role="status">
-          索引来源：
-          {communityIndexSourceDisplay.href ? (
-            <a href={communityIndexSourceDisplay.href} target="_blank" rel="noopener noreferrer">
-              {communityIndexSourceDisplay.label}
-            </a>
-          ) : (
-            <span>{communityIndexSourceDisplay.label}</span>
-          )}
-        </p>
+        <div className="console-hint plugin-store-page__hint" role="status">
+          <span>
+            索引来源：
+            {communityIndexSourceDisplay.href ? (
+              <a href={communityIndexSourceDisplay.href} target="_blank" rel="noopener noreferrer">
+                {communityIndexSourceDisplay.label}
+              </a>
+            ) : (
+              communityIndexSourceDisplay.label
+            )}
+          </span>
+        </div>
       ) : null}
       {storeSection === "community" && !communityExtraDirsReady ? (
         <p className="alert plugin-store-page__hint" role="status">
@@ -1123,17 +1158,20 @@ export default function PluginStorePage() {
       ) : null}
 
       {storeActionHint ? (
-        <div className="plugin-store-page__action-hint" role="status">
-          <p className="muted plugin-store-page__hint plugin-store-page__hint--ok">
+        <div
+          className={cn(
+            "plugin-store-page__action-hint",
+            storeActionNeedsRestart && "plugin-store-page__action-hint--with-action",
+          )}
+          role="status"
+        >
+          <p className="plugin-store-page__hint plugin-store-page__hint--ok plugin-store-page__action-hint-text">
             {restartInProgress ? restartProgressLabel || storeActionHint : storeActionHint}
           </p>
-          {storeActionInProgress && !restartInProgress ? (
-            <div className="plugin-store-page__action-progress" aria-hidden="true" />
-          ) : null}
           {storeActionNeedsRestart ? (
             <button
               type="button"
-              className="btn"
+              className="btn btn--primary plugin-store-page__action-hint-btn"
               disabled={restartBusy || restartInProgress}
               onClick={() => void restartBotNow()}
             >
@@ -1143,9 +1181,11 @@ export default function PluginStorePage() {
         </div>
       ) : null}
       {storeCopyHint ? (
-        <p className="muted plugin-store-page__hint plugin-store-page__hint--ok" role="status">
-          {storeCopyHint}
-        </p>
+        <div className="plugin-store-page__action-hint" role="status">
+          <p className="plugin-store-page__hint plugin-store-page__hint--ok plugin-store-page__action-hint-text">
+            {storeCopyHint}
+          </p>
+        </div>
       ) : null}
       {storeErr ? <div className="alert alert--err plugin-store-page__hint">{storeErr}</div> : null}
 
@@ -1194,6 +1234,8 @@ export default function PluginStorePage() {
                   updateLabel={officialUpdateLabel(result)}
                   latestLabel={updateLatestLabel(row)}
                   installedVersionLabel={officialInstalledVersionLabel(row, result)}
+                  progressPercent={cardProgress?.key === row.package ? cardProgress.percent : null}
+                  progressMessage={cardProgress?.key === row.package ? cardProgress.message : ""}
                   detailLabel="仓库"
                   canOpen={Boolean(row.repository_url)}
                   onOpen={() => void openOfficialReadme(row)}
@@ -1253,6 +1295,8 @@ export default function PluginStorePage() {
                   updateLabel={communityUpdateLabel(result)}
                   latestLabel={updateLatestLabel(row)}
                   installedVersionLabel={communityInstalledVersionLabel(row, result)}
+                  progressPercent={cardProgress?.key === row.plugin_id ? cardProgress.percent : null}
+                  progressMessage={cardProgress?.key === row.plugin_id ? cardProgress.message : ""}
                   detailLabel="仓库"
                   canOpen={Boolean(row.repository_url)}
                   onOpen={() => void openCommunityReadme(row)}

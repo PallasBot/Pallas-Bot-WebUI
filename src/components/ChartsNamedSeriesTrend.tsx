@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import "@/styles/gs-trend-chart.css";
 import {
   buildNamedSeriesTrendPack,
   fmtAxisCount,
@@ -20,6 +21,10 @@ type Props = {
   compact?: boolean;
   /** 图例与折线最多条数；默认跟 pack 一致（12） */
   maxSeries?: number;
+  /** 保留全 0 序列（百分比趋势） */
+  keepZeroSeries?: boolean;
+  /** 自下而上堆叠面积 */
+  stacked?: boolean;
 };
 
 /** 多序列折线趋势：视觉跟 GsDualAxisTrendChart / 区间趋势一致。 */
@@ -33,6 +38,8 @@ export default function ChartsNamedSeriesTrend({
   axisUnit = "次",
   compact = false,
   maxSeries = 12,
+  keepZeroSeries = false,
+  stacked = false,
 }: Props) {
   const autoId = useId().replace(/:/g, "");
   const uid = chartUid || `named-trend-${autoId}`;
@@ -43,8 +50,15 @@ export default function ChartsNamedSeriesTrend({
   const [animKey, setAnimKey] = useState(0);
 
   const pack = useMemo(
-    () => buildNamedSeriesTrendPack(series, { axisUnit, compact, maxSeries }),
-    [axisUnit, compact, maxSeries, series],
+    () =>
+      buildNamedSeriesTrendPack(series, {
+        axisUnit,
+        compact,
+        maxSeries,
+        keepZeroSeries,
+        stacked,
+      }),
+    [axisUnit, compact, keepZeroSeries, maxSeries, series, stacked],
   );
 
   useEffect(() => {
@@ -135,8 +149,8 @@ export default function ChartsNamedSeriesTrend({
                     x2={pack.left}
                     y2={pack.top}
                   >
-                    <stop offset="0%" stopColor={s.def.color} stopOpacity={0} />
-                    <stop offset="100%" stopColor={s.def.color} stopOpacity={0.16} />
+                    <stop offset="0%" stopColor={s.def.color} stopOpacity={pack.stacked ? 0.22 : 0} />
+                    <stop offset="100%" stopColor={s.def.color} stopOpacity={pack.stacked ? 0.55 : 0.16} />
                   </linearGradient>
                 ))}
               </defs>

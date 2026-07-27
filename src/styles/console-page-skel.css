@@ -15,6 +15,14 @@
   box-shadow: var(--shadow-card);
 }
 
+html[data-surface="glass"] .console-page-skel__panel {
+  background: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow, var(--shadow-card)), var(--glass-inset-highlight, none);
+}
+
 .console-page-skel__hd {
   height: 22px;
   margin: 12px 16px 0;

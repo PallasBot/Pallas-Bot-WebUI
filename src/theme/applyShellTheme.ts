@@ -30,7 +30,7 @@ export type PrefsSlice = {
 
 const DEFAULTS: PrefsSlice = {
   theme: "system",
-  controlRadius: 10,
+  controlRadius: 12,
   radius: "default",
   surfaceStyle: "glass",
   density: "comfortable",
@@ -39,8 +39,19 @@ const DEFAULTS: PrefsSlice = {
   sidebarCollapsed: false,
   glassBlur: 12,
   cardGlassOpacity: 0.25,
-  shadowIntensity: 1,
+  /** 默认阴影强度 55% */
+  shadowIntensity: 0.55,
   showUpdateChangelog: true,
+};
+
+/** 偏好默认值（复原滑块等用） */
+export const PREFS_DEFAULTS: Readonly<PrefsSlice> = DEFAULTS;
+
+/** 分段「紧凑 / 默认 / 更圆」对应的控件圆角 px，与 DEFAULTS.controlRadius 对齐 */
+export const RADIUS_PRESET_PX: Record<RadiusMode, number> = {
+  tight: 6,
+  default: 12,
+  round: 16,
 };
 
 const ACCENTS = new Set<AccentPreset>(["sky", "indigo", "emerald", "rose", "amber", "violet"]);
@@ -121,7 +132,7 @@ export function writePrefs(patch: Partial<PrefsSlice>): PrefsSlice {
     next.radius = radiusModeFromControlPx(next.controlRadius);
   } else if (patch.radius !== undefined && patch.controlRadius === undefined) {
     next.radius = patch.radius;
-    next.controlRadius = patch.radius === "tight" ? 6 : patch.radius === "default" ? 12 : 16;
+    next.controlRadius = RADIUS_PRESET_PX[patch.radius];
   } else if (patch.controlRadius !== undefined) {
     next.controlRadius = clampControlRadius(patch.controlRadius);
   }
@@ -225,6 +236,7 @@ export function applyShellTheme(): void {
   el.style.setProperty("--surface-blur", `${blur}px`);
   el.style.setProperty("--card-glass-opacity", String(prefs.cardGlassOpacity));
   el.style.setProperty("--shell-glass-pct", `${glassPct}%`);
+  el.style.setProperty("--card-glass-pct", `${glassPct}%`);
   el.style.setProperty("--glass-saturate", saturate.toFixed(2));
   el.style.setProperty("--shadow-intensity", String(clampShadowIntensity(prefs.shadowIntensity)));
 }

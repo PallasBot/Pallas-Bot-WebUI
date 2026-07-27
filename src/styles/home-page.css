@@ -4,29 +4,52 @@ html[data-layout="hub"] .shell__main-inner--home {
   background: var(--bg-elev);
 }
 
+html[data-layout="hub"][data-surface="glass"] .shell__main-inner--home {
+  background: transparent;
+}
+
 /*
  * shadcn Card on home (`home-panel`): keep Card API, restore former hub .home-card metrics.
  * Header 12×16 · body 14/16/16 · hub radius / border / shadow.
  */
 html[data-layout="hub"] .home-page .home-panel {
   border-radius: var(--hub-radius-lg, var(--radius-lg));
-  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  border-color: var(--surface-edge, var(--border));
   background: var(--bg-card);
   box-shadow: var(--hub-shadow);
 }
 
-html[data-layout="hub"][data-theme="light"] .home-page .home-panel {
-  background: #ffffff;
+html[data-layout="hub"][data-theme="light"][data-surface="solid"] .home-page .home-panel {
+  background: var(--bg-card);
+}
+
+html[data-layout="hub"][data-surface="glass"] .home-page .home-panel,
+html[data-layout="hub"][data-surface="glass"] .home-page .home-panel.bg-card {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-page .home-panel,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-page .home-panel.bg-card {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
+    0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-surface="solid"][data-theme="light"] .home-page .home-panel {
-  border-color: rgba(15, 23, 42, 0.07);
+  border-color: var(--surface-edge, var(--border));
 }
 
 html[data-layout="hub"] .home-page .home-panel > .home-panel__hd {
   padding: 12px 16px;
   gap: 12px;
-  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+  border-bottom-color: var(--surface-divider, color-mix(in srgb, var(--border) 55%, transparent));
 }
 
 html[data-layout="hub"] .home-page .home-panel > .home-panel__bd {
@@ -56,11 +79,33 @@ html[data-layout="hub"] .home-page .home-panel .home-panel__tag.home-card__tag--
 html[data-layout="hub"] .home-page .home-card,
 html[data-layout="hub"] .home-page .home-kpi-bar {
   background: var(--bg-card);
+  border-color: var(--surface-edge, var(--border));
+  box-shadow: var(--hub-shadow);
 }
 
-html[data-layout="hub"][data-theme="light"] .home-page .home-card,
-html[data-layout="hub"][data-theme="light"] .home-page .home-kpi-bar {
-  background: #ffffff;
+html[data-layout="hub"][data-theme="light"][data-surface="solid"] .home-page .home-card,
+html[data-layout="hub"][data-theme="light"][data-surface="solid"] .home-page .home-kpi-bar {
+  background: var(--bg-card);
+  border-color: var(--surface-edge, var(--border));
+}
+
+html[data-layout="hub"][data-surface="glass"] .home-page .home-card,
+html[data-layout="hub"][data-surface="glass"] .home-page .home-kpi-bar {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-page .home-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-page .home-kpi-bar {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
+    0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight);
 }
 
 /* Inner KPI / sys tiles: flat on card — dividers only, no canvas-colored nests */
@@ -79,11 +124,11 @@ html[data-layout="hub"] .home-page .home-sys-card {
 }
 
 html[data-layout="hub"] .home-page .home-sys-grid > .home-sys-card + .home-sys-card {
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-top: 1px solid var(--surface-divider, color-mix(in srgb, var(--border) 55%, transparent));
 }
 
 html[data-layout="hub"] .home-page .home-sys-card--gpu {
-  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-top: 1px solid var(--surface-divider, color-mix(in srgb, var(--border) 55%, transparent));
 }
 
 /*

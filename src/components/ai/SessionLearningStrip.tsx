@@ -11,24 +11,24 @@ export function learningLoopHint(status: ConversationKernelStatus | undefined): 
   if (!status.feedback_collect_active) {
     return {
       kind: "warn",
-      text: "反哺收集未开。可在 AI 配置 → 对话 → 策略中打开「收集 LLM 对话反哺」。",
+      text: "纠错收集未开。可在 AI 配置 → 对话 → 策略中打开「收集 LLM 对话纠错」。",
     };
   }
   if (!status.feedback_bias_active) {
     return {
       kind: "warn",
-      text: "已在收集反哺，但打分加权未开；排除/期望回复暂不影响接话。",
+      text: "已在收集纠错，但打分加权未开；排除/期望回复暂不影响接话。",
     };
   }
   if (!status.writeback_active) {
     return {
       kind: "ok",
-      text: "反哺加权已开。可在会话里排除坏样本；写回语料需另开开关。",
+      text: "纠错加权已开。可在会话里排除坏样本；写回语料需另开开关。",
     };
   }
   return {
     kind: "ok",
-    text: "学习闭环已接通：可排除坏样本，并把升格候选写入接话语料。",
+    text: "学习闭环已接通：可排除坏样本，并把入库候选写入接话语料。",
   };
 }
 

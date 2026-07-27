@@ -40,33 +40,33 @@
 
   .light,
   html[data-theme="light"] {
-    /* 与控制台 --bg-* 一致：画布 #fcfcfc、侧栏 #fafafa（中性近白） */
+    /* 浅色表面 HSL 分量（保留本站 primary/accent） */
     --ui-background: 0 0% 99%;
-    --ui-foreground: 240 6% 10%;
+    --ui-foreground: 222 47% 11%;
     --ui-card: 0 0% 100%;
-    --ui-card-foreground: 240 6% 10%;
+    --ui-card-foreground: 222 47% 11%;
     --ui-popover: 0 0% 100%;
-    --ui-popover-foreground: 240 6% 10%;
+    --ui-popover-foreground: 222 47% 11%;
     --ui-primary: 263 70% 58%;
     --ui-primary-foreground: 0 0% 100%;
-    --ui-secondary: 240 5% 96%;
-    --ui-secondary-foreground: 240 6% 10%;
-    --ui-muted: 240 5% 96%;
+    --ui-secondary: 240 4% 90%;
+    --ui-secondary-foreground: 240 5% 10%;
+    --ui-muted: 240 4% 90%;
     --ui-muted-foreground: 240 4% 40%;
-    --ui-accent: 240 5% 96%;
-    --ui-accent-foreground: 240 6% 10%;
+    --ui-accent: 240 4% 90%;
+    --ui-accent-foreground: 240 5% 10%;
     --ui-destructive: 0 72% 50%;
     --ui-destructive-foreground: 0 0% 100%;
-    --ui-border: 240 6% 86%;
-    --ui-input: 240 6% 86%;
+    --ui-border: 240 4% 83%;
+    --ui-input: 240 4% 83%;
     --ui-ring: 263 70% 58%;
     --ui-sidebar-background: 0 0% 98%;
-    --ui-sidebar-foreground: 240 6% 10%;
+    --ui-sidebar-foreground: 240 5% 10%;
     --ui-sidebar-primary: 263 70% 58%;
     --ui-sidebar-primary-foreground: 0 0% 100%;
-    --ui-sidebar-accent: 240 4% 94%;
-    --ui-sidebar-accent-foreground: 240 6% 10%;
-    --ui-sidebar-border: 240 5% 90%;
+    --ui-sidebar-accent: 240 4% 90%;
+    --ui-sidebar-accent-foreground: 240 5% 10%;
+    --ui-sidebar-border: 240 4% 83%;
     --ui-sidebar-ring: 263 70% 58%;
   }
 

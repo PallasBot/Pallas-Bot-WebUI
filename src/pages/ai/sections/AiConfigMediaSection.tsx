@@ -504,11 +504,18 @@ export default function AiConfigMediaSection() {
                   })}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" disabled={busy || !canManageRuntime} onClick={() => { void startMut.mutateAsync(); }}>启动</Button>
+                  <Button
+                    size="sm"
+                    variant={canClone ? "outline" : "default"}
+                    disabled={busy || !canManageRuntime}
+                    onClick={() => { void startMut.mutateAsync(); }}
+                  >
+                    启动
+                  </Button>
                   <Button size="sm" variant="outline" disabled={busy || !canManageRuntime} onClick={() => { void stopMut.mutateAsync(); }}>停止</Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant={canClone ? "default" : "outline"}
                     disabled={busy || !canClone}
                     title="首次使用：拉取媒体服务源码并安装依赖"
                     onClick={() => { void installMut.mutateAsync("clone_and_bootstrap"); }}

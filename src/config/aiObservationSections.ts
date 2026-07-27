@@ -29,13 +29,13 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
   {
     id: "statistics",
     label: "统计",
-    lead: "Token、画画、RAG 与任务成功情况。",
+    lead: "用量、费用、检索与调用结果。",
     path: "/ai/statistics",
   },
   {
     id: "session",
     label: "会话",
-    lead: "查看对话、标注回复、试聊或清空上下文。",
+    lead: "回看对话、标注对错，或试聊与清空上下文。",
     path: "/ai/session",
     scope: { bot: true, group: true },
   },
@@ -49,28 +49,28 @@ export const AI_OBSERVATION_SECTIONS: readonly AiObservationSectionMeta[] = [
   {
     id: "people",
     label: "人物",
-    lead: "群内人物事实、待整理观察，以及口癖审批。",
+    lead: "人物事实、待整理观察与口癖审批。",
     path: "/ai/people",
     scope: { bot: true, group: true },
   },
   {
     id: "tasks",
     label: "任务",
-    lead: "提醒与异步任务；默认看未完成。",
+    lead: "提醒与异步任务，默认看未完成。",
     path: "/ai/tasks",
     scope: { bot: true, group: true },
   },
   {
     id: "persona",
     label: "牛格",
-    lead: "牛格状态、群风格画像，以及发给模型的人设。",
+    lead: "牛格状态、群风格，以及发给模型的人设。",
     path: "/ai/persona",
     scope: { bot: true, group: true },
   },
   {
     id: "logs",
     label: "日志",
-    lead: "媒体服务等扩展运行日志。",
+    lead: "媒体等扩展服务的运行日志。",
     path: "/ai/logs",
   },
 ] as const;
