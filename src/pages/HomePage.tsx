@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { Bot, MessagesSquare, Puzzle, Zap, Activity, Package, Server } from "lucide-react";
+import "@/styles/home-page.css";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import {
   fetchBotUpdateCheck,
@@ -16,6 +17,7 @@ import {
   fetchRequestOverview,
   fetchSystem,
   fetchUpdateCheck,
+  peekHomeOverviewCache,
   refreshInstancesCatalogGlobal,
 } from "@/api/fullConsole";
 import type { BotConfigPublic, InstancesData } from "@/api/pallasTypes";
@@ -31,6 +33,10 @@ import {
 } from "@/utils/versionDisplay";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
 import {
+  BOT_UPDATE_CHECK_QUERY_KEY,
+  BOT_UPDATE_CHECK_STALE_MS,
+} from "@/hooks/useBotSystemRestart";
+import {
   isHomeActionDismissed,
   loadHomeActionDismissals,
   saveHomeActionDismissal,
@@ -42,10 +48,14 @@ import HomeLazyReveal from "@/components/HomeLazyReveal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const HOME_SYSTEM_POLL_MS = 5000;
+/** 首屏后资源轮询；overview 已带一份快照 */
+const HOME_SYSTEM_POLL_MS = 30_000;
 const HOME_THROUGHPUT_POLL_MS = 5 * 60 * 1000;
+const HOME_UPDATE_STALE_MS = BOT_UPDATE_CHECK_STALE_MS;
 const HOME_CONN_DURATION_TICK_MS = 1000;
 const RESOURCE_WARN_PCT = 90;
+/** 仪表盘只展示数量；过大列表拖慢首屏，截断时 UI 显示 N+ */
+const HOME_SOCIAL_LIST_LIMIT = 300;
 
 /** shadcn Card + hub home 旧度量（圆角/描边/阴影/内边距由 home-page.css 扣） */
 const HOME_PANEL = "home-panel flex h-full flex-col shadow-none";
@@ -197,20 +207,42 @@ function gpuNameShort(name: string, maxLen = 28): string {
 }
 
 export default function HomePage() {
-  const overviewQ = useQuery({ queryKey: ["home-overview"], queryFn: () => fetchHomeOverview() });
-  const botUpdateQ = useQuery({ queryKey: ["bot-update-check"], queryFn: fetchBotUpdateCheck });
-  const webUpdateQ = useQuery({ queryKey: ["web-update-check"], queryFn: fetchUpdateCheck });
+  const overviewPeek = peekHomeOverviewCache();
+  const overviewQ = useQuery({
+    queryKey: ["home-overview"],
+    queryFn: () => fetchHomeOverview(),
+    initialData: overviewPeek ?? undefined,
+    initialDataUpdatedAt: overviewPeek ? Date.now() - 1_000 : undefined,
+  });
+  const overviewSettled = Boolean(overviewQ.data) || overviewQ.isFetched;
+
+  const botUpdateQ = useQuery({
+    queryKey: BOT_UPDATE_CHECK_QUERY_KEY,
+    queryFn: fetchBotUpdateCheck,
+    enabled: overviewSettled,
+    staleTime: HOME_UPDATE_STALE_MS,
+  });
+  const webUpdateQ = useQuery({
+    queryKey: ["web-update-check"],
+    queryFn: fetchUpdateCheck,
+    enabled: overviewSettled,
+    staleTime: HOME_UPDATE_STALE_MS,
+  });
   const systemQ = useQuery({
     queryKey: ["home-system"],
     queryFn: fetchSystem,
+    enabled: overviewSettled,
     refetchInterval: HOME_SYSTEM_POLL_MS,
     refetchIntervalInBackground: false,
+    staleTime: HOME_SYSTEM_POLL_MS,
   });
   const communityQ = useQuery({
     queryKey: ["home-community"],
     queryFn: () => fetchCommunityStats(),
+    enabled: overviewSettled,
     refetchInterval: HOME_SYSTEM_POLL_MS,
     refetchIntervalInBackground: false,
+    staleTime: HOME_SYSTEM_POLL_MS,
   });
 
   const [selectedAccount, setSelectedAccount] = useState<number | null>(() => readSavedHomeAccount());
@@ -219,10 +251,6 @@ export default function HomePage() {
   const [connectionClockTick, setConnectionClockTick] = useState(() => Date.now());
   const accountPickerRoot = useRef<HTMLDivElement | null>(null);
   const { favorites, toggleFavorite } = useBotFavorites();
-
-  useEffect(() => {
-    void refreshInstancesCatalogGlobal().catch(() => {});
-  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => setConnectionClockTick(Date.now()), HOME_CONN_DURATION_TICK_MS);
@@ -256,8 +284,10 @@ export default function HomePage() {
   const throughputQ = useQuery({
     queryKey: ["home-throughput"],
     queryFn: () => fetchMessageStats(),
+    enabled: overviewSettled,
     refetchInterval: HOME_THROUGHPUT_POLL_MS,
     refetchIntervalInBackground: false,
+    staleTime: HOME_THROUGHPUT_POLL_MS,
   });
 
   const accountStatsQ = useQuery({
@@ -271,21 +301,21 @@ export default function HomePage() {
       ]);
       return { ms, pr, daily };
     },
-    enabled: selectedAccount != null,
+    enabled: overviewSettled && selectedAccount != null,
   });
 
   const socialQ = useQuery({
-    queryKey: ["home-social", selectedAccount],
+    queryKey: ["home-social", selectedAccount, HOME_SOCIAL_LIST_LIMIT],
     queryFn: async () => {
       const acc = selectedAccount!;
       const [fl, gl, ov] = await Promise.all([
-        fetchFriendList(acc),
-        fetchGroupList(acc),
+        fetchFriendList(acc, HOME_SOCIAL_LIST_LIMIT),
+        fetchGroupList(acc, HOME_SOCIAL_LIST_LIMIT),
         fetchRequestOverview({ selfId: acc }),
       ]);
       return { fl, gl, ov };
     },
-    enabled: selectedAccount != null,
+    enabled: overviewSettled && selectedAccount != null,
   });
 
   const sortedDbBots = useMemo(() => {
@@ -842,7 +872,7 @@ export default function HomePage() {
                         <span className="home-acct-tile__label">好友</span>
                         <span className="home-acct-tile__value">
                           {socialQ.data?.fl != null ? (
-                            String(socialQ.data.fl.friends?.length ?? 0)
+                            `${socialQ.data.fl.friends?.length ?? 0}${socialQ.data.fl.truncated ? "+" : ""}`
                           ) : accountSocialPending ? (
                             <SkelValue className="skel-value--narrow" />
                           ) : (
@@ -854,7 +884,7 @@ export default function HomePage() {
                         <span className="home-acct-tile__label">群聊</span>
                         <span className="home-acct-tile__value">
                           {socialQ.data?.gl != null ? (
-                            String(socialQ.data.gl.groups?.length ?? 0)
+                            `${socialQ.data.gl.groups?.length ?? 0}${socialQ.data.gl.truncated ? "+" : ""}`
                           ) : accountSocialPending ? (
                             <SkelValue className="skel-value--narrow" />
                           ) : (
