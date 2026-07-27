@@ -74,14 +74,31 @@ export interface SystemData {
 }
 
 /** POST /community-stats/connectivity-check：Bot → 社区中心 HTTPS 诊断 */
-export type CommunityConnectivityCheckData = OpenapiOkData<
-  ConsoleOpenapiPaths["/pallas/api/community-stats/connectivity-check"]["post"]
->;
-export type CommunityConnectivityProbeRow = NonNullable<
-  CommunityConnectivityCheckData["probes"]
->[number];
-export type CommunityConnectivityReporting = NonNullable<CommunityConnectivityCheckData["reporting"]>;
-export type CommunityConnectivitySummary = NonNullable<CommunityConnectivityCheckData["summary"]>;
+export type CommunityConnectivityProbeRow = {
+  url: string;
+  ok: boolean;
+  latency_ms?: number | null;
+  http_status?: number | null;
+  error?: string | null;
+};
+export type CommunityConnectivityReporting = {
+  enabled: boolean;
+  endpoint?: string | null;
+  active_heartbeat_endpoint?: string | null;
+  deployment_id?: string | null;
+  last_heartbeat_ok_unix?: number | null;
+  last_primary_probe_unix?: number | null;
+};
+export type CommunityConnectivitySummary = {
+  any_ok: boolean;
+  hint?: string | null;
+};
+/** OpenAPI 侧曾退化为 additionalProperties；运行时字段结构固定，此处手写契约。 */
+export type CommunityConnectivityCheckData = {
+  probes: CommunityConnectivityProbeRow[];
+  summary: CommunityConnectivitySummary;
+  reporting: CommunityConnectivityReporting;
+};
 
 /** GET /community-stats：代理社区统计中心 /v1/monitor/overview（回退 /v1/stats） */
 export interface FederationPoolStatsData {
