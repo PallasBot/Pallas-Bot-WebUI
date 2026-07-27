@@ -18,7 +18,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 type Props = {
   /** 嵌在接入页「本地」Tab 内时去掉外层 Card，避免双重卡片。 */
@@ -31,7 +39,6 @@ export default function AiModelAdminPanel({ embedded = false }: Props) {
   const [numGpu, setNumGpu] = useState("");
   const [pull, setPull] = useState(true);
   const [models, setModels] = useState<string[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
 
   const statusQ = useQuery({ queryKey: ["llm-model-admin"], queryFn: fetchLlmModelAdminStatus });
 
@@ -50,38 +57,35 @@ export default function AiModelAdminPanel({ embedded = false }: Props) {
   }, [statusQ.data, model, numGpu]);
 
   const onDone = async (label: string) => {
-    setMsg(`${label}成功`);
+    notifyOk(`${label}成功`);
     await qc.invalidateQueries({ queryKey: ["llm-model-admin"] });
   };
 
   const switchMut = useMutation({
     mutationFn: () => postLlmModelAdminSwitch(model.trim(), pull),
     onSuccess: () => void onDone("切换模型"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const reloadMut = useMutation({
     mutationFn: () => postLlmModelAdminReload(),
     onSuccess: () => void onDone("重载"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const unloadMut = useMutation({
     mutationFn: () => postLlmModelAdminUnload(),
     onSuccess: () => void onDone("卸载"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const gpuMut = useMutation({
     mutationFn: () => postLlmModelAdminNumGpu(Number(numGpu) || 0),
     onSuccess: () => void onDone("GPU 设置"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const busy = switchMut.isPending || reloadMut.isPending || unloadMut.isPending || gpuMut.isPending;
 
   const body = (
     <div className="space-y-3 text-sm">
-      {msg ? (
-        <p className={cn("text-sm", msg.includes("成功") ? "text-emerald-400" : "text-destructive")}>{msg}</p>
-      ) : null}
       <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
         <div className="flex flex-wrap gap-2">
           <Badge variant={statusQ.data?.ai_reachable ? "success" : "warn"}>
@@ -108,47 +112,16 @@ export default function AiModelAdminPanel({ embedded = false }: Props) {
           <span>切换时尝试拉取模型</span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            disabled={busy || !model.trim()}
-            onClick={() => {
-              setMsg(null);
-              void switchMut.mutateAsync();
-            }}
-          >
+          <Button size="sm" disabled={busy || !model.trim()} onClick={() => void switchMut.mutateAsync()}>
             切换
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              setMsg(null);
-              void reloadMut.mutateAsync();
-            }}
-          >
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void reloadMut.mutateAsync()}>
             重载
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              setMsg(null);
-              void unloadMut.mutateAsync();
-            }}
-          >
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void unloadMut.mutateAsync()}>
             卸载
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => {
-              setMsg(null);
-              void gpuMut.mutateAsync();
-            }}
-          >
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void gpuMut.mutateAsync()}>
             应用 GPU
           </Button>
         </div>

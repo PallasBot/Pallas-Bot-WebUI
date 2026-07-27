@@ -6,6 +6,7 @@ import {
   protocolListSnowlumaRuntimes,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
+import SnowlumaRuntimeCombobox from "@/components/protocol/SnowlumaRuntimeCombobox";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,12 +22,26 @@ import {
 import { UserPlus } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 const FORM_PANEL = "protocol-sub-page__panel flex flex-col overflow-hidden shadow-none";
 const FORM_PANEL_HD =
   "panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FORM_PANEL_BD = "panel__bd protocol-form-grid px-4 pb-4 pt-3";
+
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
+function notifyWarn(message: string) {
+  pushConsoleToast(message, "warn");
+}
 
 export default function ProtocolCreateTab() {
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
@@ -42,8 +57,8 @@ export default function ProtocolCreateTab() {
   const [snowlumaRuntimes, setSnowlumaRuntimes] = useState<SnowlumaRuntimeRow[]>([]);
   const [snowlumaRuntimeId, setSnowlumaRuntimeId] = useState("");
   const [snowlumaRuntimeMode, setSnowlumaRuntimeMode] = useState<"new" | "existing">("new");
+  const [runtimesLoading, setRuntimesLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
   const chromeRefresh = useCallback(() => {
     void reload();
@@ -55,29 +70,41 @@ export default function ProtocolCreateTab() {
   useEffect(() => {
     if (protocolBackend !== "snowluma" || !mountUrl) {
       setSnowlumaRuntimes([]);
+      setRuntimesLoading(false);
       return;
     }
-    void protocolListSnowlumaRuntimes(mountUrl)
-      .then(setSnowlumaRuntimes)
-      .catch(() => setSnowlumaRuntimes([]));
+    let cancelled = false;
+    setRuntimesLoading(true);
+    void protocolListSnowlumaRuntimes(mountUrl, { lite: true })
+      .then((rows) => {
+        if (!cancelled) setSnowlumaRuntimes(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setSnowlumaRuntimes([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRuntimesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [protocolBackend, mountUrl]);
 
   async function submitCreate() {
     if (!mountUrl) {
-      setMsg("协议端未就绪");
+      notifyWarn("协议端未就绪");
       return;
     }
     const q = qq.trim();
     if (!q) {
-      setMsg("请填写 QQ 号");
+      notifyWarn("请填写 QQ 号");
       return;
     }
     if (protocolBackend === "snowluma" && snowlumaRuntimeMode === "existing" && !snowlumaRuntimeId.trim()) {
-      setMsg("请选择已有 SnowLuma Runtime");
+      notifyWarn("请选择已有 SnowLuma Runtime");
       return;
     }
     setBusy(true);
-    setMsg(null);
     try {
       const body: Record<string, unknown> = {
         id: q,
@@ -101,10 +128,10 @@ export default function ProtocolCreateTab() {
       if (wsName.trim()) body.ws_name = wsName.trim();
       if (wsToken) body.ws_token = wsToken;
       await protocolCreateAccount(mountUrl, body);
-      setMsg(`已创建账号 ${q}`);
+      notifyOk(`已创建账号 ${q}`);
       void navigate("/protocol");
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "创建失败"));
+      notifyErr(protocolApiErrorMessage(e, "创建失败"));
     } finally {
       setBusy(false);
     }
@@ -124,7 +151,6 @@ export default function ProtocolCreateTab() {
         </CardHeader>
       </Card>
 
-      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
       {!mountUrl ? <p className="alert alert--err mb-0">协议 API 未挂载，无法创建账号。</p> : null}
 
       <Card className={FORM_PANEL}>
@@ -187,25 +213,14 @@ export default function ProtocolCreateTab() {
               {snowlumaRuntimeMode === "existing" ? (
                 <div className="field space-y-1.5">
                   <Label htmlFor="create-snowluma-runtime">选择 Runtime</Label>
-                  <Select
-                    value={snowlumaRuntimeId || undefined}
-                    onValueChange={setSnowlumaRuntimeId}
-                  >
-                    <SelectTrigger
-                      id="create-snowluma-runtime"
-                      className="h-9 w-full"
-                      aria-label="选择 Runtime"
-                    >
-                      <SelectValue placeholder="请选择…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {snowlumaRuntimes.map((rt) => (
-                        <SelectItem key={rt.id} value={rt.id}>
-                          {rt.display_name || rt.id}（{rt.member_count ?? 0} 号）
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SnowlumaRuntimeCombobox
+                    runtimes={snowlumaRuntimes}
+                    value={snowlumaRuntimeId}
+                    onValueChange={(id) => setSnowlumaRuntimeId(id)}
+                    loading={runtimesLoading}
+                    placeholder="请选择…"
+                    ariaLabel="选择 Runtime"
+                  />
                 </div>
               ) : null}
             </>

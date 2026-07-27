@@ -26,11 +26,20 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { reloadPolicyLabel } from "@/utils/reloadPolicyLabel";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type Props = {
   pluginName: string;
   presentation?: "page" | "dialog";
 };
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 function activationPolicyShortLabel(policy?: string | null): string {
   const p = (policy || "").trim().toLowerCase();
@@ -43,11 +52,9 @@ function activationPolicyShortLabel(policy?: string | null): string {
 export default function PluginGovernancePanel({ pluginName, presentation = "page" }: Props) {
   const qc = useQueryClient();
   const isDialog = presentation === "dialog";
-  const [msg, setMsg] = useState<string | null>(null);
   const [permSelections, setPermSelections] = useState<Record<string, string>>({});
   const [limitSelections, setLimitSelections] = useState<Record<string, string>>({});
   const [blockedUserIds, setBlockedUserIds] = useState<number[]>([]);
-  const [whitelistHint, setWhitelistHint] = useState("");
 
   const govQ = useQuery({
     queryKey: ["plugin-governance", pluginName],
@@ -119,22 +126,22 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
       return putPluginGovernance(pluginName, body);
     },
     onSuccess: async () => {
-      setMsg("治理配置已保存");
+      notifyOk("治理配置已保存");
       await qc.invalidateQueries({ queryKey: ["plugin-governance", pluginName] });
       await qc.invalidateQueries({ queryKey: ["plugins"] });
       await qc.invalidateQueries({ queryKey: ["plugins-global-disable"] });
       await qc.invalidateQueries({ queryKey: ["plugins-help-menu-visibility"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const saveFleet = useMutation({
     mutationFn: (entries: GroupFleetWhitelistEntry[]) => putPluginsGroupFleetWhitelist(entries),
     onSuccess: async () => {
-      setWhitelistHint("");
+      notifyOk("群白名单已更新");
       await qc.invalidateQueries({ queryKey: ["plugin-fleet-whitelist"] });
     },
-    onError: (e) => setWhitelistHint(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const g = govQ.data;
@@ -146,7 +153,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
     if (!g) return;
     if (kind === "global_disable" && globalDisableProtected) return;
     if (kind === "help_hidden" && helpIgnored) return;
-    setMsg(null);
     await saveGov.mutateAsync({
       global_disable: kind === "global_disable" ? next : g.runtime.global_disable,
       help_hidden: kind === "help_hidden" ? next : g.runtime.help_hidden,
@@ -155,7 +161,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
 
   async function persistBlocked(next: number[]) {
     setBlockedUserIds(next);
-    setMsg(null);
     await saveGov.mutateAsync({ blocked: next });
   }
 
@@ -196,7 +201,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
       }
     }
     entries.sort((a, b) => a.group_id - b.group_id);
-    setWhitelistHint("");
     await saveFleet.mutateAsync(entries);
   }
 
@@ -206,12 +210,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
 
   return (
     <StateBlock loading={govQ.isLoading} error={govQ.error} empty={!g} emptyText="该插件暂无治理配置">
-      {msg ? (
-        <p className={cn("mb-3 text-sm", msg.includes("已保存") || msg.includes("已更新") ? "text-emerald-400" : "text-destructive")}>
-          {msg}
-        </p>
-      ) : null}
-
       {g ? (
         <section className={cn("plugin-governance-panel", isDialog && "plugin-governance-panel--dialog")}>
           {!isDialog ? (
@@ -294,7 +292,6 @@ export default function PluginGovernancePanel({ pluginName, presentation = "page
               placeholder="群号"
               emptyText="暂无白名单群"
               disabled={saveFleet.isPending}
-              errorText={whitelistHint || undefined}
             />
           </PluginGovernanceGroup>
 
