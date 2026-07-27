@@ -24,8 +24,13 @@ export function addDaysIso(iso: string, delta: number): string {
 
 export function formatCompactNumber(n: number): string {
   const v = Number(n) || 0;
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(v >= 10_000_000 ? 0 : 1)}M`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(v >= 10_000 ? 0 : 1)}k`;
+  const abs = Math.abs(v);
+  // 百万级用两位小数（1.84M），避免一日内增长被一位小数「卡」在 1.8M
+  if (abs >= 1_000_000) {
+    const digits = abs >= 100_000_000 ? 0 : abs >= 10_000_000 ? 1 : 2;
+    return `${(v / 1_000_000).toFixed(digits)}M`;
+  }
+  if (abs >= 1_000) return `${(v / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
   return String(Math.round(v));
 }
 
