@@ -183,7 +183,7 @@ export type PluginConfigData = {
   hot_reload?: boolean;
 };
 
-export type ExtensionInstallJob = { job_id: string; package?: string; plugin_id?: string };
+export type ExtensionInstallJob = { job_id: string; package?: string; plugin_id?: string; target?: string };
 
 export type DbBackupJobData = {
   job_id?: string;
@@ -789,6 +789,30 @@ export async function installOfficialExtensionAsync(
   return envelopeData<ExtensionInstallJob>(body);
 }
 
+export async function updateOfficialExtensionAsync(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJob> {
+  const { data: body } = await http.post(
+    "/plugins/official-extensions/update-async",
+    { package: packageName, restart: Boolean(options?.restart) },
+    { timeout: 60_000 },
+  );
+  return envelopeData<ExtensionInstallJob>(body);
+}
+
+export async function uninstallOfficialExtensionAsync(
+  packageName: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJob> {
+  const { data: body } = await http.post(
+    "/plugins/official-extensions/uninstall-async",
+    { package: packageName, restart: Boolean(options?.restart) },
+    { timeout: 60_000 },
+  );
+  return envelopeData<ExtensionInstallJob>(body);
+}
+
 export async function uninstallOfficialExtension(
   packageName: string,
   options?: { restart?: boolean },
@@ -830,6 +854,34 @@ export async function installCommunityPluginAsync(
   return envelopeData<ExtensionInstallJob>(body);
 }
 
+export async function updateCommunityPluginAsync(
+  pluginId: string,
+  options?: { restart?: boolean; ref?: string },
+): Promise<ExtensionInstallJob> {
+  const { data: body } = await http.post(
+    "/plugins/community-plugins/update-async",
+    {
+      plugin_id: pluginId,
+      ref: options?.ref,
+      restart: Boolean(options?.restart),
+    },
+    { timeout: 60_000 },
+  );
+  return envelopeData<ExtensionInstallJob>(body);
+}
+
+export async function uninstallCommunityPluginAsync(
+  pluginId: string,
+  options?: { restart?: boolean },
+): Promise<ExtensionInstallJob> {
+  const { data: body } = await http.post(
+    "/plugins/community-plugins/uninstall-async",
+    { plugin_id: pluginId, restart: Boolean(options?.restart) },
+    { timeout: 60_000 },
+  );
+  return envelopeData<ExtensionInstallJob>(body);
+}
+
 export async function uninstallCommunityPlugin(
   pluginId: string,
   options?: { restart?: boolean },
@@ -856,9 +908,14 @@ export async function updateCommunityPlugin(
 
 export function openPluginInstallJobEventSource(jobId: string): EventSource {
   const root = ((import.meta.env.BASE_URL as string) || "/pallas/").replace(/\/$/, "");
-  return new EventSource(`${root}/api/plugins/install-jobs/${encodeURIComponent(jobId)}/stream`, {
+  return new EventSource(`${root}/api/plugins/store-jobs/${encodeURIComponent(jobId)}/stream`, {
     withCredentials: true,
   });
+}
+
+/** @deprecated 使用 openPluginInstallJobEventSource（已指向 store-jobs） */
+export function openPluginStoreJobEventSource(jobId: string): EventSource {
+  return openPluginInstallJobEventSource(jobId);
 }
 
 export async function postDbBackup(body: {
