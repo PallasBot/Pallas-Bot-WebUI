@@ -32,12 +32,11 @@ import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
 import ProtocolAccountConfigDialog from "@/components/ProtocolAccountConfigDialog";
 import ProtocolAccountQrcodeModal from "@/components/ProtocolAccountQrcodeModal";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
-import SegTabs from "@/components/SegTabs";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Cable } from "lucide-react";
+import { Cable, ChevronDown, Loader2, Play, QrCode, RefreshCw, Search, Square } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -54,7 +53,6 @@ import {
   waitForProtocolBatchJob,
 } from "@/utils/protocolBatch";
 import { pushConsoleToast } from "@/utils/consoleToast";
-import { ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -93,7 +91,11 @@ function primaryTitle(a: NapcatAccountRow, instances: InstancesData | null): str
 }
 
 function isProcessRunning(a: NapcatAccountRow): boolean {
-  return coerceBoolean(a.process_running ?? a.running) === true;
+  // 以 process_running 为准；勿回退 running（后者含 connected，停 QQ 后仍可能为 true）
+  if (a.process_running !== undefined && a.process_running !== null) {
+    return coerceBoolean(a.process_running) === true;
+  }
+  return coerceBoolean(a.running) === true;
 }
 
 function runningCapsuleClass(a: NapcatAccountRow): string {
@@ -131,15 +133,43 @@ function togglePowerLabel(a: NapcatAccountRow, busy: boolean): string {
   const running = isProcessRunning(a);
   const snow = isSnowlumaAccount(a);
   if (busy) {
-    if (snow) return running ? "停 QQ 中…" : "启 QQ 中…";
-    return running ? "停止中…" : "启动中…";
+    if (snow) return running ? "正在停止 QQ" : "正在启动 QQ";
+    return running ? "正在停止" : "正在启动";
   }
   if (snow) return running ? "停 QQ" : "启 QQ";
   return running ? "停止" : "启动";
 }
 
+function togglePowerContent(a: NapcatAccountRow, busy: boolean) {
+  if (busy) {
+    return <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />;
+  }
+  const running = isProcessRunning(a);
+  const snow = isSnowlumaAccount(a);
+  const Icon = running ? Square : Play;
+  const text = snow ? (running ? "停 QQ" : "启 QQ") : running ? "停止" : "启动";
+  return (
+    <>
+      <Icon className="size-3.5 shrink-0" aria-hidden />
+      {text}
+    </>
+  );
+}
+
+function restartContent(busy: boolean) {
+  if (busy) {
+    return <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />;
+  }
+  return (
+    <>
+      <RefreshCw className="size-3.5 shrink-0" aria-hidden />
+      重启
+    </>
+  );
+}
+
 function restartLabel(busy: boolean): string {
-  return busy ? "重启中…" : "重启";
+  return busy ? "正在重启" : "重启";
 }
 
 export default function ProtocolAccountsTab() {
@@ -190,8 +220,8 @@ export default function ProtocolAccountsTab() {
 
   const pluginAccounts = accountsQ.data ?? [];
   const snowlumaRuntimes = runtimesQ.data ?? [];
-  /** 首屏或手动刷新：勿用 nonebot 在线连接冒充账号卡片 */
-  const showAccountsSkeleton = Boolean(mountUrl) && (accountsQ.isLoading || listRefreshBusy);
+  /** 首屏：勿用 nonebot 在线连接冒充账号卡片；手动刷新只用工具条 busy，勿整表骨架 */
+  const showAccountsSkeleton = Boolean(mountUrl) && accountsQ.isLoading && !accountsQ.isFetched;
 
   const protocolAccountsSorted = useMemo(() => {
     // 协议账号列表未拉到前不合并 nonebot，否则会短暂只显示「已连接」外部卡片
@@ -206,6 +236,9 @@ export default function ProtocolAccountsTab() {
       const ca = a.connected === true ? 1 : 0;
       const cb = b.connected === true ? 1 : 0;
       if (ca !== cb) return cb - ca;
+      const ra = isProcessRunning(a) ? 1 : 0;
+      const rb = isProcessRunning(b) ? 1 : 0;
+      if (ra !== rb) return rb - ra;
       const na = profileNick(a, instances).toLowerCase();
       const nb = profileNick(b, instances).toLowerCase();
       const cmp = na.localeCompare(nb, "zh-CN");
@@ -316,14 +349,22 @@ export default function ProtocolAccountsTab() {
     setListRefreshBusy(true);
     try {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] }),
-        qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
+        qc.refetchQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+        qc.refetchQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
         reload(),
       ]);
     } finally {
       setListRefreshBusy(false);
     }
   }, [mountUrl, qc, reload]);
+
+  /** 单账号启停后静默拉列表，避免 listRefreshBusy 骨架整页闪白 */
+  const refreshAccountsQuiet = useCallback(async () => {
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ["protocol-accounts", mountUrl] }),
+      qc.refetchQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] }),
+    ]);
+  }, [mountUrl, qc]);
 
   function setAccountActionBusy(accountId: string, action: ProtocolAccountAction, busy: boolean) {
     const key = actionBusyKey(accountId, action);
@@ -390,7 +431,7 @@ export default function ProtocolAccountsTab() {
       if (stop) await protocolStopAccount(mountUrl, id);
       else await protocolStartAccount(mountUrl, id);
       pushConsoleToast(`${stop ? "已停止" : "已启动"} ${primaryTitle(a, instances)}`, stop ? "warn" : "ok");
-      await refreshLists();
+      await refreshAccountsQuiet();
     } catch (e) {
       pushConsoleToast(protocolApiErrorMessage(e, stop ? "停止失败" : "启动失败"), "err");
     } finally {
@@ -405,7 +446,7 @@ export default function ProtocolAccountsTab() {
     try {
       await protocolRestartAccount(mountUrl, id);
       pushConsoleToast(`已重启 ${primaryTitle(a, instances)}`, "ok");
-      await refreshLists();
+      await refreshAccountsQuiet();
     } catch (e) {
       pushConsoleToast(protocolApiErrorMessage(e, "重启失败"), "err");
     } finally {
@@ -606,17 +647,6 @@ export default function ProtocolAccountsTab() {
             onChange={(e) => setProtoSearchQ(e.target.value)}
           />
         </div>
-        <SegTabs
-          size="toolbar"
-          className="shrink-0"
-          ariaLabel="实例表格或卡片视图"
-          value={prefs.protocolAccountsView}
-          onValueChange={(v) => prefs.setProtocolAccountsView(v === "cards" ? "cards" : "table")}
-          options={[
-            { value: "table", label: "表格" },
-            { value: "cards", label: "卡片" },
-          ]}
-        />
         {protoActionsEnabled ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -694,8 +724,6 @@ export default function ProtocolAccountsTab() {
     ),
     [
       protoSearchQ,
-      prefs.protocolAccountsView,
-      prefs.setProtocolAccountsView,
       protoActionsEnabled,
       restartAllBusy,
       restartSelectedBusy,
@@ -773,144 +801,7 @@ export default function ProtocolAccountsTab() {
               <p className="muted">没有匹配的协议账号</p>
             ) : null}
 
-            {!showAccountsSkeleton && prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
-              <div className="table-wrap">
-                <table className="data console-data-table">
-                  <thead>
-                    <tr>
-                      <th>昵称</th>
-                      <th>账号</th>
-                      <th>协议</th>
-                      <th>Runtime</th>
-                      <th>运行方式</th>
-                      <th>版本</th>
-                      <th>连接</th>
-                      <th>进程</th>
-                      <th>WebUI</th>
-                      <th>WS 端口</th>
-                      <th style={{ width: 220 }}>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedProtocolAccounts.map((a, i) => {
-                      const id = accountProtocolId(a);
-                      const favNum = protocolAccountNumber(a);
-                      const href = webUiHref(a);
-                      return (
-                        <tr key={`tbl-${cardKey(a, i)}`}>
-                          <td className="inst-account-nick">{primaryTitle(a, instances)}</td>
-                          <td>{a.qq ?? a.id ?? "—"}</td>
-                          <td>{protocolBackendDisplayName(a)}</td>
-                          <td
-                            className="muted"
-                            title={String(a.snowluma_runtime_id ?? "").trim() || undefined}
-                          >
-                            {isSnowlumaAccount(a) ? snowlumaRuntimeLabel(a, snowlumaRuntimes) : "—"}
-                          </td>
-                          <td>{protocolRuntimeModeLabel(a)}</td>
-                          <td
-                            className="muted"
-                            title={String(a.runtime_source ?? "").trim() || undefined}
-                          >
-                            {protocolRuntimeVersionText(a)}
-                          </td>
-                          <td>
-                            <span
-                              className={
-                                a.connected === true
-                                  ? "data-conn-capsule data-conn-capsule--on"
-                                  : "data-conn-capsule data-conn-capsule--off"
-                              }
-                            >
-                              {a.connected === true ? "已连接" : "未连接"}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={runningCapsuleClass(a)}>{processStateLabel(a)}</span>
-                          </td>
-                          <td>
-                            {href ? (
-                              <a className="link-quiet" href={href} target="_blank" rel="noopener noreferrer">
-                                {a.webui_port ?? "打开"}
-                              </a>
-                            ) : (
-                              <span className="muted">—</span>
-                            )}
-                          </td>
-                          <td>
-                            {isExternalProtocolAccount(a) ? "—" : accountConnectedWsPortLabel(a)}
-                          </td>
-                          <td>
-                            <div className="inst-actions protocol-acc-table-actions">
-                              {isPluginManagedProtocolAccount(a) && protoActionsEnabled ? (
-                                <>
-                                  {id ? (
-                                    <button
-                                      type="button"
-                                      className="btn btn--sm"
-                                      onClick={() => openAccountConfig(id)}
-                                    >
-                                      配置
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    className="btn btn--sm"
-                                    disabled={isAnyAccountActionBusy(a)}
-                                    onClick={() => void restartAccount(a)}
-                                  >
-                                    {restartLabel(isAccountActionBusy(a, "restart"))}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn--sm"
-                                    disabled={!mountUrl || !id}
-                                    onClick={() => openQrcodeModal(a)}
-                                  >
-                                    二维码
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={`btn btn--sm${isProcessRunning(a) ? "" : " btn--primary"}`}
-                                    disabled={isAnyAccountActionBusy(a)}
-                                    onClick={() => void toggleAccountPower(a)}
-                                  >
-                                    {togglePowerLabel(a, isAccountActionBusy(a, "power"))}
-                                  </button>
-                                </>
-                              ) : null}
-                              {favNum != null ? (
-                                <button
-                                  type="button"
-                                  className="btn btn--ghost btn--sm inst-fav-star"
-                                  aria-pressed={favorites.has(favNum)}
-                                  title={favorites.has(favNum) ? "取消收藏" : "收藏"}
-                                  onClick={() => toggleFavorite(favNum)}
-                                >
-                                  ★
-                                </button>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-
-            {!showAccountsSkeleton && prefs.protocolAccountsView === "table" && filteredProtocolAccounts.length > 0 ? (
-              <ConsolePagerBar
-                page={protoAccPage}
-                pageSize={prefs.tablePageSize}
-                total={filteredProtocolAccounts.length}
-                onPageChange={setProtoAccPage}
-                onPageSizeChange={prefs.setTablePageSize}
-              />
-            ) : null}
-
-            {!showAccountsSkeleton && prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && filteredProtocolAccounts.length > 0 ? (
               <div className="data-card-grid data-card-grid--bots">
                 {pagedProtocolAccounts.map((a, i) => {
                   const id = accountProtocolId(a);
@@ -1028,35 +919,37 @@ export default function ProtocolAccountsTab() {
                         </div>
                       </div>
                       {isPluginManagedProtocolAccount(a) && protoActionsEnabled ? (
-                        <div className="data-summary-card__tags data-summary-card__foot inst-card-actions">
-                          {id ? (
-                            <button type="button" className="btn btn--sm" onClick={() => openAccountConfig(id)}>
-                              配置
-                            </button>
-                          ) : null}
+                        <div className="data-summary-card__tags data-summary-card__foot inst-card-actions protocol-acc-card-actions">
                           <button
                             type="button"
-                            className="btn btn--sm"
+                            className="btn btn--sm gap-1"
                             disabled={isAnyAccountActionBusy(a)}
+                            title={restartLabel(isAccountActionBusy(a, "restart"))}
+                            aria-label={restartLabel(isAccountActionBusy(a, "restart"))}
                             onClick={() => void restartAccount(a)}
                           >
-                            {restartLabel(isAccountActionBusy(a, "restart"))}
+                            {restartContent(isAccountActionBusy(a, "restart"))}
                           </button>
                           <button
                             type="button"
-                            className="btn btn--sm"
+                            className="btn btn--sm gap-1"
                             disabled={!mountUrl || !id}
+                            title="二维码"
+                            aria-label="二维码"
                             onClick={() => openQrcodeModal(a)}
                           >
+                            <QrCode className="size-3.5 shrink-0" aria-hidden />
                             二维码
                           </button>
                           <button
                             type="button"
-                            className={`btn btn--sm${isProcessRunning(a) ? "" : " btn--primary"}`}
+                            className={`btn btn--sm gap-1${isProcessRunning(a) ? "" : " btn--primary"}`}
                             disabled={isAnyAccountActionBusy(a)}
+                            title={togglePowerLabel(a, isAccountActionBusy(a, "power"))}
+                            aria-label={togglePowerLabel(a, isAccountActionBusy(a, "power"))}
                             onClick={() => void toggleAccountPower(a)}
                           >
-                            {togglePowerLabel(a, isAccountActionBusy(a, "power"))}
+                            {togglePowerContent(a, isAccountActionBusy(a, "power"))}
                           </button>
                         </div>
                       ) : null}
@@ -1066,7 +959,7 @@ export default function ProtocolAccountsTab() {
               </div>
             ) : null}
 
-            {!showAccountsSkeleton && prefs.protocolAccountsView === "cards" && filteredProtocolAccounts.length > 0 ? (
+            {!showAccountsSkeleton && filteredProtocolAccounts.length > 0 ? (
               <ConsolePagerBar
                 page={protoAccPage}
                 pageSize={prefs.tablePageSize}

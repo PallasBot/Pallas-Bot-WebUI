@@ -254,7 +254,7 @@ export default function BotConfigModal({
           </div>
         </DialogHeader>
 
-        <div className="plugin-config-dialog__bd min-h-0 flex-1 overflow-auto px-4 py-3">
+        <div className="plugin-config-dialog__bd bot-config-dialog__bd min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-3">
           {draft ? (
             <div className="bot-config-edit--modal bot-config-edit--modal-sections">
               {saveErr ? <p className="alert alert--err mb-0">{saveErr}</p> : null}

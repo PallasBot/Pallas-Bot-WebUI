@@ -2,16 +2,12 @@ import { useCallback, useState } from "react";
 
 const STORAGE_KEY = "pallas_console_prefs_v1";
 
-export type DataViewMode = "table" | "cards";
-
 type StoredPrefs = {
   tablePageSize?: number;
   friendsPageFriendsListOpen?: boolean;
   friendsPageGroupsListOpen?: boolean;
   databasePageGroupConfigsOpen?: boolean;
   databasePageUserConfigsOpen?: boolean;
-  instancesBotView?: DataViewMode;
-  protocolAccountsView?: DataViewMode;
 };
 
 function loadStored(): StoredPrefs {
@@ -62,14 +58,6 @@ export function useConsolePrefs() {
     (open: boolean) => patch({ friendsPageGroupsListOpen: open }),
     [patch],
   );
-  const setInstancesBotView = useCallback(
-    (mode: DataViewMode) => patch({ instancesBotView: mode }),
-    [patch],
-  );
-  const setProtocolAccountsView = useCallback(
-    (mode: DataViewMode) => patch({ protocolAccountsView: mode }),
-    [patch],
-  );
 
   return {
     tablePageSize,
@@ -80,11 +68,7 @@ export function useConsolePrefs() {
     databasePageUserConfigsOpen: stored.databasePageUserConfigsOpen ?? true,
     setDatabasePageGroupConfigsOpen,
     setDatabasePageUserConfigsOpen,
-    instancesBotView: stored.instancesBotView === "table" ? "table" : "cards",
-    protocolAccountsView: stored.protocolAccountsView === "table" ? "table" : "cards",
     setFriendsPageFriendsListOpen,
     setFriendsPageGroupsListOpen,
-    setInstancesBotView,
-    setProtocolAccountsView,
   };
 }

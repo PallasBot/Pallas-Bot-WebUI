@@ -9,9 +9,7 @@ import BotConfigModal from "@/components/BotConfigModal";
 import ConsoleCardBulkBar from "@/components/ConsoleCardBulkBar";
 import ConsoleDeleteConfirmModal from "@/components/ConsoleDeleteConfirmModal";
 import ConsolePagerBar from "@/components/ConsolePagerBar";
-import ConsoleTableEdit from "@/components/ConsoleTableEdit";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
-import SegTabs from "@/components/SegTabs";
 import ChromeTools, { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import PageMasthead from "@/components/PageMasthead";
 import PanelHdCollapseCaret from "@/components/PanelHdCollapseCaret";
@@ -99,6 +97,10 @@ export default function InstancesPage() {
     rows.sort((a, b) => {
       const ia = parseSelfId(a.self_id);
       const ib = parseSelfId(b.self_id);
+      const favA = ia != null && favorites.has(ia) ? 1 : 0;
+      const favB = ib != null && favorites.has(ib) ? 1 : 0;
+      if (favA !== favB) return favB - favA;
+      // 消息框架列表本身均为已连接；无独立「进程运行」字段，按昵称/账号收尾
       const na = (ia != null ? botNickname(ia) ?? "" : "").toLowerCase();
       const nb = (ib != null ? botNickname(ib) ?? "" : "").toLowerCase();
       const cmp = na.localeCompare(nb, "zh-CN");
@@ -106,7 +108,7 @@ export default function InstancesPage() {
       return String(a.self_id).localeCompare(String(b.self_id), "zh-CN", { numeric: true });
     });
     return rows;
-  }, [data]);
+  }, [data, favorites]);
 
   const sortedDbBotConfigs = useMemo(() => {
     const rows = [...(data?.db_bot_configs ?? [])] as BotConfigPublic[];
@@ -318,16 +320,6 @@ export default function InstancesPage() {
                 }}
               />
             </div>
-            <SegTabs
-              size="toolbar"
-              ariaLabel="实例表格或卡片视图"
-              value={prefs.instancesBotView}
-              onValueChange={(v) => prefs.setInstancesBotView(v === "cards" ? "cards" : "table")}
-              options={[
-                { value: "table", label: "表格" },
-                { value: "cards", label: "卡片" },
-              ]}
-            />
           </ChromeTools>
 
           <Card className={cn(INST_PANEL, "inst-db-panel")}>
@@ -373,93 +365,7 @@ export default function InstancesPage() {
                   </p>
                 ) : null}
 
-                {prefs.instancesBotView === "table" ? (
-                  <div className="table-wrap">
-                    <table className="data console-data-table">
-                      <thead>
-                        <tr>
-                          <th>昵称</th>
-                          <th>账号</th>
-                          <th>连接</th>
-                          <th>安全模式</th>
-                          <th>自动同意好友</th>
-                          <th>自动同意入群</th>
-                          <th>管理员</th>
-                          <th>禁用插件</th>
-                          <th style={{ width: 88 }}>操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pagedDbBotConfigs.map((c) => (
-                          <tr key={c.account}>
-                            <td className="inst-account-nick">{botNickname(c.account) || "BOT"}</td>
-                            <td>{c.account}</td>
-                            <td>
-                              <span
-                                className={
-                                  isBotConnected(c.account)
-                                    ? "data-conn-capsule data-conn-capsule--on"
-                                    : "data-conn-capsule data-conn-capsule--off"
-                                }
-                              >
-                                {isBotConnected(c.account) ? "已连接" : "未连接"}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={boolPillClass(c.security)}>
-                                {c.security ? "开启" : "关闭"}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={boolPillClass(c.auto_accept_friend)}>
-                                {c.auto_accept_friend ? "开启" : "关闭"}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={boolPillClass(c.auto_accept_group)}>
-                                {c.auto_accept_group ? "开启" : "关闭"}
-                              </span>
-                            </td>
-                            <td className="muted inst-db-admins-cell">
-                              {!sortedAdminsList(c.admins).length ? (
-                                "—"
-                              ) : (
-                                <span className="inst-db-admins-wrap inst-db-admins-wrap--table">
-                                  {sortedAdminsList(c.admins).map((id, idx) => (
-                                    <span key={`${c.account}-adm-${id}`} className="inst-db-admin-item">
-                                      {idx > 0 ? "、" : null}
-                                      {id}
-                                    </span>
-                                  ))}
-                                </span>
-                              )}
-                            </td>
-                            <td className="muted">
-                              {formatDisabledPluginIds(c.disabled_plugins, plugins)}
-                            </td>
-                            <td>
-                              <div className="inst-actions">
-                                <ConsoleTableEdit label="编辑" onClick={() => startEdit(c)} />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="inst-fav-star"
-                                  aria-pressed={favorites.has(c.account)}
-                                  title={favorites.has(c.account) ? "取消收藏" : "收藏"}
-                                  onClick={() => toggleFavorite(c.account)}
-                                >
-                                  ★
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="data-card-grid data-card-grid--bots">
+                <div className="data-card-grid data-card-grid--bots">
                     {pagedDbBotConfigs.map((c) => (
                       <div
                         key={`card-${c.account}`}
@@ -554,7 +460,6 @@ export default function InstancesPage() {
                       </div>
                     ))}
                   </div>
-                )}
 
                 {filteredDbBotConfigs.length > 0 ? (
                   <ConsolePagerBar
@@ -566,7 +471,7 @@ export default function InstancesPage() {
                   />
                 ) : null}
 
-                {prefs.instancesBotView === "cards" && filteredDbBotConfigs.length > 0 ? (
+                {filteredDbBotConfigs.length > 0 ? (
                   <ConsoleCardBulkBar
                     pageAllSelected={dbCardsPageAllSelected}
                     selectedCount={selectedAccounts.size}
