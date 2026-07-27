@@ -7,9 +7,9 @@ import { labelScene, labelWritebackMessage, labelWritebackStatus } from "@/utils
 export function promotionStatusLabel(item: LlmPromotionCandidate): string {
   if (item.promoted) {
     const wb = String(item.writeback_status || "").trim();
-    if (wb === "written") return "已升格并写回";
-    if (wb === "failed") return "已升格但写回失败";
-    return "已升格";
+    if (wb === "written") return "已入库并写回";
+    if (wb === "failed") return "已入库但写回失败";
+    return "已入库";
   }
   if (String(item.rejected_reason || "").trim()) return "已拒绝";
   return "待审批";
@@ -72,7 +72,7 @@ export default function SessionPromotionCard({
       {pending ? (
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" className="h-7" disabled={busy} onClick={() => onResolve("promote")}>
-            升格
+            入库
           </Button>
           <Button size="sm" variant="outline" className="h-7" disabled={busy} onClick={() => onResolve("reject")}>
             拒绝

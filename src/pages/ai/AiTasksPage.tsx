@@ -103,18 +103,18 @@ export default function AiTasksPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">运行摘要</CardTitle>
-          <CardDescription>按顶栏范围汇总观察、任务与口癖。</CardDescription>
+          <CardTitle className="text-base">范围摘要</CardTitle>
+          <CardDescription>按顶栏 Bot / 群汇总观察、任务与口癖。</CardDescription>
         </CardHeader>
         <CardContent>
           <StateBlock loading={overviewQuery.isLoading} error={overviewQuery.error}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(
                 [
-                  ["观察队列", overview?.observation_queue_size],
+                  ["待整理观察", overview?.observation_queue_size],
                   ["工具数", overview?.tool_count],
                   ["任务总数", overview?.task_count],
-                  ["未完成任务", overview?.open_tasks],
+                  ["未完成", overview?.open_tasks],
                   ["口癖待审", overview?.catchphrase_candidates],
                   ["口癖已启用", overview?.catchphrase_active],
                 ] as Array<[string, unknown]>
@@ -133,8 +133,8 @@ export default function AiTasksPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-base">任务列表</CardTitle>
-              <CardDescription>提醒与异步任务；结果只投到对应群。</CardDescription>
+              <CardTitle className="text-base">提醒与任务</CardTitle>
+              <CardDescription>提醒与异步任务，结果只投到对应群。</CardDescription>
             </div>
             <div className="flex flex-wrap gap-1">
               {(

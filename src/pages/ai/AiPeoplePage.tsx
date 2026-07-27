@@ -173,7 +173,7 @@ export default function AiPeoplePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">人物事实</CardTitle>
           <CardDescription>
-            写入群内稳定信息（如希望怎么称呼）。默认只在本群生效；跨群复用需用户同意。
+            写入希望怎么称呼等稳定信息。默认本群生效，跨群复用需用户同意。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -235,9 +235,10 @@ export default function AiPeoplePage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">观察队列</CardTitle>
+          <CardTitle className="text-base">待整理观察</CardTitle>
           <CardDescription>
-            尚未写入长期记忆的候选片段。当前队列 {observationsQuery.data?.queue_size ?? 0} 条。
+            尚未写入长期记忆的候选片段，当前 {observationsQuery.data?.queue_size ?? 0}{" "}
+            条。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -268,7 +269,7 @@ export default function AiPeoplePage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-base">口癖候选</CardTitle>
-              <CardDescription>成功回复里的短习惯，通过后注入人设。</CardDescription>
+              <CardDescription>成功回复里提炼的短习惯，通过后注入人设。</CardDescription>
             </div>
             <div className="flex flex-wrap gap-1">
               {(
@@ -320,7 +321,6 @@ export default function AiPeoplePage() {
                       <div className="flex shrink-0 gap-1.5">
                         <Button
                           size="sm"
-                          variant="secondary"
                           className="h-7 px-2"
                           disabled={resolveCatchphrase.isPending}
                           onClick={() =>

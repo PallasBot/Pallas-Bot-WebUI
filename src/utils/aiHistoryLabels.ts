@@ -106,7 +106,7 @@ export function labelRepeaterMode(raw?: string | null): string {
   return String(raw);
 }
 
-/** 反哺 / 统计里的 llm_route、任务类型展示名（按实际效果，不直译内部代号）。 */
+/** 纠错 / 统计里的 llm_route、任务类型展示名（按实际效果，不直译内部代号）。 */
 const LLM_ROUTE_LABELS: Record<string, string> = {
   plain_llm_chat: "模型直出",
   corpus_select: "语料选句",
@@ -141,7 +141,7 @@ const WRITEBACK_STATUS_LABELS: Record<string, string> = {
 
 const WRITEBACK_MESSAGE_LABELS: Record<string, string> = {
   context_repository: "已写入接话语料库",
-  auto_promoted: "已自动升格写回",
+  auto_promoted: "已自动入库写回",
   "empty trigger or reply": "触发句或回复为空",
   "corpus contamination guard": "被语料污染防护拦截",
 };
