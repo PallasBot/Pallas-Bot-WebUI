@@ -9,13 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 export default function AiConfigNcmSection() {
   const [phone, setPhone] = useState("");
   const [ctcode, setCtcode] = useState(String(AI_NCM_DEFAULTS.countryCode));
   const [captcha, setCaptcha] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const statusQ = useQuery({ queryKey: ["ai-ncm"], queryFn: fetchAiNcmStatus });
 
@@ -25,10 +32,11 @@ export default function AiConfigNcmSection() {
   const sendMut = useMutation({
     mutationFn: () => postAiNcmSendSms({ phone: phone.trim(), ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode }),
     onSuccess: async (r) => {
-      setMsg(r.ok ? "验证码已发送" : r.error || "验证码发送失败");
+      if (r.ok) notifyOk("验证码已发送");
+      else notifyErr(r.error || "验证码发送失败");
       await statusQ.refetch();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const verifyMut = useMutation({
@@ -39,19 +47,21 @@ export default function AiConfigNcmSection() {
         ctcode: Number(ctcode) || AI_NCM_DEFAULTS.countryCode,
       }),
     onSuccess: async (r) => {
-      setMsg(r.ok ? "登录成功" : r.error || "登录验证失败");
+      if (r.ok) notifyOk("登录成功");
+      else notifyErr(r.error || "登录验证失败");
       await statusQ.refetch();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const logoutMut = useMutation({
     mutationFn: () => postAiNcmLogout(),
     onSuccess: async (r) => {
-      setMsg(r.ok ? "已登出" : r.error || "登出失败");
+      if (r.ok) notifyOk("已登出");
+      else notifyErr(r.error || "登出失败");
       await statusQ.refetch();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const busy = sendMut.isPending || verifyMut.isPending || logoutMut.isPending;
@@ -59,12 +69,6 @@ export default function AiConfigNcmSection() {
   return (
     <Card>
       <CardContent className="space-y-5 pt-5">
-        {msg ? (
-          <p className={cn("text-sm", /成功|已发送|已登出/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-            {msg}
-          </p>
-        ) : null}
-
         <section className="space-y-3">
           <h3 className="text-sm font-medium">登录状态</h3>
           <StateBlock loading={statusQ.isLoading} error={statusQ.error}>
@@ -89,36 +93,13 @@ export default function AiConfigNcmSection() {
             </AiConfigField>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setMsg(null);
-                void sendMut.mutateAsync();
-              }}
-            >
+            <Button size="sm" disabled={busy} onClick={() => void sendMut.mutateAsync()}>
               发送验证码
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => {
-                setMsg(null);
-                void verifyMut.mutateAsync();
-              }}
-            >
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void verifyMut.mutateAsync()}>
               验证登录
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => {
-                setMsg(null);
-                void logoutMut.mutateAsync();
-              }}
-            >
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void logoutMut.mutateAsync()}>
               登出
             </Button>
           </div>

@@ -20,7 +20,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
 
 type Panel = "media" | "sing" | "tts";
 
@@ -33,7 +41,6 @@ const PANEL_OPTIONS = [
 export default function AiConfigCapabilitiesSection() {
   const qc = useQueryClient();
   const [panel, setPanel] = useState<Panel>("media");
-  const [msg, setMsg] = useState<string | null>(null);
   const [jobLines, setJobLines] = useState<string[]>([]);
   const pollRef = useRef<number | null>(null);
 
@@ -102,25 +109,25 @@ export default function AiConfigCapabilitiesSection() {
   const downloadMut = useMutation({
     mutationFn: (assets?: string[]) => postMediaAssetsDownload(assets),
     onSuccess: (job) => {
-      setMsg(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`);
+      notifyOk(`下载任务 ${job.job_id || "—"} · ${job.state || "queued"}`);
       if (job.job_id) pollJob(job.job_id);
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const deleteMut = useMutation({
     mutationFn: (assets: string[]) => postMediaAssetsDelete(assets),
     onSuccess: async () => {
-      setMsg("已删除选中资产");
+      notifyOk("已删除选中资产");
       await qc.invalidateQueries({ queryKey: ["media-assets"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const singMut = useMutation({
     mutationFn: () => putSingDefaults({ default_speaker: defaultSpeaker, preferred_backend: preferredBackend }),
-    onSuccess: () => setMsg("唱歌默认配置已保存"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: () => notifyOk("唱歌默认配置已保存"),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const ttsMut = useMutation({
@@ -131,8 +138,8 @@ export default function AiConfigCapabilitiesSection() {
         prompt_lang: ttsPromptLang,
         text_lang: ttsTextLang,
       }),
-    onSuccess: () => setMsg("TTS 默认配置已保存"),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onSuccess: () => notifyOk("TTS 默认配置已保存"),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const assetKeys = Object.keys(mediaQ.data?.assets || {});
@@ -156,12 +163,6 @@ export default function AiConfigCapabilitiesSection() {
   return (
     <Card>
       <CardContent className="space-y-3 pt-5">
-        {msg ? (
-          <p className={cn("text-sm", /成功|已保存|已删除|任务/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-            {msg}
-          </p>
-        ) : null}
-
         {panel === "media" ? (
           <StateBlock loading={mediaQ.isLoading} error={mediaQ.error}>
             <div className="flex flex-wrap gap-2">
@@ -188,10 +189,7 @@ export default function AiConfigCapabilitiesSection() {
               <Button
                 size="sm"
                 disabled={busy || !mediaQ.data?.download_allowed}
-                onClick={() => {
-                  setMsg(null);
-                  void downloadMut.mutateAsync(undefined);
-                }}
+                onClick={() => void downloadMut.mutateAsync(undefined)}
               >
                 下载全部
               </Button>
@@ -201,10 +199,7 @@ export default function AiConfigCapabilitiesSection() {
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => {
-                    setMsg(null);
-                    void deleteMut.mutateAsync([k]);
-                  }}
+                  onClick={() => void deleteMut.mutateAsync([k])}
                 >
                   删 {k}
                 </Button>
@@ -244,15 +239,7 @@ export default function AiConfigCapabilitiesSection() {
                 />
               </AiConfigField>
             </div>
-            <Button
-              className="mt-3"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setMsg(null);
-                void singMut.mutateAsync();
-              }}
-            >
+            <Button className="mt-3" size="sm" disabled={busy} onClick={() => void singMut.mutateAsync()}>
               保存唱歌默认配置
             </Button>
           </StateBlock>
@@ -281,15 +268,7 @@ export default function AiConfigCapabilitiesSection() {
                 <Input value={ttsTextLang} onChange={(e) => setTtsTextLang(e.target.value)} />
               </AiConfigField>
             </div>
-            <Button
-              className="mt-3"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setMsg(null);
-                void ttsMut.mutateAsync();
-              }}
-            >
+            <Button className="mt-3" size="sm" disabled={busy} onClick={() => void ttsMut.mutateAsync()}>
               保存 TTS 默认配置
             </Button>
           </StateBlock>

@@ -70,6 +70,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 function num(v: unknown, fallback = 0): number {
   const n = Number(v);
@@ -111,6 +112,15 @@ function groupCategoriesByLayer(items: MemoryCategory[]): { layer: number; items
     .map(([layer, list]) => ({ layer, items: list }));
 }
 
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
 export default function AiMemoryPage() {
   const qc = useQueryClient();
   const { botId, groupId } = useAiObservationScope();
@@ -118,7 +128,6 @@ export default function AiMemoryPage() {
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [prefRule, setPrefRule] = useState("");
-  const [msg, setMsg] = useState("");
   const [entityName, setEntityName] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [categoryLayer, setCategoryLayer] = useState("1");
@@ -232,85 +241,85 @@ export default function AiMemoryPage() {
     mutationFn: postConversationKernelMemory,
     onSuccess: async () => {
       setDraft("");
-      setMsg("已写入 Episode（群记忆）");
+      notifyOk("已写入 Episode（群记忆）");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const deleteEpisodeM = useMutation({
     mutationFn: postConversationKernelMemoryDelete,
     onSuccess: async () => {
-      setMsg("已删除 Episode");
+      notifyOk("已删除 Episode");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const clearM = useMutation({
     mutationFn: postConversationKernelMemoryClear,
     onSuccess: async (data) => {
-      setMsg(`已清空 ${num((data as { deleted?: number }).deleted)} 条`);
+      notifyOk(`已清空 ${num((data as { deleted?: number }).deleted)} 条`);
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const lifeM = useMutation({
     mutationFn: postConversationKernelMemoryLifecycle,
     onSuccess: async () => {
-      setMsg("生命周期已更新");
+      notifyOk("生命周期已更新");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const prefM = useMutation({
     mutationFn: postConversationKernelMemoryPreference,
     onSuccess: async () => {
       setPrefRule("");
-      setMsg("偏好已保存");
+      notifyOk("偏好已保存");
       await qc.invalidateQueries({ queryKey: ["conversation-kernel-memory-preferences"] });
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const entityM = useMutation({
     mutationFn: postMemoryGraphEntity,
     onSuccess: async () => {
       setEntityName("");
-      setMsg("实体已保存");
+      notifyOk("实体已保存");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const entityDelM = useMutation({
     mutationFn: postMemoryGraphEntityDelete,
     onSuccess: async () => {
-      setMsg("实体已删除");
+      notifyOk("实体已删除");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const edgeM = useMutation({
     mutationFn: postMemoryGraphEdge,
     onSuccess: async () => {
       setEdgeFact("");
-      setMsg("关系已保存");
+      notifyOk("关系已保存");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const edgeDelM = useMutation({
     mutationFn: postMemoryGraphEdgeDelete,
     onSuccess: async () => {
-      setMsg("关系已删除（软删，可在「含失效」中恢复）");
+      notifyOk("关系已删除（软删，可在「含失效」中恢复）");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const edgeRestoreM = useMutation({
     mutationFn: postMemoryGraphEdgeRestore,
     onSuccess: async () => {
-      setMsg("关系已恢复");
+      notifyOk("关系已恢复");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const searchM = useMutation({
     mutationFn: postMemoryGraphSearch,
@@ -320,91 +329,91 @@ export default function AiMemoryPage() {
         entities: data.entities,
         edges: data.edges,
       });
-      setMsg(`检索命中 ${data.count} 条`);
+      notifyOk(`检索命中 ${data.count} 条`);
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const extractM = useMutation({
     mutationFn: postMemoryGraphExtract,
     onSuccess: async (data) => {
-      setMsg(
-        `抽取完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)}${
+      notifyOk(
+`抽取完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)}${
           data.episodes != null ? ` · Episode ${num(data.episodes)}` : ""
         }`,
-      );
+    );
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const hierRebuildM = useMutation({
     mutationFn: postMemoryGraphHierRebuild,
     onSuccess: async (data) => {
-      setMsg(`分层重建完成：层 ${num(data.max_layer)} · 分类 ${num(data.categories)}`);
+      notifyOk(`分层重建完成：层 ${num(data.max_layer)} · 分类 ${num(data.categories)}`);
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const categoryM = useMutation({
     mutationFn: postMemoryGraphCategory,
     onSuccess: async () => {
       setCategoryName("");
-      setMsg("分类已保存");
+      notifyOk("分类已保存");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const categoryDelM = useMutation({
     mutationFn: postMemoryGraphCategoryDelete,
     onSuccess: async () => {
-      setMsg("分类已删除（可在回收站恢复）");
+      notifyOk("分类已删除（可在回收站恢复）");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const trashRestoreM = useMutation({
     mutationFn: postMemoryGraphTrashRestore,
     onSuccess: async () => {
-      setMsg("已从回收站恢复");
+      notifyOk("已从回收站恢复");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const trashPurgeM = useMutation({
     mutationFn: postMemoryGraphTrashPurge,
     onSuccess: async () => {
-      setMsg("已彻底删除");
+      notifyOk("已彻底删除");
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const importM = useMutation({
     mutationFn: postMemoryGraphImport,
     onSuccess: async (data) => {
-      setMsg(
-        `导入完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)} · 分类 ${num(data.categories_upserted)}`,
-      );
+      notifyOk(
+`导入完成：实体 ${num(data.entities_upserted)} · 关系 ${num(data.edges_upserted)} · 分类 ${num(data.categories_upserted)}`,
+    );
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const clearGraphM = useMutation({
     mutationFn: postMemoryGraphClear,
     onSuccess: async (data) => {
-      setMsg(
-        `已清空图数据：实体 ${num(data.entities)} · 关系 ${num(data.edges)} · 分类 ${num(data.categories)}`,
-      );
+      notifyOk(
+`已清空图数据：实体 ${num(data.entities)} · 关系 ${num(data.edges)} · 分类 ${num(data.categories)}`,
+    );
       await invalidateGraph();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
   const exportM = useMutation({
     mutationFn: fetchMemoryGraphExport,
     onSuccess: (data) => {
       const text = JSON.stringify(data, null, 2);
       setExportJson(text);
-      setMsg("导出完成");
+      notifyOk("导出完成");
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const filters = useMemo(
@@ -445,7 +454,6 @@ export default function AiMemoryPage() {
 
   return (
     <div className="space-y-3">
-      {msg ? <p className="text-sm text-muted-foreground">{msg}</p> : null}
       {!botReady ? <AiScopeHint>请在顶栏指定 Bot QQ。</AiScopeHint> : null}
       {botReady && group == null ? (
         <AiScopeHint>未指定群号时默认使用全局作用域。</AiScopeHint>
@@ -453,7 +461,7 @@ export default function AiMemoryPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="space-y-3">
         <div className="ai-memory-page__tabs-scroll">
-          <TabsList className="h-auto min-w-max flex-nowrap justify-start">
+          <TabsList className="seg-tabs--accent h-auto min-w-max flex-nowrap justify-start">
             <TabsTrigger value="overview" className="gap-1">
               <Brain className="size-3.5" /> 总览
             </TabsTrigger>
@@ -464,7 +472,7 @@ export default function AiMemoryPage() {
               <Search className="size-3.5" /> 搜索
             </TabsTrigger>
             <TabsTrigger value="episodes" className="gap-1">
-              <MessageSquare className="size-3.5" /> Episode
+              <MessageSquare className="size-3.5" /> 条目
             </TabsTrigger>
             <TabsTrigger value="entities" className="gap-1">
               <FolderTree className="size-3.5" /> 实体
@@ -482,7 +490,7 @@ export default function AiMemoryPage() {
               <Upload className="size-3.5" /> 导入
             </TabsTrigger>
             <TabsTrigger value="scopes" className="gap-1">
-              <Globe className="size-3.5" /> Scope
+              <Globe className="size-3.5" /> 作用域
             </TabsTrigger>
             <TabsTrigger value="preferences" className="gap-1">
               <ListChecks className="size-3.5" /> 偏好
@@ -494,31 +502,31 @@ export default function AiMemoryPage() {
           <StateBlock loading={statsQ.isLoading} error={statsQ.error}>
             <div className="console-panel-grid grid-cols-2 lg:grid-cols-5">
               <IconStatCard
-                title="Episode"
+                title="记忆条目"
                 value={num(statsQ.data?.episode_count)}
                 icon={MessageSquare}
-                subtitle="群记忆条目"
+                subtitle="群内长期记忆片段"
               />
               <IconStatCard
                 title="实体"
                 value={num(statsQ.data?.entity_count)}
                 icon={Brain}
-                subtitle={`发言者 ${num(statsQ.data?.speaker_entity_count)}`}
+                subtitle={`其中发言者 ${num(statsQ.data?.speaker_entity_count)}`}
               />
               <IconStatCard
                 title="关系"
                 value={num(statsQ.data?.active_edge_count)}
                 icon={GitBranch}
-                subtitle={`含失效 ${num(statsQ.data?.edge_count)}`}
+                subtitle={`含失效共 ${num(statsQ.data?.edge_count)}`}
               />
               <IconStatCard
                 title="分类"
                 value={num(statsQ.data?.category_count)}
                 icon={Layers}
-                subtitle="图谱类目"
+                subtitle="图谱分层类目"
               />
               <IconStatCard
-                title="Scope"
+                title="作用域"
                 value={num(statsQ.data?.scope_keys?.length)}
                 icon={Globe}
                 subtitle={statsQ.data?.scope_key || "—"}
@@ -528,8 +536,8 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
               <div>
-                <CardTitle className="text-base">HierGraph 分层</CardTitle>
-                <CardDescription>按层聚合的实体分类。</CardDescription>
+                <CardTitle className="text-base">分层分类</CardTitle>
+                <CardDescription>按层查看实体分类（HierGraph）。</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -582,7 +590,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">图谱预览</CardTitle>
-              <CardDescription>实体与关系网络。</CardDescription>
+              <CardDescription>当前作用域的实体与关系。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={graphQ.isLoading} error={graphQ.error}>
@@ -620,7 +628,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">记忆搜索</CardTitle>
-              <CardDescription>检索 Episode、实体与关系。</CardDescription>
+              <CardDescription>按关键词检索记忆条目、实体与关系。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
@@ -643,7 +651,7 @@ export default function AiMemoryPage() {
               {searchHits ? (
                 <div className="space-y-3 text-sm">
                   <div>
-                    <div className="mb-1 text-xs text-muted-foreground">Episode</div>
+                    <div className="mb-1 text-xs text-muted-foreground">记忆条目</div>
                     {searchHits.episodes.length ? (
                       searchHits.episodes.map((e) => (
                         <div key={e.id} className="rounded-md border px-2 py-1.5">
@@ -690,8 +698,8 @@ export default function AiMemoryPage() {
         <TabsContent value="episodes" className="space-y-3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">写入 Episode</CardTitle>
-              <CardDescription>手动添加群记忆。</CardDescription>
+              <CardTitle className="text-base">写入记忆</CardTitle>
+              <CardDescription>手动追加一条群记忆条目。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
@@ -720,7 +728,7 @@ export default function AiMemoryPage() {
                   disabled={!botReady || extractM.isPending}
                   onClick={() => extractM.mutate({ botId: bot, groupId: group, limit: 20 })}
                 >
-                  批量抽取最近 Episode
+                  批量抽取最近记忆条目
                 </Button>
                 <Button
                   size="sm"
@@ -738,7 +746,8 @@ export default function AiMemoryPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Episode 列表</CardTitle>
+              <CardTitle className="text-base">记忆条目</CardTitle>
+              <CardDescription>当前作用域下的群记忆片段。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={episodesQ.isLoading} error={episodesQ.error}>
@@ -808,7 +817,7 @@ export default function AiMemoryPage() {
                     </div>
                   ))}
                   {!episodes.length ? (
-                    <p className="text-sm text-muted-foreground">暂无 Episode 记录。</p>
+                    <p className="text-sm text-muted-foreground">暂无记忆条目。</p>
                   ) : null}
                 </div>
               </StateBlock>
@@ -820,6 +829,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">新建实体</CardTitle>
+              <CardDescription>在当前作用域下新增图谱实体。</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               <Input
@@ -845,7 +855,8 @@ export default function AiMemoryPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">实体列表</CardTitle>
+              <CardTitle className="text-base">实体</CardTitle>
+              <CardDescription>当前作用域下的图谱实体。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={entitiesQ.isLoading} error={entitiesQ.error}>
@@ -885,7 +896,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">新建关系</CardTitle>
-              <CardDescription>连接两个实体。</CardDescription>
+              <CardDescription>在两个实体之间建立连接。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
@@ -931,8 +942,8 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
               <div>
-                <CardTitle className="text-base">关系列表</CardTitle>
-                <CardDescription>实体间的关系列表。</CardDescription>
+                <CardTitle className="text-base">关系</CardTitle>
+                <CardDescription>已连接的实体对。</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -1001,7 +1012,7 @@ export default function AiMemoryPage() {
             <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
               <div>
                 <CardTitle className="text-base">新建分类</CardTitle>
-                <CardDescription>实体分层类目。</CardDescription>
+                <CardDescription>为实体增加分层类目。</CardDescription>
               </div>
               <Button
                 size="sm"
@@ -1049,8 +1060,8 @@ export default function AiMemoryPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">分类列表</CardTitle>
-              <CardDescription>按层分组的分类。</CardDescription>
+              <CardTitle className="text-base">分类</CardTitle>
+              <CardDescription>按层分组的类目。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={categoriesQ.isLoading} error={categoriesQ.error}>
@@ -1103,7 +1114,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">回收站</CardTitle>
-              <CardDescription>已删除或失效的实体、关系与分类。</CardDescription>
+              <CardDescription>已删除或失效的实体、关系与分类，可恢复或彻底清除。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={trashQ.isLoading} error={trashQ.error}>
@@ -1254,7 +1265,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">导入 JSON</CardTitle>
-              <CardDescription>导入实体、关系与分类 JSON。</CardDescription>
+              <CardDescription>从 JSON 导入实体、关系与分类。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
@@ -1272,12 +1283,12 @@ export default function AiMemoryPage() {
                     try {
                       const payload = JSON.parse(importJson) as Record<string, unknown>;
                       if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-                        setMsg("JSON 须为对象");
+                        notifyErr("JSON 须为对象");
                         return;
                       }
                       importM.mutate({ botId: bot, groupId: group, payload });
                     } catch {
-                      setMsg("JSON 解析失败");
+                      notifyErr("JSON 解析失败");
                     }
                   }}
                 >
@@ -1305,7 +1316,7 @@ export default function AiMemoryPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">导出</CardTitle>
-              <CardDescription>导出当前作用域图谱。</CardDescription>
+              <CardDescription>导出当前作用域的图谱数据。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2">
@@ -1323,10 +1334,10 @@ export default function AiMemoryPage() {
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(exportJson);
-                      setMsg("已复制到剪贴板");
+                      notifyOk("已复制到剪贴板");
                       return true;
                     } catch {
-                      setMsg("复制失败");
+                      notifyErr("复制失败");
                       return false;
                     }
                   }}
@@ -1343,7 +1354,7 @@ export default function AiMemoryPage() {
                     a.download = `memory-graph-${bot}-${group ?? 0}.json`;
                     a.click();
                     URL.revokeObjectURL(url);
-                    setMsg("已开始下载");
+                    notifyOk("已开始下载");
                   }}
                 >
                   下载
@@ -1364,8 +1375,8 @@ export default function AiMemoryPage() {
         <TabsContent value="scopes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Scope</CardTitle>
-              <CardDescription>本 Bot 有记忆活动的作用域。</CardDescription>
+              <CardTitle className="text-base">作用域</CardTitle>
+              <CardDescription>本 Bot 下有记忆活动的群 / 会话范围。</CardDescription>
             </CardHeader>
             <CardContent>
               <StateBlock loading={scopesQ.isLoading} error={scopesQ.error}>
@@ -1378,7 +1389,7 @@ export default function AiMemoryPage() {
                       <div className="min-w-0">
                         <div className="font-mono text-xs">{s.scope_key}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Episode {s.episode_count} · 实体 {s.entity_count} · 关系 {s.edge_count}
+                          条目 {s.episode_count} · 实体 {s.entity_count} · 关系 {s.edge_count}
                         </div>
                       </div>
                       <Button
@@ -1418,7 +1429,7 @@ export default function AiMemoryPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">偏好规则</CardTitle>
-                <CardDescription>助手行为偏好。</CardDescription>
+                <CardDescription>控制助手在本群的行为偏好。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Input
@@ -1453,7 +1464,7 @@ export default function AiMemoryPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">中期摘要</CardTitle>
-                <CardDescription>会话过长压缩后的摘要。</CardDescription>
+                <CardDescription>会话过长时压缩得到的摘要。</CardDescription>
               </CardHeader>
               <CardContent>
                 <StateBlock loading={midQ.isLoading} error={midQ.error}>

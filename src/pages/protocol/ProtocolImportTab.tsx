@@ -10,12 +10,26 @@ import { Switch } from "@/components/ui/switch";
 import { FolderInput, ListChecks } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 
 const FORM_PANEL = "protocol-sub-page__panel flex flex-col overflow-hidden shadow-none";
 const FORM_PANEL_HD =
   "panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const FORM_PANEL_BD = "panel__bd protocol-form-grid px-4 pb-4 pt-3";
+
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
+function notifyWarn(message: string) {
+  pushConsoleToast(message, "warn");
+}
 
 export default function ProtocolImportTab() {
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
@@ -26,7 +40,6 @@ export default function ProtocolImportTab() {
   const [dryRun, setDryRun] = useState(false);
   const [skipExisting, setSkipExisting] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const chromeRefresh = useCallback(() => {
@@ -50,15 +63,14 @@ export default function ProtocolImportTab() {
 
   async function submitImport() {
     if (!mountUrl) {
-      setMsg("协议端未就绪");
+      notifyWarn("协议端未就绪");
       return;
     }
     if (!sourceDir.trim()) {
-      setMsg("请填写账号文件夹根目录");
+      notifyWarn("请填写账号文件夹根目录");
       return;
     }
     setBusy(true);
-    setMsg(null);
     setResult(null);
     try {
       const data = await protocolImportAccounts(mountUrl, {
@@ -70,12 +82,12 @@ export default function ProtocolImportTab() {
       });
       setResult(data);
       const n = Array.isArray(data.imported) ? data.imported.length : 0;
-      setMsg(dryRun ? `预检完成：可导入 ${n} 个` : `已导入 ${n} 个账号`);
+      notifyOk(dryRun ? `预检完成：可导入 ${n} 个` : `已导入 ${n} 个账号`);
       if (!dryRun && n > 0) {
         window.setTimeout(() => void navigate("/protocol"), 1200);
       }
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "导入失败"));
+      notifyErr(protocolApiErrorMessage(e, "导入失败"));
     } finally {
       setBusy(false);
     }
@@ -95,7 +107,6 @@ export default function ProtocolImportTab() {
           </CardHeader>
       </Card>
 
-      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
       {!mountUrl ? <p className="alert alert--err mb-0">协议 API 未挂载，无法导入。</p> : null}
 
       <Card className={FORM_PANEL}>

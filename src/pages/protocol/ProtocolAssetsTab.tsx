@@ -30,6 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { Boxes, Download, Package, Settings2 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import {
@@ -190,6 +191,19 @@ function ProfileSelect(props: {
   );
 }
 
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
+function notifyWarn(message: string) {
+  pushConsoleToast(message, "warn");
+}
+
 export default function ProtocolAssetsTab() {
   const { mountUrl, reload } = useOutletContext<ProtocolOutletContext>();
   const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
@@ -212,7 +226,6 @@ export default function ProtocolAssetsTab() {
   const [dockerPullLogOpen, setDockerPullLogOpen] = useState(false);
   const [dockerPullJob, setDockerPullJob] = useState<ProtocolDockerPullJob | null>(null);
   const [dockerPullWhich, setDockerPullWhich] = useState<"napcat" | "snowluma" | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
 
   const napcatJob = useMemo(() => jobFromOverview(overview, "job"), [overview]);
   const snowlumaJob = useMemo(() => {
@@ -234,7 +247,6 @@ export default function ProtocolAssetsTab() {
 
   async function loadAssets() {
     if (!mountUrl) return;
-    setMsg(null);
     try {
       const [ov, pf] = await Promise.all([
         protocolFetchRuntimeOverview(mountUrl),
@@ -243,7 +255,7 @@ export default function ProtocolAssetsTab() {
       setOverview(ov);
       setProfileForm({ ...pf });
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "加载失败"));
+      notifyErr(protocolApiErrorMessage(e, "加载失败"));
     }
   }
 
@@ -265,14 +277,13 @@ export default function ProtocolAssetsTab() {
   async function saveProfile() {
     if (!mountUrl) return;
     setSaveBusy(true);
-    setMsg(null);
     try {
       const next = await protocolUpdateRuntimeProfile(mountUrl, profileForm);
       setProfileForm(next);
-      setMsg("全局运行配置已保存");
+      notifyOk("全局运行配置已保存");
       await loadAssets();
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "保存失败"));
+      notifyErr(protocolApiErrorMessage(e, "保存失败"));
     } finally {
       setSaveBusy(false);
     }
@@ -281,13 +292,12 @@ export default function ProtocolAssetsTab() {
   async function cleanupDist() {
     if (!mountUrl) return;
     setCleanupBusy(true);
-    setMsg(null);
     try {
       await protocolCleanupRuntimeDist(mountUrl);
-      setMsg("已清理下载缓存");
+      notifyOk("已清理下载缓存");
       await loadAssets();
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "清理失败"));
+      notifyErr(protocolApiErrorMessage(e, "清理失败"));
     } finally {
       setCleanupBusy(false);
     }
@@ -296,16 +306,15 @@ export default function ProtocolAssetsTab() {
   async function downloadNapcat() {
     if (!mountUrl) return;
     setNapcatDownloadBusy(true);
-    setMsg(null);
     try {
       await protocolDownloadRuntime(mountUrl, {
         tag: napcatTag.trim() || undefined,
         target_platform: profileForm.target_platform || undefined,
       });
-      setMsg("已触发 NapCat 运行时下载");
+      notifyOk("已触发 NapCat 运行时下载");
       await loadAssets();
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "下载失败"));
+      notifyErr(protocolApiErrorMessage(e, "下载失败"));
     } finally {
       setNapcatDownloadBusy(false);
     }
@@ -314,15 +323,14 @@ export default function ProtocolAssetsTab() {
   async function downloadSnowluma() {
     if (!mountUrl) return;
     setSnowlumaDownloadBusy(true);
-    setMsg(null);
     try {
       await protocolDownloadSnowlumaRuntime(mountUrl, {
         tag: snowlumaTag.trim() || undefined,
       });
-      setMsg("已触发 SnowLuma 运行时下载");
+      notifyOk("已触发 SnowLuma 运行时下载");
       await loadAssets();
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "下载失败"));
+      notifyErr(protocolApiErrorMessage(e, "下载失败"));
     } finally {
       setSnowlumaDownloadBusy(false);
     }
@@ -333,7 +341,6 @@ export default function ProtocolAssetsTab() {
     const image = which === "napcat" ? napcatImageTarget : snowlumaImageTarget;
     if (which === "napcat") setNapcatPullBusy(true);
     else setSnowlumaPullBusy(true);
-    setMsg(null);
     setDockerPullWhich(which);
     setDockerPullJob({
       job_id: "",
@@ -387,16 +394,16 @@ export default function ProtocolAssetsTab() {
           rebuild_image: started.rebuild_image,
         });
         if (started.ok) {
-          setMsg(
+          notifyOk(
             which === "napcat"
               ? "NapCat 镜像拉取完成"
               : "SnowLuma 镜像拉取并重建派生镜像完成",
           );
           await listDocker(which, { quiet: true });
         } else if (which === "snowluma" && started.rebuild_ok === false) {
-          setMsg("SnowLuma 上游已拉取，但派生镜像重建失败");
+          notifyErr("SnowLuma 上游已拉取，但派生镜像重建失败");
         } else {
-          setMsg("Docker 镜像拉取失败");
+          notifyErr("Docker 镜像拉取失败");
         }
         return;
       }
@@ -413,19 +420,19 @@ export default function ProtocolAssetsTab() {
       setDockerPullJob(job);
       if (job.output) setDockerPullLog(job.output);
       if (job.status === "completed") {
-        setMsg(
+        notifyOk(
           which === "napcat"
             ? "NapCat 镜像拉取完成"
             : "SnowLuma 镜像拉取并重建派生镜像完成",
         );
         await listDocker(which, { quiet: true });
       } else if (which === "snowluma" && job.rebuild_ok === false) {
-        setMsg("SnowLuma 上游已拉取，但派生镜像重建失败");
+        notifyErr("SnowLuma 上游已拉取，但派生镜像重建失败");
       } else {
-        setMsg(job.message?.trim() || "Docker 镜像拉取失败");
+        notifyErr(job.message?.trim() || "Docker 镜像拉取失败");
       }
     } catch (e) {
-      setMsg(protocolApiErrorMessage(e, "拉取失败"));
+      notifyErr(protocolApiErrorMessage(e, "拉取失败"));
       setDockerPullJob((prev) =>
         prev
           ? {
@@ -448,7 +455,6 @@ export default function ProtocolAssetsTab() {
     if (!mountUrl) return;
     if (which === "napcat") setNapcatListBusy(true);
     else setSnowlumaListBusy(true);
-    if (!opts?.quiet) setMsg(null);
     try {
       const res = await protocolListDockerImages(mountUrl, which);
       const imgs = normalizeDockerImages(res.images);
@@ -460,11 +466,11 @@ export default function ProtocolAssetsTab() {
         setSnowlumaListed(true);
       }
       if (!opts?.quiet) {
-        if (!res.ok && res.detail) setMsg(res.detail);
-        else if (!imgs.length) setMsg("本地暂无匹配镜像");
+        if (!res.ok && res.detail) notifyErr(res.detail);
+        else if (!imgs.length) notifyWarn("本地暂无匹配镜像");
       }
     } catch (e) {
-      if (!opts?.quiet) setMsg(protocolApiErrorMessage(e, "查询镜像失败"));
+      if (!opts?.quiet) notifyErr(protocolApiErrorMessage(e, "查询镜像失败"));
     } finally {
       if (which === "napcat") setNapcatListBusy(false);
       else setSnowlumaListBusy(false);
@@ -489,7 +495,6 @@ export default function ProtocolAssetsTab() {
           </CardHeader>
       </Card>
 
-      {msg ? <p className="muted mb-0 text-sm">{msg}</p> : null}
 
       <Card className={ASSET_PANEL}>
         <CardHeader className={ASSET_PANEL_HD}>

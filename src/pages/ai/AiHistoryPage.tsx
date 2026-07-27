@@ -68,6 +68,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type SessionDetailTab = "turns" | "annotate" | "feedback" | "promotion";
 
@@ -281,6 +282,15 @@ function BehaviorAnnotateControls({
   );
 }
 
+
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
 export default function AiHistoryPage() {
   const qc = useQueryClient();
   const { botId, groupId } = useAiObservationScope();
@@ -289,17 +299,14 @@ export default function AiHistoryPage() {
   const [listQuery, setListQuery] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [patternEditor, setPatternEditor] = useState<LlmBehaviorPattern>(EMPTY_PATTERN);
-  const [patternMsg, setPatternMsg] = useState<string | null>(null);
   const [annotateBusy, setAnnotateBusy] = useState<Record<string, boolean>>({});
   const [triggerFeaturesText, setTriggerFeaturesText] = useState("[]");
   const [injectDraft, setInjectDraft] = useState("");
-  const [opsMsg, setOpsMsg] = useState<string | null>(null);
   const [expandedMaintain, setExpandedMaintain] = useState<Record<string, boolean>>({});
   const [expandedToolTrace, setExpandedToolTrace] = useState<Record<string, boolean>>({});
   const [correctionDrafts, setCorrectionDrafts] = useState<Record<string, string>>({});
   const [feedbackBusy, setFeedbackBusy] = useState<Record<string, boolean>>({});
   const [promoIncludeResolved, setPromoIncludeResolved] = useState(false);
-  const [learningMsg, setLearningMsg] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: ["llm-history-sessions", botId, groupId],
@@ -390,12 +397,12 @@ export default function AiHistoryPage() {
         reference_examples: [...(patternEditor.reference_examples ?? [])],
       }),
     onSuccess: async () => {
-      setPatternMsg("规则已保存");
+      notifyOk("规则已保存");
       setPatternEditor(EMPTY_PATTERN);
       setTriggerFeaturesText("[]");
       await qc.invalidateQueries({ queryKey: ["llm-behavior-patterns"] });
     },
-    onError: (e) => setPatternMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const injectMut = useMutation({
@@ -413,13 +420,13 @@ export default function AiHistoryPage() {
     },
     onSuccess: async () => {
       setInjectDraft("");
-      setOpsMsg("已注入上下文消息。");
+      notifyOk("已注入上下文消息。");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["llm-history-session"] }),
         qc.invalidateQueries({ queryKey: ["llm-history-sessions"] }),
       ]);
     },
-    onError: (e) => setOpsMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const clearMut = useMutation({
@@ -434,13 +441,13 @@ export default function AiHistoryPage() {
       });
     },
     onSuccess: async () => {
-      setOpsMsg("已清空会话上下文。");
+      notifyOk("已清空会话上下文。");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["llm-history-session"] }),
         qc.invalidateQueries({ queryKey: ["llm-history-sessions"] }),
       ]);
     },
-    onError: (e) => setOpsMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const feedbackMut = useMutation({
@@ -473,8 +480,7 @@ export default function AiHistoryPage() {
       }),
     onMutate: (vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [vars.busyKey]: true }));
-      setLearningMsg(null);
-    },
+          },
     onSuccess: async (_data, vars) => {
       const labels: Record<string, string> = {
         invalidate: "已排除",
@@ -483,14 +489,14 @@ export default function AiHistoryPage() {
         correct: "已保存期望回复",
         clear_correction: "已清除校正",
       };
-      setLearningMsg(labels[vars.action] || "已更新");
+      notifyOk(labels[vars.action] || "已更新");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["llm-history-session"] }),
         qc.invalidateQueries({ queryKey: ["llm-repeater-feedback"] }),
         qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] }),
       ]);
     },
-    onError: (e) => setLearningMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
     onSettled: (_d, _e, vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [vars.busyKey]: false }));
     },
@@ -501,21 +507,20 @@ export default function AiHistoryPage() {
       postLlmPromotionCandidateResolve(body),
     onMutate: (vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [`promo:${vars.candidateId}`]: true }));
-      setLearningMsg(null);
     },
     onSuccess: async (data, vars) => {
       if (vars.action === "promote") {
         const wb = String(data.writeback_status || "").trim();
-        if (wb === "written") setLearningMsg("已升格并写入语料。");
+        if (wb === "written") notifyOk("已入库并写入语料。");
         else if (wb === "failed") {
-          setLearningMsg(`已升格，写入失败：${data.writeback_message || "未知原因"}`);
-        } else setLearningMsg("已升格（未写入语料）。");
+          pushConsoleToast(`已入库，写入失败：${data.writeback_message || "未知原因"}`, "warn");
+        } else notifyOk("已入库（未写入语料）。");
       } else {
-        setLearningMsg("已拒绝候选。");
+        notifyOk("已拒绝候选。");
       }
       await qc.invalidateQueries({ queryKey: ["llm-promotion-candidates"] });
     },
-    onError: (e) => setLearningMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
     onSettled: (_d, _e, vars) => {
       setFeedbackBusy((prev) => ({ ...prev, [`promo:${vars.candidateId}`]: false }));
     },
@@ -550,25 +555,20 @@ export default function AiHistoryPage() {
       reference_examples: [...(item.reference_examples ?? [])],
     });
     setTriggerFeaturesText(JSON.stringify(item.trigger_features ?? []));
-    setPatternMsg(null);
-  }
+      }
 
   function clearSelection() {
     setSelectedKey(null);
     setDetailTab("turns");
     setInjectDraft("");
-    setOpsMsg(null);
-    setLearningMsg(null);
-    setExpandedMaintain({});
+            setExpandedMaintain({});
   }
 
   function selectSession(key: string) {
     setDetailTab("turns");
     setSelectedKey(key);
     setInjectDraft("");
-    setOpsMsg(null);
-    setLearningMsg(null);
-    setExpandedMaintain({});
+            setExpandedMaintain({});
   }
 
   function submitInject() {
@@ -670,7 +670,7 @@ export default function AiHistoryPage() {
   }
 
   const privateLearningHint = (
-    <p className="text-sm text-muted-foreground">反哺与升格仅支持群聊会话。</p>
+    <p className="text-sm text-muted-foreground">纠错与入库仅支持群聊会话。</p>
   );
 
   const learningStrip = <SessionLearningStrip status={kernelQ.data} className="mb-3" />;
@@ -684,7 +684,6 @@ export default function AiHistoryPage() {
         emptyText="暂无对话记录。"
       >
         {learningStrip}
-        {learningMsg ? <p className="mb-2 text-xs text-muted-foreground">{learningMsg}</p> : null}
         <div className="space-y-2.5">
           {sessionTurnRows.map((row) => {
             const t = row.turn;
@@ -785,7 +784,7 @@ export default function AiHistoryPage() {
                           setExpandedMaintain((prev) => ({ ...prev, [maintKey]: !prev[maintKey] }))
                         }
                       >
-                        {expanded ? "收起" : "反哺详情"}
+                        {expanded ? "收起" : "纠错详情"}
                       </Button>
                     </div>
                     {toolExpanded ? (
@@ -822,15 +821,14 @@ export default function AiHistoryPage() {
       <div className="space-y-3">
         <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
           <p>
-            标注回复表现，用于优化 LLM 对话；也可管理行为规则。
+            评价回复表现，用于优化 LLM 对话；也可管理行为规则。
           </p>
           <Button
             size="sm"
             variant="outline"
             className="mt-2 h-7"
             onClick={() => {
-              setPatternMsg(null);
-              setRulesOpen(true);
+                            setRulesOpen(true);
             }}
           >
             管理行为规则（进阶）
@@ -840,7 +838,7 @@ export default function AiHistoryPage() {
           loading={detailQ.isLoading}
           error={detailQ.error}
           empty={!sessionBehaviorRuns.length}
-          emptyText="暂无可标注的回复。"
+          emptyText="暂无可评价的回复。"
         >
           <div className="space-y-2">
             {sessionBehaviorRuns.map((run) => (
@@ -868,10 +866,9 @@ export default function AiHistoryPage() {
           loading={feedbackQ.isLoading}
           error={feedbackQ.error}
           empty={!feedbackQ.data?.items?.length}
-          emptyText="暂无反哺数据。"
+          emptyText="暂无纠错数据。"
         >
           {learningStrip}
-          {learningMsg ? <p className="mb-2 text-xs text-muted-foreground">{learningMsg}</p> : null}
           <div className="space-y-2">
             {(feedbackQ.data?.items || []).map((item) => {
               const key = feedbackEntryKey(item);
@@ -898,10 +895,9 @@ export default function AiHistoryPage() {
         loading={promoQ.isLoading}
         error={promoQ.error}
         empty={!promoQ.data?.items?.length}
-        emptyText="暂无晋升候选。"
+        emptyText="暂无入库候选。"
       >
         {learningStrip}
-        {learningMsg ? <p className="mb-2 text-xs text-muted-foreground">{learningMsg}</p> : null}
         <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-muted-foreground">
             <input
@@ -1072,12 +1068,12 @@ export default function AiHistoryPage() {
                       { value: "turns" as const, label: "对话", count: null as number | null },
                       {
                         value: "annotate" as const,
-                        label: "标注",
+                        label: "评价",
                         count: sessionBehaviorRuns.length || null,
                       },
                       {
                         value: "feedback" as const,
-                        label: "反哺",
+                        label: "纠错",
                         count:
                           detailTab === "feedback" && feedbackQ.data?.items?.length
                             ? feedbackQ.data.items.length
@@ -1085,7 +1081,7 @@ export default function AiHistoryPage() {
                       },
                       {
                         value: "promotion" as const,
-                        label: "升格",
+                        label: "入库",
                         count: detailTab === "promotion" && promoPendingCount > 0 ? promoPendingCount : null,
                       },
                     ] as const
@@ -1106,8 +1102,7 @@ export default function AiHistoryPage() {
                         )}
                         onClick={() => {
                           setDetailTab(tab.value);
-                          setLearningMsg(null);
-                        }}
+                                                  }}
                       >
                         <span className="inline-flex items-center gap-1">
                           {tab.label}
@@ -1131,13 +1126,11 @@ export default function AiHistoryPage() {
                 <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">{detailBody}</div>
                 {detailTab === "turns" ? (
                   <div className="shrink-0 space-y-2 border-t px-3 py-2.5 sm:px-4">
-                    {opsMsg ? <p className="text-xs text-muted-foreground">{opsMsg}</p> : null}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                       <Input
                         value={injectDraft}
                         onChange={(e) => {
                           setInjectDraft(e.target.value);
-                          if (opsMsg) setOpsMsg(null);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
@@ -1186,14 +1179,13 @@ export default function AiHistoryPage() {
         open={rulesOpen}
         onOpenChange={(open) => {
           setRulesOpen(open);
-          if (!open) setPatternMsg(null);
         }}
       >
         <DialogContent className="flex max-h-[min(860px,calc(100dvh-32px))] w-[min(640px,calc(100vw-32px))] max-w-[min(640px,calc(100vw-32px))] gap-0 overflow-hidden bg-card p-0">
           <DialogHeader className="border-b border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-4 py-3 text-left">
             <DialogTitle>行为规则（进阶）</DialogTitle>
             <DialogDescription className="text-left">
-              配置特定 LLM 对话场景的回复动作。日常维护在「标注」中打标签即可。
+              配置特定 LLM 对话场景的回复动作。日常维护在「评价」中打标签即可。
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -1257,11 +1249,6 @@ export default function AiHistoryPage() {
                 spellCheck={false}
               />
             </details>
-            {patternMsg ? (
-              <p className={cn("text-sm", patternMsg.includes("已保存") ? "text-emerald-400" : "text-destructive")}>
-                {patternMsg}
-              </p>
-            ) : null}
             <DialogFooter className="gap-2 sm:justify-between">
               <Button
                 size="sm"
@@ -1269,7 +1256,6 @@ export default function AiHistoryPage() {
                 onClick={() => {
                   setPatternEditor(EMPTY_PATTERN);
                   setTriggerFeaturesText("[]");
-                  setPatternMsg(null);
                 }}
               >
                 清空表单
@@ -1278,7 +1264,6 @@ export default function AiHistoryPage() {
                 size="sm"
                 disabled={patternMut.isPending || !patternEditor.pattern_id.trim()}
                 onClick={() => {
-                  setPatternMsg(null);
                   void patternMut.mutateAsync();
                 }}
               >

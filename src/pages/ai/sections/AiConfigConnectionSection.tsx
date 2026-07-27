@@ -21,8 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { InstallJobFailedError, waitForInstallJob } from "@/utils/installJobStream";
+import { pushConsoleToast } from "@/utils/consoleToast";
 
 type Panel = "connection" | "runtime";
 
@@ -31,12 +31,19 @@ const PANEL_OPTIONS = [
   { value: "runtime", label: "运行时" },
 ];
 
+function notifyOk(message: string) {
+  pushConsoleToast(message, "ok");
+}
+
+function notifyErr(message: string) {
+  pushConsoleToast(message || "操作失败", "err");
+}
+
 export default function AiConfigConnectionSection() {
   const qc = useQueryClient();
   const [panel, setPanel] = useState<Panel>("connection");
   const [baseUrl, setBaseUrl] = useState("");
   const [timeoutSec, setTimeoutSec] = useState("30");
-  const [msg, setMsg] = useState<string | null>(null);
   const [installProgress, setInstallProgress] = useState("");
   const [withMedia, setWithMedia] = useState(false);
   const [remoteOnly, setRemoteOnly] = useState(true);
@@ -69,41 +76,37 @@ export default function AiConfigConnectionSection() {
         timeout_sec: Number(timeoutSec) || 30,
       }),
     onSuccess: async () => {
-      setMsg("扩展连接已保存");
+      notifyOk("扩展连接已保存");
       await invalidate();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const testMut = useMutation({
     mutationFn: () => postAiExtensionTest(),
     onSuccess: (r) =>
-      setMsg(
-        r.ok
-          ? r.status_code != null
-            ? `连通性 OK (HTTP ${r.status_code})`
-            : "连通性 OK"
-          : r.error || "不可达",
-      ),
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+      r.ok
+        ? notifyOk(r.status_code != null ? `连通性 OK (HTTP ${r.status_code})` : "连通性 OK")
+        : notifyErr(r.error || "不可达"),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const startMut = useMutation({
     mutationFn: () => postAiRuntimeStart({ with_media: withMedia }),
     onSuccess: async () => {
-      setMsg("运行时已启动");
+      notifyOk("运行时已启动");
       await invalidate();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const stopMut = useMutation({
     mutationFn: () => postAiRuntimeStop(),
     onSuccess: async () => {
-      setMsg("运行时已停止");
+      notifyOk("运行时已停止");
       await invalidate();
     },
-    onError: (e) => setMsg(axiosErrorDetail(e)),
+    onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
 
   const installMut = useMutation({
@@ -118,13 +121,13 @@ export default function AiConfigConnectionSection() {
       return waitForInstallJob(job.job_id, openAiInstallJobEventSource, setInstallProgress);
     },
     onSuccess: async () => {
-      setMsg("安装任务已完成");
+      notifyOk("安装任务已完成");
       setInstallProgress("");
       await invalidate();
     },
     onError: (e) => {
       setInstallProgress("");
-      setMsg(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
+      notifyErr(e instanceof InstallJobFailedError ? e.message : axiosErrorDetail(e));
     },
   });
 
@@ -149,11 +152,6 @@ export default function AiConfigConnectionSection() {
   return (
     <Card>
       <CardContent className="space-y-3 pt-5">
-        {msg ? (
-          <p className={cn("text-sm", /成功|OK|完成|已保存|已启动|已停止/.test(msg) ? "text-emerald-400" : "text-destructive")}>
-            {msg}
-          </p>
-        ) : null}
         {installProgress ? <p className="text-xs text-muted-foreground">{installProgress}</p> : null}
 
         {panel === "connection" ? (
@@ -167,110 +165,71 @@ export default function AiConfigConnectionSection() {
               </AiConfigField>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  setMsg(null);
-                  void saveMut.mutateAsync();
-                }}
-              >
+              <Button size="sm" disabled={busy} onClick={() => void saveMut.mutateAsync()}>
                 保存
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setMsg(null);
-                  void testMut.mutateAsync();
-                }}
-              >
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void testMut.mutateAsync()}>
                 测试连通
               </Button>
             </div>
           </StateBlock>
-        ) : (
+        ) : null}
+
+        {panel === "runtime" ? (
           <StateBlock loading={runtimeQ.isLoading || installQ.isLoading} error={runtimeQ.error || installQ.error}>
             <div className="flex flex-wrap gap-2">
               <Badge variant={runtimeQ.data?.running ? "success" : "secondary"}>
                 {runtimeQ.data?.running ? "运行中" : "未运行"}
               </Badge>
-              <Badge variant="outline">{runtimeQ.data?.layout || installQ.data?.layout || "—"}</Badge>
-              <Badge variant={runtimeQ.data?.health?.ok ? "success" : "warn"}>
-                健康 {runtimeQ.data?.health?.ok ? "正常" : "异常"}
-              </Badge>
+              <Badge variant="outline">{installQ.data?.detected ? "已安装" : "未安装"}</Badge>
             </div>
-            <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
-              {runtimeQ.data?.ai_root || installQ.data?.ai_root || "—"}
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {(
-                [
-                  ["包含媒体依赖", withMedia, setWithMedia],
-                  ["仅从远程拉取", remoteOnly, setRemoteOnly],
-                  ["使用 GPU", useGpu, setUseGpu],
-                  ["安装后不启动", noStart, setNoStart],
-                ] as const
-              ).map(([label, checked, set]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between gap-3 rounded-[var(--radius-control,8px)] border border-[color-mix(in_srgb,var(--border)_70%,transparent)] px-3 py-2"
-                >
-                  <span className="text-xs">{label}</span>
-                  <Switch checked={checked} onCheckedChange={set} />
-                </div>
-              ))}
+            <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+              <label className="flex items-center gap-2">
+                <Switch checked={withMedia} onCheckedChange={setWithMedia} />
+                同时拉起媒体服务
+              </label>
+              <label className="flex items-center gap-2">
+                <Switch checked={remoteOnly} onCheckedChange={setRemoteOnly} />
+                仅远程依赖
+              </label>
+              <label className="flex items-center gap-2">
+                <Switch checked={useGpu} onCheckedChange={setUseGpu} />
+                使用 GPU
+              </label>
+              <label className="flex items-center gap-2">
+                <Switch checked={noStart} onCheckedChange={setNoStart} />
+                安装后不自动启动
+              </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                disabled={busy}
-                onClick={() => {
-                  setMsg(null);
-                  void startMut.mutateAsync();
-                }}
-              >
+              <Button size="sm" disabled={busy} onClick={() => void startMut.mutateAsync()}>
                 启动
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setMsg(null);
-                  void stopMut.mutateAsync();
-                }}
-              >
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void stopMut.mutateAsync()}>
                 停止
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                title="首次使用：下载媒体服务源码并安装依赖"
-                onClick={() => {
-                  setMsg(null);
-                  void installMut.mutateAsync("clone_and_bootstrap");
-                }}
+                onClick={() => void installMut.mutateAsync("clone_and_bootstrap")}
               >
-                下载并安装
+                安装并引导
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void installMut.mutateAsync("clone")}>
+                仅克隆
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                title="已有源码目录时：仅重新安装依赖"
-                onClick={() => {
-                  setMsg(null);
-                  void installMut.mutateAsync("bootstrap");
-                }}
+                onClick={() => void installMut.mutateAsync("bootstrap")}
               >
-                安装依赖
+                仅引导
               </Button>
             </div>
           </StateBlock>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
