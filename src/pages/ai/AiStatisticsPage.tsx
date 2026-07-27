@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   addDaysIso,
   aggregateHistoryAiOutcomes,
+  aggregateHistoryDimensionRows,
   aggregateHistoryGates,
   aggregateHistoryImages,
   aggregateHistoryImageRows,
@@ -345,6 +346,14 @@ export default function AiStatisticsPage() {
     () => aggregateHistoryImageRows(historyRows, start, end, "by_model"),
     [end, historyRows, start],
   );
+  const rangeProviderRows = useMemo(
+    () => aggregateHistoryDimensionRows(historyRows, start, end, "provider_stats"),
+    [end, historyRows, start],
+  );
+  const rangeModelRows = useMemo(
+    () => aggregateHistoryDimensionRows(historyRows, start, end, "model_stats"),
+    [end, historyRows, start],
+  );
 
   const range7 = useMemo(() => {
     const endDay = todayIso();
@@ -557,10 +566,10 @@ export default function AiStatisticsPage() {
                   <PanelTitleIcon icon={Activity} />
                   提供方健康
                 </CardTitle>
-                <CardDescription>摘要前 5 条；完整明细见「调用」</CardDescription>
+                <CardDescription>当前区间摘要前 5 条；完整明细见「调用」</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 p-3 pt-0 sm:p-6 sm:pt-0">
-                {summary.providerRows.length ? (
+                {rangeProviderRows.length ? (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[28rem] text-left text-sm">
                       <thead className="text-xs text-muted-foreground">
@@ -573,7 +582,7 @@ export default function AiStatisticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {summary.providerRows.slice(0, 5).map((row) => (
+                        {rangeProviderRows.slice(0, 5).map((row) => (
                           <tr key={row.key} className="border-t">
                             <td className="py-2 font-mono text-xs">{row.key}</td>
                             <td className="py-2 tabular-nums">{row.requests}</td>
@@ -1097,10 +1106,10 @@ export default function AiStatisticsPage() {
                   <PanelTitleIcon icon={Database} />
                   提供方调用
                 </CardTitle>
-                <CardDescription>各上游成功 / 失败与耗时</CardDescription>
+                <CardDescription>当前区间 · 各上游成功 / 失败与耗时</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 p-3 pt-0 sm:p-6 sm:pt-0">
-                {summary.providerRows.length ? (
+                {rangeProviderRows.length ? (
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[28rem] text-left text-sm">
                       <thead className="text-xs text-muted-foreground">
@@ -1113,7 +1122,7 @@ export default function AiStatisticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {summary.providerRows.slice(0, 12).map((row) => (
+                        {rangeProviderRows.slice(0, 12).map((row) => (
                           <tr key={row.key} className="border-t">
                             <td className="py-2 font-mono text-xs">{row.key}</td>
                             <td className="py-2 tabular-nums">{row.requests}</td>
@@ -1130,6 +1139,34 @@ export default function AiStatisticsPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">暂无调用数据</p>
                 )}
+                {rangeModelRows.length ? (
+                  <div className="overflow-x-auto">
+                    <table className="mt-3 w-full min-w-[28rem] text-left text-sm">
+                      <thead className="text-xs text-muted-foreground">
+                        <tr>
+                          <th className="pb-2 font-medium">模型</th>
+                          <th className="pb-2 font-medium">次数</th>
+                          <th className="pb-2 font-medium">成功</th>
+                          <th className="pb-2 font-medium">失败</th>
+                          <th className="pb-2 font-medium">平均耗时</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rangeModelRows.slice(0, 12).map((row) => (
+                          <tr key={row.key} className="border-t">
+                            <td className="py-2 font-mono text-xs">{row.key}</td>
+                            <td className="py-2 tabular-nums">{row.requests}</td>
+                            <td className="py-2 tabular-nums">{row.succeeded}</td>
+                            <td className="py-2 tabular-nums">{row.failed}</td>
+                            <td className="py-2 tabular-nums text-muted-foreground">
+                              {row.avgLatencyMs != null ? `${Math.round(row.avgLatencyMs)}ms` : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
                 {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
               </CardContent>
             </Card>

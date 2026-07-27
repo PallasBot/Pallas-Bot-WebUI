@@ -110,6 +110,70 @@ export function dimensionRows(
     .sort((a, b) => b.requests - a.requests || b.failed - a.failed || a.key.localeCompare(b.key));
 }
 
+export type DimensionBreakdown = "provider_stats" | "model_stats";
+
+/** 从 history.rows 聚合区间内提供方/模型调用统计。 */
+export function aggregateHistoryDimensionRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: DimensionBreakdown,
+): DimensionRow[] {
+  const merged: Record<
+    string,
+    {
+      requests: number;
+      succeeded: number;
+      failed: number;
+      total_latency_ms: number;
+      recent_failure_class: string;
+    }
+  > = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const succeeded = Number(metrics.succeeded ?? (metrics as { ok?: number }).ok ?? 0);
+      const failed = Number(metrics.failed ?? (metrics as { fail?: number }).fail ?? 0);
+      const requests = Number(metrics.requests ?? 0) || succeeded + failed;
+      const latency = Number(metrics.total_latency_ms ?? 0);
+      const dst = merged[name] || {
+        requests: 0,
+        succeeded: 0,
+        failed: 0,
+        total_latency_ms: 0,
+        recent_failure_class: "",
+      };
+      dst.requests += requests;
+      dst.succeeded += succeeded;
+      dst.failed += failed;
+      dst.total_latency_ms += Number.isFinite(latency) ? latency : 0;
+      const cls = String(metrics.recent_failure_class ?? "").trim();
+      if (cls) dst.recent_failure_class = cls;
+      merged[name] = dst;
+    }
+  }
+  return dimensionRows(
+    Object.fromEntries(
+      Object.entries(merged).map(([key, row]) => [
+        key,
+        {
+          requests: row.requests,
+          succeeded: row.succeeded,
+          failed: row.failed,
+          total_latency_ms: row.total_latency_ms,
+          avg_latency_ms: row.requests > 0 ? row.total_latency_ms / row.requests : null,
+          recent_failure_class: row.recent_failure_class || null,
+        },
+      ]),
+    ),
+  );
+}
+
 export type TokenRow = {
   key: string;
   totalTokens: number;
