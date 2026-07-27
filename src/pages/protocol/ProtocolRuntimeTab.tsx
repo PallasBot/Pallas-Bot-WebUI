@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,17 +6,15 @@ import {
   protocolDeleteSnowlumaRuntime,
   protocolListAccounts,
   protocolListSnowlumaRuntimes,
-  protocolStartAccount,
   protocolStartSnowlumaRuntime,
-  protocolStopAccount,
   protocolStopSnowlumaRuntime,
-  protocolSwitchAccountRuntime,
   type NapcatAccountRow,
   type SnowlumaRuntimeRow,
 } from "@/api/protocol";
+import ConsolePagerBar from "@/components/ConsolePagerBar";
+import ProtocolRuntimeConfigDialog from "@/components/ProtocolRuntimeConfigDialog";
 import { useRegisterProtocolChrome } from "@/components/protocol/ProtocolChromeContext";
 import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
-import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,16 +25,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Cpu, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
+import { ChevronDown, Cpu, Play, Search, Settings2, Square, Trash2 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
+import { useBotFavorites } from "@/hooks/useBotFavorites";
+import { useConsolePrefs } from "@/hooks/useConsolePrefs";
 import { pushConsoleToast } from "@/utils/consoleToast";
+import { botAccountFavoriteRank } from "@/utils/botDisplay";
+import { slicePage } from "@/utils/paginate";
+import { snowlumaRuntimeWebUiHref } from "@/utils/protocolLinks";
 import { cn } from "@/lib/utils";
 
 const PROTO_PANEL = "protocol-page__panel flex flex-col overflow-hidden shadow-none";
 const PROTO_PANEL_HD =
   "panel__hd panel__hd--split inst-db-panel__hd flex-row items-start justify-between space-y-0 border-b px-4 py-3";
 const PROTO_PANEL_BD = "panel__bd px-4 pb-4 pt-3";
+const CHIP_PREVIEW_LIMIT = 4;
 
 function accountLabel(account: NapcatAccountRow): string {
   const name = String(account.display_name ?? "").trim();
@@ -66,14 +70,47 @@ function runtimeTitle(rt: SnowlumaRuntimeRow): string {
   return String(rt.display_name || rt.id || "Runtime").trim() || "Runtime";
 }
 
+function memberAccountNumber(account: NapcatAccountRow | undefined, memberId: string): number | null {
+  const raw = String(account?.qq ?? account?.id ?? memberId ?? "").trim();
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function runtimeFavoriteRank(
+  rt: SnowlumaRuntimeRow,
+  accountById: Map<string, NapcatAccountRow>,
+  favorites: ReadonlySet<number>,
+): number {
+  for (const memberId of rt.member_account_ids ?? []) {
+    const id = String(memberId || "").trim();
+    if (!id) continue;
+    const n = memberAccountNumber(accountById.get(id), id);
+    if (n != null && botAccountFavoriteRank(favorites, n)) return 1;
+  }
+  return 0;
+}
+
+function runtimeConnectedRank(
+  rt: SnowlumaRuntimeRow,
+  accountById: Map<string, NapcatAccountRow>,
+): number {
+  for (const memberId of rt.member_account_ids ?? []) {
+    const id = String(memberId || "").trim();
+    if (!id) continue;
+    if (accountById.get(id)?.connected === true) return 1;
+  }
+  return 0;
+}
+
 export default function ProtocolRuntimeTab() {
-  const { mountUrl } = useOutletContext<ProtocolOutletContext>();
+  const { mountUrl, system } = useOutletContext<ProtocolOutletContext>();
   const qc = useQueryClient();
+  const prefs = useConsolePrefs();
+  const { favorites } = useBotFavorites();
   const [searchQ, setSearchQ] = useState("");
+  const [runtimePage, setRuntimePage] = useState(1);
   const [snowlumaRuntimeBusyId, setSnowlumaRuntimeBusyId] = useState<string | null>(null);
-  const [memberBusyKey, setMemberBusyKey] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [addAccountId, setAddAccountId] = useState<Record<string, string>>({});
+  const [configRuntimeId, setConfigRuntimeId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
@@ -102,8 +139,34 @@ export default function ProtocolRuntimeTab() {
 
   const filteredRuntimes = useMemo(() => {
     const q = searchQ.trim().toLowerCase();
-    return snowlumaRuntimes.filter((rt) => runtimeMatchesQuery(rt, q));
-  }, [searchQ, snowlumaRuntimes]);
+    const list = snowlumaRuntimes.filter((rt) => runtimeMatchesQuery(rt, q));
+    list.sort((a, b) => {
+      const favA = runtimeFavoriteRank(a, accountById, favorites);
+      const favB = runtimeFavoriteRank(b, accountById, favorites);
+      if (favA !== favB) return favB - favA;
+      const ca = runtimeConnectedRank(a, accountById);
+      const cb = runtimeConnectedRank(b, accountById);
+      if (ca !== cb) return cb - ca;
+      const ra = a.process_running ? 1 : 0;
+      const rb = b.process_running ? 1 : 0;
+      if (ra !== rb) return rb - ra;
+      const titleCmp = runtimeTitle(a).localeCompare(runtimeTitle(b), "zh-CN");
+      if (titleCmp !== 0) return titleCmp;
+      return String(a.id).localeCompare(String(b.id), "zh-CN");
+    });
+    return list;
+  }, [accountById, favorites, searchQ, snowlumaRuntimes]);
+
+  useEffect(() => {
+    setRuntimePage(1);
+  }, [searchQ, prefs.tablePageSize]);
+
+  const pagedRuntimes = useMemo(
+    () => slicePage(filteredRuntimes, runtimePage, prefs.tablePageSize),
+    [filteredRuntimes, runtimePage, prefs.tablePageSize],
+  );
+
+  const pagedRuntimeIds = useMemo(() => pagedRuntimes.map((rt) => rt.id), [pagedRuntimes]);
 
   const emptyRuntimeIds = useMemo(
     () => filteredRuntimes.filter((rt) => runtimeMemberCount(rt) === 0).map((rt) => rt.id),
@@ -115,10 +178,19 @@ export default function ProtocolRuntimeTab() {
     [filteredRuntimes, selected],
   );
 
-  const filteredAllSelected = useMemo(
-    () => filteredRuntimes.length > 0 && filteredRuntimes.every((rt) => selected.has(rt.id)),
-    [filteredRuntimes, selected],
+  const pageAllSelected = useMemo(
+    () => pagedRuntimeIds.length > 0 && pagedRuntimeIds.every((id) => selected.has(id)),
+    [pagedRuntimeIds, selected],
   );
+
+  const configRuntime = useMemo(
+    () => (configRuntimeId ? snowlumaRuntimes.find((rt) => rt.id === configRuntimeId) ?? null : null),
+    [configRuntimeId, snowlumaRuntimes],
+  );
+
+  useEffect(() => {
+    if (configRuntimeId && !configRuntime) setConfigRuntimeId(null);
+  }, [configRuntime, configRuntimeId]);
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] });
@@ -142,12 +214,16 @@ export default function ProtocolRuntimeTab() {
     setSelected(new Set());
   }
 
-  function toggleSelectFiltered() {
+  function toggleSelectPage() {
     setSelected((prev) => {
-      if (filteredRuntimes.length > 0 && filteredRuntimes.every((rt) => prev.has(rt.id))) {
-        return new Set();
+      if (pagedRuntimeIds.length > 0 && pagedRuntimeIds.every((id) => prev.has(id))) {
+        const next = new Set(prev);
+        for (const id of pagedRuntimeIds) next.delete(id);
+        return next;
       }
-      return new Set(filteredRuntimes.map((rt) => rt.id));
+      const next = new Set(prev);
+      for (const id of pagedRuntimeIds) next.add(id);
+      return next;
     });
   }
 
@@ -209,7 +285,7 @@ export default function ProtocolRuntimeTab() {
         next.delete(rt.id);
         return next;
       });
-      if (expandedId === rt.id) setExpandedId(null);
+      if (configRuntimeId === rt.id) setConfigRuntimeId(null);
       refresh();
     } catch (e) {
       pushConsoleToast(protocolApiErrorMessage(e, "删除失败"), "err");
@@ -251,107 +327,14 @@ export default function ProtocolRuntimeTab() {
         );
       }
       clearSelection();
-      setExpandedId(null);
+      setConfigRuntimeId(null);
       refresh();
     } finally {
       setBatchBusy(false);
     }
   }
 
-  function addableOptions(runtime: SnowlumaRuntimeRow): ComboboxOption[] {
-    const mounted = new Set((runtime.member_account_ids ?? []).map((id) => String(id).trim()));
-    return accounts
-      .filter((row) => {
-        const id = String(row.id ?? "").trim();
-        return id && !mounted.has(id);
-      })
-      .map((row) => {
-        const id = String(row.id ?? "").trim();
-        const label = accountLabel(row);
-        return {
-          value: id,
-          label,
-          keywords: [label, id, String(row.qq ?? "")].join(" "),
-        };
-      });
-  }
-
-  async function attachAccount(runtimeId: string, accountId: string) {
-    if (!mountUrl || !accountId) return;
-    const busy = `${runtimeId}:add:${accountId}`;
-    setMemberBusyKey(busy);
-    try {
-      await protocolSwitchAccountRuntime(mountUrl, accountId, {
-        protocol_backend: "snowluma",
-        runtime_mode: "existing",
-        runtime_id: runtimeId,
-      });
-      pushConsoleToast(`已挂载账号 ${accountId}`, "ok");
-      setAddAccountId((prev) => ({ ...prev, [runtimeId]: "" }));
-      refresh();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "挂载失败"), "err");
-    } finally {
-      setMemberBusyKey(null);
-    }
-  }
-
-  async function detachAccount(runtimeId: string, accountId: string) {
-    if (!mountUrl || !accountId) return;
-    if (
-      !window.confirm(
-        `将账号 ${accountId} 从该 Runtime 卸下？会为其新建独立 Runtime，账号仍为 SnowLuma。`,
-      )
-    ) {
-      return;
-    }
-    const busy = `${runtimeId}:rm:${accountId}`;
-    setMemberBusyKey(busy);
-    try {
-      await protocolSwitchAccountRuntime(mountUrl, accountId, {
-        protocol_backend: "snowluma",
-        runtime_mode: "new",
-      });
-      pushConsoleToast(`已卸下账号 ${accountId}`, "ok");
-      refresh();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "卸下失败"), "err");
-    } finally {
-      setMemberBusyKey(null);
-    }
-  }
-
-  async function startMemberQq(runtimeId: string, accountId: string) {
-    if (!mountUrl || !accountId) return;
-    const busy = `${runtimeId}:qq-start:${accountId}`;
-    setMemberBusyKey(busy);
-    try {
-      await protocolStartAccount(mountUrl, accountId);
-      pushConsoleToast(`已请求启动 QQ ${accountId}`, "ok");
-      refresh();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "启 QQ 失败"), "err");
-    } finally {
-      setMemberBusyKey(null);
-    }
-  }
-
-  async function stopMemberQq(runtimeId: string, accountId: string) {
-    if (!mountUrl || !accountId) return;
-    const busy = `${runtimeId}:qq-stop:${accountId}`;
-    setMemberBusyKey(busy);
-    try {
-      await protocolStopAccount(mountUrl, accountId);
-      pushConsoleToast(`已请求停止 QQ ${accountId}`, "warn");
-      refresh();
-    } catch (e) {
-      pushConsoleToast(protocolApiErrorMessage(e, "停 QQ 失败"), "err");
-    } finally {
-      setMemberBusyKey(null);
-    }
-  }
-
-  const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null || memberBusyKey != null;
+  const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null;
 
   const chromeMiddle = useMemo(
     () => (
@@ -388,10 +371,10 @@ export default function ProtocolRuntimeTab() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-0 w-max">
             <DropdownMenuItem
-              disabled={!filteredRuntimes.length || actionsBusy}
-              onSelect={() => toggleSelectFiltered()}
+              disabled={!pagedRuntimeIds.length || actionsBusy}
+              onSelect={() => toggleSelectPage()}
             >
-              {filteredAllSelected ? "取消全选" : "全选列表"}
+              {pageAllSelected ? "取消全选" : "全选本页"}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={!emptyRuntimeIds.length || actionsBusy}
@@ -420,8 +403,8 @@ export default function ProtocolRuntimeTab() {
       actionsBusy,
       batchBusy,
       selected.size,
-      filteredRuntimes.length,
-      filteredAllSelected,
+      pagedRuntimeIds.length,
+      pageAllSelected,
       emptyRuntimeIds.length,
     ],
   );
@@ -449,7 +432,7 @@ export default function ProtocolRuntimeTab() {
               SnowLuma Runtime
             </CardTitle>
             <CardDescription>
-              卡片「启/停」管 Runtime 容器；展开后可对每个 QQ 启停进程（不影响容器），或挂载/卸下账号。
+              卡片管理容器启停；点「配置」挂载账号或启停单个 QQ。
             </CardDescription>
           </div>
         </CardHeader>
@@ -461,24 +444,32 @@ export default function ProtocolRuntimeTab() {
           ) : !filteredRuntimes.length ? (
             <p className="muted">无匹配 Runtime，试试其它关键词。</p>
           ) : (
-            <div className="protocol-runtime-grid">
-              {filteredRuntimes.map((rt) => {
-                const members = rt.member_account_ids ?? [];
-                const expanded = expandedId === rt.id;
-                const addOpts = addableOptions(rt);
-                const selectedAdd = addAccountId[rt.id] ?? "";
-                const runtimeBusy = snowlumaRuntimeBusyId === rt.id || batchBusy;
-                const checked = selected.has(rt.id);
-                return (
-                  <div
-                    key={rt.id}
-                    className={cn(
-                      "protocol-runtime-card",
-                      checked && "protocol-runtime-card--selected",
-                    )}
-                  >
-                    <div className="protocol-runtime-card__hd">
-                      <div className="flex min-w-0 flex-1 items-start gap-2">
+            <>
+              <div className="protocol-runtime-grid">
+                {pagedRuntimes.map((rt) => {
+                  const members = (rt.member_account_ids ?? [])
+                    .map((id) => String(id || "").trim())
+                    .filter(Boolean);
+                  const runtimeBusy = snowlumaRuntimeBusyId === rt.id || batchBusy;
+                  const checked = selected.has(rt.id);
+                  const webuiPort =
+                    rt.webui_port != null && String(rt.webui_port).trim()
+                      ? String(rt.webui_port).trim()
+                      : "";
+                  const webuiHref = webuiPort
+                    ? snowlumaRuntimeWebUiHref(rt, accounts, system)
+                    : null;
+                  const preview = members.slice(0, CHIP_PREVIEW_LIMIT);
+                  const more = members.length - preview.length;
+                  return (
+                    <div
+                      key={rt.id}
+                      className={cn(
+                        "protocol-runtime-card",
+                        checked && "protocol-runtime-card--selected",
+                      )}
+                    >
+                      <div className="protocol-runtime-card__hd">
                         <label
                           className="inst-db-card-select"
                           onClick={(e) => e.stopPropagation()}
@@ -491,46 +482,81 @@ export default function ProtocolRuntimeTab() {
                             onChange={(e) => setSelectedId(rt.id, e.target.checked)}
                           />
                         </label>
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <strong className="truncate">{rt.display_name || rt.id}</strong>
-                            <span className={rt.process_running ? "pill pill--ok" : "pill"}>
+                        <div className="protocol-runtime-card__identity">
+                          <div className="protocol-runtime-card__title-line">
+                            <button
+                              type="button"
+                              className="protocol-runtime-card__title-btn"
+                              title="打开配置"
+                              onClick={() => setConfigRuntimeId(rt.id)}
+                            >
+                              {rt.display_name || rt.id}
+                            </button>
+                            <span
+                              className={
+                                rt.process_running
+                                  ? "data-conn-capsule data-conn-capsule--run"
+                                  : "data-conn-capsule data-conn-capsule--off"
+                              }
+                            >
                               {rt.process_running ? "运行中" : "已停止"}
                             </span>
-                            {!members.length ? <span className="pill">空闲</span> : null}
-                          </div>
-                          <div className="muted text-xs break-all">{rt.id}</div>
-                          <div className="muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                            <span>{members.length} 个 QQ</span>
-                            {rt.webui_port != null && String(rt.webui_port).trim() ? (
-                              <span>WebUI :{rt.webui_port}</span>
+                            {!members.length ? (
+                              <span className="data-conn-capsule data-conn-capsule--off">空闲</span>
                             ) : null}
+                            {webuiPort ? (
+                              webuiHref ? (
+                                <a
+                                  className="data-conn-capsule data-conn-capsule--on protocol-runtime-webui-link"
+                                  href={webuiHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`打开 WebUI :${webuiPort}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  WebUI :{webuiPort}
+                                </a>
+                              ) : (
+                                <span className="data-conn-capsule data-conn-capsule--off">
+                                  WebUI :{webuiPort}
+                                </span>
+                              )
+                            ) : null}
+                          </div>
+                          <div className="protocol-runtime-card__meta muted text-xs">
+                            <span>{members.length} 个 QQ</span>
+                            <span className="protocol-runtime-card__dot" aria-hidden>
+                              ·
+                            </span>
+                            <span className="protocol-runtime-card__id" title={rt.id}>
+                              {rt.id}
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <div className="row-actions protocol-runtime-card__actions">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          title="启动 Runtime（容器/进程）"
-                          aria-label="启动 Runtime"
-                          disabled={runtimeBusy}
-                          onClick={() => void startSnowlumaRuntime(rt.id)}
-                        >
-                          {runtimeBusy ? "…" : "启"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          title="停止 Runtime（容器/进程）"
-                          aria-label="停止 Runtime"
-                          disabled={runtimeBusy}
-                          onClick={() => void stopSnowlumaRuntime(rt.id)}
-                        >
-                          {runtimeBusy ? "…" : "停"}
-                        </Button>
+
+                      {members.length ? (
+                        <div className="protocol-runtime-card__chips">
+                          {preview.map((memberId) => {
+                            const account = accountById.get(memberId);
+                            const label = account ? accountLabel(account) : memberId;
+                            return (
+                              <span key={memberId} className="protocol-runtime-chip" title={label}>
+                                {label}
+                              </span>
+                            );
+                          })}
+                          {more > 0 ? (
+                            <span className="protocol-runtime-chip protocol-runtime-chip--more">
+                              +{more}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="protocol-runtime-card__empty muted text-xs">尚未挂载账号</p>
+                      )}
+
+                      <div className="protocol-runtime-card__footer">
                         <Button
                           type="button"
                           size="sm"
@@ -542,168 +568,80 @@ export default function ProtocolRuntimeTab() {
                           onClick={() => void deleteSnowlumaRuntime(rt)}
                         >
                           <Trash2 className="size-3.5" aria-hidden />
-                          {snowlumaRuntimeBusyId === rt.id ? "…" : "删"}
+                          删除
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="gap-1"
+                          title="配置挂载与 QQ 进程"
+                          disabled={actionsBusy}
+                          onClick={() => setConfigRuntimeId(rt.id)}
+                        >
+                          <Settings2 className="size-3.5" aria-hidden />
+                          配置
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={rt.process_running ? "outline" : "default"}
+                          className="gap-1"
+                          title={
+                            rt.process_running
+                              ? "停止 Runtime（容器/进程）"
+                              : "启动 Runtime（容器/进程）"
+                          }
+                          aria-label={rt.process_running ? "停止 Runtime" : "启动 Runtime"}
+                          disabled={runtimeBusy}
+                          onClick={() =>
+                            void (rt.process_running
+                              ? stopSnowlumaRuntime(rt.id)
+                              : startSnowlumaRuntime(rt.id))
+                          }
+                        >
+                          {runtimeBusy && snowlumaRuntimeBusyId === rt.id ? (
+                            "…"
+                          ) : rt.process_running ? (
+                            <>
+                              <Square className="size-3.5" aria-hidden />
+                              停止
+                            </>
+                          ) : (
+                            <>
+                              <Play className="size-3.5" aria-hidden />
+                              启动
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
-
-                    {members.length ? (
-                      <div className="protocol-runtime-card__chips">
-                        {members.map((memberId) => {
-                          const account = accountById.get(String(memberId));
-                          const label = account ? accountLabel(account) : String(memberId);
-                          return (
-                            <span key={memberId} className="protocol-runtime-chip" title={label}>
-                              {label}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="muted text-xs">尚未挂载账号</p>
-                    )}
-
-                    <div className="protocol-runtime-card__footer">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="gap-1"
-                        onClick={() =>
-                          setExpandedId((prev) => (prev === rt.id ? null : rt.id))
-                        }
-                      >
-                        {expanded ? (
-                          <>
-                            <X className="size-3.5" aria-hidden />
-                            收起挂载
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="size-3.5" aria-hidden />
-                            编辑挂载
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {expanded ? (
-                      <div className="protocol-runtime-card__edit">
-                        <div className="space-y-2">
-                          <div className="text-xs font-medium text-muted-foreground">已挂载</div>
-                          {members.length ? (
-                            <ul className="space-y-1.5">
-                              {members.map((memberId) => {
-                                const id = String(memberId);
-                                const account = accountById.get(id);
-                                const label = account ? accountLabel(account) : id;
-                                const detachBusy = memberBusyKey === `${rt.id}:rm:${id}`;
-                                const startBusy = memberBusyKey === `${rt.id}:qq-start:${id}`;
-                                const stopBusy = memberBusyKey === `${rt.id}:qq-stop:${id}`;
-                                const memberLocked = memberBusyKey != null || batchBusy;
-                                return (
-                                  <li
-                                    key={id}
-                                    className="flex flex-col gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm sm:flex-row sm:items-center sm:justify-between"
-                                  >
-                                    <span className="min-w-0 truncate" title={label}>
-                                      {label}
-                                    </span>
-                                    <div className="flex flex-wrap items-center justify-end gap-1">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 shrink-0 px-2 text-xs"
-                                        title="启动该账号的 QQ 进程（不启停 Runtime 容器）"
-                                        disabled={memberLocked}
-                                        onClick={() => void startMemberQq(rt.id, id)}
-                                      >
-                                        {startBusy ? "启 QQ…" : "启 QQ"}
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 shrink-0 px-2 text-xs"
-                                        title="停止该账号的 QQ 进程（不停止 Runtime 容器）"
-                                        disabled={memberLocked}
-                                        onClick={() => void stopMemberQq(rt.id, id)}
-                                      >
-                                        {stopBusy ? "停 QQ…" : "停 QQ"}
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 shrink-0 gap-1 px-2 text-xs text-rose-600"
-                                        title="从该 Runtime 卸下账号"
-                                        disabled={memberLocked}
-                                        onClick={() => void detachAccount(rt.id, id)}
-                                      >
-                                        <UserMinus className="size-3.5" aria-hidden />
-                                        {detachBusy ? "卸下中…" : "卸下"}
-                                      </Button>
-                                    </div>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <p className="muted text-xs">暂无成员</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-xs font-medium text-muted-foreground">添加账号</div>
-                          {addOpts.length ? (
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                              <div className="min-w-0 flex-1">
-                                <Combobox
-                                  value={selectedAdd}
-                                  onValueChange={(id) =>
-                                    setAddAccountId((prev) => ({ ...prev, [rt.id]: id }))
-                                  }
-                                  options={addOpts}
-                                  placeholder="选择要挂载的账号"
-                                  emptyText="无匹配账号"
-                                  searchPlaceholder="搜索名称 / QQ…"
-                                  searchThreshold={1}
-                                  loading={accountsQ.isLoading}
-                                  loadingText="正在读取账号…"
-                                  ariaLabel={`向 ${rt.display_name || rt.id} 添加账号`}
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="shrink-0 gap-1"
-                                disabled={
-                                  !selectedAdd ||
-                                  memberBusyKey === `${rt.id}:add:${selectedAdd}` ||
-                                  memberBusyKey != null ||
-                                  batchBusy
-                                }
-                                onClick={() => void attachAccount(rt.id, selectedAdd)}
-                              >
-                                <UserPlus className="size-3.5" aria-hidden />
-                                {memberBusyKey === `${rt.id}:add:${selectedAdd}`
-                                  ? "挂载中…"
-                                  : "挂载"}
-                              </Button>
-                            </div>
-                          ) : (
-                            <p className="muted text-xs">没有可再挂载的协议账号</p>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              <ConsolePagerBar
+                page={runtimePage}
+                pageSize={prefs.tablePageSize}
+                total={filteredRuntimes.length}
+                unit="个"
+                onPageChange={setRuntimePage}
+                onPageSizeChange={prefs.setTablePageSize}
+              />
+            </>
           )}
         </CardContent>
       </Card>
+
+      <ProtocolRuntimeConfigDialog
+        open={Boolean(configRuntime)}
+        runtime={configRuntime}
+        accounts={accounts}
+        mountUrl={mountUrl}
+        system={system}
+        accountsLoading={accountsQ.isLoading}
+        onClose={() => setConfigRuntimeId(null)}
+        onChanged={refresh}
+      />
     </div>
   );
 }

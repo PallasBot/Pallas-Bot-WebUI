@@ -3,6 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .form-section-divider__main {
@@ -10,7 +12,9 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .form-section-divider__bar {
@@ -28,13 +32,15 @@
   letter-spacing: 0.01em;
   color: var(--text);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .form-section-divider__line {
   flex: 1 1 0;
-  min-width: 2rem;
+  min-width: 0;
   height: 1px;
-  background: var(--border, hsl(var(--border)));
+  /* 与外部卡片描边同级；白底弹窗用 --border-strong，避免纯 --border 发虚 */
+  background: var(--border-strong, var(--border));
   border: none;
 }
 

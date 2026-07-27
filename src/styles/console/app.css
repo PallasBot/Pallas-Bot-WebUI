@@ -2548,24 +2548,27 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   box-sizing: border-box;
 }
 
-/* 好友/入群审批表格内：同意、拒绝横排紧凑，避免命中 panel__bd .row-actions 纵向规则 */
+/* 好友/入群审批表格内：同意、拒绝始终同一行 */
 .friends-req-actions {
   display: inline-flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .friends-req-actions .btn,
 .friends-req-actions .ui-btn,
 .friends-req-actions > button {
+  flex-shrink: 0;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
   border-radius: var(--radius-sm);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* 好友申请 / 入群请求标题栏：三主按钮成组（宽屏与 .row-actions 横排一致） */
@@ -2734,9 +2737,10 @@ html[data-theme="light"] .panel-hd-collapse-btn.ui-btn:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   background: var(--bg-elev);
-  border-right: 1px solid var(--border);
-  border-radius: var(--radius-shell) 0 0 var(--radius-shell);
-  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
+  /* 与宽屏 .shell__sidebar 同套 chrome 边/影，避免 --border + 深色硬阴影叠出「另一色描边」 */
+  border-right: 1px solid var(--shell-chrome-edge);
+  border-radius: 0 var(--radius-shell) var(--radius-shell) 0;
+  box-shadow: var(--shell-chrome-shadow-x);
   animation: shell-mobile-panel-in 0.24s var(--ease) both;
 }
 
@@ -3959,6 +3963,17 @@ html[data-theme="light"] .console-view-toggle button.is-on {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
+a.protocol-runtime-webui-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.protocol-runtime-webui-link:hover {
+  filter: brightness(1.08);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 html[data-theme="light"] .data-conn-capsule--off {
   background: rgba(15, 23, 42, 0.04);
 }
@@ -4166,6 +4181,14 @@ html[data-theme="light"] .data-pill--off {
   font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
+}
+
+.protocol-acc-card-actions > .btn,
+.protocol-acc-card-actions > .ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 .bot-config-edit {
@@ -4387,6 +4410,8 @@ html[data-theme="light"] .bot-config-edit {
 
 .bot-config-edit--modal-sections {
   gap: 18px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bot-config-dialog__init-note {
@@ -4399,6 +4424,8 @@ html[data-theme="light"] .bot-config-edit {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bot-config-dialog__section-body {
@@ -4406,12 +4433,61 @@ html[data-theme="light"] .bot-config-edit {
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .bot-config-dialog__section-body > .ui-field,
 .bot-config-dialog__section-body > .field {
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
+  /* 避免 ui-field 默认 overflow:hidden 裁切芯片 / 偏好砖块下缘 */
+  overflow: visible;
+}
+
+.bot-config-dialog__section-body > .ui-field .ui-field__control,
+.bot-config-dialog__section-body > .field .ui-field__control {
+  overflow: visible;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 管理员芯片：允许换行，避免壳层 overflow 裁切下缘 */
+.bot-config-dialog .tags-input,
+.bot-config-dialog .id-chips-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.bot-config-dialog .tags-input__shell {
+  flex-wrap: wrap;
+  align-items: center;
+  overflow: visible;
+  height: auto;
+  min-height: 40px;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-bottom: 6px;
+}
+
+.bot-config-dialog .tags-input__shell-chips {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  overflow: visible;
+  min-width: 0;
+  row-gap: 6px;
+}
+
+.bot-config-dialog .tags-input__embed-chip {
+  max-width: min(12rem, 100%);
+}
+
+.bot-config-dialog .bot-config-dialog__bd,
+.bot-config-dialog .plugin-config-dialog__bd {
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .bot-config-edit--modal > .alert {
@@ -4461,6 +4537,25 @@ html[data-theme="light"] .bot-config-edit {
   font-size: 12px;
 }
 
+/* 牛格种子：等分网格，避免 flex 换行错位 */
+.bot-config-dialog .bot-config-seed-tiles,
+.bot-config-seed-tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px) {
+  .bot-config-dialog .bot-config-seed-tiles,
+  .bot-config-seed-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 560px) {
   .bot-config-edit--modal .bot-config-edit__grid--switches {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -4483,6 +4578,7 @@ html[data-theme="light"] .bot-config-edit {
     grid-template-columns: 1fr !important;
   }
 
+  .bot-config-dialog .bot-config-seed-tiles,
   .bot-config-seed-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4507,15 +4603,6 @@ html[data-theme="light"] .bot-config-edit {
   }
 }
 
-/* 牛格种子：SelectTile 轻量砖块，避免深色嵌套框 */
-.bot-config-seed-tiles {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-}
-
 .bot-config-seed-tiles__btn {
   display: inline-flex;
   align-items: center;
@@ -4525,6 +4612,7 @@ html[data-theme="light"] .bot-config-edit {
   min-width: 0;
   min-height: 36px;
   padding: 7px 8px;
+  margin: 0;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
@@ -4533,6 +4621,9 @@ html[data-theme="light"] .bot-config-edit {
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   border-radius: var(--radius-control, 10px);
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition:
     background-color 0.15s var(--ease),
     border-color 0.15s var(--ease),
@@ -7974,23 +8065,25 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 .protocol-runtime-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
 }
 
 .protocol-runtime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.25rem), 1fr));
+  gap: 0.65rem;
   margin-top: 0.25rem;
+  align-items: stretch;
 }
 
 .protocol-runtime-card {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
   min-width: 0;
-  padding: 0.85rem 0.9rem;
+  height: 100%;
+  padding: 0.7rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 88%, transparent);
   border-radius: var(--radius-md, 10px);
   background: var(--card, #fff);
@@ -8004,49 +8097,182 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 
 .protocol-runtime-card__hd {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.45rem 0.55rem;
 }
 
-.protocol-runtime-card__actions {
+.protocol-runtime-card__identity {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.protocol-runtime-card__title-line {
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  min-width: 0;
+}
+
+.protocol-runtime-card__title-btn {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.protocol-runtime-card__title-btn:hover {
+  color: var(--primary, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.protocol-runtime-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.3rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.protocol-runtime-card__id {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.68rem;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+
+.protocol-runtime-card__dot {
+  opacity: 0.45;
+}
+
+.protocol-runtime-card__empty {
+  margin: 0;
+  min-height: 1.5rem;
 }
 
 .protocol-runtime-card__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  min-height: 1.5rem;
+  content-visibility: auto;
 }
 
 .protocol-runtime-chip {
-  max-width: 100%;
+  max-width: min(100%, 9.5rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0.15rem 0.5rem;
+  padding: 0.12rem 0.45rem;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent);
   background: color-mix(in srgb, var(--muted, #f4f4f5) 70%, transparent);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   line-height: 1.35;
+}
+
+.protocol-runtime-chip--more {
+  max-width: none;
+  color: var(--text-muted, #71717a);
+  font-variant-numeric: tabular-nums;
 }
 
 .protocol-runtime-card__footer {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.2rem;
+}
+
+.protocol-runtime-card__footer > .btn,
+.protocol-runtime-card__footer > .ui-btn,
+.protocol-runtime-card__footer > button {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  gap: 0.25rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.protocol-runtime-card__footer > .btn > svg,
+.protocol-runtime-card__footer > .ui-btn > svg,
+.protocol-runtime-card__footer > button > svg {
+  flex-shrink: 0;
+}
+
+.protocol-runtime-member {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 70%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--muted, #f4f4f5) 35%, transparent);
+}
+
+.protocol-runtime-member__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.protocol-runtime-member__actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.protocol-runtime-member__actions > .btn,
+.protocol-runtime-member__actions > .ui-btn,
+.protocol-runtime-member__actions > button {
+  height: 1.75rem;
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+  font-size: 0.72rem;
+}
+
+.protocol-runtime-attach {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.protocol-runtime-card__edit {
-  display: grid;
-  gap: 0.85rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid color-mix(in srgb, var(--border, #e5e7eb) 80%, transparent);
+.protocol-runtime-attach__picker {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .protocol-runtime-row {
@@ -8080,6 +8306,14 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
 }
 
 @media (max-width: 560px) {
+  .protocol-runtime-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .protocol-runtime-card {
+    padding: 0.55rem 0.6rem;
+    gap: 0.4rem;
+  }
   .protocol-page__entry-actions > .btn,
   .protocol-page__entry-actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
@@ -8089,15 +8323,35 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   .protocol-page__entry-actions > .ui-btn--primary {
     flex-basis: 100%;
   }
-  .protocol-runtime-row__actions,
-  .protocol-runtime-card__actions {
+  .protocol-runtime-card__footer {
+    flex-wrap: nowrap;
+  }
+  .protocol-runtime-card__footer > .btn,
+  .protocol-runtime-card__footer > .ui-btn,
+  .protocol-runtime-card__footer > button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .protocol-runtime-row__actions {
     width: 100%;
   }
   .protocol-runtime-row__actions > .btn,
-  .protocol-runtime-row__actions > .ui-btn,
-  .protocol-runtime-card__actions > .btn,
-  .protocol-runtime-card__actions > .ui-btn {
+  .protocol-runtime-row__actions > .ui-btn {
     flex: 1 1 calc(50% - 4px);
+  }
+  .protocol-runtime-member {
+    flex-wrap: wrap;
+  }
+  .protocol-runtime-member__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .protocol-runtime-attach {
+    flex-wrap: wrap;
+  }
+  .protocol-runtime-attach > .btn,
+  .protocol-runtime-attach > .ui-btn {
+    width: 100%;
   }
   .inst-db-panel__actions .btn,
   .inst-db-panel__actions .ui-btn {

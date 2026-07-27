@@ -166,6 +166,53 @@ export function accountWebUiHref(account: NapcatAccountRow, _system: SystemData 
   return accountNativeWebUiUrl(account);
 }
 
+/** 按宿主机端口拼 WebUI URL（用 console.http_base 或当前页主机名）。 */
+export function hostPortWebUiHref(
+  port: number | string | null | undefined,
+  system: SystemData | null,
+): string | null {
+  const p = parseInt(String(port ?? "").trim(), 10);
+  if (!Number.isFinite(p) || p < 1 || p > 65535) return null;
+  const base = botHttpBaseFromSystem(system);
+  if (base && /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(base)) {
+    try {
+      const u = new URL(base);
+      u.port = String(p);
+      u.pathname = "/";
+      u.search = "";
+      u.hash = "";
+      return u.toString().replace(/\/$/, "") || `${u.protocol}//${u.host}`;
+    } catch {
+      /* fallthrough */
+    }
+  }
+  if (typeof window === "undefined") return `http://127.0.0.1:${p}`;
+  return `${window.location.protocol}//${window.location.hostname}:${p}`;
+}
+
+/**
+ * SnowLuma Runtime WebUI：优先成员账号的 native_webui_url，否则按 Runtime 端口拼链接。
+ */
+export function snowlumaRuntimeWebUiHref(
+  runtime: { webui_port?: number | string; member_account_ids?: string[] } | null | undefined,
+  accounts: readonly NapcatAccountRow[] | null | undefined,
+  system: SystemData | null,
+): string | null {
+  if (!runtime) return null;
+  const members = new Set(
+    (runtime.member_account_ids ?? []).map((id) => String(id || "").trim()).filter(Boolean),
+  );
+  if (members.size && accounts?.length) {
+    for (const row of accounts) {
+      const id = String(row.id ?? "").trim();
+      if (!id || !members.has(id)) continue;
+      const native = accountNativeWebUiUrl(row);
+      if (native) return native;
+    }
+  }
+  return hostPortWebUiHref(runtime.webui_port, system);
+}
+
 export interface SnowlumaDockerNovncMeta {
   url?: string;
   bind_host?: string;
