@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import "@/styles/console-page-skel.css";
 
 export default function ConsolePageSkeleton({ panels = 3 }: { panels?: number }) {
   const count = Math.max(1, Math.min(6, panels));

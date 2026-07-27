@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import "@/styles/gs-trend-chart.css";
 import {
   buildNamedSeriesTrendPack,
   fmtAxisCount,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import "@/styles/git-mirror-dialog.css";
 import { axiosErrorDetail } from "@/api/http";
 import {
   fetchGitMirrorInfo,

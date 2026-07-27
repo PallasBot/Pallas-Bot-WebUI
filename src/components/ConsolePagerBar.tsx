@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { totalPages } from "@/utils/paginate";
+import "@/styles/console-pager.css";
 
 export default function ConsolePagerBar({
   page,
