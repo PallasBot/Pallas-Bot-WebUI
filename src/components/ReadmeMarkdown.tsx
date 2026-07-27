@@ -16,15 +16,12 @@ export default function ReadmeMarkdown({
 
   useEffect(() => {
     const el = rootRef.current;
-    if (!el || !html.trim()) return;
+    if (!el) return;
+    const next = html.trim() ? html : "";
+    el.innerHTML = next;
+    if (!next) return;
     return setupReadmeCodeCopyButtons(el);
   }, [html]);
 
-  return (
-    <div
-      ref={rootRef}
-      className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <div ref={rootRef} className={className} />;
 }
