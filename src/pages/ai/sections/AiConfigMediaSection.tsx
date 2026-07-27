@@ -174,8 +174,11 @@ export default function AiConfigMediaSection() {
   const testMut = useMutation({
     mutationFn: postAiExtensionTest,
     onSuccess: (r) => {
-      if (r.ok) notifyOk(`连通性 OK (HTTP ${r.status_code ?? "?"})`);
-      else notifyErr(r.error || "不可达");
+      if (r.ok) {
+        notifyOk(r.status_code != null ? `连通性 OK (HTTP ${r.status_code})` : "连通性 OK");
+      } else {
+        notifyErr(r.error || "不可达");
+      }
     },
     onError: (e) => notifyErr(axiosErrorDetail(e)),
   });
