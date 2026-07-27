@@ -6,7 +6,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.3] - 2026-07-27
 
 相对 **0.8.2** 至本版的控制台更新。
 
@@ -22,6 +22,27 @@
 
 - 媒体服务测通结果字段与控制台 API 对齐（`ok` / `status_code`）
 - 任务编排高低档写回对应任务组，避免有全任务配置时界面不刷新
+
+### 提交明细
+
+### Added
+
+* feat(ai-config): API 密钥芯片支持拖拽排序 ([e11da7a](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e11da7a2ffbb4b88b995e7405752b29f921acbdb))
+
+### Fixed
+
+* fix(ai-config): 高低档编排同步写回全任务 ([384baa5](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/384baa59538f7ed235e178379f32a0fa048f99fb))
+* fix(ai-config): 测通成功文案在无状态码时省略 HTTP 段 ([2441bba](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/2441bba08ccb93073f2c73d290c268d04f785715))
+* fix(types): 社区连通结果用手写契约避免 OpenAPI 退化 ([745e282](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/745e282bcb8f3d34a4289f373380b10d7a277a5f))
+* fix(ai-config): 媒体服务测通按 ok 字段判定 ([9cd651f](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/9cd651f171cadebea2acb1dc475c255a6c79b1d0))
+
+### Changed
+
+* docs(release): 补充 0.8.3 公告（密钥排序与任务编排） ([27a9e58](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/27a9e58c30df5ef2e6bab701ec5174c742071e3f))
+* chore(openapi): 同步控制台类型以消除 CI drift ([0ed3ae1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/0ed3ae1f3675f5a48dfcab56db35492dd1fb2f93))
+
+**完整变更**: [`v0.8.2...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.2...HEAD)
+
 
 ## [0.8.2] - 2026-07-27
 
@@ -48,7 +69,6 @@
 * docs(release): 准备 0.8.2 更新公告（Unreleased） ([c9b98d1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c9b98d1d258079aa7f5e19708c7f03c2b13fad41))
 
 **完整变更**: [`v0.8.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.1...HEAD)
-
 
 ## [0.8.1] - 2026-07-26
 
