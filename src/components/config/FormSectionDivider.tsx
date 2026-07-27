@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import "@/styles/form-section-divider.css";
 
 /** hub 风格分段：竖条标题 + 分隔线；操作放标题下方，不挤在线旁。 */
 export default function FormSectionDivider({

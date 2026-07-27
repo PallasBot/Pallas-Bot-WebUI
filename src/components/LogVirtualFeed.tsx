@@ -10,6 +10,7 @@ import {
 import type { LogEntry } from "@/api/pallasTypes";
 import { formatLogDisplayTime } from "@/utils/logDisplay";
 import { cn } from "@/lib/utils";
+import "@/styles/log-virtual-feed.css";
 
 export type LogVirtualFeedHandle = {
   scrollToBottom: (force?: boolean) => Promise<void>;

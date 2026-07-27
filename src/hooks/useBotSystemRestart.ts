@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   fetchBotUpdateCheck,
   fetchShardObservability,
@@ -16,6 +17,10 @@ import {
 import { syncRestartSession } from "@/state/botRestartSession";
 
 export type { BotRestartPhase };
+
+/** 与首页 `["bot-update-check"]` 共用，避免壳层再打一枪 */
+export const BOT_UPDATE_CHECK_QUERY_KEY = ["bot-update-check"] as const;
+export const BOT_UPDATE_CHECK_STALE_MS = 10 * 60 * 1000;
 
 export async function trackRestartFromPluginResult(
   result: {
@@ -47,6 +52,7 @@ export async function trackRestartFromPluginResult(
 export function useBotSystemRestart(options?: {
   botUpdateCheck?: BotUpdateCheckData | null;
 }) {
+  const qc = useQueryClient();
   const [restartBusy, setRestartBusy] = useState(false);
   const [restartMsg, setRestartMsg] = useState("");
   const [restartErr, setRestartErr] = useState("");
@@ -78,9 +84,16 @@ export function useBotSystemRestart(options?: {
       && restartPhase !== "failed");
 
   const ensureRestartContext = useCallback(async () => {
-    if (options?.botUpdateCheck == null && !internalBotCheck) {
+    if (options?.botUpdateCheck != null) {
+      setInternalBotCheck(options.botUpdateCheck);
+    } else if (!internalBotCheck) {
       try {
-        setInternalBotCheck(await fetchBotUpdateCheck());
+        const data = await qc.ensureQueryData({
+          queryKey: BOT_UPDATE_CHECK_QUERY_KEY,
+          queryFn: fetchBotUpdateCheck,
+          staleTime: BOT_UPDATE_CHECK_STALE_MS,
+        });
+        setInternalBotCheck(data);
       } catch {
         setInternalBotCheck(null);
       }
@@ -92,7 +105,7 @@ export function useBotSystemRestart(options?: {
     } catch {
       setShardedRuntime(false);
     }
-  }, [internalBotCheck, options?.botUpdateCheck]);
+  }, [internalBotCheck, options?.botUpdateCheck, qc]);
 
   const restartBot = useCallback(
     async (workersOnly = false): Promise<boolean> => {

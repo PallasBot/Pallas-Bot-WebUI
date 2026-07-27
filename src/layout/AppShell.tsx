@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import brandMarkAsset from "@/assets/brand-avatar.png?url";
@@ -6,6 +6,7 @@ import { fetchHealth } from "@/api/health";
 import { MAIN_NAV_ITEMS, buildNavEntries, isNavActive, sectionIcon } from "@/config/mainNav";
 import type { MainNavItem } from "@/config/mainNav";
 import BotRestartProgressDialog from "@/components/BotRestartProgressDialog";
+import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
 import ConsoleToastHost from "@/components/ConsoleToastHost";
 import { useBotSystemRestart } from "@/hooks/useBotSystemRestart";
 import { cn } from "@/lib/utils";
@@ -352,9 +353,11 @@ export default function AppShell() {
           )}
         </div>
 
-        <nav className="shell__nav" aria-label="主导航">
-          <NavTree railCollapsed={collapsed && !isNarrow} />
-        </nav>
+        <div className="shell__nav-clip">
+          <nav className="shell__nav" aria-label="主导航">
+            <NavTree railCollapsed={collapsed && !isNarrow} />
+          </nav>
+        </div>
 
         <div className="shell__sidebar-tools">
           {restartAvailable ? (
@@ -527,7 +530,9 @@ export default function AppShell() {
 
       <div className="shell__main">
         <div className={cn("shell__main-inner", mainMod)}>
-          <Outlet />
+          <Suspense fallback={<ConsolePageSkeleton panels={3} />}>
+            <Outlet />
+          </Suspense>
         </div>
       </div>
       <ConsoleToastHost />

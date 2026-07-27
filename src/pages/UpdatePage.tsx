@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import "@/styles/update-page.css";
 import { axiosErrorDetail } from "@/api/http";
 import { fetchPluginConfig, putPluginConfig } from "@/api/console";
 import {

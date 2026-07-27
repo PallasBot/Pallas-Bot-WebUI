@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import "@/styles/protocol-page-entry.css";
 import { useProtocolMount } from "@/hooks/useProtocolMount";
 import {
   protocolSectionFromPath,

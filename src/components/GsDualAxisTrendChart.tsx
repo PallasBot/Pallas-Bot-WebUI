@@ -6,6 +6,7 @@ import {
   type GsTrendSeriesId,
 } from "@/utils/gsTrendChart";
 import { ConsoleBlockSkeleton } from "@/components/ConsolePageSkeleton";
+import "@/styles/gs-trend-chart.css";
 
 type Props = {
   rows: ConsoleDailyStatRow[];
