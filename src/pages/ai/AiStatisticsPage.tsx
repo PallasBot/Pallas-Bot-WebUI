@@ -30,10 +30,13 @@ import {
   aggregateHistoryAiOutcomes,
   aggregateHistoryGates,
   aggregateHistoryImages,
+  aggregateHistoryImageRows,
   aggregateHistoryRag,
   aggregateHistoryRoutes,
+  aggregateHistoryTokenRows,
   aggregateHistoryTokens,
   buildPersistenceHint,
+  buildRangeCostSummary,
   dailyRagTrend,
   dailyTokenTrend,
   formatCompactNumber,
@@ -41,7 +44,9 @@ import {
   ragDocumentRows,
   summarizeTaskStats,
   todayIso,
+  type ImageRow,
   type TokenBucket,
+  type TokenRow,
 } from "@/utils/aiTaskStats";
 import { labelLlmRoute } from "@/utils/aiHistoryLabels";
 import type { NamedSeriesInput } from "@/utils/namedSeriesTrend";
@@ -50,6 +55,7 @@ const TAB_STORAGE_KEY = "pallas.ai-statistics.active-tab";
 const TAB_OPTIONS = [
   { value: "overview", label: "概览" },
   { value: "token", label: "Token" },
+  { value: "cost", label: "费用" },
   { value: "rag", label: "RAG" },
   { value: "calls", label: "调用" },
 ] as const;
@@ -115,6 +121,63 @@ function cacheHitRateFromBucket(bucket: TokenBucket): number {
   return Math.round((1000 * bucket.cacheReadTokens) / denom) / 10;
 }
 
+function formatCostAmount(value: number): string {
+  if (value > 0) return value.toFixed(4);
+  return "—";
+}
+
+function CostDetailTable({
+  title,
+  rows,
+  kind,
+  currency,
+}: {
+  title: string;
+  rows: Array<TokenRow | ImageRow>;
+  kind: "token" | "image";
+  currency: string;
+}) {
+  if (!rows.length) return null;
+  return (
+    <Card>
+      <CardHeader className="p-3 sm:p-6">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>当前区间 · 仅列出有费用的项</CardDescription>
+      </CardHeader>
+      <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[22rem] text-left text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="pb-2 pr-3 font-medium">名称</th>
+                {kind === "token" ? (
+                  <th className="pb-2 pr-3 font-medium">Token</th>
+                ) : (
+                  <th className="pb-2 pr-3 font-medium">张数</th>
+                )}
+                <th className="pb-2 font-medium">费用{currency ? ` (${currency})` : ""}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.key} className="border-t border-border/60">
+                  <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
+                  <td className="py-2 pr-3 tabular-nums">
+                    {kind === "token"
+                      ? formatCompactNumber((row as TokenRow).totalTokens)
+                      : formatCompactNumber((row as ImageRow).imageCount)}
+                  </td>
+                  <td className="py-2 tabular-nums">{formatCostAmount(row.costTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AiStatisticsPage() {
   const qc = useQueryClient();
   const [start, setStart] = useState(todayIso());
@@ -170,6 +233,18 @@ export default function AiStatisticsPage() {
   );
   const selectedOutcomes = useMemo(
     () => aggregateHistoryAiOutcomes(historyRows, start, end),
+    [end, historyRows, start],
+  );
+  const rangeTokenProviderRows = useMemo(
+    () => aggregateHistoryTokenRows(historyRows, start, end, "by_provider"),
+    [end, historyRows, start],
+  );
+  const rangeTokenModelRows = useMemo(
+    () => aggregateHistoryTokenRows(historyRows, start, end, "by_model"),
+    [end, historyRows, start],
+  );
+  const rangeTokenTaskRows = useMemo(
+    () => aggregateHistoryTokenRows(historyRows, start, end, "by_task"),
     [end, historyRows, start],
   );
 
@@ -246,10 +321,29 @@ export default function AiStatisticsPage() {
           completionTokens: 0,
           cacheReadTokens: 0,
           cacheWriteTokens: 0,
+          costTotal: 0,
         }))
         .filter((r) => r.totalTokens > 0)
         .sort((a, b) => b.totalTokens - a.totalTokens),
     [selectedRoutes],
+  );
+
+  const rangeCost = useMemo(
+    () => buildRangeCostSummary(historyRows, start, end),
+    [end, historyRows, start],
+  );
+
+  const rangeImageGatewayRows = useMemo(
+    () => aggregateHistoryImageRows(historyRows, start, end, "by_gateway"),
+    [end, historyRows, start],
+  );
+  const rangeImageProviderRows = useMemo(
+    () => aggregateHistoryImageRows(historyRows, start, end, "by_provider"),
+    [end, historyRows, start],
+  );
+  const rangeImageModelRows = useMemo(
+    () => aggregateHistoryImageRows(historyRows, start, end, "by_model"),
+    [end, historyRows, start],
   );
 
   const range7 = useMemo(() => {
@@ -296,7 +390,9 @@ export default function AiStatisticsPage() {
   const hint = buildPersistenceHint(taskStatsQ.data?.persistence);
   const loading = taskStatsQ.isLoading;
   const rangeLabel = `${start}${start !== end ? ` ~ ${end}` : ""}`;
-  const costCurrency = selectedRange.costCurrency || summary.tokens.costCurrency;
+  const costCurrency = rangeCost.currency || selectedRange.costCurrency || summary.tokens.costCurrency;
+  const combinedCost = rangeCost.totalCost;
+  const hasDrawInRange = rangeCost.hasImages;
 
   return (
     <div className="space-y-3">
@@ -334,18 +430,22 @@ export default function AiStatisticsPage() {
                   <div className="text-xl font-semibold tabular-nums sm:text-2xl">
                     {loading
                       ? "…"
-                      : selectedRange.costTotal > 0
-                        ? selectedRange.costTotal.toFixed(4)
-                        : selectedRange.totalTokens > 0
+                      : combinedCost > 0
+                        ? combinedCost.toFixed(4)
+                        : selectedRange.totalTokens > 0 || hasDrawInRange
                           ? "未配置单价"
                           : "—"}
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    {selectedRange.costTotal > 0
-                      ? "区间累计"
-                      : selectedRange.totalTokens > 0
-                        ? "在提供方里为模型填写单价后可估算"
-                        : "暂无 Token 用量"}
+                    {loading
+                      ? "…"
+                      : combinedCost > 0
+                        ? hasDrawInRange
+                          ? `Token ${selectedRange.costTotal.toFixed(4)} · 画画 ${selectedImages.costTotal.toFixed(4)}`
+                          : `Token ${selectedRange.costTotal.toFixed(4)}`
+                        : selectedRange.totalTokens > 0
+                          ? "在提供方里为模型填写单价后可估算"
+                          : "暂无费用"}
                   </div>
                 </CardContent>
               </Card>
@@ -551,10 +651,10 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={Boxes} />
                     按模型
                   </CardTitle>
-                  <CardDescription>按 token 总量占比</CardDescription>
+                  <CardDescription>当前区间 · 按 token 总量占比</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <TokenShareBars rows={summary.tokenModelRows} emptyText="暂无按模型数据" />
+                  <TokenShareBars rows={rangeTokenModelRows} emptyText="暂无按模型数据" />
                 </CardContent>
               </Card>
               <Card>
@@ -563,10 +663,10 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={Cloud} />
                     按提供方
                   </CardTitle>
-                  <CardDescription>按 token 总量占比</CardDescription>
+                  <CardDescription>当前区间 · 按 token 总量占比</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <TokenShareBars rows={summary.tokenProviderRows} emptyText="暂无按提供方数据" />
+                  <TokenShareBars rows={rangeTokenProviderRows} emptyText="暂无按提供方数据" />
                 </CardContent>
               </Card>
               <Card>
@@ -575,10 +675,10 @@ export default function AiStatisticsPage() {
                     <PanelTitleIcon icon={Boxes} />
                     按任务
                   </CardTitle>
-                  <CardDescription>按 token 总量占比</CardDescription>
+                  <CardDescription>当前区间 · 按 token 总量占比</CardDescription>
                 </CardHeader>
                 <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                  <TokenShareBars rows={summary.tokenTaskRows} emptyText="暂无按任务数据" />
+                  <TokenShareBars rows={rangeTokenTaskRows} emptyText="暂无按任务数据" />
                 </CardContent>
               </Card>
             </div>
@@ -619,94 +719,216 @@ export default function AiStatisticsPage() {
               </Card>
             ) : null}
 
-            <Card>
-              <CardHeader className="p-3 sm:p-6">
-                <CardTitle className="flex items-center gap-1.5 text-base">
-                  <PanelTitleIcon icon={Coins} />
-                  画画用量
-                </CardTitle>
-                <CardDescription>出图成功/失败与张数；费用为可选字段。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 p-3 pt-0 sm:p-6 sm:pt-0">
-                <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
-                  <Card>
-                    <CardContent className="space-y-1 p-3">
-                      <div className="text-xs text-muted-foreground">成功</div>
-                      <div className="text-xl font-semibold tabular-nums">
-                        {loading ? "…" : formatCompactNumber(selectedImages.okCount)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="space-y-1 p-3">
-                      <div className="text-xs text-muted-foreground">失败</div>
-                      <div className="text-xl font-semibold tabular-nums">
-                        {loading ? "…" : formatCompactNumber(selectedImages.failCount)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="space-y-1 p-3">
-                      <div className="text-xs text-muted-foreground">出图张数</div>
-                      <div className="text-xl font-semibold tabular-nums">
-                        {loading ? "…" : formatCompactNumber(selectedImages.imageCount)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="space-y-1 p-3">
-                      <div className="text-xs text-muted-foreground">
-                        费用{selectedImages.costCurrency ? ` (${selectedImages.costCurrency})` : ""}
-                      </div>
-                      <div className="text-xl font-semibold tabular-nums">
-                        {loading
-                          ? "…"
-                          : selectedImages.costTotal > 0
-                            ? selectedImages.costTotal.toFixed(4)
-                            : "—"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                {summary.imageGatewayRows.length || summary.imageModelRows.length ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[28rem] text-left text-sm">
-                      <thead className="text-xs text-muted-foreground">
-                        <tr>
-                          <th className="py-2 pr-3 font-medium">类型</th>
-                          <th className="py-2 pr-3 font-medium">键</th>
-                          <th className="py-2 pr-3 font-medium">成功</th>
-                          <th className="py-2 pr-3 font-medium">失败</th>
-                          <th className="py-2 font-medium">张数</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summary.imageGatewayRows.map((row) => (
-                          <tr key={`gw-${row.key}`} className="border-t border-border/60">
-                            <td className="py-2 pr-3 text-muted-foreground">网关</td>
-                            <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.okCount}</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.failCount}</td>
-                            <td className="py-2 tabular-nums">{row.imageCount}</td>
-                          </tr>
-                        ))}
-                        {summary.imageModelRows.map((row) => (
-                          <tr key={`model-${row.key}`} className="border-t border-border/60">
-                            <td className="py-2 pr-3 text-muted-foreground">模型</td>
-                            <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.okCount}</td>
-                            <td className="py-2 pr-3 tabular-nums">{row.failCount}</td>
-                            <td className="py-2 tabular-nums">{row.imageCount}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {hasDrawInRange ? (
+              <Card>
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-1.5 text-base">
+                    <PanelTitleIcon icon={Coins} />
+                    画画用量
+                  </CardTitle>
+                  <CardDescription>当前区间 · 出图成功/失败与张数</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 p-3 pt-0 sm:p-6 sm:pt-0">
+                  <div className="console-panel-grid grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                      <CardContent className="space-y-1 p-3">
+                        <div className="text-xs text-muted-foreground">成功</div>
+                        <div className="text-xl font-semibold tabular-nums">
+                          {loading ? "…" : formatCompactNumber(selectedImages.okCount)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="space-y-1 p-3">
+                        <div className="text-xs text-muted-foreground">失败</div>
+                        <div className="text-xl font-semibold tabular-nums">
+                          {loading ? "…" : formatCompactNumber(selectedImages.failCount)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="space-y-1 p-3">
+                        <div className="text-xs text-muted-foreground">出图张数</div>
+                        <div className="text-xl font-semibold tabular-nums">
+                          {loading ? "…" : formatCompactNumber(selectedImages.imageCount)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="space-y-1 p-3">
+                        <div className="text-xs text-muted-foreground">
+                          费用{selectedImages.costCurrency ? ` (${selectedImages.costCurrency})` : ""}
+                        </div>
+                        <div className="text-xl font-semibold tabular-nums">
+                          {loading
+                            ? "…"
+                            : selectedImages.costTotal > 0
+                              ? selectedImages.costTotal.toFixed(4)
+                              : "—"}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">暂无画画数据（需较新的画画插件）。</p>
-                )}
-              </CardContent>
-            </Card>
+                  {rangeImageGatewayRows.length ||
+                  rangeImageProviderRows.length ||
+                  rangeImageModelRows.length ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[28rem] text-left text-sm">
+                        <thead className="text-xs text-muted-foreground">
+                          <tr>
+                            <th className="py-2 pr-3 font-medium">类型</th>
+                            <th className="py-2 pr-3 font-medium">键</th>
+                            <th className="py-2 pr-3 font-medium">成功</th>
+                            <th className="py-2 pr-3 font-medium">失败</th>
+                            <th className="py-2 font-medium">张数</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rangeImageGatewayRows.map((row) => (
+                            <tr key={`gw-${row.key}`} className="border-t border-border/60">
+                              <td className="py-2 pr-3 text-muted-foreground">网关</td>
+                              <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.okCount}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.failCount}</td>
+                              <td className="py-2 tabular-nums">{row.imageCount}</td>
+                            </tr>
+                          ))}
+                          {rangeImageProviderRows.map((row) => (
+                            <tr key={`prov-${row.key}`} className="border-t border-border/60">
+                              <td className="py-2 pr-3 text-muted-foreground">提供方</td>
+                              <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.okCount}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.failCount}</td>
+                              <td className="py-2 tabular-nums">{row.imageCount}</td>
+                            </tr>
+                          ))}
+                          {rangeImageModelRows.map((row) => (
+                            <tr key={`model-${row.key}`} className="border-t border-border/60">
+                              <td className="py-2 pr-3 text-muted-foreground">模型</td>
+                              <td className="py-2 pr-3 font-mono text-xs">{row.key}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.okCount}</td>
+                              <td className="py-2 pr-3 tabular-nums">{row.failCount}</td>
+                              <td className="py-2 tabular-nums">{row.imageCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
+
+        {activeTab === "cost" ? (
+          <div className="space-y-3">
+            <div className="console-panel-grid grid-cols-2 lg:grid-cols-3">
+              <Card>
+                <CardContent className="space-y-1 p-3 sm:p-4">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Coins className="size-3.5" />
+                    合计{costCurrency ? ` (${costCurrency})` : ""}
+                  </div>
+                  <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                    {loading ? "…" : formatCostAmount(combinedCost)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">{rangeLabel}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="space-y-1 p-3 sm:p-4">
+                  <div className="text-xs text-muted-foreground">Token 费用</div>
+                  <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                    {loading ? "…" : formatCostAmount(rangeCost.tokenCost)}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {selectedRange.totalTokens > 0 && rangeCost.tokenCost <= 0
+                      ? "未配置单价"
+                      : "LLM 调用"}
+                  </div>
+                </CardContent>
+              </Card>
+              {hasDrawInRange ? (
+                <Card>
+                  <CardContent className="space-y-1 p-3 sm:p-4">
+                    <div className="text-xs text-muted-foreground">画画费用</div>
+                    <div className="text-xl font-semibold tabular-nums sm:text-2xl">
+                      {loading ? "…" : formatCostAmount(rangeCost.imageCost)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {selectedImages.imageCount > 0
+                        ? `${formatCompactNumber(selectedImages.imageCount)} 张`
+                        : "出图"}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">Token 明细</div>
+              <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+                <CostDetailTable
+                  title="按提供方"
+                  rows={rangeCost.tokenProviderRows}
+                  kind="token"
+                  currency={costCurrency}
+                />
+                <CostDetailTable
+                  title="按模型"
+                  rows={rangeCost.tokenModelRows}
+                  kind="token"
+                  currency={costCurrency}
+                />
+                <CostDetailTable
+                  title="按任务"
+                  rows={rangeCost.tokenTaskRows}
+                  kind="token"
+                  currency={costCurrency}
+                />
+              </div>
+              {!rangeCost.tokenProviderRows.length &&
+              !rangeCost.tokenModelRows.length &&
+              !rangeCost.tokenTaskRows.length ? (
+                <p className="text-sm text-muted-foreground">
+                  {selectedRange.totalTokens > 0
+                    ? "当前区间有 Token 用量，但尚未配置模型单价。"
+                    : "当前区间暂无 Token 费用。"}
+                </p>
+              ) : null}
+            </div>
+
+            {hasDrawInRange ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">画画明细</div>
+                <div className="console-panel-grid grid-cols-1 lg:grid-cols-3">
+                  <CostDetailTable
+                    title="按网关"
+                    rows={rangeCost.imageGatewayRows}
+                    kind="image"
+                    currency={costCurrency}
+                  />
+                  <CostDetailTable
+                    title="按提供方"
+                    rows={rangeCost.imageProviderRows}
+                    kind="image"
+                    currency={costCurrency}
+                  />
+                  <CostDetailTable
+                    title="按模型"
+                    rows={rangeCost.imageModelRows}
+                    kind="image"
+                    currency={costCurrency}
+                  />
+                </div>
+                {!rangeCost.imageGatewayRows.length &&
+                !rangeCost.imageProviderRows.length &&
+                !rangeCost.imageModelRows.length ? (
+                  <p className="text-sm text-muted-foreground">有画画用量，但当前区间无画画费用记录。</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

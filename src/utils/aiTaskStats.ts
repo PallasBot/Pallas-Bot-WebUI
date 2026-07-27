@@ -117,6 +117,7 @@ export type TokenRow = {
   completionTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  costTotal: number;
 };
 
 export function tokenRows(source: Record<string, LlmTokenMetricBreakdownRow> | undefined): TokenRow[] {
@@ -131,6 +132,7 @@ export function tokenRows(source: Record<string, LlmTokenMetricBreakdownRow> | u
         cacheReadTokens: Number(row.cache_read_tokens ?? 0),
         cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
         totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+        costTotal: Number(row.cost_total ?? 0),
       };
     })
     .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0 || row.cacheWriteTokens > 0)
@@ -204,6 +206,73 @@ export function aggregateHistoryTokens(
   return { ...total, days: daily.length, daily };
 }
 
+export type TokenBreakdownDimension = "by_provider" | "by_model" | "by_task";
+
+/** 从 history.rows 聚合区间内 by_provider / by_model / by_task 分桶。 */
+export function aggregateHistoryTokenRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: TokenBreakdownDimension,
+): TokenRow[] {
+  const merged: Record<
+    string,
+    {
+      prompt_tokens: number;
+      completion_tokens: number;
+      cache_read_tokens: number;
+      cache_write_tokens: number;
+      total_tokens: number;
+      cost_total: number;
+    }
+  > = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.tokens?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const promptTokens = Number(metrics.prompt_tokens ?? 0);
+      const completionTokens = Number(metrics.completion_tokens ?? 0);
+      const cacheReadTokens = Number(metrics.cache_read_tokens ?? 0);
+      const cacheWriteTokens = Number(metrics.cache_write_tokens ?? 0);
+      const totalTokens =
+        Number(metrics.total_tokens ?? 0) || promptTokens + completionTokens;
+      const costTotal = Number(metrics.cost_total ?? 0);
+      const dst = merged[name] || {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        total_tokens: 0,
+        cost_total: 0,
+      };
+      dst.prompt_tokens += promptTokens;
+      dst.completion_tokens += completionTokens;
+      dst.cache_read_tokens += cacheReadTokens;
+      dst.cache_write_tokens += cacheWriteTokens;
+      dst.total_tokens += totalTokens;
+      dst.cost_total += costTotal;
+      merged[name] = dst;
+    }
+  }
+  return tokenRows(merged);
+}
+
+/** 仅保留有费用的 token 分桶（费用明细用）。 */
+export function aggregateHistoryTokenCostRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: TokenBreakdownDimension,
+): TokenRow[] {
+  return aggregateHistoryTokenRows(rows, start, end, dimension)
+    .filter((row) => row.costTotal > 0)
+    .sort((a, b) => b.costTotal - a.costTotal || a.key.localeCompare(b.key));
+}
+
 export type ImageBucket = {
   okCount: number;
   failCount: number;
@@ -268,8 +337,89 @@ export function imageRows(source: Record<string, LlmImageMetricBreakdownRow> | u
       imageCount: Number(row.image_count ?? 0),
       costTotal: Number(row.cost_total ?? 0),
     }))
-    .filter((row) => row.okCount > 0 || row.failCount > 0 || row.imageCount > 0)
+    .filter((row) => row.okCount > 0 || row.failCount > 0 || row.imageCount > 0 || row.costTotal > 0)
     .sort((a, b) => b.okCount - a.okCount || b.failCount - a.failCount || a.key.localeCompare(b.key));
+}
+
+export type ImageBreakdownDimension = "by_gateway" | "by_provider" | "by_model";
+
+/** 从 history.rows 聚合区间内画画分桶。 */
+export function aggregateHistoryImageRows(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+  dimension: ImageBreakdownDimension,
+): ImageRow[] {
+  const merged: Record<string, LlmImageMetricBreakdownRow> = {};
+  for (const row of rows ?? []) {
+    const date = String(row.date || "").slice(0, 10);
+    if (!date || date < start || date > end) continue;
+    const slice = row.ai?.images?.[dimension];
+    if (!slice || typeof slice !== "object") continue;
+    for (const [key, metrics] of Object.entries(slice)) {
+      const name = String(key || "").trim();
+      if (!name || !metrics || typeof metrics !== "object") continue;
+      const dst = merged[name] || {
+        ok_count: 0,
+        fail_count: 0,
+        image_count: 0,
+        cost_total: 0,
+      };
+      dst.ok_count = Number(dst.ok_count ?? 0) + Number(metrics.ok_count ?? 0);
+      dst.fail_count = Number(dst.fail_count ?? 0) + Number(metrics.fail_count ?? 0);
+      dst.image_count = Number(dst.image_count ?? 0) + Number(metrics.image_count ?? 0);
+      dst.cost_total = Number(dst.cost_total ?? 0) + Number(metrics.cost_total ?? 0);
+      merged[name] = dst;
+    }
+  }
+  return imageRows(merged).sort(
+    (a, b) => b.costTotal - a.costTotal || b.imageCount - a.imageCount || a.key.localeCompare(b.key),
+  );
+}
+
+export type RangeCostSummary = {
+  tokenCost: number;
+  imageCost: number;
+  totalCost: number;
+  currency: string;
+  hasImages: boolean;
+  tokenProviderRows: TokenRow[];
+  tokenModelRows: TokenRow[];
+  tokenTaskRows: TokenRow[];
+  imageGatewayRows: ImageRow[];
+  imageProviderRows: ImageRow[];
+  imageModelRows: ImageRow[];
+};
+
+export function buildRangeCostSummary(
+  rows: LlmTaskStatsHistoryRow[] | undefined,
+  start: string,
+  end: string,
+): RangeCostSummary {
+  const tokens = aggregateHistoryTokens(rows, start, end);
+  const images = aggregateHistoryImages(rows, start, end);
+  const hasImages =
+    images.okCount > 0 || images.failCount > 0 || images.imageCount > 0 || images.costTotal > 0;
+  const currency = tokens.costCurrency || images.costCurrency || "";
+  return {
+    tokenCost: tokens.costTotal,
+    imageCost: images.costTotal,
+    totalCost: tokens.costTotal + images.costTotal,
+    currency,
+    hasImages,
+    tokenProviderRows: aggregateHistoryTokenCostRows(rows, start, end, "by_provider"),
+    tokenModelRows: aggregateHistoryTokenCostRows(rows, start, end, "by_model"),
+    tokenTaskRows: aggregateHistoryTokenCostRows(rows, start, end, "by_task"),
+    imageGatewayRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_gateway").filter((r) => r.costTotal > 0)
+      : [],
+    imageProviderRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_provider").filter((r) => r.costTotal > 0)
+      : [],
+    imageModelRows: hasImages
+      ? aggregateHistoryImageRows(rows, start, end, "by_model").filter((r) => r.costTotal > 0)
+      : [],
+  };
 }
 
 export type RagBucket = {
@@ -457,6 +607,7 @@ export function hourTokenRows(
         cacheReadTokens: Number(row.cache_read_tokens ?? 0),
         cacheWriteTokens: Number(row.cache_write_tokens ?? 0),
         totalTokens: Number(row.total_tokens ?? 0) || promptTokens + completionTokens,
+        costTotal: Number(row.cost_total ?? 0),
       };
     })
     .filter((row) => row.totalTokens > 0 || row.cacheReadTokens > 0)
