@@ -6,7 +6,9 @@ import {
   protocolDeleteSnowlumaRuntime,
   protocolListAccounts,
   protocolListSnowlumaRuntimes,
+  protocolStartAccount,
   protocolStartSnowlumaRuntime,
+  protocolStopAccount,
   protocolStopSnowlumaRuntime,
   protocolSwitchAccountRuntime,
   type NapcatAccountRow,
@@ -320,6 +322,36 @@ export default function ProtocolRuntimeTab() {
     }
   }
 
+  async function startMemberQq(runtimeId: string, accountId: string) {
+    if (!mountUrl || !accountId) return;
+    const busy = `${runtimeId}:qq-start:${accountId}`;
+    setMemberBusyKey(busy);
+    try {
+      await protocolStartAccount(mountUrl, accountId);
+      pushConsoleToast(`已请求启动 QQ ${accountId}`, "ok");
+      refresh();
+    } catch (e) {
+      pushConsoleToast(protocolApiErrorMessage(e, "启 QQ 失败"), "err");
+    } finally {
+      setMemberBusyKey(null);
+    }
+  }
+
+  async function stopMemberQq(runtimeId: string, accountId: string) {
+    if (!mountUrl || !accountId) return;
+    const busy = `${runtimeId}:qq-stop:${accountId}`;
+    setMemberBusyKey(busy);
+    try {
+      await protocolStopAccount(mountUrl, accountId);
+      pushConsoleToast(`已请求停止 QQ ${accountId}`, "warn");
+      refresh();
+    } catch (e) {
+      pushConsoleToast(protocolApiErrorMessage(e, "停 QQ 失败"), "err");
+    } finally {
+      setMemberBusyKey(null);
+    }
+  }
+
   const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null || memberBusyKey != null;
 
   const chromeMiddle = useMemo(
@@ -418,7 +450,7 @@ export default function ProtocolRuntimeTab() {
               SnowLuma Runtime
             </CardTitle>
             <CardDescription>
-              一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
+              卡片「启/停」管 Runtime 容器；展开后可对每个 QQ 启停进程（不影响容器），或挂载/卸下账号。
             </CardDescription>
           </div>
         </CardHeader>
@@ -481,6 +513,8 @@ export default function ProtocolRuntimeTab() {
                           type="button"
                           size="sm"
                           variant="outline"
+                          title="启动 Runtime（容器/进程）"
+                          aria-label="启动 Runtime"
                           disabled={runtimeBusy}
                           onClick={() => void startSnowlumaRuntime(rt.id)}
                         >
@@ -490,6 +524,8 @@ export default function ProtocolRuntimeTab() {
                           type="button"
                           size="sm"
                           variant="outline"
+                          title="停止 Runtime（容器/进程）"
+                          aria-label="停止 Runtime"
                           disabled={runtimeBusy}
                           onClick={() => void stopSnowlumaRuntime(rt.id)}
                         >
@@ -500,6 +536,8 @@ export default function ProtocolRuntimeTab() {
                           size="sm"
                           variant="outline"
                           className="gap-1 text-rose-600 hover:text-rose-700"
+                          title="删除 Runtime"
+                          aria-label="删除 Runtime"
                           disabled={runtimeBusy}
                           onClick={() => void deleteSnowlumaRuntime(rt)}
                         >
@@ -559,26 +597,54 @@ export default function ProtocolRuntimeTab() {
                                 const id = String(memberId);
                                 const account = accountById.get(id);
                                 const label = account ? accountLabel(account) : id;
-                                const busy = memberBusyKey === `${rt.id}:rm:${id}`;
+                                const detachBusy = memberBusyKey === `${rt.id}:rm:${id}`;
+                                const startBusy = memberBusyKey === `${rt.id}:qq-start:${id}`;
+                                const stopBusy = memberBusyKey === `${rt.id}:qq-stop:${id}`;
+                                const memberLocked = memberBusyKey != null || batchBusy;
                                 return (
                                   <li
                                     key={id}
-                                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm"
+                                    className="flex flex-col gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm sm:flex-row sm:items-center sm:justify-between"
                                   >
                                     <span className="min-w-0 truncate" title={label}>
                                       {label}
                                     </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="shrink-0 gap-1 text-rose-600"
-                                      disabled={busy || memberBusyKey != null || batchBusy}
-                                      onClick={() => void detachAccount(rt.id, id)}
-                                    >
-                                      <UserMinus className="size-3.5" aria-hidden />
-                                      {busy ? "卸下中…" : "卸下"}
-                                    </Button>
+                                    <div className="flex flex-wrap items-center justify-end gap-1">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 shrink-0 px-2 text-xs"
+                                        title="启动该账号的 QQ 进程（不启停 Runtime 容器）"
+                                        disabled={memberLocked}
+                                        onClick={() => void startMemberQq(rt.id, id)}
+                                      >
+                                        {startBusy ? "启 QQ…" : "启 QQ"}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 shrink-0 px-2 text-xs"
+                                        title="停止该账号的 QQ 进程（不停止 Runtime 容器）"
+                                        disabled={memberLocked}
+                                        onClick={() => void stopMemberQq(rt.id, id)}
+                                      >
+                                        {stopBusy ? "停 QQ…" : "停 QQ"}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 shrink-0 gap-1 px-2 text-xs text-rose-600"
+                                        title="从该 Runtime 卸下账号"
+                                        disabled={memberLocked}
+                                        onClick={() => void detachAccount(rt.id, id)}
+                                      >
+                                        <UserMinus className="size-3.5" aria-hidden />
+                                        {detachBusy ? "卸下中…" : "卸下"}
+                                      </Button>
+                                    </div>
                                   </li>
                                 );
                               })}
