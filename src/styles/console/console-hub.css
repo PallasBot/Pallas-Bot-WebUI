@@ -19,8 +19,9 @@ html[data-layout="hub"] {
   --layout-page-bottom: 20px;
   --hub-surface: var(--bg-card);
   --hub-muted: color-mix(in srgb, var(--text-muted) 10%, var(--bg-card));
-  --hub-shadow: 0 1px 2px rgb(15 23 42 / calc(0.06 * var(--shadow-intensity, 1))),
-    0 1px 3px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1)));
+  /* 卡片阴影（再乘 --shadow-intensity，默认 0.55） */
+  --hub-shadow: 0 2px 6px hsl(0 0% 0% / calc(0.05 * var(--shadow-intensity, 0.55))),
+    0 8px 20px -4px hsl(0 0% 0% / calc(0.08 * var(--shadow-intensity, 0.55)));
   --hub-radius: var(--radius-md);
   --hub-radius-lg: var(--radius-lg);
   /* chip / switch 用 --radius-pill；分段与按钮/输入同 --radius-control */
@@ -52,34 +53,54 @@ html[data-layout="hub"] {
 }
 
 html[data-layout="hub"][data-theme="light"] {
-  /* 与 tokens light 一致：近白画布 / 侧栏灰 */
+  /* 近白画布 / 白卡片；外框清晰，--border 轻量供卡内分割 */
   --bg-deep: #fcfcfc;
   --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
   --shell-sidebar-surface: #fafafa;
-  /* 轻描边 + 阴影分层；保留可见度但不「铁框」 */
+  --border-base: hsl(240 4% 83%);
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
+  --surface-edge: var(--border-base);
+  --surface-edge-glass: hsl(240 4% 83% / 0.4);
+  --surface-divider: rgba(15, 23, 42, 0.035);
   --control-bg: #ffffff;
-  --control-border: rgba(15, 23, 42, 0.13);
+  --control-border: hsl(240 4% 83%);
   --control-edge: var(--control-border);
   --control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-card: var(--hub-shadow);
-  --hub-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
-    0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1)));
+  --hub-shadow: 0 2px 6px hsl(0 0% 0% / calc(0.05 * var(--shadow-intensity, 0.55))),
+    0 8px 20px -4px hsl(0 0% 0% / calc(0.08 * var(--shadow-intensity, 0.55)));
+}
+
+/* hub 浅色毛玻璃：近白底 + 主色约 8% 渐变；控件跟随卡片不透明度 */
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] {
+  --bg-deep: #f4f5f8;
+  --bg-elev: #f4f5f8;
+  --control-bg: rgb(from #ffffff r g b / max(0.28, var(--card-glass-opacity, 0.25)));
+  --control-shadow: 0 1px 2px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 0.55)));
+  --hub-shadow: 0 2px 6px hsl(0 0% 0% / calc(0.04 * var(--shadow-intensity, 0.55))),
+    0 8px 24px -4px hsl(0 0% 0% / calc(0.1 * var(--shadow-intensity, 0.55)));
+  --glass-elev-shadow: var(--hub-shadow);
 }
 
 html[data-layout="hub"][data-theme="dark"] {
-  --hub-shadow: 0 1px 2px rgb(0 0 0 / calc(0.2 * var(--shadow-intensity, 1))),
-    0 4px 14px rgb(0 0 0 / calc(0.16 * var(--shadow-intensity, 1)));
+  /* 深色主题卡片阴影略加重 */
+  --hub-shadow: 0 2px 8px hsl(0 0% 0% / calc(0.18 * var(--shadow-intensity, 0.55))),
+    0 12px 32px -6px hsl(0 0% 0% / calc(0.28 * var(--shadow-intensity, 0.55)));
   --shadow-card: var(--hub-shadow);
+  --glass-elev-shadow: var(--hub-shadow);
 }
 
-/* 主内容：单层画布。elev 铺满 shell__main，避免 max-width 外露出 deep「第二层」 */
+/* 主内容：glass 透出渐变画布；solid 铺平底色（勿用主题色渐变冒充毛玻璃） */
 html[data-layout="hub"] .shell__main {
-  background: var(--bg-elev);
+  background: transparent;
   min-width: 0;
+}
+
+html[data-layout="hub"][data-surface="solid"] .shell__main {
+  background: var(--bg-elev);
 }
 
 html[data-layout="hub"] .shell__main-inner {
@@ -91,9 +112,17 @@ html[data-layout="hub"] .shell__main-inner {
   box-sizing: border-box;
 }
 
-/* 纯色模式：底与主区同色，去掉 deep/elev 双层 */
+/* 纯色表面：平坦 background，不加主色渐变 */
 html[data-layout="hub"][data-surface="solid"] .shell__bg {
-  background: var(--bg-elev);
+  background: var(--bg-deep);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="solid"] .shell__bg {
+  background: var(--bg-deep);
+}
+
+html[data-layout="hub"][data-ui-preset="shadcn"][data-surface="solid"] .shell__bg {
+  background: var(--bg-deep);
 }
 
 html[data-layout="hub"] .shell__main-inner--fill {
@@ -140,17 +169,17 @@ html[data-layout="hub"] .console-hub-page--fill {
   margin-bottom: 0;
 }
 
-html[data-layout="hub"][data-surface="glass"] .panel:not(.plugin-catalog-card):not(.plugin-store-card):not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+html[data-layout="hub"][data-surface="glass"] .panel:not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
+  background: var(--surface-glass-fill);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
-  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  border-color: var(--surface-edge-glass, var(--border));
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
-html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel:not(.plugin-catalog-card):not(.plugin-store-card):not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
-  background: color-mix(in srgb, var(--bg-card) calc(max(var(--card-glass-opacity), 0.72) * 100%), transparent);
-  border-color: color-mix(in srgb, var(--border) 45%, transparent);
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel:not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
+  background: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
   box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
     0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight);
 }
@@ -158,14 +187,14 @@ html[data-layout="hub"][data-theme="light"][data-surface="glass"] .panel:not(.pl
 html[data-layout="hub"][data-surface="glass"] .prefs-setting-card.panel {
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12)) !important;
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12)) !important;
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent) !important;
-  border-color: color-mix(in srgb, var(--border) 40%, transparent) !important;
+  background: var(--surface-glass-fill) !important;
+  border-color: var(--surface-edge-glass, var(--border)) !important;
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight) !important;
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .prefs-setting-card.panel {
-  background: color-mix(in srgb, var(--bg-card) calc(max(var(--card-glass-opacity), 0.72) * 100%), transparent) !important;
-  border-color: color-mix(in srgb, var(--border) 45%, transparent) !important;
+  background: var(--surface-glass-fill) !important;
+  border-color: var(--surface-edge-glass, var(--border)) !important;
   box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
     0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight) !important;
 }
@@ -185,12 +214,12 @@ html[data-layout="hub"][data-surface="glass"] .shell__main {
 
 html[data-layout="hub"] .panel {
   border-radius: var(--hub-radius);
-  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+  border-color: var(--surface-edge, var(--border));
   box-shadow: var(--hub-shadow);
 }
 
 html[data-layout="hub"][data-theme="light"] .panel {
-  border-color: color-mix(in srgb, var(--border) 50%, transparent);
+  border-color: var(--surface-edge, var(--border));
 }
 
 html[data-layout="hub"][data-surface="solid"] .panel:not(.console-hub-page__search-card):not(.plugin-store-page__search-card) {
@@ -200,7 +229,16 @@ html[data-layout="hub"][data-surface="solid"] .panel:not(.console-hub-page__sear
 html[data-layout="hub"] .panel__hd {
   padding: 12px 16px;
   background: transparent;
-  border-bottom-color: color-mix(in srgb, var(--border) 88%, transparent);
+  border-bottom-color: var(--surface-divider, color-mix(in srgb, var(--border) 55%, transparent));
+}
+
+/* Card 标题底部分割、表行分割：减轻割裂感 */
+html[data-layout="hub"][data-theme="light"] .border-border\/60 {
+  border-color: var(--surface-divider, rgba(15, 23, 42, 0.035));
+}
+
+html[data-layout="hub"][data-theme="light"] .border-border\/40 {
+  border-color: color-mix(in srgb, var(--surface-divider, rgba(15, 23, 42, 0.035)) 85%, transparent);
 }
 
 html[data-layout="hub"] .panel__bd {
@@ -574,6 +612,10 @@ html[data-layout="hub"] .shell__main-inner--logs {
 
 html[data-layout="hub"] .shell__main-inner--plugin-store {
   background: var(--bg-elev);
+}
+
+html[data-layout="hub"][data-surface="glass"] .shell__main-inner--plugin-store {
+  background: transparent !important;
 }
 
 /* ── Hub 页面壳（与插件商店 layout 一致） ── */
@@ -951,29 +993,33 @@ html[data-layout="hub"][data-theme="light"] .plugins-page__search-input .inp {
   min-width: 0;
 }
 
-/* 与 shadcn Card 同底：勿单独做更透 / 更白的表面 */
+/* 毛玻璃：工具条与面板同用卡片不透明度 + 同描边 */
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools,
 html[data-layout="hub"][data-surface="glass"] .chrome-tools {
-  background: var(--bg-card);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-color: var(--border);
-  box-shadow: none;
+  background: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .console-hub-page__chrome-tools,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .chrome-tools {
-  background: var(--bg-card);
-  border-color: var(--border);
-  box-shadow: none;
+  background: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
+    0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight);
 }
 
+/* 纯色：工具条与 panel / Card 同底同描边同阴影 */
 html[data-layout="hub"][data-surface="solid"] .console-hub-page__chrome-tools,
 html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   background: var(--bg-card);
+  background-color: var(--bg-card);
+  border-color: var(--surface-edge, var(--border));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: none;
+  box-shadow: var(--hub-shadow);
 }
 
 .console-hub-page__chrome-row {
@@ -1014,6 +1060,12 @@ html[data-layout="hub"][data-surface="solid"] .chrome-tools {
   padding-left: 0.5rem;
   background: var(--bg-card);
   box-shadow: -10px 0 12px -10px color-mix(in srgb, var(--foreground) 18%, transparent);
+}
+
+/* 毛玻璃工具条本身已半透明：钉住区勿再叠一层，否则出现白块 */
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-row > .chrome-tools__trailing {
+  background: transparent;
+  box-shadow: none;
 }
 
 /* 长配置页：只钉工具条（标题滚走）；滚动容器须为祖先 shell__main-inner */
@@ -1250,6 +1302,7 @@ html[data-layout="hub"] .console-hub-page__chrome-tools button[class*="inline-fl
  */
 .chrome-tools button[role="combobox"].bot-acct-sel,
 .console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel,
+.page-masthead button[role="combobox"].bot-acct-sel,
 button[role="combobox"].bot-acct-sel {
   width: auto;
   min-width: 4.5rem;
@@ -1269,8 +1322,9 @@ button[role="combobox"].bot-acct-sel .bot-sel-label__acct {
 
 .chrome-tools button[role="combobox"].bot-acct-sel > span,
 .console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > span,
+.page-masthead button[role="combobox"].bot-acct-sel > span,
 button[role="combobox"].bot-acct-sel > span {
-  display: grid;
+  display: flex;
   align-items: center;
   flex: 0 1 auto;
   width: auto;
@@ -1285,6 +1339,7 @@ button[role="combobox"].bot-acct-sel > span {
 
 .chrome-tools button[role="combobox"].bot-acct-sel > svg,
 .console-hub-page__chrome-tools button[role="combobox"].bot-acct-sel > svg,
+.page-masthead button[role="combobox"].bot-acct-sel > svg,
 button[role="combobox"].bot-acct-sel > svg {
   margin-left: 0;
   flex-shrink: 0;
@@ -1330,10 +1385,10 @@ button[role="combobox"].bot-acct-sel > svg {
   height: 0.875rem;
 }
 
-/* SelectValue：grid 垂直居中 + 横向省略；行高勿用 1（CJK 易被纵向裁切） */
+/* SelectValue：flex 垂直居中 + 横向省略；行高勿用 1（CJK 易被纵向裁切） */
 .chrome-tools button[role="combobox"] > span,
 .console-hub-page__chrome-tools button[role="combobox"] > span {
-  display: grid;
+  display: flex;
   align-items: center;
   height: 100%;
   min-width: 0;
@@ -1627,14 +1682,14 @@ html[data-layout="hub"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-surface="glass"] .plugin-config-page__card {
   backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  background: var(--surface-glass-fill);
   border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-catalog-card,
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-config-page__card {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity, 0.25) * 100%), transparent);
+  background: var(--surface-glass-fill);
 }
 
 html[data-layout="hub"] .ai-config-page,
@@ -2250,11 +2305,52 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
 }
 
 .prefs-setting-card__hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
   padding: 14px 18px 0;
 }
 
 .prefs-setting-card__head-text {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.prefs-setting-card__head-action {
+  flex: 0 0 auto;
+  padding-top: 2px;
+}
+
+.prefs-setting-card__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elev, var(--bg-card)) 88%, transparent);
+  color: var(--text-muted, var(--muted-foreground, #64748b));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+
+.prefs-setting-card__reset:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elev, var(--bg-card)));
+}
+
+html[data-theme="light"] .prefs-setting-card__reset {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 12%, transparent);
 }
 
 .prefs-setting-card__title.panel__title {
@@ -2289,7 +2385,6 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
   margin-bottom: 14px;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  contain: layout style paint;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
@@ -2297,16 +2392,20 @@ html[data-layout="hub"][data-radius="round"] code:not(pre code):not(.pre-block c
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 52%),
-    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, var(--bg-deep) 100%);
+    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--accent) 48%, transparent), transparent 52%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, color-mix(in srgb, var(--accent) 32%, transparent), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, var(--bg-deep)) 0%, var(--bg-deep) 100%);
 }
 
 html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--foreground) 10%, transparent) 0%,
-    var(--bg-deep) 100%
-  );
+  background:
+    radial-gradient(ellipse 90% 70% at 12% 0%, color-mix(in srgb, var(--foreground) 22%, transparent), transparent 55%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--foreground) 18%, var(--bg-deep)) 0%,
+      var(--bg-deep) 55%,
+      color-mix(in srgb, var(--foreground) 10%, var(--bg-deep)) 100%
+    );
 }
 
 .prefs-glass-preview__pane {
@@ -2317,7 +2416,8 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
   justify-content: center;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--border-strong) 40%, transparent);
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  /* 直接引用 opacity，才能吃到预览节点上的局部 CSS 变量 */
+  background: rgb(from var(--bg-card) r g b / var(--card-glass-opacity, 0.25));
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
@@ -2328,7 +2428,7 @@ html[data-ui-preset="shadcn"] .prefs-glass-preview__backdrop {
 }
 
 html[data-theme="light"] .prefs-glass-preview__pane {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: rgb(from var(--bg-card) r g b / var(--card-glass-opacity, 0.25));
 }
 
 .prefs-form-field--range {
@@ -2377,6 +2477,98 @@ input.inp[type="range"]:focus-visible {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+/* 界面风格：更大瓷砖选项 */
+.prefs-style-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.prefs-style-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 96px;
+  padding: 16px 12px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: var(--bg-elev, var(--bg-card));
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.prefs-style-tile:hover:not(.prefs-style-tile--active) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev, var(--bg-card)));
+}
+
+.prefs-style-tile--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elev, var(--bg-card)));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.prefs-style-tile__swatch {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.prefs-style-tile__swatch--solid {
+  background: var(--accent);
+}
+
+.prefs-style-tile__swatch--glass {
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 18%, transparent)
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent);
+}
+
+.prefs-style-tile__label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+html[data-theme="light"] .prefs-style-tile {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--foreground, var(--text)) 12%, transparent);
+}
+
+html[data-theme="light"] .prefs-style-tile:hover:not(.prefs-style-tile--active) {
+  background: color-mix(in srgb, var(--accent) 4%, #fff);
+}
+
+html[data-theme="light"] .prefs-style-tile--active {
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+}
+
+html[data-theme="dark"] .prefs-style-tile {
+  background: color-mix(in srgb, var(--text) 4%, var(--bg-elev, var(--bg-card)));
+}
+
+html[data-theme="dark"] .prefs-style-tile--active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-elev, var(--bg-card)));
 }
 
 .prefs-segment__btn {
@@ -2609,6 +2801,26 @@ html[data-theme="light"] .prefs-accent-swatch--on {
     border-radius: 8px;
   }
 
+  .prefs-style-tiles {
+    gap: 8px;
+  }
+
+  .prefs-style-tile {
+    min-height: 84px;
+    padding: 12px 8px;
+    border-radius: 10px;
+  }
+
+  .prefs-style-tile__swatch {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 8px;
+  }
+
+  .prefs-style-tile__label {
+    font-size: 12px;
+  }
+
   .prefs-accent-row {
     gap: 8px;
   }
@@ -2642,8 +2854,8 @@ html[data-layout="hub"][data-surface="glass"] .shell__sidebar {
 
 html[data-layout="hub"][data-theme="light"][data-surface="glass"] .shell__sidebar {
   background: var(--shell-sidebar-glass-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
 }
 
 html[data-layout="hub"][data-surface="solid"] .shell__sidebar {
@@ -2705,12 +2917,16 @@ html[data-layout="hub"] .shell-mobile-nav__brand {
   color: var(--text);
 }
 
+html[data-layout="hub"] .shell__nav-clip {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 html[data-layout="hub"] .shell__nav {
   gap: 4px;
-  padding: 0;
+  padding-left: 0;
   margin-right: 0;
   overflow-x: hidden;
-  scrollbar-gutter: auto;
 }
 
 html[data-layout="hub"] .shell__nav-section,
@@ -3055,7 +3271,7 @@ html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input.in
 html[data-layout="hub"][data-surface="glass"] .console-hub-page__search-input .inp,
 html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input.inp,
 html[data-layout="hub"][data-surface="glass"] .plugin-store-page__search-input .inp {
-  background: color-mix(in srgb, var(--surface-control) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: color-mix(in srgb, var(--surface-control) var(--card-glass-pct, var(--shell-glass-pct, 25%)), transparent);
   backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
   -webkit-backdrop-filter: blur(var(--surface-blur, 16px)) saturate(var(--glass-saturate, 1.35));
   border-color: var(--control-edge, var(--control-border));
@@ -3382,9 +3598,16 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
   display: grid;
   gap: 6px;
   padding: 14px 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-edge, var(--border));
   border-radius: var(--hub-radius, 14px);
-  background: color-mix(in srgb, var(--text) 3%, transparent);
+  background: var(--bg-card);
+  box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"][data-surface="glass"] .ai-stat {
+  background: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 .ai-stat__label {
@@ -3431,9 +3654,9 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
   justify-content: space-between;
   gap: 12px;
   padding: 10px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--surface-edge, var(--border));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+  background: var(--bg-card);
 }
 
 .ai-row__key {
@@ -3496,4 +3719,157 @@ html[data-ui-preset="shadcn"] .home-account-hero--color .home-account-hero__pick
   font-size: 0.6875rem;
   color: var(--text-muted);
   letter-spacing: 0.02em;
+}
+
+/* ── 毛玻璃：统一卡片族（压过 app.css / Tailwind bg-card 实色） ── */
+html[data-layout="hub"][data-surface="glass"] .bg-card,
+html[data-layout="hub"][data-surface="glass"] .ui-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card.ui-card,
+html[data-layout="hub"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card.ui-card--glass,
+html[data-layout="hub"][data-surface="glass"] .home-kpi-bar {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .bg-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .ui-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card.ui-card,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .plugin-store-page--hub .plugin-store-card.ui-card--glass,
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .home-kpi-bar {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  border-color: var(--surface-edge-glass, var(--border));
+  box-shadow: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity, 1))),
+    0 8px 24px -4px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity, 1))), var(--glass-inset-highlight);
+}
+
+/* 纯色：Card / ui-card / KPI 条 与工具条、panel 同契约 */
+html[data-layout="hub"][data-surface="solid"] .bg-card,
+html[data-layout="hub"][data-surface="solid"] .ui-card,
+html[data-layout="hub"][data-surface="solid"] .home-kpi-bar {
+  background: var(--bg-card);
+  background-color: var(--bg-card);
+  border-color: var(--surface-edge, var(--border));
+  box-shadow: var(--hub-shadow);
+}
+
+html[data-layout="hub"] .bg-card,
+html[data-layout="hub"] .ui-card {
+  border-radius: var(--hub-radius, var(--radius-md, 12px));
+}
+
+/* 工具条内控件：显式吃 --control-bg（已随不透明度变化） */
+html[data-layout="hub"][data-surface="glass"] .chrome-tools input:not([type="checkbox"]):not([type="radio"]),
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools input:not([type="checkbox"]):not([type="radio"]),
+html[data-layout="hub"][data-surface="glass"] .chrome-tools .inp,
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools .inp,
+html[data-layout="hub"][data-surface="glass"] .chrome-tools button[role="combobox"],
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools button[role="combobox"],
+html[data-layout="hub"][data-surface="glass"] .chrome-tools button[data-slot="trigger"],
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools button[data-slot="trigger"],
+html[data-layout="hub"][data-surface="glass"] .chrome-tools .charts-page__date-inp,
+html[data-layout="hub"][data-surface="glass"] .console-hub-page__chrome-tools .charts-page__date-inp,
+html[data-layout="hub"][data-surface="glass"] .charts-page__date-inp {
+  background: var(--control-bg) !important;
+  background-color: var(--control-bg) !important;
+  backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+  box-shadow: var(--control-shadow);
+}
+
+/* SegTabs / 记忆 Tabs：轨道与选中段跟随毛玻璃 */
+html[data-layout="hub"][data-surface="glass"] [role="tablist"] {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 7%, transparent);
+  backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+}
+
+html[data-layout="hub"][data-surface="glass"] [role="tab"][data-state="active"] {
+  background: var(--control-bg) !important;
+  background-color: var(--control-bg) !important;
+  box-shadow: var(--control-shadow);
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] [role="tablist"] {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+/*
+ * 页面内容分段（观测统计 / 记忆等 seg-tabs--accent）：
+ * 纯色下选中跟主题色；轨道描边与抬升面 --surface-edge 一致。
+ */
+html[data-layout="hub"][data-surface="solid"] .seg-tabs--accent[role="tablist"] {
+  background: var(--bg-card);
+  background-color: var(--bg-card);
+  border: 1px solid var(--surface-edge, var(--border));
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="solid"] .seg-tabs--accent[role="tablist"] {
+  background: var(--bg-card);
+  background-color: var(--bg-card);
+  border-color: var(--surface-edge, var(--border));
+}
+
+html[data-layout="hub"][data-surface="glass"] .seg-tabs--accent[role="tablist"] {
+  border: 1px solid var(--surface-edge-glass, var(--border));
+}
+
+html[data-layout="hub"][data-theme="light"][data-surface="glass"] .seg-tabs--accent[role="tablist"] {
+  border-color: var(--surface-edge-glass, var(--border));
+}
+
+html[data-layout="hub"][data-surface="solid"] .seg-tabs--accent[role="tablist"] > [role="tab"][data-state="active"] {
+  background: var(--accent) !important;
+  background-color: var(--accent) !important;
+  color: var(--accent-contrast, #fff) !important;
+  border-color: transparent !important;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+html[data-ui-preset="shadcn"][data-surface="solid"] .seg-tabs--accent[role="tablist"] > [role="tab"][data-state="active"],
+html[data-theme="light"][data-ui-preset="shadcn"][data-surface="solid"] .seg-tabs--accent[role="tablist"] > [role="tab"][data-state="active"] {
+  background: var(--foreground, var(--text)) !important;
+  background-color: var(--foreground, var(--text)) !important;
+  color: var(--accent-contrast, var(--bg-card, #fff)) !important;
+  border-color: transparent !important;
+}
+
+/* 遗留 console-view-toggle 轨道 */
+html[data-layout="hub"][data-surface="glass"] .console-view-toggle {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+  backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(8px) saturate(var(--glass-saturate, 1.12));
+}
+
+/* 加载骨架面板 */
+html[data-layout="hub"][data-surface="glass"] .console-page-skel__panel {
+  background: var(--surface-glass-fill);
+  background-color: var(--surface-glass-fill);
+  backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
+  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
+}
+
+/* 弹层 / 菜单保持实色，避免半透明叠在遮罩上发脏 */
+html[data-layout="hub"][data-surface="glass"] [data-radix-popper-content-wrapper] .bg-card,
+html[data-layout="hub"][data-surface="glass"] [role="menu"].bg-card,
+html[data-layout="hub"][data-surface="glass"] [role="listbox"].bg-card,
+html[data-layout="hub"][data-surface="glass"] [role="dialog"].bg-card {
+  background: hsl(var(--ui-card));
+  background-color: hsl(var(--ui-card));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--shadow-md, var(--hub-shadow));
 }

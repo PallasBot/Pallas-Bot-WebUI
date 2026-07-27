@@ -14,6 +14,10 @@
   --bg-card-hover: #222228;
   --border: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.1);
+  /* 抬升面描边（panel / 工具条 / Card）；暗色玻璃略淡 */
+  --surface-edge: var(--border);
+  --surface-edge-glass: rgba(255, 255, 255, 0.12);
+  --surface-divider: rgba(255, 255, 255, 0.05);
   --text: #f4f4f5;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
@@ -43,8 +47,8 @@
   --input: var(--control-border);
   --ring: color-mix(in srgb, var(--accent) 42%, transparent);
   --surface: var(--bg-card);
-  /* 阴影强度由偏好 --shadow-intensity 缩放（默认 1） */
-  --shadow-intensity: 1;
+  /* 阴影强度：偏好写入；默认 0.55 */
+  --shadow-intensity: 0.55;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / calc(0.18 * var(--shadow-intensity)));
   --shadow-md: 0 2px 8px rgb(0 0 0 / calc(0.22 * var(--shadow-intensity))),
     0 1px 2px rgb(0 0 0 / calc(0.12 * var(--shadow-intensity)));
@@ -64,6 +68,10 @@
   --radius-textarea: var(--radius-sm);
   --surface-blur: 10px;
   --card-glass-opacity: 0.25;
+  --card-glass-pct: 25%;
+  --shell-glass-pct: 25%;
+  /* 真 alpha；勿再用 color-mix(..., transparent) 当不透明度 */
+  --surface-glass-fill: rgb(from var(--bg-card) r g b / var(--card-glass-opacity, 0.25));
   /* 主内容边距；page-top 给标题页呼吸距 */
   --layout-gutter: 40px;
   --layout-page-top: 2.75rem;
@@ -75,7 +83,9 @@
   --console-panel-gap: var(--hub-page-gap);
   /* 略降饱和，减轻玻璃上文字发糊 */
   --glass-saturate: 1.05;
-  --glass-elev-shadow: 0 8px 32px rgb(0 0 0 / calc(0.15 * var(--shadow-intensity)));
+  /* 毛玻璃卡片抬升阴影 */
+  --glass-elev-shadow: 0 2px 6px hsl(0 0% 0% / calc(0.04 * var(--shadow-intensity))),
+    0 8px 24px -4px hsl(0 0% 0% / calc(0.1 * var(--shadow-intensity)));
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
   --shell-chrome-edge: color-mix(in srgb, var(--border) 55%, transparent);
   --shell-chrome-separator: color-mix(in srgb, var(--border) 55%, transparent);
@@ -83,17 +93,16 @@
   --shell-chrome-shadow-y: 0 4px 16px rgb(0 0 0 / calc(0.04 * var(--shadow-intensity)));
   --shell-chrome-inset: inset 0 1px 0 color-mix(in srgb, var(--accent) 5%, transparent);
   --shell-sidebar-surface: var(--bg-card);
-  /* 侧栏 chrome 须可读：玻璃不透明度有下限，避免壁纸透出发糊 */
+  /* 侧栏玻璃：跟随卡片不透明度，可透出壳层主题色渐变 */
   --shell-sidebar-glass-mix: 1;
-  --shell-sidebar-glass-floor: 0.88;
-  --shell-sidebar-glass-bg: color-mix(
-    in srgb,
-    var(--shell-sidebar-surface)
-      calc(
-        min(max(var(--card-glass-opacity) * var(--shell-sidebar-glass-mix), var(--shell-sidebar-glass-floor)), 0.97) *
-          100%
-      ),
-    transparent
+  --shell-sidebar-glass-floor: 0.12;
+  --shell-sidebar-glass-alpha: clamp(
+    var(--shell-sidebar-glass-floor),
+    calc(var(--card-glass-opacity) * var(--shell-sidebar-glass-mix)),
+    0.97
+  );
+  --shell-sidebar-glass-bg: rgb(
+    from var(--shell-sidebar-surface) r g b / var(--shell-sidebar-glass-alpha)
   );
   /* Latin：Poppins；中文优先系统黑体 */
   --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
@@ -198,8 +207,8 @@
   --surface-chip: color-mix(in srgb, var(--bg-card) 72%, var(--bg-muted) 28%);
   --surface-segment: var(--bg-card);
   --surface-segment-active: var(--surface-control);
-  --surface-glass: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
-  --surface-glass-fg: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 100%), transparent);
+  --surface-glass: var(--surface-glass-fill);
+  --surface-glass-fg: rgb(from #ffffff r g b / var(--card-glass-opacity, 0.25));
   --surface-overlay: color-mix(in srgb, #000 52%, transparent);
   --surface-accent-ring: color-mix(in srgb, var(--accent) 22%, transparent);
 }
@@ -244,7 +253,9 @@ html[data-surface="glass"] {
     color-mix(in srgb, var(--bg-deep) 42%, transparent) 100%
   );
   --surface-elevated: var(--surface-glass);
-  --surface-control: color-mix(in srgb, var(--control-bg) 58%, transparent);
+  /* 输入 / Select / 次级按钮：跟随卡片不透明度 */
+  --control-bg: rgb(from var(--bg-card) r g b / max(0.32, var(--card-glass-opacity, 0.25)));
+  --surface-control: var(--control-bg);
   --surface-chip: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 72%), transparent);
 }
 
@@ -254,24 +265,23 @@ html[data-surface="glass"] .shell__main-inner {
 }
 
 html[data-surface="glass"] .panel {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fill);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
-  border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  border-color: var(--surface-edge-glass, var(--border));
   box-shadow: var(--glass-elev-shadow), var(--glass-inset-highlight);
 }
 
 html[data-surface="glass"] .shell__sidebar {
   background: var(--shell-sidebar-glass-bg);
-  /* 侧栏少用 blur：强 blur + 半透明会把壁纸糊进文字 */
-  backdrop-filter: blur(6px) saturate(1.02);
-  -webkit-backdrop-filter: blur(6px) saturate(1.02);
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
   border-right: 1px solid var(--shell-chrome-edge);
   box-shadow: var(--shell-chrome-shadow-x);
 }
 
 html[data-surface="glass"] .shell__topbar {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fill);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   border-bottom: 1px solid var(--shell-chrome-edge);
@@ -327,41 +337,45 @@ html[data-theme="light"][data-surface="solid"] .prefs-setting-card.panel {
 }
 
 html[data-theme="light"][data-surface="glass"] {
+  /* 毛玻璃：略深于纯色近白画布，才能透出渐变 */
+  --bg-deep: #f4f5f8;
+  --bg-elev: #f4f5f8;
   --shell-chrome-bg: linear-gradient(
     180deg,
     color-mix(in srgb, #fff 52%, transparent) 0%,
     color-mix(in srgb, var(--bg-deep) 38%, transparent) 100%
   );
-  /* 侧栏近白中性灰，勿用偏紫 #f4f4f7；玻璃态也保持近实底 */
-  --shell-sidebar-surface: #fafafa;
-  --shell-sidebar-glass-mix: 3.5;
-  --shell-sidebar-glass-floor: 0.94;
+  --shell-sidebar-surface: #ffffff;
+  --shell-sidebar-glass-mix: 1;
+  --shell-sidebar-glass-floor: 0.12;
   --surface-elevated: var(--surface-glass-fg);
-  --surface-control: color-mix(in srgb, var(--control-bg) 72%, transparent);
-  --surface-segment-active: #ffffff;
+  --control-bg: rgb(from #ffffff r g b / max(0.28, var(--card-glass-opacity, 0.25)));
+  --surface-control: var(--control-bg);
+  --surface-segment-active: rgb(from #ffffff r g b / max(0.55, var(--card-glass-opacity, 0.25)));
   --surface-chip: color-mix(in srgb, #fff calc(var(--card-glass-opacity) * 92%), transparent);
-  --glass-elev-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  --glass-elev-shadow: 0 2px 6px hsl(0 0% 0% / calc(0.04 * var(--shadow-intensity))),
+    0 8px 24px -4px hsl(0 0% 0% / calc(0.1 * var(--shadow-intensity)));
   --glass-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--accent) 6%, transparent);
   --shell-chrome-shadow-x: 4px 0 24px rgba(15, 23, 42, 0.06);
   --shell-chrome-shadow-y: 0 4px 16px rgba(15, 23, 42, 0.05);
 }
 
 html[data-theme="light"][data-surface="glass"] .panel {
-  background: color-mix(in srgb, var(--bg-card) calc(max(var(--card-glass-opacity), 0.72) * 100%), transparent);
+  background: var(--surface-glass-fill);
   border-color: color-mix(in srgb, var(--border) 45%, transparent);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04), 0 8px 24px -4px rgba(15, 23, 42, 0.08), var(--glass-inset-highlight);
 }
 
 html[data-theme="light"][data-surface="glass"] .shell__sidebar {
   background: var(--shell-sidebar-glass-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
+  -webkit-backdrop-filter: blur(var(--surface-blur, 12px)) saturate(var(--glass-saturate, 1.12));
   border-right: 1px solid var(--shell-chrome-edge);
   box-shadow: var(--shell-chrome-shadow-x);
 }
 
 html[data-theme="light"][data-surface="glass"] .shell__topbar {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fill);
   border-bottom: 1px solid var(--shell-chrome-edge);
   box-shadow: var(--shell-chrome-shadow-y), var(--glass-inset-highlight);
 }
@@ -517,16 +531,23 @@ html[data-theme="light"] {
   --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --ui-btn-font: 14px;
-  /* 近白画布 + 白卡片；侧栏略沉于画布 */
+  /*
+   * 浅色：近白画布（#fcfcfc）+ 白卡片。
+   * 外框 --surface-edge / --border-base 清晰（240 4% 83%）；
+   * --border 保持轻量，供卡内 color-mix / 通用描边，避免外框色渗进分割线。
+   */
   --bg-deep: #fcfcfc;
   --bg-elev: #fcfcfc;
   --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
-  /* 浅色描边：约 border/40 观感，避免「铁框」 */
+  --border-base: hsl(240 4% 83%);
   --border: rgba(15, 23, 42, 0.06);
   --border-strong: rgba(15, 23, 42, 0.1);
+  --surface-edge: var(--border-base);
+  --surface-edge-glass: hsl(240 4% 83% / 0.4);
+  /* 卡内分割线：对齐暗色 0.8 的轻量感 */
+  --surface-divider: rgba(15, 23, 42, 0.035);
   --text: #0f172a;
-  /* 略加深 muted，减轻灰底上灰字发糊 */
   --text-muted: #526277;
   --text-dim: #7b8a9e;
   --accent: #7c3aed;
@@ -535,25 +556,24 @@ html[data-theme="light"] {
   --success: #15803d;
   --warn: #b45309;
   --danger: #b91c1c;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity))),
-    0 4px 16px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity)));
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / calc(0.06 * var(--shadow-intensity)));
-  --shadow-md: 0 2px 8px rgb(15 23 42 / calc(0.08 * var(--shadow-intensity))),
-    0 1px 2px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity)));
+  --shadow-card: 0 2px 6px rgb(15 23 42 / calc(0.04 * var(--shadow-intensity))),
+    0 8px 20px -4px rgb(15 23 42 / calc(0.07 * var(--shadow-intensity)));
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity)));
+  --shadow-md: 0 2px 6px rgb(15 23 42 / calc(0.05 * var(--shadow-intensity))),
+    0 8px 20px -4px rgb(15 23 42 / calc(0.07 * var(--shadow-intensity)));
   --muted: rgba(15, 23, 42, 0.05);
   --secondary: rgba(15, 23, 42, 0.05);
   --destructive: #b91c1c;
   --ring: color-mix(in srgb, var(--accent) 42%, transparent);
   --shell-title-gradient: linear-gradient(135deg, #0f172a 0%, #6d28d9 55%, #7c3aed 100%);
-  /* 侧栏 chrome：近白中性灰 */
-  --shell-chrome-bg: linear-gradient(180deg, #fbfbfb 0%, #fafafa 100%);
+  --shell-chrome-bg: linear-gradient(180deg, hsl(0 0% 98%) 0%, hsl(0 0% 97%) 100%);
   --shell-chrome-edge: color-mix(in srgb, var(--border) 70%, transparent);
   --shell-chrome-separator: color-mix(in srgb, var(--border) 70%, transparent);
   --control-bg: #ffffff;
-  --control-border: rgba(15, 23, 42, 0.13);
+  --control-border: hsl(240 4% 83%);
   --control-edge: var(--control-border);
   --control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --bg-muted: color-mix(in srgb, var(--text) 2.5%, var(--bg-elev));
+  --bg-muted: hsl(240 4% 90%);
   --surface-1: color-mix(in srgb, var(--foreground, var(--text)) 2%, transparent);
   --surface-2: color-mix(in srgb, var(--foreground, var(--text)) 3.5%, transparent);
   --surface-3: color-mix(in srgb, var(--foreground, var(--text)) 5%, transparent);
@@ -563,10 +583,11 @@ html[data-theme="light"] {
   --surface-overlay: color-mix(in srgb, #000 8%, transparent);
   --shell-brand-mark-bg: #ffffff;
   --shell-brand-mark-border: color-mix(in srgb, var(--foreground, var(--text)) 12%, var(--border));
-  --shell-sidebar-surface: #fafafa;
+  --shell-sidebar-surface: hsl(0 0% 98%);
 }
 
 html[data-surface="solid"] .shell__bg {
+  /* hub 布局下由 console-hub 写渐变画布；非 hub 仍用纯色 */
   background: var(--bg-deep);
 }
 

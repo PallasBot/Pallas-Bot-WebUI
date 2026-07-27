@@ -20,6 +20,11 @@ type Props = {
   /** 与 default 相同；保留以免调用处改动 */
   size?: "default" | "toolbar";
   disabled?: boolean;
+  /**
+   * muted：配置/表单分段（默认，中性选中）。
+   * accent：页面内容分段；纯色下选中跟主题色，与表单 Tabs 区分。
+   */
+  tone?: "muted" | "accent";
 };
 
 /**
@@ -36,6 +41,7 @@ export default function SegTabs({
   full = false,
   size = "default",
   disabled = false,
+  tone = "muted",
 }: Props) {
   const toolbar = size === "toolbar";
 
@@ -48,6 +54,7 @@ export default function SegTabs({
       <TabsList
         aria-label={ariaLabel}
         className={cn(
+          tone === "accent" && "seg-tabs--accent",
           toolbar && "h-9 p-0.5",
           full && (toolbar ? "flex h-9 w-full" : "flex h-10 w-full"),
           listClassName,

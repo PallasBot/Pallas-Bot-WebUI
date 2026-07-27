@@ -33,7 +33,7 @@
 }
 
 html[data-surface="glass"] .ai-hub-panel {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fill);
   backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--glass-saturate, 1.12));
   border-color: color-mix(in srgb, var(--border-strong) 40%, transparent);
@@ -41,7 +41,7 @@ html[data-surface="glass"] .ai-hub-panel {
 }
 
 html[data-theme="light"][data-surface="glass"] .ai-hub-panel {
-  background: color-mix(in srgb, var(--bg-card) calc(var(--card-glass-opacity) * 100%), transparent);
+  background: var(--surface-glass-fill);
 }
 
 html[data-surface="solid"] .ai-hub-panel,
