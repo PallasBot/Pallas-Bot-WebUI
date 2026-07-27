@@ -4,7 +4,6 @@
 export const FALLBACK_FIELD_LABELS: Record<string, string> = {
   llm_chat_enabled: "启用智能对话",
   chat_enable: "启用酒后 RWKV（独立通道）",
-  chat_tts_enable: "酒后对话附带语音",
   llm_repeater_mode: "接话时如何用智能对话",
   llm_polish_lite_sample_rate: "轻润色抽样比例",
   llm_session_enabled: "记住多轮上下文",
@@ -97,7 +96,6 @@ export const LLM_BOT_FIELD_GROUPS: ReadonlyArray<LlmBotFieldGroupDef> = [
     keys: [
       "llm_chat_enabled",
       "chat_enable",
-      "chat_tts_enable",
       "llm_repeater_mode",
       "llm_polish_lite_sample_rate",
       "llm_tools_enabled",
