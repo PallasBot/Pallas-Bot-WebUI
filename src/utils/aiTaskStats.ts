@@ -11,6 +11,7 @@ import type {
   LlmRagMetricsSlice,
   LlmGatesSlice,
 } from "@/api/pallasTypes";
+import { AI_TOKEN_METRIC_LABELS } from "@/config/aiConstants";
 
 export function todayIso(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -975,10 +976,14 @@ export function hourlyTokenIoTrendSeries(
   }
   if (!promptRaw.length && !completionRaw.length) return [];
   return [
-    { id: "prompt", label: "输入", points: padHourlyTrendPoints(promptRaw, day, endHour) },
+    {
+      id: "prompt",
+      label: AI_TOKEN_METRIC_LABELS.prompt,
+      points: padHourlyTrendPoints(promptRaw, day, endHour),
+    },
     {
       id: "completion",
-      label: "输出",
+      label: AI_TOKEN_METRIC_LABELS.completion,
       points: padHourlyTrendPoints(completionRaw, day, endHour),
     },
   ];

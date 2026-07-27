@@ -16,10 +16,11 @@ import ChartsPluginFilter from "@/components/ChartsPluginFilter";
 import ChromeField from "@/components/ChromeField";
 import ChromeTools, { CHROME_TOOLS_TRAILING } from "@/components/ChromeTools";
 import ConsolePageSkeleton from "@/components/ConsolePageSkeleton";
-import DateModeFilter, { type DateMode } from "@/components/DateModeFilter";
+import DateModeFilter from "@/components/DateModeFilter";
 import PageMasthead from "@/components/PageMasthead";
 import RefreshIconButton from "@/components/RefreshIconButton";
 import BotAccountCombobox from "@/components/BotAccountCombobox";
+import StatsSectionLabel from "@/components/StatsSectionLabel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAccountPluginCharts } from "@/hooks/useAccountPluginCharts";
 import { useBotFavorites } from "@/hooks/useBotFavorites";
@@ -78,7 +79,6 @@ export default function ChartsPage() {
   const accountFromQuery = parseBotAccountId(searchParams.get("self_id"));
   const [rangeStart, setRangeStart] = useState(() => monthBounds(currentMonthIso()).start);
   const [rangeEnd, setRangeEnd] = useState(todayIso);
-  const [dateMode, setDateMode] = useState<DateMode>("range");
   const [selectedAccount, setSelectedAccount] = useState<number | null>(
     () => accountFromQuery ?? readSavedHomeAccount(),
   );
@@ -392,36 +392,37 @@ export default function ChartsPage() {
     return botSelectDropdownLabel(botNick(account) || "BOT", account);
   }
 
+  const mastheadBot =
+    sortedBots.length > 1 ? (
+      <ChromeField label="账号" icon={Bot} className="shrink-0">
+        <BotAccountCombobox
+          value={selectedAccount != null ? String(selectedAccount) : ""}
+          onValueChange={(v) => selectAccount(Number(v) || null)}
+          bots={sortedBots.map((b) => ({
+            id: String(b.account),
+            nickname: botNick(b.account) || "BOT",
+          }))}
+          favorites={favorites}
+          placeholder="选择账号"
+          ariaLabel="选择 Bot 账号"
+          title={selectedAccount != null ? botTitle(selectedAccount) : undefined}
+        />
+      </ChromeField>
+    ) : null;
+
   return (
     <div className="charts-page charts-page--dashboard">
       <PageMasthead
         className="charts-page__masthead"
         title="数据看板"
         description="流量、命令与群活跃概览；趋势与排行同屏。"
+        actions={mastheadBot}
       />
 
       {sortedBots.length || (selectedAccount != null && instancesPending) ? (
         <ChromeTools>
-          {sortedBots.length > 1 ? (
-            <ChromeField label="账号" icon={Bot} className="shrink-0">
-              <BotAccountCombobox
-                value={selectedAccount != null ? String(selectedAccount) : ""}
-                onValueChange={(v) => selectAccount(Number(v) || null)}
-                bots={sortedBots.map((b) => ({
-                  id: String(b.account),
-                  nickname: botNick(b.account) || "BOT",
-                }))}
-                favorites={favorites}
-                placeholder="选择账号"
-                ariaLabel="选择 Bot 账号"
-                title={selectedAccount != null ? botTitle(selectedAccount) : undefined}
-              />
-            </ChromeField>
-          ) : null}
           <DateModeFilter
             size="toolbar"
-            mode={dateMode}
-            onModeChange={setDateMode}
             start={rangeStart}
             end={rangeEnd}
             onStartChange={setRangeStart}
@@ -446,6 +447,7 @@ export default function ChartsPage() {
 
       {selectedAccount != null ? (
         <div className="charts-page__layout" aria-busy={refreshing || undefined}>
+          <StatsSectionLabel>摘要</StatsSectionLabel>
           <section className="charts-page__kpi home-kpi-bar" aria-label="今日与区间摘要">
             <MetricTile label="今日消息" value={accountTodayMsg} hint="收 / 发" />
             <MetricTile label="今日 API" value={accountTodayApi} hint="协议调用" />
@@ -473,6 +475,7 @@ export default function ChartsPage() {
             />
           </section>
 
+          <StatsSectionLabel>趋势</StatsSectionLabel>
           <section id="charts-trend" className="charts-page__section charts-page__section--hero">
             <div className="charts-page__board charts-page__board--cards">
               <Card className={cn(CHART_PANEL, "charts-page__panel--hero")}>
@@ -513,6 +516,7 @@ export default function ChartsPage() {
             </div>
           </section>
 
+          <StatsSectionLabel>明细</StatsSectionLabel>
           <section id="charts-detail" className="charts-page__section charts-page__section--secondary">
             <div className="charts-page__board flex flex-col gap-[var(--console-panel-gap,18px)]">
               <Card className={cn(CHART_PANEL, "charts-page__panel--secondary")}>

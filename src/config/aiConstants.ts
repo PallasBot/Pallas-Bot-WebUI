@@ -39,8 +39,8 @@ export const AI_EXTENSION_LOG_KINDS: {
   label: string;
   shortLabel: string;
 }[] = [
-  { id: "uvicorn", label: "Web 服务（uvicorn / api）", shortLabel: "Web 服务" },
-  { id: "celery-media", label: "任务队列 · 媒体（media）", shortLabel: "Celery · 媒体" },
+  { id: "uvicorn", label: "Web 服务（uvicorn / api）运行日志", shortLabel: "Web 服务" },
+  { id: "celery-media", label: "媒体任务队列（Celery · media）运行日志", shortLabel: "媒体队列" },
 ];
 
 /** Docker 全栈 compose 下 Bot 容器内 AI 日志挂载点（只读）。 */
@@ -68,6 +68,23 @@ export const AI_STATS_LIMITS = {
   topRoutes: 6,
   historySessions: 20,
   historyTurns: 40,
+} as const;
+
+/**
+ * Token 用量文案（观测统计 / 趋势图例 / Provider 单价字段对齐）。
+ */
+export const AI_TOKEN_METRIC_LABELS = {
+  prompt: "输入",
+  completion: "输出",
+  cacheRead: "缓存读",
+  cacheWrite: "缓存写",
+  /** 输入中未命中前缀缓存的部分（与缓存读对照） */
+  uncachedPrompt: "非缓存输入",
+  total: "Token 总量",
+  cacheHitRate: "缓存命中率",
+  cacheHitShare: "缓存读占比",
+  /** 趋势图标题里的输入 / 输出并称 */
+  ioPair: "输入 / 输出",
 } as const;
 
 /** 任务统计落盘文件名（仅作为提示展示的兜底值）。 */
