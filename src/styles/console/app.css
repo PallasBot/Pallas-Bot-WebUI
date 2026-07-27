@@ -15029,6 +15029,41 @@ html[data-layout="hub"][data-theme="light"] .plugin-config-group-card {
   }
 }
 
+/* 窄屏：强制 2 列，避免 3/4 列把标题挤歪 */
+@media (max-width: 640px) {
+  .community-page__deploy-grid.home-kpi-bar,
+  .community-page__corpus-grid.home-kpi-bar,
+  .community-page__usage-grid.home-kpi-bar,
+  .community-page__federation-pool-grid.home-kpi-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .community-page__panel .community-page__kpi-bar .metric-tile {
+    border-left: none;
+    border-top: none;
+    align-items: flex-start;
+    text-align: left;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .community-page__panel .community-page__kpi-bar .metric-tile:not(:nth-child(2n + 1)) {
+    border-left: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .community-page__panel .community-page__kpi-bar .metric-tile:nth-child(n + 3) {
+    border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .community-page__panel .community-page__kpi-bar .metric-tile__head,
+  .community-page__panel .community-page__kpi-bar .metric-tile__label,
+  .community-page__panel .community-page__kpi-bar .metric-tile__value-slot {
+    justify-content: flex-start;
+    text-align: left;
+    width: 100%;
+  }
+}
+
 .community-page__usage-unavail {
   margin: 10px 0 0;
   font-size: 0.88rem;

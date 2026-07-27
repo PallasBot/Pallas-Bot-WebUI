@@ -38,13 +38,19 @@ import {
 import { pushConsoleToast } from "@/utils/consoleToast";
 import { preserveShellMainScroll } from "@/utils/preserveShellScroll";
 import {
-  Globe2,
-  Network,
-  Library,
+  Activity,
+  Bot,
+  Database,
+  ExternalLink,
   Flame,
+  Globe2,
   HardDrive,
   Layers,
-  ExternalLink,
+  Library,
+  List,
+  Network,
+  Sparkles,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
@@ -539,15 +545,15 @@ export default function CommunityPage() {
             ) : null}
 
             <div className="community-page__kpi-bar home-kpi-bar community-page__deploy-grid">
-              <MetricTile icon="globe" label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
-              <MetricTile icon="account" label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
+              <MetricTile icon={Globe2} label="活跃安装" value={formatCommunityStatNum(communityStats?.deployments_online)} hint={deploymentsOnlineHint} />
+              <MetricTile icon={Bot} label="在线牛牛" value={formatCommunityStatNum(communityStats?.bots_online_sum)} hint={botsOnlineHint} />
               <MetricTile
-                icon="layers"
+                icon={Layers}
                 label="分片安装"
                 value={`${formatCommunityStatNum(communityStats?.deployments_online_sharded)} / ${formatCommunityStatNum(communityStats?.shard_workers_online_sum)}`}
                 hint="采用分片架构的安装数 / 在线工作进程数"
               />
-              <MetricTile icon="activity" label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
+              <MetricTile icon={Activity} label="近 24 小时" value={formatCommunityStatNum(communityStats?.active_recent_24h)} hint={activeRecentHint} />
             </div>
 
             <dl className="home-dl community-page__detail-dl community-page__meta-dl">
@@ -655,9 +661,9 @@ export default function CommunityPage() {
               左两列为已登记协同配置且近期上报在线统计的安装；右列为去重服务上仍有活跃标记的安装。
             </p>
             <div className="community-page__kpi-bar home-kpi-bar community-page__federation-pool-grid">
-              <MetricTile icon="users" label="累计入池" value={formatCommunityStatNum(federationPoolStats?.members_total)} hint="曾成功从社区中心领取协同配置的安装套数" />
-              <MetricTile icon="network" label="在线入池" value={formatCommunityStatNum(federationPoolStats?.members_online)} hint="已入池且近期有在线统计上报的安装套数" />
-              <MetricTile icon="activity" label="去重活跃" value={federationCoordActiveLabel} hint="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息" />
+              <MetricTile icon={Users} label="累计入池" value={formatCommunityStatNum(federationPoolStats?.members_total)} hint="曾成功从社区中心领取协同配置的安装套数" />
+              <MetricTile icon={Network} label="在线入池" value={formatCommunityStatNum(federationPoolStats?.members_online)} hint="已入池且近期有在线统计上报的安装套数" />
+              <MetricTile icon={Activity} label="去重活跃" value={federationCoordActiveLabel} hint="去重服务上仍有活跃标记的安装数，表示近期有牛牛在处理群消息" />
             </div>
 
             {federationSecret ? (
@@ -778,12 +784,12 @@ export default function CommunityPage() {
               </div>
               <div className="panel__bd">
                 <div className="community-page__kpi-bar home-kpi-bar community-page__corpus-grid">
-                  <MetricTile icon="list" label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
-                  <MetricTile icon="globe" label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
-                  <MetricTile icon="users" label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
-                  <MetricTile icon="activity" label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
-                  <MetricTile icon="sparkles" label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
-                  <MetricTile icon="database" label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
+                  <MetricTile icon={List} label="词条规模" value={corpusPoolValue} hint={corpusPoolHint} />
+                  <MetricTile icon={Globe2} label="在线接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_online)} hint={corpusOnlineEnrollHint} />
+                  <MetricTile icon={Users} label="累计接入" value={formatCommunityStatNum(communityStats?.corpus?.enrollments_total)} hint={corpusTotalEnrollHint} />
+                  <MetricTile icon={Activity} label="允许上传" value={formatCommunityStatNum(communityStats?.corpus?.contribute_enabled_total)} hint="已接入且允许把本机新回复同步到共享池的安装数" />
+                  <MetricTile icon={Sparkles} label="回复被引用" value={formatCommunityStatNum(communityStats?.corpus?.answer_hits_sum)} hint="共享池中各回复条目被接话引用的累计次数" />
+                  <MetricTile icon={Database} label="允许读取" value={formatCommunityStatNum(communityStats?.corpus?.read_enabled_total)} hint="已接入且允许从共享池读取语料的安装数" />
                 </div>
               </div>
             </div>
@@ -934,12 +940,12 @@ export default function CommunityPage() {
 }
 
 function MetricTile({
-  icon,
+  icon: Icon,
   label,
   value,
   hint,
 }: {
-  icon?: string;
+  icon?: LucideIcon;
   label: string;
   value: string;
   hint: string;
@@ -947,7 +953,7 @@ function MetricTile({
   return (
     <div className="metric-tile">
       <div className="metric-tile__head">
-        {icon ? <span className={`metric-tile__ico metric-tile__ico--${icon}`} aria-hidden="true" /> : null}
+        {Icon ? <Icon className="metric-tile__ico" size={14} strokeWidth={2} aria-hidden /> : null}
         <span className="metric-tile__label">{label}</span>
       </div>
       <div className="metric-tile__value-slot">
