@@ -1,10 +1,41 @@
 # Changelog
 
-本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
-
 更早版本见 [GitHub Releases](https://github.com/PallasBot/Pallas-Bot-WebUI/releases)。
 
 <!-- entries -->
+
+## [Unreleased]
+
+相对 **0.8.3** 至本版的控制台更新。
+
+### 更新公告
+
+- **需要 Bot ≥ 4.1.10**；插件商店进度、观测统计等依赖新后端，请勿只升控制台
+- 插件商店：安装 / 更新 / 卸载可在卡片内看进度与百分比，不再干等无反馈
+- AI 观测：费用分区与区间明细、调用/用量分布图、日期筛选与补零趋势更完整
+- 操作成功/失败改为右上角 toast，少占版面
+- 首页延后拉更新检查、资源轮询更省；路由按需加载，首屏更轻
+- 协议：Runtime 面板与 SnowLuma 选择更好用；好友群配置页整理
+- 偏好可一键复原单项；部分文案「反哺」改为「纠错」
+- 社区页窄屏 KPI 布局修正；README 代码复制按钮更稳
+
+### Added
+
+- 插件商店异步装更卸与卡片进度条
+- AI 观测：费用分区、分布图、日期筛选与补零趋势
+- 偏好项复原；协议 SnowLuma Runtime 选择增强
+
+### Fixed
+
+- 社区页窄屏 KPI 布局
+- README 代码块复制按钮状态
+
+### Changed
+
+- 多页操作反馈改为 toast；「反哺」文案改为「纠错」
+- 路由懒加载与样式按需引入；hub 主题与进度条布局
+
+---
 
 ## [0.8.3] - 2026-07-27
 
