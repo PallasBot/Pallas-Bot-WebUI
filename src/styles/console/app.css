@@ -8002,11 +8002,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #2563eb) 18%, transparent);
 }
 
-.protocol-runtime-card__select {
-  display: inline-flex;
-  align-items: center;
-}
-
 .protocol-runtime-card__hd {
   display: flex;
   flex-wrap: wrap;

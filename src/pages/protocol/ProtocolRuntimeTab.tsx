@@ -19,7 +19,6 @@ import { CHROME_SEARCH_INPUT } from "@/components/ChromeTools";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -481,14 +480,15 @@ export default function ProtocolRuntimeTab() {
                     <div className="protocol-runtime-card__hd">
                       <div className="flex min-w-0 flex-1 items-start gap-2">
                         <label
-                          className="protocol-runtime-card__select mt-0.5 shrink-0"
+                          className="inst-db-card-select"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Checkbox
+                          <input
+                            type="checkbox"
                             checked={checked}
                             disabled={actionsBusy}
                             aria-label={`选择 Runtime ${runtimeTitle(rt)}`}
-                            onCheckedChange={(value) => setSelectedId(rt.id, value === true)}
+                            onChange={(e) => setSelectedId(rt.id, e.target.checked)}
                           />
                         </label>
                         <div className="min-w-0 space-y-1">
