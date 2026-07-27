@@ -6,7 +6,7 @@
 
 <!-- entries -->
 
-## [Unreleased]
+## [0.8.2] - 2026-07-27
 
 相对 **0.8.1** 至本版的控制台更新。合入 main 发版后，本说明会升为正式版本段并附提交明细。
 
@@ -18,6 +18,20 @@
 
 - 移除 `chat_tts_enable`（酒后附带语音）字段标签；语音请用官方扩展「牛牛说」
 - 配置分区标题分隔线被裁切
+
+### 提交明细
+
+### Fixed
+
+* fix(ui): 移除酒后对话附带语音配置项 ([c00e855](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c00e855fb3e873fd85e35e87cd900d2d4d2d2a26))
+* fix(ui): 修复配置分区标题分隔线被裁切 ([c067c68](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c067c689965211f7cfe0d41a88335ef852935a3b))
+
+### Changed
+
+* docs(release): 准备 0.8.2 更新公告（Unreleased） ([c9b98d1](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/c9b98d1d258079aa7f5e19708c7f03c2b13fad41))
+
+**完整变更**: [`v0.8.1...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.1...HEAD)
+
 
 ## [0.8.1] - 2026-07-26
 
@@ -41,7 +55,6 @@ CHANGELOG 弹窗更易扫读：标题层次、列表圆点与字号间距已调�
 * fix(update): CHANGELOG 弹窗更易读并统一 Added/Fixed/Changed ([e962442](https://github.com/PallasBot/Pallas-Bot-WebUI/commit/e962442e0f4df586b0488eed3c1b600635a1f439))
 
 **完整变更**: [`v0.8.0...HEAD`](https://github.com/PallasBot/Pallas-Bot-WebUI/compare/v0.8.0...HEAD)
-
 
 ## [0.8.0] - 2026-07-26
 
