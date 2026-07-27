@@ -18,8 +18,15 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Cpu, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
+import { ChevronDown, Cpu, Search, Trash2, UserMinus, UserPlus, X } from "lucide-react";
 import PanelTitleIcon from "@/components/PanelTitleIcon";
 import type { ProtocolOutletContext } from "@/pages/ProtocolPage";
 import { pushConsoleToast } from "@/utils/consoleToast";
@@ -107,43 +114,15 @@ export default function ProtocolRuntimeTab() {
     [filteredRuntimes, selected],
   );
 
+  const filteredAllSelected = useMemo(
+    () => filteredRuntimes.length > 0 && filteredRuntimes.every((rt) => selected.has(rt.id)),
+    [filteredRuntimes, selected],
+  );
+
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["protocol-snowluma-runtimes", mountUrl] });
     void qc.invalidateQueries({ queryKey: ["protocol-accounts", mountUrl] });
   }, [qc, mountUrl]);
-
-  const chromeMiddle = useMemo(
-    () => (
-      <div className="protocol-runtime-search relative min-w-[calc(13ch+2.75rem)] flex-1 basis-[calc(13ch+2.75rem)]">
-        <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
-          strokeWidth={1.75}
-          aria-hidden
-        />
-        <Input
-          type="search"
-          className={CHROME_SEARCH_INPUT}
-          placeholder="搜索 Runtime / QQ…"
-          aria-label="搜索 SnowLuma Runtime"
-          autoComplete="off"
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
-        />
-      </div>
-    ),
-    [searchQ],
-  );
-
-  useRegisterProtocolChrome(
-    useMemo(
-      () => ({
-        middle: chromeMiddle,
-        onRefresh: refresh,
-        refreshing: runtimesQ.isFetching || accountsQ.isFetching,
-      }),
-      [accountsQ.isFetching, chromeMiddle, refresh, runtimesQ.isFetching],
-    ),
-  );
 
   function setSelectedId(runtimeId: string, checked: boolean) {
     setSelected((prev) => {
@@ -160,6 +139,15 @@ export default function ProtocolRuntimeTab() {
 
   function clearSelection() {
     setSelected(new Set());
+  }
+
+  function toggleSelectFiltered() {
+    setSelected((prev) => {
+      if (filteredRuntimes.length > 0 && filteredRuntimes.every((rt) => prev.has(rt.id))) {
+        return new Set();
+      }
+      return new Set(filteredRuntimes.map((rt) => rt.id));
+    });
   }
 
   async function startSnowlumaRuntime(runtimeId: string) {
@@ -334,58 +322,104 @@ export default function ProtocolRuntimeTab() {
 
   const actionsBusy = batchBusy || snowlumaRuntimeBusyId != null || memberBusyKey != null;
 
+  const chromeMiddle = useMemo(
+    () => (
+      <>
+        <div className="protocol-runtime-search relative min-w-[calc(13ch+2.75rem)] flex-1 basis-[calc(13ch+2.75rem)]">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 z-[1] size-3.5 -translate-y-1/2 text-[var(--text-muted)]"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <Input
+            type="search"
+            className={CHROME_SEARCH_INPUT}
+            placeholder="搜索 Runtime / QQ…"
+            aria-label="搜索 SnowLuma Runtime"
+            autoComplete="off"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shrink-0 gap-1"
+              disabled={!mountUrl || actionsBusy}
+              aria-label="选项"
+            >
+              {batchBusy ? "处理中…" : `选项${selected.size > 0 ? `（${selected.size}）` : ""}`}
+              <ChevronDown className="size-3.5 opacity-70" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-0 w-max">
+            <DropdownMenuItem
+              disabled={!filteredRuntimes.length || actionsBusy}
+              onSelect={() => toggleSelectFiltered()}
+            >
+              {filteredAllSelected ? "取消全选" : "全选列表"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!emptyRuntimeIds.length || actionsBusy}
+              onSelect={() => selectEmptyRuntimes()}
+            >
+              选择空闲{emptyRuntimeIds.length ? `（${emptyRuntimeIds.length}）` : ""}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={selected.size === 0 || actionsBusy} onSelect={() => clearSelection()}>
+              清除选择
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              disabled={selected.size === 0 || actionsBusy}
+              onSelect={() => void deleteSelectedRuntimes()}
+            >
+              {batchBusy ? "删除中…" : "删除选中"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    ),
+    [
+      searchQ,
+      mountUrl,
+      actionsBusy,
+      batchBusy,
+      selected.size,
+      filteredRuntimes.length,
+      filteredAllSelected,
+      emptyRuntimeIds.length,
+    ],
+  );
+
+  useRegisterProtocolChrome(
+    useMemo(
+      () => ({
+        middle: chromeMiddle,
+        onRefresh: refresh,
+        refreshing: runtimesQ.isFetching || accountsQ.isFetching,
+      }),
+      [accountsQ.isFetching, chromeMiddle, refresh, runtimesQ.isFetching],
+    ),
+  );
+
   return (
     <div className="protocol-runtime-tab console-panel-stack">
       {!mountUrl ? <p className="muted text-sm">协议 API 未挂载，无法加载 Runtime。</p> : null}
 
       <Card className={PROTO_PANEL}>
         <CardHeader className={cn(PROTO_PANEL_HD, "border-b")}>
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="panel__title flex items-center gap-1.5">
-                <PanelTitleIcon icon={Cpu} />
-                SnowLuma Runtime
-              </CardTitle>
-              <CardDescription>
-                一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
-              </CardDescription>
-            </div>
-            <div className="protocol-runtime-batch flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!mountUrl || !emptyRuntimeIds.length || actionsBusy}
-                onClick={selectEmptyRuntimes}
-              >
-                选择空闲{emptyRuntimeIds.length ? `（${emptyRuntimeIds.length}）` : ""}
-              </Button>
-              {selected.size ? (
-                <>
-                  <span className="text-xs text-muted-foreground">已选 {selected.size}</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={actionsBusy}
-                    onClick={clearSelection}
-                  >
-                    取消选择
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    className="gap-1"
-                    disabled={!selectedRows.length || actionsBusy}
-                    onClick={() => void deleteSelectedRuntimes()}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                    {batchBusy ? "删除中…" : "删除所选"}
-                  </Button>
-                </>
-              ) : null}
-            </div>
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="panel__title flex items-center gap-1.5">
+              <PanelTitleIcon icon={Cpu} />
+              SnowLuma Runtime
+            </CardTitle>
+            <CardDescription>
+              一个 Runtime 对应一个 SnowLuma 进程/容器，可挂多个 QQ。停某个 QQ 不会停 Runtime。
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent className={PROTO_PANEL_BD}>

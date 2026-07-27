@@ -8007,10 +8007,6 @@ html[data-theme="light"] .home-account-metrics--color .home-account-metrics__sta
   align-items: center;
 }
 
-.protocol-runtime-batch {
-  width: 100%;
-}
-
 .protocol-runtime-card__hd {
   display: flex;
   flex-wrap: wrap;
